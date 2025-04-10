@@ -91,9 +91,9 @@ const About = () => {
             </div>
             <div className="md:w-1/2">
               <img
-                src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"
-                alt="MehyarSoft team working together"
-                className="rounded-lg shadow-xl w-full"
+                src={import.meta.env.BASE_URL + "/assets/mehyar-swelim.jpg"}
+                alt="Mehyar Swelim, CEO & Founder of MehyarSoft"
+                className="rounded-lg shadow-xl w-full object-cover h-96"
               />
             </div>
           </div>
@@ -211,7 +211,7 @@ const About = () => {
               {
                 name: "Mehyar Swelim",
                 role: "CEO & Founder",
-                image: "/mehyar-swelim.jpg",
+                image: import.meta.env.BASE_URL + "/assets/mehyar-swelim.jpg",
               },
               {
                 name: "Sarah Johnson",
