@@ -33,7 +33,4 @@ export function slugify(text: string): string {
     .replace(/-+$/, '');      // Trim - from end of text
 }
 
-// Keyboard shortcut detection helper
-export function isAdminShortcut(e: KeyboardEvent): boolean {
-  return e.ctrlKey && e.shiftKey && e.key === 'A';
-}
+
