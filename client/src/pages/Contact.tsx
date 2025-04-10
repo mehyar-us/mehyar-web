@@ -1,20 +1,16 @@
 import { useEffect } from "react";
 import { Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import ContactSection from "@/components/contact-section";
+import { Button } from "@/components/ui/button";
 
 const Contact = () => {
   useEffect(() => {
     document.title = "Contact Us | MehyarSoft";
   }, []);
 
-  const contactPoints = [
-    {
-      icon: Mail,
-      title: "Email Us",
-      details: ["info@mehyar.us"],
-    }
-  ];
+  const handleEmailClick = () => {
+    window.location.href = "mailto:info@mehyar.us";
+  };
 
   return (
     <>
@@ -31,43 +27,29 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* Contact Information Cards */}
-      <section className="py-12 px-4 bg-white dark:bg-neutral-900">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {contactPoints.map((point, index) => (
-              <Card
-                key={index}
-                className="bg-white dark:bg-neutral-800 shadow-md hover:shadow-lg transition-shadow"
-              >
-                <CardContent className="p-6">
-                  <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center mb-4">
-                    <point.icon className="text-primary" size={24} />
-                  </div>
-                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-3">
-                    {point.title}
-                  </h3>
-                  <div className="space-y-1">
-                    {point.details.map((detail, i) => (
-                      <p
-                        key={i}
-                        className="text-neutral-700 dark:text-neutral-300"
-                      >
-                        {detail}
-                      </p>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+      {/* Contact Information */}
+      <section className="py-20 px-4 bg-white dark:bg-neutral-900">
+        <div className="container mx-auto max-w-2xl text-center">
+          <div className="mb-10">
+            <div className="w-20 h-20 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Mail className="text-primary" size={32} />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white mb-4">
+              Email Us
+            </h2>
+            <p className="text-xl text-neutral-700 dark:text-neutral-300 mb-6">
+              info@mehyar.us
+            </p>
+            <Button 
+              size="lg" 
+              onClick={handleEmailClick}
+              className="px-8 py-6 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors shadow-md hover:shadow-lg text-lg"
+            >
+              Send us an Email
+            </Button>
           </div>
         </div>
       </section>
-
-
-
-      {/* Contact Form */}
-      <ContactSection />
     </>
   );
 };
