@@ -3,11 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
 import Services from "@/pages/Services";
 import Portfolio from "@/pages/Portfolio";
+import PortfolioDetail from "@/pages/PortfolioDetail";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
-
 import NotFound from "@/pages/not-found";
 import MainLayout from "@/layouts/MainLayout";
 import { useEffect } from "react";
@@ -28,6 +28,7 @@ function App() {
           <Route path="/" component={Home} />
           <Route path="/services" component={Services} />
           <Route path="/portfolio" component={Portfolio} />
+          <Route path="/portfolio/:id" component={PortfolioDetail} />
           <Route path="/blog" component={Blog} />
           <Route path="/blog/:slug" component={BlogPost} />
           <Route path="/about" component={About} />
