@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -25,10 +25,23 @@ const ContactSection = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Create email body with form data
+    const body = `
+Name: ${formData.name}
+Email: ${formData.email}
+Company: ${formData.company}
+Message: ${formData.message}
+    `;
+    
+    // Open email client with prefilled data
+    window.location.href = `mailto:info@mehyar.us?subject=Contact from ${formData.name}&body=${encodeURIComponent(body)}`;
+    
     toast({
-      title: "Message sent!",
-      description: "We'll get back to you as soon as possible.",
+      title: "Opening email client",
+      description: "Your email client should open with your message.",
     });
+    
     // Reset form
     setFormData({
       name: "",
@@ -149,39 +162,11 @@ const ContactSection = () => {
                       Email
                     </h4>
                     <a
-                      href="mailto:info@mehyarsoft.com"
+                      href="mailto:info@mehyar.us"
                       className="text-neutral-700 dark:text-neutral-300 hover:text-primary"
                     >
-                      info@mehyarsoft.com
+                      info@mehyar.us
                     </a>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-10 h-10 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <Phone className="text-primary" size={18} />
-                  </div>
-                  <div className="ml-4">
-                    <h4 className="font-medium text-neutral-900 dark:text-white">
-                      Phone
-                    </h4>
-                    <p className="text-neutral-700 dark:text-neutral-300">
-                      +1 (555) 123-4567
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-10 h-10 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <MapPin className="text-primary" size={18} />
-                  </div>
-                  <div className="ml-4">
-                    <h4 className="font-medium text-neutral-900 dark:text-white">
-                      Office
-                    </h4>
-                    <p className="text-neutral-700 dark:text-neutral-300">
-                      123 Tech Avenue, Suite 500
-                      <br />
-                      San Francisco, CA 94107
-                    </p>
                   </div>
                 </div>
               </div>
