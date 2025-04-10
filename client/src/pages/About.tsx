@@ -91,7 +91,7 @@ const About = () => {
             </div>
             <div className="md:w-1/2">
               <img
-                src={import.meta.env.BASE_URL + "/assets/mehyar-swelim.jpg"}
+                src="/mehyar-swelim.jpg"
                 alt="Mehyar Swelim, CEO & Founder of MehyarSoft"
                 className="rounded-lg shadow-xl w-full object-cover h-96"
               />
@@ -211,7 +211,7 @@ const About = () => {
               {
                 name: "Mehyar Swelim",
                 role: "CEO & Founder",
-                image: import.meta.env.BASE_URL + "/assets/mehyar-swelim.jpg",
+                image: "/mehyar-swelim.jpg",
               },
               {
                 name: "Sarah Johnson",
