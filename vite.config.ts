@@ -8,8 +8,8 @@ import { fileURLToPath, URL } from 'url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
-  // Set base path for GitHub Pages deployment
-  base: process.env.NODE_ENV === "production" ? "/mehyar-web/" : "/",
+  // Set base path - use root for custom domain, subdirectory for github.io
+  base: process.env.CUSTOM_DOMAIN === "true" ? "/" : (process.env.NODE_ENV === "production" ? "/mehyar-web/" : "/"),
   plugins: [
     react(),
     runtimeErrorOverlay(),
