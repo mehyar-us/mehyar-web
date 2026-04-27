@@ -3,13 +3,13 @@ import { useRoute, Link } from "wouter";
 import { ChevronLeft, Clock, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { blogPosts } from "@/data/blog-posts";
+import { blogPosts, type BlogPost as BlogPostType } from "@/data/blog-posts";
 import NotFound from "./not-found";
 
 const BlogPost = () => {
   const [, params] = useRoute("/blog/:slug");
-  const [post, setPost] = useState(null);
-  const [relatedPosts, setRelatedPosts] = useState([]);
+  const [post, setPost] = useState<BlogPostType | undefined>(undefined);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
 
   useEffect(() => {
     if (params && params.slug) {

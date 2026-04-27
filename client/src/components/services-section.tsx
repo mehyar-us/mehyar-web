@@ -1,6 +1,4 @@
-import { Link } from "wouter";
 import { services } from "@/data/services";
-import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const ServicesSection = () => {
@@ -9,11 +7,10 @@ const ServicesSection = () => {
       <div className="container mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Our Services
+            Problems I solve
           </h2>
           <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-            Comprehensive technology solutions tailored to your business needs, from
-            custom web applications to automation workflows.
+            The site is now aimed at high-paying hiring conversations: staff/principal engineering, AI platform ownership, cloud architecture, and hands-on technical leadership.
           </p>
         </div>
 
@@ -21,7 +18,7 @@ const ServicesSection = () => {
           {services.map((service) => (
             <Card 
               key={service.id}
-              className="service-card bg-white dark:bg-neutral-800 rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+              className="service-card bg-white dark:bg-neutral-800 rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:-translate-y-2 hover:shadow-xl border-neutral-200 dark:border-neutral-700"
             >
               <CardContent className="p-6">
                 <div className={`w-16 h-16 ${service.bgColorClass} rounded-lg flex items-center justify-center mb-6`}>
@@ -33,11 +30,11 @@ const ServicesSection = () => {
                 <p className="text-neutral-700 dark:text-neutral-300 mb-4">
                   {service.description}
                 </p>
-                <Link href={`/services#${service.id}`}>
-                  <a className={`inline-flex items-center ${service.textColorClass} hover:${service.hoverColorClass} font-medium transition-colors`}>
-                    Learn more <ChevronRight className="ml-2 h-4 w-4" />
-                  </a>
-                </Link>
+                <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-300">
+                  {service.features.slice(0, 4).map((feature) => (
+                    <li key={feature}>• {feature}</li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           ))}

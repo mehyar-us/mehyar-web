@@ -12,7 +12,7 @@ const Portfolio = () => {
   const [filteredProjects, setFilteredProjects] = useState(projects);
 
   useEffect(() => {
-    document.title = "Portfolio | MehyarSoft";
+    document.title = "Proof of Work | Mehyar Swelim";
     
     if (filter === "all") {
       setFilteredProjects(projects);
@@ -23,7 +23,7 @@ const Portfolio = () => {
     }
   }, [filter]);
 
-  const categories = ["all", ...new Set(projects.map((p) => p.category))];
+  const categories = ["all", ...Array.from(new Set(projects.map((p) => p.category)))];
 
   return (
     <>
@@ -31,11 +31,10 @@ const Portfolio = () => {
       <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
         <div className="container mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
-            Our Portfolio
+            Proof of Work
           </h1>
           <p className="text-xl text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto mb-8">
-            Explore our collection of successful projects across different
-            industries and technologies.
+            Selected real engineering outcomes across AI systems, analytics platforms, AWS infrastructure, regulated commercial systems, video platforms, and high-throughput APIs.
           </p>
         </div>
       </section>

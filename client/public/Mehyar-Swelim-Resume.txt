@@ -1,0 +1,67 @@
+Mehyar Swelim
+Staff Software Engineer | Full-Stack, DevOps & AI Systems | Platform & Architecture Ownership
+Brooklyn, New York, United States
+Email: mrswelim@gmail.com
+LinkedIn: https://www.linkedin.com/in/mehyarswelim
+Website: https://mehyar.us
+
+SUMMARY
+Staff-level Software Engineer with 15+ years of experience owning and scaling full-stack, cloud, and AI-driven systems end-to-end. Proven track record leading architecture, modernizing platforms, and delivering production systems in regulated and high-scale environments. Combines hands-on engineering with system design, DevOps, and cross-functional leadership.
+
+CORE AREAS
+System Architecture | Full-Stack Engineering | AWS Cloud Infrastructure | DevOps & CI/CD | AI & LLM Systems | RAG | Platform Scalability | Distributed Systems | Observability | Secure & Compliant Systems
+
+TECHNOLOGIES
+Python | TypeScript | PHP | React | Django | FastAPI | Node.js | AWS ECS/Lambda/RDS/S3/API Gateway/CDK/Terraform | Docker | Kubernetes/EKS | GitHub Actions | PostgreSQL | MySQL | DynamoDB | Snowflake | OpenAI | Gemini | Pinecone | Deepgram | ElevenLabs
+
+EXPERIENCE
+
+Shionogi Inc. (U.S.) — Staff Commercial Systems Engineer (Manager)
+October 2025 - Present | Florham Park, NJ
+- Provides architecture and technical leadership across digital and middleware technologies including web applications, marketing automation, CMS, security, and analytics platforms.
+- Participates in solution design reviews and provides subject matter expertise.
+- Works with agency partners to deploy new releases to production.
+- Conducts technology proof-of-concepts, prescribes technology standards, and recommends tools.
+- Resolves complex application problems using structured troubleshooting methods.
+- Authors regulated technical specifications, diagrams, testing documents, SOPs, work instructions, and operation records.
+
+Foragr.ai — Staff Software Engineer
+July 2025 - August 2025 | Canada
+- Designed and delivered AI-driven voice assistant platform for scheduling, lead capture, and escalation workflows.
+- Built conversational pipeline: Deepgram STT -> OpenAI/Gemini with RAG -> ElevenLabs TTS.
+- Developed RAG system with Pinecone + PostgreSQL for grounded responses.
+- Implemented tool-calling workflows for calendar, ticketing, and FAQ actions.
+- Optimized latency, cost, and reliability through structured logging and monitoring.
+
+PMC Analytics — Senior Staff Software Engineer
+September 2023 - May 2025 | New York, United States
+- Owned architecture and technical direction for analytics platform supporting enterprise workloads.
+- Led v1 -> v2 re-architecture using Django REST API + React/TypeScript.
+- Built dashboards supporting 5K+ server capacity analytics, reducing manual reporting by 40%.
+- Designed AWS deployment pipelines with CDK, GitHub Actions, and CodeBuild, reducing release cycles from days to hours.
+- Built and maintained high-traffic marketing APIs in PHP and Node.js serving millions of requests/day.
+- Containerized legacy workloads with Docker and introduced CI/CD testing and deployment.
+
+StringFlix, Inc. — Co-Founder | CTO | Software Engineer
+September 2019 - September 2023 | New York, NY
+- Architected and scaled a multi-tenant video platform supporting 100K+ users with 99.95% uptime.
+- Owned full infrastructure, backend systems, and deployment pipelines on AWS.
+- Built and operated cloud-native infrastructure using Kubernetes/EKS and AWS services.
+- Defined technical strategy and platform roadmap across product lifecycle.
+
+What If Media Group — Software Engineer II
+February 2018 - April 2023 | New York City Metropolitan Area
+- Built and scaled high-throughput marketing APIs handling millions of requests per day.
+- Integrated 50+ marketing and CRM platforms, processing hundreds of millions of events monthly.
+- Designed data pipelines using Snowflake and DynamoDB for real-time analytics.
+- Led backend and integration architecture across systems and vendors.
+
+CERTIFICATIONS
+Advanced Architecting on AWS | Advanced Developing on AWS | Cloud Operations on AWS | Snowflake Data Warehousing Workshop | Running Containers on Amazon EKS
+
+EDUCATION
+University of Central Florida — Software Engineering, Full Stack Web Development
+Borough of Manhattan Community College — Computer Science
+New York Code + Design Academy — iOS Development
+Jami't Al-Itihad Al-khassa — Computer Science
+freeCodeCamp — Full Stack Web Development Certification
