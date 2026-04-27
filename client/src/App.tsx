@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { Router, Switch, Route } from "wouter";
+import { useHashLocation } from "wouter/use-hash-location";
 import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
 import Services from "@/pages/Services";
@@ -23,20 +24,22 @@ function App() {
 
   return (
     <>
-      <MainLayout>
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/services" component={Services} />
-          <Route path="/portfolio" component={Portfolio} />
-          <Route path="/portfolio/:id" component={PortfolioDetail} />
-          <Route path="/blog" component={Blog} />
-          <Route path="/blog/:slug" component={BlogPost} />
-          <Route path="/about" component={About} />
-          <Route path="/contact" component={Contact} />
+      <Router hook={useHashLocation}>
+        <MainLayout>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/services" component={Services} />
+            <Route path="/portfolio" component={Portfolio} />
+            <Route path="/portfolio/:id" component={PortfolioDetail} />
+            <Route path="/blog" component={Blog} />
+            <Route path="/blog/:slug" component={BlogPost} />
+            <Route path="/about" component={About} />
+            <Route path="/contact" component={Contact} />
 
-          <Route component={NotFound} />
-        </Switch>
-      </MainLayout>
+            <Route component={NotFound} />
+          </Switch>
+        </MainLayout>
+      </Router>
       <Toaster />
     </>
   );
