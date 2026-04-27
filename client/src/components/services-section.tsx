@@ -9,9 +9,6 @@ const ServicesSection = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
             Problems I solve
           </h2>
-          <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-            The site is now aimed at high-paying hiring conversations: staff/principal engineering, AI platform ownership, cloud architecture, and hands-on technical leadership.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
