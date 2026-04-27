@@ -32,6 +32,7 @@ jobs:
           export NODE_ENV=production
           export CUSTOM_DOMAIN=true
           npm run build:client
+          cp dist/public/index.html dist/public/404.html
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
