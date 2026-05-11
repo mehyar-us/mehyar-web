@@ -13,7 +13,7 @@ const ThemeToggle = ({ isMobile = false }: ThemeToggleProps) => {
     return (
       <button
         onClick={toggleTheme}
-        className="flex items-center w-full text-left font-medium text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors rounded-md"
+        className="flex w-full items-center rounded-xl px-3 py-2 text-left font-medium text-ink/78 transition-colors hover:bg-brand-100 hover:text-brand-900 dark:text-white/78 dark:hover:bg-brand-900 dark:hover:text-white"
       >
         {isDarkMode ? (
           <>
@@ -35,7 +35,7 @@ const ThemeToggle = ({ isMobile = false }: ThemeToggleProps) => {
       variant="outline"
       size="icon"
       onClick={toggleTheme}
-      className="rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+      className="rounded-xl bg-white/70 hover:bg-brand-100 dark:bg-brand-900 dark:hover:bg-brand-800"
     >
       {isDarkMode ? (
         <Sun className="h-5 w-5" />

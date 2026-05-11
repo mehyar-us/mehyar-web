@@ -54,11 +54,11 @@ const About = () => {
 
   return (
     <>
-      <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
+      <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-brand-100/80 via-background to-white dark:from-brand-900 dark:via-background dark:to-brand-950">
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 mb-10 md:mb-0 md:pr-12">
-              <p className="text-sm font-semibold tracking-wide uppercase text-primary mb-3">Founder-led consulting</p>
+              <p className="text-sm font-semibold tracking-wide uppercase text-brand-700 dark:text-brand-100 mb-3">Founder-led consulting</p>
               <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
                 Built by an engineer who understands both survival and systems.
               </h1>
@@ -66,17 +66,33 @@ const About = () => {
                 Mehyar Swelim is a Syrian founder who came to New York City 15 years ago, became a professional software engineer, and built MehyarSoft LLC to help businesses solve practical operational problems with software, systems, and automation.
               </p>
               <Link href="/contact">
-                <Button className="px-6 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors shadow-md hover:shadow-lg">
+                <Button variant="cta" className="px-6 py-3 font-medium">
                   Discuss a Business Bottleneck
                 </Button>
               </Link>
             </div>
             <div className="md:w-1/2">
-              <img
-                src="/mehyar-swelim.jpg"
-                alt="Mehyar Swelim, founder of MehyarSoft LLC"
-                className="rounded-lg shadow-xl w-full object-cover h-96"
-              />
+              <div className="relative overflow-hidden rounded-2xl border border-border bg-white/80 p-10 shadow-[0_24px_80px_rgba(8,63,84,0.16)] dark:bg-brand-900/80 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-100 via-transparent to-action/10 dark:from-brand-800/70 dark:to-action/10" aria-hidden="true" />
+                <div className="relative flex min-h-96 flex-col items-center justify-center text-center">
+                  <img
+                    src="/assets/mehyarsoft-logo.svg"
+                    alt="MehyarSoft logo"
+                    className="mb-8 w-full max-w-sm dark:hidden"
+                  />
+                  <img
+                    src="/assets/mehyarsoft-logo-dark.svg"
+                    alt="MehyarSoft logo"
+                    className="mb-8 hidden w-full max-w-sm dark:block"
+                  />
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
+                    Founder-led consulting
+                  </p>
+                  <p className="mt-4 max-w-md text-2xl font-bold leading-tight text-neutral-900 dark:text-white">
+                    Practical systems judgment presented through a focused, brand-led consulting identity.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

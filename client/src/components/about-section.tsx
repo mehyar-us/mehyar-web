@@ -38,11 +38,26 @@ const AboutSection = () => {
             </div>
           </div>
           <div className="lg:w-1/2">
-            <img
-              src="/mehyar-swelim.jpg"
-              alt="Mehyar Swelim, founder of MehyarSoft LLC"
-              className="rounded-lg shadow-xl w-full object-cover max-h-[520px]"
-            />
+            <div className="relative overflow-hidden rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/10 via-white to-secondary/10 p-10 shadow-xl dark:from-primary/20 dark:via-neutral-900 dark:to-secondary/20">
+              <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
+              <div className="absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-secondary/10 blur-3xl" aria-hidden="true" />
+              <div className="relative flex min-h-[420px] flex-col items-center justify-center text-center">
+                <img
+                  src="/assets/mehyarsoft-mark.svg"
+                  alt="MehyarSoft brand mark"
+                  className="mb-8 h-28 w-28 rounded-3xl shadow-lg"
+                />
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
+                  Systems • Software • AI Automation
+                </p>
+                <p className="mt-4 max-w-md text-2xl font-bold leading-tight text-neutral-900 dark:text-white">
+                  Founder-led engineering with a brand-first, systems-first public presence.
+                </p>
+                <p className="mt-4 max-w-sm text-neutral-700 dark:text-neutral-300">
+                  Clear diagnostics, practical fixes, and owner-visible systems for businesses that need fewer leaks.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

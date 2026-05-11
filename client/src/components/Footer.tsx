@@ -66,6 +66,7 @@ const Footer = () => {
           <div className="mt-4 md:mt-0 flex space-x-6">
             <Link href="/privacy-policy"><a className="text-neutral-400 hover:text-white transition-colors">Privacy Policy</a></Link>
             <Link href="/terms"><a className="text-neutral-400 hover:text-white transition-colors">Terms of Service</a></Link>
+            <Link href="/unsubscribe"><a className="text-neutral-400 hover:text-white transition-colors">Unsubscribe</a></Link>
             <Link href="/sitemap"><a className="text-neutral-400 hover:text-white transition-colors">Sitemap</a></Link>
           </div>
         </div>

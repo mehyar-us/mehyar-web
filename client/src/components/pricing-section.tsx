@@ -13,7 +13,7 @@ const offers = [
 
 const PricingSection = () => {
   return (
-    <section id="pricing" className="py-20 px-4 bg-neutral-50 dark:bg-neutral-800">
+    <section id="pricing" className="py-20 px-4 bg-secondary/55 dark:bg-brand-900">
       <div className="container mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
@@ -27,10 +27,10 @@ const PricingSection = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {offers.map((offer) => (
-            <Card key={offer.name} className="bg-white dark:bg-neutral-900 shadow-md h-full">
+            <Card key={offer.name} className="bg-white dark:bg-card border-border shadow-[0_1px_2px_rgba(10,20,24,0.08)] h-full">
               <CardContent className="p-6 flex flex-col h-full">
                 <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">{offer.name}</h3>
-                <p className="text-2xl font-bold text-primary mb-4">{offer.price}</p>
+                <p className="text-2xl font-bold text-brand-800 dark:text-brand-100 mb-4">{offer.price}</p>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3"><strong>Best fit:</strong> {offer.fit}</p>
                 <p className="text-neutral-700 dark:text-neutral-300 mb-6 flex-grow"><strong>Outcome:</strong> {offer.outcome}</p>
                 <Link href="/contact">

@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 
 const CTASection = () => {
   return (
-    <section className="py-20 px-4 bg-gradient-to-r from-primary to-primary-dark text-white">
-      <div className="container mx-auto">
+    <section className="py-20 px-4 bg-gradient-to-r from-brand-900 via-brand-800 to-brand-950 text-white">
+      <div className="mx-auto max-w-7xl">
         <div className="text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Start with the smallest fix that creates revenue.
@@ -18,7 +18,7 @@ const CTASection = () => {
             <Button
               size="lg"
               variant="secondary"
-              className="px-8 py-4 bg-white text-primary hover:bg-neutral-100 font-medium rounded-lg transition-colors shadow-lg hover:shadow-xl text-lg"
+              className="px-8 py-4 bg-white text-brand-900 hover:bg-brand-100 font-medium text-lg"
             >
               Request a Practical Next Step
             </Button>

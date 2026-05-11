@@ -24,6 +24,8 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          light: "hsl(var(--primary-light))",
+          dark: "hsl(var(--primary-dark))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -44,6 +46,18 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        brand: {
+          950: "hsl(var(--brand-950))",
+          900: "hsl(var(--brand-900))",
+          800: "hsl(var(--brand-800))",
+          700: "hsl(var(--brand-700))",
+          100: "hsl(var(--brand-100))",
+        },
+        action: {
+          DEFAULT: "hsl(var(--action))",
+          strong: "hsl(var(--action-strong))",
+        },
+        ink: "hsl(var(--ink))",
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",

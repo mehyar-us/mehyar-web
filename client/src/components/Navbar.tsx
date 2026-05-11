@@ -31,51 +31,67 @@ const Navbar = () => {
   return (
     <nav
       className={cn(
-        "fixed w-full z-50 transition-all duration-300 bg-white bg-opacity-95 dark:bg-neutral-900 dark:bg-opacity-95",
-        isScrolled ? "shadow-md" : ""
+        "fixed inset-x-0 top-0 z-50 border-b border-border backdrop-blur-xl transition-[background,border-color] duration-200",
+        isScrolled
+          ? "bg-white/94 dark:bg-brand-950/94"
+          : "bg-white/88 dark:bg-brand-950/88"
       )}
     >
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex justify-between items-center">
-          {/* Logo */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-6">
           <Link href="/">
-            <a className="flex items-center" aria-label="MehyarSoft home">
+            <a
+              className="flex min-h-11 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              aria-label="MehyarSoft home"
+            >
               <img
                 src="/assets/mehyarsoft-logo.svg"
                 alt="MehyarSoft"
-                className="h-10 w-auto dark:brightness-110"
+                className="h-9 w-auto dark:hidden sm:h-10"
+                width="280"
+                height="80"
+              />
+              <img
+                src="/assets/mehyarsoft-logo-dark.svg"
+                alt="MehyarSoft"
+                className="hidden h-9 w-auto dark:block sm:h-10"
                 width="280"
                 height="80"
               />
             </a>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden items-center gap-7 md:flex">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href}>
                 <a
                   className={cn(
-                    "font-medium transition-colors",
+                    "relative rounded-sm text-sm font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background",
                     location === link.href
-                      ? "text-primary dark:text-primary-light"
-                      : "text-neutral-800 hover:text-primary dark:text-neutral-100 dark:hover:text-primary-light"
+                      ? "text-brand-800 after:absolute after:-bottom-2 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-brand-700 dark:text-white dark:after:bg-brand-100"
+                      : "text-ink/75 hover:text-brand-800 dark:text-white/72 dark:hover:text-white"
                   )}
                 >
                   {link.label}
                 </a>
               </Link>
             ))}
+            <Link href="/contact">
+              <Button variant="cta" size="sm" className="hidden lg:inline-flex">
+                Book Audit
+              </Button>
+            </Link>
             <ThemeToggle />
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle menu"
+              aria-expanded={isMobileMenuOpen}
             >
               {isMobileMenuOpen ? (
                 <X className="h-6 w-6" />
@@ -86,18 +102,17 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden mt-4 pb-4">
-            <div className="flex flex-col space-y-3">
+          <div className="md:hidden border-t border-border py-4">
+            <div className="flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href}>
                   <a
                     className={cn(
-                      "px-3 py-2 rounded font-medium transition-colors",
+                      "rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       location === link.href
-                        ? "bg-neutral-100 dark:bg-neutral-800 text-primary dark:text-primary-light"
-                        : "text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                        ? "bg-brand-100 text-brand-900 dark:bg-brand-800 dark:text-white"
+                        : "text-ink/78 hover:bg-brand-100 hover:text-brand-900 dark:text-white/78 dark:hover:bg-brand-900 dark:hover:text-white"
                     )}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -105,9 +120,15 @@ const Navbar = () => {
                   </a>
                 </Link>
               ))}
-              <div className="px-3 py-2">
-                <ThemeToggle isMobile />
-              </div>
+              <Link href="/contact">
+                <Button
+                  variant="cta"
+                  className="mt-2 w-full"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Book a Tech Audit
+                </Button>
+              </Link>
             </div>
           </div>
         )}

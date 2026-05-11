@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 320" role="img" aria-labelledby="title desc">
+  <title id="title">MehyarSoft logo for dark backgrounds</title>
+  <desc id="desc">MehyarSoft wordmark with a geometric M, roof line, and circuit nodes optimized for dark headers.</desc>
+  <defs>
+    <linearGradient id="mehyarsoft-teal-dark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a9d8e3"/>
+      <stop offset="0.5" stop-color="#d7eef3"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.26"/>
+    </filter>
+  </defs>
+
+  <g fill="none" fill-rule="evenodd" filter="url(#soft-shadow)">
+    <g transform="translate(42 28)" stroke="url(#mehyarsoft-teal-dark)" stroke-linejoin="miter">
+      <path d="M18 123 L150 40 L282 123" stroke-width="30" stroke-linecap="butt"/>
+      <path d="M18 120 V244" stroke-width="38" stroke-linecap="butt"/>
+      <path d="M82 161 V268" stroke-width="38" stroke-linecap="butt"/>
+      <path d="M282 120 V244" stroke-width="38" stroke-linecap="butt"/>
+      <path d="M218 161 V268" stroke-width="38" stroke-linecap="butt"/>
+      <path d="M18 120 L150 207 L282 120" stroke-width="38" stroke-linecap="butt"/>
+    </g>
+
+    <g transform="translate(105 80)" stroke="#d7eef3" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M87 119 V27"/>
+      <path d="M48 103 V72 L21 45"/>
+      <path d="M126 103 V72 L154 45"/>
+      <circle cx="87" cy="22" r="17" fill="#071116"/>
+      <circle cx="21" cy="45" r="17" fill="#071116"/>
+      <circle cx="154" cy="45" r="17" fill="#071116"/>
+    </g>
+  </g>
+
+  <g fill="#ffffff">
+    <text x="412" y="205" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="108" font-weight="800" letter-spacing="-5">Mehyar</text>
+    <text x="750" y="205" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="108" font-weight="300" letter-spacing="-6">Soft</text>
+  </g>
+</svg>

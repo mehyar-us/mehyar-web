@@ -9,6 +9,8 @@ import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
+import Admin from "@/pages/Admin";
+import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Terms from "@/pages/Terms";
 import Sitemap from "@/pages/Sitemap";
@@ -38,6 +40,8 @@ function App() {
             <Route path="/blog/:slug" component={BlogPost} />
             <Route path="/about" component={About} />
             <Route path="/contact" component={Contact} />
+            <Route path="/admin" component={Admin} />
+            <Route path="/unsubscribe" component={Unsubscribe} />
             <Route path="/privacy-policy" component={PrivacyPolicy} />
             <Route path="/terms" component={Terms} />
             <Route path="/sitemap" component={Sitemap} />

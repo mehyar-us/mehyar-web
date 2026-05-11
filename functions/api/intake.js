@@ -1,6 +1,6 @@
 const SAFE_SUCCESS = "Thanks — your request was received.";
 const SAFE_FAILURE = "We could not receive the request. Please email contact@mehyar.us.";
-const FORM_TYPES = new Set(["contact", "audit", "newsletter", "phone_help"]);
+const FORM_TYPES = new Set(["contact", "audit", "booking", "newsletter", "phone_help"]);
 const FIELD_LIMITS = {
   name: 120,
   email: 254,
@@ -316,7 +316,8 @@ async function sendNotification(env, leadId, data, referrer) {
 }
 
 async function hmacSha256(env, value) {
-  const secret = env?.HMAC_SECRET || env?.TURNSTILE_SECRET_KEY || "mehyar-web-local-hash-salt";
+  const secret = env?.HMAC_SECRET || env?.TURNSTILE_SECRET_KEY || (env?.ENVIRONMENT !== "production" ? "mehyar-web-local-hash-salt" : "");
+  if (!secret) throw new Error("HMAC secret missing");
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
   return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
