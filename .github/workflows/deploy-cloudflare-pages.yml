@@ -21,8 +21,6 @@ jobs:
     permissions:
       contents: read
     env:
-      CUSTOM_DOMAIN: "true"
-      NODE_ENV: production
       VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
@@ -39,10 +37,10 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
           test -n "$CLOUDFLARE_EMAIL" || { echo "CLOUDFLARE_EMAIL is missing"; exit 1; }
           test -n "$CLOUDFLARE_API_KEY" || { echo "CLOUDFLARE_API_KEY is missing"; exit 1; }
-      - run: npm ci
+      - run: npm ci --include=dev
       - run: npm run check
       - run: npm run test:intake
-      - run: npm run build:client
+      - run: CUSTOM_DOMAIN=true NODE_ENV=production npm run build:client
       - name: Verify Turnstile site key was compiled into the client bundle
         run: |
           if grep -R "Security verification is not configured for this environment" dist/public/assets/*.js >/dev/null; then
