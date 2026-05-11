@@ -33,8 +33,8 @@ const Navbar = () => {
       className={cn(
         "fixed inset-x-0 top-0 z-50 border-b border-border backdrop-blur-xl transition-[background,border-color] duration-200",
         isScrolled
-          ? "bg-white/94 dark:bg-brand-950/94"
-          : "bg-white/88 dark:bg-brand-950/88"
+          ? "bg-white/[0.94] dark:bg-brand-950/[0.94]"
+          : "bg-white/[0.88] dark:bg-brand-950/[0.88]"
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
