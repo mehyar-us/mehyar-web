@@ -3,29 +3,27 @@ import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { services } from "@/data/services";
+import PricingSection from "@/components/pricing-section";
 import CTASection from "@/components/cta-section";
 
 const Services = () => {
   useEffect(() => {
-    document.title = "Services | MehyarSoft";
+    document.title = "Services & Pricing | MehyarSoft";
   }, []);
 
   return (
     <>
-      {/* Services Hero */}
       <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
         <div className="container mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
-            Our Services
+            Consulting offers for customer leaks, workflow drag, and system gaps
           </h1>
           <p className="text-xl text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto mb-8">
-            Comprehensive technology solutions tailored to your business needs,
-            helping you thrive in the digital landscape.
+            From a one-time local business audit to senior systems architecture support, each offer is scoped around a clear operational outcome.
           </p>
         </div>
       </section>
 
-      {/* Services List */}
       <section className="py-20 px-4 bg-white dark:bg-neutral-900">
         <div className="container mx-auto">
           <div className="space-y-16">
@@ -33,7 +31,7 @@ const Services = () => {
               <div
                 key={service.id}
                 id={service.id}
-                className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center"
+                className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center scroll-mt-24"
               >
                 <div className={`order-2 ${index % 2 === 0 ? "lg:order-2" : "lg:order-1"}`}>
                   <Badge
@@ -49,8 +47,8 @@ const Services = () => {
                     {service.description}
                   </p>
                   <div className="space-y-4">
-                    {service.features.map((feature, index) => (
-                      <div key={index} className="flex items-start">
+                    {service.features.map((feature, featureIndex) => (
+                      <div key={featureIndex} className="flex items-start">
                         <ArrowRight className={`${service.textColorClass} mr-3 mt-1.5 h-4 w-4 flex-shrink-0`} />
                         <p className="text-neutral-700 dark:text-neutral-300">
                           {feature}
@@ -72,44 +70,24 @@ const Services = () => {
         </div>
       </section>
 
-      {/* Technologies Section */}
-      <section className="py-20 px-4 bg-neutral-50 dark:bg-neutral-800">
+      <PricingSection />
+
+      <section className="py-20 px-4 bg-white dark:bg-neutral-900">
         <div className="container mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">
-              Technologies We Use
+              Stack and delivery approach
             </h2>
             <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-              We leverage modern technologies to build powerful, scalable
-              solutions for our clients.
+              Tools are selected for the workflow, not for trend value. Common work includes React/TypeScript frontends, Node/Python backends, CRM/email/scheduling integrations, Cloudflare-native hosting, SQL databases, dashboards, and AI-assisted workflow automation.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            {[
-              { name: "React", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" },
-              { name: "Node.js", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" },
-              { name: "Python", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" },
-              { name: "Angular", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/angularjs/angularjs-original.svg" },
-              { name: "TypeScript", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" },
-              { name: "AI & ML", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tensorflow/tensorflow-original.svg" },
-              { name: "AWS", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original-wordmark.svg" },
-              { name: "Docker", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original.svg" },
-              { name: "MongoDB", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mongodb/mongodb-original.svg" },
-              { name: "MySQL", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mysql/mysql-original.svg" },
-              { name: "PostgreSQL", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg" },
-              { name: "Django", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/django/django-plain.svg" },
-            ].map((tech, index) => (
-              <Card key={index} className="bg-white dark:bg-neutral-900 shadow-sm">
-                <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-                  <img 
-                    src={tech.icon} 
-                    alt={tech.name} 
-                    className="w-16 h-16 mb-4"
-                  />
-                  <h3 className="font-medium text-neutral-900 dark:text-white">
-                    {tech.name}
-                  </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {["Discover the leak", "Ship the smallest useful fix", "Measure, document, and support"].map((step) => (
+              <Card key={step} className="bg-neutral-50 dark:bg-neutral-800 shadow-sm">
+                <CardContent className="p-6 text-center">
+                  <h3 className="font-bold text-neutral-900 dark:text-white">{step}</h3>
                 </CardContent>
               </Card>
             ))}

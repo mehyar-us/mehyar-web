@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { applySecurityMiddleware, redactForLog } from "./security";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+applySecurityMiddleware(app);
+app.use(express.json({ limit: "64kb" }));
+app.use(express.urlencoded({ extended: false, limit: "64kb" }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -22,7 +24,7 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        logLine += ` :: ${JSON.stringify(redactForLog(capturedJsonResponse))}`;
       }
 
       if (logLine.length > 80) {

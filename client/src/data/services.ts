@@ -1,4 +1,4 @@
-import { Laptop, Code, Users, Bot, Figma, Lightbulb, CloudCog } from "lucide-react";
+import { Bot, CalendarCheck, CloudCog, Code, Lightbulb, PhoneCall, Users } from "lucide-react";
 
 export interface Service {
   id: string;
@@ -17,130 +17,151 @@ export interface Service {
 
 export const services: Service[] = [
   {
-    id: "web-applications",
-    title: "Web Application Development",
-    category: "Development",
-    description: "Custom web applications designed to streamline your business processes and enhance user experience.",
+    id: "tech-audit",
+    title: "Local Business Tech Audit",
+    category: "Audit",
+    description: "A focused review of your website, booking path, phone/email follow-up, reviews, CRM, and manual admin bottlenecks.",
     features: [
-      "Responsive web applications that work on any device",
-      "Modern, intuitive user interfaces with focus on UX/UI",
-      "Secure, scalable backend architecture",
-      "API integration with third-party services",
-      "Progressive Web Apps (PWA) for offline capabilities",
-      "Advanced data visualization and reporting"
+      "Website and landing-page friction review",
+      "Missed-call, inbox, booking, and lead-response checks",
+      "CRM/spreadsheet/process map with highest-value fixes",
+      "Prioritized action plan: fix now, automate next, defer",
+      "Best fit for restaurants, clinics, salons, stores, and service businesses",
+      "Typical range: $150-$500"
+    ],
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: Lightbulb,
+    bgColorClass: "bg-primary/10",
+    textColorClass: "text-primary",
+    hoverColorClass: "text-primary-dark",
+    badgeColorClass: "text-primary",
+    badgeBgClass: "bg-primary/10"
+  },
+  {
+    id: "website-booking-cleanup",
+    title: "Website Cleanup, Landing Page & Booking Setup",
+    category: "Conversion",
+    description: "Make the public-facing path clear: what you offer, who it is for, why to trust you, and how to book or request help.",
+    features: [
+      "Homepage, service-page, and CTA copy cleanup",
+      "Booking/contact intake wiring with practical form fields",
+      "Mobile-first layout and navigation fixes",
+      "Basic analytics events for leads and conversion steps",
+      "Local trust signals: service area, founder story, proof, FAQs",
+      "Typical range: $750-$2,500"
     ],
     image: "https://images.unsplash.com/photo-1547658719-da2b51169166?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: CalendarCheck,
+    bgColorClass: "bg-secondary/10",
+    textColorClass: "text-secondary",
+    hoverColorClass: "text-secondary-dark",
+    badgeColorClass: "text-secondary",
+    badgeBgClass: "bg-secondary/10"
+  },
+  {
+    id: "missed-call-followup",
+    title: "AI Missed-Call, SMS & Email Follow-Up Flow",
+    category: "Automation",
+    description: "Respond faster when prospects call, text, submit forms, or disappear before booking, with consent-safe follow-up logic.",
+    features: [
+      "Missed-call response script and SMS/email handoff",
+      "Lead intake questions for qualification and routing",
+      "CRM updates, reminders, and owner notifications",
+      "Opt-out language and suppression list planning",
+      "Best fit for clinics, restaurants, contractors, agencies, and appointment businesses",
+      "Typical range: $1,500-$5,000"
+    ],
+    image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: PhoneCall,
+    bgColorClass: "bg-accent/10",
+    textColorClass: "text-accent",
+    hoverColorClass: "text-accent-dark",
+    badgeColorClass: "text-accent",
+    badgeBgClass: "bg-accent/10"
+  },
+  {
+    id: "automation-sprint",
+    title: "Internal Automation Sprint",
+    category: "Operations",
+    description: "Replace repetitive spreadsheet, inbox, document, and reporting work with a lean workflow your team can actually use.",
+    features: [
+      "Workflow discovery and before/after process map",
+      "Spreadsheet-to-dashboard or form-to-task automation",
+      "Document, notification, and reporting automations",
+      "Role-based handoff notes and simple operating guide",
+      "Best fit for small and mid-sized companies with recurring admin work",
+      "Typical range: $3,000-$12,000"
+    ],
+    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: Bot,
+    bgColorClass: "bg-primary/10",
+    textColorClass: "text-primary",
+    hoverColorClass: "text-primary-dark",
+    badgeColorClass: "text-primary",
+    badgeBgClass: "bg-primary/10"
+  },
+  {
+    id: "systems-integration",
+    title: "System Architecture & Integration Consulting",
+    category: "Consulting",
+    description: "Senior engineering support for teams that need clearer architecture, safer integrations, or hands-on systems thinking.",
+    features: [
+      "Architecture review, integration plan, and implementation support",
+      "API, data, identity, and workflow design",
+      "Auditability, access, and operational-risk review",
+      "Fractional senior engineer support by hour or project",
+      "Best fit for pharma, healthcare, SaaS, agencies, and regulated teams",
+      "Typical range: $100-$175/hr or $5k-$25k/project"
+    ],
+    image: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: CloudCog,
+    bgColorClass: "bg-secondary/10",
+    textColorClass: "text-secondary",
+    hoverColorClass: "text-secondary-dark",
+    badgeColorClass: "text-secondary",
+    badgeBgClass: "bg-secondary/10"
+  },
+  {
+    id: "crm-support-retainer",
+    title: "Monthly Support Retainer",
+    category: "Support",
+    description: "Ongoing help for owners who need someone watching the website, intake, automations, CRM hygiene, and small fixes.",
+    features: [
+      "Website, CRM, automation, and integration support queue",
+      "Lead-flow monitoring and small monthly improvements",
+      "Reporting on leads, response times, and bottlenecks",
+      "Vendor coordination and technical owner support",
+      "Best fit after an audit, cleanup, or automation sprint",
+      "Typical range: $500-$3,500/mo"
+    ],
+    image: "https://images.unsplash.com/photo-1549923746-c502d488b3ea?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: Users,
+    bgColorClass: "bg-accent/10",
+    textColorClass: "text-accent",
+    hoverColorClass: "text-accent-dark",
+    badgeColorClass: "text-accent",
+    badgeBgClass: "bg-accent/10"
+  },
+  {
+    id: "software-builds",
+    title: "Custom Software Builds",
+    category: "Development",
+    description: "When off-the-shelf tools are not enough, build a focused portal, dashboard, internal app, or integration layer around the real workflow.",
+    features: [
+      "Internal dashboards, portals, forms, and admin tools",
+      "API integrations across CRM, email, payments, scheduling, and databases",
+      "Authentication, permissions, and audit-friendly data handling",
+      "Documentation and practical handoff for operators",
+      "Best fit when the workflow is proven and needs a reliable system",
+      "Scoped after discovery or architecture review"
+    ],
+    image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
     icon: Code,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",
     hoverColorClass: "text-primary-dark",
     badgeColorClass: "text-primary",
     badgeBgClass: "bg-primary/10"
-  },
-  {
-    id: "crm-systems",
-    title: "CRM Systems",
-    category: "Business Solutions",
-    description: "Build or customize CRM systems that help you manage customer relationships and improve sales performance.",
-    features: [
-      "Custom CRM development tailored to your workflow",
-      "CRM integration with existing business systems",
-      "Customer journey tracking and analytics",
-      "Sales pipeline management and forecasting",
-      "Automated lead scoring and qualification",
-      "Email marketing and communication automation"
-    ],
-    image: "https://images.unsplash.com/photo-1549923746-c502d488b3ea?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    icon: Users,
-    bgColorClass: "bg-secondary/10",
-    textColorClass: "text-secondary",
-    hoverColorClass: "text-secondary-dark",
-    badgeColorClass: "text-secondary",
-    badgeBgClass: "bg-secondary/10"
-  },
-  {
-    id: "automation-solutions",
-    title: "Automation Solutions",
-    category: "Automation",
-    description: "Automate repetitive tasks and workflows to increase efficiency and reduce operational costs.",
-    features: [
-      "Business process automation for improved efficiency",
-      "Robotic Process Automation (RPA) implementation",
-      "Workflow optimization and streamlining",
-      "Document processing and data extraction",
-      "Integration between disparate systems",
-      "Custom automation dashboards and reporting"
-    ],
-    image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    icon: Bot,
-    bgColorClass: "bg-accent/10",
-    textColorClass: "text-accent",
-    hoverColorClass: "text-accent-dark",
-    badgeColorClass: "text-accent",
-    badgeBgClass: "bg-accent/10"
-  },
-  {
-    id: "ui-ux-design",
-    title: "UI/UX Design",
-    category: "Design",
-    description: "Create intuitive, engaging user interfaces and experiences that delight your customers and improve conversion rates.",
-    features: [
-      "User research and persona development",
-      "Information architecture and user flow mapping",
-      "Wireframing and interactive prototyping",
-      "Visual design and branding consistency",
-      "Usability testing and optimization",
-      "Accessibility compliance (WCAG 2.1)"
-    ],
-    image: "https://images.unsplash.com/photo-1587440871875-191322ee64b0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    icon: Figma,
-    bgColorClass: "bg-primary/10",
-    textColorClass: "text-primary",
-    hoverColorClass: "text-primary-dark",
-    badgeColorClass: "text-primary",
-    badgeBgClass: "bg-primary/10"
-  },
-  {
-    id: "technology-consulting",
-    title: "Technology Consulting",
-    category: "Consulting",
-    description: "Strategic technology advisory services to help you make informed decisions about your digital initiatives.",
-    features: [
-      "Digital transformation strategy development",
-      "Technology stack assessment and recommendations",
-      "IT roadmap planning and prioritization",
-      "Vendor selection and management",
-      "Security and compliance auditing",
-      "Legacy system modernization planning"
-    ],
-    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    icon: Lightbulb,
-    bgColorClass: "bg-secondary/10",
-    textColorClass: "text-secondary",
-    hoverColorClass: "text-secondary-dark",
-    badgeColorClass: "text-secondary",
-    badgeBgClass: "bg-secondary/10"
-  },
-  {
-    id: "cloud-solutions",
-    title: "Cloud Solutions",
-    category: "Infrastructure",
-    description: "Leverage cloud technologies to improve scalability, reliability, and cost-efficiency of your applications.",
-    features: [
-      "Cloud migration strategy and implementation",
-      "Multi-cloud and hybrid cloud architecture",
-      "Infrastructure as Code (IaC) setup",
-      "Cloud-native application development",
-      "Containerization and microservices",
-      "DevOps and CI/CD pipeline implementation"
-    ],
-    image: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    icon: CloudCog,
-    bgColorClass: "bg-accent/10",
-    textColorClass: "text-accent",
-    hoverColorClass: "text-accent-dark",
-    badgeColorClass: "text-accent",
-    badgeBgClass: "bg-accent/10"
   }
 ];
 

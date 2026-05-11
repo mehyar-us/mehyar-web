@@ -4,18 +4,18 @@ import { Card, CardContent } from "@/components/ui/card";
 const features = [
   {
     icon: Code,
-    title: "Full-Stack Expertise",
-    description: "From UI/UX design to backend development, our team handles every aspect of your digital solution.",
+    title: "Revenue leak first",
+    description: "We start with the business problem: missed leads, weak conversion, slow follow-up, manual admin, or disconnected systems.",
   },
   {
     icon: Factory,
-    title: "Industry Experience",
-    description: "We've delivered solutions across finance, healthcare, retail, and more, understanding each sector's unique needs.",
+    title: "Regulated-systems discipline",
+    description: "Experience in pharma-adjacent systems engineering brings practical habits around reliability, access, auditability, and change control.",
   },
   {
     icon: LayoutGrid,
-    title: "Agile Approach",
-    description: "Our flexible development methodology ensures fast delivery and continuous adaptation to your evolving requirements.",
+    title: "Small build, clear handoff",
+    description: "Most engagements are scoped into audits, sprints, or retainers with concrete deliverables your team can understand and operate.",
   },
 ];
 
@@ -25,11 +25,11 @@ const WhyChooseUs = () => {
       <div className="container mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Why Choose Us
+            Why businesses call MehyarSoft
           </h2>
           <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-            With our expertise and tailored approach, we deliver solutions that
-            drive real business growth.
+            Not every problem needs a large platform. Many businesses need a senior engineer to map the workflow,
+            remove friction, and install one reliable system at a time.
           </p>
         </div>
 

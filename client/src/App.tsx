@@ -9,6 +9,9 @@ import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import Terms from "@/pages/Terms";
+import Sitemap from "@/pages/Sitemap";
 import NotFound from "@/pages/not-found";
 import MainLayout from "@/layouts/MainLayout";
 import { useEffect } from "react";
@@ -35,6 +38,9 @@ function App() {
             <Route path="/blog/:slug" component={BlogPost} />
             <Route path="/about" component={About} />
             <Route path="/contact" component={Contact} />
+            <Route path="/privacy-policy" component={PrivacyPolicy} />
+            <Route path="/terms" component={Terms} />
+            <Route path="/sitemap" component={Sitemap} />
 
             <Route component={NotFound} />
           </Switch>

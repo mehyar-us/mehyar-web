@@ -19,8 +19,7 @@ const BlogSection = () => {
             Latest Insights
           </h2>
           <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-            Stay updated with our latest thoughts on technology, business, and
-            industry trends.
+            Practical guidance on tech audits, missed-call follow-up, internal automation, and custom software decisions.
           </p>
         </div>
 

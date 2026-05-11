@@ -46,7 +46,7 @@ const Blog = () => {
             Blog & Insights
           </h1>
           <p className="text-xl text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto mb-8">
-            Explore our latest articles, guides, and industry insights.
+            Practical notes on local business tech audits, CRM follow-up, automation, and when custom software is worth it.
           </p>
           
           <div className="max-w-xl mx-auto">
@@ -174,19 +174,14 @@ const Blog = () => {
               <Card className="bg-primary/5 dark:bg-primary/10 rounded-xl shadow-md overflow-hidden">
                 <CardContent className="p-6">
                   <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">
-                    Subscribe to Our Newsletter
+                    Need a practical next step?
                   </h3>
                   <p className="text-neutral-700 dark:text-neutral-300 mb-4">
-                    Get the latest insights delivered directly to your inbox.
+                    No newsletter list is active yet. Send a consulting request by email and include the business type, current bottleneck, timeline, and budget range if known.
                   </p>
-                  <form className="space-y-4">
-                    <Input
-                      type="email"
-                      placeholder="Your email address"
-                      className="px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
-                    />
-                    <Button className="w-full">Subscribe</Button>
-                  </form>
+                  <Button className="w-full" onClick={() => { window.location.href = "mailto:info@mehyar.us?subject=MehyarSoft%20consulting%20request"; }}>
+                    Email MehyarSoft
+                  </Button>
                 </CardContent>
               </Card>
             </div>

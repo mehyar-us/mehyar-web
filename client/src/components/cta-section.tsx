@@ -7,11 +7,12 @@ const CTASection = () => {
       <div className="container mx-auto">
         <div className="text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Transform Your Business?
+            Start with the smallest fix that creates revenue.
           </h2>
           <p className="text-xl text-white/80 mb-8 max-w-3xl mx-auto">
-            Let's discuss how our custom technology solutions can help your
-            business grow, improve efficiency, and better serve your customers.
+            Send the current bottleneck: website, booking, missed calls, follow-up, spreadsheets,
+            CRM, or internal system work. I will recommend a practical first engagement before
+            proposing a larger build.
           </p>
           <Link href="/contact">
             <Button
@@ -19,7 +20,7 @@ const CTASection = () => {
               variant="secondary"
               className="px-8 py-4 bg-white text-primary hover:bg-neutral-100 font-medium rounded-lg transition-colors shadow-lg hover:shadow-xl text-lg"
             >
-              Get in Touch
+              Request a Practical Next Step
             </Button>
           </Link>
         </div>

@@ -3,6 +3,7 @@ import ServicesSection from "@/components/services-section";
 import WhyChooseUs from "@/components/why-choose-us";
 import PortfolioSection from "@/components/portfolio-section";
 import TestimonialsSection from "@/components/testimonials-section";
+import PricingSection from "@/components/pricing-section";
 import BlogSection from "@/components/blog-section";
 import AboutSection from "@/components/about-section";
 import CTASection from "@/components/cta-section";
@@ -11,7 +12,7 @@ import { useEffect } from "react";
 
 const Home = () => {
   useEffect(() => {
-    document.title = "MehyarSoft - Custom Web Apps, CRM & Automation Solutions";
+    document.title = "MehyarSoft LLC - Software, Systems & AI Automation Consulting";
   }, []);
 
   return (
@@ -19,6 +20,7 @@ const Home = () => {
       <HeroSection />
       <ServicesSection />
       <WhyChooseUs />
+      <PricingSection />
       <PortfolioSection />
       <TestimonialsSection />
       <BlogSection />
