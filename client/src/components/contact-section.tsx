@@ -61,7 +61,7 @@ const requestTypeLabels: Record<IntakeFormType, string> = {
 const trustPoints = [
   "Founder-led review by a senior software, systems, and AI automation consultant.",
   "Built for local businesses and regulated teams that need clean handoffs, not agency theater.",
-  "No spam: service follow-up requires consent; marketing updates are optional.",
+  "No spam: service follow-up requires consent, and marketing updates stay optional.",
 ];
 
 const includeItems = [
@@ -69,6 +69,12 @@ const includeItems = [
   "Current website, CRM, booking, phone, or email tools",
   "Where customers, money, or staff time are being lost",
   "Urgency and budget range if known",
+];
+
+const nextSteps = [
+  "Boss reviews the request personally.",
+  "You get one practical next step, not a bloated proposal.",
+  "If there is no fit, you get a direct no-fit answer.",
 ];
 
 const inputClassName =
@@ -109,6 +115,13 @@ const ContactSection = () => {
   const selectedRequestLabel = requestTypeLabels[formType];
   const canSubmit = consentContact && Boolean(TURNSTILE_SITE_KEY) && Boolean(turnstileToken) && status !== "submitting";
   const currentStatus = statusCopy[status];
+  const submitHint = !TURNSTILE_SITE_KEY
+    ? "Security verification is not configured here. Use the email fallback."
+    : !consentContact
+      ? "Confirm service follow-up consent to unlock the secure send button."
+      : !turnstileToken
+        ? "Complete the Cloudflare verification to unlock the secure send button."
+        : "Ready to send securely.";
 
   const statusClassName = useMemo(
     () =>
@@ -211,7 +224,7 @@ const ContactSection = () => {
   };
 
   return (
-    <section id="contact" className="bg-white px-4 py-20 dark:bg-neutral-950">
+    <section id="contact" className="scroll-mt-24 bg-white px-4 py-16 dark:bg-neutral-950 sm:py-20">
       <div className="container mx-auto">
         <div className="mx-auto mb-12 max-w-3xl text-center">
           <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-primary">Founder-led intake</p>
@@ -224,11 +237,7 @@ const ContactSection = () => {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-start">
-          <form
-            id="contactForm"
-            className="rounded-[2rem] border border-neutral-200 bg-neutral-50/80 p-4 shadow-xl shadow-neutral-900/5 dark:border-neutral-800 dark:bg-neutral-900/70 sm:p-6 lg:p-8"
-            onSubmit={handleSubmit}
-          >
+          <form id="contactForm" className="rounded-[2rem] border border-neutral-200 bg-neutral-50/80 p-4 shadow-xl shadow-neutral-900/5 dark:border-neutral-800 dark:bg-neutral-900/70 sm:p-6 lg:p-8" onSubmit={handleSubmit}>
             <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-white p-4 dark:border-primary/20 dark:bg-neutral-950 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-neutral-950 dark:text-white">{selectedRequestLabel}</p>
@@ -252,7 +261,7 @@ const ContactSection = () => {
               />
             </div>
 
-            <div className="space-y-5">
+            <fieldset className="space-y-5 disabled:opacity-80" disabled={status === "submitting"} aria-busy={status === "submitting"}>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
@@ -325,7 +334,7 @@ const ContactSection = () => {
                   placeholder="Example: We miss after-hours calls, leads do not get followed up, booking is manual, and nobody trusts the CRM data."
                   required
                 />
-                <p className="text-xs leading-5 text-neutral-500 dark:text-neutral-400">
+                <p id="message-help" className="text-xs leading-5 text-neutral-500 dark:text-neutral-400">
                   Share symptoms and tools. Do not paste credentials, private customer records, or regulated data.
                 </p>
               </div>
@@ -334,13 +343,13 @@ const ContactSection = () => {
                 <label htmlFor="consent_contact" className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
                   <Checkbox id="consent_contact" checked={consentContact} onCheckedChange={(checked) => setConsentContact(checked === true)} className="mt-1" />
                   <span>
-                    I agree that MehyarSoft LLC may contact me about this request by email or phone if provided. This consent is required for service follow-up.
+                    I agree that MehyarSoft LLC may contact me about this request by email or phone if provided. This required consent is only for service follow-up about the problem I submitted.
                   </span>
                 </label>
                 <label htmlFor="consent_marketing" className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
                   <Checkbox id="consent_marketing" checked={consentMarketing} onCheckedChange={(checked) => setConsentMarketing(checked === true)} className="mt-1" />
                   <span>
-                    Optional: send occasional MehyarSoft updates. This is separate from service follow-up and can be unsubscribed from later.
+                    Optional: send occasional MehyarSoft updates. This is separate from service follow-up, can be unsubscribed from later, and is never required to get a reply.
                   </span>
                 </label>
               </div>
@@ -355,7 +364,7 @@ const ContactSection = () => {
                 </div>
                 {TURNSTILE_SITE_KEY ? (
                   <div
-                    className="cf-turnstile min-h-[65px] overflow-hidden"
+                    className="cf-turnstile min-h-[65px] max-w-full overflow-x-auto"
                     data-sitekey={TURNSTILE_SITE_KEY}
                     data-callback="onMehyarTurnstile"
                     data-expired-callback="onMehyarTurnstileExpired"
@@ -369,7 +378,9 @@ const ContactSection = () => {
                   </div>
                 )}
               </div>
+            </fieldset>
 
+            <div className="mt-5 space-y-4">
               <div className={statusClassName} role={status === "error" ? "alert" : "status"} aria-live="polite">
                 <div className="flex items-start gap-3">
                   {status === "success" ? <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" /> : null}
@@ -386,9 +397,13 @@ const ContactSection = () => {
                 type="submit"
                 disabled={!canSubmit}
                 className="w-full rounded-xl bg-primary px-6 py-6 text-base font-semibold text-white shadow-lg shadow-primary/20 transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                aria-describedby="submit-readiness"
               >
                 {status === "submitting" ? "Sending request..." : "Send secure request"}
               </Button>
+              <p id="submit-readiness" className="text-center text-xs leading-5 text-neutral-500 dark:text-neutral-400">
+                {submitHint}
+              </p>
             </div>
           </form>
 
@@ -409,6 +424,15 @@ const ContactSection = () => {
 
             <Card className="border-primary/15 bg-primary/5 shadow-none dark:border-primary/25 dark:bg-primary/10">
               <CardContent className="p-6">
+                <h3 className="mb-4 text-xl font-bold text-neutral-950 dark:text-white">What happens next</h3>
+                <div className="mb-5 space-y-3">
+                  {nextSteps.map((step, index) => (
+                    <div key={step} className="flex gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{index + 1}</span>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
                 <h3 className="mb-4 text-xl font-bold text-neutral-950 dark:text-white">Why this form is specific</h3>
                 <div className="space-y-4">
                   {trustPoints.map((point) => (
