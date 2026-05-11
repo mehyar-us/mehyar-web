@@ -1,4 +1,4 @@
-import { Code, Users, Bot, CloudCog, Lightbulb, Database } from "lucide-react";
+import { Laptop, Code, Users, Bot, Figma, Lightbulb, CloudCog } from "lucide-react";
 
 export interface Service {
   id: string;
@@ -17,13 +17,20 @@ export interface Service {
 
 export const services: Service[] = [
   {
-    id: "ai-platforms",
-    title: "AI / LLM Systems",
-    category: "AI Engineering",
-    description: "Design and production delivery for RAG, LLM, voice AI, tool-calling, and AI workflow platforms.",
-    features: ["RAG architecture with Pinecone/PostgreSQL", "OpenAI/Gemini application integration", "Voice pipelines with Deepgram and ElevenLabs", "Latency, cost, logging, and reliability optimization"],
-    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80",
-    icon: Bot,
+    id: "web-applications",
+    title: "Web Application Development",
+    category: "Development",
+    description: "Custom web applications designed to streamline your business processes and enhance user experience.",
+    features: [
+      "Responsive web applications that work on any device",
+      "Modern, intuitive user interfaces with focus on UX/UI",
+      "Secure, scalable backend architecture",
+      "API integration with third-party services",
+      "Progressive Web Apps (PWA) for offline capabilities",
+      "Advanced data visualization and reporting"
+    ],
+    image: "https://images.unsplash.com/photo-1547658719-da2b51169166?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: Code,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",
     hoverColorClass: "text-primary-dark",
@@ -31,13 +38,20 @@ export const services: Service[] = [
     badgeBgClass: "bg-primary/10"
   },
   {
-    id: "cloud-platform",
-    title: "AWS Cloud Architecture",
-    category: "Infrastructure",
-    description: "Cloud-native platform design across ECS, Lambda, RDS, S3, API Gateway, EKS, CDK, and Terraform.",
-    features: ["Infrastructure as Code", "Kubernetes/EKS and Docker workloads", "Blue-green deployment pipelines", "Secure, compliant production operations"],
-    image: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=1200&q=80",
-    icon: CloudCog,
+    id: "crm-systems",
+    title: "CRM Systems",
+    category: "Business Solutions",
+    description: "Build or customize CRM systems that help you manage customer relationships and improve sales performance.",
+    features: [
+      "Custom CRM development tailored to your workflow",
+      "CRM integration with existing business systems",
+      "Customer journey tracking and analytics",
+      "Sales pipeline management and forecasting",
+      "Automated lead scoring and qualification",
+      "Email marketing and communication automation"
+    ],
+    image: "https://images.unsplash.com/photo-1549923746-c502d488b3ea?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: Users,
     bgColorClass: "bg-secondary/10",
     textColorClass: "text-secondary",
     hoverColorClass: "text-secondary-dark",
@@ -45,13 +59,20 @@ export const services: Service[] = [
     badgeBgClass: "bg-secondary/10"
   },
   {
-    id: "full-stack-modernization",
-    title: "Full-Stack Modernization",
-    category: "Product Engineering",
-    description: "Modern React/TypeScript, Django/FastAPI/Node, API, and platform modernization from monoliths to scalable services.",
-    features: ["React/TypeScript frontends", "Python, Django, FastAPI, Node.js APIs", "Microservices and API integrations", "Performance and bundle optimization"],
-    image: "https://images.unsplash.com/photo-1547658719-da2b51169166?auto=format&fit=crop&w=1200&q=80",
-    icon: Code,
+    id: "automation-solutions",
+    title: "Automation Solutions",
+    category: "Automation",
+    description: "Automate repetitive tasks and workflows to increase efficiency and reduce operational costs.",
+    features: [
+      "Business process automation for improved efficiency",
+      "Robotic Process Automation (RPA) implementation",
+      "Workflow optimization and streamlining",
+      "Document processing and data extraction",
+      "Integration between disparate systems",
+      "Custom automation dashboards and reporting"
+    ],
+    image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: Bot,
     bgColorClass: "bg-accent/10",
     textColorClass: "text-accent",
     hoverColorClass: "text-accent-dark",
@@ -59,13 +80,20 @@ export const services: Service[] = [
     badgeBgClass: "bg-accent/10"
   },
   {
-    id: "devops-ci-cd",
-    title: "DevOps & CI/CD",
-    category: "Delivery Systems",
-    description: "Release pipelines, test automation, observability, deployment reliability, and engineering workflow improvement.",
-    features: ["GitHub Actions, CodeBuild, CDK pipelines", "Automated testing and quality gates", "Structured logging and monitoring", "Release cycles reduced from days to hours"],
-    image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80",
-    icon: Lightbulb,
+    id: "ui-ux-design",
+    title: "UI/UX Design",
+    category: "Design",
+    description: "Create intuitive, engaging user interfaces and experiences that delight your customers and improve conversion rates.",
+    features: [
+      "User research and persona development",
+      "Information architecture and user flow mapping",
+      "Wireframing and interactive prototyping",
+      "Visual design and branding consistency",
+      "Usability testing and optimization",
+      "Accessibility compliance (WCAG 2.1)"
+    ],
+    image: "https://images.unsplash.com/photo-1587440871875-191322ee64b0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: Figma,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",
     hoverColorClass: "text-primary-dark",
@@ -73,13 +101,20 @@ export const services: Service[] = [
     badgeBgClass: "bg-primary/10"
   },
   {
-    id: "data-integrations",
-    title: "Data & Integrations",
-    category: "Data Platforms",
-    description: "Marketing, CRM, analytics, and operational data integrations at high volume across complex ecosystems.",
-    features: ["Snowflake, DynamoDB, PostgreSQL, MySQL", "Millions of requests/day", "Hundreds of millions of events/month", "GDPR-grade masking and transactional workloads"],
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
-    icon: Database,
+    id: "technology-consulting",
+    title: "Technology Consulting",
+    category: "Consulting",
+    description: "Strategic technology advisory services to help you make informed decisions about your digital initiatives.",
+    features: [
+      "Digital transformation strategy development",
+      "Technology stack assessment and recommendations",
+      "IT roadmap planning and prioritization",
+      "Vendor selection and management",
+      "Security and compliance auditing",
+      "Legacy system modernization planning"
+    ],
+    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: Lightbulb,
     bgColorClass: "bg-secondary/10",
     textColorClass: "text-secondary",
     hoverColorClass: "text-secondary-dark",
@@ -87,13 +122,20 @@ export const services: Service[] = [
     badgeBgClass: "bg-secondary/10"
   },
   {
-    id: "technical-leadership",
-    title: "Staff-Level Leadership",
-    category: "Technical Direction",
-    description: "Architecture reviews, mentoring, vendor coordination, documentation, stakeholder communication, and cross-functional delivery.",
-    features: ["Solution design reviews", "Technical standards and reusable practices", "Code reviews and team mentorship", "Regulated documentation and operational handoff"],
-    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80",
-    icon: Users,
+    id: "cloud-solutions",
+    title: "Cloud Solutions",
+    category: "Infrastructure",
+    description: "Leverage cloud technologies to improve scalability, reliability, and cost-efficiency of your applications.",
+    features: [
+      "Cloud migration strategy and implementation",
+      "Multi-cloud and hybrid cloud architecture",
+      "Infrastructure as Code (IaC) setup",
+      "Cloud-native application development",
+      "Containerization and microservices",
+      "DevOps and CI/CD pipeline implementation"
+    ],
+    image: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    icon: CloudCog,
     bgColorClass: "bg-accent/10",
     textColorClass: "text-accent",
     hoverColorClass: "text-accent-dark",

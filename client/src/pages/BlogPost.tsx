@@ -8,13 +8,13 @@ import NotFound from "./not-found";
 
 const BlogPost = () => {
   const [, params] = useRoute("/blog/:slug");
-  const [post, setPost] = useState<BlogPostType | undefined>(undefined);
+  const [post, setPost] = useState<BlogPostType | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
 
   useEffect(() => {
     if (params && params.slug) {
       const foundPost = blogPosts.find((p) => p.slug === params.slug);
-      setPost(foundPost);
+      setPost(foundPost ?? null);
 
       if (foundPost) {
         document.title = `${foundPost.title} | MehyarSoft Blog`;

@@ -35,7 +35,7 @@ const Blog = () => {
   }, [searchTerm, selectedCategory]);
 
   // Extract unique categories
-  const categories = ["all", ...Array.from(new Set(blogPosts.map((post) => post.category)))];
+  const categories = ["all", ...new Set(blogPosts.map((post) => post.category))];
 
   return (
     <>

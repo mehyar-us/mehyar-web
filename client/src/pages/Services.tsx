@@ -7,7 +7,7 @@ import CTASection from "@/components/cta-section";
 
 const Services = () => {
   useEffect(() => {
-    document.title = "Capabilities | Mehyar Swelim";
+    document.title = "Services | MehyarSoft";
   }, []);
 
   return (
@@ -16,10 +16,11 @@ const Services = () => {
       <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
         <div className="container mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
-            Capabilities
+            Our Services
           </h1>
           <p className="text-xl text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto mb-8">
-            Senior engineering capabilities for teams hiring staff/principal-level ownership across AI systems, cloud architecture, DevOps, and full-stack platform modernization.
+            Comprehensive technology solutions tailored to your business needs,
+            helping you thrive in the digital landscape.
           </p>
         </div>
       </section>
@@ -28,13 +29,13 @@ const Services = () => {
       <section className="py-20 px-4 bg-white dark:bg-neutral-900">
         <div className="container mx-auto">
           <div className="space-y-16">
-            {services.map((service) => (
+            {services.map((service, index) => (
               <div
                 key={service.id}
                 id={service.id}
                 className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center"
               >
-                <div className={`order-2 ${services.indexOf(service) % 2 === 0 ? "lg:order-1" : "lg:order-2"}`}>
+                <div className={`order-2 ${index % 2 === 0 ? "lg:order-2" : "lg:order-1"}`}>
                   <Badge
                     variant="outline"
                     className={`mb-4 ${service.badgeBgClass} ${service.badgeColorClass} text-sm px-3 py-1`}
@@ -58,7 +59,7 @@ const Services = () => {
                     ))}
                   </div>
                 </div>
-                <div className={`order-1 ${services.indexOf(service) % 2 === 0 ? "lg:order-2" : "lg:order-1"}`}>
+                <div className={`order-1 ${index % 2 === 0 ? "lg:order-1" : "lg:order-2"}`}>
                   <img
                     src={service.image}
                     alt={service.title}
@@ -76,10 +77,11 @@ const Services = () => {
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">
-              Technologies I Use
+              Technologies We Use
             </h2>
             <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-              I use modern production technologies for scalable, reliable systems across AI, cloud, data, and full-stack product engineering.
+              We leverage modern technologies to build powerful, scalable
+              solutions for our clients.
             </p>
           </div>
 
