@@ -1,0 +1,27 @@
+name = "mehyar-web"
+compatibility_date = "2026-05-11"
+pages_build_output_dir = "dist/public"
+
+# Keep secret values in Cloudflare Pages settings or `wrangler secret put`.
+# Frontend-safe public build variable only:
+# VITE_TURNSTILE_SITE_KEY = "<public-turnstile-site-key>"
+
+[vars]
+VITE_TURNSTILE_SITE_KEY = "0x4AAAAAADNYC8DYoBFvq9zS"
+ENVIRONMENT = "production"
+CONTACT_TO_EMAIL = "mrswelim@gmail.com"
+CONTACT_FROM_EMAIL = "leads@mehyar.us"
+ALLOWED_ORIGINS = "https://mehyar.us,https://www.mehyar.us"
+
+[[d1_databases]]
+binding = "LEADS_DB"
+database_name = "mehyar_leads_prod"
+database_id = "e4f22065-e3e8-4772-87a8-51d4976be042"
+
+[[kv_namespaces]]
+binding = "INTAKE_KV"
+id = "cd017aca74a64cd48625450432db204e"
+
+# Pages Functions do not currently accept [[send_email]] in wrangler.toml.
+# Use Cloudflare dashboard binding if available, or set RESEND_API_KEY fallback.
+# Binding expected by functions/api/intake.js: NOTIFY_EMAIL

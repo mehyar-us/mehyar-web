@@ -10,7 +10,8 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "deploy:pages": "tsx scripts/deploy-pages.ts",
-    "deploy:pages:local": "npm run build:client && tsx scripts/deploy-pages.ts"
+    "deploy:pages:local": "npm run build:client && tsx scripts/deploy-pages.ts",
+    "test:intake": "node scripts/test-intake-functions.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
