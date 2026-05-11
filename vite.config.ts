@@ -6,8 +6,9 @@ import { fileURLToPath, URL } from "url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
-  // Set base path - use root for custom domain, subdirectory for github.io.
-  base: process.env.CUSTOM_DOMAIN === "true" ? "/" : process.env.NODE_ENV === "production" ? "/mehyar-web/" : "/",
+  // Cloudflare Pages serves the production site from the custom-domain root.
+  // Keep asset URLs rooted at `/`; `/mehyar-web/` is only valid for GitHub Pages.
+  base: "/",
   plugins: [react()],
   resolve: {
     alias: {
