@@ -20,19 +20,34 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      CUSTOM_DOMAIN: "true"
+      NODE_ENV: production
+      VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+      CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
     steps:
       - uses: actions/checkout@v6.0.2
       - uses: actions/setup-node@v6.4.0
         with:
           node-version: 22
           cache: npm
+      - name: Verify deploy-time configuration
+        run: |
+          test -n "$VITE_TURNSTILE_SITE_KEY" || { echo "VITE_TURNSTILE_SITE_KEY is missing"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+          test -n "$CLOUDFLARE_EMAIL" || { echo "CLOUDFLARE_EMAIL is missing"; exit 1; }
+          test -n "$CLOUDFLARE_API_KEY" || { echo "CLOUDFLARE_API_KEY is missing"; exit 1; }
       - run: npm ci
       - run: npm run check
       - run: npm run test:intake
-      - run: CUSTOM_DOMAIN=true NODE_ENV=production npm run build:client
+      - run: npm run build:client
+      - name: Verify Turnstile site key was compiled into the client bundle
+        run: |
+          if grep -R "Security verification is not configured for this environment" dist/public/assets/*.js >/dev/null; then
+            echo "Turnstile fallback copy exists in bundle as expected. Checking for configured site key separately."
+          fi
+          grep -R "$VITE_TURNSTILE_SITE_KEY" dist/public/assets/*.js >/dev/null || { echo "Turnstile site key was not compiled into the client bundle"; exit 1; }
       - name: Deploy Pages site and Functions
-        uses: cloudflare/wrangler-action@v3.15.0
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/public --project-name=mehyar-web --branch=main
+        run: npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
