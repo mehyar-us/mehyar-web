@@ -39,10 +39,14 @@ const Navbar = () => {
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/">
-            <a className="flex items-center">
-              <span className="text-2xl font-bold text-primary dark:text-primary-light">
-                MehyarSoft
-              </span>
+            <a className="flex items-center" aria-label="MehyarSoft home">
+              <img
+                src="/assets/mehyarsoft-logo.svg"
+                alt="MehyarSoft"
+                className="h-10 w-auto dark:brightness-110"
+                width="280"
+                height="80"
+              />
             </a>
           </Link>
 

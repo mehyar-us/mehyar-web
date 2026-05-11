@@ -6,7 +6,17 @@ const Footer = () => {
       <div className="container mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           <div>
-            <h3 className="text-2xl font-bold mb-6">MehyarSoft</h3>
+            <Link href="/">
+              <a className="inline-flex items-center mb-6" aria-label="MehyarSoft home">
+                <img
+                  src="/assets/mehyarsoft-logo.svg"
+                  alt="MehyarSoft"
+                  className="h-12 w-auto brightness-0 invert opacity-95"
+                  width="280"
+                  height="80"
+                />
+              </a>
+            </Link>
             <p className="text-neutral-300 mb-6">
               Founder-led software, systems, and AI automation consulting for local businesses, agencies, and regulated teams.
             </p>
