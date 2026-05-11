@@ -26,7 +26,7 @@ const metricCards = [
 
 const Admin = () => {
   const { toast } = useToast();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(() => sessionStorage.getItem("mehyarsoft_admin_token") || "");
   const [metrics, setMetrics] = useState<AdminMetrics>(emptyMetrics);
@@ -64,7 +64,7 @@ const Admin = () => {
     event.preventDefault();
     setIsLoading(true);
     try {
-      const session = await mehyarSoftApi.login({ email, password });
+      const session = await mehyarSoftApi.login({ username, password });
       sessionStorage.setItem("mehyarsoft_admin_token", session.token);
       setToken(session.token);
       setPassword("");
@@ -108,8 +108,8 @@ const Admin = () => {
                 <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Admin Login</h2>
                 <form className="space-y-5" onSubmit={handleLogin}>
                   <div className="space-y-2">
-                    <Label htmlFor="admin-email">Email</Label>
-                    <Input id="admin-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+                    <Label htmlFor="admin-username">Username</Label>
+                    <Input id="admin-username" type="text" value={username} onChange={(event) => setUsername(event.target.value)} required autoComplete="username" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="admin-password">Password</Label>

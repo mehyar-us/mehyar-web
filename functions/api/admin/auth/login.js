@@ -12,26 +12,26 @@ export async function onRequestPost({ request, env }) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const email = sanitize(body.email, 254).toLowerCase();
+    const identifier = sanitize(body.username || body.email, 254).toLowerCase();
     const password = typeof body.password === "string" ? body.password : "";
-    const expectedEmail = sanitize(env?.MEHYARSOFT_ADMIN_EMAIL, 254).toLowerCase();
+    const expectedIdentifier = sanitize(env?.MEHYARSOFT_ADMIN_USERNAME || env?.MEHYARSOFT_ADMIN_EMAIL, 254).toLowerCase();
     const expectedPassword = env?.MEHYARSOFT_ADMIN_PASSWORD || "";
     const secret = env?.ADMIN_SESSION_SECRET || env?.HMAC_SECRET || "";
 
-    if (!expectedEmail || !expectedPassword || !secret) {
+    if (!expectedIdentifier || !expectedPassword || !secret) {
       return json({ ok: false, message: "Admin auth is not configured." }, 503, request, env);
     }
 
-    const rate = await checkRateLimit(env, secret, request, email || "unknown");
+    const rate = await checkRateLimit(env, secret, request, identifier || "unknown");
     if (!rate.ok) return json({ ok: false, message: SAFE_FAILURE }, 429, request, env);
 
-    if (email !== expectedEmail || !timingSafeEqual(password, expectedPassword)) {
+    if (identifier !== expectedIdentifier || !timingSafeEqual(password, expectedPassword)) {
       return json({ ok: false, message: SAFE_FAILURE }, 401, request, env);
     }
 
     const expiresAtMs = Date.now() + 1000 * 60 * 60 * 8;
     const expiresAt = new Date(expiresAtMs).toISOString();
-    const token = await signToken({ sub: email, exp: Math.floor(expiresAtMs / 1000) }, secret);
+    const token = await signToken({ sub: identifier, exp: Math.floor(expiresAtMs / 1000) }, secret);
     return json({ token, expiresAt }, 200, request, env);
   } catch (error) {
     console.error("admin login error", { error: error?.name || "unknown" });

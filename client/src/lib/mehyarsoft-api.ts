@@ -39,7 +39,8 @@ export interface UnsubscribePayload extends ApiPayload {
 }
 
 export interface AdminLoginPayload extends ApiPayload {
-  email: string;
+  username?: string;
+  email?: string;
   password: string;
 }
 
