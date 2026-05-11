@@ -44,9 +44,9 @@ const HeroSection = () => {
           </div>
           <div className="md:w-1/2 flex justify-center">
             <img
-              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"
-              alt="Business dashboard showing operational metrics and workflow automation"
-              className="rounded-2xl border border-border shadow-[0_24px_80px_rgba(8,63,84,0.16)] max-w-full h-auto dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]"
+              src="/assets/mehyarsoft-neutral-card.svg"
+              alt="Abstract MehyarSoft systems visual showing connected workflow cards"
+              className="max-w-full rounded-2xl border border-border bg-card shadow-[0_24px_80px_rgba(8,63,84,0.16)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]"
               width="600"
               height="400"
             />

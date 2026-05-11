@@ -64,6 +64,13 @@ const trustPoints = [
   "No spam: service follow-up requires consent, and marketing updates stay optional.",
 ];
 
+const requestOptions: Array<{ value: IntakeFormType; label: string; hint: string }> = [
+  { value: "audit", label: "Website / systems audit", hint: "Find where trust, leads, calls, or staff time are leaking." },
+  { value: "booking", label: "Booking or missed-call setup", hint: "Turn missed calls and loose follow-up into a simple response path." },
+  { value: "contact", label: "General consulting request", hint: "Ask about systems, integrations, AI automation, or architecture." },
+  { value: "phone_help", label: "Local phone / electronics help", hint: "A practical local entry point when the tech problem starts with a device." },
+];
+
 const includeItems = [
   "Business type and city/service area",
   "Current website, CRM, booking, phone, or email tools",
@@ -75,6 +82,12 @@ const nextSteps = [
   "Boss reviews the request personally.",
   "You get one practical next step, not a bloated proposal.",
   "If there is no fit, you get a direct no-fit answer.",
+];
+
+const privacyNotes = [
+  "No passwords, API keys, patient records, or private customer lists.",
+  "Required consent only covers service follow-up about this request.",
+  "Optional updates are separate and can be unsubscribed from later.",
 ];
 
 const inputClassName =
@@ -113,15 +126,18 @@ const ContactSection = () => {
   const [status, setStatus] = useState<SubmitStatus>("idle");
 
   const selectedRequestLabel = requestTypeLabels[formType];
-  const canSubmit = consentContact && Boolean(TURNSTILE_SITE_KEY) && Boolean(turnstileToken) && status !== "submitting";
+  const selectedRequest = requestOptions.find((option) => option.value === formType) ?? requestOptions[0];
+  const canSubmit = consentContact && Boolean(TURNSTILE_SITE_KEY) && Boolean(turnstileToken) && status !== "submitting" && status !== "success";
   const currentStatus = statusCopy[status];
-  const submitHint = !TURNSTILE_SITE_KEY
-    ? "Security verification is not configured here. Use the email fallback."
-    : !consentContact
-      ? "Confirm service follow-up consent to unlock the secure send button."
-      : !turnstileToken
-        ? "Complete the Cloudflare verification to unlock the secure send button."
-        : "Ready to send securely.";
+  const getSubmitHint = () => {
+    if (status === "success") return "Form cleared. Watch your email for a practical next step; do not resend unless you need to add new details.";
+    if (!TURNSTILE_SITE_KEY) return "Security verification is not configured here. Use the email fallback.";
+    if (!consentContact) return "Confirm service follow-up consent to unlock the secure send button.";
+    if (!turnstileToken) return "Complete the Cloudflare verification to unlock the secure send button.";
+    return "Ready to send securely.";
+  };
+  const submitHint = getSubmitHint();
+  const submitButtonLabel = status === "submitting" ? "Sending request..." : status === "success" ? "Request received" : "Send secure request";
 
   const statusClassName = useMemo(
     () =>
@@ -241,7 +257,7 @@ const ContactSection = () => {
             <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-white p-4 dark:border-primary/20 dark:bg-neutral-950 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-neutral-950 dark:text-white">{selectedRequestLabel}</p>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">Plain-language review. No passwords. No secret data.</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">{selectedRequest.hint}</p>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary dark:bg-primary/20">
                 <ShieldCheck size={14} aria-hidden="true" />
@@ -299,12 +315,13 @@ const ContactSection = () => {
                       if (status === "success" || status === "error") setStatus("idle");
                     }}
                     className={inputClassName}
+                    aria-describedby="request-type-help"
                   >
-                    <option value="audit">Website / systems audit</option>
-                    <option value="contact">General lead request</option>
-                    <option value="booking">Booking or missed-call setup</option>
-                    <option value="phone_help">Local phone / electronics help</option>
+                    {requestOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
                   </select>
+                  <p id="request-type-help" className="text-xs leading-5 text-neutral-500 dark:text-neutral-400">{selectedRequest.hint}</p>
                 </div>
               </div>
 
@@ -332,6 +349,7 @@ const ContactSection = () => {
                   rows={6}
                   className={cn(inputClassName, "min-h-36 resize-y leading-7")}
                   placeholder="Example: We miss after-hours calls, leads do not get followed up, booking is manual, and nobody trusts the CRM data."
+                  aria-describedby="message-help"
                   required
                 />
                 <p id="message-help" className="text-xs leading-5 text-neutral-500 dark:text-neutral-400">
@@ -340,16 +358,24 @@ const ContactSection = () => {
               </div>
 
               <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                <div>
+                  <p className="text-sm font-semibold text-neutral-950 dark:text-white">Consent and privacy boundaries</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-neutral-500 dark:text-neutral-400">
+                    {privacyNotes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
                 <label htmlFor="consent_contact" className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
                   <Checkbox id="consent_contact" checked={consentContact} onCheckedChange={(checked) => setConsentContact(checked === true)} className="mt-1" />
                   <span>
-                    I agree that MehyarSoft LLC may contact me about this request by email or phone if provided. This required consent is only for service follow-up about the problem I submitted.
+                    <span className="font-semibold text-neutral-950 dark:text-white">Required:</span> I agree that MehyarSoft LLC may contact me about this request by email or phone if provided. This is only for service follow-up about the problem I submitted.
                   </span>
                 </label>
                 <label htmlFor="consent_marketing" className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
                   <Checkbox id="consent_marketing" checked={consentMarketing} onCheckedChange={(checked) => setConsentMarketing(checked === true)} className="mt-1" />
                   <span>
-                    Optional: send occasional MehyarSoft updates. This is separate from service follow-up, can be unsubscribed from later, and is never required to get a reply.
+                    <span className="font-semibold text-neutral-950 dark:text-white">Optional:</span> send occasional MehyarSoft updates. This is separate from service follow-up, can be unsubscribed from later, and is never required to get a reply.
                   </span>
                 </label>
               </div>
@@ -358,10 +384,17 @@ const ContactSection = () => {
                 <div className="mb-3 flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 text-primary" size={18} aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-semibold text-neutral-950 dark:text-white">Security verification</p>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">Cloudflare Turnstile helps keep the intake clean without exposing secrets in the browser.</p>
+                    <p className="text-sm font-semibold text-neutral-950 dark:text-white">Cloudflare Turnstile check</p>
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                      Place this last: decide the request, confirm consent, then complete the lightweight anti-abuse check.
+                    </p>
                   </div>
                 </div>
+                {turnstileToken ? (
+                  <p className="mb-3 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-200">
+                    Verification complete. The secure send button is available when required consent is checked.
+                  </p>
+                ) : null}
                 {TURNSTILE_SITE_KEY ? (
                   <div
                     className="cf-turnstile min-h-[65px] max-w-full overflow-x-auto"
@@ -399,7 +432,7 @@ const ContactSection = () => {
                 className="w-full rounded-xl bg-primary px-6 py-6 text-base font-semibold text-white shadow-lg shadow-primary/20 transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
                 aria-describedby="submit-readiness"
               >
-                {status === "submitting" ? "Sending request..." : "Send secure request"}
+                {submitButtonLabel}
               </Button>
               <p id="submit-readiness" className="text-center text-xs leading-5 text-neutral-500 dark:text-neutral-400">
                 {submitHint}

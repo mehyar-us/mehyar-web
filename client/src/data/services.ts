@@ -29,7 +29,7 @@ export const services: Service[] = [
       "Best fit for restaurants, clinics, salons, stores, and service businesses",
       "Typical range: $150-$500"
     ],
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     icon: Lightbulb,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",
@@ -50,7 +50,7 @@ export const services: Service[] = [
       "Local trust signals: service area, founder story, proof, FAQs",
       "Typical range: $750-$2,500"
     ],
-    image: "https://images.unsplash.com/photo-1547658719-da2b51169166?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     icon: CalendarCheck,
     bgColorClass: "bg-secondary/10",
     textColorClass: "text-secondary",
@@ -71,7 +71,7 @@ export const services: Service[] = [
       "Best fit for clinics, restaurants, contractors, agencies, and appointment businesses",
       "Typical range: $1,500-$5,000"
     ],
-    image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     icon: PhoneCall,
     bgColorClass: "bg-accent/10",
     textColorClass: "text-accent",
@@ -92,7 +92,7 @@ export const services: Service[] = [
       "Best fit for small and mid-sized companies with recurring admin work",
       "Typical range: $3,000-$12,000"
     ],
-    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     icon: Bot,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",
@@ -113,7 +113,7 @@ export const services: Service[] = [
       "Best fit for pharma, healthcare, SaaS, agencies, and regulated teams",
       "Typical range: $100-$175/hr or $5k-$25k/project"
     ],
-    image: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     icon: CloudCog,
     bgColorClass: "bg-secondary/10",
     textColorClass: "text-secondary",
@@ -134,7 +134,7 @@ export const services: Service[] = [
       "Best fit after an audit, cleanup, or automation sprint",
       "Typical range: $500-$3,500/mo"
     ],
-    image: "https://images.unsplash.com/photo-1549923746-c502d488b3ea?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     icon: Users,
     bgColorClass: "bg-accent/10",
     textColorClass: "text-accent",
@@ -155,7 +155,7 @@ export const services: Service[] = [
       "Best fit when the workflow is proven and needs a reliable system",
       "Scoped after discovery or architecture review"
     ],
-    image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     icon: Code,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",

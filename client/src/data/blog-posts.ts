@@ -30,7 +30,7 @@ export const blogPosts: BlogPost[] = [
     category: "Operations",
     excerpt: "A practical framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.",
     readTime: 5,
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     content: [
       "Most small businesses do not need a larger software stack first. They need a clear picture of where money and time are leaking: calls that are not answered, forms that do not trigger follow-up, service pages that do not explain the offer, and staff workflows that depend on memory.",
       "A tech audit should be practical. The output is not a 60-page transformation deck. It is a ranked list of fixes with business impact, effort, owner, and next step. The first win should usually be small enough to ship quickly and visible enough to justify the next investment."
@@ -65,7 +65,7 @@ export const blogPosts: BlogPost[] = [
     category: "Automation",
     excerpt: "If a prospect calls and nobody follows up, the business needs an intake and response system: consent-safe SMS, email, routing, and owner visibility.",
     readTime: 4,
-    image: "https://images.unsplash.com/photo-1556745757-8d76bdb6984b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     content: [
       "A missed call is often treated like a staffing issue. Sometimes it is. But many businesses also lack the system that turns that missed call into a lead record, follow-up task, SMS response, and owner-visible metric.",
       "The goal is not to blast people. The goal is to respond quickly, clearly, and lawfully when someone has already tried to reach the business. Control comes before scale: opt-out language, suppression, audit logs, and sensible routing matter."
@@ -99,7 +99,7 @@ export const blogPosts: BlogPost[] = [
     category: "Systems",
     excerpt: "Custom software makes sense when the workflow is proven, the handoffs are clear, and off-the-shelf tools create more manual work than they remove.",
     readTime: 6,
-    image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
+    image: "/assets/mehyarsoft-neutral-card.svg",
     content: [
       "Custom software is not the first answer for every business. If the workflow is still changing every week, a spreadsheet and a simple form may be the right temporary system. Build custom when the process is important, repeated, and constrained by tools that do not fit.",
       "The best custom systems usually replace a painful chain of copy-paste work: form to spreadsheet, spreadsheet to email, email to CRM, CRM to report. A focused portal or dashboard can turn that chain into one controlled workflow."
