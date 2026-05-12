@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "npm run build:client",
-    "build:client": "vite build",
+    "build:client": "vite build && node scripts/copy-route-shells.mjs",
     "check": "tsc",
     "deploy:pages": "tsx scripts/deploy-pages.ts",
     "deploy:pages:local": "npm run build:client && tsx scripts/deploy-pages.ts",
