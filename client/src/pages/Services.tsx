@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,14 +6,11 @@ import PricingSection from "@/components/pricing-section";
 import CTASection from "@/components/cta-section";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
+import QuickAnswer from "@/components/QuickAnswer";
 
 const steps = ["Find the leak", "Ship the smallest useful fix", "Measure and document the handoff"];
 
 const Services = () => {
-  useEffect(() => {
-    document.title = "Services & Pricing | MehyarSoft";
-  }, []);
-
   return (
     <>
       <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_54%,#fff_100%)] px-4 pb-10 pt-24 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_54%,hsl(var(--brand-950))_100%)] sm:pb-14 md:pt-32">
@@ -44,6 +40,15 @@ const Services = () => {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="bg-background px-4 py-10">
+        <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-2">
+          <QuickAnswer className="px-0 py-0" question="What consulting services does MehyarSoft offer?" answer="MehyarSoft LLC offers practical tech audits, website and booking cleanup, consent-safe missed-call follow-up flows, internal automation sprints, systems integration consulting, support retainers, and custom software builds." ctaHref="/contact" ctaLabel="Request a practical next step" />
+          <QuickAnswer className="px-0 py-0" question="What is a local business tech audit?" answer="A local business tech audit reviews the public website, booking path, phone and email response, CRM or spreadsheet use, and manual admin bottlenecks to find the highest-value fixes before adding more tools." />
+          <QuickAnswer className="px-0 py-0" question="What is a missed-call follow-up flow?" answer="A missed-call follow-up flow turns inbound intent into a lead record, owner notification, and consent-aware SMS or email response with opt-out and suppression planning before scale." />
+          <QuickAnswer className="px-0 py-0" question="When should a business build custom software?" answer="Custom software makes sense when the workflow is stable, repeated, important, and constrained by off-the-shelf tools that create more manual work than they remove." />
         </div>
       </section>
 

@@ -14,10 +14,6 @@ const Unsubscribe = () => {
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    document.title = "Unsubscribe | MehyarSoft";
-  }, []);
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsSubmitting(true);

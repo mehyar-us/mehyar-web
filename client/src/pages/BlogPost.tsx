@@ -5,6 +5,22 @@ import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import { blogPosts, type BlogPost as BlogPostType } from "@/data/blog-posts";
 import NotFound from "./not-found";
+import QuickAnswer from "@/components/QuickAnswer";
+
+const quickAnswers: Record<string, { question: string; answer: string }> = {
+  "small-business-tech-audit-revenue-leaks": {
+    question: "What is a small business tech audit?",
+    answer: "A small business tech audit is a practical review of the website, booking path, phone and email response, CRM or spreadsheet use, and manual work that may be leaking revenue before the owner buys more software.",
+  },
+  "missed-calls-crm-follow-up": {
+    question: "Why are missed calls a CRM problem?",
+    answer: "Missed calls become a CRM problem when inbound intent is not captured, assigned, followed up, or measured. The fix is a consent-aware response workflow with owner visibility, suppression handling, and clear routing.",
+  },
+  "when-to-build-custom-software": {
+    question: "When is custom software justified?",
+    answer: "Custom software is justified when the workflow is important, repeated, stable enough to encode, and constrained by SaaS tools that create copy-paste work, access problems, or unreliable handoffs.",
+  },
+};
 
 const BlogPost = () => {
   const [, params] = useRoute("/blog/:slug");
@@ -17,8 +33,6 @@ const BlogPost = () => {
       setPost(foundPost ?? null);
 
       if (foundPost) {
-        document.title = `${foundPost.title} | MehyarSoft Blog`;
-        
         // Find related posts by category
         const related = blogPosts
           .filter(
@@ -34,6 +48,8 @@ const BlogPost = () => {
   if (!post) {
     return <NotFound />;
   }
+
+  const quickAnswer = quickAnswers[post.slug];
 
   return (
     <>
@@ -74,10 +90,15 @@ const BlogPost = () => {
           <img 
             src={post.image} 
             alt={post.title}
+            width="1200"
+            height="630"
             className="w-full h-auto rounded-xl shadow-lg"
           />
         </div>
       </section>
+      {quickAnswer ? (
+        <QuickAnswer question={quickAnswer.question} answer={quickAnswer.answer} ctaHref="/contact" ctaLabel="Ask MehyarSoft to assess this" />
+      ) : null}
       
       {/* Blog Content */}
       <section className="py-12 px-4 bg-white dark:bg-neutral-900">
@@ -168,6 +189,9 @@ const BlogPost = () => {
                       <img
                         src={relatedPost.image}
                         alt={relatedPost.title}
+                        width="640"
+                        height="360"
+                        loading="lazy"
                         className="w-full h-48 object-cover"
                       />
                       <div className="p-4">

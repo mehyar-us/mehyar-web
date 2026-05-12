@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Award, CheckCircle, Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import QuickAnswer from "@/components/QuickAnswer";
 
 const values = [
   { title: "Practicality", description: "Start with the highest-leverage business leak before adding tools or complexity.", icon: Award },
@@ -20,10 +20,6 @@ const timeline = [
 const credentials = ["Syrian founder in NYC", "10+ years professional software engineering", "Current regulated systems-engineering work", "Founder-led LLC: no fake agency theater"];
 
 const About = () => {
-  useEffect(() => {
-    document.title = "Founder Story | MehyarSoft";
-  }, []);
-
   return (
     <>
       <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_54%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_54%,hsl(var(--brand-950))_100%)] md:pb-16 md:pt-32">
@@ -62,6 +58,13 @@ const About = () => {
           </div>
         </div>
       </section>
+
+      <QuickAnswer
+        question="Who founded MehyarSoft?"
+        answer="MehyarSoft LLC was founded by Mehyar Swelim, a Syrian founder in New York City and professional software engineer focused on practical software, systems, and automation consulting."
+        ctaHref="/services"
+        ctaLabel="See what MehyarSoft fixes"
+      />
 
       <section className="bg-background px-4 py-16 md:py-20">
         <div className="mx-auto max-w-5xl rounded-[2rem] border border-border bg-card p-6 text-center shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:p-10">

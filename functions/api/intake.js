@@ -1,7 +1,11 @@
 const SAFE_SUCCESS = "Thanks — your request was received.";
 const SAFE_FAILURE = "We could not receive the request. Please email contact@mehyar.us.";
-const FORM_TYPES = new Set(["contact", "audit", "booking", "newsletter", "phone_help"]);
+const FORM_TYPES = new Set(["contact", "audit", "booking", "micro_offer", "newsletter", "phone_help"]);
 const FIELD_LIMITS = {
+  request_type: 40,
+  selected_offer: 120,
+  offer_code: 120,
+  calendar_intent: 160,
   name: 120,
   email: 254,
   phone: 80,
@@ -96,7 +100,7 @@ export async function onRequestPost({ request, env }) {
 
 function validatePayload(input) {
   if (!input || typeof input !== "object") return { ok: false, reason: "not_object" };
-  const formType = sanitize(input.form_type || "contact", 40);
+  const formType = sanitize(input.form_type || input.request_type || "contact", 40);
   if (!FORM_TYPES.has(formType)) return { ok: false, reason: "form_type" };
   const email = sanitize(input.email, FIELD_LIMITS.email).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, reason: "email" };
@@ -106,6 +110,11 @@ function validatePayload(input) {
 
   const data = {
     form_type: formType,
+    request_type: sanitize(input.request_type || formType, FIELD_LIMITS.request_type),
+    selected_offer: sanitize(input.selected_offer, FIELD_LIMITS.selected_offer),
+    offer_code: sanitize(input.offer_code, FIELD_LIMITS.offer_code),
+    value_estimate: Number.isFinite(Number(input.value_estimate)) ? Number(input.value_estimate) : null,
+    calendar_intent: sanitize(input.calendar_intent, FIELD_LIMITS.calendar_intent),
     email,
     consent_contact: true,
     consent_marketing: input.consent_marketing === true,
@@ -113,7 +122,7 @@ function validatePayload(input) {
     hp_field: sanitize(input.hp_field, 200),
   };
   for (const [field, max] of Object.entries(FIELD_LIMITS)) {
-    if (field === "email") continue;
+    if (["email", "request_type", "selected_offer", "offer_code", "calendar_intent"].includes(field)) continue;
     data[field] = sanitize(input[field], max);
   }
   const utm = input.utm && typeof input.utm === "object" ? input.utm : {};
@@ -193,14 +202,19 @@ async function isSuppressed(env, emailHash) {
 async function insertLead(env, leadId, data, meta) {
   if (!env?.LEADS_DB) throw new Error("LEADS_DB binding missing");
   return env.LEADS_DB.prepare(`INSERT INTO leads (
-    id, created_at, updated_at, source, form_type, status, name, email, phone, company, website,
+    id, created_at, updated_at, source, form_type, request_type, selected_offer, offer_code, value_estimate, calendar_intent, status, name, email, phone, company, website,
     service_interest, budget_range, timeline, message, consent_contact, consent_marketing,
     ip_hash, user_agent_hash, referrer, utm_source, utm_medium, utm_campaign, turnstile_passed, notification_status
-  ) VALUES (?, ?, ?, 'website', ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending')`).bind(
+  ) VALUES (?, ?, ?, 'website', ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending')`).bind(
     leadId,
     meta.receivedAt,
     meta.receivedAt,
     data.form_type,
+    data.request_type,
+    data.selected_offer,
+    data.offer_code,
+    data.value_estimate,
+    data.calendar_intent,
     data.name,
     data.email,
     data.phone,
@@ -240,6 +254,11 @@ async function sendNotification(env, leadId, data, referrer) {
   const text = [
     `Lead ID: ${leadId}`,
     `Form type: ${data.form_type}`,
+    `Request type: ${data.request_type || data.form_type}`,
+    `Selected offer: ${data.selected_offer || '-'}`,
+    `Offer code: ${data.offer_code || '-'}`,
+    `Value estimate: ${data.value_estimate || '-'}`,
+    `Calendar intent: ${data.calendar_intent || '-'}`,
     `Name: ${data.name || '-'}`,
     `Company: ${data.company || '-'}`,
     `Email: ${data.email}`,

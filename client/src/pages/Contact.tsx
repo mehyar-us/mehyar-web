@@ -1,11 +1,7 @@
-import { useEffect } from "react";
 import ContactSection from "@/components/contact-section";
+import QuickAnswer from "@/components/QuickAnswer";
 
 const Contact = () => {
-  useEffect(() => {
-    document.title = "Contact | MehyarSoft";
-  }, []);
-
   return (
     <>
       <section className="px-4 pb-16 pt-28 sm:pb-20 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
@@ -24,6 +20,10 @@ const Contact = () => {
           </div>
         </div>
       </section>
+      <QuickAnswer
+        question="How do I contact MehyarSoft?"
+        answer="Use this MehyarSoft contact page or email info@mehyar.us with your business type, current workflow problem, tools involved, timeline, and budget range if known. Do not send passwords, API keys, PHI, payment data, or confidential files through public channels."
+      />
       <ContactSection />
     </>
   );

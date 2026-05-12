@@ -23,6 +23,7 @@ export async function onRequestGet({ request, env }) {
       contactRequests: Number(counts.contact || 0),
       auditRequests: Number(counts.audit || 0),
       bookingRequests: Number(counts.booking || 0),
+      microOfferRequests: Number(counts.micro_offer || 0),
       newsletterRequests: Number(counts.newsletter || 0),
       suppressions: Number(suppression?.count || 0),
       updatedAt: latest?.updated_at || new Date().toISOString(),

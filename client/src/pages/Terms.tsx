@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 
 const sections = [
   ["Website information", "This website describes MehyarSoft consulting services and does not create a client relationship, guarantee results, or replace a signed statement of work."],
@@ -8,10 +7,6 @@ const sections = [
 ];
 
 const Terms = () => {
-  useEffect(() => {
-    document.title = "Terms | MehyarSoft";
-  }, []);
-
   return (
     <section className="bg-background px-4 pb-16 pt-28 md:pb-20 md:pt-32">
       <div className="mx-auto max-w-4xl">

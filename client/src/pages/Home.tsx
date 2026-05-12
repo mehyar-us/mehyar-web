@@ -4,16 +4,18 @@ import WhyChooseUs from "@/components/why-choose-us";
 import TestimonialsSection from "@/components/testimonials-section";
 import PricingSection from "@/components/pricing-section";
 import ContactSection from "@/components/contact-section";
-import { useEffect } from "react";
+import QuickAnswer from "@/components/QuickAnswer";
 
 const Home = () => {
-  useEffect(() => {
-    document.title = "MehyarSoft LLC - Senior Systems, Software & AI Automation Consultant";
-  }, []);
-
   return (
     <>
       <HeroSection />
+      <QuickAnswer
+        question="What does MehyarSoft do?"
+        answer="MehyarSoft LLC is a founder-led software, systems, and AI automation consulting firm helping local businesses, agencies, clinics, and regulated teams fix lead leaks, manual workflows, CRM gaps, and disconnected tools."
+        ctaHref="/services"
+        ctaLabel="See consulting offers"
+      />
       <WhyChooseUs />
       <TestimonialsSection />
       <PricingSection />

@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
@@ -29,9 +31,13 @@ jobs:
         run: npm ci
       - name: Build application
         run: |
+          test -n "$VITE_TURNSTILE_SITE_KEY" || { echo "VITE_TURNSTILE_SITE_KEY is required because GitHub Pages cannot serve the runtime client config endpoint"; exit 1; }
           export NODE_ENV=production
           export CUSTOM_DOMAIN=true
           npm run build:client
+          grep -R "$VITE_TURNSTILE_SITE_KEY" dist/public/assets/*.js >/dev/null || { echo "Turnstile site key was not compiled into the client bundle"; exit 1; }
+          grep -R "/api/client-config" dist/public/assets/*.js >/dev/null || { echo "Runtime client config fallback path is missing from the client bundle"; exit 1; }
+          ! grep -R "TURNSTILE_SECRET_KEY" dist/public/assets/*.js >/dev/null || { echo "Secret env name leaked into client bundle"; exit 1; }
           cp dist/public/index.html dist/public/404.html
       - name: Setup Pages
         uses: actions/configure-pages@v6.0.0

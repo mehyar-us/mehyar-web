@@ -101,6 +101,9 @@ class GitHubPagesDeployer {
     
     // Set production environment
     process.env.NODE_ENV = 'production';
+    if (!process.env.VITE_TURNSTILE_SITE_KEY?.trim()) {
+      throw new Error('VITE_TURNSTILE_SITE_KEY is required for manual GitHub Pages deploys because this path cannot serve the runtime client config endpoint.');
+    }
     
     // Clean previous build
     if (existsSync(this.config.distDir)) {

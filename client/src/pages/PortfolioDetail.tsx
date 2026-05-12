@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { projects, PortfolioProject } from "@/data/portfolio-projects";
 import CTASection from "@/components/cta-section";
+import QuickAnswer from "@/components/QuickAnswer";
 
 const PortfolioDetail = () => {
   const [, params] = useRoute("/portfolio/:id");
@@ -18,7 +19,6 @@ const PortfolioDetail = () => {
     
     if (foundProject) {
       setProject(foundProject);
-      document.title = `${foundProject.title} | MehyarSoft Portfolio`;
     }
   }, [params]);
 
@@ -91,6 +91,8 @@ const PortfolioDetail = () => {
                 <img
                   src={project.detailImage || project.image}
                   alt={project.title}
+                  width="1200"
+                  height="675"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -98,6 +100,13 @@ const PortfolioDetail = () => {
           </div>
         </div>
       </section>
+
+      <QuickAnswer
+        question="What problem does this engagement pattern solve?"
+        answer={`${project.challenge} MehyarSoft approaches it by ${project.solution.charAt(0).toLowerCase()}${project.solution.slice(1)}`}
+        ctaHref="/contact"
+        ctaLabel="Request a similar audit"
+      />
 
       {/* Project Details */}
       <section className="py-20 px-4 bg-white dark:bg-neutral-900">
@@ -164,7 +173,7 @@ const PortfolioDetail = () => {
                     .map(p => (
                       <div key={p.id} className="flex items-center gap-3">
                         <div className="w-16 h-12 rounded-md overflow-hidden flex-shrink-0">
-                          <img src={p.image} alt={p.title} className="w-full h-full object-cover" />
+                          <img src={p.image} alt={p.title} width="160" height="120" loading="lazy" className="w-full h-full object-cover" />
                         </div>
                         <div>
                           <Link href={`/portfolio/${p.id}`}>

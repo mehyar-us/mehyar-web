@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { ArrowRight, CalendarClock, CheckCircle2, ClipboardCheck, PhoneCall, ShieldCheck, Sparkles } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import ContactSection from "@/components/contact-section";
@@ -42,10 +41,6 @@ const fitSignals = [
 ];
 
 const MicroOffer = () => {
-  useEffect(() => {
-    document.title = "$330 Website + Booking Leak Audit | MehyarSoft";
-  }, []);
-
   return (
     <>
       <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_34%),linear-gradient(180deg,#fff_0%,hsl(var(--background))_100%)] px-4 pb-16 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(102,210,235,0.12),transparent_34%),linear-gradient(180deg,hsl(var(--brand-950))_0%,hsl(var(--background))_100%)] sm:pb-20 lg:pt-32">

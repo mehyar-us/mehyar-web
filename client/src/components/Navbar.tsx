@@ -41,23 +41,26 @@ const Navbar = () => {
         <div className="flex h-[4.5rem] items-center justify-between gap-6">
           <Link
             href="/"
-            className="flex min-h-11 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="group flex min-h-12 min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:gap-3"
             aria-label="MehyarSoft home"
           >
             <img
-              src="/assets/mehyarsoft-logo.svg"
-              alt="MehyarSoft"
-              className="h-10 w-auto dark:hidden sm:h-11"
-              width="280"
-              height="80"
+              src="/assets/mehyarsoft-mark.png"
+              alt=""
+              aria-hidden="true"
+              className="h-11 w-11 shrink-0 rounded-xl object-contain shadow-[0_10px_26px_rgba(8,63,84,0.18)] transition-transform duration-200 group-hover:scale-[1.02] sm:h-12 sm:w-12 lg:h-[3.35rem] lg:w-[3.35rem]"
+              width="1024"
+              height="1024"
+              decoding="async"
             />
-            <img
-              src="/assets/mehyarsoft-logo-dark.svg"
-              alt="MehyarSoft"
-              className="hidden h-10 w-auto dark:block sm:h-11"
-              width="280"
-              height="80"
-            />
+            <span className="flex min-w-0 flex-col leading-none">
+              <span className="text-[1.58rem] font-semibold tracking-[-0.08em] text-brand-950 dark:text-white sm:text-[1.82rem] lg:text-[2.05rem]">
+                Mehyar<span className="font-light tracking-[-0.095em]">Soft</span>
+              </span>
+              <span className="mt-1 hidden text-[0.56rem] font-semibold uppercase tracking-[0.32em] text-brand-800/72 dark:text-brand-100/78 sm:block lg:text-[0.62rem]">
+                Software • Systems • AI
+              </span>
+            </span>
           </Link>
 
           <div className="hidden items-center gap-2 rounded-full border border-border/80 bg-white/62 p-1.5 shadow-[0_1px_2px_rgba(10,20,24,0.04)] backdrop-blur xl:flex dark:bg-white/[0.04]">

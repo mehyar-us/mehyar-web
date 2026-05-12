@@ -1,27 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
   <title id="title">MehyarSoft favicon</title>
-  <desc id="desc">Standalone MehyarSoft geometric M mark with circuit nodes.</desc>
-  <defs>
-    <linearGradient id="mehyarsoft-teal" x1="198" y1="204" x2="826" y2="820" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#073347"/>
-      <stop offset="0.52" stop-color="#0b5167"/>
-      <stop offset="1" stop-color="#062f42"/>
-    </linearGradient>
-  </defs>
-  <g fill="none" stroke="url(#mehyarsoft-teal)" stroke-linejoin="miter" stroke-linecap="butt">
-    <path d="M244 368 L512 196 L780 368" stroke-width="70"/>
-    <path d="M244 366 V704" stroke-width="86"/>
-    <path d="M352 504 V810" stroke-width="86"/>
-    <path d="M780 366 V704" stroke-width="86"/>
-    <path d="M672 504 V810" stroke-width="86"/>
-    <path d="M244 366 L512 562 L780 366" stroke-width="86"/>
-  </g>
-  <g fill="none" stroke="#0a4054" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M512 548 V322"/>
-    <path d="M408 492 V428 L342 362"/>
-    <path d="M616 492 V428 L682 362"/>
-    <circle cx="512" cy="298" r="36" fill="#ffffff"/>
-    <circle cx="342" cy="362" r="36" fill="#ffffff"/>
-    <circle cx="682" cy="362" r="36" fill="#ffffff"/>
-  </g>
+  <desc id="desc">MehyarSoft robot icon mark.</desc>
+  <image href="/assets/mehyarsoft-favicon.png" x="0" y="0" width="1024" height="1024" preserveAspectRatio="xMidYMid meet" />
 </svg>

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { onRequestGet as health } from "../functions/api/health.js";
+import { onRequestGet as clientConfig } from "../functions/api/client-config.js";
+import { onRequestGet as publicConfig } from "../functions/api/public-config.js";
 import { onRequestPost as intake } from "../functions/api/intake.js";
 
 class MockKV {
@@ -41,6 +43,11 @@ class MockD1 {
           created_at,
           updated_at,
           form_type,
+          request_type,
+          selected_offer,
+          offer_code,
+          value_estimate,
+          calendar_intent,
           name,
           email,
           phone,
@@ -59,7 +66,7 @@ class MockD1 {
           utm_medium,
           utm_campaign,
         ] = statement.values;
-        db.leads.push({ id, created_at, updated_at, source: "website", form_type, status: "new", name, email, phone, company, website, service_interest, budget_range, timeline, message, consent_contact, consent_marketing, ip_hash, user_agent_hash, referrer, utm_source, utm_medium, utm_campaign, turnstile_passed: 1, notification_status: "pending" });
+        db.leads.push({ id, created_at, updated_at, source: "website", form_type, request_type, selected_offer, offer_code, value_estimate, calendar_intent, status: "new", name, email, phone, company, website, service_interest, budget_range, timeline, message, consent_contact, consent_marketing, ip_hash, user_agent_hash, referrer, utm_source, utm_medium, utm_campaign, turnstile_passed: 1, notification_status: "pending" });
       } else if (sql.includes("INSERT INTO lead_events")) {
         const [id, lead_id, event_type, metadata_json] = statement.values;
         db.events.push({ id, lead_id, event_type, actor: "system", metadata_json });
@@ -112,6 +119,21 @@ const healthResponse = await health({ env: healthEnv });
 assert.equal(healthResponse.status, 200);
 assert.deepEqual(await healthResponse.json(), { ok: true, service: "mehyar-web-intake", environment: "test" });
 
+const configEnv = {
+  VITE_TURNSTILE_SITE_KEY: "0x4AAAAAADNYC8DYoBFvq9zS",
+  TURNSTILE_SECRET_KEY: "must-not-leak",
+};
+const clientConfigResponse = await clientConfig({ env: configEnv });
+assert.equal(clientConfigResponse.status, 200);
+assert.deepEqual(await clientConfigResponse.json(), { ok: true, turnstileSiteKey: "0x4AAAAAADNYC8DYoBFvq9zS" });
+const publicConfigResponse = await publicConfig({ env: configEnv });
+const publicConfigBody = JSON.stringify(await publicConfigResponse.json());
+assert.match(publicConfigBody, /0x4AAAAAADNYC8DYoBFvq9zS/);
+assert.doesNotMatch(publicConfigBody, /must-not-leak|TURNSTILE_SECRET_KEY/i);
+
+const missingConfigResponse = await clientConfig({ env: { TURNSTILE_SECRET_KEY: "must-not-leak" } });
+assert.deepEqual(await missingConfigResponse.json(), { ok: false, turnstileSiteKey: "" });
+
 const validEnv = env();
 const validPayload = {
   form_type: "contact",
@@ -154,9 +176,44 @@ const noConsentResponse = await intake({ request: request("/api/intake", { ...va
 assert.equal(noConsentResponse.status, 400);
 assert.equal(noConsentEnv.__db.leads.length, 0);
 
+const microOfferEnv = env();
+const microOfferPayload = {
+  ...validPayload,
+  form_type: "micro_offer",
+  request_type: "micro_offer",
+  selected_offer: "ai_missed_lead_rescue_330",
+  offer_code: "ai_missed_lead_rescue_330",
+  value_estimate: 330,
+  calendar_intent: "intake_call_or_async_review",
+  email: "micro@Test.Example",
+  service_interest: "$330 AI Missed-Lead Rescue Setup",
+  budget_range: "$330 setup deposit / audit path",
+  timeline: "Book intake this week",
+  message: "We miss calls and contact forms do not get followed up.",
+  utm: { source: "unit", medium: "script", campaign: "330_micro_offer" },
+};
+const microOfferResponse = await intake({ request: request("/api/intake", microOfferPayload), env: microOfferEnv });
+assert.equal(microOfferResponse.status, 200);
+assert.equal((await microOfferResponse.json()).ok, true);
+assert.equal(microOfferEnv.__db.leads.length, 1);
+assert.equal(microOfferEnv.__db.leads[0].form_type, "micro_offer");
+assert.equal(microOfferEnv.__db.leads[0].request_type, "micro_offer");
+assert.equal(microOfferEnv.__db.leads[0].offer_code, "ai_missed_lead_rescue_330");
+assert.equal(microOfferEnv.__db.leads[0].value_estimate, 330);
+assert.match(microOfferEnv.__email.sent[0].text, /Offer code: ai_missed_lead_rescue_330/);
+
+const requestTypeAliasEnv = env();
+const requestTypeAliasResponse = await intake({
+  request: request("/api/intake", { ...microOfferPayload, form_type: undefined, email: "alias@test.example" }),
+  env: requestTypeAliasEnv,
+});
+assert.equal(requestTypeAliasResponse.status, 200);
+assert.equal(requestTypeAliasEnv.__db.leads[0].form_type, "micro_offer");
+assert.equal(requestTypeAliasEnv.__db.leads[0].request_type, "micro_offer");
+
 console.log(JSON.stringify({
   ok: true,
-  tests: ["health", "valid submission", "invalid turnstile rejection", "D1/audit row", "notification path", "consent rejection"],
+  tests: ["health", "public client config", "valid submission", "invalid turnstile rejection", "D1/audit row", "notification path", "consent rejection", "micro-offer fields", "request_type alias"],
   leads_created: validEnv.__db.leads.length,
   audit_events: validEnv.__db.events.map((event) => event.event_type),
   notifications_sent: validEnv.__email.sent.length,

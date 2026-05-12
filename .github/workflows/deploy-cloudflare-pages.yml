@@ -43,9 +43,24 @@ jobs:
       - run: CUSTOM_DOMAIN=true NODE_ENV=production npm run build:client
       - name: Verify Turnstile site key was compiled into the client bundle
         run: |
-          if grep -R "Security verification is not configured for this environment" dist/public/assets/*.js >/dev/null; then
-            echo "Turnstile fallback copy exists in bundle as expected. Checking for configured site key separately."
+          if grep -R "Preparing secure verification" dist/public/assets/*.js >/dev/null; then
+            echo "Runtime Turnstile fallback path exists in bundle. Checking compiled key and runtime endpoint separately."
           fi
           grep -R "$VITE_TURNSTILE_SITE_KEY" dist/public/assets/*.js >/dev/null || { echo "Turnstile site key was not compiled into the client bundle"; exit 1; }
+          grep -R "/api/client-config" dist/public/assets/*.js >/dev/null || { echo "Runtime client config endpoint path is missing from the client bundle"; exit 1; }
+          test -f functions/api/client-config.js || { echo "Runtime client config function is missing"; exit 1; }
+          ! grep -R "TURNSTILE_SECRET_KEY" dist/public/assets/*.js >/dev/null || { echo "Secret env name leaked into client bundle"; exit 1; }
       - name: Deploy Pages site and Functions
         run: npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
+      - name: Verify production runtime client config
+        run: |
+          CONFIG_JSON="$(curl -fsS https://mehyar.us/api/client-config)"
+          echo "$CONFIG_JSON" | node -e '
+            let body = "";
+            process.stdin.on("data", chunk => body += chunk);
+            process.stdin.on("end", () => {
+              const config = JSON.parse(body);
+              if (!/^0x[A-Za-z0-9_-]{16,}$/.test(config.turnstileSiteKey || "")) throw new Error("runtime Turnstile site key missing");
+              if (/secret|private|token/i.test(JSON.stringify(config))) throw new Error("runtime config exposes a sensitive-looking key");
+            });
+          '

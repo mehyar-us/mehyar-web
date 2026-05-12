@@ -8,11 +8,12 @@ const Footer = () => {
           <div>
             <Link href="/" className="inline-flex items-center mb-6" aria-label="MehyarSoft home">
                 <img
-                  src="/assets/mehyarsoft-logo.svg"
+                  src="/assets/mehyarsoft-logo-dark.svg"
                   alt="MehyarSoft"
-                  className="h-12 w-auto brightness-0 invert opacity-95"
-                  width="280"
-                  height="80"
+                  className="h-14 w-auto opacity-95"
+                  width="760"
+                  height="180"
+                  decoding="async"
                 />
             </Link>
             <p className="text-neutral-300 mb-6">

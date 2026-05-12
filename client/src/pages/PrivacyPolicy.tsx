@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 
 const sections = [
   ["What we collect", "When you contact MehyarSoft, you may choose to provide your name, email address, company, website, business context, and the problem you want help solving. Do not submit regulated, sensitive, patient, financial, or confidential data through public contact paths."],
@@ -9,10 +8,6 @@ const sections = [
 ];
 
 const PrivacyPolicy = () => {
-  useEffect(() => {
-    document.title = "Privacy Policy | MehyarSoft";
-  }, []);
-
   return (
     <section className="bg-background px-4 pb-16 pt-28 md:pb-20 md:pt-32">
       <div className="mx-auto max-w-4xl">

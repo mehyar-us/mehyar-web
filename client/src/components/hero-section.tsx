@@ -10,7 +10,7 @@ const operatingSignals = [
 
 const HeroSection = () => {
   return (
-    <section className="relative overflow-hidden border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.16),transparent_34%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_46%,#fff_100%)] px-4 pb-8 pt-18 dark:bg-[radial-gradient(circle_at_top_left,rgba(102,210,235,0.12),transparent_34%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_48%,hsl(var(--brand-950))_100%)] sm:pt-24 md:pb-14 md:pt-28">
+    <section className="relative overflow-hidden border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.16),transparent_34%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_46%,#fff_100%)] px-4 pb-8 pt-24 dark:bg-[radial-gradient(circle_at_top_left,rgba(102,210,235,0.12),transparent_34%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_48%,hsl(var(--brand-950))_100%)] sm:pt-24 md:pb-14 md:pt-28">
       <div className="mx-auto grid max-w-7xl items-center gap-7 lg:grid-cols-[1.03fr_0.97fr] lg:gap-12">
         <div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-700/15 bg-white/72 px-3 py-1 text-xs font-semibold text-brand-800 shadow-[0_1px_2px_rgba(10,20,24,0.06)] backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-brand-100 sm:text-sm">

@@ -10,7 +10,8 @@
     "check": "tsc",
     "deploy:pages": "tsx scripts/deploy-pages.ts",
     "deploy:pages:local": "npm run build:client && tsx scripts/deploy-pages.ts",
-    "test:intake": "node scripts/test-intake-functions.mjs"
+    "test:intake": "node scripts/test-intake-functions.mjs",
+    "test:offers": "node scripts/test-offer-fulfillment.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

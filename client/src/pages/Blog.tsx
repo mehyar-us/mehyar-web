@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,14 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import { blogPosts } from "@/data/blog-posts";
+import QuickAnswer from "@/components/QuickAnswer";
 
 const Blog = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-
-  useEffect(() => {
-    document.title = "Blog | MehyarSoft";
-  }, []);
 
   const filteredPosts = blogPosts.filter((post) => {
     const term = searchTerm.toLowerCase();
@@ -38,6 +35,13 @@ const Blog = () => {
           </div>
         </div>
       </section>
+
+      <QuickAnswer
+        question="What does the MehyarSoft blog cover?"
+        answer="The MehyarSoft blog covers practical guidance on finding revenue leaks, improving CRM and missed-call follow-up, deciding when to automate, and scoping custom software safely."
+        ctaHref="/contact"
+        ctaLabel="Turn an article into an audit"
+      />
 
       <section className="bg-background px-4 py-16 md:py-20">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">

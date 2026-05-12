@@ -1,17 +1,14 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { projects } from "@/data/portfolio-projects";
 import CTASection from "@/components/cta-section";
+import QuickAnswer from "@/components/QuickAnswer";
 
 const Portfolio = () => {
   const [filter, setFilter] = useState("all");
-
-  useEffect(() => {
-    document.title = "Engagement Patterns | MehyarSoft";
-  }, []);
 
   const categories = ["all", ...new Set(projects.map((project) => project.category))];
   const filteredProjects = filter === "all" ? projects : projects.filter((project) => project.category === filter);
@@ -25,6 +22,13 @@ const Portfolio = () => {
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">No invented logos or testimonials. These are concrete MehyarSoft work patterns for audits, missed-call follow-up, automations, integrations, website cleanup, and retainers.</p>
         </div>
       </section>
+
+      <QuickAnswer
+        question="Are these MehyarSoft client case studies?"
+        answer="No. These are reference engagement patterns showing the types of problems MehyarSoft is built to solve. MehyarSoft avoids fake testimonials, fake client logos, and fake metrics."
+        ctaHref="/contact"
+        ctaLabel="Discuss your real workflow"
+      />
 
       <section className="bg-background px-4 py-16 md:py-20">
         <div className="mx-auto max-w-7xl">
