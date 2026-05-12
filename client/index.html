@@ -30,8 +30,17 @@
         "knowsAbout": ["Business Automation", "AI Systems", "CRM", "Web Development", "Software Architecture", "Systems Integration", "DevOps"]
       }
     </script>
-    <!-- Cloudflare Web Analytics: aggregate page/performance metrics only; no form-field capture. -->
-    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"fd9b943012a1407d86655ea27a9e045c"}'></script>
+    <!-- Cloudflare Web Analytics: aggregate page/performance metrics only; no form-field capture. Loaded only on the public host so local/preview QA stays clean. -->
+    <script>
+      (function () {
+        if (!["mehyar.us", "www.mehyar.us"].includes(window.location.hostname)) return;
+        var script = document.createElement("script");
+        script.defer = true;
+        script.src = "https://static.cloudflareinsights.com/beacon.min.js";
+        script.setAttribute("data-cf-beacon", '{"token":"fd9b943012a1407d86655ea27a9e045c"}');
+        document.head.appendChild(script);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
