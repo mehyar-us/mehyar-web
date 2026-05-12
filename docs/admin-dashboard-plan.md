@@ -1,7 +1,7 @@
 # MehyarSoft Owner-Only Admin Dashboard Plan
 
 Status: implementation plan / auth boundary
-Target owner user: `admin`
+Target owner email/login: `mrswelim@gmail.com`
 Public site: `https://mehyar.us`
 Current deploy mode: static GitHub Pages build from `dist/public`
 
@@ -42,7 +42,7 @@ Because the current production site is static GitHub Pages, the admin system sho
   - Cloudflare KV only for short-lived session records or rate-limit counters when needed.
   - Cloudflare Analytics/Web Analytics for anonymous traffic metrics, with optional internal event mirror into D1.
 - Secrets:
-  - `MEHYARSOFT_ADMIN_USERNAME`
+  - `MEHYARSOFT_ADMIN_USERNAME` / `MEHYARSOFT_ADMIN_EMAIL` = `mrswelim@gmail.com`
   - `MEHYARSOFT_ADMIN_PASSWORD_HASH`
   - `MEHYARSOFT_SESSION_SECRET`
   - `MEHYARSOFT_TURNSTILE_SECRET_KEY`
@@ -75,12 +75,12 @@ Minimum v1 owner auth:
 
 1. `GET /admin` serves the admin login shell only; it contains no private data.
 2. `POST /admin-api/login`
-   - Validate username against `MEHYARSOFT_ADMIN_USERNAME`.
+   - Validate username/email against `MEHYARSOFT_ADMIN_USERNAME` / `MEHYARSOFT_ADMIN_EMAIL`; production owner login is `mrswelim@gmail.com`.
    - Verify password against `MEHYARSOFT_ADMIN_PASSWORD_HASH`.
    - Rate-limit by IP and username.
    - On success, issue an HttpOnly, Secure, SameSite=Strict session cookie.
 3. `GET /admin-api/session`
-   - Returns `{ authenticated: true, user: "admin" }` only after session verification.
+   - Returns authenticated session data only after session verification; owner subject is `mrswelim@gmail.com`.
 4. `POST /admin-api/logout`
    - Invalidates the session record and clears the cookie.
 5. Every dashboard endpoint must call `requireAdminSession()` before reading D1.

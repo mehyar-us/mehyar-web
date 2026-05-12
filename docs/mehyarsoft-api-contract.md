@@ -16,8 +16,8 @@ No frontend secrets are required or allowed. Server-only values live in Cloudfla
 - `TURNSTILE_SECRET_KEY`: validates public intake form submissions.
 - `HMAC_SECRET`: hashes email/IP/user-agent values before D1/KV use.
 - `ADMIN_SESSION_SECRET`: signs admin dashboard bearer sessions.
-- `MEHYARSOFT_ADMIN_USERNAME`: owner admin login username.
-- `MEHYARSOFT_ADMIN_EMAIL`: optional owner admin login email fallback.
+- `MEHYARSOFT_ADMIN_USERNAME`: owner admin login identifier; production value is `mrswelim@gmail.com`.
+- `MEHYARSOFT_ADMIN_EMAIL`: owner admin login email fallback; production value is `mrswelim@gmail.com`.
 - `MEHYARSOFT_ADMIN_PASSWORD`: owner admin login password.
 - `ALLOWED_ORIGINS`: comma-separated browser origins allowed by CORS.
 
