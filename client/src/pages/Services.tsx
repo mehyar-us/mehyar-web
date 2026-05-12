@@ -1,10 +1,14 @@
 import { useEffect } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { services } from "@/data/services";
 import PricingSection from "@/components/pricing-section";
 import CTASection from "@/components/cta-section";
+import { Link } from "wouter";
+import { buttonVariants } from "@/components/ui/button";
+
+const steps = ["Find the leak", "Ship the smallest useful fix", "Measure and document the handoff"];
 
 const Services = () => {
   useEffect(() => {
@@ -13,58 +17,69 @@ const Services = () => {
 
   return (
     <>
-      <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="container mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
-            Consulting offers for customer leaks, workflow drag, and system gaps
-          </h1>
-          <p className="text-xl text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto mb-8">
-            From a one-time local business audit to senior systems architecture support, each offer is scoped around a clear operational outcome.
-          </p>
+      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_54%,#fff_100%)] px-4 pb-10 pt-24 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_54%,hsl(var(--brand-950))_100%)] sm:pb-14 md:pt-32">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+          <div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Services and pricing</p>
+            <h1 className="max-w-4xl text-[2.1rem] font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-5xl md:leading-[0.98]">
+              Consulting offers for customer leaks, workflow drag, and system gaps.
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+              Start with the smallest engagement that can clarify the leak, fix a visible path, or install one reliable automation around follow-up, CRM, reporting, and operations.
+            </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <Link href="/contact" className={buttonVariants({ variant: "cta", size: "lg" })}>
+                Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+              <Link href="#pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>
+                See pricing ranges
+              </Link>
+            </div>
+          </div>
+          <div className="grid gap-3 rounded-[1.75rem] border border-border bg-card/88 p-4 shadow-[0_20px_70px_rgba(8,63,84,0.10)] dark:bg-card/80">
+            {steps.map((step, index) => (
+              <div key={step} className="flex items-center gap-3 rounded-2xl border border-border bg-white/70 p-4 dark:bg-white/[0.04]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-sm font-bold text-secondary-foreground dark:bg-white/10 dark:text-brand-100">0{index + 1}</span>
+                <p className="font-semibold text-foreground">{step}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-white dark:bg-neutral-900">
-        <div className="container mx-auto">
-          <div className="space-y-16">
-            {services.map((service, index) => (
-              <div
-                key={service.id}
-                id={service.id}
-                className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center scroll-mt-24"
-              >
-                <div className={`order-2 ${index % 2 === 0 ? "lg:order-2" : "lg:order-1"}`}>
-                  <Badge
-                    variant="outline"
-                    className={`mb-4 ${service.badgeBgClass} ${service.badgeColorClass} text-sm px-3 py-1`}
-                  >
-                    {service.category}
-                  </Badge>
-                  <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">
-                    {service.title}
-                  </h2>
-                  <p className="text-lg text-neutral-700 dark:text-neutral-300 mb-6">
-                    {service.description}
-                  </p>
-                  <div className="space-y-4">
-                    {service.features.map((feature, featureIndex) => (
-                      <div key={featureIndex} className="flex items-start">
-                        <ArrowRight className={`${service.textColorClass} mr-3 mt-1.5 h-4 w-4 flex-shrink-0`} />
-                        <p className="text-neutral-700 dark:text-neutral-300">
-                          {feature}
-                        </p>
+      <section className="bg-background px-4 py-12 md:py-18">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 max-w-3xl">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Offer catalog</p>
+            <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-5xl">Every block maps pain → solution → outcome.</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {services.map((service) => (
+              <Card key={service.id} id={service.id} className="scroll-mt-28 border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+                <CardContent className="flex h-full flex-col p-5">
+                  <div className="mb-5 flex items-center justify-between gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
+                      <service.icon aria-hidden="true" size={22} />
+                    </div>
+                    <Badge variant="outline" className="border-border bg-background/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      {service.category}
+                    </Badge>
+                  </div>
+                  <h3 className="text-xl font-bold tracking-[-0.02em] text-foreground">{service.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{service.description}</p>
+                  <div className="mt-4 space-y-2">
+                    {service.features.slice(0, 3).map((feature) => (
+                      <div key={feature} className="flex gap-3 text-sm leading-6 text-muted-foreground">
+                        <CheckCircle2 className="mt-1 h-4 w-4 flex-none text-brand-700 dark:text-brand-100" aria-hidden="true" />
+                        <span>{feature}</span>
                       </div>
                     ))}
                   </div>
-                </div>
-                <div className={`order-1 ${index % 2 === 0 ? "lg:order-1" : "lg:order-2"}`}>
-                  <img
-                    src={service.image}
-                    alt={service.title}
-                    className="rounded-lg shadow-xl w-full h-auto"
-                  />
-                </div>
-              </div>
+                  <Link href="/contact" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100">
+                    Request Practical Next Step <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -72,26 +87,11 @@ const Services = () => {
 
       <PricingSection />
 
-      <section className="py-20 px-4 bg-white dark:bg-neutral-900">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">
-              Stack and delivery approach
-            </h2>
-            <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-              Tools are selected for the workflow, not for trend value. Common work includes React/TypeScript frontends, Node/Python backends, CRM/email/scheduling integrations, Cloudflare-native hosting, SQL databases, dashboards, and AI-assisted workflow automation.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {["Discover the leak", "Ship the smallest useful fix", "Measure, document, and support"].map((step) => (
-              <Card key={step} className="bg-neutral-50 dark:bg-neutral-800 shadow-sm">
-                <CardContent className="p-6 text-center">
-                  <h3 className="font-bold text-neutral-900 dark:text-white">{step}</h3>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      <section className="bg-background px-4 py-12 md:py-18">
+        <div className="mx-auto max-w-5xl rounded-[2rem] border border-border bg-card p-6 text-center shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:p-10">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Delivery approach</p>
+          <h2 className="text-3xl font-semibold tracking-[-0.03em] text-ink dark:text-white md:text-4xl">Cloudflare-first, TypeScript-friendly, documentation included.</h2>
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-muted-foreground">Tools are selected for the workflow, not trend value: React/TypeScript frontends, Node/Python backends, CRM/email/scheduling integrations, Cloudflare-native hosting, SQL databases, dashboards, and AI-assisted workflow automation.</p>
         </div>
       </section>
 

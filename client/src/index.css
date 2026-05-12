@@ -23,7 +23,7 @@
     --muted: 195 24% 93%;
     --muted-foreground: 195 12% 37%;
 
-    --accent: 245 76% 53%;
+    --accent: 186 62% 40%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -39,13 +39,13 @@
     --brand-700: 194 81% 23%;
     --brand-100: 195 35% 93%;
 
-    --action: 247 61% 52%;
-    --action-strong: 245 76% 53%;
+    --action: 194 81% 23%;
+    --action-strong: 195 82% 18%;
     --ink: 195 41% 7%;
 
     --chart-1: 195 82% 18%;
     --chart-2: 194 81% 23%;
-    --chart-3: 247 61% 52%;
+    --chart-3: 186 62% 40%;
     --chart-4: 36 84% 52%;
     --chart-5: 162 47% 40%;
 
@@ -81,7 +81,7 @@
     --muted: 195 31% 13%;
     --muted-foreground: 194 13% 70%;
 
-    --accent: 245 82% 70%;
+    --accent: 193 48% 78%;
     --accent-foreground: 197 52% 6%;
 
     --destructive: 0 72% 51%;
@@ -97,12 +97,12 @@
     --brand-700: 194 81% 23%;
     --brand-100: 193 48% 78%;
 
-    --action: 245 82% 70%;
-    --action-strong: 245 84% 76%;
+    --action: 193 48% 78%;
+    --action-strong: 186 62% 69%;
     --ink: 0 0% 98%;
 
     --chart-1: 193 48% 78%;
-    --chart-2: 245 82% 70%;
+    --chart-2: 186 62% 69%;
     --chart-3: 162 47% 55%;
     --chart-4: 36 84% 62%;
     --chart-5: 0 72% 67%;

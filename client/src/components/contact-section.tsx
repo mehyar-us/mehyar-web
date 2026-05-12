@@ -12,6 +12,7 @@ import { IntakeFormType, mehyarSoftApi } from "@/lib/mehyarsoft-api";
 
 const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
+const IS_LOCAL_PREVIEW = import.meta.env.DEV;
 
 declare global {
   interface Window {
@@ -80,7 +81,7 @@ const includeItems = [
 
 const nextSteps = [
   "Boss reviews the request personally.",
-  "You get one practical next step, not a bloated proposal.",
+  "You get one practical next step: audit, booking call, larger sprint, or no-fit answer.",
   "If there is no fit, you get a direct no-fit answer.",
 ];
 
@@ -91,7 +92,7 @@ const privacyNotes = [
 ];
 
 const inputClassName =
-  "w-full rounded-xl border-neutral-300 bg-white px-4 py-3 text-neutral-900 shadow-sm transition focus-visible:ring-2 focus-visible:ring-primary dark:border-neutral-700 dark:bg-neutral-900 dark:text-white";
+  "w-full rounded-xl border-border bg-white px-4 py-3 text-ink shadow-sm transition focus-visible:ring-2 focus-visible:ring-ring dark:bg-brand-950 dark:text-white";
 
 const statusCopy: Record<SubmitStatus, { tone: string; title: string; body: string }> = {
   idle: {
@@ -131,13 +132,17 @@ const ContactSection = () => {
   const currentStatus = statusCopy[status];
   const getSubmitHint = () => {
     if (status === "success") return "Form cleared. Watch your email for a practical next step; do not resend unless you need to add new details.";
-    if (!TURNSTILE_SITE_KEY) return "Security verification is not configured here. Use the email fallback.";
+    if (!TURNSTILE_SITE_KEY) {
+      return IS_LOCAL_PREVIEW
+        ? "Local preview only: configure VITE_TURNSTILE_SITE_KEY to test secure submit, or use the email fallback."
+        : "Secure submit is temporarily unavailable. Please email contact@mehyar.us with the same details.";
+    }
     if (!consentContact) return "Confirm service follow-up consent to unlock the secure send button.";
     if (!turnstileToken) return "Complete the Cloudflare verification to unlock the secure send button.";
     return "Ready to send securely.";
   };
   const submitHint = getSubmitHint();
-  const submitButtonLabel = status === "submitting" ? "Sending request..." : status === "success" ? "Request received" : "Send secure request";
+  const submitButtonLabel = status === "submitting" ? "Sending request..." : status === "success" ? "Request received" : "Request Practical Next Step";
 
   const statusClassName = useMemo(
     () =>
@@ -149,6 +154,15 @@ const ContactSection = () => {
       }),
     [currentStatus.tone]
   );
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === "#intake" || hash === "#contact") {
+      window.setTimeout(() => {
+        document.querySelector(hash)?.scrollIntoView({ block: "start" });
+      }, 0);
+    }
+  }, []);
 
   useEffect(() => {
     window.onMehyarTurnstile = (token: string) => setTurnstileToken(token);
@@ -240,26 +254,26 @@ const ContactSection = () => {
   };
 
   return (
-    <section id="contact" className="scroll-mt-24 bg-white px-4 py-16 dark:bg-neutral-950 sm:py-20">
+    <section id="contact" className="scroll-mt-24 bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.12),transparent_32%),linear-gradient(180deg,#fff_0%,hsl(var(--background))_100%)] px-4 py-14 dark:bg-[radial-gradient(circle_at_top_left,rgba(102,210,235,0.10),transparent_32%),linear-gradient(180deg,hsl(var(--brand-900))_0%,hsl(var(--background))_100%)] sm:py-20">
       <div className="container mx-auto">
         <div className="mx-auto mb-12 max-w-3xl text-center">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-primary">Founder-led intake</p>
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-neutral-950 dark:text-white md:text-5xl">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-brand-700 dark:text-brand-100">Founder-led intake</p>
+          <h2 className="mb-4 text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-5xl">
             Request a tech audit or consulting call.
           </h2>
-          <p className="mx-auto max-w-2xl text-lg leading-8 text-neutral-700 dark:text-neutral-300">
+          <p className="mx-auto max-w-2xl text-lg leading-8 text-muted-foreground">
             Describe the leak: bad website flow, missed calls, manual follow-up, disconnected systems, or work your team keeps doing by hand.
           </p>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-start">
-          <form id="contactForm" className="rounded-[2rem] border border-neutral-200 bg-neutral-50/80 p-4 shadow-xl shadow-neutral-900/5 dark:border-neutral-800 dark:bg-neutral-900/70 sm:p-6 lg:p-8" onSubmit={handleSubmit}>
-            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-white p-4 dark:border-primary/20 dark:bg-neutral-950 sm:flex-row sm:items-center sm:justify-between">
+          <form id="contactForm" className="rounded-[2rem] border border-border bg-card/92 p-4 shadow-[0_24px_80px_rgba(8,63,84,0.10)] dark:bg-card/88 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6 lg:p-8" onSubmit={handleSubmit}>
+            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-brand-700/15 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-neutral-950 dark:text-white">{selectedRequestLabel}</p>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">{selectedRequest.hint}</p>
+                <p className="text-sm font-semibold text-ink dark:text-white">{selectedRequestLabel}</p>
+                <p className="text-sm text-muted-foreground">{selectedRequest.hint}</p>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary dark:bg-primary/20">
+              <div className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-800 dark:bg-white/10 dark:text-brand-100">
                 <ShieldCheck size={14} aria-hidden="true" />
                 Cloudflare protected
               </div>
@@ -328,7 +342,7 @@ const ContactSection = () => {
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <div className="space-y-2 md:col-span-1">
                   <Label htmlFor="service_interest">Main need</Label>
-                  <Input id="service_interest" value={formData.service_interest} onChange={handleChange} className={inputClassName} placeholder="CRM, AI phone, automation" />
+                  <Input id="service_interest" value={formData.service_interest} onChange={handleChange} className={inputClassName} placeholder="Booking setup, CRM, AI phone, website cleanup" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="budget_range">Budget range</Label>
@@ -336,7 +350,7 @@ const ContactSection = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timeline">Timeline</Label>
-                  <Input id="timeline" value={formData.timeline} onChange={handleChange} className={inputClassName} placeholder="This week, 30 days, later" />
+                  <Input id="timeline" value={formData.timeline} onChange={handleChange} className={inputClassName} placeholder="Book this week, 30 days, later" />
                 </div>
               </div>
 
@@ -357,35 +371,35 @@ const ContactSection = () => {
                 </p>
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="space-y-4 rounded-2xl border border-border bg-white p-4 dark:bg-white/[0.04]">
                 <div>
-                  <p className="text-sm font-semibold text-neutral-950 dark:text-white">Consent and privacy boundaries</p>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-neutral-500 dark:text-neutral-400">
+                  <p className="text-sm font-semibold text-ink dark:text-white">Consent and privacy boundaries</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-muted-foreground">
                     {privacyNotes.map((note) => (
                       <li key={note}>{note}</li>
                     ))}
                   </ul>
                 </div>
-                <label htmlFor="consent_contact" className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
+                <label htmlFor="consent_contact" className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-muted-foreground">
                   <Checkbox id="consent_contact" checked={consentContact} onCheckedChange={(checked) => setConsentContact(checked === true)} className="mt-1" />
                   <span>
-                    <span className="font-semibold text-neutral-950 dark:text-white">Required:</span> I agree that MehyarSoft LLC may contact me about this request by email or phone if provided. This is only for service follow-up about the problem I submitted.
+                    <span className="font-semibold text-ink dark:text-white">Required:</span> I agree that MehyarSoft LLC may contact me about this request by email or phone if provided. This is only for service follow-up about the problem I submitted.
                   </span>
                 </label>
-                <label htmlFor="consent_marketing" className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
+                <label htmlFor="consent_marketing" className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-muted-foreground">
                   <Checkbox id="consent_marketing" checked={consentMarketing} onCheckedChange={(checked) => setConsentMarketing(checked === true)} className="mt-1" />
                   <span>
-                    <span className="font-semibold text-neutral-950 dark:text-white">Optional:</span> send occasional MehyarSoft updates. This is separate from service follow-up, can be unsubscribed from later, and is never required to get a reply.
+                    <span className="font-semibold text-ink dark:text-white">Optional:</span> send occasional MehyarSoft updates. This is separate from service follow-up, can be unsubscribed from later, and is never required to get a reply.
                   </span>
                 </label>
               </div>
 
-              <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="rounded-2xl border border-border bg-white p-4 dark:bg-white/[0.04]">
                 <div className="mb-3 flex items-start gap-3">
-                  <ShieldCheck className="mt-0.5 text-primary" size={18} aria-hidden="true" />
+                  <ShieldCheck className="mt-0.5 text-brand-700 dark:text-brand-100" size={18} aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-semibold text-neutral-950 dark:text-white">Cloudflare Turnstile check</p>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    <p className="text-sm font-semibold text-ink dark:text-white">Cloudflare Turnstile check</p>
+                    <p className="text-sm text-muted-foreground">
                       Place this last: decide the request, confirm consent, then complete the lightweight anti-abuse check.
                     </p>
                   </div>
@@ -404,10 +418,15 @@ const ContactSection = () => {
                     data-error-callback="onMehyarTurnstileError"
                     data-theme="auto"
                   />
-                ) : (
-                  <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200">
+                ) : IS_LOCAL_PREVIEW ? (
+                  <div className="flex items-start gap-2 rounded-xl border border-brand-700/20 bg-brand-100/70 p-3 text-sm text-brand-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-100">
                     <AlertCircle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                    <p>Security verification is not configured for this environment. Please email contact@mehyar.us directly.</p>
+                    <p>Local preview only: configure VITE_TURNSTILE_SITE_KEY to render Cloudflare verification before secure submit.</p>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+                    <AlertCircle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                    <p>Secure verification is temporarily unavailable. Please email contact@mehyar.us with the same brief.</p>
                   </div>
                 )}
               </div>
@@ -429,7 +448,7 @@ const ContactSection = () => {
               <Button
                 type="submit"
                 disabled={!canSubmit}
-                className="w-full rounded-xl bg-primary px-6 py-6 text-base font-semibold text-white shadow-lg shadow-primary/20 transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl bg-action px-6 py-6 text-base font-semibold text-white shadow-lg shadow-brand-900/20 transition hover:bg-action-strong disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-950"
                 aria-describedby="submit-readiness"
               >
                 {submitButtonLabel}
@@ -441,13 +460,13 @@ const ContactSection = () => {
           </form>
 
           <aside className="space-y-6">
-            <Card className="border-neutral-200 bg-white shadow-xl shadow-neutral-900/5 dark:border-neutral-800 dark:bg-neutral-900">
+            <Card className="border-border bg-card shadow-[0_18px_60px_rgba(8,63,84,0.08)] dark:shadow-[0_18px_60px_rgba(0,0,0,0.28)]">
               <CardContent className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-neutral-950 dark:text-white">What to include</h3>
+                <h3 className="mb-4 text-xl font-semibold text-ink dark:text-white">What to include</h3>
                 <div className="space-y-3">
                   {includeItems.map((item) => (
-                    <div key={item} className="flex gap-3 rounded-2xl bg-neutral-50 p-3 text-sm leading-6 text-neutral-700 dark:bg-neutral-950 dark:text-neutral-300">
-                      <CheckCircle2 size={17} className="mt-0.5 flex-shrink-0 text-primary" aria-hidden="true" />
+                    <div key={item} className="flex gap-3 rounded-2xl bg-brand-100/60 p-3 text-sm leading-6 text-muted-foreground dark:bg-white/[0.04]">
+                      <CheckCircle2 size={17} className="mt-0.5 flex-shrink-0 text-brand-700 dark:text-brand-100" aria-hidden="true" />
                       <span>{item}</span>
                     </div>
                   ))}
@@ -455,34 +474,34 @@ const ContactSection = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-primary/15 bg-primary/5 shadow-none dark:border-primary/25 dark:bg-primary/10">
+            <Card className="border-brand-700/15 bg-brand-100/55 shadow-none dark:border-white/10 dark:bg-white/[0.04]">
               <CardContent className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-neutral-950 dark:text-white">What happens next</h3>
+                <h3 className="mb-4 text-xl font-semibold text-ink dark:text-white">What happens next</h3>
                 <div className="mb-5 space-y-3">
                   {nextSteps.map((step, index) => (
-                    <div key={step} className="flex gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{index + 1}</span>
+                    <div key={step} className="flex gap-3 text-sm leading-6 text-muted-foreground">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-800 text-xs font-bold text-white dark:bg-brand-100 dark:text-brand-950">{index + 1}</span>
                       <span>{step}</span>
                     </div>
                   ))}
                 </div>
-                <h3 className="mb-4 text-xl font-bold text-neutral-950 dark:text-white">Why this form is specific</h3>
+                <h3 className="mb-4 text-xl font-semibold text-ink dark:text-white">Why this form is specific</h3>
                 <div className="space-y-4">
                   {trustPoints.map((point) => (
-                    <p key={point} className="text-sm leading-6 text-neutral-700 dark:text-neutral-300">{point}</p>
+                    <p key={point} className="text-sm leading-6 text-muted-foreground">{point}</p>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            <div className="flex items-start rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20">
-                <Mail className="text-primary" size={18} aria-hidden="true" />
+            <div className="flex items-start rounded-2xl border border-border bg-card p-5">
+              <div className="mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-white/10">
+                <Mail className="text-brand-700 dark:text-brand-100" size={18} aria-hidden="true" />
               </div>
               <div className="ml-4">
-                <h4 className="font-semibold text-neutral-950 dark:text-white">Email fallback</h4>
-                <p className="mt-1 text-sm leading-6 text-neutral-600 dark:text-neutral-400">If the security check fails, send the same short brief directly.</p>
-                <a href="mailto:contact@mehyar.us" className="mt-2 inline-flex text-sm font-semibold text-primary hover:text-primary-dark">
+                <h4 className="font-semibold text-ink dark:text-white">Email fallback</h4>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">If the security check fails, send the same short brief directly.</p>
+                <a href="mailto:contact@mehyar.us" className="mt-2 inline-flex text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100">
                   contact@mehyar.us
                 </a>
               </div>

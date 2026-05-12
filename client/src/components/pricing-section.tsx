@@ -1,48 +1,54 @@
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 const offers = [
-  { name: "Local Business Tech Audit", price: "$150-$500", fit: "Restaurants, clinics, stores, salons, service businesses", outcome: "A prioritized leak map and practical action plan." },
-  { name: "Website / Booking Cleanup", price: "$750-$2,500", fit: "Owners with traffic or referrals but weak conversion", outcome: "Clear offer pages, intake, CTAs, and booking path." },
-  { name: "AI Follow-Up Flow", price: "$1,500-$5,000", fit: "Missed calls, slow responses, no-shows, unworked leads", outcome: "SMS/email/CRM follow-up with consent-safe rules." },
-  { name: "Internal Automation Sprint", price: "$3,000-$12,000", fit: "Teams buried in spreadsheets, inboxes, and recurring admin", outcome: "One workflow automated and documented." },
-  { name: "Architecture / Integration Consulting", price: "$100-$175/hr or $5k-$25k/project", fit: "Pharma, healthcare, SaaS, agencies, regulated teams", outcome: "Senior systems support for safe, reliable integrations." },
-  { name: "Monthly Support Retainer", price: "$500-$3,500/mo", fit: "Businesses needing ongoing technical ownership", outcome: "Website, CRM, automation, and reporting support." },
+  { name: "Local Business Tech Audit", price: "$150-$500", fit: "Restaurants, clinics, stores, salons, service businesses", outcome: "A prioritized leak map and practical action plan.", emphasis: "Best first step" },
+  { name: "Website / Booking Cleanup", price: "$750-$2,500", fit: "Owners with traffic or referrals but weak conversion", outcome: "Clear offer pages, intake, CTAs, and booking path.", emphasis: "Fix the public path" },
+  { name: "AI Follow-Up Flow", price: "$1,500-$5,000", fit: "Missed calls, slow responses, no-shows, unworked leads", outcome: "SMS/email/CRM follow-up with consent-safe rules.", emphasis: "Recover warm leads" },
+  { name: "Internal Automation Sprint", price: "$3,000-$12,000", fit: "Teams buried in spreadsheets, inboxes, and recurring admin", outcome: "One workflow automated and documented.", emphasis: "Save operator time" },
+  { name: "Architecture / Integration Consulting", price: "$100-$175/hr or $5k-$25k/project", fit: "Pharma, healthcare, SaaS, agencies, regulated teams", outcome: "Senior systems support for safe, reliable integrations.", emphasis: "De-risk complexity" },
+  { name: "Monthly Support Retainer", price: "$500-$3,500/mo", fit: "Businesses needing ongoing technical ownership", outcome: "Website, CRM, automation, and reporting support.", emphasis: "Keep improving" },
 ];
 
 const PricingSection = () => {
   return (
-    <section id="pricing" className="py-20 px-4 bg-secondary/55 dark:bg-brand-900">
-      <div className="container mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Offer ladder and starting ranges
-          </h2>
-          <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-            Pricing depends on scope, risk, integrations, and urgency. The goal is to start at the right level,
-            prove value quickly, and only expand when the business case is clear.
+    <section id="pricing" className="border-y border-border bg-secondary/55 px-4 py-14 dark:bg-brand-950 md:py-20">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Offer ladder</p>
+            <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">
+              Start small. Prove the fix. Expand only when the case is clear.
+            </h2>
+          </div>
+          <p className="max-w-md text-base leading-7 text-muted-foreground">
+            Ranges depend on scope, risk, integrations, and urgency. The first call should identify the smallest useful engagement.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {offers.map((offer) => (
-            <Card key={offer.name} className="bg-white dark:bg-card border-border shadow-[0_1px_2px_rgba(10,20,24,0.08)] h-full">
-              <CardContent className="p-6 flex flex-col h-full">
-                <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">{offer.name}</h3>
-                <p className="text-2xl font-bold text-brand-800 dark:text-brand-100 mb-4">{offer.price}</p>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3"><strong>Best fit:</strong> {offer.fit}</p>
-                <p className="text-neutral-700 dark:text-neutral-300 mb-6 flex-grow"><strong>Outcome:</strong> {offer.outcome}</p>
-                <Link href="/contact">
-                  <Button variant="outline" className="w-full">Ask about this offer</Button>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {offers.map((offer, index) => (
+            <Card key={offer.name} className={`h-full border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)] ${index === 0 ? "ring-2 ring-action/35" : ""}`}>
+              <CardContent className="flex h-full flex-col p-5">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground dark:bg-white/10 dark:text-brand-100">{offer.emphasis}</span>
+                  <span className="text-sm font-semibold text-muted-foreground">0{index + 1}</span>
+                </div>
+                <h3 className="text-xl font-bold tracking-[-0.02em] text-foreground">{offer.name}</h3>
+                <p className="mt-3 text-2xl font-bold text-brand-800 dark:text-brand-100">{offer.price}</p>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground"><strong className="text-foreground">Best fit:</strong> {offer.fit}</p>
+                <p className="mt-3 flex-grow text-sm leading-6 text-muted-foreground"><strong className="text-foreground">Outcome:</strong> {offer.outcome}</p>
+                <Link href="/contact" className={buttonVariants({ variant: index === 0 ? "cta" : "outline", className: "mt-6 w-full" })}>
+                  Book a Tech Audit
                 </Link>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <p className="text-center text-sm text-neutral-600 dark:text-neutral-400 mt-8">
-          Local phone/electronics help may be available for $50-$250/job when it is the fastest path to a relationship or referral.
+        <p className="mt-8 text-center text-sm leading-6 text-muted-foreground">
+          Local phone/electronics help may be available for $50-$250/job when it is the fastest path to a relationship, referral, or trust-building entry point.
         </p>
       </div>
     </section>

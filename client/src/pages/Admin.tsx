@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, CalendarClock, ClipboardCheck, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, CalendarClock, ClipboardCheck, LockKeyhole, ShieldCheck, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -87,69 +87,81 @@ const Admin = () => {
   };
 
   return (
-    <>
-      <section className="pt-28 pb-16 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="container mx-auto max-w-5xl">
-          <div className="flex items-center gap-3 mb-4">
-            <BarChart3 className="text-primary" size={32} />
-            <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white">Admin Metrics</h1>
+    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background))_0%,#fff_100%)] px-4 pb-16 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_34%),linear-gradient(180deg,hsl(var(--brand-950))_0%,hsl(var(--background))_100%)] md:pt-32">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">
+              <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
+              Owner-only
+            </p>
+            <h1 className="text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
+              Admin Metrics
+            </h1>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg">
+              Private operating shell for lead intake, audit demand, booking requests, and suppression counts. Credentials stay in Cloudflare environment secrets.
+            </p>
           </div>
-          <p className="text-xl text-neutral-700 dark:text-neutral-300 max-w-3xl">
-            Owner-only shell for lead intake, audit, booking, and suppression counts. Credentials stay in Cloudflare environment secrets.
-          </p>
+          <div className="rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-muted-foreground shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+            <span className="font-semibold text-foreground">SEO boundary:</span> this route is noindex, nofollow, noarchive and excluded from public sitemap surfaces.
+          </div>
         </div>
-      </section>
 
-      <section className="py-16 px-4 bg-white dark:bg-neutral-900">
-        <div className="container mx-auto max-w-5xl">
-          {!token ? (
-            <Card className="max-w-md bg-white dark:bg-neutral-800 shadow-lg">
-              <CardContent className="p-6">
-                <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Admin Login</h2>
-                <form className="space-y-5" onSubmit={handleLogin}>
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-username">Username</Label>
-                    <Input id="admin-username" type="text" value={username} onChange={(event) => setUsername(event.target.value)} required autoComplete="username" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-password">Password</Label>
-                    <Input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? "Connecting..." : "Login"}</Button>
-                </form>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-8">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">CRM Command Center</h2>
-                  <p className="text-neutral-700 dark:text-neutral-300">
-                    Last update: {metrics.updatedAt ? new Date(metrics.updatedAt).toLocaleString() : "API response"}
-                  </p>
+        {!token ? (
+          <Card className="max-w-md border-border bg-card shadow-[0_24px_80px_rgba(8,63,84,0.10)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+            <CardContent className="p-6 md:p-7">
+              <div className="mb-6 flex items-start gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
+                  <ShieldCheck className="h-5 w-5" aria-hidden="true" />
                 </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => void loadMetrics()} disabled={isLoading}>Refresh</Button>
-                  <Button variant="secondary" onClick={handleLogout}>Logout</Button>
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">Admin Login</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">Authenticate before metrics or owner workflow data loads.</p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                {metricCards.map(({ key, label, icon: Icon }) => (
-                  <Card key={key} className="bg-white dark:bg-neutral-800 shadow-md">
-                    <CardContent className="p-6">
-                      <Icon className="text-primary mb-4" size={28} />
-                      <p className="text-sm text-neutral-600 dark:text-neutral-400">{label}</p>
-                      <p className="text-3xl font-bold text-neutral-900 dark:text-white">{metrics[key]}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+              <form className="space-y-5" onSubmit={handleLogin}>
+                <div className="space-y-2">
+                  <Label htmlFor="admin-username">Username</Label>
+                  <Input id="admin-username" type="text" value={username} onChange={(event) => setUsername(event.target.value)} required autoComplete="username" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="admin-password">Password</Label>
+                  <Input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" />
+                </div>
+                <Button type="submit" variant="cta" className="w-full" disabled={isLoading}>{isLoading ? "Connecting..." : "Login"}</Button>
+              </form>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-8">
+            <div className="flex flex-col gap-4 rounded-[1.5rem] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">CRM Command Center</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Last update: {metrics.updatedAt ? new Date(metrics.updatedAt).toLocaleString() : "API response"}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => void loadMetrics()} disabled={isLoading}>Refresh</Button>
+                <Button variant="secondary" onClick={handleLogout}>Logout</Button>
               </div>
             </div>
-          )}
-        </div>
-      </section>
-    </>
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {metricCards.map(({ key, label, icon: Icon }) => (
+                <Card key={key} className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+                  <CardContent className="p-6">
+                    <Icon className="mb-4 text-brand-700 dark:text-brand-100" size={28} aria-hidden="true" />
+                    <p className="text-sm text-muted-foreground">{label}</p>
+                    <p className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-foreground">{metrics[key]}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   );
 };
 

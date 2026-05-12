@@ -15,6 +15,7 @@ import Terms from "@/pages/Terms";
 import Sitemap from "@/pages/Sitemap";
 import NotFound from "@/pages/not-found";
 import MainLayout from "@/layouts/MainLayout";
+import SeoManager from "@/components/SeoManager";
 import { useEffect } from "react";
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
   return (
     <>
       <Router>
+        <SeoManager />
         <MainLayout>
           <Switch>
             <Route path="/" component={Home} />

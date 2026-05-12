@@ -5,50 +5,50 @@ const features = [
   {
     icon: Code,
     title: "Revenue leak first",
-    description: "We start with the business problem: missed leads, weak conversion, slow follow-up, manual admin, or disconnected systems.",
+    description: "The first question is not what can be built. It is where customers, time, trust, or reporting are currently leaking.",
   },
   {
     icon: Factory,
     title: "Regulated-systems discipline",
-    description: "Experience in pharma-adjacent systems engineering brings practical habits around reliability, access, auditability, and change control.",
+    description: "Current pharma systems-engineering work informs the habits: reliability, access boundaries, auditability, and controlled change.",
   },
   {
     icon: LayoutGrid,
     title: "Small build, clear handoff",
-    description: "Most engagements are scoped into audits, sprints, or retainers with concrete deliverables your team can understand and operate.",
+    description: "Audits, sprints, and retainers are scoped so the business knows what changed, how it works, and what to improve next.",
   },
 ];
 
 const WhyChooseUs = () => {
   return (
-    <section className="py-20 px-4 bg-neutral-50 dark:bg-neutral-800">
-      <div className="container mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Why businesses call MehyarSoft
-          </h2>
-          <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-            Not every problem needs a large platform. Many businesses need a senior engineer to map the workflow,
-            remove friction, and install one reliable system at a time.
-          </p>
-        </div>
+    <section className="bg-white px-4 py-14 dark:bg-brand-900 md:py-18">
+      <div className="mx-auto max-w-7xl">
+        <div className="grid gap-7 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+          <div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Why MehyarSoft</p>
+            <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">
+              Senior judgment for businesses that need fewer leaks, not more software theater.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-muted-foreground">
+              MehyarSoft is for owners and operators who need a practical technical owner to clean up the path from prospect to paid customer and from manual work to reliable system.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <Card key={index} className="bg-white dark:bg-neutral-900 shadow-md">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center mb-4">
-                  <feature.icon className="text-primary" size={20} />
-                </div>
-                <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-neutral-700 dark:text-neutral-300">
-                  {feature.description}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+          <div className="grid gap-5">
+            {features.map((feature) => (
+              <Card key={feature.title} className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+                <CardContent className="grid gap-4 p-5 sm:grid-cols-[auto_1fr] sm:items-start">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
+                    <feature.icon aria-hidden="true" size={21} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold tracking-[-0.02em] text-foreground">{feature.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{feature.description}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     </section>

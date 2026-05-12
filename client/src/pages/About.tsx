@@ -1,51 +1,23 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { CheckCircle, Award, Users, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, Award, CheckCircle, Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import CTASection from "@/components/cta-section";
+import { buttonVariants } from "@/components/ui/button";
 
 const values = [
-  {
-    title: "Practicality",
-    description: "Start with the highest-leverage business leak before adding tools or complexity.",
-    icon: <Award className="h-6 w-6 text-primary" />,
-  },
-  {
-    title: "Reliability",
-    description: "Build systems that owners can trust, monitor, and hand off without mystery.",
-    icon: <CheckCircle className="h-6 w-6 text-primary" />,
-  },
-  {
-    title: "Operator empathy",
-    description: "Design around the people answering phones, booking customers, updating records, and serving clients.",
-    icon: <Users className="h-6 w-6 text-primary" />,
-  },
-  {
-    title: "Speed with control",
-    description: "Move fast, but keep consent, audit trails, access, and suppression lists ahead of scale.",
-    icon: <Clock className="h-6 w-6 text-primary" />,
-  },
+  { title: "Practicality", description: "Start with the highest-leverage business leak before adding tools or complexity.", icon: Award },
+  { title: "Reliability", description: "Build systems that owners can trust, monitor, and hand off without mystery.", icon: CheckCircle },
+  { title: "Operator empathy", description: "Design around the people answering phones, booking customers, updating records, and serving clients.", icon: Users },
+  { title: "Speed with control", description: "Move fast, but keep consent, audit trails, access, and suppression lists ahead of scale.", icon: Clock },
 ];
 
 const timeline = [
-  {
-    year: "15 years ago",
-    title: "From Syria to New York City",
-    description: "Mehyar came to NYC and built a life and career through software, systems thinking, and persistence.",
-  },
-  {
-    year: "10+ years",
-    title: "Professional software engineering",
-    description: "Hands-on work across application development, systems, integrations, and business technology delivery.",
-  },
-  {
-    year: "Now",
-    title: "MehyarSoft LLC",
-    description: "A consulting brand focused on software, systems engineering, AI automation, and practical tech support for local and regulated businesses.",
-  },
+  { year: "15 years ago", title: "From Syria to New York City", description: "Mehyar came to NYC and built a life and career through software, systems thinking, and persistence." },
+  { year: "10+ years", title: "Professional software engineering", description: "Hands-on work across application development, systems, integrations, and business technology delivery." },
+  { year: "Now", title: "MehyarSoft LLC", description: "A consulting brand focused on software, systems engineering, AI automation, and practical tech support for local and regulated businesses." },
 ];
+
+const credentials = ["Syrian founder in NYC", "10+ years professional software engineering", "Current regulated systems-engineering work", "Founder-led LLC: no fake agency theater"];
 
 const About = () => {
   useEffect(() => {
@@ -54,94 +26,68 @@ const About = () => {
 
   return (
     <>
-      <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-brand-100/80 via-background to-white dark:from-brand-900 dark:via-background dark:to-brand-950">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row items-center">
-            <div className="md:w-1/2 mb-10 md:mb-0 md:pr-12">
-              <p className="text-sm font-semibold tracking-wide uppercase text-brand-700 dark:text-brand-100 mb-3">Founder-led consulting</p>
-              <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
-                Built by an engineer who understands both survival and systems.
-              </h1>
-              <p className="text-lg text-neutral-700 dark:text-neutral-300 mb-6">
-                Mehyar Swelim is a Syrian founder who came to New York City 15 years ago, became a professional software engineer, and built MehyarSoft LLC to help businesses solve practical operational problems with software, systems, and automation.
-              </p>
-              <Link href="/contact">
-                <Button variant="cta" className="px-6 py-3 font-medium">
-                  Discuss a Business Bottleneck
-                </Button>
+      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_54%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_54%,hsl(var(--brand-950))_100%)] md:pb-16 md:pt-32">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+          <div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Founder-led consulting</p>
+            <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
+              Built by an engineer who understands both survival and systems.
+            </h1>
+            <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+              Mehyar Swelim is a Syrian founder in New York City with 10+ years of professional software engineering experience. MehyarSoft exists to help businesses stop losing customers, time, and money through weak websites, missed calls, manual work, and disconnected systems.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link href="/contact" className={buttonVariants({ variant: "cta", size: "lg" })}>
+                Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+              <Link href="/services" className={buttonVariants({ variant: "outline", size: "lg" })}>
+                See consulting offers
               </Link>
             </div>
-            <div className="md:w-1/2">
-              <div className="relative overflow-hidden rounded-2xl border border-border bg-white/80 p-10 shadow-[0_24px_80px_rgba(8,63,84,0.16)] dark:bg-brand-900/80 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
-                <div className="absolute inset-0 bg-gradient-to-br from-brand-100 via-transparent to-action/10 dark:from-brand-800/70 dark:to-action/10" aria-hidden="true" />
-                <div className="relative flex min-h-96 flex-col items-center justify-center text-center">
-                  <img
-                    src="/assets/mehyarsoft-logo.svg"
-                    alt="MehyarSoft logo"
-                    className="mb-8 w-full max-w-sm dark:hidden"
-                  />
-                  <img
-                    src="/assets/mehyarsoft-logo-dark.svg"
-                    alt="MehyarSoft logo"
-                    className="mb-8 hidden w-full max-w-sm dark:block"
-                  />
-                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
-                    Founder-led consulting
-                  </p>
-                  <p className="mt-4 max-w-md text-2xl font-bold leading-tight text-neutral-900 dark:text-white">
-                    Practical systems judgment presented through a focused, brand-led consulting identity.
-                  </p>
-                </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-border bg-card/88 p-4 shadow-[0_24px_80px_rgba(8,63,84,0.12)] dark:bg-card/80 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+            <div className="rounded-[1.35rem] border border-border bg-background/70 p-5 dark:bg-white/[0.03]">
+              <img src="/assets/mehyarsoft-logo.svg" alt="MehyarSoft logo" className="mb-6 w-full max-w-sm dark:hidden" />
+              <img src="/assets/mehyarsoft-logo-dark.svg" alt="MehyarSoft logo" className="mb-6 hidden w-full max-w-sm dark:block" />
+              <div className="grid gap-3">
+                {credentials.map((item) => (
+                  <div key={item} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-sm font-semibold text-foreground">
+                    <CheckCircle className="h-4 w-4 flex-none text-brand-700 dark:text-brand-100" aria-hidden="true" />
+                    <span>{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-white dark:bg-neutral-900">
-        <div className="container mx-auto max-w-5xl text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-6">
-            Mission
-          </h2>
-          <p className="text-xl text-neutral-700 dark:text-neutral-300 mb-12 leading-relaxed">
-            Help small businesses and regulated teams stop losing customers, time, and money through bad websites, missed calls, manual work, poor follow-up, and disconnected systems.
-          </p>
-
-          <Separator className="mb-12" />
-
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-6">
-            Working principle
-          </h2>
-          <p className="text-xl text-neutral-700 dark:text-neutral-300 leading-relaxed">
-            Diagnose the workflow first, ship a small reliable fix, then expand only when the numbers and operator experience justify it.
+      <section className="bg-background px-4 py-16 md:py-20">
+        <div className="mx-auto max-w-5xl rounded-[2rem] border border-border bg-card p-6 text-center shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:p-10">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Mission</p>
+          <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">Diagnose the workflow first. Ship a small reliable fix. Expand only when the case is clear.</h2>
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg">
+            The work is scoped around commercially visible leaks: slow response, confusing websites, manual handoffs, CRM gaps, disconnected tools, and systems that operators cannot trust.
           </p>
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-neutral-50 dark:bg-neutral-800">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-              Operating values
-            </h2>
-            <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-              These are the standards behind MehyarSoft consulting work.
-            </p>
+      <section className="border-y border-border bg-secondary/55 px-4 py-16 dark:bg-brand-950 md:py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto mb-10 max-w-3xl text-center">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Operating values</p>
+            <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-5xl">Premium work without theater.</h2>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {values.map((value) => (
-              <Card key={value.title} className="bg-white dark:bg-neutral-900 shadow-md h-full">
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center mb-4">
-                    {value.icon}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {values.map(({ title, description, icon: Icon }) => (
+              <Card key={title} className="h-full border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+                <CardContent className="p-6">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
+                    <Icon className="h-6 w-6" aria-hidden="true" />
                   </div>
-                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
-                    {value.title}
-                  </h3>
-                  <p className="text-neutral-700 dark:text-neutral-300">
-                    {value.description}
-                  </p>
+                  <h3 className="text-xl font-semibold tracking-[-0.02em] text-foreground">{title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -149,32 +95,21 @@ const About = () => {
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-white dark:bg-neutral-900">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-              The MehyarSoft story
-            </h2>
-            <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-              A reality-based founder story, not a fictional agency timeline.
-            </p>
+      <section className="bg-background px-4 py-16 md:py-20">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-10 text-center">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Story</p>
+            <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-5xl">A reality-based founder story.</h2>
           </div>
-
-          <div className="max-w-4xl mx-auto">
+          <div className="space-y-4">
             {timeline.map((item) => (
-              <div key={item.title} className="flex flex-col md:flex-row mb-12 last:mb-0">
-                <div className="md:w-1/4 mb-4 md:mb-0">
-                  <div className="bg-primary text-white text-xl font-bold rounded-lg px-4 py-2 inline-block">
-                    {item.year}
-                  </div>
+              <div key={item.title} className="grid gap-4 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:grid-cols-[150px_1fr] md:p-6">
+                <div className="inline-flex h-fit w-fit rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground dark:bg-white/10 dark:text-brand-100">
+                  {item.year}
                 </div>
-                <div className="md:w-3/4">
-                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-neutral-700 dark:text-neutral-300">
-                    {item.description}
-                  </p>
+                <div>
+                  <h3 className="text-xl font-semibold tracking-[-0.02em] text-foreground">{item.title}</h3>
+                  <p className="mt-2 leading-7 text-muted-foreground">{item.description}</p>
                 </div>
               </div>
             ))}
@@ -182,7 +117,17 @@ const About = () => {
         </div>
       </section>
 
-      <CTASection />
+      <section className="bg-brand-950 px-4 py-16 text-white md:py-20">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:justify-between md:p-10">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-100">Next step</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] md:text-4xl">Bring one leak. Leave with one practical path.</h2>
+          </div>
+          <Link href="/contact" className={buttonVariants({ variant: "cta", size: "lg", className: "shrink-0" })}>
+            Book a Tech Audit
+          </Link>
+        </div>
+      </section>
     </>
   );
 };

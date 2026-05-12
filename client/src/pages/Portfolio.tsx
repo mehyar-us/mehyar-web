@@ -1,44 +1,34 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { projects } from "@/data/portfolio-projects";
 import CTASection from "@/components/cta-section";
 
 const Portfolio = () => {
   const [filter, setFilter] = useState("all");
-  const [filteredProjects, setFilteredProjects] = useState(projects);
 
   useEffect(() => {
     document.title = "Engagement Patterns | MehyarSoft";
+  }, []);
 
-    if (filter === "all") {
-      setFilteredProjects(projects);
-    } else {
-      setFilteredProjects(projects.filter((project) => project.category === filter));
-    }
-  }, [filter]);
-
-  const categories = ["all", ...new Set(projects.map((p) => p.category))];
+  const categories = ["all", ...new Set(projects.map((project) => project.category))];
+  const filteredProjects = filter === "all" ? projects : projects.filter((project) => project.category === filter);
 
   return (
     <>
-      <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="container mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
-            Engagement patterns, not fake case studies
-          </h1>
-          <p className="text-xl text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto mb-8">
-            These are the service patterns MehyarSoft is positioned to deliver: audits, follow-up flows, automations, integrations, website cleanup, and retainers.
-          </p>
+      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.12),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_56%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_56%,hsl(var(--brand-950))_100%)] md:pt-32">
+        <div className="mx-auto max-w-7xl">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Engagement patterns</p>
+          <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">Engagement patterns, not fake case studies.</h1>
+          <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">No invented logos or testimonials. These are concrete MehyarSoft work patterns for audits, missed-call follow-up, automations, integrations, website cleanup, and retainers.</p>
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-white dark:bg-neutral-900">
-        <div className="container mx-auto">
-          <div className="flex flex-wrap justify-center gap-2 mb-12">
+      <section className="bg-background px-4 py-16 md:py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 flex flex-wrap gap-2">
             {categories.map((category) => (
               <Button key={category} variant={filter === category ? "default" : "outline"} className="capitalize" onClick={() => setFilter(category)}>
                 {category}
@@ -46,36 +36,33 @@ const Portfolio = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProjects.map((project) => (
-              <Card key={project.id} className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
-                <img src={project.image} alt={project.title} className="w-full h-48 object-cover" />
-                <CardContent className="p-6">
-                  <Badge variant="outline" className={`text-xs font-medium ${project.badgeColorClass} ${project.badgeBgClass} px-3 py-1 rounded-full`}>
-                    {project.category}
-                  </Badge>
-                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white mt-3 mb-2">
-                    {project.title}
-                  </h3>
-                  <p className="text-neutral-700 dark:text-neutral-300 mb-4">
-                    {project.description}
-                  </p>
-                  <Link href={`/portfolio/${project.id}`}>
-                    <a className={`inline-flex items-center ${project.textColorClass} hover:${project.hoverColorClass} font-medium transition-colors`}>
-                      View pattern <ChevronRight className="ml-2 h-4 w-4" />
-                    </a>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {filteredProjects.map((project, index) => {
+              const Icon = project.icon;
+              return (
+                <Card key={project.id} className="group h-full border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)] transition hover:border-brand-700/35">
+                  <CardContent className="flex h-full flex-col p-6">
+                    <div className="mb-5 flex items-center justify-between gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
+                        {Icon ? <Icon aria-hidden="true" size={22} /> : null}
+                      </div>
+                      <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">0{index + 1}</span>
+                    </div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">{project.category}</p>
+                    <h2 className="mt-3 text-xl font-bold tracking-[-0.02em] text-foreground">{project.title}</h2>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{project.description}</p>
+                    <div className="mt-5 rounded-2xl border border-border bg-background/70 p-4 dark:bg-white/[0.03]">
+                      <p className="text-sm font-semibold text-foreground">Typical deliverables</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{project.results.slice(0, 2).join(" • ")}</p>
+                    </div>
+                    <Link href={`/portfolio/${project.id}`} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100">
+                      View pattern <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden="true" />
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-
-          {filteredProjects.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-lg text-neutral-700 dark:text-neutral-300">No patterns found for this category.</p>
-              <Button variant="outline" className="mt-4" onClick={() => setFilter("all")}>Show all patterns</Button>
-            </div>
-          )}
         </div>
       </section>
 

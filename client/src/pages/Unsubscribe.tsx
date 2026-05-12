@@ -38,39 +38,39 @@ const Unsubscribe = () => {
   };
 
   return (
-    <>
-      <section className="pt-28 pb-16 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="container mx-auto max-w-3xl text-center">
-          <div className="w-20 h-20 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShieldOff className="text-primary" size={32} />
+    <section className="bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.12),transparent_34%),linear-gradient(180deg,hsl(var(--background))_0%,#fff_100%)] px-4 pb-16 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_34%),linear-gradient(180deg,hsl(var(--brand-950))_0%,hsl(var(--background))_100%)] md:pb-20 md:pt-32">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-card text-brand-700 shadow-[0_1px_2px_rgba(10,20,24,0.06)] dark:text-brand-100">
+            <ShieldOff className="h-7 w-7" aria-hidden="true" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">Unsubscribe</h1>
-          <p className="text-xl text-neutral-700 dark:text-neutral-300">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Suppression request</p>
+          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Unsubscribe</h1>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
             Control before scale: every outreach path must honor suppression requests before campaign activity.
           </p>
         </div>
-      </section>
 
-      <section className="py-16 px-4 bg-white dark:bg-neutral-900">
-        <div className="container mx-auto max-w-xl">
-          <Card className="bg-white dark:bg-neutral-800 shadow-lg">
-            <CardContent className="p-6">
-              <form className="space-y-5" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <Label htmlFor="unsubscribe-email">Email</Label>
-                  <Input id="unsubscribe-email" type="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="unsubscribe-reason">Reason (optional)</Label>
-                  <Textarea id="unsubscribe-reason" rows={4} placeholder="Optional: tell us what went wrong." value={reason} onChange={(event) => setReason(event.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? "Submitting..." : "Unsubscribe"}</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-    </>
+        <Card className="border-border bg-card shadow-[0_24px_80px_rgba(8,63,84,0.10)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+          <CardContent className="p-6 md:p-8">
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="unsubscribe-email">Email</Label>
+                <Input id="unsubscribe-email" type="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unsubscribe-reason">Reason (optional)</Label>
+                <Textarea id="unsubscribe-reason" rows={4} placeholder="Optional: tell us what went wrong." value={reason} onChange={(event) => setReason(event.target.value)} />
+              </div>
+              <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm leading-6 text-muted-foreground">
+                Submitting this form records a suppression request for this email. It is not a client portal and should not include passwords, customer records, or confidential business data.
+              </div>
+              <Button type="submit" variant="cta" className="w-full" disabled={isSubmitting}>{isSubmitting ? "Submitting..." : "Unsubscribe"}</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </section>
   );
 };
 

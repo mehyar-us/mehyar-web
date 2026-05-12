@@ -1,49 +1,50 @@
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 const proofItems = [
   {
-    title: "Founder credibility",
+    title: "Founder-led specialist",
     body: "Mehyar Swelim is a Syrian founder in New York City with 10+ years of professional software engineering experience and current systems-engineering work through MehyarSoft LLC.",
   },
   {
-    title: "Operational focus",
-    body: "Engagements are scoped around visible business leaks: missed calls, weak website conversion, manual reporting, CRM gaps, or disconnected tools.",
+    title: "Built around visible business leaks",
+    body: "Engagements are scoped around missed calls, weak website conversion, manual reporting, CRM gaps, disconnected tools, and follow-up that is too slow or inconsistent.",
   },
   {
-    title: "Compliance-aware approach",
-    body: "For follow-up and outreach systems, the build plan includes opt-out handling, suppression lists, audit trails, and no deceptive or unsafe mass sending.",
+    title: "Compliance-aware by default",
+    body: "Follow-up and outreach systems include opt-out handling, suppression lists, audit trails, and explicit guardrails against deceptive or unsafe mass sending.",
   },
 ];
 
 const TestimonialsSection = () => {
   return (
-    <section className="py-20 px-4 bg-neutral-50 dark:bg-neutral-800">
-      <div className="container mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Proof without fake testimonials
+    <section className="bg-background px-4 py-14 md:py-18">
+      <div className="mx-auto max-w-7xl">
+        <div className="mx-auto mb-8 max-w-3xl text-center">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Proof and trust</p>
+          <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">
+            Credibility without fake testimonials or borrowed logos.
           </h2>
-          <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-3xl mx-auto">
-            MehyarSoft uses verifiable positioning instead of invented client quotes. The promise is grounded in professional engineering experience and practical business outcomes.
+          <p className="mt-4 text-base leading-7 text-muted-foreground">
+            The promise is grounded in founder experience, regulated-systems discipline, and practical business outcomes — not invented social proof.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           {proofItems.map((item) => (
-            <Card key={item.title} className="bg-white dark:bg-neutral-900 shadow-md h-full">
-              <CardContent className="p-6">
-                <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-3">{item.title}</h3>
-                <p className="text-neutral-700 dark:text-neutral-300">{item.body}</p>
+            <Card key={item.title} className="h-full border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+              <CardContent className="p-5">
+                <h3 className="text-xl font-bold tracking-[-0.02em] text-foreground">{item.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.body}</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <div className="text-center mt-10">
-          <Link href="/about">
-            <Button variant="outline">Read the founder story</Button>
+        <div className="mt-7 text-center">
+          <Link href="/about" className={buttonVariants({ variant: "outline" })}>
+            Read the founder story
           </Link>
         </div>
       </div>
