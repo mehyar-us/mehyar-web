@@ -1,12 +1,13 @@
 # MehyarSoft Web API Contract
 
-This repo stays Cloudflare-native by default: the browser calls same-origin Cloudflare Pages Functions unless `VITE_MEHYARSOFT_API_BASE_URL` is set to an external public API origin such as `https://api.mehyar.us`.
+This repo stays Cloudflare-native by default. Public browser calls use same-origin Cloudflare Pages Functions unless `VITE_MEHYARSOFT_API_BASE_URL` is set to another public API origin. Owner-admin calls use `VITE_MEHYARSOFT_ADMIN_API_BASE_URL` when set, otherwise `https://api.mehyar.us`.
 
-No frontend secrets are required or allowed. Server-only values live in Cloudflare Pages environment variables/secrets.
+No frontend secrets are required or allowed. Server-only values live in Cloudflare Pages/Workers environment variables or secrets.
 
 ## Frontend environment
 
-- `VITE_MEHYARSOFT_API_BASE_URL`: optional public API origin. Empty means same-origin Pages Functions.
+- `VITE_MEHYARSOFT_API_BASE_URL`: optional public API origin. Empty means same-origin Pages Functions for public intake/suppression routes.
+- `VITE_MEHYARSOFT_ADMIN_API_BASE_URL`: optional owner-admin API origin. Default is `https://api.mehyar.us`. This must be a public HTTPS origin only; never include credentials, bearer tokens, query secrets, or private network URLs.
 - `VITE_TURNSTILE_SITE_KEY`: public Cloudflare Turnstile site key for intake forms.
 
 ## Cloudflare function secrets / bindings
@@ -32,10 +33,13 @@ Used by the contact form for:
 - `form_type: contact` — general lead intake.
 - `form_type: audit` — audit request.
 - `form_type: booking` — booking setup/request call.
+- `form_type: micro_offer` — $330 rescue offer.
+- `form_type: newsletter` — newsletter signup.
+- `form_type: phone_help` — local phone/electronics lead-gen request.
 
 Payload fields:
 
-- `form_type`: `contact | audit | booking | newsletter | phone_help`
+- `form_type`: `contact | audit | booking | micro_offer | newsletter | phone_help`
 - `name`: string, optional
 - `email`: string, required
 - `phone`: string, optional
@@ -61,7 +65,7 @@ Expected response:
 
 `POST /api/suppressions/unsubscribe`
 
-Used by `/#/unsubscribe`.
+Used by `/unsubscribe`.
 
 Payload fields:
 
@@ -77,9 +81,9 @@ Behavior:
 
 ### Admin login
 
-`POST /api/admin/auth/login`
+`POST /v1/admin/login`
 
-Used by `/#/admin`.
+Used by `/admin` and `/admin/email`. The browser sends the username/password only to the server-side admin API; no credential is stored in the bundle.
 
 Payload fields:
 
@@ -89,32 +93,75 @@ Payload fields:
 Expected response:
 
 - `token`: signed short-lived bearer token
-- `expiresAt`: ISO timestamp
+- `expires_in_seconds`: number, optional
 
 ### Admin metrics
 
-`GET /api/admin/metrics`
+`GET /v1/admin/metrics`
 
 Headers:
 
-- `Authorization: Bearer <admin-session-token>`
+- `Authorization: Bearer {admin_session_token}`
 
-Expected response:
+Expected response may be direct counts or backend rollup fields that normalize to:
 
 - `leads`: number
 - `contactRequests`: number
 - `auditRequests`: number
 - `bookingRequests`: number
+- `microOfferRequests`: number
 - `newsletterRequests`: number
 - `suppressions`: number
 - `updatedAt`: ISO timestamp
 
+### Rich owner dashboard snapshot
+
+`GET /v1/admin/dashboard?range=30d`
+
+Headers:
+
+- `Authorization: Bearer {admin_session_token}`
+
+Frontend behavior:
+
+- Optional in v1. If missing or 404, `/admin` still renders the protected shell using `/v1/admin/metrics` and clear pending-API empty states.
+- Must return no private data without a valid admin bearer token.
+- Must use `Cache-Control: no-store`.
+
+Expected top-level response can be direct or wrapped as `{ dashboard: ... }` / `{ snapshot: ... }` and should include these normalized shapes when available:
+
+- `recent_leads` or `leads`: array of lead summaries with `id`, `created_at`, `name`, `email`, `phone`, `company`/`business_name`, `website`, `request_type`/`form_type`, `selected_offer`, `offer_code`, `offer_tier`, `status`, `conversion_stage`, `estimated_value_cents` or dollar `value_estimate`, `first_330_status`, `monthly_retainer_target_cents`, `follow_up_due_at`/`next_follow_up_at`, `source_channel`, `utm_source`, `utm_medium`, `utm_campaign`, `intake_quality`/`quality_score`, `consent_status`, `compliance_flags`, `suppression_status`, `last_touch_at`, `next_step`.
+- `revenue` / `revenue_summary` / `revenue_engine`: owner revenue-engine rollup with `pipeline_value_cents`, `open_offer_value_cents`, `first_330_collected_cents`, optional `first_330_target_cents` (defaults to 33000), `monthly_recurring_cents`, optional `monthly_recurring_target_cents` (defaults to 900000), `due_follow_ups`, and `won_leads`.
+- `sources` or `source_attribution`: array with `source`, `leads`/`count`, optional `qualified`, `converted`, `pipeline_cents`.
+- `funnel` / `request_funnel` / `conversion_funnel`: array with `stage`, `count`, optional `conversion_rate`. Stages should preserve the commercial pipeline (`new`, `reviewed`, `contacted`, `qualified`, `proposal_sent`, `won`, `lost`) when available.
+- `outreach_drafts` / `reply_queue`: array with `id`, `lead_id`, `thread_id`, `recipient`, `subject`, `status`, `risk_flags`, `updated_at`. These populate the AI draft queue only; manual approval/send remains mandatory.
+- `campaigns` / `campaign_registry`: array with `id`, `name`, `status`, `channel`, `audience`, `drafts_pending`, `compliance_status`, `updated_at`.
+- `compliance_gates`: array with `key`, `label`, `status` (`pass | attention | blocked | unknown`), `detail`.
+- `audit_log` / `recent_audit`: array with `id`, `created_at`, `actor_type`, `event_type`, `entity_type`, `entity_id`, `metadata`.
+- `conversion_trend`: array with `date`, `leads`, optional `qualified`, `converted`.
+- `zoho_status` or `sync`: `last_success_at`, `last_status`, `last_error_code`, `last_error_message`, `next_expected_sync_at`.
+- `suppressions`: number or `suppression_list`: array.
+- `export_url`: optional admin-only URL for CSV/export download.
+
+### Admin email command center
+
+The frontend uses the live admin API for contact@mehyar.us email operations:
+
+- `GET /v1/admin/email/threads?limit=25`
+- `GET /v1/admin/email/threads/:threadId`
+- `POST /v1/admin/mail/sync`
+- `POST /v1/admin/email/threads/:threadId/drafts/ai`
+- `PATCH /v1/admin/email/drafts/:draftId`
+- `POST /v1/admin/email/drafts/:draftId/approve`
+- `POST /v1/admin/email/drafts/:draftId/send` with `confirm_manual_send: true`
+
+Manual approval is mandatory before every send. The UI must not expose bulk or autonomous email sending.
+
 ## Alignment notes for mehyar-api
 
-If `mehyar-api` becomes the public origin at `https://api.mehyar.us`, it should either mirror these `/api/...` routes or provide a compatibility Worker that maps:
+If `mehyar-api` becomes the public origin at `https://api.mehyar.us`, it should either mirror the public `/api/...` routes or provide a compatibility Worker that maps:
 
 - `/api/intake` to the canonical lead/audit/booking intake handler.
 - `/api/suppressions/unsubscribe` to suppression insert.
-- `/api/admin/auth/login` and `/api/admin/metrics` to owner-only admin endpoints.
 
-The frontend can switch origins by setting `VITE_MEHYARSOFT_API_BASE_URL`; no code changes should be required.
+The admin API should keep `/v1/admin/...` as the owner-only contract for login, metrics, dashboard rollups, and email command-center workflows. The frontend can switch origins by setting `VITE_MEHYARSOFT_API_BASE_URL` and `VITE_MEHYARSOFT_ADMIN_API_BASE_URL`; no secrets should ever be sent through Vite env values.

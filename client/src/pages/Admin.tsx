@@ -1,19 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
+  Activity,
+  BellRing,
   CalendarClock,
   CheckCircle2,
   ClipboardCheck,
+  Download,
+  FileText,
+  Gauge,
   Inbox,
+  ListChecks,
   LockKeyhole,
   MailCheck,
   MailWarning,
+  Megaphone,
   MessageSquareReply,
   RefreshCcw,
   Send,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
+  Unplug,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,11 +34,16 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   AdminEmailDraft,
+  AdminDashboardSnapshot,
+  AdminEmailAuditEvent,
   AdminEmailSyncStatus,
   AdminEmailThreadDetail,
   AdminEmailThreadSummary,
+  AdminLeadSummary,
   AdminMetrics,
+  AdminRevenueSummary,
   AdminSuppressionStatus,
+  MEHYARSOFT_ADMIN_API_BASE_URL,
   mehyarSoftApi,
 } from "@/lib/mehyarsoft-api";
 
@@ -41,6 +55,9 @@ const emptyMetrics: AdminMetrics = {
   microOfferRequests: 0,
   newsletterRequests: 0,
   suppressions: 0,
+  pipelineValueCents: 0,
+  first330CollectedCents: 0,
+  monthlyRecurringCents: 0,
 };
 
 const metricCards = [
@@ -51,6 +68,33 @@ const metricCards = [
   { key: "microOfferRequests", label: "$330 rescue", icon: ClipboardCheck },
   { key: "suppressions", label: "Suppressions", icon: ShieldCheck },
 ] as const;
+
+const emptyDashboard: AdminDashboardSnapshot = {
+  leads: [],
+  revenue: {
+    pipeline_value_cents: 0,
+    first_330_collected_cents: 0,
+    first_330_target_cents: 33000,
+    monthly_recurring_cents: 0,
+    monthly_recurring_target_cents: 900000,
+  },
+  sources: [],
+  funnel: [],
+  outreachDrafts: [],
+  campaigns: [],
+  complianceGates: [],
+  auditLog: [],
+  conversionTrend: [],
+  suppressions: 0,
+  zohoStatus: null,
+};
+
+const fallbackComplianceGates = [
+  { key: "manual_send", label: "Manual approval before send", status: "pass", detail: "UI keeps AI draft, approval, and send confirmation separate." },
+  { key: "suppression", label: "Suppression enforcement visible", status: "pass", detail: "Suppressed recipients are shown and send controls are disabled." },
+  { key: "bulk_send", label: "No bulk-send surface", status: "pass", detail: "Dashboard v1 exposes review queues only." },
+  { key: "api_contract", label: "Rich dashboard API", status: "attention", detail: "Frontend expects /v1/admin/dashboard when backend rollups are ready." },
+];
 
 const statusTone: Record<string, string> = {
   new: "bg-secondary text-secondary-foreground",
@@ -171,7 +215,7 @@ function EmailInboxTable({ threads, selectedId, onSelect }: { threads: AdminEmai
     <Card className="overflow-hidden border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[1120px] text-left text-sm">
             <thead className="border-b border-border bg-secondary/70 text-xs uppercase tracking-[0.14em] text-muted-foreground">
               <tr>
                 <th className="px-5 py-3 font-semibold">Sender</th>
@@ -224,6 +268,245 @@ function EmailInboxTable({ threads, selectedId, onSelect }: { threads: AdminEmai
   );
 }
 
+function money(cents?: number | null) {
+  if (!cents) return "$0";
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+}
+
+function percent(current?: number | null, target?: number | null) {
+  if (!current || !target) return "0%";
+  return `${Math.min(100, Math.round((current / target) * 100))}%`;
+}
+
+function leadSource(lead: AdminLeadSummary) {
+  return lead.source_channel || lead.utm_source || lead.utm_medium || "unknown";
+}
+
+function leadFollowUp(lead: AdminLeadSummary) {
+  return lead.follow_up_due_at || lead.next_step || lead.last_touch_at;
+}
+
+function scoreTone(score?: number | null) {
+  if (score == null) return "bg-muted text-muted-foreground";
+  if (score >= 80) return "bg-emerald-100 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-100";
+  if (score >= 50) return "bg-amber-100 text-amber-900 dark:bg-amber-400/15 dark:text-amber-100";
+  return "bg-secondary text-secondary-foreground";
+}
+
+function gateTone(status?: string | null) {
+  if (status === "pass" || status === "ok" || status === "clear") return "bg-emerald-100 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-100";
+  if (status === "blocked" || status === "fail") return "bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-100";
+  if (status === "attention" || status === "warning") return "bg-amber-100 text-amber-900 dark:bg-amber-400/15 dark:text-amber-100";
+  return "bg-muted text-muted-foreground";
+}
+
+function isDraftApproved(draft?: AdminEmailDraft | null) {
+  return Boolean(draft?.approved_at || draft?.status === "approved");
+}
+
+function EmptyState({ icon: Icon, title, detail }: { icon: typeof Inbox; title: string; detail: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-secondary/30 p-6 text-sm leading-6 text-muted-foreground">
+      <Icon className="mb-3 h-6 w-6 text-brand-700 dark:text-brand-100" aria-hidden="true" />
+      <p className="font-semibold text-foreground">{title}</p>
+      <p className="mt-1">{detail}</p>
+    </div>
+  );
+}
+
+function KpiCard({ label, value, detail, icon: Icon }: { label: string; value: string | number; detail: string; icon: typeof Users }) {
+  return (
+    <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+      <CardContent className="p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <Icon className="h-6 w-6 text-brand-700 dark:text-brand-100" aria-hidden="true" />
+          <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground">30d</span>
+        </div>
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-foreground">{value}</p>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">{detail}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentLeadsPanel({ leads, onOpenEmail }: { leads: AdminLeadSummary[]; onOpenEmail: () => void }) {
+  return (
+    <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+      <CardContent className="p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Lead + offer pipeline</h3>
+            <p className="text-sm text-muted-foreground">Request type, offer tier, stage, value, follow-up, source, compliance, and suppression.</p>
+          </div>
+          <Button variant="outline" onClick={onOpenEmail}><Inbox aria-hidden="true" /> Email inbox</Button>
+        </div>
+        {leads.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1120px] text-left text-sm">
+              <thead className="border-b border-border text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                <tr><th className="py-3 pr-4">Lead</th><th className="py-3 pr-4">Request / offer</th><th className="py-3 pr-4">Stage</th><th className="py-3 pr-4">Value</th><th className="py-3 pr-4">Follow-up due</th><th className="py-3 pr-4">Source</th><th className="py-3 pr-4">Quality</th><th className="py-3 pr-4">Compliance</th><th className="py-3 pr-4">Suppression</th></tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {leads.slice(0, 8).map((lead) => (
+                  <tr key={lead.id}>
+                    <td className="py-4 pr-4"><p className="font-semibold text-foreground">{lead.company || lead.name || "Unnamed lead"}</p><p className="text-xs text-muted-foreground">{lead.email || lead.phone || lead.id}</p>{lead.website ? <p className="text-xs text-muted-foreground">{lead.website}</p> : null}</td>
+                    <td className="py-4 pr-4"><p className="font-medium capitalize text-foreground">{labelize(lead.request_type)}</p><p className="text-xs capitalize text-muted-foreground">{labelize(lead.offer_tier || lead.offer_code || lead.selected_offer)}</p></td>
+                    <td className="py-4 pr-4"><ThreadStatusBadge value={lead.conversion_stage || lead.status} /></td>
+                    <td className="py-4 pr-4"><p className="font-medium text-foreground">{money(lead.estimated_value_cents)}</p><p className="text-xs text-muted-foreground">$330: {labelize(lead.first_330_status || "pending")}</p></td>
+                    <td className="py-4 pr-4 text-muted-foreground">{formatShortDate(leadFollowUp(lead)) || "Review"}</td>
+                    <td className="py-4 pr-4"><p className="font-medium text-foreground">{labelize(leadSource(lead))}</p><p className="text-xs text-muted-foreground">{lead.utm_campaign || "no campaign"}</p></td>
+                    <td className="py-4 pr-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${scoreTone(lead.intake_quality)}`}>{lead.intake_quality ?? "—"}</span></td>
+                    <td className="py-4 pr-4 text-xs text-muted-foreground">{lead.compliance_flags?.length ? lead.compliance_flags.join(", ") : labelize(lead.consent_status || "clear")}</td>
+                    <td className="py-4 pr-4"><span className={isSuppressionBlocked(lead.suppression_status) ? "rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-900 dark:bg-red-400/15 dark:text-red-100" : "rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-100"}>{labelize(suppressionStatusValue(lead.suppression_status))}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <EmptyState icon={Users} title="No lead rows returned yet" detail="The owner UI is ready for /v1/admin/dashboard recent_leads. Until then, only aggregate metrics load." />}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevenueEnginePanel({ revenue, metrics, leads }: { revenue: AdminRevenueSummary; metrics: AdminMetrics; leads: AdminLeadSummary[] }) {
+  const first330Current = revenue.first_330_collected_cents || metrics.first330CollectedCents || 0;
+  const first330Target = revenue.first_330_target_cents || 33000;
+  const monthlyCurrent = revenue.monthly_recurring_cents || metrics.monthlyRecurringCents || 0;
+  const monthlyTarget = revenue.monthly_recurring_target_cents || 900000;
+  const followUpsDue = revenue.due_follow_ups ?? leads.filter((lead) => lead.follow_up_due_at && new Date(lead.follow_up_due_at).getTime() <= Date.now()).length;
+  const openValue = revenue.open_offer_value_cents ?? leads.filter((lead) => !["won", "lost"].includes(lead.status || "")).reduce((total, lead) => total + (lead.estimated_value_cents || 0), 0);
+  const cards = [
+    { label: "Open offer pipeline", value: money(openValue || revenue.pipeline_value_cents || metrics.pipelineValueCents), detail: "Estimated value across active offers", icon: TrendingUp },
+    { label: "First $330 tracker", value: `${money(first330Current)} / ${money(first330Target)}`, detail: `${percent(first330Current, first330Target)} of first paid rescue setup`, icon: CheckCircle2 },
+    { label: "$9K/month tracker", value: `${money(monthlyCurrent)} / ${money(monthlyTarget)}`, detail: `${percent(monthlyCurrent, monthlyTarget)} of monthly systems-retainer target`, icon: Gauge },
+    { label: "Follow-ups due", value: followUpsDue, detail: "Leads needing owner action now or next", icon: CalendarClock },
+  ];
+  return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <KpiCard key={card.label} {...card} />)}</div>;
+}
+
+function SourcesAndFunnelPanel({ dashboard, metrics }: { dashboard: AdminDashboardSnapshot; metrics: AdminMetrics }) {
+  const sources = dashboard.sources.length ? dashboard.sources : [
+    { source: "contact", leads: metrics.contactRequests, pipeline_cents: 0 },
+    { source: "audit", leads: metrics.auditRequests, pipeline_cents: 0 },
+    { source: "booking", leads: metrics.bookingRequests, pipeline_cents: 0 },
+    { source: "newsletter", leads: metrics.newsletterRequests, pipeline_cents: 0 },
+    { source: "micro_offer", leads: metrics.microOfferRequests, pipeline_cents: 0 },
+  ].filter((row) => row.leads > 0);
+  const funnel = dashboard.funnel.length ? dashboard.funnel : [
+    { stage: "new", count: metrics.leads },
+    { stage: "audit", count: metrics.auditRequests },
+    { stage: "booking", count: metrics.bookingRequests },
+    { stage: "reply queue", count: dashboard.outreachDrafts.length },
+  ];
+  const maxSource = Math.max(1, ...sources.map((row) => row.leads));
+  const maxFunnel = Math.max(1, ...funnel.map((row) => row.count));
+  return (
+    <div className="grid gap-5 xl:grid-cols-2">
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+        <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Source attribution</h3>
+        <p className="mb-5 mt-1 text-sm text-muted-foreground">Where demand is entering and which channels deserve follow-up.</p>
+        {sources.length ? <div className="space-y-4">{sources.map((row) => <div key={row.source}><div className="mb-1 flex justify-between text-sm"><span className="font-medium capitalize text-foreground">{labelize(row.source)}</span><span className="text-muted-foreground">{row.leads} leads · {money(row.pipeline_cents)}</span></div><div className="h-2 rounded-full bg-secondary"><div className="h-2 rounded-full bg-brand-700 dark:bg-brand-100" style={{ width: `${Math.max(6, (row.leads / maxSource) * 100)}%` }} /></div></div>)}</div> : <EmptyState icon={Megaphone} title="Attribution waiting for API rows" detail="Expected fields: sources/source_attribution with source, leads, qualified, converted, pipeline_cents." />}
+      </CardContent></Card>
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+        <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Request-type funnel</h3>
+        <p className="mb-5 mt-1 text-sm text-muted-foreground">Lead movement from intake to conversion handoff.</p>
+        <div className="space-y-4">{funnel.map((row) => <div key={row.stage}><div className="mb-1 flex justify-between text-sm"><span className="font-medium capitalize text-foreground">{labelize(row.stage)}</span><span className="text-muted-foreground">{row.count}{row.conversion_rate != null ? ` · ${Math.round(row.conversion_rate * 100)}%` : ""}</span></div><div className="h-2 rounded-full bg-secondary"><div className="h-2 rounded-full bg-emerald-600 dark:bg-emerald-300" style={{ width: `${Math.max(6, (row.count / maxFunnel) * 100)}%` }} /></div></div>)}</div>
+      </CardContent></Card>
+    </div>
+  );
+}
+
+function OperationsPanels({ dashboard, threads }: { dashboard: AdminDashboardSnapshot; threads: AdminEmailThreadSummary[] }) {
+  const drafts = dashboard.outreachDrafts.length ? dashboard.outreachDrafts : threads.filter((thread) => ["drafted", "ready_to_send", "waiting_admin"].includes(thread.status || "")).map((thread) => ({ id: thread.id, lead_id: thread.related_lead_id, thread_id: thread.id, recipient: thread.primary_email, subject: thread.subject, status: thread.status, risk_flags: isSuppressionBlocked(thread.suppression_status) ? ["suppressed"] : [], updated_at: thread.last_message_at }));
+  const campaigns = dashboard.campaigns;
+  const gates = dashboard.complianceGates.length ? dashboard.complianceGates : fallbackComplianceGates;
+  return (
+    <div className="grid gap-5 xl:grid-cols-3">
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+        <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Outreach draft review</h3>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Manual approval queue. No autonomous send path.</p>
+        {drafts.length ? <div className="space-y-3">{drafts.slice(0, 5).map((draft) => <div key={draft.id} className="rounded-2xl border border-border bg-secondary/40 p-3"><div className="flex items-center justify-between gap-2"><p className="truncate font-semibold text-foreground">{draft.subject || "Untitled draft"}</p><ThreadStatusBadge value={draft.status} /></div><p className="mt-1 truncate text-xs text-muted-foreground">{draft.recipient || draft.lead_id || draft.thread_id}</p>{draft.risk_flags?.length ? <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">Risk: {draft.risk_flags.join(", ")}</p> : null}</div>)}</div> : <EmptyState icon={FileText} title="No drafts waiting" detail="AI-assisted email drafts appear here after backend returns outreach_drafts/reply_queue." />}
+      </CardContent></Card>
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+        <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Campaign registry</h3>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Campaigns stay visible before any outreach scale-up.</p>
+        {campaigns.length ? <div className="space-y-3">{campaigns.slice(0, 5).map((campaign) => <div key={campaign.id} className="rounded-2xl border border-border bg-secondary/40 p-3"><div className="flex items-center justify-between gap-2"><p className="font-semibold text-foreground">{campaign.name}</p><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${gateTone(campaign.compliance_status || campaign.status)}`}>{labelize(campaign.compliance_status || campaign.status)}</span></div><p className="mt-1 text-xs text-muted-foreground">{labelize(campaign.channel)} · {campaign.audience || "audience TBD"} · {campaign.drafts_pending ?? 0} drafts</p></div>)}</div> : <EmptyState icon={Megaphone} title="No campaign registry rows" detail="Expected API: campaigns/campaign_registry with status, audience, compliance_status, and drafts_pending." />}
+      </CardContent></Card>
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+        <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Compliance gates</h3>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Control before scale: suppressions, consent, audit, manual send.</p>
+        <div className="space-y-3">{gates.map((gate) => <div key={gate.key} className="rounded-2xl border border-border bg-secondary/40 p-3"><div className="flex items-center justify-between gap-2"><p className="font-semibold text-foreground">{gate.label}</p><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${gateTone(gate.status)}`}>{labelize(gate.status)}</span></div>{gate.detail ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{gate.detail}</p> : null}</div>)}</div>
+      </CardContent></Card>
+    </div>
+  );
+}
+
+function TrendAndAuditPanel({ dashboard }: { dashboard: AdminDashboardSnapshot }) {
+  const maxTrend = Math.max(1, ...dashboard.conversionTrend.map((row) => row.leads));
+  return (
+    <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+        <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Conversion trends</h3>
+        <p className="mb-5 mt-1 text-sm text-muted-foreground">Daily lead and qualification movement without exposing raw PII.</p>
+        {dashboard.conversionTrend.length ? <div className="flex h-56 items-end gap-2 border-b border-border pb-3">{dashboard.conversionTrend.slice(-14).map((point) => <div key={point.date} className="flex min-w-8 flex-1 flex-col items-center gap-2"><div className="w-full rounded-t-xl bg-brand-700 dark:bg-brand-100" style={{ height: `${Math.max(8, (point.leads / maxTrend) * 180)}px` }} title={`${point.date}: ${point.leads} leads`} /><span className="text-[10px] text-muted-foreground">{point.date.slice(5)}</span></div>)}</div> : <EmptyState icon={TrendingUp} title="Trend rollups pending" detail="Expected API: conversion_trend/trends with date, leads, qualified, converted." />}
+      </CardContent></Card>
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+        <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Recent audit log</h3>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Owner auth/actions and workflow audit tail.</p>
+        {dashboard.auditLog.length ? <AuditList events={dashboard.auditLog} /> : <EmptyState icon={ListChecks} title="No audit rows returned" detail="Expected API: audit_log/recent_audit with created_at, event_type, actor, entity." />}
+      </CardContent></Card>
+    </div>
+  );
+}
+
+function AuditList({ events }: { events: AdminEmailAuditEvent[] }) {
+  return <div className="space-y-3">{events.slice(0, 7).map((event, index) => <div key={event.id || `${event.event_type}-${index}`} className="rounded-2xl border border-border bg-secondary/40 p-3 text-sm"><div className="flex items-center justify-between gap-3"><p className="font-semibold text-foreground">{auditEventLabel(event)}</p><span className="text-xs text-muted-foreground">{formatShortDate(event.created_at)}</span></div><p className="mt-1 text-xs text-muted-foreground">{labelize(event.actor_type || event.actor)} · {labelize(event.entity_type)} {event.entity_id || ""}</p></div>)}</div>;
+}
+
+function safeAdminExportUrl(rawUrl?: string | null) {
+  if (!rawUrl) return null;
+  try {
+    const url = new URL(rawUrl, MEHYARSOFT_ADMIN_API_BASE_URL || window.location.origin);
+    const adminOrigin = new URL(MEHYARSOFT_ADMIN_API_BASE_URL || window.location.origin).origin;
+    const allowedOrigin = url.origin === adminOrigin || url.origin === window.location.origin;
+    return url.protocol === "https:" && allowedOrigin && !url.username && !url.password ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function AdminDashboard({ dashboard, metrics, threads, sync, isLoading, onRefresh, onOpenEmail }: { dashboard: AdminDashboardSnapshot; metrics: AdminMetrics; threads: AdminEmailThreadSummary[]; sync?: AdminEmailSyncStatus | null; isLoading: boolean; onRefresh: () => void; onOpenEmail: () => void }) {
+  const effectiveSync = dashboard.zohoStatus || sync;
+  const safeExportUrl = safeAdminExportUrl(dashboard.exportUrl);
+  const waiting = threads.filter((thread) => thread.status === "waiting_admin" || (thread.unread_count || 0) > 0).length;
+  const highQuality = dashboard.leads.filter((lead) => (lead.intake_quality || 0) >= 80).length;
+  const suppressions = dashboard.suppressions || metrics.suppressions;
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Lead inbox" value={metrics.leads} detail={`${highQuality} high-quality rows returned by dashboard API`} icon={Inbox} />
+        <KpiCard label="$330 rescue leads" value={metrics.microOfferRequests} detail="Micro-offer demand separated from general inquiries" icon={ClipboardCheck} />
+        <KpiCard label="Needs reply" value={waiting + dashboard.outreachDrafts.length} detail="Email threads and draft review queue requiring owner action" icon={BellRing} />
+        <KpiCard label="Suppression controls" value={suppressions} detail="Unsubscribes/suppressed recipients visible before outreach" icon={ShieldCheck} />
+      </div>
+
+      <RevenueEnginePanel revenue={dashboard.revenue} metrics={metrics} leads={dashboard.leads} />
+
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="flex gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100"><Activity className="h-5 w-5" aria-hidden="true" /></div><div><h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Owner operating view</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">Zoho: {effectiveSync ? labelize(effectiveSync.last_status || "ready") : "not returned"} · Last sync {formatDate(effectiveSync?.last_success_at)} · Updated {formatDate(dashboard.updatedAt || metrics.updatedAt)}</p></div></div>
+        <div className="flex flex-wrap gap-3"><Button variant="outline" onClick={onRefresh} disabled={isLoading}><RefreshCcw className={isLoading ? "animate-spin" : ""} aria-hidden="true" />Refresh</Button>{safeExportUrl ? <Button variant="secondary" onClick={() => window.open(safeExportUrl, "_blank", "noopener,noreferrer")}><Download aria-hidden="true" />Export</Button> : <Button variant="secondary" disabled><Unplug aria-hidden="true" />Export pending API</Button>}</div>
+      </CardContent></Card>
+
+      <RecentLeadsPanel leads={dashboard.leads} onOpenEmail={onOpenEmail} />
+      <SourcesAndFunnelPanel dashboard={dashboard} metrics={metrics} />
+      <OperationsPanels dashboard={dashboard} threads={threads} />
+      <TrendAndAuditPanel dashboard={dashboard} />
+    </div>
+  );
+}
+
 function ThreadDetail({
   detail,
   draft,
@@ -264,7 +547,9 @@ function ThreadDetail({
   const latestInbound = [...detail.messages].reverse().find((message) => message.direction !== "outbound");
   const effectiveSuppression = detail.lead?.suppression_status || detail.thread.suppression_status;
   const isSuppressed = isSuppressionBlocked(effectiveSuppression);
-  const canSend = Boolean(draft?.id && draftBody.trim() && !isSuppressed);
+  const approvedDraftReady = isDraftApproved(draft);
+  const hasUnapprovedEdits = approvedDraftReady && (draftSubject !== (draft?.subject || "") || draftBody !== (draft?.body_text || ""));
+  const canSend = Boolean(draft?.id && draftBody.trim() && approvedDraftReady && !hasUnapprovedEdits && !isSuppressed);
 
   return (
     <div className="space-y-5">
@@ -352,7 +637,11 @@ function ThreadDetail({
               Send reviewed reply
             </Button>
           </div>
-          <p className="text-xs leading-5 text-muted-foreground">Send opens a confirmation gate and calls the backend send endpoint with confirm_manual_send=true. No bulk send or autonomous send path exists in this UI.</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Send is locked until the active draft has already been approved, opens a confirmation gate, and calls the backend send endpoint with confirm_manual_send=true. No bulk send or autonomous send path exists in this UI.
+            {draft?.id && !approvedDraftReady ? " Approve this draft before send is enabled." : ""}
+            {hasUnapprovedEdits ? " Edits after approval require saving and approving again before send." : ""}
+          </p>
         </CardContent>
       </Card>
 
@@ -384,6 +673,7 @@ const Admin = () => {
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(() => sessionStorage.getItem("mehyarsoft_admin_token") || "");
   const [metrics, setMetrics] = useState<AdminMetrics>(emptyMetrics);
+  const [dashboard, setDashboard] = useState<AdminDashboardSnapshot>(emptyDashboard);
   const [threads, setThreads] = useState<AdminEmailThreadSummary[]>([]);
   const [sync, setSync] = useState<AdminEmailSyncStatus | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(() => getThreadIdFromPath(window.location.pathname));
@@ -406,8 +696,12 @@ const Admin = () => {
     if (!sessionToken) return;
     setIsLoading(true);
     try {
-      const nextMetrics = await mehyarSoftApi.getMetrics(sessionToken);
+      const [nextMetrics, nextDashboard] = await Promise.all([
+        mehyarSoftApi.getMetrics(sessionToken),
+        mehyarSoftApi.getDashboardSnapshot(sessionToken).catch(() => null),
+      ]);
       setMetrics({ ...emptyMetrics, ...nextMetrics });
+      if (nextDashboard) setDashboard({ ...emptyDashboard, ...nextDashboard });
     } catch (error) {
       sessionStorage.removeItem("mehyarsoft_admin_token");
       setToken("");
@@ -505,6 +799,7 @@ const Admin = () => {
     sessionStorage.removeItem("mehyarsoft_admin_token");
     setToken("");
     setMetrics(emptyMetrics);
+    setDashboard(emptyDashboard);
     setThreads([]);
     setThreadDetail(null);
     setActiveDraft(null);
@@ -583,13 +878,19 @@ const Admin = () => {
       toast({ title: "Send blocked", description: "Backend reports this recipient or lead is suppressed. Review only; do not send.", variant: "destructive" });
       return;
     }
+    if (!isDraftApproved(activeDraft)) {
+      toast({ title: "Approval required", description: "Approve the reviewed draft before opening the send confirmation gate.", variant: "destructive" });
+      return;
+    }
+    if (draftSubject !== (activeDraft.subject || "") || draftBody !== (activeDraft.body_text || "")) {
+      toast({ title: "Approve latest edits", description: "Save and approve the current draft text before sending. Send never auto-approves edits.", variant: "destructive" });
+      return;
+    }
     const recipient = [...(threadDetail?.messages || [])].reverse().find((message) => message.direction !== "outbound")?.from_email || threadDetail?.thread.primary_email || "the original inbound sender";
     const confirmed = window.confirm(`Manual send confirmation required. Send exactly one reviewed reply from contact@mehyar.us to ${recipient}? This is not a bulk or autonomous send.`);
     if (!confirmed) return;
     setIsDraftBusy(true);
     try {
-      await mehyarSoftApi.updateEmailDraft(token, activeDraft.id, { subject: draftSubject, body_text: draftBody });
-      if (activeDraft.status !== "approved") await mehyarSoftApi.approveEmailDraft(token, activeDraft.id);
       const response = await mehyarSoftApi.sendEmailDraft(token, activeDraft.id, activeDraft.next_follow_up_at || activeDraft.suggested_follow_up_at || undefined);
       toast({ title: "Reply sent", description: response.send_event?.sent_at ? `Sent ${formatDate(response.send_event.sent_at)}` : "Backend confirmed send request." });
       await loadThread(selectedThreadId, token);
@@ -667,17 +968,15 @@ const Admin = () => {
             </div>
 
             {!isEmailRoute ? (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {metricCards.map(({ key, label, icon: Icon }) => (
-                  <Card key={key} className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
-                    <CardContent className="p-6">
-                      <Icon className="mb-4 text-brand-700 dark:text-brand-100" size={28} aria-hidden="true" />
-                      <p className="text-sm text-muted-foreground">{label}</p>
-                      <p className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-foreground">{metrics[key]}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <AdminDashboard
+                dashboard={dashboard}
+                metrics={metrics}
+                threads={threads}
+                sync={sync}
+                isLoading={isLoading}
+                onRefresh={() => void loadMetrics()}
+                onOpenEmail={() => setLocation("/admin/email")}
+              />
             ) : (
               <div className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-3">

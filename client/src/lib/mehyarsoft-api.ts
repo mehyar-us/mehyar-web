@@ -69,6 +69,116 @@ export interface AdminMetrics {
   microOfferRequests: number;
   newsletterRequests: number;
   suppressions: number;
+  pipelineValueCents?: number;
+  first330CollectedCents?: number;
+  monthlyRecurringCents?: number;
+  updatedAt?: string;
+}
+
+export interface AdminLeadSummary {
+  id: string;
+  created_at?: string | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  website?: string | null;
+  request_type?: string | null;
+  selected_offer?: string | null;
+  offer_code?: string | null;
+  offer_tier?: string | null;
+  source_channel?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  status?: string | null;
+  conversion_stage?: string | null;
+  estimated_value_cents?: number | null;
+  first_330_status?: string | null;
+  monthly_retainer_target_cents?: number | null;
+  follow_up_due_at?: string | null;
+  compliance_flags?: string[] | null;
+  suppression_status?: AdminSuppressionStatus | null;
+  intake_quality?: number | null;
+  consent_status?: string | null;
+  last_touch_at?: string | null;
+  next_step?: string | null;
+}
+
+export interface AdminSourceAttributionRow {
+  source: string;
+  leads: number;
+  qualified?: number;
+  converted?: number;
+  pipeline_cents?: number;
+}
+
+export interface AdminFunnelStage {
+  stage: string;
+  count: number;
+  conversion_rate?: number | null;
+}
+
+export interface AdminOutreachDraftSummary {
+  id: string;
+  lead_id?: string | null;
+  thread_id?: string | null;
+  recipient?: string | null;
+  subject?: string | null;
+  status?: string | null;
+  risk_flags?: string[] | null;
+  updated_at?: string | null;
+}
+
+export interface AdminCampaignSummary {
+  id: string;
+  name: string;
+  status?: string | null;
+  channel?: string | null;
+  audience?: string | null;
+  drafts_pending?: number | null;
+  compliance_status?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminComplianceGate {
+  key: string;
+  label: string;
+  status: "pass" | "attention" | "blocked" | "unknown" | string;
+  detail?: string | null;
+}
+
+export interface AdminConversionTrendPoint {
+  date: string;
+  leads: number;
+  qualified?: number;
+  converted?: number;
+}
+
+export interface AdminRevenueSummary {
+  pipeline_value_cents: number;
+  first_330_collected_cents: number;
+  first_330_target_cents: number;
+  monthly_recurring_cents: number;
+  monthly_recurring_target_cents: number;
+  open_offer_value_cents?: number;
+  due_follow_ups?: number;
+  won_leads?: number;
+}
+
+export interface AdminDashboardSnapshot {
+  leads: AdminLeadSummary[];
+  revenue: AdminRevenueSummary;
+  sources: AdminSourceAttributionRow[];
+  funnel: AdminFunnelStage[];
+  outreachDrafts: AdminOutreachDraftSummary[];
+  campaigns: AdminCampaignSummary[];
+  complianceGates: AdminComplianceGate[];
+  auditLog: AdminEmailAuditEvent[];
+  conversionTrend: AdminConversionTrendPoint[];
+  suppressions: number;
+  zohoStatus?: AdminEmailSyncStatus | null;
+  exportUrl?: string | null;
   updatedAt?: string;
 }
 
@@ -322,6 +432,9 @@ function normalizeMetrics(raw: unknown): AdminMetrics {
     microOfferRequests: sourceCounts.micro_offer || sourceCounts["330"] || 0,
     newsletterRequests: sourceCounts.newsletter || 0,
     suppressions: asNumber(record.suppressions) ?? suppressionCount,
+    pipelineValueCents: asNumber(record.pipeline_value_cents) ?? asNumber(record.pipelineValueCents) ?? undefined,
+    first330CollectedCents: asNumber(record.first_330_collected_cents) ?? asNumber(record.first330CollectedCents) ?? undefined,
+    monthlyRecurringCents: asNumber(record.monthly_recurring_cents) ?? asNumber(record.monthlyRecurringCents) ?? undefined,
     updatedAt: asString(record.updatedAt) || asString(record.updated_at) || new Date().toISOString(),
   };
 }
@@ -428,7 +541,147 @@ function syncStatusFromResponse(raw: unknown): AdminEmailSyncStatus {
     last_status: asString(record.status) || (record.ok === true ? "synced" : null),
     last_error_code: asString(record.error) || null,
     last_error_message: asString(record.message) || null,
-    next_expected_sync_at: null,
+    next_expected_sync_at: asString(record.next_expected_sync_at),
+  };
+}
+
+function normalizeLeadSummary(raw: unknown): AdminLeadSummary {
+  const record = asRecord(raw);
+  return {
+    id: asString(record.id) || asString(record.lead_id) || "unknown-lead",
+    created_at: asString(record.created_at),
+    name: asString(record.name),
+    email: asString(record.email),
+    phone: asString(record.phone),
+    company: asString(record.company) || asString(record.business_name),
+    website: asString(record.website) || asString(record.website_url),
+    request_type: asString(record.request_type) || asString(record.form_type) || asString(record.offer_code),
+    selected_offer: asString(record.selected_offer),
+    offer_code: asString(record.offer_code),
+    offer_tier: asString(record.offer_tier) || asString(record.selected_offer) || asString(record.offer_code),
+    source_channel: asString(record.source_channel) || asString(record.source) || asString(record.utm_source),
+    utm_source: asString(record.utm_source),
+    utm_medium: asString(record.utm_medium),
+    utm_campaign: asString(record.utm_campaign),
+    status: asString(record.status) || "new",
+    conversion_stage: asString(record.conversion_stage) || asString(record.stage),
+    estimated_value_cents: asNumber(record.estimated_value_cents) ?? asNumber(record.value_estimate_cents) ?? (asNumber(record.value_estimate) != null ? asNumber(record.value_estimate)! * 100 : null),
+    first_330_status: asString(record.first_330_status) || asString(record.deposit_status),
+    monthly_retainer_target_cents: asNumber(record.monthly_retainer_target_cents) ?? asNumber(record.retainer_target_cents),
+    follow_up_due_at: asString(record.follow_up_due_at) || asString(record.next_follow_up_at),
+    compliance_flags: asArray(record.compliance_flags || record.risk_flags).filter((item): item is string => typeof item === "string"),
+    suppression_status: normalizeSuppression(record.suppression_status),
+    intake_quality: asNumber(record.intake_quality) ?? asNumber(record.quality_score),
+    consent_status: asString(record.consent_status) || (record.consent_contact === true ? "contact_ok" : null),
+    last_touch_at: asString(record.last_touch_at) || asString(record.updated_at),
+    next_step: asString(record.next_step) || asString(record.owner_next_step),
+  };
+}
+
+function normalizeSourceAttribution(raw: unknown): AdminSourceAttributionRow {
+  const record = asRecord(raw);
+  return {
+    source: asString(record.source) || asString(record.source_channel) || "unknown",
+    leads: asNumber(record.leads) ?? asNumber(record.count) ?? 0,
+    qualified: asNumber(record.qualified) ?? undefined,
+    converted: asNumber(record.converted) ?? undefined,
+    pipeline_cents: asNumber(record.pipeline_cents) ?? undefined,
+  };
+}
+
+function normalizeFunnelStage(raw: unknown): AdminFunnelStage {
+  const record = asRecord(raw);
+  return {
+    stage: asString(record.stage) || asString(record.name) || "unknown",
+    count: asNumber(record.count) ?? asNumber(record.leads) ?? 0,
+    conversion_rate: asNumber(record.conversion_rate),
+  };
+}
+
+function normalizeOutreachDraftSummary(raw: unknown): AdminOutreachDraftSummary {
+  const record = asRecord(raw);
+  return {
+    id: asString(record.id) || asString(record.draft_id) || "unknown-draft",
+    lead_id: asString(record.lead_id),
+    thread_id: asString(record.thread_id),
+    recipient: asString(record.recipient) || asString(record.to_email) || asString(record.primary_email),
+    subject: asString(record.subject),
+    status: asString(record.status) || "draft",
+    risk_flags: asArray(record.risk_flags).filter((item): item is string => typeof item === "string"),
+    updated_at: asString(record.updated_at),
+  };
+}
+
+function normalizeCampaignSummary(raw: unknown): AdminCampaignSummary {
+  const record = asRecord(raw);
+  return {
+    id: asString(record.id) || asString(record.campaign_id) || "unknown-campaign",
+    name: asString(record.name) || asString(record.campaign_name) || "Untitled campaign",
+    status: asString(record.status) || "planned",
+    channel: asString(record.channel),
+    audience: asString(record.audience),
+    drafts_pending: asNumber(record.drafts_pending) ?? asNumber(record.pending) ?? null,
+    compliance_status: asString(record.compliance_status),
+    updated_at: asString(record.updated_at),
+  };
+}
+
+function normalizeComplianceGate(raw: unknown): AdminComplianceGate {
+  const record = asRecord(raw);
+  return {
+    key: asString(record.key) || asString(record.id) || "unknown_gate",
+    label: asString(record.label) || asString(record.name) || "Compliance gate",
+    status: asString(record.status) || "unknown",
+    detail: asString(record.detail) || asString(record.message),
+  };
+}
+
+function normalizeTrendPoint(raw: unknown): AdminConversionTrendPoint {
+  const record = asRecord(raw);
+  return {
+    date: asString(record.date) || asString(record.day) || "unknown",
+    leads: asNumber(record.leads) ?? asNumber(record.count) ?? 0,
+    qualified: asNumber(record.qualified) ?? undefined,
+    converted: asNumber(record.converted) ?? undefined,
+  };
+}
+
+
+function normalizeRevenueSummary(raw: unknown, leads: AdminLeadSummary[] = []): AdminRevenueSummary {
+  const record = asRecord(raw);
+  const pipelineFromLeads = leads.reduce((total, lead) => total + (lead.estimated_value_cents || 0), 0);
+  const first330FromLeads = leads.filter((lead) => lead.offer_code === "ai_missed_lead_rescue_330" || lead.selected_offer === "ai_missed_lead_rescue_330" || lead.first_330_status === "collected" || lead.first_330_status === "won").reduce((total, lead) => total + (lead.first_330_status === "collected" || lead.first_330_status === "won" ? 33000 : 0), 0);
+  const recurringFromLeads = leads.reduce((total, lead) => total + (lead.monthly_retainer_target_cents || 0), 0);
+  return {
+    pipeline_value_cents: asNumber(record.pipeline_value_cents) ?? asNumber(record.pipelineValueCents) ?? pipelineFromLeads,
+    first_330_collected_cents: asNumber(record.first_330_collected_cents) ?? asNumber(record.first330CollectedCents) ?? first330FromLeads,
+    first_330_target_cents: asNumber(record.first_330_target_cents) ?? 33000,
+    monthly_recurring_cents: asNumber(record.monthly_recurring_cents) ?? asNumber(record.mrr_cents) ?? recurringFromLeads,
+    monthly_recurring_target_cents: asNumber(record.monthly_recurring_target_cents) ?? asNumber(record.mrr_target_cents) ?? 900000,
+    open_offer_value_cents: asNumber(record.open_offer_value_cents) ?? undefined,
+    due_follow_ups: asNumber(record.due_follow_ups) ?? undefined,
+    won_leads: asNumber(record.won_leads) ?? undefined,
+  };
+}
+
+function normalizeDashboardSnapshot(raw: unknown): AdminDashboardSnapshot {
+  const record = asRecord(raw);
+  const dashboard = asRecord(record.dashboard || record.snapshot || record);
+  const leads = asArray(dashboard.leads || dashboard.recent_leads || record.leads).map(normalizeLeadSummary);
+  return {
+    leads,
+    revenue: normalizeRevenueSummary(dashboard.revenue || dashboard.revenue_summary || dashboard.revenue_engine || dashboard, leads),
+    sources: asArray(dashboard.sources || dashboard.source_attribution || dashboard.by_source).map(normalizeSourceAttribution),
+    funnel: asArray(dashboard.funnel || dashboard.request_funnel || dashboard.conversion_funnel).map(normalizeFunnelStage),
+    outreachDrafts: asArray(dashboard.outreach_drafts || dashboard.drafts || dashboard.reply_queue).map(normalizeOutreachDraftSummary),
+    campaigns: asArray(dashboard.campaigns || dashboard.campaign_registry).map(normalizeCampaignSummary),
+    complianceGates: asArray(dashboard.compliance_gates || dashboard.gates).map(normalizeComplianceGate),
+    auditLog: asArray(dashboard.audit_log || dashboard.audit_tail || dashboard.recent_audit).map(normalizeAuditEvent),
+    conversionTrend: asArray(dashboard.conversion_trend || dashboard.trends).map(normalizeTrendPoint),
+    suppressions: asNumber(dashboard.suppressions) ?? asArray(dashboard.suppression_list).length,
+    zohoStatus: dashboard.zoho_status || dashboard.sync ? syncStatusFromResponse(dashboard.zoho_status || dashboard.sync) : null,
+    exportUrl: asString(dashboard.export_url),
+    updatedAt: asString(dashboard.updatedAt) || asString(dashboard.updated_at) || new Date().toISOString(),
   };
 }
 
@@ -467,6 +720,13 @@ export const mehyarSoftApi = {
       headers: { Authorization: `Bearer ${token}` },
     }, adminEndpoint);
     return normalizeMetrics(response);
+  },
+
+  async getDashboardSnapshot(token: string, range = "30d") {
+    const response = await apiFetch<unknown>(`/v1/admin/dashboard?range=${encodeURIComponent(range)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }, adminEndpoint);
+    return normalizeDashboardSnapshot(response);
   },
 
   async getEmailThreads(token: string) {
