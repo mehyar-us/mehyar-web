@@ -30,6 +30,7 @@ const directRoutes = [
   'micro-offer',
   'contact',
   'admin',
+  'admin/newsletter',
   'admin/email',
   'admin/email/thread',
   'unsubscribe',
@@ -40,7 +41,11 @@ const directRoutes = [
 
 function routeShell(route) {
   if (!route.startsWith('admin')) return appShell;
-  const title = route.startsWith('admin/email') ? 'Email Command Center | MehyarSoft' : 'Admin Metrics | MehyarSoft';
+  const title = route.startsWith('admin/email')
+    ? 'Email Command Center | MehyarSoft'
+    : route.startsWith('admin/newsletter')
+      ? 'Newsletter Money Cockpit | MehyarSoft'
+      : 'Admin Metrics | MehyarSoft';
   return appShell
     .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, '<meta name="description" content="Owner-only MehyarSoft admin area." />')

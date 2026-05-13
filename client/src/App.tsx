@@ -48,6 +48,7 @@ function App() {
             <Route path="/micro-offer" component={MicroOffer} />
             <Route path="/contact" component={Contact} />
             <Route path="/admin" component={Admin} />
+            <Route path="/admin/newsletter" component={Admin} />
             <Route path="/admin/email" component={Admin} />
             <Route path="/admin/email/thread/:threadId" component={Admin} />
             <Route path="/unsubscribe" component={Unsubscribe} />

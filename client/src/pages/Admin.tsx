@@ -42,6 +42,7 @@ import {
   AdminLeadSummary,
   AdminMetrics,
   AdminRevenueSummary,
+  AdminSubscriberSummary,
   AdminSuppressionStatus,
   MEHYARSOFT_ADMIN_API_BASE_URL,
   mehyarSoftApi,
@@ -370,6 +371,92 @@ function RecentLeadsPanel({ leads, onOpenEmail }: { leads: AdminLeadSummary[]; o
   );
 }
 
+
+function subscriberSource(subscriber: AdminSubscriberSummary) {
+  return subscriber.source_page || subscriber.source_channel || subscriber.utm_source || "unknown page";
+}
+
+function subscriberOffer(subscriber: AdminSubscriberSummary) {
+  return subscriber.recommended_offer || subscriber.interest_tags?.[0] || "$330 audit / missed-lead cleanup";
+}
+
+function NewsletterSubscribersPanel({
+  subscribers,
+  metrics,
+  exportUrl,
+  isLoading,
+  actionId,
+  onRefresh,
+  onPromote,
+  onDraft,
+}: {
+  subscribers: AdminSubscriberSummary[];
+  metrics: AdminMetrics;
+  exportUrl?: string | null;
+  isLoading: boolean;
+  actionId?: string | null;
+  onRefresh: () => void;
+  onPromote: (subscriber: AdminSubscriberSummary) => void;
+  onDraft: (subscriber: AdminSubscriberSummary) => void;
+}) {
+  const conversions = subscribers.filter((subscriber) => Boolean(subscriber.converted_at || subscriber.promoted_lead_id || ["prospect", "lead", "qualified", "won"].includes(subscriber.lifecycle_stage || ""))).length;
+  const suppressed = subscribers.filter((subscriber) => isSuppressionBlocked(subscriber.suppression_status)).length;
+  const dueFollowUps = subscribers.filter((subscriber) => subscriber.next_follow_up_at && new Date(subscriber.next_follow_up_at).getTime() <= Date.now()).length;
+  const safeExportUrl = safeAdminExportUrl(exportUrl);
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Newsletter signups" value={metrics.newsletterRequests || subscribers.length} detail="Top-of-funnel subscribers captured with consent" icon={MailCheck} />
+        <KpiCard label="Signup conversions" value={conversions} detail="Subscribers promoted into prospect/lead stages" icon={TrendingUp} />
+        <KpiCard label="Follow-ups due" value={dueFollowUps} detail="Newsletter contacts needing owner action" icon={CalendarClock} />
+        <KpiCard label="Suppressed" value={suppressed} detail="Do-not-contact state visible before outreach" icon={ShieldCheck} />
+      </div>
+
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+        <CardContent className="p-5">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Signups / subscribers</h3>
+              <p className="text-sm text-muted-foreground">Consent, source page, interests, suppression, next offer, and manual Zoho draft actions.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" onClick={onRefresh} disabled={isLoading}><RefreshCcw className={isLoading ? "animate-spin" : ""} aria-hidden="true" />Refresh</Button>
+              {safeExportUrl ? <Button variant="secondary" onClick={() => window.open(safeExportUrl, "_blank", "noopener,noreferrer")}><Download aria-hidden="true" />Export CSV</Button> : <Button variant="secondary" disabled><Unplug aria-hidden="true" />CSV pending API</Button>}
+            </div>
+          </div>
+          {subscribers.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1180px] text-left text-sm">
+                <thead className="border-b border-border text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  <tr><th className="py-3 pr-4">Subscriber</th><th className="py-3 pr-4">Source page</th><th className="py-3 pr-4">Interests</th><th className="py-3 pr-4">Consent</th><th className="py-3 pr-4">Suppression</th><th className="py-3 pr-4">Pipeline</th><th className="py-3 pr-4">Next follow-up</th><th className="py-3 pr-4">Actions</th></tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {subscribers.slice(0, 20).map((subscriber) => {
+                    const suppressedRow = isSuppressionBlocked(subscriber.suppression_status);
+                    return (
+                      <tr key={subscriber.id}>
+                        <td className="py-4 pr-4"><p className="font-semibold text-foreground">{subscriber.name || subscriber.email || "Unnamed subscriber"}</p><p className="text-xs text-muted-foreground">{subscriber.email || subscriber.id}</p></td>
+                        <td className="py-4 pr-4"><p className="font-medium text-foreground">{subscriberSource(subscriber)}</p><p className="text-xs text-muted-foreground">{subscriber.utm_campaign || "no campaign"}</p></td>
+                        <td className="py-4 pr-4"><div className="flex max-w-[240px] flex-wrap gap-1.5">{subscriber.interest_tags?.length ? subscriber.interest_tags.map((tag) => <span key={tag} className="rounded-full bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">{labelize(tag)}</span>) : <span className="text-muted-foreground">No tag</span>}</div></td>
+                        <td className="py-4 pr-4"><p className="font-medium text-foreground">{subscriber.consent_marketing === false ? "No marketing" : "Marketing ok"}</p><p className="text-xs text-muted-foreground">{formatShortDate(subscriber.consent_timestamp || subscriber.created_at)}</p></td>
+                        <td className="py-4 pr-4"><span className={suppressedRow ? "rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-900 dark:bg-red-400/15 dark:text-red-100" : "rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-100"}>{labelize(suppressionStatusValue(subscriber.suppression_status))}</span></td>
+                        <td className="py-4 pr-4"><ThreadStatusBadge value={subscriber.lifecycle_stage || subscriber.conversion_stage || "subscriber"} /><p className="mt-2 text-xs text-muted-foreground">Offer: {labelize(subscriberOffer(subscriber))}</p></td>
+                        <td className="py-4 pr-4 text-muted-foreground">{formatShortDate(subscriber.next_follow_up_at) || "Recommend now"}</td>
+                        <td className="py-4 pr-4"><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => onPromote(subscriber)} disabled={Boolean(actionId) || Boolean(subscriber.promoted_lead_id) || suppressedRow}>Promote</Button><Button size="sm" variant="secondary" onClick={() => onDraft(subscriber)} disabled={Boolean(actionId) || suppressedRow || !subscriber.email}>Zoho draft</Button></div>{actionId === subscriber.id ? <p className="mt-2 text-xs text-muted-foreground">Working...</p> : null}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : <EmptyState icon={MailCheck} title="No subscriber rows returned yet" detail="Expected backend: /v1/admin/newsletter/subscribers with source_page, interest_tags, consent_timestamp, suppression_status, next_follow_up_at, recommended_offer, and export_url." />}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
 function RevenueEnginePanel({ revenue, metrics, leads }: { revenue: AdminRevenueSummary; metrics: AdminMetrics; leads: AdminLeadSummary[] }) {
   const first330Current = revenue.first_330_collected_cents || metrics.first330CollectedCents || 0;
   const first330Target = revenue.first_330_target_cents || 33000;
@@ -675,6 +762,10 @@ const Admin = () => {
   const [metrics, setMetrics] = useState<AdminMetrics>(emptyMetrics);
   const [dashboard, setDashboard] = useState<AdminDashboardSnapshot>(emptyDashboard);
   const [threads, setThreads] = useState<AdminEmailThreadSummary[]>([]);
+  const [subscribers, setSubscribers] = useState<AdminSubscriberSummary[]>([]);
+  const [subscriberExportUrl, setSubscriberExportUrl] = useState<string | null>(null);
+  const [subscriberActionId, setSubscriberActionId] = useState<string | null>(null);
+  const [isSubscriberLoading, setIsSubscriberLoading] = useState(false);
   const [sync, setSync] = useState<AdminEmailSyncStatus | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(() => getThreadIdFromPath(window.location.pathname));
   const [threadDetail, setThreadDetail] = useState<AdminEmailThreadDetail | null>(null);
@@ -687,10 +778,11 @@ const Admin = () => {
   const [isDraftBusy, setIsDraftBusy] = useState(false);
 
   const isEmailRoute = location.startsWith("/admin/email");
+  const isNewsletterRoute = location.startsWith("/admin/newsletter");
 
   useEffect(() => {
-    document.title = isEmailRoute ? "Email Command Center | MehyarSoft" : "Admin Metrics | MehyarSoft";
-  }, [isEmailRoute]);
+    document.title = isEmailRoute ? "Email Command Center | MehyarSoft" : isNewsletterRoute ? "Newsletter Money Cockpit | MehyarSoft" : "Admin Metrics | MehyarSoft";
+  }, [isEmailRoute, isNewsletterRoute]);
 
   const loadMetrics = async (sessionToken = token) => {
     if (!sessionToken) return;
@@ -733,6 +825,27 @@ const Admin = () => {
     }
   };
 
+  const loadSubscribers = async (sessionToken = token, showError = false) => {
+    if (!sessionToken) return;
+    setIsSubscriberLoading(true);
+    try {
+      const response = await mehyarSoftApi.getNewsletterSubscribers(sessionToken);
+      setSubscribers(response.items || []);
+      setSubscriberExportUrl(response.exportUrl || null);
+    } catch (error) {
+      setSubscriberExportUrl(null);
+      if (showError) {
+        toast({
+          title: "Subscriber API unavailable",
+          description: error instanceof Error ? error.message : "Showing dashboard-derived newsletter rows if available.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSubscriberLoading(false);
+    }
+  };
+
   const loadThread = async (threadId: string, sessionToken = token) => {
     if (!sessionToken) return;
     setIsEmailLoading(true);
@@ -768,12 +881,45 @@ const Admin = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, isEmailRoute, location]);
 
+  useEffect(() => {
+    if (!token || !isNewsletterRoute) return;
+    void loadSubscribers(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, isNewsletterRoute]);
+
   const emailSummary = useMemo(() => {
     const waiting = threads.filter((thread) => thread.status === "waiting_admin" || (thread.unread_count || 0) > 0).length;
     const suppressed = threads.filter((thread) => isSuppressionBlocked(thread.suppression_status)).length;
     const highPriority = threads.filter((thread) => (thread.priority_score || 0) >= 70).length;
     return { waiting, suppressed, highPriority };
   }, [threads]);
+
+  const effectiveSubscribers = useMemo<AdminSubscriberSummary[]>(() => {
+    if (subscribers.length) return subscribers;
+    return dashboard.leads
+      .filter((lead) => lead.request_type === "newsletter" || lead.offer_code === "newsletter" || lead.selected_offer === "newsletter")
+      .map((lead) => ({
+        id: lead.id,
+        created_at: lead.created_at,
+        email: lead.email,
+        name: lead.name,
+        source_page: lead.website,
+        source_channel: leadSource(lead),
+        utm_source: lead.utm_source,
+        utm_campaign: lead.utm_campaign,
+        interest_tags: [lead.selected_offer, lead.offer_code, lead.offer_tier].filter((value): value is string => Boolean(value)),
+        consent_marketing: lead.consent_status === "marketing_ok" || lead.consent_status === "contact_ok" ? true : null,
+        consent_timestamp: lead.created_at,
+        suppression_status: lead.suppression_status,
+        lifecycle_stage: lead.conversion_stage || lead.status || "subscriber",
+        promoted_lead_id: lead.request_type === "newsletter" ? null : lead.id,
+        next_follow_up_at: lead.follow_up_due_at,
+        recommended_offer: lead.offer_code || lead.selected_offer || lead.offer_tier,
+        zoho_draft_status: null,
+        conversion_stage: lead.conversion_stage,
+        converted_at: null,
+      }));
+  }, [dashboard.leads, subscribers]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -801,6 +947,8 @@ const Admin = () => {
     setMetrics(emptyMetrics);
     setDashboard(emptyDashboard);
     setThreads([]);
+    setSubscribers([]);
+    setSubscriberExportUrl(null);
     setThreadDetail(null);
     setActiveDraft(null);
   };
@@ -821,6 +969,40 @@ const Admin = () => {
       toast({ title: "Sync failed", description: error instanceof Error ? error.message : "Manual sync could not start.", variant: "destructive" });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handlePromoteSubscriber = async (subscriber: AdminSubscriberSummary) => {
+    if (!token) return;
+    setSubscriberActionId(subscriber.id);
+    try {
+      const response = await mehyarSoftApi.promoteNewsletterSubscriber(token, subscriber.id);
+      setSubscribers((current) => current.map((item) => item.id === subscriber.id ? { ...item, ...response.subscriber, promoted_lead_id: response.leadId || response.subscriber.promoted_lead_id || item.promoted_lead_id, lifecycle_stage: response.subscriber.lifecycle_stage || "prospect" } : item));
+      toast({ title: "Subscriber promoted", description: response.leadId ? "Prospect/lead handoff is now linked." : "Backend accepted the promotion action." });
+      await loadMetrics(token);
+    } catch (error) {
+      toast({ title: "Promotion unavailable", description: error instanceof Error ? error.message : "Backend did not promote this subscriber.", variant: "destructive" });
+    } finally {
+      setSubscriberActionId(null);
+    }
+  };
+
+  const handleNewsletterDraft = async (subscriber: AdminSubscriberSummary) => {
+    if (!token) return;
+    if (isSuppressionBlocked(subscriber.suppression_status)) {
+      toast({ title: "Draft blocked", description: "Suppressed subscribers stay review-only and cannot receive outreach drafts.", variant: "destructive" });
+      return;
+    }
+    setSubscriberActionId(subscriber.id);
+    try {
+      const response = await mehyarSoftApi.createNewsletterReplyDraft(token, subscriber.id);
+      setSubscribers((current) => current.map((item) => item.id === subscriber.id ? { ...item, zoho_draft_status: response.draft.status || "drafted" } : item));
+      toast({ title: "Zoho reply draft queued", description: "Draft is manual-review only; no autonomous send path was opened." });
+      if (response.threadId) setLocation(`/admin/email/thread/${encodeURIComponent(response.threadId)}`);
+    } catch (error) {
+      toast({ title: "Draft unavailable", description: error instanceof Error ? error.message : "Backend did not create a Zoho draft.", variant: "destructive" });
+    } finally {
+      setSubscriberActionId(null);
     }
   };
 
@@ -912,12 +1094,14 @@ const Admin = () => {
               Owner-only
             </p>
             <h1 className="text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
-              {isEmailRoute ? "Email Command Center" : "Admin Metrics"}
+              {isEmailRoute ? "Email Command Center" : isNewsletterRoute ? "Newsletter Money Cockpit" : "Admin Metrics"}
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg">
               {isEmailRoute
                 ? "Private contact@mehyar.us inbox, lead context, AI draft assistance, and manual reply controls. AI drafts only; Boss reviews before send."
-                : "Private operating shell for lead intake, audit demand, booking requests, and suppression counts. Credentials stay in Cloudflare environment secrets."}
+                : isNewsletterRoute
+                  ? "Private signup cockpit for source attribution, consent, suppressions, subscriber promotion, follow-up timing, offer fit, and manual Zoho draft actions."
+                  : "Private operating shell for lead intake, audit demand, booking requests, and suppression counts. Credentials stay in Cloudflare environment secrets."}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-muted-foreground shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
@@ -960,14 +1144,26 @@ const Admin = () => {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button variant={isEmailRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin")}>Metrics</Button>
-                <Button variant={isEmailRoute ? "outline" : "secondary"} onClick={() => setLocation("/admin/email")}>Email Command Center</Button>
-                <Button variant="outline" onClick={() => void (isEmailRoute ? loadEmailThreads() : loadMetrics())} disabled={isLoading || isEmailLoading}>Refresh</Button>
+                <Button variant={!isEmailRoute && !isNewsletterRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin")}>Metrics</Button>
+                <Button variant={isNewsletterRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/newsletter")}>Signups</Button>
+                <Button variant={isEmailRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/email")}>Email Command Center</Button>
+                <Button variant="outline" onClick={() => void (isEmailRoute ? loadEmailThreads() : isNewsletterRoute ? loadSubscribers(undefined, true) : loadMetrics())} disabled={isLoading || isEmailLoading || isSubscriberLoading}>Refresh</Button>
                 <Button variant="secondary" onClick={handleLogout}>Logout</Button>
               </div>
             </div>
 
-            {!isEmailRoute ? (
+            {isNewsletterRoute ? (
+              <NewsletterSubscribersPanel
+                subscribers={effectiveSubscribers}
+                metrics={metrics}
+                exportUrl={subscriberExportUrl}
+                isLoading={isSubscriberLoading}
+                actionId={subscriberActionId}
+                onRefresh={() => void loadSubscribers(undefined, true)}
+                onPromote={(subscriber) => void handlePromoteSubscriber(subscriber)}
+                onDraft={(subscriber) => void handleNewsletterDraft(subscriber)}
+              />
+            ) : !isEmailRoute ? (
               <AdminDashboard
                 dashboard={dashboard}
                 metrics={metrics}

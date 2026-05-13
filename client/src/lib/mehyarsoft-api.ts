@@ -75,6 +75,34 @@ export interface AdminMetrics {
   updatedAt?: string;
 }
 
+export interface AdminSubscriberSummary {
+  id: string;
+  created_at?: string | null;
+  email?: string | null;
+  name?: string | null;
+  source_page?: string | null;
+  source_channel?: string | null;
+  utm_source?: string | null;
+  utm_campaign?: string | null;
+  interest_tags?: string[] | null;
+  consent_marketing?: boolean | null;
+  consent_timestamp?: string | null;
+  suppression_status?: AdminSuppressionStatus | null;
+  lifecycle_stage?: string | null;
+  promoted_lead_id?: string | null;
+  next_follow_up_at?: string | null;
+  recommended_offer?: string | null;
+  zoho_draft_status?: string | null;
+  conversion_stage?: string | null;
+  converted_at?: string | null;
+}
+
+export interface AdminSubscribersResponse {
+  items: AdminSubscriberSummary[];
+  exportUrl?: string | null;
+  updatedAt?: string;
+}
+
 export interface AdminLeadSummary {
   id: string;
   created_at?: string | null;
@@ -578,6 +606,37 @@ function normalizeLeadSummary(raw: unknown): AdminLeadSummary {
   };
 }
 
+function normalizeSubscriberSummary(raw: unknown): AdminSubscriberSummary {
+  const record = asRecord(raw);
+  const tags = asArray(record.interest_tags || record.tags || record.interests)
+    .filter((item): item is string => typeof item === "string" && Boolean(item));
+  const fallbackTags = asString(record.service_interest)
+    ? asString(record.service_interest)!.split(",").map((tag) => tag.trim()).filter(Boolean)
+    : [];
+  return {
+    id: asString(record.id) || asString(record.subscriber_id) || asString(record.lead_id) || "unknown-subscriber",
+    created_at: asString(record.created_at) || asString(record.subscribed_at),
+    email: asString(record.email),
+    name: asString(record.name),
+    source_page: asString(record.source_page) || asString(record.page_path) || asString(record.referrer_path),
+    source_channel: asString(record.source_channel) || asString(record.source) || asString(record.utm_source),
+    utm_source: asString(record.utm_source),
+    utm_campaign: asString(record.utm_campaign),
+    interest_tags: tags.length ? tags : fallbackTags,
+    consent_marketing: typeof record.consent_marketing === "boolean" ? record.consent_marketing : typeof record.marketing_consent === "boolean" ? record.marketing_consent : null,
+    consent_timestamp: asString(record.consent_timestamp) || asString(record.consent_at) || asString(record.created_at),
+    suppression_status: normalizeSuppression(record.suppression_status || record.suppression),
+    lifecycle_stage: asString(record.lifecycle_stage) || asString(record.status) || "subscriber",
+    promoted_lead_id: asString(record.promoted_lead_id) || asString(record.lead_id),
+    next_follow_up_at: asString(record.next_follow_up_at) || asString(record.follow_up_due_at),
+    recommended_offer: asString(record.recommended_offer) || asString(record.offer_code) || asString(record.selected_offer),
+    zoho_draft_status: asString(record.zoho_draft_status) || asString(record.reply_draft_status) || asString(record.draft_status),
+    conversion_stage: asString(record.conversion_stage) || asString(record.stage),
+    converted_at: asString(record.converted_at),
+  };
+}
+
+
 function normalizeSourceAttribution(raw: unknown): AdminSourceAttributionRow {
   const record = asRecord(raw);
   return {
@@ -739,6 +798,47 @@ export const mehyarSoftApi = {
       next_cursor: asString(record.next_cursor),
       sync: record.sync ? syncStatusFromResponse(record.sync) : null,
     } satisfies AdminEmailThreadsResponse;
+  },
+
+  async getNewsletterSubscribers(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/newsletter/subscribers?limit=50", {
+      headers: { Authorization: `Bearer ${token}` },
+    }, adminEndpoint);
+    const record = asRecord(response);
+    const items = asArray(record.subscribers || record.signups || record.items || record.newsletter).map(normalizeSubscriberSummary);
+    return {
+      items,
+      exportUrl: asString(record.export_url) || asString(record.csv_export_url),
+      updatedAt: asString(record.updatedAt) || asString(record.updated_at) || new Date().toISOString(),
+    } satisfies AdminSubscribersResponse;
+  },
+
+  async promoteNewsletterSubscriber(token: string, subscriberId: string) {
+    const response = await postJson<unknown>(
+      `/v1/admin/newsletter/subscribers/${encodeURIComponent(subscriberId)}/promote`,
+      { target_stage: "prospect", source: "admin_money_cockpit" },
+      token,
+      adminEndpoint,
+    );
+    const record = asRecord(response);
+    return {
+      subscriber: normalizeSubscriberSummary(record.subscriber || response),
+      leadId: asString(record.lead_id) || asString(asRecord(record.lead).id),
+    };
+  },
+
+  async createNewsletterReplyDraft(token: string, subscriberId: string) {
+    const response = await postJson<unknown>(
+      `/v1/admin/newsletter/subscribers/${encodeURIComponent(subscriberId)}/zoho-draft`,
+      { template_key: "newsletter_to_consulting_intro", goal: "promote_signup_to_qualified_conversation", requires_manual_send: true },
+      token,
+      adminEndpoint,
+    );
+    const record = asRecord(response);
+    return {
+      draft: normalizeDraft(record.draft || response, { requires_manual_approval: true, requires_manual_send: true }),
+      threadId: asString(record.thread_id),
+    };
   },
 
   async getEmailThread(token: string, threadId: string) {

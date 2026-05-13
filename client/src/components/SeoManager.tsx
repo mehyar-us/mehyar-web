@@ -243,7 +243,7 @@ const staticMeta: Record<string, SeoMeta> = {
 };
 
 const adminMeta = (path: string): SeoMeta => ({
-  title: path.includes("email") ? "Email Command Center | MehyarSoft" : "Admin Metrics | MehyarSoft",
+  title: path.includes("email") ? "Email Command Center | MehyarSoft" : path.includes("newsletter") ? "Newsletter Money Cockpit | MehyarSoft" : "Admin Metrics | MehyarSoft",
   description: "Owner-only MehyarSoft admin area.",
   path,
   robots: "noindex,nofollow,noarchive",
