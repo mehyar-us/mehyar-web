@@ -1,10 +1,11 @@
 import { Link } from "wouter";
+import NewsletterSignup from "@/components/NewsletterSignup";
 
 const Footer = () => {
   return (
     <footer className="bg-neutral-900 text-white py-16 px-4">
       <div className="container mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-[1fr_0.75fr_0.75fr_1.2fr]">
           <div>
             <Link href="/" className="inline-flex items-center mb-6" aria-label="MehyarSoft home">
                 <img
@@ -52,11 +53,14 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="text-lg font-semibold mb-6">Responsible contact</h4>
-            <p className="text-neutral-300 mb-4">
-              No newsletter list is active yet. For consulting requests, use email and avoid sending passwords, API keys, PHI, payment data, or confidential files through public channels.
-            </p>
-            <Link href="/contact" className="text-neutral-300 hover:text-white transition-colors">Request a practical next step</Link>
+            <NewsletterSignup
+              variant="footer"
+              compact
+              source="footer_newsletter"
+              title="Get the free AI checklist."
+              description="A practical checklist for missed calls, weak follow-up, website leaks, and manual work."
+            />
+            <Link href="/newsletter" className="mt-3 inline-flex text-sm font-semibold text-neutral-300 transition-colors hover:text-white">Open the full checklist page →</Link>
           </div>
         </div>
 

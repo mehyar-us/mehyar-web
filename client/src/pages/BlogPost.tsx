@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/utils";
 import { blogPosts, type BlogPost as BlogPostType } from "@/data/blog-posts";
 import NotFound from "./not-found";
 import QuickAnswer from "@/components/QuickAnswer";
+import NewsletterSignup from "@/components/NewsletterSignup";
 
 const quickAnswers: Record<string, { question: string; answer: string }> = {
   "small-business-tech-audit-revenue-leaks": {
@@ -137,6 +138,15 @@ const BlogPost = () => {
               ))}
             </div>
           )}
+
+          <div className="mx-auto mt-10 max-w-3xl">
+            <NewsletterSignup
+              variant="inline"
+              source={`blog_post_${post.slug}`}
+              title="Get the free checklist behind this advice."
+              description="Use it to spot missed-call, website, CRM, and manual-work leaks in your own business before requesting a paid audit."
+            />
+          </div>
           
           {/* Share */}
           <div className="mt-8 pt-8 border-t border-neutral-200 dark:border-neutral-800">

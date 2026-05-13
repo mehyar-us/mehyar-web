@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import { blogPosts } from "@/data/blog-posts";
 import QuickAnswer from "@/components/QuickAnswer";
+import NewsletterSignup from "@/components/NewsletterSignup";
 
 const Blog = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,8 +75,8 @@ const Blog = () => {
                         </Link>
                         {index === 1 ? (
                           <div className="mt-5 rounded-2xl border border-brand-700/20 bg-secondary/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                            <p className="text-sm font-semibold text-foreground">Need this applied to your business?</p>
-                            <Link href="/contact" className="mt-2 inline-flex text-sm font-semibold text-brand-800 dark:text-brand-100">Book a Tech Audit →</Link>
+                            <p className="text-sm font-semibold text-foreground">Want the checklist before the audit?</p>
+                            <Link href="/newsletter?utm_campaign=blog_inline_cta" className="mt-2 inline-flex text-sm font-semibold text-brand-800 dark:text-brand-100">Get the free AI automation checklist →</Link>
                           </div>
                         ) : null}
                       </div>
@@ -92,6 +93,13 @@ const Blog = () => {
           </div>
 
           <aside className="space-y-5">
+            <NewsletterSignup
+              variant="inline"
+              compact
+              source="blog_sidebar"
+              title="Get the free checklist."
+              description="Spot missed-call, follow-up, website, and manual-work leaks before you buy more tools."
+            />
             <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
               <CardContent className="p-6">
                 <h3 className="text-xl font-bold tracking-[-0.02em] text-foreground">Popular articles</h3>

@@ -157,6 +157,22 @@ const staticMeta: Record<string, SeoMeta> = {
       itemListElement: blogPosts.map((post, index) => ({ "@type": "ListItem", position: index + 1, name: post.title, url: absoluteUrl(`/blog/${post.slug}`) })),
     }],
   },
+  "/newsletter": {
+    title: "Free AI Automation Checklist | MehyarSoft",
+    description:
+      "Get the free MehyarSoft AI automation checklist for finding missed calls, website leaks, poor follow-up, disconnected systems, and manual work before buying more tools.",
+    path: "/newsletter",
+    jsonLd: [webPage("/newsletter", "Free AI Automation Checklist | MehyarSoft", "Free checklist for finding lead leaks and safe automation opportunities.", "WebPage"), breadcrumbs([{ name: "Home", path: "/" }, { name: "Free Checklist", path: "/newsletter" }]), faq([
+      { question: "What is in the free AI automation checklist?", answer: "The checklist helps owners review website flow, missed calls, booking friction, follow-up gaps, disconnected systems, and manual work that may be safe to automate." },
+      { question: "Does joining the checklist require a paid audit?", answer: "No. The checklist is free. After signup, businesses that want founder-led diagnosis can request the focused $330 audit." },
+    ])],
+  },
+  "/free-checklist": {
+    title: "Free AI Automation Checklist | MehyarSoft",
+    description:
+      "Get the free MehyarSoft checklist for finding missed-call, website, follow-up, systems, and manual-work leaks before buying more tools.",
+    path: "/free-checklist",
+  },
   "/about": {
     title: "Founder Story | MehyarSoft LLC NYC Software Consultant",
     description:

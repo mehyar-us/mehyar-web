@@ -6,6 +6,7 @@ import Portfolio from "@/pages/Portfolio";
 import PortfolioDetail from "@/pages/PortfolioDetail";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
+import Newsletter from "@/pages/Newsletter";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import MicroOffer from "@/pages/MicroOffer";
@@ -40,6 +41,8 @@ function App() {
             <Route path="/portfolio/:id" component={PortfolioDetail} />
             <Route path="/blog" component={Blog} />
             <Route path="/blog/:slug" component={BlogPost} />
+            <Route path="/newsletter" component={Newsletter} />
+            <Route path="/free-checklist" component={Newsletter} />
             <Route path="/about" component={About} />
             <Route path="/330" component={MicroOffer} />
             <Route path="/micro-offer" component={MicroOffer} />

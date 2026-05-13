@@ -10,6 +10,7 @@ const coreRoutes = [
   { label: "Engagement Patterns", href: "/portfolio", description: "Problem patterns MehyarSoft can diagnose, fix, and automate." },
   { label: "Founder Story", href: "/about", description: "MehyarSoft credibility, values, and founder-led operating context." },
   { label: "Blog", href: "/blog", description: "Practical notes on follow-up, CRM, automation, and consulting decisions." },
+  { label: "Free AI Automation Checklist", href: "/newsletter", description: "Newsletter/signup funnel for the free checklist and practical automation updates." },
   { label: "Contact", href: "/contact", description: "Secure intake for audits, cleanup, automations, and systems consulting." },
   { label: "Privacy Policy", href: "/privacy-policy", description: "How contact requests, analytics, and opt-out handling work." },
   { label: "Terms", href: "/terms", description: "Website terms and engagement boundaries." },

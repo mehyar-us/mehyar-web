@@ -23,6 +23,8 @@ const directRoutes = [
   ...portfolioRoutes,
   'blog',
   ...blogRoutes,
+  'newsletter',
+  'free-checklist',
   'about',
   '330',
   'micro-offer',
