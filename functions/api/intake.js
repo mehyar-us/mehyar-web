@@ -319,12 +319,12 @@ async function sendNotification(env, leadId, data, referrer) {
       });
       const login = await loginResponse.json().catch(() => ({}));
       if (!loginResponse.ok || !login.token) return { ok: false, status: "failed", error: `api_login_${loginResponse.status}` };
-      const sendResponse = await fetch(`${apiBase}/v1/mail/zoho/send`, {
+      const sendResponse = await fetch(`${apiBase}/v1/admin/notifications/intake`, {
         method: "POST",
         headers: { authorization: `Bearer ${login.token}`, "content-type": "application/json" },
-        body: JSON.stringify({ to: env.CONTACT_TO_EMAIL || "mrswelim@gmail.com", subject, content: text }),
+        body: JSON.stringify({ to: env.CONTACT_TO_EMAIL || "mrswelim@gmail.com", subject, content: text, lead_id: leadId }),
       });
-      if (!sendResponse.ok) return { ok: false, status: "failed", error: `zoho_api_${sendResponse.status}` };
+      if (!sendResponse.ok) return { ok: false, status: "failed", error: `owner_notify_${sendResponse.status}` };
       return { ok: true, status: "sent" };
     } catch (error) {
       return { ok: false, status: "failed", error: cap(error?.message || "zoho_api_failed", 500) };

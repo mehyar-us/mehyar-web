@@ -22,6 +22,6 @@ database_id = "e4f22065-e3e8-4772-87a8-51d4976be042"
 binding = "INTAKE_KV"
 id = "cd017aca74a64cd48625450432db204e"
 
-# Pages Functions do not currently accept [[send_email]] in wrangler.toml.
-# Use Cloudflare dashboard binding if available, or set RESEND_API_KEY fallback.
-# Binding expected by functions/api/intake.js: NOTIFY_EMAIL
+# Send Email binding NOTIFY_EMAIL is configured at the Cloudflare Pages project level via API/Dashboard.
+# Pages wrangler.toml validation rejects [[send_email]], so keep the binding out of this file.
+# Destination: mrswelim@gmail.com
