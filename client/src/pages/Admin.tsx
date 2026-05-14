@@ -3,24 +3,35 @@ import { useLocation } from "wouter";
 import {
   Activity,
   BellRing,
+  BookmarkPlus,
+  BriefcaseBusiness,
+  Building2,
   CalendarClock,
   CheckCircle2,
   ClipboardCheck,
   Download,
+  ExternalLink,
+  FileStack,
   FileText,
   Gauge,
   Inbox,
+  Layers,
   ListChecks,
   LockKeyhole,
   MailCheck,
   MailWarning,
   Megaphone,
   MessageSquareReply,
+  PencilLine,
   RefreshCcw,
+  Search,
   Send,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
+  Star,
+  Target,
   TrendingUp,
   Unplug,
   Users,
@@ -39,6 +50,9 @@ import {
   AdminEmailSyncStatus,
   AdminEmailThreadDetail,
   AdminEmailThreadSummary,
+  AdminGovAgencyWatch,
+  AdminGovApplicationWorkspace,
+  AdminGovOpportunity,
   AdminLeadSummary,
   AdminMetrics,
   AdminRevenueSummary,
@@ -457,6 +471,215 @@ function NewsletterSubscribersPanel({
 }
 
 
+
+function getGovernmentOpportunityIdFromPath(path: string) {
+  const marker = "/admin/government/";
+  if (!path.startsWith(marker)) return null;
+  const raw = path.slice(marker.length).split("/")[0];
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
+
+function safeExternalSourceUrl(rawUrl?: string | null) {
+  if (!rawUrl) return null;
+  try {
+    const url = new URL(rawUrl);
+    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function listText(items?: string[] | null, fallback = "Not returned by API") {
+  return items?.length ? items.join(" · ") : fallback;
+}
+
+function govStatusTone(status?: string | null) {
+  if (["submitted", "follow_up", "watching"].includes(status || "")) return "bg-emerald-100 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-100";
+  if (["draft_needed", "reviewing"].includes(status || "")) return "bg-brand-100 text-brand-900 dark:bg-white/10 dark:text-brand-100";
+  if (["not_fit", "archived"].includes(status || "")) return "bg-secondary text-secondary-foreground";
+  return "bg-amber-100 text-amber-900 dark:bg-amber-400/15 dark:text-amber-100";
+}
+
+function fitScoreTone(score?: number | null) {
+  if (score == null) return "border-muted bg-muted text-muted-foreground";
+  if (score >= 80) return "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100";
+  if (score >= 60) return "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-100";
+  return "border-border bg-secondary text-secondary-foreground";
+}
+
+function GovOpportunityCard({ opportunity, selected, onSelect }: { opportunity: AdminGovOpportunity; selected: boolean; onSelect: (id: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(opportunity.id)}
+      className={`w-full rounded-[1.25rem] border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(8,63,84,0.10)] ${selected ? "border-brand-700 bg-brand-50/70 dark:border-brand-100 dark:bg-white/10" : "border-border bg-card"}`}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{opportunity.source || "source pending"} · {labelize(opportunity.opportunity_type)}</p>
+          <h4 className="mt-1 line-clamp-2 text-lg font-semibold tracking-[-0.02em] text-foreground">{opportunity.title}</h4>
+        </div>
+        <span className={`shrink-0 rounded-full border px-3 py-1 text-sm font-semibold ${fitScoreTone(opportunity.fit_score)}`}>{opportunity.fit_score ?? "—"}</span>
+      </div>
+      <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+        <p><Building2 className="mr-1.5 inline h-4 w-4" aria-hidden="true" />{opportunity.agency || "Agency pending"}</p>
+        <p><CalendarClock className="mr-1.5 inline h-4 w-4" aria-hidden="true" />{formatShortDate(opportunity.deadline_at) || "Deadline pending"}</p>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${govStatusTone(opportunity.status)}`}>{labelize(opportunity.status || "new")}</span>
+        {opportunity.set_aside ? <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground">{opportunity.set_aside}</span> : null}
+        {opportunity.confidence ? <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground">{opportunity.confidence} confidence</span> : null}
+      </div>
+      <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted-foreground">{opportunity.next_action || opportunity.why_fit?.[0] || "Open detail after backend returns fit reasons and next action."}</p>
+    </button>
+  );
+}
+
+function GovFilters({ search, status, source, minScore, onSearch, onStatus, onSource, onMinScore, onRefresh, isLoading }: { search: string; status: string; source: string; minScore: number; onSearch: (value: string) => void; onStatus: (value: string) => void; onSource: (value: string) => void; onMinScore: (value: number) => void; onRefresh: () => void; isLoading: boolean }) {
+  return (
+    <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+      <CardContent className="grid gap-4 p-5 lg:grid-cols-[1.2fr_repeat(3,minmax(150px,0.6fr))_auto] lg:items-end">
+        <div className="space-y-2">
+          <Label htmlFor="gov-search"><Search className="mr-1.5 inline h-4 w-4" aria-hidden="true" />Search</Label>
+          <Input id="gov-search" value={search} onChange={(event) => onSearch(event.target.value)} placeholder="software, automation, dashboard, agency" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="gov-status">Status</Label>
+          <select id="gov-status" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={status} onChange={(event) => onStatus(event.target.value)}>
+            {['all','new','reviewing','draft_needed','submitted','follow_up','not_fit','archived'].map((item) => <option key={item} value={item}>{labelize(item)}</option>)}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="gov-source">Source</Label>
+          <select id="gov-source" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={source} onChange={(event) => onSource(event.target.value)}>
+            {['all','sam.gov','usaspending','both'].map((item) => <option key={item} value={item}>{labelize(item)}</option>)}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="gov-score">Minimum fit</Label>
+          <Input id="gov-score" type="number" min={0} max={100} value={minScore} onChange={(event) => onMinScore(Number(event.target.value) || 0)} />
+        </div>
+        <Button variant="outline" onClick={onRefresh} disabled={isLoading}><RefreshCcw className={isLoading ? "animate-spin" : ""} aria-hidden="true" />Refresh</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GovWorkspacePanel({ workspace, opportunity }: { workspace?: AdminGovApplicationWorkspace | null; opportunity?: AdminGovOpportunity | null }) {
+  const checklist = workspace?.checklist || [];
+  const outline = workspace?.outline || [];
+  const capabilities = workspace?.capability_blocks || [];
+  const questions = workspace?.questions || [];
+  return (
+    <div className="grid gap-5 xl:grid-cols-2">
+      <Card className="border-border bg-card"><CardContent className="p-5">
+        <h4 className="flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-foreground"><ListChecks className="h-5 w-5 text-brand-700 dark:text-brand-100" aria-hidden="true" />Submission checklist</h4>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Extracted requirements stay separated from owner-written response language.</p>
+        {checklist.length ? <div className="space-y-3">{checklist.map((item) => <div key={item.id} className="rounded-2xl border border-border bg-secondary/40 p-3"><div className="flex items-center justify-between gap-3"><p className="font-medium text-foreground">{item.label}</p><ThreadStatusBadge value={item.status || "pending"} /></div>{item.detail ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p> : null}</div>)}</div> : <EmptyState icon={ClipboardCheck} title="Checklist waiting for protected API" detail="Expected: /v1/admin/government/opportunities/:id/workspace returns requirements/checklist rows after owner auth." />}
+      </CardContent></Card>
+      <Card className="border-border bg-card"><CardContent className="p-5">
+        <h4 className="flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-foreground"><FileStack className="h-5 w-5 text-brand-700 dark:text-brand-100" aria-hidden="true" />Response outline</h4>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Drafting assist only. Boss reviews and submits manually.</p>
+        {outline.length ? <div className="space-y-3">{outline.map((item) => <div key={item.id} className="rounded-2xl border border-border bg-secondary/40 p-3"><p className="font-medium text-foreground">{item.heading}</p>{item.notes ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.notes}</p> : null}{item.source ? <p className="mt-2 text-xs text-muted-foreground">Source: {item.source}</p> : null}</div>)}</div> : <EmptyState icon={FileText} title="Outline blocks pending" detail={`Select an opportunity${opportunity ? ` like “${opportunity.title.slice(0, 42)}…”` : ""} once backend workspace extraction is available.`} />}
+      </CardContent></Card>
+      <Card className="border-border bg-card"><CardContent className="p-5">
+        <h4 className="flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-foreground"><Layers className="h-5 w-5 text-brand-700 dark:text-brand-100" aria-hidden="true" />Capability blocks</h4>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Reusable private MehyarSoft positioning snippets — never public testimonials or invented credentials.</p>
+        {capabilities.length ? <div className="space-y-3">{capabilities.map((item) => <div key={item.id} className="rounded-2xl border border-border bg-secondary/40 p-3"><div className="flex items-center justify-between gap-3"><p className="font-medium text-foreground">{item.title}</p><ThreadStatusBadge value={item.status || "draft"} /></div>{item.body ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p> : null}</div>)}</div> : <EmptyState icon={BriefcaseBusiness} title="Capability library pending" detail="Expected protected fields: company summary, core services, security/privacy statement, owner bio snippets, NAICS targets." />}
+      </CardContent></Card>
+      <Card className="border-border bg-card"><CardContent className="p-5">
+        <h4 className="flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-foreground"><MessageSquareReply className="h-5 w-5 text-brand-700 dark:text-brand-100" aria-hidden="true" />Contracting questions</h4>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Questions for owner review before contacting any contracting officer.</p>
+        {questions.length ? <div className="space-y-3">{questions.map((item) => <div key={item.id} className="rounded-2xl border border-border bg-secondary/40 p-3"><div className="flex items-center justify-between gap-3"><p className="font-medium text-foreground">{item.question}</p><ThreadStatusBadge value={item.status || "draft"} /></div></div>)}</div> : <EmptyState icon={MessageSquareReply} title="No question drafts yet" detail="The page has the workspace slots, but protected backend data must supply the content after auth." />}
+      </CardContent></Card>
+    </div>
+  );
+}
+
+function GovDetailPanel({ opportunity, workspace, notes, status, onNotes, onStatus, onSave, isSaving }: { opportunity?: AdminGovOpportunity | null; workspace?: AdminGovApplicationWorkspace | null; notes: string; status: string; onNotes: (value: string) => void; onStatus: (value: string) => void; onSave: () => void; isSaving: boolean }) {
+  if (!opportunity) {
+    return <Card className="border-border bg-card"><CardContent className="p-6"><Target className="mb-4 h-8 w-8 text-brand-700 dark:text-brand-100" aria-hidden="true" /><h3 className="text-xl font-semibold tracking-[-0.02em] text-foreground">Select an opportunity</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">Open a protected record to review fit score, reasons, status, notes, and application workspace.</p></CardContent></Card>;
+  }
+  const sourceUrl = safeExternalSourceUrl(opportunity.source_url);
+  return (
+    <div className="space-y-5">
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{opportunity.source || "source"} · {labelize(opportunity.opportunity_type)}</p>
+            <h3 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-foreground">{opportunity.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{opportunity.agency || "Agency pending"}{opportunity.office ? ` · ${opportunity.office}` : ""}</p>
+          </div>
+          <div className="flex flex-wrap gap-2"><span className={`rounded-full border px-3 py-1 text-sm font-semibold ${fitScoreTone(opportunity.fit_score)}`}>Fit {opportunity.fit_score ?? "—"}</span><span className={`rounded-full px-3 py-1 text-sm font-semibold ${govStatusTone(opportunity.status)}`}>{labelize(opportunity.status || "new")}</span></div>
+        </div>
+        <div className="grid gap-3 rounded-2xl border border-border bg-secondary/50 p-4 text-sm md:grid-cols-2">
+          <p><span className="block font-semibold text-foreground">Deadline</span>{formatDate(opportunity.deadline_at)}</p>
+          <p><span className="block font-semibold text-foreground">Estimated value</span>{money(opportunity.estimated_value_cents)}</p>
+          <p><span className="block font-semibold text-foreground">Set-aside / NAICS</span>{opportunity.set_aside || "Not returned"}{opportunity.naics?.length ? ` · ${opportunity.naics.join(", ")}` : ""}</p>
+          <p><span className="block font-semibold text-foreground">Next action</span>{opportunity.next_action || "Review source, confirm eligibility, then draft checklist."}</p>
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-background/70 p-4"><h4 className="mb-2 flex items-center gap-2 font-semibold text-foreground"><Star className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />Why it fits</h4><p className="text-sm leading-6 text-muted-foreground">{listText(opportunity.why_fit)}</p></div>
+          <div className="rounded-2xl border border-border bg-background/70 p-4"><h4 className="mb-2 flex items-center gap-2 font-semibold text-foreground"><ShieldAlert className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />Gaps / cautions</h4><p className="text-sm leading-6 text-muted-foreground">{listText(opportunity.why_not, "No caution rows returned yet")}</p></div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3">{sourceUrl ? <Button variant="outline" onClick={() => window.open(sourceUrl, "_blank", "noopener,noreferrer")}><ExternalLink aria-hidden="true" />Source</Button> : null}<Button variant="secondary" disabled><BookmarkPlus aria-hidden="true" />Watchlist action pending API</Button></div>
+      </CardContent></Card>
+
+      <Card className="border-border bg-card"><CardContent className="p-5">
+        <h4 className="mb-4 flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-foreground"><PencilLine className="h-5 w-5 text-brand-700 dark:text-brand-100" aria-hidden="true" />Status and owner notes</h4>
+        <div className="grid gap-4 lg:grid-cols-[220px_1fr_auto] lg:items-end">
+          <div className="space-y-2"><Label htmlFor="gov-detail-status">Status</Label><select id="gov-detail-status" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={status} onChange={(event) => onStatus(event.target.value)}>{['new','reviewing','draft_needed','submitted','follow_up','not_fit','archived'].map((item) => <option key={item} value={item}>{labelize(item)}</option>)}</select></div>
+          <div className="space-y-2"><Label htmlFor="gov-notes">Private notes</Label><Textarea id="gov-notes" rows={3} value={notes} onChange={(event) => onNotes(event.target.value)} placeholder="Eligibility notes, proposal approach, pricing cautions, or owner decision." /></div>
+          <Button variant="cta" onClick={onSave} disabled={isSaving}>{isSaving ? "Saving..." : "Save"}</Button>
+        </div>
+      </CardContent></Card>
+
+      <GovWorkspacePanel workspace={workspace} opportunity={opportunity} />
+    </div>
+  );
+}
+
+function GovWatchlistPanel({ watchlist }: { watchlist: AdminGovAgencyWatch[] }) {
+  return (
+    <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="p-5">
+      <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Agency watchlist</h3><p className="text-sm text-muted-foreground">Agencies buying software, workflow automation, dashboards, web modernization, and operations support.</p></div><Building2 className="h-6 w-6 text-brand-700 dark:text-brand-100" aria-hidden="true" /></div>
+      {watchlist.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{watchlist.map((agency) => <div key={agency.id} className="rounded-2xl border border-border bg-secondary/40 p-4"><p className="font-semibold text-foreground">{agency.agency}</p><p className="mt-1 text-sm text-muted-foreground">{agency.office || agency.spend_category || "Office/category pending"}</p><p className="mt-2 text-xs leading-5 text-muted-foreground">{agency.keywords?.length ? agency.keywords.join(", ") : "Keyword watch pending"}</p><p className="mt-2 text-xs font-medium text-foreground">{agency.typical_value_cents ? `Typical value ${money(agency.typical_value_cents)}` : "Value pattern pending"}</p><p className="mt-2 text-xs text-muted-foreground">{agency.next_monitoring_action || "Monitor next daily run"}</p></div>)}</div> : <EmptyState icon={Building2} title="Watchlist waiting for protected API" detail="No agency names, internal notes, or private scoring are bundled publicly. Rows load only after owner auth." />}
+    </CardContent></Card>
+  );
+}
+
+function GovernmentOpportunitiesPanel({ opportunities, watchlist, workspace, selectedId, notes, status, isLoading, isSaving, search, statusFilter, sourceFilter, minScore, onSearch, onStatusFilter, onSourceFilter, onMinScore, onRefresh, onSelect, onNotes, onStatus, onSave }: { opportunities: AdminGovOpportunity[]; watchlist: AdminGovAgencyWatch[]; workspace?: AdminGovApplicationWorkspace | null; selectedId?: string | null; notes: string; status: string; isLoading: boolean; isSaving: boolean; search: string; statusFilter: string; sourceFilter: string; minScore: number; onSearch: (value: string) => void; onStatusFilter: (value: string) => void; onSourceFilter: (value: string) => void; onMinScore: (value: number) => void; onRefresh: () => void; onSelect: (id: string) => void; onNotes: (value: string) => void; onStatus: (value: string) => void; onSave: () => void }) {
+  const selected = opportunities.find((item) => item.id === selectedId) || null;
+  const dueSoon = opportunities.filter((item) => item.deadline_at && new Date(item.deadline_at).getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000).length;
+  const applyToday = opportunities.filter((item) => (item.fit_score || 0) >= 80 && !["submitted", "not_fit", "archived"].includes(item.status || "")).length;
+  const draftNeeded = opportunities.filter((item) => item.status === "draft_needed" || item.status === "reviewing").length;
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Daily inbox" value={opportunities.length} detail="Protected government opportunity rows returned" icon={Inbox} />
+        <KpiCard label="Apply candidates" value={applyToday} detail="Fit score ≥80 and still active" icon={Target} />
+        <KpiCard label="Deadlines ≤7d" value={dueSoon} detail="Urgent review before proposal effort" icon={CalendarClock} />
+        <KpiCard label="Workspace drafts" value={draftNeeded} detail="Reviewing or draft-needed records" icon={FileStack} />
+      </div>
+      <Card className="border-border bg-card"><CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center"><div className="flex gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100"><ShieldCheck className="h-5 w-5" aria-hidden="true" /></div><div><h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Government opportunities are owner-only</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">This surface renders shell UI publicly, but opportunity rows, notes, fit logic, watchlist, and drafts load only with the admin bearer token.</p></div></div><Badge className="bg-secondary text-secondary-foreground hover:bg-secondary">No auto-submit path</Badge></CardContent></Card>
+      <GovFilters search={search} status={statusFilter} source={sourceFilter} minScore={minScore} onSearch={onSearch} onStatus={onStatusFilter} onSource={onSourceFilter} onMinScore={onMinScore} onRefresh={onRefresh} isLoading={isLoading} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(440px,1.05fr)]">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">Daily opportunity inbox</h3><p className="text-sm text-muted-foreground">Fit score cards, filters, deadline pressure, source, status, and next best action.</p></div>{isLoading ? <Badge className="bg-secondary text-secondary-foreground">Loading...</Badge> : null}</div>
+          {opportunities.length ? <div className="space-y-3">{opportunities.map((opportunity) => <GovOpportunityCard key={opportunity.id} opportunity={opportunity} selected={selectedId === opportunity.id} onSelect={onSelect} />)}</div> : <EmptyState icon={SlidersHorizontal} title="No government rows returned yet" detail="Expected protected API: /v1/admin/government/opportunities?limit=50 with SAM.gov/USAspending records, fit scores, status, reasons, and next action." />}
+          <GovWatchlistPanel watchlist={watchlist} />
+        </div>
+        <GovDetailPanel opportunity={selected} workspace={workspace} notes={notes} status={status} onNotes={onNotes} onStatus={onStatus} onSave={onSave} isSaving={isSaving} />
+      </div>
+    </div>
+  );
+}
+
 function RevenueEnginePanel({ revenue, metrics, leads }: { revenue: AdminRevenueSummary; metrics: AdminMetrics; leads: AdminLeadSummary[] }) {
   const first330Current = revenue.first_330_collected_cents || metrics.first330CollectedCents || 0;
   const first330Target = revenue.first_330_target_cents || 33000;
@@ -766,6 +989,18 @@ const Admin = () => {
   const [subscriberExportUrl, setSubscriberExportUrl] = useState<string | null>(null);
   const [subscriberActionId, setSubscriberActionId] = useState<string | null>(null);
   const [isSubscriberLoading, setIsSubscriberLoading] = useState(false);
+  const [govOpportunities, setGovOpportunities] = useState<AdminGovOpportunity[]>([]);
+  const [govWatchlist, setGovWatchlist] = useState<AdminGovAgencyWatch[]>([]);
+  const [govWorkspace, setGovWorkspace] = useState<AdminGovApplicationWorkspace | null>(null);
+  const [selectedGovOpportunityId, setSelectedGovOpportunityId] = useState<string | null>(() => getGovernmentOpportunityIdFromPath(window.location.pathname));
+  const [govSearch, setGovSearch] = useState("");
+  const [govStatusFilter, setGovStatusFilter] = useState("all");
+  const [govSourceFilter, setGovSourceFilter] = useState("all");
+  const [govMinScore, setGovMinScore] = useState(0);
+  const [govNotes, setGovNotes] = useState("");
+  const [govStatus, setGovStatus] = useState("new");
+  const [isGovLoading, setIsGovLoading] = useState(false);
+  const [isGovSaving, setIsGovSaving] = useState(false);
   const [sync, setSync] = useState<AdminEmailSyncStatus | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(() => getThreadIdFromPath(window.location.pathname));
   const [threadDetail, setThreadDetail] = useState<AdminEmailThreadDetail | null>(null);
@@ -779,10 +1014,17 @@ const Admin = () => {
 
   const isEmailRoute = location.startsWith("/admin/email");
   const isNewsletterRoute = location.startsWith("/admin/newsletter");
+  const isGovernmentRoute = location.startsWith("/admin/government");
 
   useEffect(() => {
-    document.title = isEmailRoute ? "Email Command Center | MehyarSoft" : isNewsletterRoute ? "Newsletter Money Cockpit | MehyarSoft" : "Admin Metrics | MehyarSoft";
-  }, [isEmailRoute, isNewsletterRoute]);
+    document.title = isEmailRoute
+      ? "Email Command Center | MehyarSoft"
+      : isNewsletterRoute
+        ? "Newsletter Money Cockpit | MehyarSoft"
+        : isGovernmentRoute
+          ? "Government Opportunities | MehyarSoft"
+          : "Admin Metrics | MehyarSoft";
+  }, [isEmailRoute, isNewsletterRoute, isGovernmentRoute]);
 
   const loadMetrics = async (sessionToken = token) => {
     if (!sessionToken) return;
@@ -846,6 +1088,45 @@ const Admin = () => {
     }
   };
 
+  const loadGovernmentOpportunities = async (sessionToken = token, showError = false) => {
+    if (!sessionToken) return;
+    setIsGovLoading(true);
+    try {
+      const response = await mehyarSoftApi.getGovernmentOpportunities(sessionToken, {
+        status: govStatusFilter,
+        source: govSourceFilter,
+        minScore: govMinScore,
+        q: govSearch,
+      });
+      setGovOpportunities(response.items || []);
+      setGovWatchlist(response.watchlist || []);
+      if (response.workspace) setGovWorkspace(response.workspace);
+      const pathId = getGovernmentOpportunityIdFromPath(location);
+      const nextSelected = pathId || selectedGovOpportunityId || response.items[0]?.id || null;
+      if (nextSelected) {
+        setSelectedGovOpportunityId(nextSelected);
+        const selected = response.items.find((item) => item.id === nextSelected) || null;
+        setGovNotes(selected?.owner_notes || "");
+        setGovStatus(selected?.status || "new");
+        try {
+          const workspace = await mehyarSoftApi.getGovernmentOpportunityWorkspace(sessionToken, nextSelected);
+          setGovWorkspace(workspace);
+        } catch {
+          setGovWorkspace(response.workspace || null);
+        }
+      }
+    } catch (error) {
+      setGovOpportunities([]);
+      setGovWatchlist([]);
+      setGovWorkspace(null);
+      if (showError) {
+        toast({ title: "Government opportunities unavailable", description: error instanceof Error ? error.message : "Protected government opportunity API did not return rows.", variant: "destructive" });
+      }
+    } finally {
+      setIsGovLoading(false);
+    }
+  };
+
   const loadThread = async (threadId: string, sessionToken = token) => {
     if (!sessionToken) return;
     setIsEmailLoading(true);
@@ -886,6 +1167,12 @@ const Admin = () => {
     void loadSubscribers(token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, isNewsletterRoute]);
+
+  useEffect(() => {
+    if (!token || !isGovernmentRoute) return;
+    void loadGovernmentOpportunities(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, isGovernmentRoute, location]);
 
   const emailSummary = useMemo(() => {
     const waiting = threads.filter((thread) => thread.status === "waiting_admin" || (thread.unread_count || 0) > 0).length;
@@ -949,6 +1236,9 @@ const Admin = () => {
     setThreads([]);
     setSubscribers([]);
     setSubscriberExportUrl(null);
+    setGovOpportunities([]);
+    setGovWatchlist([]);
+    setGovWorkspace(null);
     setThreadDetail(null);
     setActiveDraft(null);
   };
@@ -956,6 +1246,35 @@ const Admin = () => {
   const handleSelectThread = (threadId: string) => {
     setSelectedThreadId(threadId);
     setLocation(`/admin/email/thread/${encodeURIComponent(threadId)}`);
+  };
+
+  const handleSelectGovOpportunity = async (opportunityId: string) => {
+    setSelectedGovOpportunityId(opportunityId);
+    setLocation(`/admin/government/${encodeURIComponent(opportunityId)}`);
+    const selected = govOpportunities.find((item) => item.id === opportunityId) || null;
+    setGovNotes(selected?.owner_notes || "");
+    setGovStatus(selected?.status || "new");
+    if (!token) return;
+    try {
+      const workspace = await mehyarSoftApi.getGovernmentOpportunityWorkspace(token, opportunityId);
+      setGovWorkspace(workspace);
+    } catch {
+      setGovWorkspace(null);
+    }
+  };
+
+  const handleSaveGovOpportunity = async () => {
+    if (!token || !selectedGovOpportunityId) return;
+    setIsGovSaving(true);
+    try {
+      const response = await mehyarSoftApi.updateGovernmentOpportunity(token, selectedGovOpportunityId, { status: govStatus, owner_notes: govNotes });
+      setGovOpportunities((current) => current.map((item) => item.id === selectedGovOpportunityId ? { ...item, ...response.opportunity, status: govStatus, owner_notes: govNotes } : item));
+      toast({ title: "Opportunity updated", description: "Status and private owner notes were sent to the protected admin API." });
+    } catch (error) {
+      toast({ title: "Save unavailable", description: error instanceof Error ? error.message : "Protected government opportunity API did not save this record.", variant: "destructive" });
+    } finally {
+      setIsGovSaving(false);
+    }
   };
 
   const handleSync = async () => {
@@ -1094,14 +1413,16 @@ const Admin = () => {
               Owner-only
             </p>
             <h1 className="text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
-              {isEmailRoute ? "Email Command Center" : isNewsletterRoute ? "Newsletter Money Cockpit" : "Admin Metrics"}
+              {isEmailRoute ? "Email Command Center" : isNewsletterRoute ? "Newsletter Money Cockpit" : isGovernmentRoute ? "Government Opportunities" : "Admin Metrics"}
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg">
               {isEmailRoute
                 ? "Private contact@mehyar.us inbox, lead context, AI draft assistance, and manual reply controls. AI drafts only; Boss reviews before send."
                 : isNewsletterRoute
                   ? "Private signup cockpit for source attribution, consent, suppressions, subscriber promotion, follow-up timing, offer fit, and manual Zoho draft actions."
-                  : "Private operating shell for lead intake, audit demand, booking requests, and suppression counts. Credentials stay in Cloudflare environment secrets."}
+                  : isGovernmentRoute
+                    ? "Private government-opportunity inbox for SAM.gov and USAspending signals, fit scoring, agency watchlists, and proposal workspace drafting assist."
+                    : "Private operating shell for lead intake, audit demand, booking requests, and suppression counts. Credentials stay in Cloudflare environment secrets."}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-muted-foreground shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
@@ -1144,10 +1465,11 @@ const Admin = () => {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button variant={!isEmailRoute && !isNewsletterRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin")}>Metrics</Button>
+                <Button variant={!isEmailRoute && !isNewsletterRoute && !isGovernmentRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin")}>Metrics</Button>
                 <Button variant={isNewsletterRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/newsletter")}>Signups</Button>
+                <Button variant={isGovernmentRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/government")}>Government</Button>
                 <Button variant={isEmailRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/email")}>Email Command Center</Button>
-                <Button variant="outline" onClick={() => void (isEmailRoute ? loadEmailThreads() : isNewsletterRoute ? loadSubscribers(undefined, true) : loadMetrics())} disabled={isLoading || isEmailLoading || isSubscriberLoading}>Refresh</Button>
+                <Button variant="outline" onClick={() => void (isEmailRoute ? loadEmailThreads() : isNewsletterRoute ? loadSubscribers(undefined, true) : isGovernmentRoute ? loadGovernmentOpportunities(undefined, true) : loadMetrics())} disabled={isLoading || isEmailLoading || isSubscriberLoading || isGovLoading}>Refresh</Button>
                 <Button variant="secondary" onClick={handleLogout}>Logout</Button>
               </div>
             </div>
@@ -1162,6 +1484,30 @@ const Admin = () => {
                 onRefresh={() => void loadSubscribers(undefined, true)}
                 onPromote={(subscriber) => void handlePromoteSubscriber(subscriber)}
                 onDraft={(subscriber) => void handleNewsletterDraft(subscriber)}
+              />
+            ) : isGovernmentRoute ? (
+              <GovernmentOpportunitiesPanel
+                opportunities={govOpportunities}
+                watchlist={govWatchlist}
+                workspace={govWorkspace}
+                selectedId={selectedGovOpportunityId}
+                notes={govNotes}
+                status={govStatus}
+                isLoading={isGovLoading}
+                isSaving={isGovSaving}
+                search={govSearch}
+                statusFilter={govStatusFilter}
+                sourceFilter={govSourceFilter}
+                minScore={govMinScore}
+                onSearch={setGovSearch}
+                onStatusFilter={setGovStatusFilter}
+                onSourceFilter={setGovSourceFilter}
+                onMinScore={setGovMinScore}
+                onRefresh={() => void loadGovernmentOpportunities(undefined, true)}
+                onSelect={(opportunityId) => void handleSelectGovOpportunity(opportunityId)}
+                onNotes={setGovNotes}
+                onStatus={setGovStatus}
+                onSave={() => void handleSaveGovOpportunity()}
               />
             ) : !isEmailRoute ? (
               <AdminDashboard

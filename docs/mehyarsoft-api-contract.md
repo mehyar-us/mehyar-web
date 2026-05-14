@@ -157,6 +157,30 @@ The frontend uses the live admin API for contact@mehyar.us email operations:
 
 Manual approval is mandatory before every send. The UI must not expose bulk or autonomous email sending.
 
+### Admin government opportunity drafting assist
+
+The frontend/admin API contract for private opportunity response prep is:
+
+- `GET /v1/admin/government/opportunities?limit=50&status=&source=&min_score=&q=` — owner-only opportunity inbox.
+- `GET /v1/admin/government/opportunities/:opportunityId/workspace` — requirements checklist, response outline, capability blocks, and contracting-officer questions for one opportunity.
+- `POST /v1/admin/government/opportunities/:opportunityId/drafts` — generate an owner-review draft package. Payload must include or default to `owner_review_only: true` and `auto_submit_allowed: false`.
+- `PATCH /v1/admin/government/drafts/:draftId` — update owner notes/status while preserving `owner_review_only: true` and `auto_submit_allowed: false`.
+- `PATCH /v1/admin/government/opportunities/:opportunityId` — update owner status/notes.
+
+Draft responses must include:
+
+- `requirements_checklist`
+- `compliance_matrix`
+- `contracting_officer_questions`
+- `response_outline`
+- `capability_blocks`
+- `owner_confirmation_items`
+- `risk_flags`
+- `source_citations` with source URLs and retrieval timestamps
+- `audit` metadata with draft id, opportunity id, generated timestamp, actor, and guardrail version
+
+Hard rules: never auto-submit; never invent certifications, eligibility, past performance, staffing, or pricing; and never return private draft data without a valid admin bearer token. Admin responses must use `Cache-Control: no-store`.
+
 ## Alignment notes for mehyar-api
 
 If `mehyar-api` becomes the public origin at `https://api.mehyar.us`, it should either mirror the public `/api/...` routes or provide a compatibility Worker that maps:

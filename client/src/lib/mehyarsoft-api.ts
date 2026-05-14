@@ -218,6 +218,7 @@ export interface AdminEmailSyncStatus {
   next_expected_sync_at?: string | null;
 }
 
+
 export type AdminSuppressionStatus =
   | string
   | {
@@ -334,6 +335,74 @@ export interface AdminEmailSendResponse {
     sent_at?: string;
   };
   thread?: AdminEmailThreadSummary;
+}
+
+export interface AdminGovOpportunity {
+  id: string;
+  title: string;
+  agency?: string | null;
+  office?: string | null;
+  source?: string | null;
+  opportunity_type?: string | null;
+  deadline_at?: string | null;
+  posted_at?: string | null;
+  estimated_value_cents?: number | null;
+  fit_score?: number | null;
+  confidence?: string | null;
+  why_fit?: string[] | null;
+  why_not?: string[] | null;
+  required_registrations?: string[] | null;
+  next_action?: string | null;
+  status?: string | null;
+  owner_notes?: string | null;
+  source_url?: string | null;
+  naics?: string[] | null;
+  set_aside?: string | null;
+  effort_estimate?: string | null;
+}
+
+export interface AdminGovApplicationWorkspace {
+  opportunity_id: string;
+  checklist: { id: string; label: string; status?: string | null; detail?: string | null }[];
+  outline: { id: string; heading: string; notes?: string | null; source?: string | null }[];
+  capability_blocks: { id: string; title: string; body?: string | null; status?: string | null }[];
+  questions: { id: string; question: string; status?: string | null }[];
+}
+
+export interface AdminGovApplicationDraft {
+  id: string;
+  opportunity_id?: string | null;
+  status?: string | null;
+  owner_review_only: boolean;
+  auto_submit_allowed: boolean;
+  requirements_checklist: unknown[];
+  compliance_matrix: unknown[];
+  contracting_officer_questions: string[];
+  response_outline: unknown[];
+  capability_blocks: unknown[];
+  owner_confirmation_items: unknown[];
+  risk_flags: string[];
+  source_citations: unknown[];
+  audit?: Record<string, unknown> | null;
+  updated_at?: string | null;
+}
+
+export interface AdminGovAgencyWatch {
+  id: string;
+  agency: string;
+  office?: string | null;
+  spend_category?: string | null;
+  recent_award_winners?: string[] | null;
+  typical_value_cents?: number | null;
+  keywords?: string[] | null;
+  next_monitoring_action?: string | null;
+}
+
+export interface AdminGovOpportunitiesResponse {
+  items: AdminGovOpportunity[];
+  watchlist: AdminGovAgencyWatch[];
+  workspace?: AdminGovApplicationWorkspace | null;
+  updatedAt?: string;
 }
 
 export class ApiError extends Error {
@@ -744,6 +813,95 @@ function normalizeDashboardSnapshot(raw: unknown): AdminDashboardSnapshot {
   };
 }
 
+function normalizeGovOpportunity(raw: unknown): AdminGovOpportunity {
+  const record = asRecord(raw);
+  return {
+    id: asString(record.id) || asString(record.notice_id) || asString(record.source_id) || "unknown-opportunity",
+    title: asString(record.title) || asString(record.name) || "Untitled opportunity",
+    agency: asString(record.agency) || asString(record.department),
+    office: asString(record.office) || asString(record.sub_agency),
+    source: asString(record.source) || asString(record.source_system),
+    opportunity_type: asString(record.opportunity_type) || asString(record.type),
+    deadline_at: asString(record.deadline_at) || asString(record.close_date) || asString(record.response_deadline),
+    posted_at: asString(record.posted_at) || asString(record.publish_date),
+    estimated_value_cents: asNumber(record.estimated_value_cents) ?? asNumber(record.value_cents),
+    fit_score: asNumber(record.fit_score) ?? asNumber(record.score),
+    confidence: asString(record.confidence) || asString(record.confidence_level),
+    why_fit: asArray(record.why_fit || record.fit_reasons).filter((item): item is string => typeof item === "string"),
+    why_not: asArray(record.why_not || record.risks || record.gaps).filter((item): item is string => typeof item === "string"),
+    required_registrations: asArray(record.required_registrations || record.certifications).filter((item): item is string => typeof item === "string"),
+    next_action: asString(record.next_action) || asString(record.next_best_action),
+    status: asString(record.status) || "new",
+    owner_notes: asString(record.owner_notes) || asString(record.notes),
+    source_url: asString(record.source_url) || asString(record.url),
+    naics: asArray(record.naics || record.naics_codes).filter((item): item is string => typeof item === "string"),
+    set_aside: asString(record.set_aside) || asString(record.setaside),
+    effort_estimate: asString(record.effort_estimate) || asString(record.proposal_effort),
+  };
+}
+
+function normalizeGovWorkspace(raw: unknown, opportunityId = ""): AdminGovApplicationWorkspace {
+  const record = asRecord(raw);
+  const normalizeChecklist = (item: unknown, index: number) => {
+    const row = asRecord(item);
+    return { id: asString(row.id) || `check-${index + 1}`, label: asString(row.label) || asString(row.requirement) || "Checklist item", status: asString(row.status), detail: asString(row.detail) || asString(row.notes) };
+  };
+  const normalizeOutline = (item: unknown, index: number) => {
+    const row = asRecord(item);
+    return { id: asString(row.id) || `outline-${index + 1}`, heading: asString(row.heading) || asString(row.title) || "Response section", notes: asString(row.notes) || asString(row.body) || asArray(row.bullets).filter((item): item is string => typeof item === "string").join("\n"), source: asString(row.source) };
+  };
+  const normalizeCapability = (item: unknown, index: number) => {
+    const row = asRecord(item);
+    return { id: asString(row.id) || `capability-${index + 1}`, title: asString(row.title) || asString(row.name) || "Capability block", body: asString(row.body) || asString(row.text), status: asString(row.status) };
+  };
+  const normalizeQuestion = (item: unknown, index: number) => {
+    const row = asRecord(item);
+    return { id: asString(row.id) || `question-${index + 1}`, question: asString(row.question) || asString(row.text) || "Question", status: asString(row.status) };
+  };
+  return {
+    opportunity_id: asString(record.opportunity_id) || opportunityId,
+    checklist: asArray(record.checklist || record.requirements).map(normalizeChecklist),
+    outline: asArray(record.outline || record.response_outline).map(normalizeOutline),
+    capability_blocks: asArray(record.capability_blocks || record.capabilities).map(normalizeCapability),
+    questions: asArray(record.questions || record.contracting_questions).map(normalizeQuestion),
+  };
+}
+
+function normalizeGovApplicationDraft(raw: unknown): AdminGovApplicationDraft {
+  const record = asRecord(asRecord(raw).draft || raw);
+  return {
+    id: asString(record.id) || asString(record.draft_id) || "unknown-gov-draft",
+    opportunity_id: asString(record.opportunity_id),
+    status: asString(record.status) || "owner_review_required",
+    owner_review_only: record.owner_review_only === true,
+    auto_submit_allowed: record.auto_submit_allowed === true,
+    requirements_checklist: asArray(record.requirements_checklist || record.checklist),
+    compliance_matrix: asArray(record.compliance_matrix),
+    contracting_officer_questions: asArray(record.contracting_officer_questions || record.questions).filter((item): item is string => typeof item === "string"),
+    response_outline: asArray(record.response_outline || record.outline),
+    capability_blocks: asArray(record.capability_blocks),
+    owner_confirmation_items: asArray(record.owner_confirmation_items),
+    risk_flags: asArray(record.risk_flags).filter((item): item is string => typeof item === "string"),
+    source_citations: asArray(record.source_citations || record.citations),
+    audit: asRecord(record.audit || record.audit_metadata),
+    updated_at: asString(record.updated_at),
+  };
+}
+
+function normalizeGovAgencyWatch(raw: unknown): AdminGovAgencyWatch {
+  const record = asRecord(raw);
+  return {
+    id: asString(record.id) || asString(record.agency) || "unknown-agency",
+    agency: asString(record.agency) || asString(record.department) || "Unknown agency",
+    office: asString(record.office) || asString(record.sub_agency),
+    spend_category: asString(record.spend_category) || asString(record.category),
+    recent_award_winners: asArray(record.recent_award_winners || record.award_winners).filter((item): item is string => typeof item === "string"),
+    typical_value_cents: asNumber(record.typical_value_cents) ?? asNumber(record.average_value_cents),
+    keywords: asArray(record.keywords).filter((item): item is string => typeof item === "string"),
+    next_monitoring_action: asString(record.next_monitoring_action) || asString(record.next_action),
+  };
+}
+
 export const mehyarSoftApi = {
   submitIntake(payload: IntakePayload) {
     return postJson<{ ok: boolean; lead_id?: string; message?: string }>("/api/intake", payload);
@@ -811,6 +969,67 @@ export const mehyarSoftApi = {
       exportUrl: asString(record.export_url) || asString(record.csv_export_url),
       updatedAt: asString(record.updatedAt) || asString(record.updated_at) || new Date().toISOString(),
     } satisfies AdminSubscribersResponse;
+  },
+
+  async getGovernmentOpportunities(token: string, params: { status?: string; source?: string; minScore?: number; q?: string } = {}) {
+    const query = new URLSearchParams();
+    query.set("limit", "50");
+    if (params.status && params.status !== "all") query.set("status", params.status);
+    if (params.source && params.source !== "all") query.set("source", params.source);
+    if (params.minScore) query.set("min_score", String(params.minScore));
+    if (params.q) query.set("q", params.q);
+    const response = await apiFetch<unknown>(`/v1/admin/government/opportunities?${query.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }, adminEndpoint);
+    const record = asRecord(response);
+    return {
+      items: asArray(record.items || record.opportunities || record.results).map(normalizeGovOpportunity),
+      watchlist: asArray(record.watchlist || record.agency_watchlist || record.agencies).map(normalizeGovAgencyWatch),
+      workspace: record.workspace ? normalizeGovWorkspace(record.workspace) : null,
+      updatedAt: asString(record.updatedAt) || asString(record.updated_at) || new Date().toISOString(),
+    } satisfies AdminGovOpportunitiesResponse;
+  },
+
+  async getGovernmentOpportunityWorkspace(token: string, opportunityId: string) {
+    const response = await apiFetch<unknown>(`/v1/admin/government/opportunities/${encodeURIComponent(opportunityId)}/workspace`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }, adminEndpoint);
+    return normalizeGovWorkspace(response, opportunityId);
+  },
+
+  async generateGovernmentOpportunityDraft(token: string, opportunityId: string, payload: { owner_notes?: string; template_key?: string } = {}) {
+    const response = await postJson<unknown>(
+      `/v1/admin/government/opportunities/${encodeURIComponent(opportunityId)}/drafts`,
+      {
+        template_key: payload.template_key || "owner_review_response_helper_v1",
+        owner_notes: payload.owner_notes,
+        owner_review_only: true,
+        auto_submit_allowed: false,
+      },
+      token,
+      adminEndpoint,
+    );
+    return { draft: normalizeGovApplicationDraft(response) };
+  },
+
+  async updateGovernmentOpportunityDraft(token: string, draftId: string, payload: { owner_notes?: string; status?: string }) {
+    const response = await patchJson<unknown>(
+      `/v1/admin/government/drafts/${encodeURIComponent(draftId)}`,
+      { owner_notes: payload.owner_notes, status: payload.status || "owner_review_required", owner_review_only: true, auto_submit_allowed: false },
+      token,
+      adminEndpoint,
+    );
+    return { draft: normalizeGovApplicationDraft(response) };
+  },
+
+  async updateGovernmentOpportunity(token: string, opportunityId: string, payload: { status?: string; owner_notes?: string }) {
+    const response = await patchJson<unknown>(
+      `/v1/admin/government/opportunities/${encodeURIComponent(opportunityId)}`,
+      { status: payload.status, owner_notes: payload.owner_notes },
+      token,
+      adminEndpoint,
+    );
+    return { opportunity: normalizeGovOpportunity(response) };
   },
 
   async promoteNewsletterSubscriber(token: string, subscriberId: string) {

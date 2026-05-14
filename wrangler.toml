@@ -12,6 +12,13 @@ ENVIRONMENT = "production"
 CONTACT_TO_EMAIL = "mrswelim@gmail.com"
 CONTACT_FROM_EMAIL = "leads@mehyar.us"
 ALLOWED_ORIGINS = "https://mehyar.us,https://www.mehyar.us"
+GOV_INGEST_LIMIT = "40"
+# Optional secret/configured in Cloudflare Pages settings when available: MEHYARSOFT_SAM_API_KEY
+# Backward-compatible alias also supported by code: SAM_API_KEY
+# Optional comma-separated override: GOV_OPPORTUNITY_KEYWORDS
+
+# Daily ingest is run by Hermes cron / admin-triggered endpoint for Pages compatibility.
+# Cloudflare Pages wrangler.toml validation rejects Workers [triggers] blocks.
 
 [[d1_databases]]
 binding = "LEADS_DB"

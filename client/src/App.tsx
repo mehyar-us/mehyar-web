@@ -49,6 +49,8 @@ function App() {
             <Route path="/contact" component={Contact} />
             <Route path="/admin" component={Admin} />
             <Route path="/admin/newsletter" component={Admin} />
+            <Route path="/admin/government" component={Admin} />
+            <Route path="/admin/government/:opportunityId" component={Admin} />
             <Route path="/admin/email" component={Admin} />
             <Route path="/admin/email/thread/:threadId" component={Admin} />
             <Route path="/unsubscribe" component={Unsubscribe} />
