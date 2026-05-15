@@ -29,7 +29,17 @@ function ScrollToTop() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+    const currentPath = window.location.pathname + window.location.search;
+    const hash = window.location.hash;
+
+    window.requestAnimationFrame(() => {
+      if (hash && location === currentPath) {
+        document.querySelector(hash)?.scrollIntoView({ block: "start", behavior: "auto" });
+        return;
+      }
+
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
   }, [location]);
 
   return null;

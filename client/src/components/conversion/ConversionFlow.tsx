@@ -151,6 +151,26 @@ const serviceOptions = [
   { value: "general", label: "General consultation", publicLabel: "Not sure — help me choose", formType: "contact" as IntakeFormType, notSure: true },
 ];
 
+const serviceAliases: Record<string, string> = {
+  "tech-audit": "tech_audit",
+  "website-booking-cleanup": "website_booking_cleanup",
+  "missed-call-followup": "ai_follow_up",
+  "automation-sprint": "automation_sprint",
+  "systems-integration": "systems_consulting",
+  "custom-software": "systems_consulting",
+  "crm-support-retainer": "retainer",
+  "330": "ai_missed_lead_rescue_330",
+  "micro-offer": "ai_missed_lead_rescue_330",
+};
+
+function normalizeServiceRequest(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (serviceAliases[trimmed]) return serviceAliases[trimmed];
+  const underscored = trimmed.replace(/-/g, "_");
+  return serviceOptions.some((option) => option.value === underscored) ? underscored : trimmed;
+}
+
 const topicOptions = [
   { value: "ai_automation", label: "AI automation" },
   { value: "missed_leads", label: "Missed leads" },
@@ -207,7 +227,7 @@ function getUrlDefaults(mode: ConversionFlowMode, serviceCategory?: string, camp
   if (typeof window === "undefined") return { form: defaultFormState, source: "mehyar_web", campaign: campaign || "" };
   const params = new URLSearchParams(window.location.search);
   const route = window.location.pathname;
-  const requestedService = params.get("service") || params.get("service_category") || serviceCategory || "";
+  const requestedService = normalizeServiceRequest(params.get("service") || params.get("service_category") || serviceCategory || "");
   const requestedOffer = params.get("offer") || params.get("offer_code") || "";
   const requestType = params.get("request_type") || params.get("form_type") || "";
   const is330 = route === "/330" || route === "/micro-offer" || requestType === "micro_offer" || requestedOffer.includes("330");
