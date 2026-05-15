@@ -144,7 +144,7 @@ const serviceOptions = [
   { value: "ai_missed_lead_rescue_330", label: "$330 AI Missed-Lead Rescue", publicLabel: "Fix missed calls or missed leads", formType: "micro_offer" as IntakeFormType },
   { value: "tech_audit", label: "Tech Audit", publicLabel: "Audit my tech / website", formType: "audit" as IntakeFormType },
   { value: "website_booking_cleanup", label: "Website cleanup / landing page / booking setup", publicLabel: "Clean up website or booking", formType: "booking" as IntakeFormType },
-  { value: "ai_follow_up", label: "AI missed-call / SMS / email follow-up flow", publicLabel: "Fix missed calls or missed leads", formType: "booking" as IntakeFormType },
+  { value: "ai_follow_up", label: "AI missed-call / SMS / email follow-up flow", publicLabel: "Set up AI follow-up", formType: "booking" as IntakeFormType },
   { value: "automation_sprint", label: "Internal automation sprint", publicLabel: "Automate internal work", formType: "contact" as IntakeFormType },
   { value: "systems_consulting", label: "Systems architecture / integration consulting", publicLabel: "Connect systems / architecture help", formType: "contact" as IntakeFormType },
   { value: "retainer", label: "Monthly support retainer", publicLabel: "Monthly help / support", formType: "contact" as IntakeFormType },
@@ -261,10 +261,12 @@ function mapModeToFormType(mode: ConversionFlowMode, service: string): IntakeFor
 
 function ConversionTurnstile({
   isFooter,
+  enabled,
   onToken,
   onError,
 }: {
   isFooter: boolean;
+  enabled: boolean;
   onToken: (token: string) => void;
   onError: () => void;
 }) {
@@ -277,6 +279,7 @@ function ConversionTurnstile({
   const turnstileWidgetIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
+    if (!enabled) return;
     if (turnstileSiteKey) return;
 
     if (isLocalQaTurnstileEnabled()) {
@@ -313,11 +316,11 @@ function ConversionTurnstile({
     return () => {
       cancelled = true;
     };
-  }, [turnstileSiteKey]);
+  }, [enabled, onToken, turnstileSiteKey]);
 
   useEffect(() => {
     const container = turnstileContainerRef.current;
-    if (!turnstileSiteKey || !container) return;
+    if (!enabled || !turnstileSiteKey || !container) return;
 
     let cancelled = false;
     const renderTurnstile = () => {
@@ -360,16 +363,21 @@ function ConversionTurnstile({
         turnstileWidgetIdRef.current = undefined;
       }
     };
-  }, [onError, onToken, turnstileSiteKey]);
+  }, [enabled, onError, onToken, turnstileSiteKey]);
 
   return (
     <div className={cn("rounded-2xl border p-3", isFooter ? "border-white/10 bg-black/15" : "border-border bg-white dark:bg-white/[0.04]")}>
-      {turnstileToken ? (
+      {enabled && turnstileToken ? (
         <p className="mb-3 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-200">
           {turnstileToken === LOCAL_QA_TURNSTILE_TOKEN ? "Local QA verification enabled." : "Verification complete."}
         </p>
       ) : null}
-      {turnstileSiteKey ? (
+      {!enabled ? (
+        <div className={cn("flex items-start gap-2 rounded-xl p-3 text-sm", isFooter ? "bg-white/10 text-neutral-200" : "bg-brand-100/70 text-brand-900 dark:bg-white/[0.04] dark:text-brand-100")} role="status" aria-live="polite">
+          <ShieldCheck size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+          <p>Cloudflare verification loads after the required fields and consent are ready.</p>
+        </div>
+      ) : turnstileSiteKey ? (
         <div ref={turnstileContainerRef} className="min-h-[65px] max-w-full overflow-x-auto" />
       ) : turnstileConfigStatus === "loading" ? (
         <div className={cn("flex items-start gap-2 rounded-xl p-3 text-sm", isFooter ? "bg-white/10 text-neutral-200" : "bg-brand-100/70 text-brand-900 dark:bg-white/[0.04] dark:text-brand-100")} role="status" aria-live="polite">
@@ -433,13 +441,16 @@ export function ConversionFlow({
   const needsServiceConsent = !isUnsubscribe && mode !== "subscription_preferences" && !isPaymentTest;
   const hasContactMethod = Boolean(form.email.trim() || form.phone.trim());
   const needsIdentity = !isNewsletter && !isUnsubscribe && !isPaymentTest;
+  const identityReady = !needsIdentity || (Boolean(form.name.trim()) && hasContactMethod && Boolean(form.message.trim()));
+  const consentReady = !needsServiceConsent || consentContact || isNewsletter;
+  const turnstileEnabled = !isUnsubscribe && !isPaymentTest && identityReady && consentReady && (isNewsletter ? Boolean(form.email.trim()) && consentMarketing : true);
   const canSubmit =
     hiddenPaymentAllowed &&
     status !== "submitting" &&
     (isUnsubscribe ? Boolean(form.email.trim()) : true) &&
     (isNewsletter ? Boolean(form.email.trim()) : true) &&
-    (!needsIdentity || (Boolean(form.name.trim()) && hasContactMethod && Boolean(form.message.trim()))) &&
-    (!needsServiceConsent || consentContact || isNewsletter) &&
+    identityReady &&
+    consentReady &&
     (isNewsletter ? consentMarketing : true) &&
     (isUnsubscribe || isPaymentTest || Boolean(turnstileToken));
 
@@ -813,7 +824,7 @@ export function ConversionFlow({
           </div>
         ) : null}
 
-        {!isUnsubscribe ? <ConversionTurnstile isFooter={isFooter} onToken={setTurnstileToken} onError={() => setStatus("error")} /> : null}
+        {!isUnsubscribe ? <ConversionTurnstile isFooter={isFooter} enabled={turnstileEnabled} onToken={setTurnstileToken} onError={() => setStatus("error")} /> : null}
 
         <div className={cn("rounded-2xl border p-3 text-sm", {
           "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300": status === "idle",
