@@ -176,6 +176,33 @@ const noConsentResponse = await intake({ request: request("/api/intake", { ...va
 assert.equal(noConsentResponse.status, 400);
 assert.equal(noConsentEnv.__db.leads.length, 0);
 
+const newsletterEnv = env();
+const newsletterPayload = {
+  form_type: "newsletter",
+  request_type: "newsletter",
+  email: "checklist@test.example",
+  name: "Checklist Tester",
+  service_interest: "Free AI automation checklist",
+  message: "First name: Test; last name: Subscriber; ZIP: 10001; topics: ai_automation; frequency: weekly.",
+  consent_contact: true,
+  consent_marketing: true,
+  turnstile_token: "test-valid",
+  hp_field: "",
+  utm: { source: "unit", medium: "script", campaign: "newsletter_checklist" },
+};
+const newsletterResponse = await intake({ request: request("/api/intake", newsletterPayload), env: newsletterEnv });
+assert.equal(newsletterResponse.status, 200);
+assert.equal((await newsletterResponse.json()).ok, true);
+assert.equal(newsletterEnv.__db.leads.length, 1);
+assert.equal(newsletterEnv.__db.leads[0].form_type, "newsletter");
+assert.equal(newsletterEnv.__db.leads[0].consent_contact, 1);
+assert.equal(newsletterEnv.__db.leads[0].consent_marketing, 1);
+
+const newsletterNoConsentEnv = env();
+const newsletterNoConsentResponse = await intake({ request: request("/api/intake", { ...newsletterPayload, email: "newsletter-no-consent@test.example", consent_contact: false }), env: newsletterNoConsentEnv });
+assert.equal(newsletterNoConsentResponse.status, 400);
+assert.equal(newsletterNoConsentEnv.__db.leads.length, 0);
+
 const microOfferEnv = env();
 const microOfferPayload = {
   ...validPayload,
@@ -213,7 +240,7 @@ assert.equal(requestTypeAliasEnv.__db.leads[0].request_type, "micro_offer");
 
 console.log(JSON.stringify({
   ok: true,
-  tests: ["health", "public client config", "valid submission", "invalid turnstile rejection", "D1/audit row", "notification path", "consent rejection", "micro-offer fields", "request_type alias"],
+  tests: ["health", "public client config", "valid submission", "invalid turnstile rejection", "D1/audit row", "notification path", "consent rejection", "newsletter checklist submission", "newsletter consent rejection", "micro-offer fields", "request_type alias"],
   leads_created: validEnv.__db.leads.length,
   audit_events: validEnv.__db.events.map((event) => event.event_type),
   notifications_sent: validEnv.__email.sent.length,

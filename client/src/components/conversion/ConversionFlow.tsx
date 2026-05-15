@@ -544,7 +544,7 @@ export function ConversionFlow({
           ]
             .filter(Boolean)
             .join("\n"),
-          consent_contact: needsServiceConsent ? consentContact : true,
+          consent_contact: isNewsletter ? true : needsServiceConsent ? consentContact : true,
           consent_marketing: isNewsletter || consentMarketing,
           turnstile_token: turnstileToken,
           hp_field: form.hp_field,
