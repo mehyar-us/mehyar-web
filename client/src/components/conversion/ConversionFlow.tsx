@@ -861,9 +861,9 @@ export function ConversionFlow({
             {status === "submitting" ? <Loader2 size={16} className="mt-0.5 flex-shrink-0 animate-spin" aria-hidden="true" /> : null}
             {status === "error" ? <AlertCircle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" /> : null}
             <div>
-              <p className="font-semibold">{status === "success" ? copy.success : status === "error" ? "The request did not send" : status === "submitting" ? "Sending securely" : "Ready when the required fields are complete"}</p>
+              <p className="font-semibold">{status === "success" ? copy.success : status === "error" ? "The request did not send" : status === "submitting" ? "Sending securely" : turnstileEnabled && !turnstileToken ? "Complete the security check to submit" : "Ready when the required fields are complete"}</p>
               <p className="mt-1 leading-6">
-                {status === "idle" ? "Cloudflare verification, consent, source/campaign metadata, and safe routing are handled in this shared conversion component." : status === "success" ? "No internal IDs, secrets, or raw backend errors are shown." : status === "error" ? "Please refresh and try again, or email contact@mehyar.us without sensitive data." : "Hold tight — this is being delivered through the secure intake path."}
+                {status === "idle" ? (turnstileEnabled && !turnstileToken ? "Cloudflare verification is ready. Finish the checkbox above, then submit." : "Cloudflare verification, consent, source/campaign metadata, and safe routing are handled in this shared conversion component.") : status === "success" ? "No internal IDs, secrets, or raw backend errors are shown." : status === "error" ? "Please refresh and try again, or email contact@mehyar.us without sensitive data." : "Hold tight — this is being delivered through the secure intake path."}
               </p>
               {status === "success" && isNewsletter ? (
                 <a href="/330?request_type=micro_offer&utm_campaign=newsletter_thank_you#intake" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "mt-3 rounded-full")}>Request the $330 audit</a>
