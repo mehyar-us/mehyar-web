@@ -213,6 +213,27 @@ const staticMeta: Record<string, SeoMeta> = {
     path: "/contact",
     jsonLd: [webPage("/contact", "Contact MehyarSoft | Request a Tech Audit or Consulting Call", "Contact MehyarSoft LLC to request a practical consulting next step.", "ContactPage"), breadcrumbs([{ name: "Home", path: "/" }, { name: "Contact", path: "/contact" }]), { ...organization, contactPoint: { "@type": "ContactPoint", email: "info@mehyar.us", contactType: "consulting intake" } }, faq([{ question: "How do I contact MehyarSoft?", answer: "Use the MehyarSoft contact page or email info@mehyar.us with your business type, current workflow problem, tools involved, timeline, and budget range if known. Do not send passwords, API keys, PHI, payment data, or confidential files through public channels." }])],
   },
+  "/booking": {
+    title: "Book a Consulting Call | MehyarSoft",
+    description:
+      "Request a MehyarSoft consulting call for tech audits, the $330 rescue offer, website cleanup, AI follow-up, automation sprints, systems consulting, retainers, or general help.",
+    path: "/booking",
+    jsonLd: [webPage("/booking", "Book a Consulting Call | MehyarSoft", "Service-specific booking request with safe manual scheduling fallback.", "ContactPage"), breadcrumbs([{ name: "Home", path: "/" }, { name: "Book a Call", path: "/booking" }]), faq([{ question: "Can I book a call directly?", answer: "Use the booking request path to choose a service and preferred time window. MehyarSoft only confirms a calendar event after explicit confirmation; otherwise you will receive available times manually." }])],
+  },
+  "/book": {
+    title: "Book a Consulting Call | MehyarSoft",
+    description:
+      "Request a MehyarSoft consulting call with service-specific routing and manual scheduling fallback when calendar auth is unavailable.",
+    path: "/booking",
+  },
+  "/billing/checkout": {
+    title: "Stripe Test Checkout | MehyarSoft Sandbox Billing",
+    description:
+      "Start a MehyarSoft service checkout in Stripe test mode. Live charges stay blocked unless Boss explicitly enables owner-approved production billing.",
+    path: "/billing/checkout",
+    robots: "noindex,follow",
+    jsonLd: [webPage("/billing/checkout", "Stripe Test Checkout | MehyarSoft Sandbox Billing", "MehyarSoft sandbox billing checkout for approved service deposits and consulting offers.")],
+  },
   "/privacy-policy": {
     title: "Privacy Policy | MehyarSoft LLC",
     description:
@@ -305,6 +326,10 @@ const resolveMeta = (rawPath: string): SeoMeta => {
         mainEntityOfPage: absoluteUrl(path),
       }, breadcrumbs([{ name: "Home", path: "/" }, { name: "Blog", path: "/blog" }, { name: post.title, path }])],
     };
+  }
+
+  if (path.startsWith("/billing/checkout/")) {
+    return { ...staticMeta["/billing/checkout"], path };
   }
 
   return notFoundMeta(path);

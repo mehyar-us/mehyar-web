@@ -9,6 +9,7 @@ import {
   CalendarClock,
   CheckCircle2,
   ClipboardCheck,
+  CreditCard,
   Download,
   ExternalLink,
   FileStack,
@@ -43,9 +44,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import AdminOpportunityScout from "@/pages/AdminOpportunityScout";
 import {
+  AdminAnalyticsDiagnosticsResponse,
+  AdminAnalyticsOverview,
   AdminEmailDraft,
   AdminDashboardSnapshot,
+  BillingLedgerResponse,
   AdminEmailAuditEvent,
   AdminEmailSyncStatus,
   AdminEmailThreadDetail,
@@ -286,6 +291,30 @@ function EmailInboxTable({ threads, selectedId, onSelect }: { threads: AdminEmai
 function money(cents?: number | null) {
   if (!cents) return "$0";
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+}
+
+function AdminBillingLedgerPanel({ ledger, isLoading, onRefresh }: { ledger: BillingLedgerResponse | null; isLoading: boolean; onRefresh: () => void }) {
+  const totals = ledger?.totals || {};
+  const total = (key: string) => typeof totals[key] === "number" ? totals[key] as number : 0;
+  const orders = ledger?.orders || [];
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="border-border bg-card"><CardContent className="p-5"><CreditCard className="mb-3 text-brand-700 dark:text-brand-100" /><p className="text-sm text-muted-foreground">Gross sales</p><p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-foreground">{money(total("gross_cents"))}</p></CardContent></Card>
+        <Card className="border-border bg-card"><CardContent className="p-5"><Gauge className="mb-3 text-brand-700 dark:text-brand-100" /><p className="text-sm text-muted-foreground">Net after fees</p><p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-foreground">{money(total("net_cents"))}</p></CardContent></Card>
+        <Card className="border-border bg-card"><CardContent className="p-5"><TrendingUp className="mb-3 text-brand-700 dark:text-brand-100" /><p className="text-sm text-muted-foreground">Estimated profit</p><p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-foreground">{money(total("profit_cents"))}</p></CardContent></Card>
+        <Card className="border-border bg-card"><CardContent className="p-5"><ShieldCheck className="mb-3 text-brand-700 dark:text-brand-100" /><p className="text-sm text-muted-foreground">Live gate</p><p className="mt-1 text-sm font-semibold text-foreground">Owner approval required</p></CardContent></Card>
+      </div>
+      <Card className="border-border bg-card">
+        <CardContent className="p-5">
+          <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">Stripe billing ledger</h3><p className="text-sm text-muted-foreground">Sanitized orders, payment status, fees, costs, and profit. No Stripe secrets are rendered.</p></div><Button variant="outline" onClick={onRefresh} disabled={isLoading}>{isLoading ? "Loading..." : "Refresh"}</Button></div>
+          {orders.length ? (
+            <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-[0.14em] text-muted-foreground"><tr><th className="py-3 pr-4">Created</th><th className="py-3 pr-4">Service</th><th className="py-3 pr-4">Mode</th><th className="py-3 pr-4">Status</th><th className="py-3 pr-4">Gross</th><th className="py-3 pr-4">Fee</th><th className="py-3 pr-4">Cost</th><th className="py-3 pr-4">Profit</th><th className="py-3 pr-4">Session</th></tr></thead><tbody className="divide-y divide-border">{orders.map((order) => <tr key={order.id}><td className="py-4 pr-4 text-muted-foreground">{formatShortDate(order.created_at)}</td><td className="py-4 pr-4"><p className="font-medium text-foreground">{order.service_name}</p><p className="text-xs text-muted-foreground">{order.id}</p></td><td className="py-4 pr-4"><Badge variant="outline">{order.mode || "test"}</Badge></td><td className="py-4 pr-4"><ThreadStatusBadge value={order.payment_status || order.status} /></td><td className="py-4 pr-4">{money(order.amount_cents)}</td><td className="py-4 pr-4">{money(order.estimated_fee_cents)}</td><td className="py-4 pr-4">{money(order.estimated_cost_cents)}</td><td className="py-4 pr-4 font-semibold text-foreground">{money(order.profit_cents)}</td><td className="py-4 pr-4 text-xs text-muted-foreground">{order.stripe_checkout_session_id || "pending"}</td></tr>)}</tbody></table></div>
+          ) : <EmptyState icon={CreditCard} title="No billing orders yet" detail="Public Stripe Checkout orders will appear here after /v1/billing/checkout creates sessions." />}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function percent(current?: number | null, target?: number | null) {
@@ -775,6 +804,99 @@ function AuditList({ events }: { events: AdminEmailAuditEvent[] }) {
   return <div className="space-y-3">{events.slice(0, 7).map((event, index) => <div key={event.id || `${event.event_type}-${index}`} className="rounded-2xl border border-border bg-secondary/40 p-3 text-sm"><div className="flex items-center justify-between gap-3"><p className="font-semibold text-foreground">{auditEventLabel(event)}</p><span className="text-xs text-muted-foreground">{formatShortDate(event.created_at)}</span></div><p className="mt-1 text-xs text-muted-foreground">{labelize(event.actor_type || event.actor)} · {labelize(event.entity_type)} {event.entity_id || ""}</p></div>)}</div>;
 }
 
+function analyticsValue(source: Record<string, unknown> | undefined, keys: string[]) {
+  if (!source) return 0;
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number") return value;
+    if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) return Number(value);
+  }
+  return 0;
+}
+
+function diagnosticRecord(payload: Record<string, unknown>, key: string) {
+  const value = payload[key];
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function AnalyticsConnectionPanel({ overview, diagnostics }: { overview: AdminAnalyticsOverview | null; diagnostics: AdminAnalyticsDiagnosticsResponse | null }) {
+  const provider = overview?.provider || {};
+  const diagnosticPayload = diagnostics?.diagnostics || overview?.diagnostics || {};
+  const ga4 = diagnosticRecord(diagnosticPayload, "ga4");
+  const db = diagnosticRecord(diagnosticPayload, "database");
+  const searchConsole = diagnosticRecord(diagnosticPayload, "search_console");
+  const stripe = diagnosticRecord(diagnosticPayload, "stripe");
+  const routes = diagnosticRecord(diagnosticPayload, "routes");
+  const missing = Array.isArray(ga4.missing) ? ga4.missing.filter((item): item is string => typeof item === "string") : [];
+  const hasGa4 = provider.configured === true || ga4.status === "configured";
+  const hasDatabase = db.status === "ok";
+  const searchPending = searchConsole.status !== "configured" && searchConsole.status !== "ok";
+  const stripePending = stripe.status !== "connected" && stripe.status !== "ok";
+  const productionRoutePending = routes.production_admin_analytics !== "deployed" && routes.production_route !== "deployed";
+  const callouts = [
+    { label: "GA4 Data API / service account", status: hasGa4 ? "configured" : "attention", detail: hasGa4 ? "Aggregate GA4 admin reads can load after owner auth." : missing.length ? `Missing env/config names: ${missing.join(", ")}` : "Pending server-side GA4 property configuration and Google service-account authorization." },
+    { label: "Search Console", status: searchPending ? "pending" : "configured", detail: searchPending ? "Search Console import is pending; no query/page ranking data is assumed in the UI." : "Search Console diagnostics are available." },
+    { label: "Stripe revenue", status: stripePending ? "not connected" : "connected", detail: stripePending ? "Stripe is not connected or no revenue rows were returned; revenue cards stay at safe empty state." : "Stripe ledger can contribute sanitized revenue totals." },
+    { label: "Production route", status: productionRoutePending ? "not deployed" : "deployed", detail: productionRoutePending ? "Local/admin shell is built; production /admin/analytics still needs deploy QA before release." : "Production admin analytics route reported deployed." },
+  ];
+  return (
+    <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+      <CardContent className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100"><Gauge className="h-5 w-5" aria-hidden="true" /></div>
+            <div>
+              <h3 className="text-xl font-semibold tracking-[-0.025em] text-foreground">Site analytics connection</h3>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">Public Google tag events stay public-only. Admin analytics diagnostics come from protected /v1 admin API and return env/config names only.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge className={hasGa4 ? "bg-emerald-100 text-emerald-900 hover:bg-emerald-100 dark:bg-emerald-400/15 dark:text-emerald-100" : "bg-amber-100 text-amber-900 hover:bg-amber-100 dark:bg-amber-400/15 dark:text-amber-100"}>{hasGa4 ? "GA4 configured" : "GA4 missing"}</Badge>
+            <Badge className={hasDatabase ? "bg-emerald-100 text-emerald-900 hover:bg-emerald-100 dark:bg-emerald-400/15 dark:text-emerald-100" : "bg-amber-100 text-amber-900 hover:bg-amber-100 dark:bg-amber-400/15 dark:text-amber-100"}>{hasDatabase ? "D1 snapshots ready" : "D1 diagnostics pending"}</Badge>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-border bg-secondary/40 p-4"><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Public tag env</p><p className="mt-2 font-semibold text-foreground">MEHYAR_PUBLIC_GOOGLE_TAG_ID</p><p className="mt-1 text-xs text-muted-foreground">Client bundle accepts only explicit public analytics IDs.</p></div>
+          <div className="rounded-2xl border border-border bg-secondary/40 p-4"><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">GA4 admin diagnostics</p><p className="mt-2 font-semibold text-foreground">{hasGa4 ? "Configured" : missing.length ? `Missing ${missing.join(", ")}` : "Pending check"}</p><p className="mt-1 text-xs text-muted-foreground">Names only; credential values stay server-side.</p></div>
+          <div className="rounded-2xl border border-border bg-secondary/40 p-4"><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Admin metrics API</p><p className="mt-2 font-semibold text-foreground">{provider.name || "ga4-data-api"}</p><p className="mt-1 text-xs text-muted-foreground">Aggregate traffic, offer, checkout, and revenue diagnostics behind admin auth.</p></div>
+        </div>
+        <div className="mt-5 grid gap-3 lg:grid-cols-4">
+          {callouts.map((callout) => <div key={callout.label} className="rounded-2xl border border-border bg-background/70 p-4"><div className="mb-2 flex items-center justify-between gap-2"><p className="text-sm font-semibold text-foreground">{callout.label}</p><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${gateTone(callout.status === "configured" || callout.status === "connected" || callout.status === "deployed" ? "pass" : "attention")}`}>{callout.status}</span></div><p className="text-xs leading-5 text-muted-foreground">{callout.detail}</p></div>)}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminAnalyticsPanel({ dashboard, metrics, billingLedger, analyticsOverview, analyticsDiagnostics, analyticsError, isLoading, onRefresh }: { dashboard: AdminDashboardSnapshot; metrics: AdminMetrics; billingLedger: BillingLedgerResponse | null; analyticsOverview: AdminAnalyticsOverview | null; analyticsDiagnostics: AdminAnalyticsDiagnosticsResponse | null; analyticsError?: string | null; isLoading: boolean; onRefresh: () => void }) {
+  const traffic = analyticsOverview?.traffic || {};
+  const events = analyticsOverview?.events || {};
+  const revenue = analyticsOverview?.revenue || {};
+  const ledgerTotals = billingLedger?.totals || {};
+  const trafficCards = [
+    { label: "Sessions", value: analyticsValue(traffic, ["sessions", "activeUsers", "users"]), detail: "GA4 aggregate traffic, never visitor-level PII", icon: Activity },
+    { label: "Views", value: analyticsValue(traffic, ["screenPageViews", "pageviews", "views"]), detail: "Public page demand feeding the offer funnel", icon: Gauge },
+    { label: "Lead events", value: analyticsValue(events, ["lead_submit", "generate_lead", "contact_submit", "conversions"]), detail: "Tracked form or CTA conversions when available", icon: Target },
+    { label: "Checkout events", value: analyticsValue(events, ["begin_checkout", "checkout", "purchase"]), detail: "Stripe intent/revenue signal after integration", icon: CreditCard },
+  ];
+  const roiCards = [
+    { label: "Scout opportunities", value: dashboard.leads.filter((lead) => lead.source_channel === "opportunity_scout" || lead.utm_source === "opportunity_scout").length, detail: "Opportunity Scout sourced leads returned by dashboard API", icon: Search },
+    { label: "Scout pipeline", value: money(analyticsValue(revenue, ["opportunity_scout_pipeline_cents", "scout_pipeline_cents"]) || dashboard.revenue.open_offer_value_cents || 0), detail: "Estimated value attributed to scout/workflow surfaces", icon: TrendingUp },
+    { label: "Stripe gross", value: money(analyticsValue(ledgerTotals, ["gross_cents"]) || analyticsValue(revenue, ["gross_cents", "revenue_cents"])), detail: "Sanitized ledger total; empty until Stripe is connected", icon: CreditCard },
+  ];
+  return (
+    <div className="space-y-6">
+      <Card className="border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]"><CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center"><div><h2 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">Analytics dashboard shell</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Traffic, offer funnel, and Opportunity Scout ROI. Data is protected, aggregate-only, and safe when APIs return empty or missing-credential states.</p></div><Button variant="outline" onClick={onRefresh} disabled={isLoading}><RefreshCcw className={isLoading ? "animate-spin" : ""} aria-hidden="true" />{isLoading ? "Loading..." : "Refresh analytics"}</Button></CardContent></Card>
+      {analyticsError ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-100"><ShieldAlert className="mr-2 inline h-5 w-5" aria-hidden="true" />Analytics API error state: {analyticsError}. Showing safe empty shell; no credential values are rendered.</div> : null}
+      {isLoading ? <EmptyState icon={RefreshCcw} title="Loading protected analytics" detail="Fetching /v1/admin/analytics, /v1/admin/analytics/diagnostics, dashboard rollups, and billing ledger through owner-authenticated API calls." /> : null}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{trafficCards.map((card) => <KpiCard key={card.label} {...card} />)}</div>
+      <SourcesAndFunnelPanel dashboard={dashboard} metrics={metrics} />
+      <div className="grid gap-4 md:grid-cols-3">{roiCards.map((card) => <KpiCard key={card.label} {...card} />)}</div>
+      <AnalyticsConnectionPanel overview={analyticsOverview} diagnostics={analyticsDiagnostics} />
+    </div>
+  );
+}
+
 function safeAdminExportUrl(rawUrl?: string | null) {
   if (!rawUrl) return null;
   try {
@@ -787,7 +909,7 @@ function safeAdminExportUrl(rawUrl?: string | null) {
   }
 }
 
-function AdminDashboard({ dashboard, metrics, threads, sync, isLoading, onRefresh, onOpenEmail }: { dashboard: AdminDashboardSnapshot; metrics: AdminMetrics; threads: AdminEmailThreadSummary[]; sync?: AdminEmailSyncStatus | null; isLoading: boolean; onRefresh: () => void; onOpenEmail: () => void }) {
+function AdminDashboard({ dashboard, metrics, threads, sync, analyticsOverview, analyticsDiagnostics, isLoading, onRefresh, onOpenEmail }: { dashboard: AdminDashboardSnapshot; metrics: AdminMetrics; threads: AdminEmailThreadSummary[]; sync: AdminEmailSyncStatus | null; analyticsOverview: AdminAnalyticsOverview | null; analyticsDiagnostics: AdminAnalyticsDiagnosticsResponse | null; isLoading: boolean; onRefresh: () => void; onOpenEmail: () => void }) {
   const effectiveSync = dashboard.zohoStatus || sync;
   const safeExportUrl = safeAdminExportUrl(dashboard.exportUrl);
   const waiting = threads.filter((thread) => thread.status === "waiting_admin" || (thread.unread_count || 0) > 0).length;
@@ -811,6 +933,7 @@ function AdminDashboard({ dashboard, metrics, threads, sync, isLoading, onRefres
 
       <RecentLeadsPanel leads={dashboard.leads} onOpenEmail={onOpenEmail} />
       <SourcesAndFunnelPanel dashboard={dashboard} metrics={metrics} />
+      <AnalyticsConnectionPanel overview={analyticsOverview} diagnostics={analyticsDiagnostics} />
       <OperationsPanels dashboard={dashboard} threads={threads} />
       <TrendAndAuditPanel dashboard={dashboard} />
     </div>
@@ -1001,6 +1124,11 @@ const Admin = () => {
   const [govStatus, setGovStatus] = useState("new");
   const [isGovLoading, setIsGovLoading] = useState(false);
   const [isGovSaving, setIsGovSaving] = useState(false);
+  const [billingLedger, setBillingLedger] = useState<BillingLedgerResponse | null>(null);
+  const [isBillingLoading, setIsBillingLoading] = useState(false);
+  const [analyticsOverview, setAnalyticsOverview] = useState<AdminAnalyticsOverview | null>(null);
+  const [analyticsDiagnostics, setAnalyticsDiagnostics] = useState<AdminAnalyticsDiagnosticsResponse | null>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [sync, setSync] = useState<AdminEmailSyncStatus | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(() => getThreadIdFromPath(window.location.pathname));
   const [threadDetail, setThreadDetail] = useState<AdminEmailThreadDetail | null>(null);
@@ -1015,6 +1143,9 @@ const Admin = () => {
   const isEmailRoute = location.startsWith("/admin/email");
   const isNewsletterRoute = location.startsWith("/admin/newsletter");
   const isGovernmentRoute = location.startsWith("/admin/government");
+  const isOpportunityScoutRoute = location.startsWith("/admin/opportunity-scout");
+  const isBillingRoute = location.startsWith("/admin/billing");
+  const isAnalyticsRoute = location.startsWith("/admin/analytics");
 
   useEffect(() => {
     document.title = isEmailRoute
@@ -1023,19 +1154,35 @@ const Admin = () => {
         ? "Newsletter Money Cockpit | MehyarSoft"
         : isGovernmentRoute
           ? "Government Opportunities | MehyarSoft"
-          : "Admin Metrics | MehyarSoft";
-  }, [isEmailRoute, isNewsletterRoute, isGovernmentRoute]);
+          : isOpportunityScoutRoute
+            ? "Opportunity Scout | MehyarSoft"
+            : isBillingRoute
+              ? "Billing Ledger | MehyarSoft"
+              : isAnalyticsRoute
+                ? "Analytics Dashboard | MehyarSoft"
+                : "Admin Metrics | MehyarSoft";
+  }, [isEmailRoute, isNewsletterRoute, isGovernmentRoute, isOpportunityScoutRoute, isBillingRoute, isAnalyticsRoute]);
 
   const loadMetrics = async (sessionToken = token) => {
     if (!sessionToken) return;
     setIsLoading(true);
     try {
-      const [nextMetrics, nextDashboard] = await Promise.all([
+      setAnalyticsError(null);
+      const captureAnalyticsError = (error: unknown) => {
+        const message = error instanceof Error ? error.message : "Analytics endpoint unavailable";
+        setAnalyticsError((current) => current || message);
+        return null;
+      };
+      const [nextMetrics, nextDashboard, nextAnalyticsOverview, nextAnalyticsDiagnostics] = await Promise.all([
         mehyarSoftApi.getMetrics(sessionToken),
         mehyarSoftApi.getDashboardSnapshot(sessionToken).catch(() => null),
+        mehyarSoftApi.getAnalyticsOverview(sessionToken).catch(captureAnalyticsError),
+        mehyarSoftApi.getAnalyticsDiagnostics(sessionToken).catch(captureAnalyticsError),
       ]);
       setMetrics({ ...emptyMetrics, ...nextMetrics });
       if (nextDashboard) setDashboard({ ...emptyDashboard, ...nextDashboard });
+      if (nextAnalyticsOverview) setAnalyticsOverview(nextAnalyticsOverview);
+      if (nextAnalyticsDiagnostics) setAnalyticsDiagnostics(nextAnalyticsDiagnostics);
     } catch (error) {
       sessionStorage.removeItem("mehyarsoft_admin_token");
       setToken("");
@@ -1174,6 +1321,12 @@ const Admin = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, isGovernmentRoute, location]);
 
+  useEffect(() => {
+    if (!token || (!isBillingRoute && !isAnalyticsRoute)) return;
+    void loadBillingLedger(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, isBillingRoute, isAnalyticsRoute]);
+
   const emailSummary = useMemo(() => {
     const waiting = threads.filter((thread) => thread.status === "waiting_admin" || (thread.unread_count || 0) > 0).length;
     const suppressed = threads.filter((thread) => isSuppressionBlocked(thread.suppression_status)).length;
@@ -1239,6 +1392,10 @@ const Admin = () => {
     setGovOpportunities([]);
     setGovWatchlist([]);
     setGovWorkspace(null);
+    setBillingLedger(null);
+    setAnalyticsOverview(null);
+    setAnalyticsDiagnostics(null);
+    setAnalyticsError(null);
     setThreadDetail(null);
     setActiveDraft(null);
   };
@@ -1274,6 +1431,18 @@ const Admin = () => {
       toast({ title: "Save unavailable", description: error instanceof Error ? error.message : "Protected government opportunity API did not save this record.", variant: "destructive" });
     } finally {
       setIsGovSaving(false);
+    }
+  };
+
+  const loadBillingLedger = async (sessionToken = token) => {
+    if (!sessionToken) return;
+    setIsBillingLoading(true);
+    try {
+      setBillingLedger(await mehyarSoftApi.getBillingLedger(sessionToken));
+    } catch (error) {
+      toast({ title: "Billing ledger unavailable", description: error instanceof Error ? error.message : "Protected billing endpoint did not respond.", variant: "destructive" });
+    } finally {
+      setIsBillingLoading(false);
     }
   };
 
@@ -1413,7 +1582,7 @@ const Admin = () => {
               Owner-only
             </p>
             <h1 className="text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
-              {isEmailRoute ? "Email Command Center" : isNewsletterRoute ? "Newsletter Money Cockpit" : isGovernmentRoute ? "Government Opportunities" : "Admin Metrics"}
+              {isEmailRoute ? "Email Command Center" : isNewsletterRoute ? "Newsletter Money Cockpit" : isGovernmentRoute ? "Government Opportunities" : isOpportunityScoutRoute ? "Opportunity Scout" : isBillingRoute ? "Billing Ledger" : isAnalyticsRoute ? "Analytics Dashboard" : "Admin Metrics"}
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg">
               {isEmailRoute
@@ -1422,7 +1591,13 @@ const Admin = () => {
                   ? "Private signup cockpit for source attribution, consent, suppressions, subscriber promotion, follow-up timing, offer fit, and manual Zoho draft actions."
                   : isGovernmentRoute
                     ? "Private government-opportunity inbox for SAM.gov and USAspending signals, fit scoring, agency watchlists, and proposal workspace drafting assist."
-                    : "Private operating shell for lead intake, audit demand, booking requests, and suppression counts. Credentials stay in Cloudflare environment secrets."}
+                    : isOpportunityScoutRoute
+                      ? "Private Opportunity Scout for no-spend daily business ideas, evidence review, AI wealth assist, and approval-gated internal Kanban creation."
+                      : isBillingRoute
+                        ? "Private Stripe billing ledger for service orders, webhook status, estimated fees, net revenue, and profit. Live charges remain owner-gated."
+                        : isAnalyticsRoute
+                          ? "Owner-only analytics shell for aggregate traffic, offer funnel, Opportunity Scout ROI, and missing-integration diagnostics without exposing secrets."
+                          : "Private operating shell for lead intake, audit demand, booking requests, and suppression counts. Credentials stay in Cloudflare environment secrets."}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-muted-foreground shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
@@ -1465,11 +1640,14 @@ const Admin = () => {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button variant={!isEmailRoute && !isNewsletterRoute && !isGovernmentRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin")}>Metrics</Button>
+                <Button variant={!isEmailRoute && !isNewsletterRoute && !isGovernmentRoute && !isOpportunityScoutRoute && !isBillingRoute && !isAnalyticsRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin")}>Metrics</Button>
+                <Button variant={isAnalyticsRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/analytics")}>Analytics</Button>
                 <Button variant={isNewsletterRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/newsletter")}>Signups</Button>
                 <Button variant={isGovernmentRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/government")}>Government</Button>
+                <Button variant={isOpportunityScoutRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/opportunity-scout")}>Opportunity Scout</Button>
+                <Button variant={isBillingRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/billing")}>Billing</Button>
                 <Button variant={isEmailRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/email")}>Email Command Center</Button>
-                <Button variant="outline" onClick={() => void (isEmailRoute ? loadEmailThreads() : isNewsletterRoute ? loadSubscribers(undefined, true) : isGovernmentRoute ? loadGovernmentOpportunities(undefined, true) : loadMetrics())} disabled={isLoading || isEmailLoading || isSubscriberLoading || isGovLoading}>Refresh</Button>
+                <Button variant="outline" onClick={() => void (isEmailRoute ? loadEmailThreads() : isNewsletterRoute ? loadSubscribers(undefined, true) : isGovernmentRoute ? loadGovernmentOpportunities(undefined, true) : isOpportunityScoutRoute ? Promise.resolve() : isBillingRoute ? loadBillingLedger() : isAnalyticsRoute ? Promise.all([loadMetrics(), loadBillingLedger()]) : loadMetrics())} disabled={isLoading || isEmailLoading || isSubscriberLoading || isGovLoading || isBillingLoading}>Refresh</Button>
                 <Button variant="secondary" onClick={handleLogout}>Logout</Button>
               </div>
             </div>
@@ -1485,6 +1663,12 @@ const Admin = () => {
                 onPromote={(subscriber) => void handlePromoteSubscriber(subscriber)}
                 onDraft={(subscriber) => void handleNewsletterDraft(subscriber)}
               />
+            ) : isBillingRoute ? (
+              <AdminBillingLedgerPanel ledger={billingLedger} isLoading={isBillingLoading} onRefresh={() => void loadBillingLedger()} />
+            ) : isAnalyticsRoute ? (
+              <AdminAnalyticsPanel dashboard={dashboard} metrics={metrics} billingLedger={billingLedger} analyticsOverview={analyticsOverview} analyticsDiagnostics={analyticsDiagnostics} analyticsError={analyticsError} isLoading={isLoading || isBillingLoading} onRefresh={() => void Promise.all([loadMetrics(), loadBillingLedger()])} />
+            ) : isOpportunityScoutRoute ? (
+              <AdminOpportunityScout token={token} />
             ) : isGovernmentRoute ? (
               <GovernmentOpportunitiesPanel
                 opportunities={govOpportunities}
@@ -1509,12 +1693,14 @@ const Admin = () => {
                 onStatus={setGovStatus}
                 onSave={() => void handleSaveGovOpportunity()}
               />
-            ) : !isEmailRoute ? (
+            ) : !isEmailRoute && !isAnalyticsRoute && !isOpportunityScoutRoute ? (
               <AdminDashboard
                 dashboard={dashboard}
                 metrics={metrics}
                 threads={threads}
                 sync={sync}
+                analyticsOverview={analyticsOverview}
+                analyticsDiagnostics={analyticsDiagnostics}
                 isLoading={isLoading}
                 onRefresh={() => void loadMetrics()}
                 onOpenEmail={() => setLocation("/admin/email")}

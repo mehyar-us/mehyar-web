@@ -1,7 +1,39 @@
 import ContactSection from "@/components/contact-section";
 import QuickAnswer from "@/components/QuickAnswer";
+import type { ConversionFlowMode } from "@/components/conversion/ConversionFlow";
+
+const getContactQueryDefaults = (): { mode: ConversionFlowMode; serviceCategory?: string; source: string; campaign?: string } => {
+  if (typeof window === "undefined") return { mode: "contact_general", source: "contact_page" };
+
+  const params = new URLSearchParams(window.location.search);
+  const service = params.get("service")?.trim() || undefined;
+  const requestType = params.get("request_type")?.trim() || undefined;
+  const campaign = params.get("utm_campaign")?.trim() || undefined;
+
+  if (requestType === "micro_offer" || service === "ai_missed_lead_rescue_330") {
+    return {
+      mode: "offer_330_missed_lead_rescue",
+      serviceCategory: "ai_missed_lead_rescue_330",
+      source: "contact_query_offer",
+      campaign,
+    };
+  }
+
+  if (service) {
+    return {
+      mode: "booking_call",
+      serviceCategory: service,
+      source: "contact_query_booking",
+      campaign,
+    };
+  }
+
+  return { mode: "contact_general", source: "contact_page", campaign };
+};
 
 const Contact = () => {
+  const conversionDefaults = getContactQueryDefaults();
+
   return (
     <>
       <section className="px-4 pb-16 pt-28 sm:pb-20 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
@@ -24,7 +56,7 @@ const Contact = () => {
         question="How do I contact MehyarSoft?"
         answer="Use this MehyarSoft contact page or email info@mehyar.us with your business type, current workflow problem, tools involved, timeline, and budget range if known. Do not send passwords, API keys, PHI, payment data, or confidential files through public channels."
       />
-      <ContactSection />
+      <ContactSection {...conversionDefaults} />
     </>
   );
 };

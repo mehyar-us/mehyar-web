@@ -1,4 +1,4 @@
-import { Router, Switch, Route } from "wouter";
+import { Router, Switch, Route, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
 import Services from "@/pages/Services";
@@ -10,6 +10,9 @@ import Newsletter from "@/pages/Newsletter";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import MicroOffer from "@/pages/MicroOffer";
+import Booking from "@/pages/Booking";
+import BillingCheckout from "@/pages/BillingCheckout";
+import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
 import Admin from "@/pages/Admin";
 import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -18,7 +21,19 @@ import Sitemap from "@/pages/Sitemap";
 import NotFound from "@/pages/not-found";
 import MainLayout from "@/layouts/MainLayout";
 import SeoManager from "@/components/SeoManager";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { useEffect } from "react";
+
+function ScrollToTop() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  }, [location]);
+
+  return null;
+}
 
 function App() {
   // Initialize theme from localStorage
@@ -32,7 +47,9 @@ function App() {
   return (
     <>
       <Router>
+        <ScrollToTop />
         <SeoManager />
+        <GoogleAnalytics />
         <MainLayout>
           <Switch>
             <Route path="/" component={Home} />
@@ -46,11 +63,20 @@ function App() {
             <Route path="/about" component={About} />
             <Route path="/330" component={MicroOffer} />
             <Route path="/micro-offer" component={MicroOffer} />
+            <Route path="/booking" component={Booking} />
+            <Route path="/book" component={Booking} />
             <Route path="/contact" component={Contact} />
+            <Route path="/billing/checkout" component={BillingCheckout} />
+            <Route path="/billing/checkout/:serviceId" component={BillingCheckout} />
+            <Route path="/billing/success" component={BillingSuccess} />
+            <Route path="/billing/cancel" component={BillingCancel} />
             <Route path="/admin" component={Admin} />
+            <Route path="/admin/analytics" component={Admin} />
             <Route path="/admin/newsletter" component={Admin} />
             <Route path="/admin/government" component={Admin} />
             <Route path="/admin/government/:opportunityId" component={Admin} />
+            <Route path="/admin/opportunity-scout" component={Admin} />
+            <Route path="/admin/billing" component={Admin} />
             <Route path="/admin/email" component={Admin} />
             <Route path="/admin/email/thread/:threadId" component={Admin} />
             <Route path="/unsubscribe" component={Unsubscribe} />

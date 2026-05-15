@@ -28,11 +28,19 @@ const directRoutes = [
   'about',
   '330',
   'micro-offer',
+  'booking',
+  'book',
   'contact',
+  'billing/checkout',
+  'billing/success',
+  'billing/cancel',
   'admin',
   'admin/newsletter',
+  'admin/government',
+  'admin/opportunity-scout',
   'admin/email',
   'admin/email/thread',
+  'admin/analytics',
   'unsubscribe',
   'privacy-policy',
   'terms',
@@ -45,7 +53,13 @@ function routeShell(route) {
     ? 'Email Command Center | MehyarSoft'
     : route.startsWith('admin/newsletter')
       ? 'Newsletter Money Cockpit | MehyarSoft'
-      : 'Admin Metrics | MehyarSoft';
+      : route.startsWith('admin/analytics')
+        ? 'Analytics Dashboard | MehyarSoft'
+        : route.startsWith('admin/government')
+          ? 'Government Opportunities | MehyarSoft'
+          : route.startsWith('admin/opportunity-scout')
+            ? 'Opportunity Scout | MehyarSoft'
+            : 'Admin Metrics | MehyarSoft';
   return appShell
     .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, '<meta name="description" content="Owner-only MehyarSoft admin area." />')

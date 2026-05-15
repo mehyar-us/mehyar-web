@@ -145,7 +145,13 @@ const MicroOffer = () => {
       </section>
 
       <div id="intake" className="scroll-mt-24">
-        <ContactSection />
+        <ContactSection
+          mode="offer_330_missed_lead_rescue"
+          serviceCategory="ai_missed_lead_rescue_330"
+          selectedOffer="ai_missed_lead_rescue_330"
+          source="330_micro_offer"
+          campaign="330_micro_offer"
+        />
       </div>
     </>
   );

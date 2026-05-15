@@ -49,6 +49,63 @@ export interface UnsubscribePayload extends ApiPayload {
   source: string;
 }
 
+
+export interface BillingService {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  unit_amount_cents: number;
+  estimated_cost_cents: number;
+  estimated_profit_cents?: number;
+  margin_percent?: number;
+  currency: string;
+  mode: string;
+  delivery_window: string;
+  features: string[];
+  requires_scope_review?: boolean;
+}
+
+export interface BillingOrderSummary {
+  id: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+  mode?: string | null;
+  service_id?: string | null;
+  service_name?: string | null;
+  status?: string | null;
+  payment_status?: string | null;
+  currency?: string | null;
+  quantity?: number | null;
+  amount_cents?: number | null;
+  estimated_cost_cents?: number | null;
+  estimated_fee_cents?: number | null;
+  net_cents?: number | null;
+  profit_cents?: number | null;
+  stripe_checkout_session_id?: string | null;
+}
+
+export interface BillingLedgerResponse {
+  orders: BillingOrderSummary[];
+  totals: Record<string, unknown>;
+  events: Record<string, unknown>[];
+  stripe?: Record<string, unknown>;
+}
+
+export interface AdminAnalyticsOverview {
+  provider?: { name?: string; configured?: boolean };
+  diagnostics?: Record<string, unknown>;
+  traffic?: Record<string, unknown>;
+  events?: Record<string, unknown>;
+  revenue?: Record<string, unknown>;
+  safety?: Record<string, unknown>;
+}
+
+export interface AdminAnalyticsDiagnosticsResponse {
+  diagnostics: Record<string, unknown>;
+  safety?: Record<string, unknown>;
+}
+
 export interface AdminLoginPayload extends ApiPayload {
   username?: string;
   email?: string;
@@ -403,6 +460,251 @@ export interface AdminGovOpportunitiesResponse {
   watchlist: AdminGovAgencyWatch[];
   workspace?: AdminGovApplicationWorkspace | null;
   updatedAt?: string;
+}
+
+export interface AdminOpportunityScoutGate {
+  key: string;
+  status: string;
+  detail?: string | null;
+}
+
+export interface AdminOpportunityScoutSettings {
+  enabled: boolean;
+  scheduled_local_time: string;
+  timezone: string;
+  max_daily_ideas: number;
+  min_daily_ideas: number;
+  max_budget_cents: number;
+  min_score: number;
+  min_roi_score: number;
+  min_probability_weighted_value_cents: number;
+  min_expected_profit_cents: number;
+  duplicate_window_days: number;
+  allowed_assignees: string[];
+  default_board: string;
+  kanban_creation_enabled: boolean;
+  auto_create_draft_kanban_cards: boolean;
+  require_approval_before_kanban: boolean;
+  require_compliance_review_for_audience_use: boolean;
+  trend_sources: string[];
+  assistant_enabled: boolean;
+  diagnostics_enabled: boolean;
+  roi_filters?: Record<string, unknown>;
+}
+
+export interface AdminOpportunityScoutPlan {
+  id?: string | null;
+  objective?: string | null;
+  kanban_title?: string | null;
+  kanban_body?: string | null;
+  recommended_assignee?: string | null;
+  acceptance_criteria?: unknown[];
+  required_gates?: unknown[];
+  revenue_snapshot?: Record<string, unknown>;
+  execution_economics?: Record<string, unknown>;
+  daily_kpis?: unknown[];
+  owner_approval_gates?: unknown[];
+  kanban_blueprint?: unknown[];
+  agent_follow_up_cards?: unknown[];
+  priority_score?: number | null;
+  priority_tier?: string | null;
+  [key: string]: unknown;
+}
+
+export interface AdminOpportunityScoutOpportunity {
+  id: string;
+  title: string;
+  status?: string | null;
+  category?: string | null;
+  summary?: string | null;
+  target_customer?: string | null;
+  monetization_path?: string | null;
+  estimated_cost_cents?: number | null;
+  startup_cost_cents?: number | null;
+  labor_hours?: number | null;
+  expected_gross_revenue_cents?: number | null;
+  expected_profit_cents?: number | null;
+  probability_weighted_value_cents?: number | null;
+  lead_count_target?: number | null;
+  score?: number | null;
+  confidence?: string | null;
+  suggested_price_cents?: number | null;
+  revenue_potential_cents?: number | null;
+  profit_potential_cents?: number | null;
+  gross_margin_cents?: number | null;
+  break_even_units?: number | null;
+  priority_score?: number | null;
+  priority_tier?: string | null;
+  revenue_assumptions?: Record<string, unknown>;
+  evidence?: unknown[];
+  source_mix?: unknown[];
+  daily_kpis?: unknown[];
+  owner_approval_gates?: unknown[];
+  kanban_blueprint?: unknown[];
+  agent_follow_up_cards?: unknown[];
+  score_breakdown?: Record<string, unknown>;
+  compliance_flags?: unknown[];
+  risk_flags?: unknown[];
+  owner_notes?: string | null;
+  rejected_reason?: string | null;
+  kanban_task_id?: string | null;
+  plan?: AdminOpportunityScoutPlan | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminOpportunityScoutTodayResponse {
+  today?: string;
+  settings: AdminOpportunityScoutSettings | null;
+  latest_run?: AdminOpportunityScoutRun | null;
+  opportunities: AdminOpportunityScoutOpportunity[];
+  gates: AdminOpportunityScoutGate[];
+}
+
+export interface AdminOpportunityScoutRun {
+  id: string;
+  created_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  run_date_local?: string | null;
+  timezone?: string | null;
+  trigger_type?: string | null;
+  status?: string | null;
+  signals_fetched?: number | null;
+  opportunities_created?: number | null;
+  duplicates_skipped?: number | null;
+  blocked_count?: number | null;
+  error_code?: string | null;
+  error_message?: string | null;
+}
+
+export interface AdminOpportunityScoutSource {
+  key: string;
+  enabled?: boolean;
+  configured?: boolean;
+  available?: boolean;
+  api_key_present?: boolean;
+  read_only?: boolean;
+  private_analysis_only?: boolean;
+  count?: number;
+  [key: string]: unknown;
+}
+
+export interface AdminOpportunityScoutDiagnosticsResponse {
+  diagnostics: Record<string, unknown>;
+  safety?: Record<string, unknown>;
+}
+
+export interface AdminOpportunityScoutExecutionLoop {
+  opportunity_id: string;
+  roi?: Record<string, unknown>;
+  daily_kpis?: unknown[];
+  owner_approval_gates?: unknown[];
+  kanban_blueprint?: unknown[];
+  agent_follow_up_cards?: unknown[];
+  safety?: Record<string, unknown>;
+}
+
+export interface AdminOpportunityScoutAssistantResponse {
+  assistant: Record<string, unknown>;
+}
+
+function normalizeScoutSettings(raw: unknown): AdminOpportunityScoutSettings {
+  const record = asRecord(raw);
+  return {
+    enabled: Boolean(record.enabled),
+    scheduled_local_time: asString(record.scheduled_local_time) || "08:30",
+    timezone: asString(record.timezone) || "America/New_York",
+    max_daily_ideas: asNumber(record.max_daily_ideas) ?? 3,
+    min_daily_ideas: asNumber(record.min_daily_ideas) ?? 1,
+    max_budget_cents: asNumber(record.max_budget_cents) ?? 5000,
+    min_score: asNumber(record.min_score) ?? 65,
+    min_roi_score: asNumber(record.min_roi_score) ?? 60,
+    min_probability_weighted_value_cents: asNumber(record.min_probability_weighted_value_cents) ?? 0,
+    min_expected_profit_cents: asNumber(record.min_expected_profit_cents) ?? 0,
+    duplicate_window_days: asNumber(record.duplicate_window_days) ?? 30,
+    allowed_assignees: asArray(record.allowed_assignees).filter((item): item is string => typeof item === "string"),
+    default_board: asString(record.default_board) || "mehyarsoft-llc",
+    kanban_creation_enabled: Boolean(record.kanban_creation_enabled),
+    auto_create_draft_kanban_cards: Boolean(record.auto_create_draft_kanban_cards),
+    require_approval_before_kanban: record.require_approval_before_kanban === undefined ? true : Boolean(record.require_approval_before_kanban),
+    require_compliance_review_for_audience_use: record.require_compliance_review_for_audience_use === undefined ? true : Boolean(record.require_compliance_review_for_audience_use),
+    trend_sources: asArray(record.trend_sources).filter((item): item is string => typeof item === "string"),
+    assistant_enabled: record.assistant_enabled === undefined ? true : Boolean(record.assistant_enabled),
+    diagnostics_enabled: record.diagnostics_enabled === undefined ? true : Boolean(record.diagnostics_enabled),
+    roi_filters: asRecord(record.roi_filters),
+  };
+}
+
+function normalizeScoutGate(raw: unknown): AdminOpportunityScoutGate {
+  const record = asRecord(raw);
+  return { key: asString(record.key) || "gate", status: asString(record.status) || "unknown", detail: asString(record.detail) };
+}
+
+function normalizeScoutOpportunity(raw: unknown): AdminOpportunityScoutOpportunity {
+  const record = asRecord(raw);
+  const plan = record.plan ? asRecord(record.plan) : null;
+  return {
+    id: asString(record.id) || "unknown-opportunity",
+    title: asString(record.title) || "Untitled opportunity",
+    status: asString(record.status),
+    category: asString(record.category),
+    summary: asString(record.summary),
+    target_customer: asString(record.target_customer),
+    monetization_path: asString(record.monetization_path),
+    estimated_cost_cents: asNumber(record.estimated_cost_cents),
+    startup_cost_cents: asNumber(record.startup_cost_cents),
+    labor_hours: asNumber(record.labor_hours),
+    expected_gross_revenue_cents: asNumber(record.expected_gross_revenue_cents),
+    expected_profit_cents: asNumber(record.expected_profit_cents),
+    probability_weighted_value_cents: asNumber(record.probability_weighted_value_cents),
+    lead_count_target: asNumber(record.lead_count_target),
+    score: asNumber(record.score),
+    confidence: asString(record.confidence),
+    suggested_price_cents: asNumber(record.suggested_price_cents),
+    revenue_potential_cents: asNumber(record.revenue_potential_cents),
+    profit_potential_cents: asNumber(record.profit_potential_cents),
+    gross_margin_cents: asNumber(record.gross_margin_cents),
+    break_even_units: asNumber(record.break_even_units),
+    priority_score: asNumber(record.priority_score),
+    priority_tier: asString(record.priority_tier),
+    revenue_assumptions: asRecord(record.revenue_assumptions),
+    evidence: asArray(record.evidence),
+    source_mix: asArray(record.source_mix),
+    daily_kpis: asArray(record.daily_kpis),
+    owner_approval_gates: asArray(record.owner_approval_gates),
+    kanban_blueprint: asArray(record.kanban_blueprint),
+    agent_follow_up_cards: asArray(record.agent_follow_up_cards),
+    score_breakdown: asRecord(record.score_breakdown),
+    compliance_flags: asArray(record.compliance_flags),
+    risk_flags: asArray(record.risk_flags),
+    owner_notes: asString(record.owner_notes),
+    rejected_reason: asString(record.rejected_reason),
+    kanban_task_id: asString(record.kanban_task_id),
+    plan: plan ? { ...plan, id: asString(plan.id), objective: asString(plan.objective), kanban_title: asString(plan.kanban_title), kanban_body: asString(plan.kanban_body), recommended_assignee: asString(plan.recommended_assignee), acceptance_criteria: asArray(plan.acceptance_criteria), required_gates: asArray(plan.required_gates), revenue_snapshot: asRecord(plan.revenue_snapshot), execution_economics: asRecord(plan.execution_economics), daily_kpis: asArray(plan.daily_kpis), owner_approval_gates: asArray(plan.owner_approval_gates), kanban_blueprint: asArray(plan.kanban_blueprint), agent_follow_up_cards: asArray(plan.agent_follow_up_cards), priority_score: asNumber(plan.priority_score), priority_tier: asString(plan.priority_tier) } : null,
+    created_at: asString(record.created_at),
+    updated_at: asString(record.updated_at),
+  };
+}
+
+function normalizeScoutRun(raw: unknown): AdminOpportunityScoutRun {
+  const record = asRecord(raw);
+  return {
+    id: asString(record.id) || asString(record.run_id) || "unknown-run",
+    created_at: asString(record.created_at),
+    started_at: asString(record.started_at),
+    finished_at: asString(record.finished_at),
+    run_date_local: asString(record.run_date_local),
+    timezone: asString(record.timezone),
+    trigger_type: asString(record.trigger_type),
+    status: asString(record.status),
+    signals_fetched: asNumber(record.signals_fetched),
+    opportunities_created: asNumber(record.opportunities_created),
+    duplicates_skipped: asNumber(record.duplicates_skipped),
+    blocked_count: asNumber(record.blocked_count),
+    error_code: asString(record.error_code),
+    error_message: asString(record.error_message),
+  };
 }
 
 export class ApiError extends Error {
@@ -903,6 +1205,57 @@ function normalizeGovAgencyWatch(raw: unknown): AdminGovAgencyWatch {
 }
 
 export const mehyarSoftApi = {
+
+  async getBillingServices(mode: "test" | "live" = "test") {
+    const response = await apiFetch<unknown>(`/v1/billing/services?mode=${encodeURIComponent(mode)}`, {}, adminEndpoint);
+    const record = asRecord(response);
+    return {
+      services: asArray(record.services).map((item) => asRecord(item) as unknown as BillingService),
+      stripe: asRecord(record.stripe),
+      safety: asRecord(record.safety),
+    };
+  },
+
+  async createBillingCheckout(payload: { service_id: string; mode?: "test" | "live"; quantity?: number; customer_email?: string; customer_name?: string; business_name?: string }) {
+    return postJson<{ ok: boolean; order_id?: string; checkout?: { id?: string | null; url?: string | null; payment_status?: string | null }; error?: string }>("/v1/billing/checkout", payload, undefined, adminEndpoint);
+  },
+
+  async getBillingSession(sessionId: string) {
+    return apiFetch<{ ok: boolean; order?: BillingOrderSummary; error?: string }>(`/v1/billing/sessions/${encodeURIComponent(sessionId)}`, {}, adminEndpoint);
+  },
+
+  async getBillingLedger(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/billing/ledger", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return {
+      orders: asArray(record.orders).map((item) => asRecord(item) as unknown as BillingOrderSummary),
+      totals: asRecord(record.totals),
+      events: asArray(record.events).map((item) => asRecord(item)),
+      stripe: asRecord(record.stripe),
+    } satisfies BillingLedgerResponse;
+  },
+
+  async getAnalyticsOverview(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/analytics", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return {
+      provider: asRecord(record.provider),
+      diagnostics: asRecord(record.diagnostics),
+      traffic: asRecord(record.traffic),
+      events: asRecord(record.events),
+      revenue: asRecord(record.revenue),
+      safety: asRecord(record.safety),
+    } satisfies AdminAnalyticsOverview;
+  },
+
+  async getAnalyticsDiagnostics(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/analytics/diagnostics", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return {
+      diagnostics: asRecord(record.diagnostics),
+      safety: asRecord(record.safety),
+    } satisfies AdminAnalyticsDiagnosticsResponse;
+  },
   submitIntake(payload: IntakePayload) {
     return postJson<{ ok: boolean; lead_id?: string; message?: string }>("/api/intake", payload);
   },
@@ -1030,6 +1383,94 @@ export const mehyarSoftApi = {
       adminEndpoint,
     );
     return { opportunity: normalizeGovOpportunity(response) };
+  },
+
+  async getOpportunityScoutToday(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/opportunity-scout/today", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return {
+      today: asString(record.today) || undefined,
+      settings: record.settings ? normalizeScoutSettings(record.settings) : null,
+      latest_run: record.latest_run ? normalizeScoutRun(record.latest_run) : null,
+      opportunities: asArray(record.opportunities || record.items).map(normalizeScoutOpportunity),
+      gates: asArray(record.gates).map(normalizeScoutGate),
+    } satisfies AdminOpportunityScoutTodayResponse;
+  },
+
+  async getOpportunityScoutRuns(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/opportunity-scout/runs?limit=50", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return { runs: asArray(record.runs || record.items).map(normalizeScoutRun) };
+  },
+
+  async getOpportunityScoutOpportunities(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/opportunity-scout/opportunities", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return { opportunities: asArray(record.opportunities || record.items).map(normalizeScoutOpportunity) };
+  },
+
+  async getOpportunityScoutSettings(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/opportunity-scout/settings", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return { settings: normalizeScoutSettings(record.settings), gates: asArray(record.gates).map(normalizeScoutGate) };
+  },
+
+  async updateOpportunityScoutSettings(token: string, payload: Partial<AdminOpportunityScoutSettings>) {
+    const response = await patchJson<unknown>("/v1/admin/opportunity-scout/settings", payload as ApiPayload, token, adminEndpoint);
+    const record = asRecord(response);
+    return { settings: normalizeScoutSettings(record.settings), gates: asArray(record.gates).map(normalizeScoutGate) };
+  },
+
+  async getOpportunityScoutSources(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/opportunity-scout/sources", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return { sources: asArray(record.sources).map((item) => asRecord(item) as AdminOpportunityScoutSource) };
+  },
+
+  async getOpportunityScoutDiagnostics(token: string) {
+    const response = await apiFetch<unknown>("/v1/admin/opportunity-scout/diagnostics", { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return { diagnostics: asRecord(record.diagnostics), safety: asRecord(record.safety) } satisfies AdminOpportunityScoutDiagnosticsResponse;
+  },
+
+  async getOpportunityScoutExecutionLoop(token: string, opportunityId: string) {
+    const response = await apiFetch<unknown>(`/v1/admin/opportunity-scout/opportunities/${encodeURIComponent(opportunityId)}/execution-loop`, { headers: { Authorization: `Bearer ${token}` } }, adminEndpoint);
+    const record = asRecord(response);
+    return { opportunity_id: asString(record.opportunity_id) || opportunityId, roi: asRecord(record.roi), daily_kpis: asArray(record.daily_kpis), owner_approval_gates: asArray(record.owner_approval_gates), kanban_blueprint: asArray(record.kanban_blueprint), agent_follow_up_cards: asArray(record.agent_follow_up_cards), safety: asRecord(record.safety) } satisfies AdminOpportunityScoutExecutionLoop;
+  },
+
+  async runOpportunityScout(token: string) {
+    const response = await postJson<unknown>("/v1/admin/opportunity-scout/run", { trigger_type: "manual" }, token, adminEndpoint);
+    const record = asRecord(response);
+    return { run_id: asString(record.run_id), status: asString(record.status), signals_fetched: asNumber(record.signals_fetched), opportunities_created: asNumber(record.opportunities_created), duplicates_skipped: asNumber(record.duplicates_skipped), blocked_count: asNumber(record.blocked_count) };
+  },
+
+  async approveOpportunityScoutOpportunity(token: string, opportunityId: string) {
+    const response = await postJson<unknown>(`/v1/admin/opportunity-scout/opportunities/${encodeURIComponent(opportunityId)}/approve`, { actor: "admin" }, token, adminEndpoint);
+    return { opportunity: normalizeScoutOpportunity(asRecord(response).opportunity || response) };
+  },
+
+  async rejectOpportunityScoutOpportunity(token: string, opportunityId: string, reason: string) {
+    const response = await postJson<unknown>(`/v1/admin/opportunity-scout/opportunities/${encodeURIComponent(opportunityId)}/reject`, { reason }, token, adminEndpoint);
+    return { opportunity: normalizeScoutOpportunity(asRecord(response).opportunity || response) };
+  },
+
+  async updateOpportunityScoutOpportunity(token: string, opportunityId: string, payload: { title?: string; summary?: string; target_customer?: string; monetization_path?: string; owner_notes?: string; plan?: Record<string, unknown> }) {
+    const response = await patchJson<unknown>(`/v1/admin/opportunity-scout/opportunities/${encodeURIComponent(opportunityId)}`, payload as ApiPayload, token, adminEndpoint);
+    return { opportunity: normalizeScoutOpportunity(asRecord(response).opportunity || response) };
+  },
+
+  async regenerateOpportunityScoutPlan(token: string, opportunityId: string) {
+    return postJson<unknown>(`/v1/admin/opportunity-scout/opportunities/${encodeURIComponent(opportunityId)}/regenerate-plan`, { owner_review_only: true }, token, adminEndpoint);
+  },
+
+  async createOpportunityScoutKanban(token: string, opportunityId: string, payload: { title?: string; body?: string; assignee?: string; priority?: string; due_date?: string }) {
+    return postJson<{ ok: boolean; card_id?: string; board_id?: string; assignee?: string }>(`/v1/admin/opportunity-scout/opportunities/${encodeURIComponent(opportunityId)}/create-kanban`, payload, token, adminEndpoint);
+  },
+
+  async askOpportunityScoutAssistant(token: string, payload: { prompt: string; opportunity_id?: string }) {
+    const response = await postJson<unknown>("/v1/admin/opportunity-scout/assistant", payload, token, adminEndpoint);
+    return { assistant: asRecord(asRecord(response).assistant || response) } satisfies AdminOpportunityScoutAssistantResponse;
   },
 
   async promoteNewsletterSubscriber(token: string, subscriberId: string) {

@@ -7,6 +7,7 @@ const coreRoutes = [
   { label: "Home", href: "/", description: "The revenue-leak diagnostic journey and fastest path to contact." },
   { label: "$330 Website + Booking Leak Audit", href: "/330", description: "Focused entry offer for website, booking, missed-call, and follow-up leaks." },
   { label: "Services", href: "/services", description: "Offer ladder, pricing ranges, and delivery approach." },
+  { label: "Book a Call", href: "/booking", description: "Service-specific booking request with safe manual scheduling fallback." },
   { label: "Engagement Patterns", href: "/portfolio", description: "Problem patterns MehyarSoft can diagnose, fix, and automate." },
   { label: "Founder Story", href: "/about", description: "MehyarSoft credibility, values, and founder-led operating context." },
   { label: "Blog", href: "/blog", description: "Practical notes on follow-up, CRM, automation, and consulting decisions." },

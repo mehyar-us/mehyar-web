@@ -80,8 +80,8 @@ const Services = () => {
                       </div>
                     ))}
                   </div>
-                  <Link href="/contact" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100">
-                    Request Practical Next Step <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  <Link href={`/booking?service=${service.id}&utm_campaign=services_catalog#contact`} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100">
+                    Request service-specific booking <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </CardContent>
               </Card>
