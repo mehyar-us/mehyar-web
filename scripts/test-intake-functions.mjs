@@ -34,6 +34,11 @@ class MockD1 {
         const [, valueHash] = statement.values;
         return db.suppression.some((row) => row.type === "email" && row.value_hash === valueHash) ? { 1: 1 } : null;
       }
+      if (sql.includes("FROM leads") && sql.includes("form_type = 'newsletter'")) {
+        const [email] = statement.values;
+        const lead = [...db.leads].reverse().find((row) => row.form_type === "newsletter" && row.email?.toLowerCase() === String(email).toLowerCase());
+        return lead ? { id: lead.id } : null;
+      }
       return null;
     };
     statement.run = async () => {
@@ -197,6 +202,11 @@ assert.equal(newsletterEnv.__db.leads.length, 1);
 assert.equal(newsletterEnv.__db.leads[0].form_type, "newsletter");
 assert.equal(newsletterEnv.__db.leads[0].consent_contact, 1);
 assert.equal(newsletterEnv.__db.leads[0].consent_marketing, 1);
+const newsletterDuplicateResponse = await intake({ request: request("/api/intake", newsletterPayload), env: newsletterEnv });
+assert.equal(newsletterDuplicateResponse.status, 200);
+assert.equal((await newsletterDuplicateResponse.json()).ok, true);
+assert.equal(newsletterEnv.__db.leads.length, 1);
+assert.equal(newsletterEnv.__db.events.some((event) => event.event_type === "newsletter_duplicate_accepted"), true);
 
 const newsletterNoConsentEnv = env();
 const newsletterNoConsentResponse = await intake({ request: request("/api/intake", { ...newsletterPayload, email: "newsletter-no-consent@test.example", consent_contact: false }), env: newsletterNoConsentEnv });

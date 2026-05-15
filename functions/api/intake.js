@@ -66,10 +66,21 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true, message: SAFE_SUCCESS }, 202, request, env);
     }
 
-    const rate = await checkRateLimits(env, ipHash, emailHash, duplicateHash);
+    const existingNewsletterLead = payload.data.form_type === "newsletter"
+      ? await findRecentNewsletterLead(env, payload.data.email)
+      : null;
+    if (existingNewsletterLead) {
+      await writeAudit(env, existingNewsletterLead.id || null, "newsletter_duplicate_accepted", { request_id: requestId, form_type: payload.data.form_type });
+      return json({ ok: true, lead_id: existingNewsletterLead.id, message: "Checklist request already received." }, 200, request, env);
+    }
+
+    const rate = await checkRateLimits(env, ipHash, emailHash, duplicateHash, payload.data.form_type);
     if (!rate.ok) {
       await writeAudit(env, null, "rate_limited", { request_id: requestId, form_type: payload.data.form_type, scope: rate.scope });
-      return json({ ok: false, message: SAFE_FAILURE }, 429, request, env);
+      if (payload.data.form_type === "newsletter") {
+        return json({ ok: true, message: "Checklist request already received or queued. Try again later if you need a fresh copy." }, 202, request, env);
+      }
+      return json({ ok: false, code: "rate_limited", message: "Too many attempts reached this intake path. Please wait a few minutes, then try again." }, 429, request, env);
     }
 
     const leadId = crypto.randomUUID();
@@ -166,12 +177,25 @@ async function verifyTurnstile(env, token, remoteIp, request) {
   return { ok: result.success === true };
 }
 
-async function checkRateLimits(env, ipHash, emailHash, duplicateHash) {
+async function findRecentNewsletterLead(env, email) {
+  if (!env?.LEADS_DB || !email) return null;
+  return env.LEADS_DB.prepare(`
+    SELECT id FROM leads
+    WHERE form_type = 'newsletter'
+      AND lower(email) = lower(?)
+      AND created_at >= datetime('now', '-30 days')
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).bind(email).first();
+}
+
+async function checkRateLimits(env, ipHash, emailHash, duplicateHash, formType = "contact") {
   if (!env?.INTAKE_KV) return { ok: true };
+  const isNewsletter = formType === "newsletter";
   const checks = [
-    { key: `ratelimit:ip:${ipHash}`, limit: 5, ttl: 600, scope: "ip" },
-    { key: `ratelimit:email:${emailHash}`, limit: 3, ttl: 86400, scope: "email" },
-    { key: `idempotency:${duplicateHash}`, limit: 1, ttl: 86400, scope: "duplicate" },
+    { key: `ratelimit:ip:${ipHash}`, limit: isNewsletter ? 20 : 5, ttl: 600, scope: "ip" },
+    { key: `ratelimit:email:${emailHash}`, limit: isNewsletter ? 10 : 3, ttl: 86400, scope: "email" },
+    { key: `idempotency:${duplicateHash}`, limit: isNewsletter ? 5 : 1, ttl: 86400, scope: "duplicate" },
   ];
   for (const check of checks) {
     const current = Number((await env.INTAKE_KV.get(check.key)) || "0");

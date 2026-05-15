@@ -263,11 +263,13 @@ function mapModeToFormType(mode: ConversionFlowMode, service: string): IntakeFor
 function ConversionTurnstile({
   isFooter,
   enabled,
+  resetSignal,
   onToken,
   onError,
 }: {
   isFooter: boolean;
   enabled: boolean;
+  resetSignal: number;
   onToken: (token: string) => void;
   onError: () => void;
 }) {
@@ -318,6 +320,14 @@ function ConversionTurnstile({
       cancelled = true;
     };
   }, [enabled, onToken, turnstileSiteKey]);
+
+  useEffect(() => {
+    setTurnstileToken("");
+    onToken("");
+    if (turnstileWidgetIdRef.current) {
+      window.turnstile?.reset?.(turnstileWidgetIdRef.current);
+    }
+  }, [onToken, resetSignal]);
 
   useEffect(() => {
     const container = turnstileContainerRef.current;
@@ -423,6 +433,7 @@ export function ConversionFlow({
   const [consentMarketing, setConsentMarketing] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileIssue, setTurnstileIssue] = useState(false);
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [showDetails, setShowDetails] = useState(mode !== "newsletter_signup");
 
@@ -581,6 +592,7 @@ export function ConversionFlow({
       setConsentContact(false);
       setConsentMarketing(false);
       setTurnstileToken("");
+      setTurnstileResetSignal((value) => value + 1);
       if (returnUrl) window.setTimeout(() => (window.location.href = returnUrl), 800);
     } catch (error) {
       setStatus("error");
@@ -590,6 +602,7 @@ export function ConversionFlow({
         variant: "destructive",
       });
       setTurnstileToken("");
+      setTurnstileResetSignal((value) => value + 1);
     }
   };
 
@@ -863,7 +876,7 @@ export function ConversionFlow({
           </div>
         ) : null}
 
-        {!isUnsubscribe ? <ConversionTurnstile isFooter={isFooter} enabled={turnstileEnabled} onToken={handleTurnstileToken} onError={handleTurnstileError} /> : null}
+        {!isUnsubscribe ? <ConversionTurnstile isFooter={isFooter} enabled={turnstileEnabled} resetSignal={turnstileResetSignal} onToken={handleTurnstileToken} onError={handleTurnstileError} /> : null}
 
         <div className={cn("rounded-2xl border p-3 text-sm", {
           "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300": status === "idle",
