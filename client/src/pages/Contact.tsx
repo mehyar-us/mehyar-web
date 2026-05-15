@@ -10,7 +10,9 @@ const getContactQueryDefaults = (): { mode: ConversionFlowMode; serviceCategory?
   const requestType = params.get("request_type")?.trim() || undefined;
   const campaign = params.get("utm_campaign")?.trim() || undefined;
 
-  if (requestType === "micro_offer" || service === "ai_missed_lead_rescue_330") {
+  const normalizedService = service?.replace(/-/g, "_");
+
+  if (requestType === "micro_offer" || normalizedService === "ai_missed_lead_rescue_330" || service === "330" || service === "micro-offer") {
     return {
       mode: "offer_330_missed_lead_rescue",
       serviceCategory: "ai_missed_lead_rescue_330",
