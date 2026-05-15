@@ -1,7 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AlertCircle, CalendarClock, CheckCircle2, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,6 +86,8 @@ const inputClassName =
   "min-h-11 w-full rounded-xl border-border bg-white px-4 py-3 text-ink shadow-sm transition focus-visible:ring-2 focus-visible:ring-ring dark:bg-brand-950 dark:text-white";
 
 const textareaClassName = cn(inputClassName, "min-h-32 resize-y leading-7");
+const nativeCheckboxClassName =
+  "mt-1 h-4 w-4 shrink-0 rounded border border-primary accent-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:accent-brand-100";
 
 const modeCopy: Record<ConversionFlowMode, { eyebrow: string; title: string; description: string; success: string; submit: string }> = {
   contact_general: {
@@ -443,7 +444,7 @@ export function ConversionFlow({
   const needsIdentity = !isNewsletter && !isUnsubscribe && !isPaymentTest;
   const identityReady = !needsIdentity || (Boolean(form.name.trim()) && hasContactMethod && Boolean(form.message.trim()));
   const consentReady = !needsServiceConsent || consentContact || isNewsletter;
-  const turnstileEnabled = !isUnsubscribe && !isPaymentTest && identityReady && consentReady && (isNewsletter ? Boolean(form.email.trim()) && consentMarketing : true);
+  const turnstileEnabled = !isUnsubscribe && !isPaymentTest && identityReady && consentReady && (isNewsletter ? Boolean(form.email.trim()) : true);
   const canSubmit =
     hiddenPaymentAllowed &&
     status !== "submitting" &&
@@ -451,7 +452,6 @@ export function ConversionFlow({
     (isNewsletter ? Boolean(form.email.trim()) : true) &&
     identityReady &&
     consentReady &&
-    (isNewsletter ? consentMarketing : true) &&
     (isUnsubscribe || isPaymentTest || Boolean(turnstileToken));
 
   const shellClassName = cn("rounded-[1.5rem] border p-5 shadow-[0_1px_2px_rgba(10,20,24,0.06)] sm:p-6", {
@@ -544,7 +544,7 @@ export function ConversionFlow({
           ]
             .filter(Boolean)
             .join("\n"),
-          consent_contact: needsServiceConsent ? consentContact : consentMarketing,
+          consent_contact: needsServiceConsent ? consentContact : true,
           consent_marketing: isNewsletter || consentMarketing,
           turnstile_token: turnstileToken,
           hp_field: form.hp_field,
@@ -679,7 +679,13 @@ export function ConversionFlow({
             <div className="grid gap-3 sm:grid-cols-2">
               {topicOptions.map((topic) => (
                 <label key={topic.value} htmlFor={`${formId}-topic-${topic.value}`} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm", isFooter ? "border-white/15 bg-white/10 text-neutral-100" : "border-border text-foreground")}>
-                  <Checkbox id={`${formId}-topic-${topic.value}`} checked={form.topics.includes(topic.value)} onCheckedChange={(checked) => toggleTopic(topic.value, checked === true)} />
+                  <input
+                    id={`${formId}-topic-${topic.value}`}
+                    type="checkbox"
+                    checked={form.topics.includes(topic.value)}
+                    onChange={(event) => toggleTopic(topic.value, event.target.checked)}
+                    className={nativeCheckboxClassName}
+                  />
                   <span className={isFooter ? "text-neutral-100" : undefined}>{topic.label}</span>
                 </label>
               ))}
@@ -812,15 +818,33 @@ export function ConversionFlow({
         {!isUnsubscribe && !isPaymentTest ? (
           <div className="space-y-4 rounded-2xl border border-border bg-white p-4 dark:bg-white/[0.04]">
             {!isNewsletter ? (
-              <label htmlFor={`${formId}-consent-contact`} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6 text-muted-foreground">
-                <Checkbox id={`${formId}-consent-contact`} checked={consentContact} onCheckedChange={(checked) => setConsentContact(checked === true)} className="mt-1" />
-                <span><span className="font-semibold text-ink dark:text-white">Required:</span> MehyarSoft LLC may contact me about this request by email or phone if provided. This is only service follow-up.</span>
-              </label>
-            ) : null}
-            <label htmlFor={`${formId}-consent-marketing`} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6 text-muted-foreground">
-              <Checkbox id={`${formId}-consent-marketing`} checked={consentMarketing} onCheckedChange={(checked) => setConsentMarketing(checked === true)} className="mt-1" />
-              <span><span className="font-semibold text-ink dark:text-white">{isNewsletter ? "Required:" : "Optional:"}</span> send occasional MehyarSoft updates. Unsubscribe anytime.</span>
-            </label>
+              <>
+                <label htmlFor={`${formId}-consent-contact`} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6 text-muted-foreground">
+                  <input
+                    id={`${formId}-consent-contact`}
+                    type="checkbox"
+                    checked={consentContact}
+                    onChange={(event) => setConsentContact(event.target.checked)}
+                    className={nativeCheckboxClassName}
+                  />
+                  <span><span className="font-semibold text-ink dark:text-white">Required:</span> MehyarSoft LLC may contact me about this request by email or phone if provided. This is only service follow-up.</span>
+                </label>
+                <label htmlFor={`${formId}-consent-marketing`} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6 text-muted-foreground">
+                  <input
+                    id={`${formId}-consent-marketing`}
+                    type="checkbox"
+                    checked={consentMarketing}
+                    onChange={(event) => setConsentMarketing(event.target.checked)}
+                    className={nativeCheckboxClassName}
+                  />
+                  <span><span className="font-semibold text-ink dark:text-white">Optional:</span> send occasional MehyarSoft updates. Unsubscribe anytime.</span>
+                </label>
+              </>
+            ) : (
+              <div className="rounded-xl border border-brand-700/15 bg-brand-50/80 p-3 text-sm leading-6 text-brand-950 dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-100">
+                Entering your email requests the free checklist and practical MehyarSoft updates. Unsubscribe anytime. First name, last name, and ZIP are optional.
+              </div>
+            )}
           </div>
         ) : null}
 
