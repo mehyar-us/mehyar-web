@@ -120,15 +120,15 @@ assert.equal(healthResponse.status, 200);
 assert.deepEqual(await healthResponse.json(), { ok: true, service: "mehyar-web-intake", environment: "test" });
 
 const configEnv = {
-  VITE_TURNSTILE_SITE_KEY: "0x4AAAAAADNYC8DYoBFvq9zS",
+  VITE_TURNSTILE_SITE_KEY: "0x4AAAAAADQCOtotqrJrS80U",
   TURNSTILE_SECRET_KEY: "must-not-leak",
 };
 const clientConfigResponse = await clientConfig({ env: configEnv });
 assert.equal(clientConfigResponse.status, 200);
-assert.deepEqual(await clientConfigResponse.json(), { ok: true, turnstileSiteKey: "0x4AAAAAADNYC8DYoBFvq9zS" });
+assert.deepEqual(await clientConfigResponse.json(), { ok: true, turnstileSiteKey: "0x4AAAAAADQCOtotqrJrS80U" });
 const publicConfigResponse = await publicConfig({ env: configEnv });
 const publicConfigBody = JSON.stringify(await publicConfigResponse.json());
-assert.match(publicConfigBody, /0x4AAAAAADNYC8DYoBFvq9zS/);
+assert.match(publicConfigBody, /0x4AAAAAADQCOtotqrJrS80U/);
 assert.doesNotMatch(publicConfigBody, /must-not-leak|TURNSTILE_SECRET_KEY/i);
 
 const missingConfigResponse = await clientConfig({ env: { TURNSTILE_SECRET_KEY: "must-not-leak" } });
