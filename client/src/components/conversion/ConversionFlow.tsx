@@ -422,6 +422,7 @@ export function ConversionFlow({
   const [consentContact, setConsentContact] = useState(false);
   const [consentMarketing, setConsentMarketing] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileIssue, setTurnstileIssue] = useState(false);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [showDetails, setShowDetails] = useState(mode !== "newsletter_signup");
 
@@ -470,6 +471,20 @@ export function ConversionFlow({
       ...prev,
       topics: checked ? Array.from(new Set([...prev.topics, topic])) : prev.topics.filter((item) => item !== topic),
     }));
+  };
+
+  const handleTurnstileToken = (token: string) => {
+    setTurnstileToken(token);
+    if (token) {
+      setTurnstileIssue(false);
+      if (status === "error") setStatus("idle");
+    }
+  };
+
+  const handleTurnstileError = () => {
+    setTurnstileToken("");
+    setTurnstileIssue(true);
+    if (status === "error") setStatus("idle");
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -848,7 +863,7 @@ export function ConversionFlow({
           </div>
         ) : null}
 
-        {!isUnsubscribe ? <ConversionTurnstile isFooter={isFooter} enabled={turnstileEnabled} onToken={setTurnstileToken} onError={() => setStatus("error")} /> : null}
+        {!isUnsubscribe ? <ConversionTurnstile isFooter={isFooter} enabled={turnstileEnabled} onToken={handleTurnstileToken} onError={handleTurnstileError} /> : null}
 
         <div className={cn("rounded-2xl border p-3 text-sm", {
           "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300": status === "idle",
@@ -861,9 +876,9 @@ export function ConversionFlow({
             {status === "submitting" ? <Loader2 size={16} className="mt-0.5 flex-shrink-0 animate-spin" aria-hidden="true" /> : null}
             {status === "error" ? <AlertCircle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" /> : null}
             <div>
-              <p className="font-semibold">{status === "success" ? copy.success : status === "error" ? "The request did not send" : status === "submitting" ? "Sending securely" : turnstileEnabled && !turnstileToken ? "Complete the security check to submit" : "Ready when the required fields are complete"}</p>
+              <p className="font-semibold">{status === "success" ? copy.success : status === "error" ? "The request did not send" : status === "submitting" ? "Sending securely" : turnstileIssue ? "The security check needs another try" : turnstileEnabled && !turnstileToken ? "Complete the security check to submit" : "Ready when the required fields are complete"}</p>
               <p className="mt-1 leading-6">
-                {status === "idle" ? (turnstileEnabled && !turnstileToken ? "Cloudflare verification is ready. Finish the checkbox above, then submit." : "Cloudflare verification, consent, source/campaign metadata, and safe routing are handled in this shared conversion component.") : status === "success" ? "No internal IDs, secrets, or raw backend errors are shown." : status === "error" ? "Please refresh and try again, or email contact@mehyar.us without sensitive data." : "Hold tight — this is being delivered through the secure intake path."}
+                {status === "idle" ? (turnstileIssue ? "Cloudflare verification did not complete. Refresh the page or try the checkbox again, then submit." : turnstileEnabled && !turnstileToken ? "Cloudflare verification is ready. Finish the checkbox above, then submit." : "Cloudflare verification, consent, source/campaign metadata, and safe routing are handled in this shared conversion component.") : status === "success" ? "No internal IDs, secrets, or raw backend errors are shown." : status === "error" ? "Please refresh and try again, or email contact@mehyar.us without sensitive data." : "Hold tight — this is being delivered through the secure intake path."}
               </p>
               {status === "success" && isNewsletter ? (
                 <a href="/330?request_type=micro_offer&utm_campaign=newsletter_thank_you#intake" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "mt-3 rounded-full")}>Request the $330 audit</a>
