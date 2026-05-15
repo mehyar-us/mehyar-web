@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AlertCircle, CalendarClock, CheckCircle2, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -473,19 +473,19 @@ export function ConversionFlow({
     }));
   };
 
-  const handleTurnstileToken = (token: string) => {
+  const handleTurnstileToken = useCallback((token: string) => {
     setTurnstileToken(token);
     if (token) {
       setTurnstileIssue(false);
-      if (status === "error") setStatus("idle");
+      setStatus((currentStatus) => (currentStatus === "error" ? "idle" : currentStatus));
     }
-  };
+  }, []);
 
-  const handleTurnstileError = () => {
+  const handleTurnstileError = useCallback(() => {
     setTurnstileToken("");
     setTurnstileIssue(true);
-    if (status === "error") setStatus("idle");
-  };
+    setStatus((currentStatus) => (currentStatus === "error" ? "idle" : currentStatus));
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
