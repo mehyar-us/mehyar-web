@@ -7,7 +7,7 @@ pages_build_output_dir = "dist/public"
 # VITE_TURNSTILE_SITE_KEY = "<public-turnstile-site-key>"
 
 [vars]
-VITE_TURNSTILE_SITE_KEY = "0x4AAAAAADNYC8DYoBFvq9zS"
+VITE_TURNSTILE_SITE_KEY = "0x4AAAAAADQCOtotqrJrS80U"
 ENVIRONMENT = "production"
 CONTACT_TO_EMAIL = "mrswelim@gmail.com"
 CONTACT_FROM_EMAIL = "leads@mehyar.us"
