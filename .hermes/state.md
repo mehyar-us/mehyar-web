@@ -5,19 +5,19 @@
 
 | field                          | value                                    |
 | ------------------------------ | ---------------------------------------- |
-| last_tick_at                   | 2026-07-09T17:08:00Z                     |
-| last_tick_id                   | 29                                       |
+| last_tick_at                   | 2026-07-09T18:25:00Z                     |
+| last_tick_id                   | 31                                       |
 | live_url                       | https://mehyar.us                        |
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up                                       |
-| deployed_sha                   | ef12663 (unchanged — turn-029 docs-only, deploy workflow filtered out docs/**; live site still on turn-027 sha; main @ 4b2497e on github) |
-| deploy_status                  | green (turn-027 still live @ main-P-x17WD-.js; turn-029 4-screen Phase-6 smoke against recreated QA baseline all PASS — home/booking/micro-offer/404 each 200, each 3 JSON-LD blocks, same bundle; live bundle grep 19 micro-offer#intake / 7 'Request the $330 audit' / 1 'Request the audit path' / 21 /contact unchanged; 6-tier offer ladder all 6 price strings in bundle; anti-slop blacklist 0/7 hits; tsc green, test:intake 11/11) |
+| deployed_sha                   | 3d2408e (turn-030 home JSON-LD; CF Pages deploy rolled the shell files — route-injected WebPage/BreadcrumbList/ItemList block IS live on / — but JS bundle hash stayed main-P-x17WD-.js from turn-027; main @ 3d2408e on github) |
+| deploy_status                  | green (turn-030 SHELL PARTIAL — shell file deploy rolled route-injected JSON-LD on home, JS bundle hash lag is benign for SEO outcome; full 13-route LOOP-BOOT audit turn-031 all PASS — 13/13 routes 200, 3 JSON-LD blocks each, expected @types match, bundle funnel counters unchanged from turn-027 baseline (19 micro-offer#intake / 7 'Request the $330 audit' / 1 'Request the audit path' / 21 /contact), anti-slop 0/7 hits, tsc green, test:intake 11/11) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 3  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF — todo: 0; closed this tick: t_<turn-029>) |
+| open_tickets                   | 2  (ready: t_45ea76a8 W5-PERSUADE, t_90f2136f BOARD-HANDOFF — todo: 0; closed this tick: t_5a6bf1c3 turn-030, t_b3048d53 LOOP-BOOT) |
 | shipped_since_last             | 1 (docs only)                            |
-| last_learned                   | shipped VISION.md 'Current state' line cross-link fix (turn-029, sha 4b2497e on github main / live still ef12663) — the line had the same wrong-filename drift turn-028 was created to repair on disk, but VISION.md itself still pointed at non-existent paths (missing `.md`, missing `-2026-05-11.md` suffix, not markdown links). Fixed: each ops doc now a proper markdown link to its actual filename; ops doc count corrected from '2 ops docs' (3 filenames listed) to '4 ops docs' (all 4 actually on disk: mehyarsoft-api-contract + FINAL-ACCEPTANCE-GATE-MEHYARSOFT-V1-2026-05-11 + QA-MEHYARSOFT-B2B-BASELINE-2026-05-11 + launch-intake-decision). Admin docs (2) also now linked. Same tick ran Phase-6 4-screen LOOP-BOOT partial against the recreated rubric — all 14 spot-check items PASS (sections A surface reachability + B audit-intent funnel counts + C structured-data + D voice 5/5 + E build gates + F anti-slop blacklist). Lesson: VISION.md 'Current state' must be cross-checked against disk on every docs-only tick that recreates a referenced file — recreating the doc closes the file-on-disk gap but does NOT automatically fix any line that *names* the doc. Both layers (file existence + reference correctness) are one state. Net deploy impact: NONE — docs-only commit, same as turn-028, live site still on turn-027 sha. |
+| last_learned                   | shipped turn-030 home JSON-LD reconciliation + turn-031 full 13-route LOOP-BOOT audit (sha 3d2408e live; main @ 3d2408e on github; LOOP-BOOT rubric verified-this-tick — 0 regressions across A/B/C/E/F sections). Two distinct CF Pages deploy behaviors now documented: (a) docs-only commits don't trigger any deploy workflow run (turn-028/029/031 this tick all docs/** only); (b) scripts/ changes trigger shell-deploy — route-injected JSON-LD content lands in dist/public/index.html and goes live, but JS bundle hash can lag by one build. The bundle-hash lag is benign for SEO outcome (crawlers read the shell JSON-LD which is the artifact that matters for SEO ticks) and benign for runtime behavior (the route-injected block was redundant with SeoManager runtime). Lesson: for scripts/ ticks, verify the shell artifact that matters (JSON-LD block count, @types, @id cross-refs), not the bundle hash. Turn-031 was the first full 13-route LOOP-BOOT run; zero regressions is the right answer for a rubric that was just rebuilt at turn-028. Next tick: the rubric ledger has a verified-this-tick entry, so future LOOP-BOOT runs can detect drift cheaply. |
 | vision_doc_version             | bootstrap-2026-07-08                     |
 | cron_enabled                   | off                                      |
 | cron_schedule                  | every 15m shallow; daily 09:00 deep      |
@@ -27,6 +27,6 @@
 | kill_switch                    | off                                      |
 
 ## next-tick hot list (max 3 items)
-- LOOP-BOOT (t_b3048d53, P1, ready): full 13-route live-vs-VISION.md audit — turn-029's 4-screen Phase-6 smoke proved the rubric works; full audit is now a viable deliverable tick (vs. previously blocked on rubric availability)
 - W5-PERSUADE (t_45ea76a8, ready): propose persuasion shape a/b/c per docs/PERSUASION-PROPOSAL.md template (currently locked: passive only) — long-stale; needs user direction first
-- (small): RSS `<pubDate>` staleness (still 2026-05-11 hardcoded in scripts/build-rss.mjs) — would require a deploy, not docs-only
+- (small): follow-up LOOP-BOOT cadence — schedule next full 13-route audit in 5-7 ticks to catch drift cheaply (rubric is now anchored to verified-this-tick ledger entry from turn-031)
+- (small): investigate CF Pages bundle-hash-lag mechanism — when scripts/route-jsonld.json edits, can the JS bundle be invalidated alongside the shell? (no behavior change needed; just a deploy cleanliness question)
