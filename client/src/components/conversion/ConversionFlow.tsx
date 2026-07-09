@@ -160,6 +160,13 @@ const serviceAliases: Record<string, string> = {
   "systems-integration": "systems_consulting",
   "custom-software": "systems_consulting",
   "crm-support-retainer": "retainer",
+  // VISION.md 6-tier leak ladder aliases (turn-032)
+  "audit-150": "tech_audit",
+  "website-diagnosis-250": "website_booking_cleanup",
+  "custom-build-small": "automation_sprint",
+  "custom-build-mid": "systems_consulting",
+  "monthly-retainer": "retainer",
+  "hourly-advisory": "systems_consulting",
   "330": "ai_missed_lead_rescue_330",
   "micro-offer": "ai_missed_lead_rescue_330",
 };
