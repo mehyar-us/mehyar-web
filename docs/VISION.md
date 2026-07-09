@@ -69,3 +69,4 @@ this is the loop's memory. longer notes go to `.hermes/audit/turn-NNN.md`.
 
 
 2026-07-09 · shipped /blog WebPage + Blog + BreadcrumbList + ItemList JSON-LD (turn-024, sha ab72cba) — blog index now schema-equipped, Blog block blogPost[] cross-references the 3 individual #blogposting @ids from turn-019 (graph is now self-cross-referencing). W4-SEO additive piece closed at 17 schema-equipped routes. State reconciled: turn-023 retroactively journaled, t_96bc8b84 stuck-ready closed.
+2026-07-09 · shipped /newsletter WebPage + BreadcrumbList + FAQPage JSON-LD (turn-025, sha 9479e23) — free AI Automation Checklist landing (top-of-funnel lead-capture, no alias) now schema-equipped with 6-question FAQPage. W4-SEO additive piece extended to 18 schema-equipped routes. Reusable scripts/add-newsletter-jsonld.py preserves original file format (CRLF + indent=2 + same key order); result 91 inserted / 0 deleted.
