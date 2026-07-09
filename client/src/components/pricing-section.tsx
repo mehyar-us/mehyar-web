@@ -12,60 +12,63 @@ type Offer = {
   ctaHref: string;
 };
 
+// 6-tier leak ladder — matches docs/VISION.md "What we sell" verbatim.
+// Source of truth: docs/VISION.md (lines 12-18). Each tier is the founder's
+// real product progression, not a generic agency price menu.
 const offers: Offer[] = [
   {
-    name: "Local Business Tech Audit",
-    price: "$150-$500",
-    fit: "Restaurants, clinics, stores, salons, service businesses",
-    outcome: "A prioritized leak map and practical action plan.",
+    name: "Free Tech Audit",
+    price: "$150",
+    fit: "Owners who can name the leak but cannot rank the fixes.",
+    outcome: "A prioritized leak map, written in plain language, with the smallest useful next step.",
     emphasis: "Best first step",
     ctaLabel: "Book a Tech Audit",
     ctaHref: "/micro-offer#intake",
   },
   {
-    name: "Website / Booking Cleanup",
-    price: "$750-$2,500",
-    fit: "Owners with traffic or referrals but weak conversion",
-    outcome: "Clear offer pages, intake, CTAs, and booking path.",
-    emphasis: "Fix the public path",
-    ctaLabel: "Plan my site fix",
-    ctaHref: "/contact?service=website-cleanup",
+    name: "Website Diagnosis Report",
+    price: "$250",
+    fit: "Local businesses that need a written diagnosis before committing to cleanup or rebuild work.",
+    outcome: "A focused written report on the website, booking path, and follow-up leaks. Fast turnaround.",
+    emphasis: "Fast turnaround",
+    ctaLabel: "Request the $250 report",
+    ctaHref: "/micro-offer#intake",
   },
   {
-    name: "AI Follow-Up Flow",
-    price: "$1,500-$5,000",
-    fit: "Missed calls, slow responses, no-shows, unworked leads",
-    outcome: "SMS/email/CRM follow-up with consent-safe rules.",
-    emphasis: "Recover warm leads",
-    ctaLabel: "Map my follow-up flow",
-    ctaHref: "/contact?service=ai-follow-up",
+    name: "Custom Build (Small)",
+    price: "$1,000-$5,000",
+    fit: "Scoped projects with a clear deliverable. Landing pages, booking setup, CRM wiring, single-flow automation.",
+    outcome: "A working build, documented, handed off, and ready for daily use.",
+    emphasis: "Scope the work",
+    ctaLabel: "Plan a small build",
+    ctaHref: "/contact?service=custom-build-small",
   },
   {
-    name: "Internal Automation Sprint",
-    price: "$3,000-$12,000",
-    fit: "Teams buried in spreadsheets, inboxes, and recurring admin",
-    outcome: "One workflow automated and documented.",
-    emphasis: "Save operator time",
-    ctaLabel: "Scope a sprint",
-    ctaHref: "/contact?service=internal-sprint",
+    name: "Custom Build (Mid)",
+    price: "$5,000-$25,000",
+    fit: "Multi-week engagements: internal apps, integrations, regulated-systems work, portal builds.",
+    outcome: "Senior engineering across the full scope. Audit-friendly, operator-ready.",
+    emphasis: "Larger scope",
+    ctaLabel: "Plan a mid build",
+    ctaHref: "/contact?service=custom-build-mid",
   },
   {
-    name: "Architecture / Integration Consulting",
-    price: "$100-$175/hr or $5k-$25k/project",
-    fit: "Pharma, healthcare, SaaS, agencies, regulated teams",
-    outcome: "Senior systems support for safe, reliable integrations.",
-    emphasis: "De-risk complexity",
-    ctaLabel: "Talk about architecture",
-    ctaHref: "/contact?service=architecture-consulting",
-  },
-  {
-    name: "Monthly Support Retainer",
+    name: "Quarterly Retainer",
     price: "$500-$3,500/mo",
-    fit: "Businesses needing ongoing technical ownership",
-    outcome: "Website, CRM, automation, and reporting support.",
+    fit: "Owners who need a steady technical owner for website, CRM, automation, and small monthly improvements.",
+    outcome: "Ongoing improvements, lead-flow monitoring, vendor coordination, and reporting.",
     emphasis: "Keep improving",
     ctaLabel: "Discuss a retainer",
     ctaHref: "/contact?service=monthly-retainer",
+  },
+  {
+    name: "Hourly Advisory",
+    price: "$150/hr",
+    fit: "Pharma, healthcare, SaaS, agencies, and regulated teams that need senior IC support by the hour.",
+    outcome: "Architecture review, integration planning, risk review, and hands-on systems thinking.",
+    emphasis: "Senior by the hour",
+    ctaLabel: "Talk about advisory",
+    ctaHref: "/contact?service=hourly-advisory",
   },
 ];
 
@@ -75,13 +78,13 @@ const PricingSection = () => {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Offer ladder</p>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Leak ladder</p>
             <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">
               Start small. Prove the fix. Expand only when the case is clear.
             </h2>
           </div>
           <p className="max-w-md text-base leading-7 text-muted-foreground">
-            Ranges depend on scope, risk, integrations, and urgency. The first call should identify the smallest useful engagement.
+            Six tiers, ordered by the smallest useful engagement first. The $330 audit and $250 diagnosis are the most common entry points.
           </p>
         </div>
 
@@ -106,7 +109,7 @@ const PricingSection = () => {
         </div>
 
         <p className="mt-8 text-center text-sm leading-6 text-muted-foreground">
-          Local phone/electronics help may be available for $50-$250/job when it is the fastest path to a relationship, referral, or trust-building entry point.
+          Ranges depend on scope, risk, integrations, and urgency. The first call identifies the smallest useful engagement before proposing larger work.
         </p>
       </div>
     </section>
