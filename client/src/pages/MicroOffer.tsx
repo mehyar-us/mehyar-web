@@ -84,7 +84,7 @@ const MicroOffer = () => {
                 </div>
               ))}
             </div>
-            <a href="/micro-offer#intake" className={cn(buttonVariants({ variant: "cta" }), "mt-6 w-full rounded-xl")}>Start secure intake</a>
+            <a href="/micro-offer#intake" className={cn(buttonVariants({ variant: "cta" }), "mt-6 w-full rounded-xl")}>Request the $330 audit</a>
           </aside>
         </div>
       </section>
