@@ -190,21 +190,21 @@ const staticMeta: Record<string, SeoMeta> = {
     title: "$330 Website + Booking Leak Audit | MehyarSoft",
     description:
       "A focused $330 MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks before buying more software.",
-    path: "/330",
-    jsonLd: [webPage("/330", "$330 Website + Booking Leak Audit | MehyarSoft", "Focused $330 audit for website, booking, missed-call, and follow-up leaks."), breadcrumbs([{ name: "Home", path: "/" }, { name: "$330 Audit", path: "/330" }]), {
+    path: "/micro-offer",
+    jsonLd: [webPage("/micro-offer", "$330 Website + Booking Leak Audit | MehyarSoft", "Focused $330 audit for website, booking, missed-call, and follow-up leaks."), breadcrumbs([{ name: "Home", path: "/" }, { name: "$330 Audit", path: "/micro-offer" }]), {
       "@type": "Service",
       name: "$330 Website + Booking Leak Audit",
       description: "A focused MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks.",
       provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
       areaServed: ["New York City", "New York", "United States", "Remote US"],
-      offers: { "@type": "Offer", price: "330", priceCurrency: "USD", url: absoluteUrl("/330") },
+      offers: { "@type": "Offer", price: "330", priceCurrency: "USD", url: absoluteUrl("/micro-offer") },
     }],
   },
   "/micro-offer": {
     title: "$330 Website + Booking Leak Audit | MehyarSoft",
     description:
       "A focused $330 MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks before buying more software.",
-    path: "/330",
+    path: "/micro-offer",
   },
   "/contact": {
     title: "Contact MehyarSoft | Request a Tech Audit or Consulting Call",

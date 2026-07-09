@@ -1,2 +1,10 @@
-# Cloudflare Pages SPA fallback: preserve clean direct routes for Wouter client routing.
+# 1) Legacy /330 short-URL alias for the $330 audit offer — 308 to canonical /micro-offer.
+#    /330 → /micro-offer → /micro-offer/ (two hops: this redirect + CF Pages auto trailing-slash).
+#    Both `/330` and `/330/` paths are covered so any external / short-URL link lands on canonical.
+#    CF Pages uses :splat on the destination side to substitute the wildcard segment.
+/330            /micro-offer            308
+/330/           /micro-offer/           308
+/330/*          /micro-offer/:splat     308
+
+# 2) Cloudflare Pages SPA fallback: preserve clean direct routes for Wouter client routing.
 /*    /index.html   200
