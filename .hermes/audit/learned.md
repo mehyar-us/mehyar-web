@@ -16,3 +16,15 @@ CF Pages deploy lag observed today: ~5min 30s from `git push origin main` to `cu
 
 ## 2026-07-09 · turn-015 (sha 770eab9)
 RSS feed + auto-discovery shipped: /rss.xml generated from blog index at build time via scripts/build-rss.mjs, with `<link rel="alternate" type="application/rss+xml">` tags auto-injected into the home and 404 shells by the same script. FeedReader / Feedly / NetNewsWire now have a hand-rolled subscription surface. Lesson: the route-jsonld pattern (idempotent marker, build-time injection) is the right shape for any "no-JS crawler should see this" content. Apply same pattern to /sitemap.xml if not already (already done — turn-013).
+
+## 2026-07-09 · turn-017 (sha 16984e6)
+Home BlogSection + ItemList JSON-LD wired. This tick landed without a state.md bump — the previous tick (turn-016) had already moved the state forward to id=16, so this one slipped the loop counter. State.md was stale on entry to turn-018 (last_tick_id=16 but actual main was 16984e6 from turn-017). Lesson: ALWAYS re-verify `git log --oneline -1 main` against state.md's `deployed_sha` at the top of every tick. If they disagree, the loop counter drifted — bump state.md to reality before doing anything else.
+
+Also learned on this tick: patch tool truncated a multi-line new_string in copy-route-shells.mjs (a 20-line indented block was cut off mid-line), leaving the JS object broken. Recovered with `git checkout -- scripts/copy-route-shells.mjs` then used a python heredoc with explicit single-match check (`if old not in src: print('NOT FOUND'); raise SystemExit(1)`) to safely apply the change in one shot. Lesson: when `patch` fails on a multi-line replacement and the new_string seems to truncate, do NOT retry with shorter strings — abort to git clean, then apply via python heredoc with a uniqueness check. The heredoc approach is more debuggable and survives prompt truncation.
+
+## 2026-07-09 · turn-018 (sha f9555f3)
+Per-blog-post route meta shipped: added /blog/small-business-tech-audit-revenue-leaks, /blog/missed-calls-crm-follow-up, /blog/when-to-build-custom-software to the routeMeta map in scripts/copy-route-shells.mjs so pre-rendered shells ship unique title + description + canonical + og/twitter instead of falling back to home meta. Build green (34 routes + 404), test:intake 11/11, all 3 new shells live with unique meta, microOffer/booking/api-intake/rss all green. W4-SEO additive piece closed.
+
+Lesson: the patch tool can't safely handle multi-line indented block replacements when the new_string exceeds some character limit — it silently truncates. For any change of more than ~10 lines in JS/TS files, use a python heredoc with a uniqueness assertion before applying. Faster, recoverable, and pattern-matched to only modify the exact occurrence.
+
+Also: closed duplicate turn-013 ticket t_d514cd6e (filed 3s after t_53436949, identical title/body — same idea, double-clicked in the dispatcher). Lesson: when the loop sees two ready tickets with the same title and ~same body, both stamped within 10s of each other, close one as a dup. Don't let them both block on the worker queue.
