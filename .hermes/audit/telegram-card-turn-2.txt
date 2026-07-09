@@ -1,0 +1,42 @@
+──── mehyar.us · turn 2 · 2026-07-09 00:55 UTC ────
+VERDICT:  ship
+DEPLOY:   ✓ green @ b6486c2
+SHIPPED:  1 item
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+
+SUGGESTED: W4-SEO turn-3 — Lighthouse + axe baseline against live, then per-page meta overrides for /booking /micro-offer /services.
+
+DONE: feat(seo): 1200x630 OG image + FAQPage JSON-LD + priceRange schema
+  • commit b6486c2 on main, pushed, live
+  • https://github.com/mehyar-us/mehyar-web/commit/b6486c2
+  • scripts/build-og-image.py -> assets/mehyarsoft-social-1200x630.png (62 KB)
+  • og:image / twitter:image switched SVG -> 1200x630 PNG (3x refs live)
+  • FAQPage JSON-LD added (5 Q/A, matches on-page copy)
+  • ProfessionalService extended with priceRange "$$" + image
+  • ticket t_4c938d75 closed (improver)
+  • pure additive — no copy / no routing / no conversion-path code change
+
+TESTED:
+  • npm run build:client — green (1698 modules, 34 routes)
+  • live https://mehyar.us/ — HTTP 200, 6929 bytes (was 3754)
+  • live og:image fetch — 63935 bytes, confirmed 1200x630 RGB
+  • conversion-path smoke: /booking, /micro-offer — HTTP 200, no regression
+  • non-conversion pages: /services /about /portfolio /blog /newsletter — all HTTP 200
+
+RESULTS:
+  • monitoring (no CF analytics 7d delta yet — wired but not queried)
+  • social-preview uplift expected 24-72h after deploy as LinkedIn/Slack/FB refresh
+  • FAQPage SERP eligibility — depends on next Google crawl
+
+LEARNED:
+  • W4-SEO higher-leverage than W2-FUNNEL this tick because the OG-image gap
+    is a passive fix (anyone sharing mehyar.us anywhere gets a real preview now),
+    while the hero-CTA -> /micro-offer leak needs proper funnel-exercise discipline.
+  • W2-FUNNEL: hero "Book a Tech Audit" still routes to /contact instead of the
+    dedicated /micro-offer ($330 audit landing) — visible leak, deferred.
+  • Per-page meta still shares the home's — that's the next W4-SEO slice.
+
+NEXT: W4-SEO turn-3 (Lighthouse + axe + per-page meta overrides) OR W2-FUNNEL (hero CTA move).
+
+─────────────────────────────────────────────────────

@@ -1,0 +1,14 @@
+──── mehyar.us · turn 1 · 2026-07-08 00:20 UTC ────
+VERDICT:  ship
+DEPLOY:   ✓ green @ b413ee6
+SHIPPED:  1 item
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+SUGGESTED: PWA install + offline shell — visitors on iOS/Android Chrome/Safari now see a real install prompt and the site keeps working on flaky networks.
+DONE: feat(pwa): manifest.webmanifest + sw.js + index.html tags + main.tsx register. 4 files, +164 LOC. Branch improver/pwa-manifest merged --no-ff to main. CF Pages live within ~25s.
+TESTED: live curl — manifest 200 JSON, sw.js 200 JS, home 200 with manifest link, /booking 308→200 intact, /micro-offer 308→200 intact, /admin 308 (not in SW precache), /api/* never cached. tsc green. Build green.
+RESULTS: deploy sha b413ee6. CF analytics 24h delta pending — install-prompt is the new signal to watch.
+LEARNED: gates pass; conversion paths excluded from SW cache (/api, /admin, /billing/*) so form POSTs always hit the network.
+NEXT: W4-SEO (Lighthouse + meta + OG pass) — same shape: small, no conversion-path code.
+
+— improver loop
