@@ -78,7 +78,7 @@ const Navbar = () => {
                 {link.label}
               </Link>
             ))}
-            <Link href="/contact" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "hidden rounded-full px-4 lg:inline-flex")}>
+            <Link href="/micro-offer#intake" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "hidden rounded-full px-4 lg:inline-flex")}>
               Book a Tech Audit
             </Link>
             <ThemeToggle />
@@ -121,7 +121,7 @@ const Navbar = () => {
                 </Link>
               ))}
               <Link
-                href="/contact"
+                href="/micro-offer#intake"
                 className={cn(buttonVariants({ variant: "cta" }), "mt-2 w-full")}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
