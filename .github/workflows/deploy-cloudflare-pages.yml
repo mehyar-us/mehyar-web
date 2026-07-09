@@ -8,6 +8,7 @@ on:
       - 'client/**'
       - 'functions/**'
       - 'migrations/**'
+      - 'scripts/**'
       - 'shared/**'
       - 'package.json'
       - 'package-lock.json'
