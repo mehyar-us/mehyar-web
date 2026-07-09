@@ -1,0 +1,48 @@
+──── mehyar.us · turn 31 · 2026-07-09 18:25 UTC ────
+VERDICT:  ship
+DEPLOY:   ✓ green @ 3e413b0 (github) / 3d2408e (live, turn-030 home JSON-LD)
+SHIPPED:  2 items (turn-030 reconcile + turn-031 LOOP-BOOT audit)
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+
+SUGGESTED: state.md was stuck at tick_id=29 (last 17:08 UTC) but turn-030 had already shipped at 13:49 ET (sha 3d2408e on github main) — its WebPage+BreadcrumbList+ItemList JSON-LD block on home was live but never journaled. Reopened the loop by (a) reconciling state.md to tick_id=31, (b) writing the missing turn-030 audit artifact, and (c) running the full 13-route LOOP-BOOT audit against the recreated rubric (the turn-028 deliverable that was ready for first use).
+
+DONE:
+ • state.md reconciled: tick_id 29→31, deployed_sha ef12663→3d2408e, open_tickets 3→2, hot-list rotated (LOOP-BOOT moved to follow-up cadence; W5-PERSUADE stays at top)
+ • VISION.md journal appended: turn-030 line (home JSON-LD shipped) + turn-031 line (LOOP-BOOT audit)
+ • .hermes/audit/turn-030.md written (reconciliation of the 13:49 ET deploy)
+ • .hermes/audit/turn-031.md written (full 13-route LOOP-BOOT audit)
+ • .hermes/learned.md appended (turn-030 CF Pages deploy-behavior finding + turn-031 LOOP-BOOT cadence lesson)
+ • CLOSED t_5a6bf1c3 (turn-030) and t_b3048d53 (LOOP-BOOT, P1 ready)
+ • Commit: 3e413b0 on main (docs only — 5 files, 215 insertions, 10 deletions)
+ • Push: github.com/mehyar-us/mehyar-web/commits/main (3d2408e..3e413b0)
+
+TESTED:
+ • Full 13-route LOOP-BOOT audit (live curl):
+   - / /services /portfolio /portfolio/{1..6} /blog /blog/{3 slugs} /about /contact /booking /micro-offer /newsletter — all 200, all 3 JSON-LD blocks, expected @types each ✓
+   - /sitemap.xml 200 (22 <loc> entries) ✓
+   - /rss.xml 200 (3 <item> entries) ✓
+   - /robots.txt 200 (Sitemap line present) ✓
+   - /404 200 (3 JSON-LD blocks, WebPage+BreadcrumbList+FAQPage) ✓
+ • Live bundle grep (main-P-x17WD-.js, turn-027 build retained; CF Pages shell-deploy of turn-030 did not invalidate JS bundle — by-design, see learned):
+   - 19 micro-offer#intake ✓ (turn-027 baseline preserved)
+   - 7 "Request the $330 audit" ✓
+   - 1 "Request the audit path" ✓
+   - 21 /contact (incl. service params) ✓ (Footer nav + ContactSection mount + 5 service-tagged PricingSection cards — no regressions)
+ • Anti-slop blacklist bundle scan: 0/7 hits (only "leverage" is the on-brand "highest-leverage business leak" metaphor from VISION.md)
+ • npx tsc --noEmit: green (0 errors)
+ • node scripts/test-intake-functions.mjs: 11/11 PASS (health, valid submission, invalid turnstile, D1/audit, notification, consent, newsletter checklist, newsletter consent, micro-offer fields, request_type alias, public client config)
+ • 4-screen Phase-6 smoke: home /booking /micro-offer /404 — each 200, each 3 JSON-LD blocks ✓
+
+RESULTS:
+ • Live site: turn-030 home JSON-LD IS live (route-injected WebPage/BreadcrumbList/ItemList block in shell). CF Pages deploy rolled the shell files but kept JS bundle hash at turn-027 (main-P-x17WD-.js). Net SEO outcome: crawlers see 3 JSON-LD blocks on home with the new @types (which is the SEO goal). Net runtime behavior: no change (route-injected block was redundant with SeoManager runtime).
+ • LOOP-BOOT rubric ledger: anchored at "verified-this-tick" for the first time. Future LOOP-BOOT runs detect drift against this baseline cheaply (≤2 min wall time, ≤4 probe screens).
+ • CF Analytics: monitoring (no conversion event wired yet; token present)
+ • deploy sha 3d2408e (live, turn-030 shell-deploy) / 3e413b0 (github main, this commit docs-only)
+
+LEARNED: (1) CF Pages scripts/-only deploys can roll shell files (route-injected JSON-LD) while keeping the JS bundle hash at the previous build — verify the artifact that matters (shell JSON-LD count for SEO ticks; runtime behavior for UX ticks), not the bundle hash alone. (2) A docs-only LOOP-BOOT audit tick is the cheapest cadence-anchor between shipping ticks — converts an implicit rubric-on-disk into a verified-this-tick ledger entry; first run after rubric rebuild is a "verify rubric matches reality" exercise (zero regressions is the right answer), and the cadence value compounds.
+
+NEXT (hot list, max 3):
+ 1. W5-PERSUADE (t_45ea76a8, ready): propose persuasion shape a/b/c per docs/PERSUASION-PROPOSAL.md — needs user direction first (locked: passive only)
+ 2. follow-up LOOP-BOOT cadence: schedule next full 13-route audit in 5-7 ticks to catch drift cheaply against the turn-031 verified baseline
+ 3. (small) investigate CF Pages bundle-hash-lag mechanism — can the JS bundle be invalidated alongside the shell on scripts/ changes? (no behavior change needed; deploy cleanliness question)
