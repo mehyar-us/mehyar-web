@@ -729,5 +729,713 @@
                 }
               ]
             }
+          ],
+
+          "/portfolio/1": [
+
+            {
+
+              "@type": "WebPage",
+
+              "@id": "https://mehyar.us/portfolio/1#webpage",
+
+              "url": "https://mehyar.us/portfolio/1",
+
+              "name": "Local Business Lead Leak Audit | MehyarSoft Engagement Pattern",
+
+              "description": "A practical audit pattern for finding website, phone, booking, and follow-up gaps before buying more tools.",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/#website"
+
+              },
+
+              "primaryImageOfPage": {
+
+                "@type": "ImageObject",
+
+                "url": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+
+                "width": 1200,
+
+                "height": 630
+
+              }
+
+            },
+
+            {
+
+              "@type": "CreativeWork",
+
+              "@id": "https://mehyar.us/portfolio/1#project",
+
+              "name": "Local Business Lead Leak Audit",
+
+              "description": "A practical audit pattern for finding website, phone, booking, and follow-up gaps before buying more tools.",
+
+              "url": "https://mehyar.us/portfolio/1",
+
+              "about": {
+
+                "@id": "https://mehyar.us/#professional-service"
+
+              },
+
+              "creator": {
+
+                "@id": "https://mehyar.us/about#person"
+
+              },
+
+              "keywords": "Audit",
+
+              "inLanguage": "en",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/portfolio#patterns"
+
+              }
+
+            },
+
+            {
+
+              "@type": "BreadcrumbList",
+
+              "itemListElement": [
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 1,
+
+                  "name": "Home",
+
+                  "item": "https://mehyar.us/"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 2,
+
+                  "name": "Engagement Patterns",
+
+                  "item": "https://mehyar.us/portfolio"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 3,
+
+                  "name": "Local Business Lead Leak Audit",
+
+                  "item": "https://mehyar.us/portfolio/1"
+
+                }
+
+              ]
+
+            }
+
+          ],
+
+          "/portfolio/2": [
+
+            {
+
+              "@type": "WebPage",
+
+              "@id": "https://mehyar.us/portfolio/2#webpage",
+
+              "url": "https://mehyar.us/portfolio/2",
+
+              "name": "Missed-Call Follow-Up Flow | MehyarSoft Engagement Pattern",
+
+              "description": "A consent-safe response workflow for prospects who call, submit a form, or need booking follow-up.",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/#website"
+
+              },
+
+              "primaryImageOfPage": {
+
+                "@type": "ImageObject",
+
+                "url": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+
+                "width": 1200,
+
+                "height": 630
+
+              }
+
+            },
+
+            {
+
+              "@type": "CreativeWork",
+
+              "@id": "https://mehyar.us/portfolio/2#project",
+
+              "name": "Missed-Call Follow-Up Flow",
+
+              "description": "A consent-safe response workflow for prospects who call, submit a form, or need booking follow-up.",
+
+              "url": "https://mehyar.us/portfolio/2",
+
+              "about": {
+
+                "@id": "https://mehyar.us/#professional-service"
+
+              },
+
+              "creator": {
+
+                "@id": "https://mehyar.us/about#person"
+
+              },
+
+              "keywords": "Automation",
+
+              "inLanguage": "en",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/portfolio#patterns"
+
+              }
+
+            },
+
+            {
+
+              "@type": "BreadcrumbList",
+
+              "itemListElement": [
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 1,
+
+                  "name": "Home",
+
+                  "item": "https://mehyar.us/"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 2,
+
+                  "name": "Engagement Patterns",
+
+                  "item": "https://mehyar.us/portfolio"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 3,
+
+                  "name": "Missed-Call Follow-Up Flow",
+
+                  "item": "https://mehyar.us/portfolio/2"
+
+                }
+
+              ]
+
+            }
+
+          ],
+
+          "/portfolio/3": [
+
+            {
+
+              "@type": "WebPage",
+
+              "@id": "https://mehyar.us/portfolio/3#webpage",
+
+              "url": "https://mehyar.us/portfolio/3",
+
+              "name": "Internal Automation Sprint | MehyarSoft Engagement Pattern",
+
+              "description": "A focused sprint to replace repetitive spreadsheet, inbox, and reporting work with a clean internal workflow.",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/#website"
+
+              },
+
+              "primaryImageOfPage": {
+
+                "@type": "ImageObject",
+
+                "url": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+
+                "width": 1200,
+
+                "height": 630
+
+              }
+
+            },
+
+            {
+
+              "@type": "CreativeWork",
+
+              "@id": "https://mehyar.us/portfolio/3#project",
+
+              "name": "Internal Automation Sprint",
+
+              "description": "A focused sprint to replace repetitive spreadsheet, inbox, and reporting work with a clean internal workflow.",
+
+              "url": "https://mehyar.us/portfolio/3",
+
+              "about": {
+
+                "@id": "https://mehyar.us/#professional-service"
+
+              },
+
+              "creator": {
+
+                "@id": "https://mehyar.us/about#person"
+
+              },
+
+              "keywords": "Operations",
+
+              "inLanguage": "en",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/portfolio#patterns"
+
+              }
+
+            },
+
+            {
+
+              "@type": "BreadcrumbList",
+
+              "itemListElement": [
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 1,
+
+                  "name": "Home",
+
+                  "item": "https://mehyar.us/"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 2,
+
+                  "name": "Engagement Patterns",
+
+                  "item": "https://mehyar.us/portfolio"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 3,
+
+                  "name": "Internal Automation Sprint",
+
+                  "item": "https://mehyar.us/portfolio/3"
+
+                }
+
+              ]
+
+            }
+
+          ],
+
+          "/portfolio/4": [
+
+            {
+
+              "@type": "WebPage",
+
+              "@id": "https://mehyar.us/portfolio/4#webpage",
+
+              "url": "https://mehyar.us/portfolio/4",
+
+              "name": "Regulated Systems Integration Review | MehyarSoft Engagement Pattern",
+
+              "description": "Senior systems review for teams that need safer architecture, cleaner integrations, and better operational control.",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/#website"
+
+              },
+
+              "primaryImageOfPage": {
+
+                "@type": "ImageObject",
+
+                "url": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+
+                "width": 1200,
+
+                "height": 630
+
+              }
+
+            },
+
+            {
+
+              "@type": "CreativeWork",
+
+              "@id": "https://mehyar.us/portfolio/4#project",
+
+              "name": "Regulated Systems Integration Review",
+
+              "description": "Senior systems review for teams that need safer architecture, cleaner integrations, and better operational control.",
+
+              "url": "https://mehyar.us/portfolio/4",
+
+              "about": {
+
+                "@id": "https://mehyar.us/#professional-service"
+
+              },
+
+              "creator": {
+
+                "@id": "https://mehyar.us/about#person"
+
+              },
+
+              "keywords": "Systems",
+
+              "inLanguage": "en",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/portfolio#patterns"
+
+              }
+
+            },
+
+            {
+
+              "@type": "BreadcrumbList",
+
+              "itemListElement": [
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 1,
+
+                  "name": "Home",
+
+                  "item": "https://mehyar.us/"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 2,
+
+                  "name": "Engagement Patterns",
+
+                  "item": "https://mehyar.us/portfolio"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 3,
+
+                  "name": "Regulated Systems Integration Review",
+
+                  "item": "https://mehyar.us/portfolio/4"
+
+                }
+
+              ]
+
+            }
+
+          ],
+
+          "/portfolio/5": [
+
+            {
+
+              "@type": "WebPage",
+
+              "@id": "https://mehyar.us/portfolio/5#webpage",
+
+              "url": "https://mehyar.us/portfolio/5",
+
+              "name": "Website and Booking Cleanup | MehyarSoft Engagement Pattern",
+
+              "description": "A conversion-focused cleanup for businesses whose referrals, ads, or search traffic land on unclear pages.",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/#website"
+
+              },
+
+              "primaryImageOfPage": {
+
+                "@type": "ImageObject",
+
+                "url": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+
+                "width": 1200,
+
+                "height": 630
+
+              }
+
+            },
+
+            {
+
+              "@type": "CreativeWork",
+
+              "@id": "https://mehyar.us/portfolio/5#project",
+
+              "name": "Website and Booking Cleanup",
+
+              "description": "A conversion-focused cleanup for businesses whose referrals, ads, or search traffic land on unclear pages.",
+
+              "url": "https://mehyar.us/portfolio/5",
+
+              "about": {
+
+                "@id": "https://mehyar.us/#professional-service"
+
+              },
+
+              "creator": {
+
+                "@id": "https://mehyar.us/about#person"
+
+              },
+
+              "keywords": "Conversion",
+
+              "inLanguage": "en",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/portfolio#patterns"
+
+              }
+
+            },
+
+            {
+
+              "@type": "BreadcrumbList",
+
+              "itemListElement": [
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 1,
+
+                  "name": "Home",
+
+                  "item": "https://mehyar.us/"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 2,
+
+                  "name": "Engagement Patterns",
+
+                  "item": "https://mehyar.us/portfolio"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 3,
+
+                  "name": "Website and Booking Cleanup",
+
+                  "item": "https://mehyar.us/portfolio/5"
+
+                }
+
+              ]
+
+            }
+
+          ],
+
+          "/portfolio/6": [
+
+            {
+
+              "@type": "WebPage",
+
+              "@id": "https://mehyar.us/portfolio/6#webpage",
+
+              "url": "https://mehyar.us/portfolio/6",
+
+              "name": "Owner Dashboard and Support Retainer | MehyarSoft Engagement Pattern",
+
+              "description": "A monthly support pattern for keeping lead flow, CRM hygiene, small fixes, and operational dashboards moving.",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/#website"
+
+              },
+
+              "primaryImageOfPage": {
+
+                "@type": "ImageObject",
+
+                "url": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+
+                "width": 1200,
+
+                "height": 630
+
+              }
+
+            },
+
+            {
+
+              "@type": "CreativeWork",
+
+              "@id": "https://mehyar.us/portfolio/6#project",
+
+              "name": "Owner Dashboard and Support Retainer",
+
+              "description": "A monthly support pattern for keeping lead flow, CRM hygiene, small fixes, and operational dashboards moving.",
+
+              "url": "https://mehyar.us/portfolio/6",
+
+              "about": {
+
+                "@id": "https://mehyar.us/#professional-service"
+
+              },
+
+              "creator": {
+
+                "@id": "https://mehyar.us/about#person"
+
+              },
+
+              "keywords": "Support",
+
+              "inLanguage": "en",
+
+              "isPartOf": {
+
+                "@id": "https://mehyar.us/portfolio#patterns"
+
+              }
+
+            },
+
+            {
+
+              "@type": "BreadcrumbList",
+
+              "itemListElement": [
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 1,
+
+                  "name": "Home",
+
+                  "item": "https://mehyar.us/"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 2,
+
+                  "name": "Engagement Patterns",
+
+                  "item": "https://mehyar.us/portfolio"
+
+                },
+
+                {
+
+                  "@type": "ListItem",
+
+                  "position": 3,
+
+                  "name": "Owner Dashboard and Support Retainer",
+
+                  "item": "https://mehyar.us/portfolio/6"
+
+                }
+
+              ]
+
+            }
+
           ]
         }
