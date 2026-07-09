@@ -894,7 +894,7 @@ export function ConversionFlow({
                 {status === "idle" ? (turnstileIssue ? "Cloudflare verification did not complete. Refresh the page or try the checkbox again, then submit." : turnstileEnabled && !turnstileToken ? "Cloudflare verification is ready. Finish the checkbox above, then submit." : "Cloudflare verification, consent, source/campaign metadata, and safe routing are handled in this shared conversion component.") : status === "success" ? "No internal IDs, secrets, or raw backend errors are shown." : status === "error" ? "Please refresh and try again, or email contact@mehyar.us without sensitive data." : "Hold tight — this is being delivered through the secure intake path."}
               </p>
               {status === "success" && isNewsletter ? (
-                <a href="/330?request_type=micro_offer&utm_campaign=newsletter_thank_you#intake" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "mt-3 rounded-full")}>Request the $330 audit</a>
+                <a href="/micro-offer#intake&utm_campaign=newsletter_thank_you" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "mt-3 rounded-full")}>Request the $330 audit</a>
               ) : null}
             </div>
           </div>
