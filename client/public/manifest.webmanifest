@@ -1,0 +1,54 @@
+{
+  "name": "MehyarSoft LLC",
+  "short_name": "MehyarSoft",
+  "description": "NYC software and AI automation consultancy. Find and fix the leaks in your public paths.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0f1a",
+  "theme_color": "#0b0f1a",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/assets/mehyarsoft-mark.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/mehyarsoft-mark.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/mehyarsoft-favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Book a call",
+      "short_name": "Book",
+      "url": "/booking",
+      "description": "Schedule a free audit call with MehyarSoft"
+    },
+    {
+      "name": "Free Tech Audit",
+      "short_name": "Audit",
+      "url": "/micro-offer",
+      "description": "Start the $150 leak-finding audit"
+    },
+    {
+      "name": "Contact",
+      "short_name": "Contact",
+      "url": "/contact",
+      "description": "Send MehyarSoft a message"
+    }
+  ]
+}
