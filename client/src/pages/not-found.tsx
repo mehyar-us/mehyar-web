@@ -15,7 +15,7 @@ export default function NotFound() {
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">This MehyarSoft route does not exist.</h1>
           <p className="mx-auto mt-4 max-w-md leading-7 text-muted-foreground">Use the public route directory or send a secure intake request if you were trying to reach MehyarSoft.</p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="/contact" className={buttonVariants({ variant: "cta" })}>
+            <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta" })}>
               Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link href="/sitemap" className={buttonVariants({ variant: "outline" })}>
