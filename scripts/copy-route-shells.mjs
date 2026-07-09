@@ -183,11 +183,21 @@ function applyRouteMeta(html, route) {
     `<meta name="twitter:description" content="${escapeAttr(description)}" />`,
   );
   out = out.replace(
-    /<link rel="canonical" href="[^"]*" \/>/,
-    `<link rel="canonical" href="${escapeAttr(canonicalUrl)}" />`,
-  );
-  return out;
-}
+      /<link rel="canonical" href="[^"]*" \/>/,
+      `<link rel="canonical" href="${escapeAttr(canonicalUrl)}" />`,
+    );
+    // RSS feed auto-discovery — every public MehyarSoft shell should advertise
+    // /rss.xml so feed readers, aggregators, and AI search surfaces find the
+    // blog without a manual submit. Idempotent: skip if already present so
+    // re-runs are no-ops.
+    if (!out.includes('rel="alternate" type="application/rss+xml"')) {
+      out = out.replace(
+        /<link rel="manifest" href="[^"]*" \/>/,
+        `<link rel="manifest" href="/manifest.webmanifest" />\n    <link rel="alternate" type="application/rss+xml" title="MehyarSoft LLC" href="https://mehyar.us/rss.xml" />`,
+      );
+    }
+    return out;
+  }
 
 const portfolioRoutes = ['1', '2', '3', '4', '5', '6'].map((id) => `portfolio/${id}`);
 const blogRoutes = [
