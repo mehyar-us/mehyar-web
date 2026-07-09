@@ -33,7 +33,7 @@ const About = () => {
               Mehyar Swelim is a Syrian founder in New York City with 10+ years of professional software engineering experience. MehyarSoft exists to help businesses stop losing customers, time, and money through weak websites, missed calls, manual work, and disconnected systems.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Link href="/contact" className={buttonVariants({ variant: "cta", size: "lg" })}>
+              <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg" })}>
                 Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               <Link href="/services" className={buttonVariants({ variant: "outline", size: "lg" })}>
@@ -126,7 +126,7 @@ const About = () => {
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-100">Next step</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] md:text-4xl">Bring one leak. Leave with one practical path.</h2>
           </div>
-          <Link href="/contact" className={buttonVariants({ variant: "cta", size: "lg", className: "shrink-0" })}>
+          <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg", className: "shrink-0" })}>
             Book a Tech Audit
           </Link>
         </div>

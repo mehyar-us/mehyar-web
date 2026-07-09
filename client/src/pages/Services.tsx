@@ -24,7 +24,7 @@ const Services = () => {
               Start with the smallest engagement that can clarify the leak, fix a visible path, or install one reliable automation around follow-up, CRM, reporting, and operations.
             </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <Link href="/contact" className={buttonVariants({ variant: "cta", size: "lg" })}>
+              <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg" })}>
                 Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               <Link href="#pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>

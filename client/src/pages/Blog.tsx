@@ -117,7 +117,7 @@ const Blog = () => {
               <CardContent className="p-6">
                 <h3 className="text-xl font-bold tracking-[-0.02em] text-foreground">Need a practical next step?</h3>
                 <p className="mt-3 leading-7 text-muted-foreground">Turn one article topic into an audit, cleanup, automation, or support conversation.</p>
-                <Link href="/contact" className={buttonVariants({ variant: "cta", className: "mt-5 w-full" })}>
+                <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", className: "mt-5 w-full" })}>
                   Book a Tech Audit
                 </Link>
               </CardContent>
