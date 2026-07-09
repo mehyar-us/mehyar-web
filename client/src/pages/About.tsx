@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import QuickAnswer from "@/components/QuickAnswer";
 
 const values = [
-  { title: "Practicality", description: "Start with the highest-leverage business leak before adding tools or complexity.", icon: Award },
+  { title: "Practicality", description: "Find the leak that costs the most, fix it first, and stop adding tools before the case is clear.", icon: Award },
   { title: "Reliability", description: "Build systems that owners can trust, monitor, and hand off without mystery.", icon: CheckCircle },
   { title: "Operator empathy", description: "Design around the people answering phones, booking customers, updating records, and serving clients.", icon: Users },
   { title: "Speed with control", description: "Move fast, but keep consent, audit trails, access, and suppression lists ahead of scale.", icon: Clock },
