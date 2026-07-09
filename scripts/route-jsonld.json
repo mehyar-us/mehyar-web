@@ -1265,5 +1265,37 @@
         }
       ]
     }
+  ],
+  "/404": [
+    {
+      "@type": "WebPage",
+      "@id": "https://mehyar.us/404#webpage",
+      "url": "https://mehyar.us/404",
+      "name": "Route not found | MehyarSoft",
+      "description": "That MehyarSoft route does not exist. Return to the homepage or browse the public sitemap.",
+      "isPartOf": {
+        "@id": "https://mehyar.us/#website"
+      },
+      "about": {
+        "@id": "https://mehyar.us/#professional-service"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://mehyar.us/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Route not found",
+          "item": "https://mehyar.us/404"
+        }
+      ]
+    }
   ]
 }
