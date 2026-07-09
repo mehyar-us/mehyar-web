@@ -43,6 +43,24 @@ const routeMeta = {
       'Practical MehyarSoft notes on local business tech audits, missed-call CRM follow-up, internal automation, and when custom software is worth building.',
     path: '/blog',
   },
+  '/blog/small-business-tech-audit-revenue-leaks': {
+    title: 'The Small Business Tech Audit: Find Revenue Leaks Before Buying More Software | MehyarSoft',
+    description:
+      'A practical MehyarSoft framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.',
+    path: '/blog/small-business-tech-audit-revenue-leaks',
+  },
+  '/blog/missed-calls-crm-follow-up': {
+    title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
+    description:
+      'Why a missed call becomes a CRM problem when intake, follow-up, consent, and owner visibility are not part of the response workflow.',
+    path: '/blog/missed-calls-crm-follow-up',
+  },
+  '/blog/when-to-build-custom-software': {
+    title: 'When to Build Custom Software Instead of Forcing Another SaaS Tool | MehyarSoft',
+    description:
+      'A MehyarSoft checklist for when custom software is justified versus when a small SaaS fix or process change is the right answer.',
+    path: '/blog/when-to-build-custom-software',
+  },
   '/newsletter': {
     title: 'Free AI Automation Checklist | MehyarSoft',
     description:
