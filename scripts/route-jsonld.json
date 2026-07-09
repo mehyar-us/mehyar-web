@@ -247,6 +247,36 @@
   ],
   "/": [
     {
+      "@type": "WebPage",
+      "@id": "https://mehyar.us/#webpage",
+      "url": "https://mehyar.us/",
+      "name": "MehyarSoft LLC | NYC Software & AI Automation Consultant",
+      "description": "Founder-led software, systems, and AI automation consulting for local businesses, agencies, and regulated teams losing customers to missed calls, weak websites, manual work, and disconnected tools.",
+      "isPartOf": {
+        "@id": "https://mehyar.us/#website"
+      },
+      "about": {
+        "@id": "https://mehyar.us/#professional-service"
+      },
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://mehyar.us/assets/mehyarsoft-social-1200x630.png",
+        "width": 1200,
+        "height": 630
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://mehyar.us/"
+        }
+      ]
+    },
+    {
       "@type": "ItemList",
       "@id": "https://mehyar.us/#blog-index",
       "name": "MehyarSoft field notes",
