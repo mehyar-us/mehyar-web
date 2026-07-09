@@ -65,13 +65,13 @@ const routeMeta = {
     title: '$330 Website + Booking Leak Audit | MehyarSoft',
     description:
       'A focused $330 MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks before buying more software.',
-    path: '/330',
+    path: '/micro-offer',
   },
   '/micro-offer': {
     title: '$330 Website + Booking Leak Audit | MehyarSoft',
     description:
       'A focused $330 MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks before buying more software.',
-    path: '/330',
+    path: '/micro-offer',
   },
   '/contact': {
     title: 'Contact MehyarSoft | Request a Tech Audit or Consulting Call',
