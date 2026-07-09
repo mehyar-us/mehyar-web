@@ -30,7 +30,7 @@ const HeroSection = () => {
             <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>
               Book a Tech Audit <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
-            <Link href="/services" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12 px-7 text-base" })}>
+            <Link href="/#pricing" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12 px-7 text-base" })}>
               See the leak ladder
             </Link>
           </div>
