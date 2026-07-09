@@ -1,0 +1,39 @@
+──── mehyar.us · turn 9 · 2026-07-09 05:30 UTC ────
+VERDICT: ship
+DEPLOY:  ✓ green @ 7fb8a30
+SHIPPED: 1 item (1-line copy fix on 404 page)
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+
+SUGGESTED: 404 body was the last surface still carrying corporate-speak ("secure intake request"). Fix closes W1-SLOP piece 4/4 and clears the way for LOOP-BOOT (live vs VISION.md audit).
+
+DONE:
+ • fix(copy): clarify 404 audit-CTA path — old "secure intake request" → new "Wrong address. If you meant to book the $330 audit, the button below drops you on the intake form. Otherwise, the sitemap lists every public route."
+ • commit: 7fb8a30 (improver/not-found-copy-clarity)
+ • deploy: bundle main-D8VVSJFw.js live, verified via bundle grep
+ • bonus: W2-FUNNEL end-to-end smoke (closes t_0634816e) — live /api/intake OPTIONS 204 + POST safe-failure, local npm run test:intake 11/11
+ • bonus: W1-SLOP voice audit (closes t_bad8156f) — About/Services/Blog/Contact/Portfolio/404 all score 5/5 against VISION.md brand bar
+ • tickets: t_84ee70c3, t_3a7d4ae5, t_99ab6722 created+done; t_0634816e, t_bad8156f, t_16612a5e closed (stale)
+
+TESTED:
+ • local vite build clean (1.80s, 34 routes + 404 fallback)
+ • live bundle grep: new copy "Wrong address. If you meant to book the $330 audit" ✓; old "Use the public route directory" — gone ✓
+ • live /api/intake OPTIONS preflight 204, POST empty body 200 (safe-failure path) ✓
+ • live /micro-offer/ meta contains "$330 audit" + 1200x630 OG image ✓
+ • local npm run test:intake — 11/11 cases pass, leads_created=1, audit_events=[lead_created, notification_sent]
+
+RESULTS:
+ • deploy sha 7fb8a30 (main), 4b19dad with docs commit
+ • bundle main-D8VVSJFw.js live on mehyar.us
+ • no CF analytics uplift yet (cf_analytics_token in env but not surfaced in this turn's smoke)
+ • no Lighthouse/axe score (headless runner not wired — known unknown)
+
+LEARNED:
+ • 404 + utility surfaces drift back to default corporate-speak after launch — include them in every anti-slop pass, not just marketing pages.
+ • 2-tier smoke pattern works: local mock harness for full chain (D1+KV+notification) + live curl for origin + validation + safe-failure. Both together close the loop without Turnstile token or headless browser.
+ • CF Pages deploy lag ~3-5 min from git push → live bundle; 60s + 60-90s poll cadence observed.
+
+NEXT:
+ • LOOP-BOOT (t_b3048d53) — fresh live-vs-VISION.md audit since W1/W2 closed
+ • W5-PERSUADE (t_45ea76a8) — propose persuasion shape a/b/c
+ • t_06a7d8e0 — unblock t_5f79e5ac (still gated on CF_API_TOKEN env var)

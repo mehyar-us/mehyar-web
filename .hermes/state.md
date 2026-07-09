@@ -15,7 +15,7 @@
 | deploy_status                  | green (live bundle main-D8VVSJFw.js confirmed: 404 body 'Wrong address. If you meant to book the $330 audit...' shipped; old 'Use the public route directory' string is gone from bundle; W1-SLOP closed piece 4/4; W2-FUNNEL end-to-end smoke verified on live + local) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF, t_06a7d8e0 unblock-pre-existing — todo: 0) |
+| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_06a7d8e0 unblock-pre-existing, t_90f2136f BOARD-HANDOFF — todo: 0) |
 | blocked_tickets                | 1  (t_5f79e5ac)                          |
 | shipped_since_last             | 1                                        |
 | vision_doc_version             | bootstrap-2026-07-08                     |
