@@ -28,3 +28,8 @@ Per-blog-post route meta shipped: added /blog/small-business-tech-audit-revenue-
 Lesson: the patch tool can't safely handle multi-line indented block replacements when the new_string exceeds some character limit — it silently truncates. For any change of more than ~10 lines in JS/TS files, use a python heredoc with a uniqueness assertion before applying. Faster, recoverable, and pattern-matched to only modify the exact occurrence.
 
 Also: closed duplicate turn-013 ticket t_d514cd6e (filed 3s after t_53436949, identical title/body — same idea, double-clicked in the dispatcher). Lesson: when the loop sees two ready tickets with the same title and ~same body, both stamped within 10s of each other, close one as a dup. Don't let them both block on the worker queue.
+
+## 2026-07-09 · turn-021 (sha cd65ef9)
+WebPage + BreadcrumbList + ItemList JSON-LD shipped on /services and /portfolio via the same scripts/route-jsonld.json pipeline as turns 16-20. /services @graph=[WebPage, BreadcrumbList, ItemList(7 offer items at #tech-audit through #software-builds with price-anchored names)]; /portfolio @graph=[WebPage, BreadcrumbList, ItemList(6 engagement patterns at /portfolio/1-6)]. Zero copy touched. CF Pages deploy lag for /services cold route observed: ~5min (matches the /about pattern from turn-016, both are off the home hot path).
+
+Lesson: the route-jsonld.json pipeline now covers 9/13 public routes — home, about, micro-offer, booking, 3 blog posts, services, portfolio. Remaining no-schema routes are mostly utility/funnel (/contact, /404, /newsletter, /free-checklist, /330 redirect). The /contact route is the next candidate — it's the booking-intent mirror of /booking and would close the W4-SEO additive piece completely. Save for next tick.

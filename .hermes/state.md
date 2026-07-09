@@ -5,21 +5,21 @@
 
 | field                          | value                                    |
 | ------------------------------ | ---------------------------------------- |
-| last_tick_at                   | 2026-07-09T09:37:00Z                     |
-| last_tick_id                   | 16                                       |
+| last_tick_at                   | 2026-07-09T10:50:00Z                     |
+| last_tick_id                   | 21                                       |
 | live_url                       | https://mehyar.us                        |
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up                                       |
-| deployed_sha                   | 6dd002f                                  |
-| deploy_status                  | green (turn-016 live @ https://mehyar.us/about/ — 3 JSON-LD blocks (2 runtime SeoManager + 1 route-injected); @graph nodes: AboutPage + Person + BreadcrumbList, all @id cross-refs to ProfessionalService resolve; /api/intake OPTIONS 204; /rss.xml 200; /330 → /micro-offer 308 chain intact; bundle voice-scan clean) |
+| deployed_sha                   | cd65ef9                                  |
+| deploy_status                  | green (turn-021 live @ https://mehyar.us/services and /portfolio — 6 new JSON-LD blocks (3 per route); /services @graph=[WebPage, BreadcrumbList, ItemList(7 offer items)], /portfolio @graph=[WebPage, BreadcrumbList, ItemList(6 engagement patterns)]; route-injected via scripts/inject-route-jsonld.mjs; build green, test:intake 11/11, bundle voice-scan clean; deploy lag for cold /services route = ~5min; state.md reconciled turn-017-020) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF, t_d514cd6e turn-013 sitemap dup — todo: 0; closed this tick: t_cb95aca4 turn-016) |
+| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF, t_5ad10614 turn-014 anti-slop dup — todo: 0; closed this tick: t_140dc77d turn-021) |
 | blocked_tickets                | 0  (was 1 — t_5f79e5ac CF Access cleanup auto-resolved; no token needed) |
 | shipped_since_last             | 1                                        |
 | vision_doc_version             | bootstrap-2026-07-08                     |
-| last_learned                   | shipped Person + AboutPage + BreadcrumbList JSON-LD on /about (turn-016, sha 6dd002f) — additive SEO via scripts/inject-route-jsonld.mjs (same pattern as turn-011 FAQPage). New @id https://mehyar.us/about#person cross-links to existing ProfessionalService @id. Build green, test:intake 11/11, bundle voice-scan clean. CF Pages deploy lag on cold route = ~5.5min (slightly longer than 3-5min estimate — likely because /about isn't a hot path). State.md reconciliation: also backfilled turn-015 (rss feed + auto-discovery, sha 770eab9) that landed without state.md tick bump. Next: W5-PERSUADE spec doc OR LOOP-BOOT full VISION audit (both ready). |
+| last_learned                   | shipped WebPage + BreadcrumbList + ItemList JSON-LD on /services and /portfolio (turn-021, sha cd65ef9) — additive SEO via scripts/route-jsonld.json, same pattern as turns 17-20. /services @graph has 7-item ItemList (offer catalog $150 → custom build, anchored by price), /portfolio has 6-item ItemList (engagement patterns /portfolio/1-6). Zero copy risk. route-jsonld.json pipeline now covers 9/13 public routes (home, about, micro-offer, booking, 3 blog posts, services, portfolio). Next: /contact schema is the last additive W4-SEO piece; OR W5-PERSUADE spec; OR LOOP-BOOT full VISION audit. |
 | cron_enabled                   | off                                      |
 | cron_schedule                  | every 15m shallow; daily 09:00 deep      |
 | telegram_chat_id               | 6829435996 (per cron prompt; not yet wired in state) |
