@@ -1,0 +1,35 @@
+──── mehyar.us · turn 33 · 2026-07-09 20:55 UTC ────
+VERDICT:  ship
+DEPLOY:   ✓ green @ a1d3548
+SHIPPED:  1 item(s)
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+SUGGESTED: working-tree drift spotted at warm-start — turn-032's "Offer ladder" → "leak ladder" rename missed the home hero CTA label AND the Sitemap /services row description. Bundled into one voice-reconciliation tick instead of two orphan-chase ticks.
+
+DONE:
+ • fix(voice): hero CTA "See the offer ladder" → "See the leak ladder"  (hero-section.tsx)
+ • commit orphaned Sitemap /services row description → "Leak ladder, pricing ranges, ..."
+ • sha a1d3548 on github main · PR #3 squashed/merged · bundle main-DrrbqAOE.js
+ • https://github.com/mehyar-us/mehyar-web/pull/3
+ • https://github.com/mehyar-us/mehyar-web/commit/a1d3548
+
+TESTED:
+ • npm run check (tsc) — green
+ • live bundle main-DrrbqAOE.js voice grep: "See the leak ladder" 1x, "Leak ladder" 2x, "offer ladder" 0x
+ • anti-slop blacklist: 0/6 hits (secure intake / in today's fast-paced / Your trusted partner / empowering businesses / we leverage / we utilize)
+ • audit-intent funnel: micro-offer#intake=20 (baseline 19, +1 from sitemap row now matching), /contact=20 (baseline 21, −1 from turn-032 tier-2 documented CTA move, reconciled this tick)
+ • 6-tier prices present in bundle: $150 ✓ $250 ✓ $1,000 ✓ $5,000 ✓ $500 ✓ $150/hr ✓
+ • home shell: 3 JSON-LD blocks (turn-030 baseline preserved)
+ • CF Pages src/-change rolled BOTH shell AND JS bundle (first src/ tick to confirm the "src/ rolls bundle, scripts/ doesn't" pattern)
+
+RESULTS:
+ • deploy sha a1d3548 ✓
+ • bundle hash main-DrrbqAOE.js (was main-P-x17WD-.js turn-029/030)
+ • traffic uplift 24h: monitoring (CF Analytics event wired but not gated on this tick)
+ • before/after: hero CTA copy went "offer" → "leak" on every homepage visit
+
+LEARNED:
+A section-level rename is a 2-place minimum job: the visitor-facing CTA that points at the renamed section, AND any directory/index descriptions that preview the section. Cheap post-rename check: `grep -rn '<old-name>' client/src/` should return 0 hits in visitor-facing copy. Meta-noun mentions in VISION.md voice-bar bullets are fine — only src/components + src/pages matter for visitor voice.
+
+NEXT:
+Carry forward: W5-PERSUADE (long-stale, needs user direction), LOOP-BOOT cadence follow-up in 5-7 ticks, src/-vs-scripts/ bundle-roll pattern confirmation with one more data point. Small-tick budget left.
