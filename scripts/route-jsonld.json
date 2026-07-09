@@ -423,7 +423,181 @@
             "text": "MehyarSoft receives the request by email, reviews the chosen service and context, and replies with proposed times. After you confirm a time, you receive a calendar invite. If your situation turns out to be a $330-audit-shaped question instead of a call, MehyarSoft will point you to /micro-offer rather than wasting a meeting slot."
           }
         }
-      ]
-    }
-  ]
-}
+              ]
+            }
+          ],
+          "/services": [
+            {
+              "@type": "WebPage",
+              "@id": "https://mehyar.us/services#webpage",
+              "url": "https://mehyar.us/services",
+              "name": "Services & Pricing | MehyarSoft Software Automation Consulting",
+              "description": "Explore MehyarSoft consulting offers: local business tech audits, website and booking cleanup, missed-call follow-up flows, internal automation sprints, systems integration, retainers, and custom software builds.",
+              "isPartOf": {
+                "@id": "https://mehyar.us/#website"
+              },
+              "about": {
+                "@id": "https://mehyar.us/#professional-service"
+              },
+              "primaryImageOfPage": {
+                "@type": "ImageObject",
+                "url": "https://mehyar.us/assets/mehyarsoft-social-1200x630.png",
+                "width": 1200,
+                "height": 630
+              }
+            },
+            {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                {
+                  "@type": "ListItem",
+                  "position": 1,
+                  "name": "Home",
+                  "item": "https://mehyar.us/"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 2,
+                  "name": "Services and pricing",
+                  "item": "https://mehyar.us/services"
+                }
+              ]
+            },
+            {
+              "@type": "ItemList",
+              "@id": "https://mehyar.us/services#offer-catalog",
+              "name": "MehyarSoft consulting offers",
+              "description": "Six public offer lanes plus a custom-build lane, ranging from a $150 tech audit to a $25,000 custom build. Each lane maps a typical leak to the smallest useful next step.",
+              "itemListOrder": "https://schema.org/ItemListOrderAscending",
+              "numberOfItems": 7,
+              "itemListElement": [
+                {
+                  "@type": "ListItem",
+                  "position": 1,
+                  "url": "https://mehyar.us/services#tech-audit",
+                  "name": "Local Business Tech Audit — $150-$500"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 2,
+                  "url": "https://mehyar.us/services#website-booking-cleanup",
+                  "name": "Website Cleanup, Landing Page & Booking Setup — $750-$2,500"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 3,
+                  "url": "https://mehyar.us/services#missed-call-followup",
+                  "name": "AI Missed-Call, SMS & Email Follow-Up Flow — $1,500-$5,000"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 4,
+                  "url": "https://mehyar.us/services#automation-sprint",
+                  "name": "Internal Automation Sprint — $3,000-$12,000"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 5,
+                  "url": "https://mehyar.us/services#systems-integration",
+                  "name": "System Architecture & Integration Consulting — $100-$175/hr or $5k-$25k/project"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 6,
+                  "url": "https://mehyar.us/services#crm-support-retainer",
+                  "name": "Monthly Support Retainer — $500-$3,500/mo"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 7,
+                  "url": "https://mehyar.us/services#software-builds",
+                  "name": "Custom Software Builds — quoted per scope"
+                }
+              ]
+            }
+          ],
+          "/portfolio": [
+            {
+              "@type": "WebPage",
+              "@id": "https://mehyar.us/portfolio#webpage",
+              "url": "https://mehyar.us/portfolio",
+              "name": "Engagement Patterns | MehyarSoft Consulting Work Examples",
+              "description": "Reference engagement patterns for lead leak audits, missed-call follow-up, internal automation, regulated systems integration, website cleanup, and support retainers. No fake client logos or testimonials.",
+              "isPartOf": {
+                "@id": "https://mehyar.us/#website"
+              },
+              "about": {
+                "@id": "https://mehyar.us/#professional-service"
+              },
+              "primaryImageOfPage": {
+                "@type": "ImageObject",
+                "url": "https://mehyar.us/assets/mehyarsoft-social-1200x630.png",
+                "width": 1200,
+                "height": 630
+              }
+            },
+            {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                {
+                  "@type": "ListItem",
+                  "position": 1,
+                  "name": "Home",
+                  "item": "https://mehyar.us/"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 2,
+                  "name": "Engagement patterns",
+                  "item": "https://mehyar.us/portfolio"
+                }
+              ]
+            },
+            {
+              "@type": "ItemList",
+              "@id": "https://mehyar.us/portfolio#patterns",
+              "name": "MehyarSoft reference engagement patterns",
+              "description": "Six concrete work patterns MehyarSoft ships: lead leak audits, missed-call follow-up flows, internal automation sprints, regulated systems integration reviews, website cleanup, and ongoing retainers. Reference patterns, not invented case studies.",
+              "itemListOrder": "https://schema.org/ItemListOrderAscending",
+              "numberOfItems": 6,
+              "itemListElement": [
+                {
+                  "@type": "ListItem",
+                  "position": 1,
+                  "url": "https://mehyar.us/portfolio/1",
+                  "name": "Local Business Lead Leak Audit"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 2,
+                  "url": "https://mehyar.us/portfolio/2",
+                  "name": "Missed-Call Follow-Up Flow"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 3,
+                  "url": "https://mehyar.us/portfolio/3",
+                  "name": "Internal Automation Sprint"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 4,
+                  "url": "https://mehyar.us/portfolio/4",
+                  "name": "Regulated Systems Integration Review"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 5,
+                  "url": "https://mehyar.us/portfolio/5",
+                  "name": "Website Cleanup & Conversion Path"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 6,
+                  "url": "https://mehyar.us/portfolio/6",
+                  "name": "Ongoing Support Retainer"
+                }
+              ]
+            }
+          ]
+        }
