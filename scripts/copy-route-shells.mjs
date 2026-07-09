@@ -37,6 +37,42 @@ const routeMeta = {
       'Review MehyarSoft engagement patterns for lead leak audits, missed-call follow-up, internal automation, regulated systems integration, website cleanup, and support retainers.',
     path: '/portfolio',
   },
+  '/portfolio/1': {
+    title: 'Local Business Lead Leak Audit | MehyarSoft Engagement Pattern',
+    description:
+      'A practical MehyarSoft audit pattern for finding website, phone, booking, and follow-up gaps in a local business before buying more software.',
+    path: '/portfolio/1',
+  },
+  '/portfolio/2': {
+    title: 'Missed-Call Follow-Up Flow | MehyarSoft Engagement Pattern',
+    description:
+      'A consent-safe MehyarSoft response workflow for prospects who call, submit a form, or need booking follow-up without losing the lead.',
+    path: '/portfolio/2',
+  },
+  '/portfolio/3': {
+    title: 'Internal Automation Sprint | MehyarSoft Engagement Pattern',
+    description:
+      'A focused MehyarSoft sprint to replace repetitive spreadsheet, inbox, and reporting work with a clean internal workflow.',
+    path: '/portfolio/3',
+  },
+  '/portfolio/4': {
+    title: 'Regulated Systems Integration Review | MehyarSoft Engagement Pattern',
+    description:
+      'Senior MehyarSoft systems review for teams that need safer architecture, cleaner integrations, and better operational control.',
+    path: '/portfolio/4',
+  },
+  '/portfolio/5': {
+    title: 'Website and Booking Cleanup | MehyarSoft Engagement Pattern',
+    description:
+      'A conversion-focused MehyarSoft cleanup for businesses whose referrals, ads, or search traffic land on unclear pages.',
+    path: '/portfolio/5',
+  },
+  '/portfolio/6': {
+    title: 'Owner Dashboard and Support Retainer | MehyarSoft Engagement Pattern',
+    description:
+      'A monthly MehyarSoft support pattern for keeping lead flow, CRM hygiene, small fixes, and operational dashboards moving.',
+    path: '/portfolio/6',
+  },
   '/blog': {
     title: 'Blog & Insights | MehyarSoft Tech Audit & Automation Notes',
     description:
