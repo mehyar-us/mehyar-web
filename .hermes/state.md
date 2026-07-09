@@ -5,21 +5,21 @@
 
 | field                          | value                                    |
 | ------------------------------ | ---------------------------------------- |
-| last_tick_at                   | 2026-07-09T08:25:00Z                     |
-| last_tick_id                   | 14                                       |
+| last_tick_at                   | 2026-07-09T09:37:00Z                     |
+| last_tick_id                   | 16                                       |
 | live_url                       | https://mehyar.us                        |
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up                                       |
-| deployed_sha                   | ed89cdd                                  |
-| deploy_status                  | green (live bundle main-DZSkDfYA.js confirmed: 5 'secure intake' sites cleared — Contact eyebrow → 'Send the leak', MicroOffer CTA → 'Request the $330 audit', ConversionFlow status → 'Hold tight — sending.', Sitemap Contact description → 'Send a leak', Terms 'private intake channel'; W1-SLOP actually 5/5 now, not 4/5; funnel /330 → /micro-offer 308 chain preserved; /api/intake OPTIONS 204) |
+| deployed_sha                   | 6dd002f                                  |
+| deploy_status                  | green (turn-016 live @ https://mehyar.us/about/ — 3 JSON-LD blocks (2 runtime SeoManager + 1 route-injected); @graph nodes: AboutPage + Person + BreadcrumbList, all @id cross-refs to ProfessionalService resolve; /api/intake OPTIONS 204; /rss.xml 200; /330 → /micro-offer 308 chain intact; bundle voice-scan clean) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_06a7d8e0 unblock-pre-existing, t_90f2136f BOARD-HANDOFF — todo: 0) |
-| blocked_tickets                | 1  (t_5f79e5ac)                          |
+| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF, t_d514cd6e turn-013 sitemap dup — todo: 0; closed this tick: t_cb95aca4 turn-016) |
+| blocked_tickets                | 0  (was 1 — t_5f79e5ac CF Access cleanup auto-resolved; no token needed) |
 | shipped_since_last             | 1                                        |
 | vision_doc_version             | bootstrap-2026-07-08                     |
-| last_learned                   | shipped anti-slop regression sweep (turn-014, sha ed89cdd) — bundle-scanned dist/public/assets/*.js and caught 5 'secure intake' hits the turn-009 eyeball audit missed (Contact eyebrow, MicroOffer CTA, ConversionFlow status banner, Sitemap Contact description, Terms sensitive-submissions clause). Each rewritten to match VISION.md brand bar: problem-first, named price where applicable, plain English over corporate, 5/5 voice. W1-SLOP actually closed now (5/5, not 4/5). Lesson: bundle-scan every tick that touches copy — sub-pages, legal pages, and below-the-fold CTAs are where copy drifts back to default. Next: LOOP-BOOT (now safe to run — W1-SLOP truly closed) OR W5-PERSUADE spec. |
+| last_learned                   | shipped Person + AboutPage + BreadcrumbList JSON-LD on /about (turn-016, sha 6dd002f) — additive SEO via scripts/inject-route-jsonld.mjs (same pattern as turn-011 FAQPage). New @id https://mehyar.us/about#person cross-links to existing ProfessionalService @id. Build green, test:intake 11/11, bundle voice-scan clean. CF Pages deploy lag on cold route = ~5.5min (slightly longer than 3-5min estimate — likely because /about isn't a hot path). State.md reconciliation: also backfilled turn-015 (rss feed + auto-discovery, sha 770eab9) that landed without state.md tick bump. Next: W5-PERSUADE spec doc OR LOOP-BOOT full VISION audit (both ready). |
 | cron_enabled                   | off                                      |
 | cron_schedule                  | every 15m shallow; daily 09:00 deep      |
 | telegram_chat_id               | 6829435996 (per cron prompt; not yet wired in state) |
