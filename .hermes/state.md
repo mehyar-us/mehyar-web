@@ -5,21 +5,21 @@
 
 | field                          | value                                    |
 | ------------------------------ | ---------------------------------------- |
-| last_tick_at                   | 2026-07-09T10:50:00Z                     |
-| last_tick_id                   | 21                                       |
+| last_tick_at                   | 2026-07-09T14:00:00Z                     |
+| last_tick_id                   | 22                                       |
 | live_url                       | https://mehyar.us                        |
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up                                       |
-| deployed_sha                   | cd65ef9                                  |
-| deploy_status                  | green (turn-021 live @ https://mehyar.us/services and /portfolio — 6 new JSON-LD blocks (3 per route); /services @graph=[WebPage, BreadcrumbList, ItemList(7 offer items)], /portfolio @graph=[WebPage, BreadcrumbList, ItemList(6 engagement patterns)]; route-injected via scripts/inject-route-jsonld.mjs; build green, test:intake 11/11, bundle voice-scan clean; deploy lag for cold /services route = ~5min; state.md reconciled turn-017-020) |
+| deployed_sha                   | 9f7c4c6                                  |
+| deploy_status                  | green (turn-022 live @ https://mehyar.us/contact — 3 JSON-LD blocks: original ProfessionalService + FAQPage, plus route-injected @graph [WebPage, BreadcrumbList, ContactPage, Organization(email + 2 ContactPoints + Brooklyn NY), FAQPage(5 questions)]; /api/intake OPTIONS 204; cross-route smoke verified all 10 jsonld routes still serving their marker; bundle voice-scan clean; build green, test:intake 11/11; W4-SEO additive piece now covers 10/13 public routes) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF, t_5ad10614 turn-014 anti-slop dup — todo: 0; closed this tick: t_140dc77d turn-021) |
+| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF, t_5ad10614 turn-014 anti-slop dup — todo: 0; closed this tick: t_140dc77d turn-021, t_96bc8b84 turn-021) |
 | blocked_tickets                | 0  (was 1 — t_5f79e5ac CF Access cleanup auto-resolved; no token needed) |
 | shipped_since_last             | 1                                        |
 | vision_doc_version             | bootstrap-2026-07-08                     |
-| last_learned                   | shipped WebPage + BreadcrumbList + ItemList JSON-LD on /services and /portfolio (turn-021, sha cd65ef9) — additive SEO via scripts/route-jsonld.json, same pattern as turns 17-20. /services @graph has 7-item ItemList (offer catalog $150 → custom build, anchored by price), /portfolio has 6-item ItemList (engagement patterns /portfolio/1-6). Zero copy risk. route-jsonld.json pipeline now covers 9/13 public routes (home, about, micro-offer, booking, 3 blog posts, services, portfolio). Next: /contact schema is the last additive W4-SEO piece; OR W5-PERSUADE spec; OR LOOP-BOOT full VISION audit. |
+| last_learned                   | shipped ContactPage + WebPage + BreadcrumbList + Organization + FAQPage JSON-LD on /contact (turn-022, sha 9f7c4c6) — additive SEO via scripts/route-jsonld.json (same pattern as turns 16-21). /contact @graph has 5 blocks: WebPage (#webpage), BreadcrumbList (Home > Contact), ContactPage (#contactpage), Organization (#org-contact with email info@mehyar.us + 2 ContactPoints + Brooklyn NY address), FAQPage (5 questions). Closes the W4-SEO additive piece: 10/13 public routes now schema-equipped. Two lessons: (a) cross-route smoke after every additive SEO tick catches silent sibling regressions; (b) deploy:pages npm script is vestigial — real deploy is CF Pages auto from main on push, verify via git ls-remote + live curl. Next: LOOP-BOOT full VISION audit, OR W5-PERSUADE spec, OR address the 4 ready tickets on the mehyar-us board. |
 | cron_enabled                   | off                                      |
 | cron_schedule                  | every 15m shallow; daily 09:00 deep      |
 | telegram_chat_id               | 6829435996 (per cron prompt; not yet wired in state) |
