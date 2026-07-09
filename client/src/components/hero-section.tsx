@@ -27,7 +27,7 @@ const HeroSection = () => {
           </p>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <Link href="/contact" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>
+            <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>
               Book a Tech Audit <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
             <Link href="/services" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12 px-7 text-base" })}>
