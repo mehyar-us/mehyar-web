@@ -1,5 +1,8 @@
 # learned.md — running log of improver-loop lessons
 
+## 2026-07-09 · turn-014 (sha ed89cdd)
+Anti-slop audits should bundle-scan the *shipped JS*, not eyeball public pages. Turn-009 closed W1-SLOP with a 4/4 voice audit on the public surfaces (Home / Services / Blog / 404 / About / Portfolio / Contact), but a 30s regex sweep of `dist/public/assets/*.js` caught 5 'secure intake' regression sites still shipping: Contact page eyebrow, MicroOffer sidebar CTA, ConversionFlow status banner, Sitemap Contact description, Terms "no sensitive submissions" clause. Each rewrite matches the VISION.md brand bar — problem-first, named price where applicable, plain English over corporate, 5/5 voice score. Lesson: bundle scans are cheap insurance against copy drift on sub-pages, legal pages, and below-the-fold CTAs. Add a `grep -oE 'secure intake|we leverage|trusted partner|AI-powered' dist/public/assets/*.js` step to every tick that touches copy, not just anti-slop ticks.
+
 ## 2026-07-09 · turn-009 (sha 7fb8a30)
 The 404 page was the last surface still carrying corporate-speak ("secure intake request"). Even after a strong brand-voice pass on the public-facing pages, error states tend to drift back to default wording because nobody reviews them after launch. Voice score dropped from 5/5 → 4/5 just on this one body string. Lesson: include 404 + utility surfaces in every anti-slop pass, not just marketing pages.
 
