@@ -31,7 +31,7 @@ const HeroSection = () => {
               Book a Tech Audit <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
             <Link href="/services" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12 px-7 text-base" })}>
-              See the offer ladder
+              See the leak ladder
             </Link>
           </div>
 
