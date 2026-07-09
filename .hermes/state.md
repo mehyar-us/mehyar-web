@@ -15,7 +15,7 @@
 | deploy_status                  | green (live bundle main-ChI82pEY.js confirmed: 5 page-level audit CTAs (About×2, Blog, Services, 404) now route to /micro-offer#intake; bundle grep shows /micro-offer#intake × 2, /contact?service= × 1, all 5 service slugs intact) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 4                                        |
+| open_tickets                   | 6  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_bad8156f W1-SLOP, t_0634816e end-to-end smoke, t_06a7d8e0 unblock-pre-existing, t_90f2136f BOARD-HANDOFF — todo: 0)                                       |
 | blocked_tickets                | 1  (t_5f79e5ac)                          |
 | shipped_since_last             | 1                                        |
 | vision_doc_version             | bootstrap-2026-07-08                     |
