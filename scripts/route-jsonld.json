@@ -1,4 +1,78 @@
 {
+  "/about": [
+    {
+      "@type": "AboutPage",
+      "@id": "https://mehyar.us/about#webpage",
+      "url": "https://mehyar.us/about",
+      "name": "Founder Story | MehyarSoft LLC NYC Software Consultant",
+      "description": "Meet Mehyar Swelim, Syrian founder of MehyarSoft LLC in NYC, providing senior software, systems, and AI automation consulting for businesses with practical operational problems.",
+      "isPartOf": {
+        "@id": "https://mehyar.us/#website"
+      },
+      "about": {
+        "@id": "https://mehyar.us/about#person"
+      },
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://mehyar.us/assets/mehyarsoft-social-1200x630.png",
+        "width": 1200,
+        "height": 630
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://mehyar.us/about#person",
+      "name": "Mehyar Swelim",
+      "alternateName": "MehyarSoft",
+      "jobTitle": "Founder & Principal Software Consultant",
+      "description": "Syrian-born founder in New York City with 10+ years of professional software engineering experience. Operates MehyarSoft LLC, a founder-led consultancy focused on software, systems, AI automation, and practical tech support for local and regulated businesses.",
+      "url": "https://mehyar.us/about",
+      "image": "https://mehyar.us/assets/mehyarsoft-social-1200x630.png",
+      "worksFor": {
+        "@id": "https://mehyar.us/#professional-service"
+      },
+      "founder": {
+        "@id": "https://mehyar.us/#professional-service"
+      },
+      "knowsAbout": [
+        "Software consulting",
+        "Systems integration",
+        "AI automation",
+        "Missed-call follow-up",
+        "Website diagnostics",
+        "Booking flow optimization",
+        "CRM automation",
+        "Regulated systems engineering"
+      ],
+      "alumniOf": "Software engineering, NYC",
+      "nationality": "Syrian-American",
+      "homeLocation": {
+        "@type": "Place",
+        "name": "New York City, NY"
+      },
+      "sameAs": [
+        "https://mehyar.us",
+        "https://github.com/mehyarsoft"
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://mehyar.us/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Founder Story",
+          "item": "https://mehyar.us/about"
+        }
+      ]
+    }
+  ],
   "/micro-offer": [
     {
       "@type": "WebPage",
