@@ -516,6 +516,136 @@
               ]
             }
           ],
+          "/contact": [
+            {
+              "@type": "WebPage",
+              "@id": "https://mehyar.us/contact#webpage",
+              "url": "https://mehyar.us/contact",
+              "name": "Contact MehyarSoft | Request a Tech Audit or Consulting Call",
+              "description": "Contact MehyarSoft LLC to request a tech audit, consulting call, website cleanup, missed-call follow-up flow, automation sprint, or systems integration review.",
+              "isPartOf": {
+                "@id": "https://mehyar.us/#website"
+              },
+              "about": {
+                "@id": "https://mehyar.us/#professional-service"
+              },
+              "primaryImageOfPage": {
+                "@type": "ImageObject",
+                "url": "https://mehyar.us/assets/mehyarsoft-social-1200x630.png",
+                "width": 1200,
+                "height": 630
+              }
+            },
+            {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                {
+                  "@type": "ListItem",
+                  "position": 1,
+                  "name": "Home",
+                  "item": "https://mehyar.us/"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 2,
+                  "name": "Contact",
+                  "item": "https://mehyar.us/contact"
+                }
+              ]
+            },
+            {
+              "@type": "ContactPage",
+              "@id": "https://mehyar.us/contact#contactpage",
+              "url": "https://mehyar.us/contact",
+              "name": "Contact MehyarSoft",
+              "description": "Founder-reviewed intake for MehyarSoft consulting requests. Pick a service, send a short context note, and receive a manual confirmation.",
+              "about": {
+                "@id": "https://mehyar.us/#professional-service"
+              },
+              "mainEntity": {
+                "@id": "https://mehyar.us/#professional-service"
+              },
+              "publisher": {
+                "@id": "https://mehyar.us/#professional-service"
+              },
+              "inLanguage": "en-US"
+            },
+            {
+              "@type": "Organization",
+              "@id": "https://mehyar.us/contact#org-contact",
+              "name": "MehyarSoft LLC",
+              "url": "https://mehyar.us/contact",
+              "email": "info@mehyar.us",
+              "contactPoint": [
+                {
+                  "@type": "ContactPoint",
+                  "email": "info@mehyar.us",
+                  "contactType": "consulting intake",
+                  "areaServed": "US",
+                  "availableLanguage": ["English"],
+                  "url": "https://mehyar.us/contact"
+                },
+                {
+                  "@type": "ContactPoint",
+                  "telephone": "+1-347-674-0098",
+                  "contactType": "customer support",
+                  "areaServed": "US",
+                  "availableLanguage": ["English"]
+                }
+              ],
+              "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Brooklyn",
+                "addressRegion": "NY",
+                "addressCountry": "US"
+              }
+            },
+            {
+              "@type": "FAQPage",
+              "mainEntity": [
+                {
+                  "@type": "Question",
+                  "name": "How do I contact MehyarSoft?",
+                  "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Use the MehyarSoft contact form on this page or email info@mehyar.us with your business type, current workflow problem, tools involved, timeline, and budget range if known. Do not send passwords, API keys, PHI, payment data, or confidential files through public channels."
+                  }
+                },
+                {
+                  "@type": "Question",
+                  "name": "What is the fastest way to start?",
+                  "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "If you already know you have a leak (missed calls, weak website, manual work, disconnected tools), pick the matching service in the form and submit. If you are not sure, the $330 audit at /micro-offer is the fastest standalone starting point and ends with a written leak map."
+                  }
+                },
+                {
+                  "@type": "Question",
+                  "name": "Will I get an automated reply?",
+                  "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "No. Every MehyarSoft contact submission is reviewed by the founder. Expect a personal reply within one business day with either proposed times, a clarifying question, or a redirect to the $330 audit if that is the right shape for the request."
+                  }
+                },
+                {
+                  "@type": "Question",
+                  "name": "Is the contact form safe for regulated or PHI-adjacent businesses?",
+                  "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. The form is delivered through Cloudflare with bot protection. Share the workflow, the tools in play, and the leak you want closed. Do not submit passwords, API keys, PHI, payment data, or confidential files here. Sensitive material is exchanged on a follow-up channel once scope is agreed."
+                  }
+                },
+                {
+                  "@type": "Question",
+                  "name": "What happens after I send the form?",
+                  "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "MehyarSoft reviews the chosen service and the context note. Reply typically includes proposed times for a call, a clarifying question, or a pointer to the $330 audit. The form itself does not reserve a calendar slot — confirmation happens manually by email."
+                  }
+                }
+              ]
+            }
+          ],
           "/portfolio": [
             {
               "@type": "WebPage",
