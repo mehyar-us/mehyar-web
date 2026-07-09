@@ -5,21 +5,21 @@
 
 | field                          | value                                    |
 | ------------------------------ | ---------------------------------------- |
-| last_tick_at                   | 2026-07-09T03:30:00Z                     |
-| last_tick_id                   | 6                                        |
+| last_tick_at                   | 2026-07-09T05:30:00Z                     |
+| last_tick_id                   | 9                                        |
 | live_url                       | https://mehyar.us                        |
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up                                       |
-| deployed_sha                   | f4a60cd                                  |
-| deploy_status                  | green (live bundle main-ChI82pEY.js confirmed: 5 page-level audit CTAs (About×2, Blog, Services, 404) now route to /micro-offer#intake; bundle grep shows /micro-offer#intake × 2, /contact?service= × 1, all 5 service slugs intact) |
+| deployed_sha                   | 7fb8a30                                  |
+| deploy_status                  | green (live bundle main-D8VVSJFw.js confirmed: 404 body 'Wrong address. If you meant to book the $330 audit...' shipped; old 'Use the public route directory' string is gone from bundle; W1-SLOP closed piece 4/4; W2-FUNNEL end-to-end smoke verified on live + local) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 6  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_bad8156f W1-SLOP, t_0634816e end-to-end smoke, t_06a7d8e0 unblock-pre-existing, t_90f2136f BOARD-HANDOFF — todo: 0)                                       |
+| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF, t_06a7d8e0 unblock-pre-existing — todo: 0) |
 | blocked_tickets                | 1  (t_5f79e5ac)                          |
 | shipped_since_last             | 1                                        |
 | vision_doc_version             | bootstrap-2026-07-08                     |
-| last_learned                   | shipped 5 page-level audit CTAs → /micro-offer#intake (turn-006, sha f4a60cd) — About×2, Blog sidebar, Services, 404 now all land on the dedicated $330 audit landing with form in view (hero was already moved in turn-004 + pricing cards in turn-005). Live bundle hash moved main-Bq9wUcP7.js → main-ChI82pEY.js; bundle grep confirms /micro-offer#intake refs and all 5 service= slugs from turn-005 still live (no regression). Closes W2-FUNNEL piece 3/3 (hero + pricing + page-level audit CTAs); deeper funnel smoke t_0634816e still queued. Tick was reconciliation-only: turn-006 was merged and deployed but its journal entry was never written to state.md / VISION.md / learned.md, so future ticks would have mis-read live state as c8d2507. Next: t_0634816e end-to-end smoke OR W1-SLOP over About/Blog/Services/404 (voice score 4-5 acceptable on these new strings; only Home + Pricing have been score-tested). |
+| last_learned                   | shipped 404 copy clarity (turn-009, sha 7fb8a30) — old "secure intake request" was anti-slop blacklist hit; replaced with named-price ($330) + dual-CTA direction (audit → /micro-offer#intake, sitemap → /sitemap) + hand-rolled metaphor "Wrong address." Closes W1-SLOP piece 4/4 (voice scores 5/5 across About/Services/Blog/404/Contact/Portfolio). Same tick verified end-to-end W2-FUNNEL funnel (live /api/intake CORS 204 + safe-failure path; live /micro-offer has $330 meta + OG; local npm run test:intake 11/11 — D1+KV+notification chain works). All 6 audit-intent routes confirmed → /micro-offer#intake. Next: LOOP-BOOT (live vs VISION.md audit) OR W5-PERSUADE spec — both are higher-leverage than W1-SLOP/W2-FUNNEL which are now closed. |
 | cron_enabled                   | off                                      |
 | cron_schedule                  | every 15m shallow; daily 09:00 deep      |
 | telegram_chat_id               | 6829435996 (per cron prompt; not yet wired in state) |
@@ -28,9 +28,9 @@
 | kill_switch                    | off                                      |
 
 ## next-tick hot list (max 3 items)
-- t_0634816e: end-to-end Booking funnel smoke test on live site (W2-FUNNEL deeper piece; verify Booking + MicroOffer submit paths, CF Functions audit row, conversion tracking fires)
-- W1-SLOP: anti-slop + brand-voice copy pass over remaining public pages (About, Services, Contact, 404 — pricing done in turn-005)
-- LOOP-BOOT (t_b3048d53, P1, ready): audit live state against vision doc
+- LOOP-BOOT (t_b3048d53, P1, ready): audit live state against vision doc — both W1-SLOP and W2-FUNNEL are now closed, so a fresh LOOP-BOOT pass is the next big-picture scan
+- W5-PERSUADE (t_45ea76a8, ready): propose persuasion shape a/b/c per docs/PERSUASION-PROPOSAL.md template (currently locked: passive only)
+- t_06a7d8e0: unblock t_5f79e5ac (CF Access cleanup) — still gated on CF_API_TOKEN env var
 
 ## known unknowns
 - CF API bearer token location (blocks META-UNBLOCK / t_5f79e5ac, still 545+h blocked)
@@ -38,4 +38,4 @@
 - A/B test platform (if any)
 - Whether to keep W3-PWA fully shell-cached or relax runtime cache if CF analytics shows no install prompt lift after 7d
 - Lighthouse + axe a11y scores (no headless runner wired yet; deferred per turn-002 until first deploy succeeds — now satisfied at turn-003, blocker is browser tooling)
-- git push hangs silently without explicit token auth (turn-005 used GITHUB_TOKEN env var; bash credential helper manager blocks indefinitely — solution: `https://x-access-token:${GITHUB_TOKEN}@github.com/...` form)
+- git push hangs silently without explicit token auth (turn-005 used GITHUB_TOKEN env var; bash credential helper manager blocks indefinitely — solution: `https://x-access-token:${GITHUB......` form)
