@@ -102,11 +102,11 @@ const PortfolioDetail = () => {
       </section>
 
       <QuickAnswer
-        question="What problem does this engagement pattern solve?"
-        answer={`${project.challenge} MehyarSoft approaches it by ${project.solution.charAt(0).toLowerCase()}${project.solution.slice(1)}`}
-        ctaHref="/contact"
-        ctaLabel="Request a similar audit"
-      />
+              question="What problem does this engagement pattern solve?"
+              answer={`${project.challenge} MehyarSoft approaches it by ${project.solution.charAt(0).toLowerCase()}${project.solution.slice(1)}`}
+              ctaHref="/micro-offer#intake"
+              ctaLabel="Request the $330 audit"
+            />
 
       {/* Project Details */}
       <section className="py-20 px-4 bg-white dark:bg-neutral-900">
