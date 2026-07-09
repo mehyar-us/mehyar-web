@@ -57,7 +57,7 @@ const MicroOffer = () => {
               A focused founder-led audit for small businesses that know something is leaking — bad website clarity, missed calls, manual booking, weak follow-up, or disconnected systems — but need the next move before committing to a larger build.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a href="/330?request_type=micro_offer&utm_campaign=330_micro_offer#intake" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Request the $330 audit/setup path</a>
+              <a href="/micro-offer#intake" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Request the $330 audit/setup path</a>
               <a href="#included" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "rounded-full px-7")}>See what is included</a>
             </div>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
@@ -84,7 +84,7 @@ const MicroOffer = () => {
                 </div>
               ))}
             </div>
-            <a href="/330?request_type=micro_offer&utm_campaign=330_micro_offer#intake" className={cn(buttonVariants({ variant: "cta" }), "mt-6 w-full rounded-xl")}>Start secure intake</a>
+            <a href="/micro-offer#intake" className={cn(buttonVariants({ variant: "cta" }), "mt-6 w-full rounded-xl")}>Start secure intake</a>
           </aside>
         </div>
       </section>

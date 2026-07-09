@@ -25,7 +25,7 @@ const Newsletter = () => {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a href="#signup" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Get the free checklist</a>
-              <a href="/330?request_type=micro_offer&utm_campaign=newsletter_hero#intake" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "rounded-full px-7")}>Skip to the $330 audit</a>
+              <a href="/micro-offer#intake&utm_campaign=newsletter_hero" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "rounded-full px-7")}>Skip to the $330 audit</a>
             </div>
           </div>
 
@@ -66,7 +66,7 @@ const Newsletter = () => {
             <h2 className="text-3xl font-semibold tracking-[-0.04em] md:text-4xl">Want Boss to diagnose the leaks?</h2>
             <p className="mt-3 max-w-2xl leading-7 text-white/72">The $330 audit turns the checklist into a practical owner-level review of website, booking, missed-call, and follow-up gaps.</p>
           </div>
-          <a href="/330?request_type=micro_offer&utm_campaign=newsletter_bottom#intake" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Request the $330 audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></a>
+          <a href="/micro-offer#intake&utm_campaign=newsletter_bottom" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Request the $330 audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></a>
         </div>
       </section>
     </>
