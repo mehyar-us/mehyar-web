@@ -1,0 +1,7 @@
+# learned.md — mehyar.us improve-loop
+
+> Append-only. One line per tick. Latest at the bottom.
+> Format: `YYYY-MM-DD HH:MM · <one-line takeaway>`
+
+2026-07-09 16:55 · turn-028 · every VISION.md reference to a docs/ file must point at an actual committed path — recreated docs/QA-MEHYARSOFT-B2B-BASELINE-2026-05-11.md + docs/FINAL-ACCEPTANCE-GATE-MEHYARSOFT-V1-2026-05-11.md from shipped artifacts (sha 13ebb08, docs-only, no CF Pages deploy needed). CF Pages deploy workflow path filter is a feature: docs-only commits don't trigger the 5min build lag.
+2026-07-09 17:08 · turn-029 · recreating a referenced doc closes the file-on-disk gap but does NOT automatically fix any line that *names* the doc — VISION.md "Current state" line still had the same wrong-filename drift after turn-028 (pointed at non-existent `docs/QA-MEHYARSOFT-B2B-BASELINE` instead of `docs/QA-MEHYARSOFT-B2B-BASELINE-2026-05-11.md`). Also ops doc count was wrong ('2 ops docs' with 3 filenames listed; actually 4 on disk). Both layers (file existence + reference correctness) are one state. Phase-6 4-screen LOOP-BOOT partial against the recreated rubric passed all 14 spot-check items — full 13-route audit is now a viable next tick.
