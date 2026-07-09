@@ -5,19 +5,20 @@
 
 | field                          | value                                    |
 | ------------------------------ | ---------------------------------------- |
-| last_tick_at                   | 2026-07-09T22:25:00Z                     |
-| last_tick_id                   | 35                                        |
+| last_tick_at                   | 2026-07-09T22:55:00Z                     |
+| last_tick_id                   | 37                                        |
 | live_url                       | https://mehyar.us                        |
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up                                       |
-| deployed_sha                   | 5f49f9c (turn-035 hero secondary CTA target /services → /#pricing; PR improver/hero-cta-pricing-turn-035 merged; CF Pages built main-CqiU6zle.js from 5f49f9c; content-fingerprint verified /#pricing=1) |
-| deploy_status                  | green (turn-035 WIRE-FIX — 1 line src/ change rolled both shell AND bundle; live bundle now has 1x /#pricing (turn-033 had 0) and 1x "See the leak ladder"; audit-intent funnel 20/7/1/20 match turn-033 baseline exactly; voice 5/5; anti-slop 0/8; tsc green; test:intake 11/11; src/-vs-scripts/ bundle-roll pattern locked with 3/3 data points — src/ change rolls bundle, scripts/ change does not) |
+| deployed_sha                   | c33755d (live unchanged from turn-036) |
+| last_deploy_sha                | 5f49f9c (turn-035 hero secondary CTA target fix /services → /#pricing; PR improver/hero-cta-pricing-turn-035 merged; CF Pages built main-CqiU6zle.js from 5f49f9c; turn-036 c33755d About Practicality voice fix rolled bundle to main-BKU1Uoxy.js; turn-037 docs-only — no CF Pages deploy) |
+| deploy_status                  | green (turn-037 docs-only — no live change; live bundle main-BKU1Uoxy.js unchanged from turn-036; turn-036 verified: 4 $150 / 49 $330 matches live exactly; audit-intent funnel 20/7/1/20 unchanged; voice 5/5; anti-slop 0 hits on local + live; tsc green; test:intake 11/11) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 2  (ready: t_45ea76a8 W5-PERSUADE, t_90f2136f BOARD-HANDOFF — todo: 0; closed this tick: t_<turn-035-id> turn-035 hero CTA target fix) |
-| shipped_since_last             | 1 (src/ — wire: hero secondary CTA /services → /#pricing; sha 5f49f9c; bundle rolled to main-CqiU6zle.js) |
-| last_learned                   | shipped turn-035 hero secondary CTA target fix (sha 5f49f9c live; main @ 5f49f9c on github; PR improver/hero-cta-pricing-turn-035 merged). 1-tap bounce closed: hero 'See the leak ladder' now scrolls to the actual 6-tier pricing section on the home page, not the unrelated /services consulting-offer grid. W2-FUNNEL hero secondary-CTA piece finally closed (turn-004=primary CTA target, turn-033=secondary CTA label, turn-035=secondary CTA target). src/-vs-scripts/ bundle-roll pattern locked with 3/3 data points (turn-027/turn-033/turn-035 src/ all rolled bundle; turn-030 scripts/ did not). Local build main-BEFkljKi.js → CF Pages build main-CqiU6zle.js (hash differs by build host; verify by content-fingerprint, not by exact hash). Cheap post-rename / post-add CTA check added: list every href in the live bundle and verify each one is the URL the visitor expects to land on, not the URL a developer pasted during build. Voice 5/5. |
+| open_tickets                   | 2  (ready: t_45ea76a8 W5-PERSUADE, t_90f2136f BOARD-HANDOFF — todo: 0; closed this tick: t_7f1c39e4 turn-037 pricing-ladder drift surfaced) |
+| shipped_since_last             | 0 (docs-only — no src/ or scripts/ change; pricing-ladder drift surfaced for founder decision at docs/PRICING-LADDER-DRIFT-2026-07-09.md) |
+| last_learned                   | surfaced tier-1 pricing drift (sha 17c70a3 on github main; docs-only commit). VISION.md + pricing-section.tsx both list tier-1 as '$150 Free Tech Audit', but /micro-offer (the actual intake CTAs point at) charges $330 — 49 bundle mentions, api-contract `$330 rescue offer` truth. Result on live home: tier-1 ($150) < tier-2 ($250) < actual intake ($330) AND both tier-1+2 CTAs land on the same /micro-offer page. Loop did NOT ship any of 3 decision options (A: align to $330; B: drop micro-offer price; C: treat as two separate products) — too consequential for autonomous. Recommended adding pricing-consistency check to LOOP-BOOT rubric (Section B or new G). Live site stays on turn-036 c33755d. |
 | vision_doc_version             | bootstrap-2026-07-08                     |
 | cron_enabled                   | off                                      |
 | cron_schedule                  | every 15m shallow; daily 09:00 deep      |
@@ -27,6 +28,6 @@
 | kill_switch                    | off                                      |
 
 ## next-tick hot list (max 3 items)
-- W5-PERSUADE (t_45ea76a8, ready): propose persuasion shape a/b/c per docs/PERSUASION-PROPOSAL.md template (currently locked: passive only) — long-stale; needs user direction first
-- (small): follow-up LOOP-BOOT cadence — schedule next full 13-route audit in 3-5 ticks to catch drift cheaply (rubric is now anchored to verified-this-tick ledger entries from turn-031 AND turn-033 AND turn-034)
-- (small): STALE — the META-UNBLOCK hot-list reference points to t_5f79e5ac which is now done (closed 2026-07-09 04:48, "Already-resolved: 0 Access apps on account..."). Removed; was a state.md carry-over from before the t_5f79e5ac resolution. No active meta-unblock work remains.
+- BLOCKER: founder decision required on docs/PRICING-LADDER-DRIFT-2026-07-09.md (3 options A/B/C). Loop will NOT ship pricing changes autonomously. Once decision lands (Telegram reply to chat 6829435996 with "ship option X" or reply on doc), turn-038 will run the chosen fix in a single tick: build + test:intake + 4-screen smoke + push + state update + Telegram card. Expected ~15 min decision-to-live.
+- (small): add pricing-consistency check to LOOP-BOOT rubric Section B or new Section G. Loop CAN ship this autonomously (no copy change, just rubric extension). 3-grep implementation cost.
+- W5-PERSUADE (t_45ea76a8, ready): propose persuasion shape a/b/c per docs/PERSUASION-PROPOSAL.md template (currently locked: passive only) — long-stale; needs user direction first.
