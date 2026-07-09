@@ -2,7 +2,7 @@
 const sections = [
   ["Website information", "This website describes MehyarSoft consulting services and does not create a client relationship, guarantee results, or replace a signed statement of work."],
   ["Engagements", "Any paid engagement should be scoped separately with deliverables, timeline, assumptions, access needs, pricing, and responsibilities. Regulated or sensitive environments may require additional controls before work begins."],
-  ["No sensitive submissions", "Do not submit passwords, API keys, protected health information, payment data, or other confidential information through public forms or email unless a secure intake path has been agreed in advance."],
+  ["No sensitive submissions", "Do not submit passwords, API keys, protected health information, payment data, or other confidential information through public forms or email unless a private intake channel has been agreed in advance."],
   ["Contact", "Questions can be sent to info@mehyar.us."],
 ];
 
