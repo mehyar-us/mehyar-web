@@ -1,0 +1,12 @@
+──── mehyar.us · turn 24 · 2026-07-09 15:19 UTC ────
+VERDICT:  ship ✓
+DEPLOY:   ✓ green @ ab72cba
+SHIPPED:  1 item
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+SUGGESTED: /blog (the blog index) was the highest-leverage remaining no-schema public route. It's the SERP entry point for the 3 blog posts (which already had BlogPosting JSON-LD since turn-019, but the index had no schema of its own).
+DONE: shipped WebPage + Blog + BreadcrumbList + ItemList JSON-LD on /blog (4 blocks). The Blog block's blogPost[] array cross-references the 3 individual #blogposting @ids from turn-019 — the graph is now self-cross-referencing across the blog surface. commit: feat(seo): WebPage + Blog + BreadcrumbList + ItemList JSON-LD on /blog (turn-024) on improver/blog-index-jsonld-turn-024, merged to main @ ab72cba. deploy: live @ https://mehyar.us/blog (now carries 3 JSON-LD blocks: original ProfessionalService + FAQPage + new route-injected @graph).
+TESTED: vite build 1.98s green, test:intake 11/11 (D1+KV+notification paths), cross-route smoke 17/17 markers served (every jsonld-equipped route still green), bundle voice-scan clean (1 legitimate "leverage" hit in blog post body, not the slop-list pattern).
+RESULTS: W4-SEO additive piece closed. 17 routes now schema-equipped: home, about, blog, micro-offer, booking, services, portfolio, portfolio/1..6, contact, 3 blog posts. Total live JSON-LD blocks on /blog: 3 (ProfessionalService + FAQPage + new @graph). Monitoring via GSC Enhancements for the new Blog/ItemList rich result eligibility.
+LEARNED: (a) preserve original file format when programmatically editing JSON config files — route-jsonld.json is CRLF + insertion-ordered, and a naive json.dump pass silently converted to LF and re-sorted all keys, generating 750+1013 line diff noise for a ~90-line semantic add. Match the line endings and the dict ordering before re-serializing. (b) state.md drift accumulates silently — turn-022 was the last journaled tick, but main had moved to turn-023 without a journal entry. This tick reconciled by filing turn-023 retroactively (t_e54ad127) and closing stuck-ready t_96bc8b84 (turn-021) that state.md had falsely claimed was already done.
+NEXT: LOOP-BOOT (t_b3048d53) full VISION audit, OR W5-PERSUADE (t_45ea76a8) spec for persuasion shape a/b/c, OR schema the remaining low-leverage routes (/404 + /newsletter). Persuasion layer still locked passive per VISION.
