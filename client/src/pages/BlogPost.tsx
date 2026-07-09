@@ -98,7 +98,7 @@ const BlogPost = () => {
         </div>
       </section>
       {quickAnswer ? (
-        <QuickAnswer question={quickAnswer.question} answer={quickAnswer.answer} ctaHref="/contact" ctaLabel="Ask MehyarSoft to assess this" />
+        <QuickAnswer question={quickAnswer.question} answer={quickAnswer.answer} ctaHref="/micro-offer#intake" ctaLabel="Request the $330 audit" />
       ) : null}
       
       {/* Blog Content */}

@@ -16,9 +16,9 @@ const CTASection = () => {
               Send the current bottleneck: website, booking, missed calls, follow-up, spreadsheets, CRM, or internal system work. MehyarSoft will recommend a practical first engagement before proposing a larger build.
             </p>
           </div>
-          <Link href="/contact" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 bg-white px-7 text-base text-brand-950 hover:bg-brand-100 dark:text-brand-950" })}>
-            Request the audit path <ArrowRight aria-hidden="true" className="h-4 w-4" />
-          </Link>
+          <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 bg-white px-7 text-base text-brand-950 hover:bg-brand-100 dark:text-brand-950" })}>
+                      Request the audit path <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    </Link>
         </div>
       </div>
     </section>
