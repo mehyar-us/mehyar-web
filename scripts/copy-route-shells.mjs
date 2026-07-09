@@ -255,15 +255,40 @@ function routeShell(route) {
     .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${SITE_ORIGIN}/${route}" />`);
 }
 
+// Build a 404-themed noindex app shell so static hosts (Cloudflare Pages) that
+// serve /404.html for any unknown path return a route-appropriate title and
+// description instead of an admin page's metadata. The client SPA's
+// <Route component={NotFound} /> takes over once the bundle boots and shows
+// the branded 404 screen — this shell just keeps the HTML/JS-curl view honest
+// (search bots unfurling miss URLs, social previews of dead links, browser
+// tab titles for hand-typed URLs).
+function notFoundShell() {
+  const title = 'Route not found | MehyarSoft';
+  const description = 'That MehyarSoft route does not exist. Return to the homepage or browse the public sitemap.';
+  const path = '/404';
+  return applyRouteMeta(
+    appShell
+      .replace(/<meta name="robots" content="[^"]*" \/>/, '<meta name="robots" content="noindex,nofollow,noarchive" />'),
+    path,
+  )
+    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+    .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`)
+    .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
+    .replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${description}" />`)
+    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${SITE_ORIGIN}${path}" />`)
+    .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${title}" />`)
+    .replace(/<meta name="twitter:description" content="[^"]*" \/>/, `<meta name="twitter:description" content="${description}" />`);
+}
+
 for (const route of directRoutes) {
   const target = join(distDir, route, 'index.html');
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, routeShell(route));
 }
 
-// Static hosts return /404.html for unknown routes; make it a noindex app shell so
-// the client router can still render the matching private route or branded 404
-// without exposing indexable home-page metadata on unknown/admin deep links.
-writeFileSync(join(distDir, '404.html'), routeShell('admin/email/thread'));
+// Static hosts return /404.html for unknown routes; serve a 404-themed noindex
+// shell so misses show honest "Route not found" metadata instead of inheriting
+// the admin Email Command Center page title/canonical.
+writeFileSync(join(distDir, '404.html'), notFoundShell());
 
 console.log(`Wrote per-route meta for ${directRoutes.length} routes plus 404 fallback.`);
