@@ -33,7 +33,27 @@ let injectedCount = 0;
 
 for (const [route, graph] of Object.entries(routeJsonld)) {
   const target = join(distDir, route.replace(/^\//, ''), 'index.html');
-  if (!existsSync(target)) continue;
+  if (!existsSync(target)) {
+    // /404 fallback (turn-026): the 404 page is a single file, not a directory.
+    if (route === '/404') {
+      const fallback = join(distDir, '404.html');
+      if (existsSync(fallback)) {
+        const altMarker = `data-route-jsonld="${route}"`;
+        const altHtml = readFileSync(fallback, 'utf8');
+        if (!altHtml.includes(altMarker)) {
+          const altPayload = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }, null, 2);
+          const altScript = `<script type="application/ld+json" ${altMarker}>\n    ${altPayload}\n    </script>`;
+          const altNext = altHtml.includes('</head>')
+            ? altHtml.replace('</head>', `    ${altScript}\n  </head>`)
+            : `${altScript}\n${altHtml}`;
+          writeFileSync(fallback, altNext);
+          injectedCount += 1;
+          console.log(`  + /404 -> 404.html (fallback)`);
+        }
+      }
+    }
+    continue;
+  }
 
   const html = readFileSync(target, 'utf8');
 
