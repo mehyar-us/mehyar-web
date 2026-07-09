@@ -5,21 +5,20 @@
 
 | field                          | value                                    |
 | ------------------------------ | ---------------------------------------- |
-| last_tick_at                   | 2026-07-09T14:00:00Z                     |
-| last_tick_id                   | 22                                       |
+| last_tick_at                   | 2026-07-09T15:19:00Z                     |
+| last_tick_id                   | 24                                       |
 | live_url                       | https://mehyar.us                        |
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up                                       |
-| deployed_sha                   | 9f7c4c6                                  |
-| deploy_status                  | green (turn-022 live @ https://mehyar.us/contact — 3 JSON-LD blocks: original ProfessionalService + FAQPage, plus route-injected @graph [WebPage, BreadcrumbList, ContactPage, Organization(email + 2 ContactPoints + Brooklyn NY), FAQPage(5 questions)]; /api/intake OPTIONS 204; cross-route smoke verified all 10 jsonld routes still serving their marker; bundle voice-scan clean; build green, test:intake 11/11; W4-SEO additive piece now covers 10/13 public routes) |
+| deployed_sha                   | ab72cba                                  |
+| deploy_status                  | green (turn-024 live @ https://mehyar.us/blog — 3 JSON-LD blocks: original ProfessionalService + FAQPage, plus route-injected @graph [WebPage, Blog(blogPost[]→3 post #blogposting @ids), BreadcrumbList(Home>Blog), ItemList(3 posts)]; cross-route smoke 17/17 markers served; build green, test:intake 11/11; W4-SEO additive piece closed at 17 schema-equipped routes; turn-023 retroactively journaled (portfolio detail WebPage+CreativeWork+BreadcrumbList) and turn-021 stuck-ready t_96bc8b84 closed during reconciliation) |
 | cf_analytics_token_present     | yes                                      |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
-| open_tickets                   | 4  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF, t_5ad10614 turn-014 anti-slop dup — todo: 0; closed this tick: t_140dc77d turn-021, t_96bc8b84 turn-021) |
-| blocked_tickets                | 0  (was 1 — t_5f79e5ac CF Access cleanup auto-resolved; no token needed) |
+| open_tickets                   | 3  (ready: t_45ea76a8 W5-PERSUADE, t_b3048d53 LOOP-BOOT, t_90f2136f BOARD-HANDOFF — todo: 0; closed this tick: t_0c2ece0e turn-024, t_e54ad127 turn-023 retroactive, t_96bc8b84 turn-021 retroactive cleanup) |
 | shipped_since_last             | 1                                        |
+| last_learned                   | shipped /blog WebPage + Blog + BreadcrumbList + ItemList JSON-LD (turn-024, sha ab72cba) — blog index now schema-equipped, Blog block's blogPost[] cross-references the 3 individual #blogposting @ids from turn-019 (graph is now self-cross-referencing across the blog surface). W4-SEO additive piece closed at 17 schema-equipped routes (home, about, blog, micro-offer, booking, services, portfolio, portfolio/1..6, contact, 3 blog posts). Three lessons: (a) preserve original file format when programmatically editing JSON config files (CRLF endings + insertion order matter — first naive pass silently converted LF→CRLF and re-sorted all keys, generating 750+1013 line diff noise for a ~90-line semantic add); (b) cross-route smoke after every additive SEO tick catches silent sibling regressions — 17/17 markers confirmed live; (c) state.md drift accumulates silently — turn-022 was the last journaled tick but main had moved to turn-023 without a journal entry; turn-024 reconciled by filing turn-023 retroactively and closing stuck-ready t_96bc8b84 that state.md had falsely claimed was already done. Next: LOOP-BOOT full VISION audit (t_b3048d53) or W5-PERSUADE spec (t_45ea76a8) or schema /404 + /newsletter. |
 | vision_doc_version             | bootstrap-2026-07-08                     |
-| last_learned                   | shipped ContactPage + WebPage + BreadcrumbList + Organization + FAQPage JSON-LD on /contact (turn-022, sha 9f7c4c6) — additive SEO via scripts/route-jsonld.json (same pattern as turns 16-21). /contact @graph has 5 blocks: WebPage (#webpage), BreadcrumbList (Home > Contact), ContactPage (#contactpage), Organization (#org-contact with email info@mehyar.us + 2 ContactPoints + Brooklyn NY address), FAQPage (5 questions). Closes the W4-SEO additive piece: 10/13 public routes now schema-equipped. Two lessons: (a) cross-route smoke after every additive SEO tick catches silent sibling regressions; (b) deploy:pages npm script is vestigial — real deploy is CF Pages auto from main on push, verify via git ls-remote + live curl. Next: LOOP-BOOT full VISION audit, OR W5-PERSUADE spec, OR address the 4 ready tickets on the mehyar-us board. |
 | cron_enabled                   | off                                      |
 | cron_schedule                  | every 15m shallow; daily 09:00 deep      |
 | telegram_chat_id               | 6829435996 (per cron prompt; not yet wired in state) |
