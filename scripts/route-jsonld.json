@@ -157,5 +157,35 @@
         }
       ]
     }
+  ],
+  "/": [
+    {
+      "@type": "ItemList",
+      "@id": "https://mehyar.us/#blog-index",
+      "name": "MehyarSoft field notes",
+      "description": "Short, practical posts on tech audits, missed-call follow-up, automation, and when to build custom software.",
+      "itemListOrder": "https://schema.org/ItemListOrderDescending",
+      "numberOfItems": 3,
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "url": "https://mehyar.us/blog/small-business-tech-audit-revenue-leaks",
+          "name": "The Small Business Tech Audit: Find Revenue Leaks Before Buying More Software"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "url": "https://mehyar.us/blog/missed-calls-crm-follow-up",
+          "name": "Missed Calls Are a CRM Problem, Not Just a Phone Problem"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "url": "https://mehyar.us/blog/when-to-build-custom-software",
+          "name": "When to Build Custom Software (and When Not To)"
+        }
+      ]
+    }
   ]
 }
