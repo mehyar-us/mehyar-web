@@ -239,12 +239,21 @@ function routeShell(route) {
   if (!route.startsWith('admin')) {
     return applyRouteMeta(appShell, `/${route}`);
   }
+  return adminShell(route);
+}
+
+// Build an admin-themed noindex app shell so /admin/* pre-rendered shells don't
+// leak 'index,follow' robots to crawlers and social unfurlers. The previous
+// inline shape ran the noindex robots replace and then handed the result to
+// applyRouteMeta(appShell, '/'), which re-overwrote robots back to 'index,follow'
+// from routeMeta['/']. This standalone builder avoids applyRouteMeta entirely
+// so the noindex tag survives. The client SPA still mounts the Admin component
+// on /admin/*; this shell only matters for the static-HTML pre-render that
+// no-JS crawlers, link unfurlers, and curl debuggers see.
+function adminShell(route) {
   const title = adminTitles[route] || 'Admin Metrics | MehyarSoft';
-  return applyRouteMeta(
-    appShell
-      .replace(/<meta name="robots" content="[^"]*" \/>/, '<meta name="robots" content="noindex,nofollow,noarchive" />'),
-    '/',
-  )
+  return appShell
+    .replace(/<meta name="robots" content="[^"]*" \/>/, '<meta name="robots" content="noindex,nofollow,noarchive" />')
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, '<meta name="description" content="Owner-only MehyarSoft admin area." />')
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
