@@ -13,7 +13,7 @@ export default function NotFound() {
           </div>
           <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Page not found</p>
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">This MehyarSoft route does not exist.</h1>
-          <p className="mx-auto mt-4 max-w-md leading-7 text-muted-foreground">Use the public route directory or send a secure intake request if you were trying to reach MehyarSoft.</p>
+          <p className="mx-auto mt-4 max-w-md leading-7 text-muted-foreground">Wrong address. If you meant to book the $330 audit, the button below drops you on the intake form. Otherwise, the sitemap lists every public route.</p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta" })}>
               Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
