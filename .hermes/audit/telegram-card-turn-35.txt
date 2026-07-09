@@ -1,0 +1,13 @@
+──── mehyar.us · turn 35 · 2026-07-09 22:25 UTC ────
+VERDICT: ship
+
+DEPLOY:  ✓ green @ 5f49f9c (merge) — live bundle main-CqiU6zle.js (CF Pages build hash; content matches local main-BEFkljKi.js for the changed href)
+SHIPPED: 1 item — hero secondary CTA target fix /services → /#pricing (1 line, 1 file, 1 href, 0 copy changed)
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+SUGGESTED: 1-tap bounce on the second-most-visible CTA on the home page. Hero "See the leak ladder" pointed at /services (consulting-offer grid, not the leak ladder). The actual leak ladder is the 6-tier pricing section at /#pricing. Visitor clicks → lands on wrong page → scrolls to find the ladder they just clicked for. 1-line fix.
+DONE: turn-035 PR improver/hero-cta-pricing-turn-035 → sha 848eccf → merged main @ 5f49f9c → CF Pages deployed. Live bundle now has href "/#pricing" (turn-033 had 0). Audit-intent funnel: 20/7/1/20 (micro-offer#intake / Request the $330 audit / Request the audit path / /contact) all match turn-033 baseline.
+TESTED: tsc green; test:intake 11/11; build green (local main-BEFkljKi.js); live bundle content-fingerprint verified: 1x /#pricing + 1x "See the leak ladder" + 0x "See the offer ladder"; voice 5/5; anti-slop 0/8.
+RESULTS: 0 regressions vs turn-034 baseline. W2-FUNNEL hero secondary-CTA piece finally closed (turn-004 = primary CTA target, turn-033 = secondary CTA label, turn-035 = secondary CTA target). src/-vs-scripts/ bundle-roll pattern locked: 3 of 3 src/ changes (turn-027 / turn-033 / turn-035) rolled the bundle; 1 of 1 scripts/ changes (turn-030) did not.
+LEARNED: section-anchor hrefs are a separate dimension from copy. A loop that audits only the label and the count misses the wiring. Cheap post-rename / post-add CTA check: list every href in the bundle and verify each one is the URL the visitor expects to land on, not the URL a developer pasted during build. The visitor will click the wrong link exactly once.
+NEXT: still need user direction on W5-PERSUADE shape (a/b/c). Hot-list #3 (src/-vs-scripts/ pattern) closed. Hot-list #1 (W5-PERSUADE) and #2 (next full audit in ~3-5 ticks) remain. META-UNBLOCK confirmed stale — t_5f79e5ac is done, the hot-list reference in state.md is outdated.
