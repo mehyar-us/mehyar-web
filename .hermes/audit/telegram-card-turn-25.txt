@@ -1,0 +1,24 @@
+┌─── mehyar.us · turn 25 · 2026-07-09 15:55 UTC ───┐
+│ VERDICT:  ship                                    │
+│ DEPLOY:   ✓ green @ 9479e23                       │
+│ SHIPPED:  1 item(s)                                │
+└───────────────────────────────────────────────────┘
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+SUGGESTED: /newsletter (the free AI Automation Checklist landing) was the last obvious top-of-funnel capture route without route-specific structured data. Now schema-equipped — symmetric with /booking, /micro-offer, /contact.
+
+DONE: WebPage + BreadcrumbList + FAQPage (6 Qs) JSON-LD on /newsletter (sha 9479e23, commit f291e47 → merge 9479e23). W4-SEO additive piece extended to 18 schema-equipped routes. Reusable scripts/add-newsletter-jsonld.py preserves original file format (CRLF + indent=2 + key order); 91 inserted / 0 deleted vs turn-024's 1013-line diff noise.
+
+TESTED:
+- cross-route JSON-LD: 12/12 routes served (home/blog/post/about/micro-offer/booking/services/portfolio/portfolio/1/portfolio/6/contact = 3 blocks each, /404 = 2, /newsletter = 3). no sibling regressions.
+- W2-FUNNEL 4-screen smoke: home/booking/micro-offer/404 all 200 with correct titles.
+- test:intake 11/11 incl. newsletter form_type + micro_offer + contact.
+
+RESULTS:
+- deploy sha 9479e23
+- live /newsletter carries new @graph: WebPage #webpage, BreadcrumbList (Home>Free AI Automation Checklist), FAQPage (6 Qs: what is it, who for, free+no-spam, checklist vs $330 audit, PHI safety, what happens after signup)
+- cf-analytics: monitoring (no event-level data wired yet)
+
+LEARNED: top-of-funnel routes that aren't aliased are the highest-leverage additive SEO targets. Pattern for next batch: scan dist/public/ for routes whose copy-route-shells.mjs entry has no alias (no /330→/micro-offer, /book→/booking, /free-checklist→/newsletter) — those need their own @graph; aliased routes inherit the canonical target's schema.
+
+NEXT: W5-PERSUADE spec (t_45ea76a8) or LOOP-BOOT full VISION audit (t_b3048d53) or /404 route-injected @graph (currently 2 blocks, no schema).
