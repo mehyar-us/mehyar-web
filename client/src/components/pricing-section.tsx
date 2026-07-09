@@ -2,13 +2,71 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 
-const offers = [
-  { name: "Local Business Tech Audit", price: "$150-$500", fit: "Restaurants, clinics, stores, salons, service businesses", outcome: "A prioritized leak map and practical action plan.", emphasis: "Best first step" },
-  { name: "Website / Booking Cleanup", price: "$750-$2,500", fit: "Owners with traffic or referrals but weak conversion", outcome: "Clear offer pages, intake, CTAs, and booking path.", emphasis: "Fix the public path" },
-  { name: "AI Follow-Up Flow", price: "$1,500-$5,000", fit: "Missed calls, slow responses, no-shows, unworked leads", outcome: "SMS/email/CRM follow-up with consent-safe rules.", emphasis: "Recover warm leads" },
-  { name: "Internal Automation Sprint", price: "$3,000-$12,000", fit: "Teams buried in spreadsheets, inboxes, and recurring admin", outcome: "One workflow automated and documented.", emphasis: "Save operator time" },
-  { name: "Architecture / Integration Consulting", price: "$100-$175/hr or $5k-$25k/project", fit: "Pharma, healthcare, SaaS, agencies, regulated teams", outcome: "Senior systems support for safe, reliable integrations.", emphasis: "De-risk complexity" },
-  { name: "Monthly Support Retainer", price: "$500-$3,500/mo", fit: "Businesses needing ongoing technical ownership", outcome: "Website, CRM, automation, and reporting support.", emphasis: "Keep improving" },
+type Offer = {
+  name: string;
+  price: string;
+  fit: string;
+  outcome: string;
+  emphasis: string;
+  ctaLabel: string;
+  ctaHref: string;
+};
+
+const offers: Offer[] = [
+  {
+    name: "Local Business Tech Audit",
+    price: "$150-$500",
+    fit: "Restaurants, clinics, stores, salons, service businesses",
+    outcome: "A prioritized leak map and practical action plan.",
+    emphasis: "Best first step",
+    ctaLabel: "Book a Tech Audit",
+    ctaHref: "/micro-offer#intake",
+  },
+  {
+    name: "Website / Booking Cleanup",
+    price: "$750-$2,500",
+    fit: "Owners with traffic or referrals but weak conversion",
+    outcome: "Clear offer pages, intake, CTAs, and booking path.",
+    emphasis: "Fix the public path",
+    ctaLabel: "Plan my site fix",
+    ctaHref: "/contact?service=website-cleanup",
+  },
+  {
+    name: "AI Follow-Up Flow",
+    price: "$1,500-$5,000",
+    fit: "Missed calls, slow responses, no-shows, unworked leads",
+    outcome: "SMS/email/CRM follow-up with consent-safe rules.",
+    emphasis: "Recover warm leads",
+    ctaLabel: "Map my follow-up flow",
+    ctaHref: "/contact?service=ai-follow-up",
+  },
+  {
+    name: "Internal Automation Sprint",
+    price: "$3,000-$12,000",
+    fit: "Teams buried in spreadsheets, inboxes, and recurring admin",
+    outcome: "One workflow automated and documented.",
+    emphasis: "Save operator time",
+    ctaLabel: "Scope a sprint",
+    ctaHref: "/contact?service=internal-sprint",
+  },
+  {
+    name: "Architecture / Integration Consulting",
+    price: "$100-$175/hr or $5k-$25k/project",
+    fit: "Pharma, healthcare, SaaS, agencies, regulated teams",
+    outcome: "Senior systems support for safe, reliable integrations.",
+    emphasis: "De-risk complexity",
+    ctaLabel: "Talk about architecture",
+    ctaHref: "/contact?service=architecture-consulting",
+  },
+  {
+    name: "Monthly Support Retainer",
+    price: "$500-$3,500/mo",
+    fit: "Businesses needing ongoing technical ownership",
+    outcome: "Website, CRM, automation, and reporting support.",
+    emphasis: "Keep improving",
+    ctaLabel: "Discuss a retainer",
+    ctaHref: "/contact?service=monthly-retainer",
+  },
 ];
 
 const PricingSection = () => {
@@ -39,8 +97,8 @@ const PricingSection = () => {
                 <p className="mt-3 text-2xl font-bold text-brand-800 dark:text-brand-100">{offer.price}</p>
                 <p className="mt-4 text-sm leading-6 text-muted-foreground"><strong className="text-foreground">Best fit:</strong> {offer.fit}</p>
                 <p className="mt-3 flex-grow text-sm leading-6 text-muted-foreground"><strong className="text-foreground">Outcome:</strong> {offer.outcome}</p>
-                <Link href="/contact" className={buttonVariants({ variant: index === 0 ? "cta" : "outline", className: "mt-6 w-full" })}>
-                  Book a Tech Audit
+                <Link href={offer.ctaHref} className={buttonVariants({ variant: index === 0 ? "cta" : "outline", className: "mt-6 w-full" })}>
+                  {offer.ctaLabel}
                 </Link>
               </CardContent>
             </Card>
