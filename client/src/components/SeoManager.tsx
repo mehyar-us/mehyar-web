@@ -201,11 +201,51 @@ const staticMeta: Record<string, SeoMeta> = {
     }],
   },
   "/micro-offer": {
-    title: "$330 Website + Booking Leak Audit | MehyarSoft",
-    description:
-      "A focused $330 MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks before buying more software.",
-    path: "/micro-offer",
-  },
+      title: "$330 Website + Booking Leak Audit | MehyarSoft",
+      description:
+        "A focused $330 MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks before buying more software.",
+      path: "/micro-offer",
+      jsonLd: [
+        webPage(
+          "/micro-offer",
+          "$330 Website + Booking Leak Audit | MehyarSoft",
+          "Focused $330 audit for website, booking, missed-call, and follow-up leaks.",
+        ),
+        breadcrumbs([{ name: "Home", path: "/" }, { name: "$330 Audit", path: "/micro-offer" }]),
+        faq([
+          {
+            question: "What does the $330 audit actually cover?",
+            answer:
+              "A focused review of homepage and service-page clarity, the booking or contact path (form fields, call and email handoff, confirmations), missed-call and inbox follow-up gaps, and any disconnected CRM, spreadsheet, or manual-typing work. You leave with a written action plan: the smallest first fix, the next safe automation, and whether a larger build is worth scoping.",
+          },
+          {
+            question: "Who is the $330 audit built for?",
+            answer:
+              "Local service businesses, clinics, restaurants, shops, agencies, and owner-led companies that suspect leads are leaking through bad website flow, missed calls, weak follow-up, or disconnected tools, and want a senior technical operator to identify the smallest useful next move before a bigger build.",
+          },
+          {
+            question: "Why $330 instead of a free audit or a $5,000 proposal?",
+            answer:
+              "$330 is enough to do the diagnosis honestly without pressure. MehyarSoft avoids fake agency pitches and guaranteed revenue claims. If a small fix is enough, the audit tells you. If a larger scope is warranted, the audit explains why and what the next sprint would actually cost.",
+          },
+          {
+            question: "Do I have to commit to a build after the audit?",
+            answer:
+              "No. The audit is a standalone deliverable. You can stop after the written plan, request a follow-up call, or only move forward with cleanup, booking setup, AI follow-up, or an automation sprint if it makes sense for your business.",
+          },
+          {
+            question: "How fast do I get the audit results?",
+            answer:
+              "Most audits are delivered within a few business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs.",
+          },
+          {
+            question: "Is the $330 audit safe for regulated or PHI-adjacent businesses?",
+            answer:
+              "Yes. MehyarSoft designs every audit around the smallest data exposure needed for diagnosis. Do not send passwords, API keys, PHI, payment data, or confidential files through the intake form; the audit reviews the workflow and consent posture, not raw customer data.",
+          },
+        ]),
+      ],
+    },
   "/contact": {
     title: "Contact MehyarSoft | Request a Tech Audit or Consulting Call",
     description:
