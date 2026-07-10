@@ -35,7 +35,13 @@
 # - Strip 6829435 (telegram chat id) before the SHA match — it's a
 #   7-char decimal, but the word-boundary \b still pulls it into a
 #   hex-class match; the probe filters it explicitly.
-# - 7-char SHAs are the canonical short form git itself prints in
+# - Strip multi-line fenced code blocks (```...```) before the
+#   inline-backtick strip (turn-054 fix). hexdump -C byte offsets
+#   (e.g. 0000000, 0000003) inside a fence look identical to 7-char
+#   git short SHAs to the regex; turn-053's audit reproduction log
+#   introduced this exact false-positive. Inline-backtick strip
+#   doesn't reach multi-line fences. AWK fence-strip is the fix.
+#   7-char SHAs are the canonical short form git itself prints in
 #   `git log --oneline`. 40-char full SHAs are accepted as a strict
 #   superset (a full SHA is also a valid 7+ prefix). The probe matches
 #   the 7-char form because that's what every diary line uses.
@@ -81,6 +87,11 @@ trap 'rm -f "$CITED" "$GIT_SHA"' EXIT
     # links (`[text](url)`) and bare URLs are NOT stripped —
     # only the inline-code span shape that holds example prose.
     sed -E 's/t_[a-f0-9]{8}//g; s/\b6829435\b//g' "$f" 2>/dev/null \
+      | awk '
+          /^```/ { in_fence = !in_fence; next }
+          in_fence { next }
+          { print }
+        ' \
       | sed -E 's/`[^`]*`//g' \
       | grep -hoE '\b[0-9a-f]{7}\b' || true
   done
