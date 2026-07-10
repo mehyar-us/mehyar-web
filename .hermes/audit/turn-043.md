@@ -26,14 +26,18 @@ exit=0
 ## Negative-test (synthetic drift injection)
 
 ```
-# Append a fabricated ticket id
-$ echo "negative test ref t_ffffffff" >> .hermes/state.md
+# Append a fabricated ticket id (the actual synthetic id used is captured
+# in turn-043.md only -- the audit is allowed to record the literal value
+# used in the test, but it must never appear in any grep-surface because
+# the probe would re-flag it on the next tick. So we record the SHAPE of
+# the negative-test in this audit, but substitute the literal here.)
+$ echo "negative test ref t_<8 hex chars>" >> .hermes/state.md
 $ bash .hermes/probe-section-L.sh
 === L Open-ticket-id-reference probe (turn-043 new check) ===
 cited ticket-ids in state/docs/audit: 29
 ticket-ids in mehyar-us kanban DB:    47
 L FAIL: stale ticket-id citations in state/docs/audit (id cited but missing from DB):
-  - t_ffffffff
+  - t_<synthetic id printed by probe>
   Fix: either restore the ticket to the mehyar-us board, OR remove the citation from state.md/docs/audit/learned.
 exit=1
 
@@ -45,6 +49,8 @@ exit=0
 ```
 
 Bidirectional: ✓ forward direction (cited but not in DB) catches the bug. Reverse (in DB but not cited) is informational only — most open tickets aren't cited anywhere; that's normal.
+
+(For full negative-test trace with the literal synthetic id, see the conversation log of turn-043 -- the audit must redact it because the probe is grep-based and would re-trigger on the next LOOP-BOOT tick.)
 
 ## What did NOT change
 

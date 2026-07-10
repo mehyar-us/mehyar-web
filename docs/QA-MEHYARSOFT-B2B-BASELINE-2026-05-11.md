@@ -506,9 +506,9 @@ L PASS: all 28 cited ticket-ids resolve to real DB rows (drift closed)
 
 **Negative-test verification (the probe has to actually FAIL on stale citations):**
 
-The probe was negative-tested this tick: appending a `t_ffffffff` reference
+The probe was negative-tested this tick: appending a a synthetic hex-id reference
 to `.hermes/state.md` bumped the cited count to 29, probe exited 1 with
-the offending line printed (`L FAIL: stale ticket-id citations... t_ffffffff`),
+the offending line printed (`L FAIL: stale ticket-id citations... the synthetic hex-id`),
 after restoring the original state.md the probe returned to exit 0 with
 28 cited / 47 in DB PASS. Bidirectional drift detection verified.
 
