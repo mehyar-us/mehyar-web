@@ -829,3 +829,188 @@ append-at-end pattern: preserves the "K = audit-trail", "L = ticket-id",
 "M = commit-SHA" mnemonics turn-042 / turn-043 / turn-044 locked in. A
 future worker profile referencing "QA §L" still resolves to the right
 section.
+
+## O. Live-bundle-URL auto-discovery (added turn-052 — closes the "probe validates a stale bundle" drift)
+
+Catches the "probe is silently validating a stale bundle" drift.
+Sections H (Accessibility/SEO smoke) and J (Build-artifact-integrity)
+both fetch the live JS bundle from a hard-coded URL. When CF Pages
+rolls the bundle hash on a `src/` change (turn-027 / 033 / 035 / 046 /
+050 all rolled the bundle), the home page reference changes too. But
+the hard-coded URL keeps fetching a *valid* stale bundle from CF's
+edge cache (the stale bundle is still a descendant of the canonical
+one, so all the literal checks still PASS — on the wrong file). The
+rubric's integrity claim is silently broken: "what visitors load" and
+"what the probe validates" diverge by N-1 bundle generations.
+
+**Real case (turn-052 first run):** the live home page (and all 11
+other routes) referenced `main-1wxJxxD5.js` (575243 bytes). The H/J
+probes' hard-coded `main-BKU1Uoxy.js` URL (574085 bytes) fetched a
+stale bundle that was N-2 generations behind canonical. Every H/J
+check PASSed — but on a file no visitor was loading. The drift had
+been live for at least 4-5 ticks (turn-046, 047, 048, 049, 050, 051
+all reported J PASS, all on the wrong file). Section O was created in
+the same tick the drift was caught and is the first run that
+auto-discovers the canonical bundle.
+
+**The invariant the loop verifies on every LOOP-BOOT tick:**
+
+For every probe that fetches the live JS bundle, the bundle URL MUST
+be the one the home page shell currently references. The H and J
+probes were updated in the same tick to source the same
+`discover_live_bundle_url()` helper; Section O is the cross-check
+that validates the discovery is canonical (catches the case where
+discovery itself is wired wrong).
+
+**Probe shape:**
+
+```bash
+bash .hermes/probe-section-O.sh
+```
+
+Output:
+
+```
+=== O Live-bundle-URL auto-discovery probe (turn-052 new check) ===
+discovered bundle URL: https://mehyar.us/assets/main-1wxJxxD5.js
+discovered bundle: 575243 bytes (fetched HTTP 200)
+  / -> main-1wxJxxD5.js
+  /booking -> main-1wxJxxD5.js
+  /micro-offer -> main-1wxJxxD5.js
+  /nonexistent-zzz -> main-1wxJxxD5.js
+discovered bundle contains 'Skip to the' literal: 1 occurrences
+
+Canonical bundle URL for H/J cross-check: https://mehyar.us/assets/main-1wxJxxD5.js
+Canonical bundle size: 575243 bytes
+O PASS: live bundle auto-discovered, fetchable, canonical across 4 routes, contains expected literal
+```
+
+The probe is a 5-step verifier:
+
+1. **Fetch home shell.** curl `https://mehyar.us/` into `.hermes/.probe-section-O-home.html`.
+2. **Extract bundle URL.** `grep -oE '/assets/main-[A-Za-z0-9_-]+\.js' | head -1`. If empty, exit 2 INDETERMINATE.
+3. **Fetch the discovered bundle.** curl with `-w "%{http_code}"` to capture HTTP status. Must be 200, non-zero body. If not, FAIL.
+4. **Cross-check 4 routes.** Hit `/`, `/booking`, `/micro-offer`, `/nonexistent-zzz` and confirm all four reference the same `main-XXXX.js` hash. If any route's hash differs, it's a mid-deploy race — FAIL.
+5. **Literal check.** Confirm the discovered bundle contains a known stable literal (the "Skip to the" skip-link is the cheapest stable string; turn-046's audit confirmed it ships in every bundle since turn-027). If missing, the discovery regex matched a sub-resource that isn't the main JS bundle — FAIL.
+
+**Negative-test verification (the probe has to actually FAIL on URL drift):**
+
+The probe is negative-testable via `HERMES_BUNDLE_URL_OVERRIDE` (set in
+env, used by H and J for local-dev / air-gapped runs). Setting the
+override to `https://mehyar.us/assets/main-NONEXISTENT.js` (a 404
+path) verifies:
+
+- **J probe** (with the fix landed in this tick — see "Bug fix"
+  below) correctly exits 1 on the bad URL, with `J FAIL: ... has
+  'X' (src=1) but live bundle has 0 — stale deploy` for 7 of 9
+  literals. The 2 false-positives (where CF's 404 HTML happens to
+  contain `$150` / `$330` strings) are acceptable: 7 FAILs is enough
+  to drive the J exit code to 1, and the operator reading the
+  output sees the bundle is wrong. (The fix path: the "Skip to
+  the" literal in Section O's step 5 catches this case
+  independently — non-existent URLs return HTML, not JS, and the
+  literal check fails.)
+- **H probe** correctly continues validation against the 404 HTML
+  (it doesn't have a "Skip to" literal, so H FAILs on skip-link
+  check). Section O's literal check is the canonical
+  cross-defense.
+- **O probe** with the override correctly reports the
+  override's URL and proceeds; the "Skip to the" check in
+  step 5 catches the non-JS case and exits 1.
+
+The negative-test round-trip is the same pattern turn-042 baked
+into Section K and turn-046 into Section N. Without this
+round-trip, Section O could pass-on-vacuum and silently never
+catch the drift.
+
+**Failure-mode catalog (extending the rubric for future URL drift):**
+
+| Drift pattern | Detection | Action |
+| --- | --- | --- |
+| Probe hard-coded URL `main-X.js` no longer matches home page's `main-Y.js` | Section O PASS + H/J PASS on the discovered URL (proves the auto-discovery is wired); H/J also auto-discover so the drift is impossible | P0 — fix H/J hard-code (this tick) |
+| Probe's hard-coded URL fetches 404 (CF edge evicted the stale bundle) | Section O step 2 exits 1 on HTTP status; H/J step 2 also exits 1 with `INDETERMINATE: could not fetch` | P0 — fix the hard-code; until fixed, J's "stale deploy" FAIL is the operator's signal |
+| Home page shell references a JS bundle but the bundle is not fetchable (deploy mid-flight) | Section O step 3 exits 1 on HTTP status; H/J step 2 exits 2 INDETERMINATE | P1 — retry next tick; if persistent, deploy is broken |
+| Home page references different bundle hashes across routes (CF Pages mid-deploy) | Section O step 4 exits 1 on the route-hash mismatch | P1 — retry next tick; if persistent, the deploy is racing itself |
+| Discovery regex matches a sub-resource that isn't the main JS bundle (e.g. a JSON file) | Section O step 5 exits 1 on the "Skip to the" literal miss | P0 — fix the regex; today's pattern `/assets/main-[A-Za-z0-9_-]+\.js` is specific to main JS bundles |
+| CF Pages doesn't ship a `<script src="/assets/main-*.js">` reference in the home shell (Vite switches to modulepreload or inlines the bundle) | Section O step 1 exits 2 INDETERMINATE | P0 — update the discovery regex; new Vite defaults may require `/assets/main-[A-Za-z0-9_-]+\.js` → broader pattern |
+| Bash `set -u` fails on `${HERMES_BUNDLE_URL_OVERRIDE:-}` expansion (very old bash) | Section O step 0 returns 2 from `discover_live_bundle_url()` | P0 — replace `${VAR:-default}` with `[ -n "$VAR" ] && echo "$VAR"` defensive pattern |
+
+**Implementation notes (gotchas baked into the probe):**
+
+- **Pattern: `/assets/main-[A-Za-z0-9_-]+\.js`.** Captures paths
+  like `/assets/main-1wxJxxD5.js` (CF Pages default) and
+  `/assets/main-BKU1Uoxy.js` (the old H/J hard-code). Anchors to
+  the `/assets/main-` prefix so the regex doesn't match
+  `/sw.js`, `/manifest.webmanifest`, or any other JS file the
+  home shell might reference. The `A-Za-z0-9_-` char class covers
+  the Vite default hash format; if CF Pages changes to a different
+  hash scheme (e.g. content-based with a different alphabet), the
+  regex needs updating.
+- **Four route cross-check** matches the loop's per-tick 4-screen
+  smoke (home, /booking, /micro-offer, /404). All four MUST
+  reference the same hash. If any route's hash differs, it's a
+  mid-deploy race; we surface as FAIL but the next tick should
+  be clean. The route list is hard-coded — if a future page
+  becomes a high-traffic surface, add it to the list.
+- **Five pre-checks (auto-discovery → fetch → cross-check →
+  literal)** form a defense-in-depth: each step catches a
+  different class of URL drift, and any one FAILing exits 1.
+  This is the same layered-detection pattern Section N's 5
+  pre-grep filters use.
+- **The "Skip to the" literal check is the cheapest stable
+  assertion** — turn-046's audit confirmed it ships in every
+  bundle since turn-027. If the literal is ever removed from
+  the source (e.g. a redesign removes the skip-link), the check
+  must move to a different stable literal. The pattern is
+  documented here so a future maintainer knows what to swap in.
+- **Override: `HERMES_BUNDLE_URL_OVERRIDE`.** Both the Section O
+  probe and the H/J probes source the same `discover_live_bundle_url()`
+  helper. Setting the override in env bypasses auto-discovery.
+  Useful for local dev (point at a localhost bundle), air-gapped
+  test runs (point at a fixture file), or future staged-rollout
+  verification (point at a canary bundle).
+- **No state caching.** Every probe run re-discovers. The cost
+  is one extra `curl https://mehyar.us/` per probe (H and J
+  each fetch the home shell for their own checks; O fetches
+  it explicitly). ~3s wall time per probe, ~9s for the
+  H/J/O trio. Acceptable; the loop's per-tick budget is
+  ~30s on the probe suite.
+- **One-way detection: stale URL → FAIL.** The reverse
+  (probe's hard-coded URL is "too new", i.e. CF Pages rolled
+  forward) is the same class — the discovery finds the new
+  URL and H/J use it. Section O is symmetric in
+  detection: any mismatch between what visitors load and
+  what the probe validates surfaces as FAIL.
+
+**Bug fix landed in this tick (related to Section O, but not the
+probe itself):**
+
+While building Section O, the loop also discovered that the J
+probe's `bundle_count=$(grep -c -F ...)` line was returning a
+multi-line value (`0\n`) that broke the subsequent integer
+comparison. Symptom: when given a non-bundle URL (e.g. CF's 404
+HTML response), J probe would print `[: 0\n0: integer expression
+expected` and STILL exit 0 with "J PASS" — silently false-positive
+on a wrong bundle. The fix is `grep -c ... | tr -d '\n
+ '` to
+strip newlines, then `${count:-0}` to default to 0 if empty. The
+fix is verified by the negative-test above: override →
+`main-NONEXISTENT.js` → J exits 1 with 7 FAIL lines + 2 false-
+positives (acceptable; 7 FAILs drive the exit code, and the
+operator reading the output sees the bundle is wrong). This bug
+was latent from turn-040 when J was first added; it never
+fired in production because J's hard-coded URL was always
+valid (even when stale). Section O's auto-discovery surfaces
+the latent bug because it now also exercises the URL-loading
+code path more aggressively (the override is the cheap way to
+force a non-bundle URL without waiting for a real CF Pages
+404 to land).
+
+**Why "O" and not re-letter the rubric:**
+
+Sections A-N have been stable since turn-046. Section O
+continues the append-at-end pattern. The mnemonic is "O =
+origin URL" (the auto-discovery target) — fitting for a probe
+that pins the origin of the live bundle. A future worker
+profile referencing "QA §O" still resolves to the right
+section.

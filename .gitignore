@@ -122,3 +122,9 @@ micro-live-fresh.html
 .hermes/home-t*.html
 .hermes/smoke-t*.html
 .hermes/probe-turn-*-*.py
+# Loop probe artifacts (turn-052 hygiene): root-level `main-*.js` captures
+# from ad-hoc curl probes (e.g. `curl -o main-current.js https://mehyar.us/...`).
+# The reusable probe scripts write to `.hermes/.probe-section-*-bundle.js`
+# instead; root-level captures are working-tree noise from interrupted
+# investigation scripts.
+main-*.js

@@ -11,12 +11,57 @@
 
 set -u
 
-LIVE_BUNDLE_URL="https://mehyar.us/assets/main-BKU1Uoxy.js"
+# Auto-discover the live bundle URL from the home page shell. This avoids
+# the "probe is silently validating a stale bundle" drift turn-052 caught:
+# when CF Pages rolls the bundle hash on a src/ change, the home page
+# reference changes too. A hard-coded LIVE_BUNDLE_URL would fetch a
+# *valid* stale bundle from the edge cache and pass the probe — but
+# visitors are loading a different bundle. See .hermes/probe-section-O.sh
+# for the cross-check that validates the discovery is canonical.
+#
+# The discovery returns a single string on stdout: the full bundle URL.
+# Returns exit 2 INDETERMINATE if discovery fails (home unreachable,
+# shell has no /assets/main-*.js reference, etc.). On INDETERMINATE,
+# the calling probe should also exit 2 — surfacing "I can't verify
+# what visitors are loading" rather than silently probing the wrong URL.
+#
+# Override: set HERMES_BUNDLE_URL_OVERRIDE in env to bypass auto-discovery
+# (useful for local dev or air-gapped test runs).
+discover_live_bundle_url() {
+  if [ -n "${HERMES_BUNDLE_URL_OVERRIDE:-}" ]; then
+    echo "$HERMES_BUNDLE_URL_OVERRIDE"
+    return 0
+  fi
+  local HOME_URL="https://mehyar.us/"
+  local SHELL=".hermes/.probe-section-discover-home.html"
+  if ! curl -sSL --max-time 15 "$HOME_URL" -o "$SHELL" 2>/dev/null; then
+    return 2
+  fi
+  if [ ! -s "$SHELL" ]; then
+    return 2
+  fi
+  local PATH_MATCH
+  PATH_MATCH=$(grep -oE '/assets/main-[A-Za-z0-9_-]+\.js' "$SHELL" | head -1)
+  rm -f "$SHELL"
+  if [ -z "$PATH_MATCH" ]; then
+    return 2
+  fi
+  echo "https://mehyar.us${PATH_MATCH}"
+  return 0
+}
+
+LIVE_BUNDLE_URL=$(discover_live_bundle_url)
+DISCOVER_RC=$?
+if [ "$DISCOVER_RC" -ne 0 ] || [ -z "$LIVE_BUNDLE_URL" ]; then
+  echo "H INDETERMINATE: auto-discovery of live bundle URL failed (home unreachable or no main-*.js reference)"
+  exit 2
+fi
 # Use CWD-relative path for the bundle because /tmp doesn't exist on
 # this Windows host (MSYS). Repo-relative keeps the probe portable.
 BUNDLE=".hermes/.probe-section-I-bundle.js"
 
 echo "=== H Accessibility/SEO smoke probe (turn-039 new check) ==="
+echo "discovered bundle URL: $LIVE_BUNDLE_URL"
 
 # Fetch the live bundle fresh; this is the same hash turn-036 deployed and
 # that turn-031/034/036/037/038 all confirmed is the live canonical bundle.
@@ -31,7 +76,7 @@ if [ ! -s "$BUNDLE" ]; then
 fi
 
 BUNDLE_BYTES=$(wc -c < "$BUNDLE")
-echo "live bundle: $BUNDLE_BYTES bytes (expect ~574069)"
+echo "live bundle: $BUNDLE_BYTES bytes (auto-discovered, fresh; not a fixed-baseline assertion)"
 
 FAIL=0
 
