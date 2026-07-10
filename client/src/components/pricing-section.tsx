@@ -84,7 +84,7 @@ const PricingSection = () => {
             </h2>
           </div>
           <p className="max-w-md text-base leading-7 text-muted-foreground">
-            Six tiers, ordered by the smallest useful engagement first. The $330 audit and $250 diagnosis are the most common entry points.
+            Six tiers, ordered by the smallest useful engagement first. The audit and the diagnosis report are the most common entry points.
           </p>
         </div>
 
