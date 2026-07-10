@@ -82,3 +82,27 @@ build/Release
 .dynamodb/
 .tern-port
 jspm_packages/
+
+# Loop probe artifacts (untracked live-page captures from prior ticks;
+# `curl -o <name>.html` into the repo root by mistake. Recurrence-prevention
+# only — turn-041 hygiene sweep removed the existing strays).
+*_live.html
+mehyar_*.html
+mehyar_*.xml
+home_live.html
+blog_live.html
+mo_live*.html
+nf.html
+p_[0-9].html
+micro-live-fresh.html
+*.gz
+# Probe bundle snapshots cached locally during probe-section-{H,J}.sh runs
+.hermes/.probe-section-*-bundle.js
+.hermes/.probe-section-*-home.html
+# Loop audit artifacts: only the structured `.md` files and `learned.md` are
+# legitimate loop records (committed for warm-start + audit-trail). Everything
+# else in `.hermes/audit/` (HTML snapshots, JS bundle captures, PNGs, PR JSONs,
+# telegram-card-*.txt) is transient working-tree noise from prior probe runs.
+.hermes/audit/*
+!.hermes/audit/*.md
+!.hermes/audit/turn-*.md
