@@ -86,12 +86,21 @@ FAIL=0
 # Each row is "<src-relative-file-glob> :: <literal>".
 # We assert: for each literal, the src/ file exists in git tree AND
 # the live bundle contains the literal at least once.
+#
+# turn-059 note: dropped `pricing-section.tsx :: $330` from the J probe set.
+# turn-058 deliberately removed the `$330 audit and $250 diagnosis` substring
+# from the home pricing subtitle (it contradicted the on-page tier cards
+# which list $150/$250 ladder while /micro-offer charges $330 -- the
+# underlying $150 vs $330 drift is what Section G watches, not J).
+# The $330 literal still appears in Newsletter.tsx ("Skip to the $330 audit")
+# and MicroOffer.tsx (49 bundle mentions) where it is correct. J now tests
+# the 8 src/bundle-pin literals that should match; Section G remains the
+# structural-pricing-drift sentinel.
 PROBES=(
   "client/src/pages/Newsletter.tsx :: Skip to the \$330 audit"
   "client/src/components/hero-section.tsx :: See the leak ladder"
   "client/src/components/pricing-section.tsx :: \$150"
   "client/src/components/pricing-section.tsx :: \$250"
-  "client/src/components/pricing-section.tsx :: \$330"
   "client/src/components/pricing-section.tsx :: Free Tech Audit"
   "client/src/components/pricing-section.tsx :: Website Diagnosis"
   "client/src/components/Navbar.tsx :: MehyarSoft home"
