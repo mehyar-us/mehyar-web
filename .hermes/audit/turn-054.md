@@ -18,7 +18,7 @@ own audit text:
 ```
 M FAIL: stale commit-SHA citations in state/docs/audit (sha cited but missing from git log):
   - 0000000
-  - 0000003
+    - 0000003
 ```
 
 Both `0000000` and `0000003` are 7-char hex strings. They're not git
