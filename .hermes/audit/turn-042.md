@@ -39,7 +39,7 @@ Without Section K, the next tick that creates an audit `.md` and forgets `git ad
 | 4-screen Phase-6 (home/booking/micro-offer/404) | 200/308/308/404 (booking + micro-offer redirect via 308 to canonical URLs) |
 | Live bundle: `https://mehyar.us/assets/main-BKU1Uoxy.js` | 574085 bytes (unchanged from turn-036) |
 | Live bundle: voice / anti-slop scan | voice 5/5, anti-slop 0 hits |
-| git push origin main | success (e464f1f → <this-commit-sha>) |
+| git push origin main | success (e464f1f → 781d267) |
 | remote head verification | sha pending — verified at write-time |
 
 ## Decision: what NOT to ship this tick
@@ -56,7 +56,7 @@ Without Section K, the next tick that creates an audit `.md` and forgets `git ad
 - `.hermes/probe/turn-017-body.txt`, `turn-019-fix.py`, `turn-020-apply.py`, `extract-services.py` (4 reusable probe artifacts added to git so they're not lost on a future `git clean`)
 
 ## Commit
-<this-commit-sha> — `docs(loop): turn-042 — add Section K Audit-record-tracking probe (rubric 10→11 sections A-K)`
+781d267 — `docs(loop): turn-042 — add Section K Audit-record-tracking probe (rubric 10→11 sections A-K)`
 
 ## Lesson
 A rubric extension that costs ~5s wall time on every LOOP-BOOT tick and prevents a class of drift that previously slipped through silently (4 audit files were missing for 22 ticks before turn-041 caught it by hand) is a textbook cheap-and-right move. Section K is the first probe that watches the loop itself, not the live site — Sections G/H/J pin the bundle to src/; Section K pins the loop's own audit trail to git. Together they form a closed audit cycle: write code → ship → bundle pins to src/ (Sections H/J) → write audit record → audit record pins to git (Section K).
