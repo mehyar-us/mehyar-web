@@ -171,7 +171,7 @@ const staticMeta: Record<string, SeoMeta> = {
     title: "Free AI Automation Checklist | MehyarSoft",
     description:
       "Get the free MehyarSoft checklist for finding missed-call, website, follow-up, systems, and manual-work leaks before buying more tools.",
-    path: "/free-checklist",
+    path: "/newsletter",
   },
   "/about": {
     title: "Founder Story | MehyarSoft LLC NYC Software Consultant",
