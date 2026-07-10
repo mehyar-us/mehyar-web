@@ -1,7 +1,8 @@
 # QA — mehyarSoft B2B baseline — 2026-05-11
 
 > The "voice of correctness" the improve-loop reads every tick to define "shipped".
-> Last update: 2026-07-09 (turn-028 — recreated from VISION.md reference; original
+> Last update: 2026-07-09 (turn-038 — added Section G Pricing-consistency check,
+> re-purposed old Section G to new Section H Open registry; rubric now has 8 sections A-H)
 > document was referenced in `docs/VISION.md` "Current state" line but never
 > committed to disk. This file restores the canonical baseline list from the
 > shipped artifacts that exist on the live site as of this tick.)
@@ -134,8 +135,71 @@ Let's talk / Learn more / Click here  (as primary CTA copy)
 If any of these appear in a fresh bundle, it is a W1-SLOP regression and
 the tick must either fix it or roll back.
 
-## G. Open registry
+## G. Pricing-consistency (added turn-038 — surfaces the drift documented at docs/PRICING-LADDER-DRIFT-2026-07-09.md)
+
+Every visitor-facing price string on a public surface must agree with the
+price the corresponding intake page actually charges. Drift between
+"stated price" (marketing ladder) and "charged price" (intake) is a silent
+conversion killer — visitors see one number, click through, then see a
+larger number on the form, and bail.
+
+**The invariant the loop verifies on every LOOP-BOOT tick:**
+
+For every tier card on the public leak ladder (`pricing-section.tsx`), the
+named price must equal the price charged by the intake page that tier's
+CTA routes to. The check is run as a 3-grep bundle probe:
+
+```bash
+# 1. Capture tier-1 price string from pricing-section.tsx
+TIER1_PRICE=$(grep -oE 'price: ?"\$[0-9]+"' client/src/components/pricing-section.tsx | head -1 | grep -oE '\$[0-9]+')
+
+# 2. Capture the price the tier-1 CTA target charges
+#    (today tier-1 CTAs land on /micro-offer#intake; MicroOffer.tsx renders $330)
+INTAKE_PRICE=$(grep -oE '\$[0-9]+' client/src/pages/MicroOffer.tsx | sort | uniq -c | sort -rn | head -1 | grep -oE '\$[0-9]+')
+
+# 3. FAIL if TIER1_PRICE != INTAKE_PRICE
+[ "$TIER1_PRICE" = "$INTAKE_PRICE" ] && echo "G PASS" || echo "G FAIL: tier-1=$TIER1_PRICE intake=$INTAKE_PRICE"
+```
+
+**Today's expected output (intentional FAIL — drift is open):**
+
+```
+G FAIL: tier-1=$150 intake=$330
+```
+
+This FAIL is **expected and tracked** until founder decision lands on
+`docs/PRICING-LADDER-DRIFT-2026-07-09.md` (options A/B/C). Once a decision
+ships, this check should turn green. The FAIL is the rubric working — it
+caught the drift that turns 005 / 028 / 031 / 034 all missed.
+
+**Pass criteria (after the decision lands):**
+
+- The 3-grep probe above exits 0
+- `docs/VISION.md` leak-ladder prices match `pricing-section.tsx` prices
+- The intake page that tier-1 / tier-2 CTAs route to charges the named price
+- A 4th grep confirms the price string appears in the live bundle ≥ 1 time
+  per public route that references it (so the price isn't only in src/,
+  it's actually shipping)
+
+**Why this lives in the rubric and not just on the drift doc:**
+
+The drift doc explains the open issue and the decision space. The rubric
+section is the **automated re-check** — it runs on every LOOP-BOOT tick and
+catches the next drift before it ships. The two layers together mean: a
+founder decision closes the doc, and the rubric verifies the close stuck.
+
+**Failure-mode catalog (extending the rubric for future drift patterns):**
+
+| Drift pattern | Detection | Action |
+| --- | --- | --- |
+| pricing-section price ≠ intake charge | 3-grep probe above | P0 — surface, do not auto-ship fix |
+| VISION.md price ≠ pricing-section.tsx price | `diff <(grep -oE '\$[0-9]+' docs/VISION.md) <(grep -oE 'price: ?"\$[0-9]+"' client/src/components/pricing-section.tsx)` | P1 — rubric drift, founder must approve VISION change |
+| Multiple tiers routing to same intake page | `grep -c 'href="/micro-offer' client/src/components/pricing-section.tsx` > 1 | P2 — funnel realignment needed (turn-005 lesson) |
+| /micro-offer page charge ≠ api-contract `first_330_target_cents` | `grep -oE '\$[0-9]+' client/src/pages/MicroOffer.tsx` vs api-contract.md | P0 — revenue-side change, founder only |
+
+## H. Open registry
 
 This doc is the voice-of-correctness. As new surfaces ship (e.g. an admin
-dashboard, a newsletter cron, a new offer tier), add the acceptance items
-here in the appropriate section and bump the "Last update" header.
+dashboard, a newsletter cron, a new offer tier, a new pricing tier), add
+the acceptance items here in the appropriate section and bump the "Last
+update" header.
