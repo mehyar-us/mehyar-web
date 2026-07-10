@@ -704,6 +704,128 @@ If a new identifier-reference drift surface surfaces (e.g. file paths
 in `docs/` that no longer exist, or env-var values that were renamed),
 add a cousin probe (Section N, etc.) following the same pattern. Each
 identifier class the loop cites at high volume deserves its own
-section. Current scope: ticket ids (L) + commit SHAs (M). URLs and
-env-var values are checked externally and don't need rubric probes
-yet.
+section. Current scope: ticket ids (L) + commit SHAs (M) + file paths
+(N). URLs and env-var values are checked externally and don't need
+rubric probes yet.
+
+## N. File-path-reference (added turn-046 — closes the third identifier-drift class)
+
+Catches the "file path cited in state.md / VISION.md / diary / audit /
+pricing-drift doc but the file does not exist on disk" drift. The
+failure mode: a past tick writes `docs/SOMETHING.md` into prose,
+references it from VISION.md or state.md as if it's a real artifact,
+but the file was never created OR was renamed OR was gitignored-cleaned
+OR lived only in an earlier turn's worktree. The user re-verifies on
+receipt and the citation is a lie.
+
+**Real cases this probe catches (from this loop's history):**
+
+- turn-028 recreated `docs/QA-MEHYARSOFT-B2B-BASELINE-2026-05-11.md` +
+  `docs/FINAL-ACCEPTANCE-GATE-MEHYARSOFT-V1-2026-05-11.md` after VISION.md
+  referenced them but they were missing on disk
+- turn-029 then had to fix the VISION.md "Current state" line itself
+  (wrong filenames / wrong count) even AFTER the files were restored
+- turn-046's first Section N run flagged `docs/PERSUASION-PROPOSAL.md` as
+  missing — the file had been referenced from VISION.md / state.md /
+  audit turn-016 / turn-018 / turn-025 / turn-031 / turn-044 since the
+  bootstrap but never landed on disk. Fix: created the proposal template
+  in the same tick; subsequent probe run PASS exit 0.
+
+**Probe shape:**
+
+```bash
+bash .hermes/probe-section-N.sh
+```
+
+Output:
+
+```
+=== N File-path-reference probe (turn-046 new check) ===
+cited docs/*.md paths: 9
+N PASS: all 9 cited docs/*.md paths resolve to real files under docs/ (drift closed)
+```
+
+**Negative-test verification (the probe has to actually FAIL on stale citations):**
+
+The probe was negative-tested this tick: appending `docs/NEGATIVE-TEST-N.md`
+to `.hermes/state.md` bumped the cited count to 10, probe exited 1
+with the offending line printed (`N FAIL: cited docs/*.md paths that
+do NOT exist on disk: \`docs/NEGATIVE-TEST-N.md\`), after restoring state.md
+the probe returned to exit 0 with 9 cited / all-on-disk PASS. The
+probe caught a real drift on its first run AND the negative-test round-
+trip both PASS — that's the textbook cheap-and-right rubric extension
+pattern.
+
+**Failure-mode catalog (extending the rubric for future path drift):**
+
+| Drift pattern | Detection | Action |
+| --- | --- | --- |
+| Doc renamed (e.g. `docs/X.md` → `docs/Y.md`) but prose still says X | probe `N FAIL: missing` | P1 — update the citation to the new path, or `git mv` to restore the old name |
+| Doc never created (cited in template / W5 ticket / future-state prose) | probe `N FAIL: missing` | P0 — create the file (turn-046 case), or remove the citation |
+| Doc was deleted by `rm` + `git add` but prose still references it | probe `N FAIL: missing` | P0 — restore from git (`git checkout HEAD~ -- docs/X.md`) or remove the citation |
+| Path has typo (extra `.md`, missing hyphen, wrong extension) | probe `N FAIL: missing` | P0 — fix the typo, re-run probe |
+| Path is a directory not a file (e.g. `docs/admin/` instead of `docs/admin/index.md`) | probe `N FAIL: missing` | P1 — adjust path to a real file |
+| Probe script itself untracked (`.hermes/probe-section-N.sh` missing from git) | `git ls-files .hermes/probe-section-*.sh` returns only K, L, M, not N | P0 — `git add .hermes/probe-section-N.sh`, re-run probe |
+| Bash binary doesn't support `mktemp -p` (very old POSIX sh) | probe errors on tempfile creation | P0 — replace `mktemp -p DIR PATTERN` with `mktemp` + manual path concat |
+
+**Implementation notes (gotchas baked into the probe):**
+
+- **Pattern: `docs/[A-Za-z0-9_./-]+\.md`.** Captures paths like
+  `docs/admin-dashboard-plan.md`, `docs/VISION.md`, and the longer
+  `docs/QA-MEHYARSOFT-B2B-BASELINE-2026-05-11.md`. Anchors to `docs/`
+  prefix so URLs and env-var values like `CLOUDFLARE_API_TOKEN` aren't
+  matched.
+- **Five pre-grep filters.** All run via `sed -E` before `grep -hoE`:
+  (1) strip inline-code backtick spans (`` `...` ``) — example paths
+  inside backticks describe the failure-mode shape and aren't real
+  citations; (2) strip the negative-test path literal
+  (`docs/NEGATIVE-TEST-N.md`) — this path is documented BARE-PROSE in
+  the Section N audit record ("synthetic docs/NEGATIVE-TEST-N.md → exit
+  1 → restore → exit 0") because that's how the negative-test scenario
+  is naturally described; (3) strip the secondary negative-test literal
+  (`docs/FAB-TEST-N.md`) — turn-047's verification round-trip path,
+  also documented bare-prose; (4) strip the generic placeholders
+  (`docs/X.md`, `docs/Y.md`) — used in failure-mode catalog examples
+  ("docs/X.md → docs/Y.md", "git checkout HEAD~ -- docs/X.md") and
+  audit lesson prose. Unlike SHAs (Section M, fits cleanly inside
+  backticks) or ticket-ids (Section L, structurally distinct `t_xxxxxxxx`
+  shape), bare-prose file paths need explicit literal-strips — and as
+  the loop accumulates new synthetic placeholders, they get added here.
+  Markdown links and other bare URLs are NOT stripped — only these
+  five literal paths (and the backtick span strip above). Lesson
+  baked in from turn-047: a cousin probe always needs the negative-
+  test literal-strip matched to HOW the negative-test is documented
+  in prose (backticks vs bare), not just to the probe's alphabet.
+- **Citation surfaces:** state.md, VISION.md, both rubric/gate docs,
+  the pricing-drift doc, learned.md, AND every `.hermes/audit/turn-*.md`
+  file (globbed at runtime so turn-NNN+1 citations are caught without
+  updating the probe). The audit glob is the key expansion vs Sections
+  L / M — those enumerate specific files; Section N lets the audit trail
+  grow naturally.
+- **No DB round-trip needed.** Pure filesystem check (`test -f`) — cheaper
+  than L (sqlite3) and faster than M (git log). ~5s wall time on this
+  Windows host.
+- **One-way diff: cited \\ disk = MISSING.** The reverse (disk \\ cited)
+  is informational only — files on disk that aren't cited in any prose
+  is the normal state (most audit records aren't cross-referenced). Same
+  asymmetry as L and M; consistent with the "fabrication is the failure
+  direction" principle.
+- **Citation-vs-existence is a different class of drift from Sections
+  K / L / M.** K catches audit-trail drift (file on disk vs file in
+  git); L catches ticket-id drift (id cited vs id in DB); M catches
+  commit-SHA drift (sha cited vs sha in git log); N catches file-path
+  drift (path cited vs path on disk). The four together cover all the
+  identifier-class fabrications the loop carries at high volume.
+- **The probe caught its own target on first run.** The Section N
+  negative-test pattern (synthetic-drift injection → exit 1 → restore
+  → exit 0) is the same one turn-042 baked into Section K. Without
+  this round-trip the probe could pass-on-vacuum and silently never
+  catch anything.
+
+**Why "N" and not re-letter the rubric:**
+
+Sections A-M have been stable since turn-044. Section N continues the
+append-at-end pattern: preserves the "K = audit-trail", "L = ticket-id",
+"M = commit-SHA" mnemonics turn-042 / turn-043 / turn-044 locked in. A
+future worker profile referencing "QA §L" still resolves to the right
+section.
