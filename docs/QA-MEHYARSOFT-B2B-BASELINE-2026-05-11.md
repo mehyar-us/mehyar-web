@@ -1,8 +1,8 @@
 # QA — mehyarSoft B2B baseline — 2026-05-11
 
 > The "voice of correctness" the improve-loop reads every tick to define "shipped".
-> Last update: 2026-07-09 (turn-039 — added Section H Accessibility/SEO smoke probe,
-> re-purposed old Section H to new Section I Open registry; rubric now has 9 sections A-I)
+|> Last update: 2026-07-10 (turn-040 — added Section J Build-artifact-integrity probe,
+|> rubric now has 10 sections A-J; Section I Open registry unchanged)
 > document was referenced in `docs/VISION.md` "Current state" line but never
 > committed to disk. This file restores the canonical baseline list from the
 > shipped artifacts that exist on the live site as of this tick.)
@@ -280,3 +280,97 @@ This doc is the voice-of-correctness. As new surfaces ship (e.g. an admin
 dashboard, a newsletter cron, a new offer tier, a new pricing tier), add
 the acceptance items here in the appropriate section and bump the "Last
 update" header.
+
+## J. Build-artifact-integrity (added turn-040 — runs against the LIVE bundle + committed src/)
+
+The inverse of Section H. Section H catches "bundle has a literal that's
+not in any src/ file" (stale bundled content). Section J catches the
+other direction — "src/ has a literal that's not in the live bundle"
+(stale deployed content). Together they pin the bundle to the committed
+source tree.
+
+**The failure mode this prevents:** A `src/` literal changes in a commit
+(e.g. turn-033 renamed "See the offer ladder" → "See the leak ladder"),
+the bundle is rebuilt locally, but the live bundle never re-rolls because
+the deploy pipeline only rolled the shell files (cf. turn-030's
+`scripts/`-only deploy — shell files rolled, bundle hash stayed on the
+previous build). The founder ships "X" in src/, the visitor sees "Y"
+from the previous build. Without Section J, this drift is invisible
+until a manual visitor click lands on the wrong string.
+
+**The invariant the loop verifies on every LOOP-BOOT tick:**
+
+For every visitor-facing copy literal in committed src/, the live bundle
+must contain the literal at least once. The check is run as a 9-probe
+bundle probe:
+
+```bash
+# 1. Fetch live bundle fresh
+curl -sSL https://mehyar.us/assets/main-BKU1Uoxy.js -o .hermes/.probe-section-J-bundle.js
+
+# 2. For each canonical src/ literal, verify it exists in src/ AND in the bundle
+for probe in \
+  "client/src/pages/Newsletter.tsx :: Skip to the \$330 audit" \
+  "client/src/components/hero-section.tsx :: See the leak ladder" \
+  "client/src/components/pricing-section.tsx :: \$150" \
+  "client/src/components/pricing-section.tsx :: \$250" \
+  "client/src/components/pricing-section.tsx :: \$330" \
+  "client/src/components/pricing-section.tsx :: Free Tech Audit" \
+  "client/src/components/pricing-section.tsx :: Website Diagnosis" \
+  "client/src/components/Navbar.tsx :: MehyarSoft home" \
+  "client/src/components/Navbar.tsx :: Toggle menu"; do
+  src_file="${probe%% :: *}"
+  literal="${probe##* :: }"
+  src_count=$(grep -c -F -- "$literal" "$src_file")
+  bundle_count=$(grep -c -F -- "$literal" .hermes/.probe-section-J-bundle.js)
+  [ "$src_count" -ge 1 ] && [ "$bundle_count" -ge 1 ] || FAIL=1
+done
+```
+
+The probe script is `.hermes/probe-section-J.sh`. Run from repo root.
+Exit 0 PASS, exit 1 FAIL, exit 2 INDETERMINATE (e.g. bundle fetch failed).
+
+**Today's expected output (probe exit code 0):**
+
+```
+=== J Build-artifact-integrity probe (turn-040 new check) ===
+live bundle: 574085 bytes (expect ~574069)
+J OK client/src/pages/Newsletter.tsx: 'Skip to the $330 audit' src=1 bundle=1
+J OK client/src/components/hero-section.tsx: 'See the leak ladder' src=1 bundle=1
+J OK client/src/components/pricing-section.tsx: '$150' src=2 bundle=2
+J OK client/src/components/pricing-section.tsx: '$250' src=3 bundle=1
+J OK client/src/components/pricing-section.tsx: '$330' src=1 bundle=3
+J OK client/src/components/pricing-section.tsx: 'Free Tech Audit' src=1 bundle=1
+J OK client/src/components/pricing-section.tsx: 'Website Diagnosis' src=1 bundle=1
+J OK client/src/components/Navbar.tsx: 'MehyarSoft home' src=1 bundle=1
+J OK client/src/components/Navbar.tsx: 'Toggle menu' src=1 bundle=1
+J PASS
+```
+
+**Failure-mode catalog (extending the rubric for future deploy-pipeline drift):**
+
+| Drift pattern | Detection | Action |
+| --- | --- | --- |
+| src/ literal edited but live bundle missing the literal | 9-probe above | P0 — re-deploy with full src/ → bundle roll; verify CF Pages bundle hash matches local dist/main-*.js |
+| src/ file renamed but probe still points at old filename | `[ ! -f "$src_file" ]` check in probe | P1 — rubric drift, update probe's PROBES array to match new path |
+| Live bundle hash changes but probe's `LIVE_BUNDLE_URL` not updated | bundle fetch returns 404 | P1 — update `LIVE_BUNDLE_URL` line in probe script + bump `expect ~<bytes>` annotation in this doc |
+| Multiple sections of src/ editing in one commit, only one literal surfaces in bundle | grep across all 9 probes, find the one with `bundle=0` | P0 — partial deploy; investigate which build pipeline step dropped the literal |
+| Bundle literal exists in src/ but src/ literal was removed in a later commit | Section H's "bundle has literal not in src/ file" check | P2 — dead literal in bundle; cosmetic, but track for next bundle minify pass |
+
+**Why this lives in the rubric and not just as a one-off check:**
+
+Section H already proved the bundle-grep approach is cheap (one curl +
+N greps, ~2s wall time) and CI-ready. Section J is the same shape, with
+the literal-vs-bundle direction flipped. Together they pin the live
+site's content to the committed source tree on every LOOP-BOOT tick.
+A docs-only LOOP-BOOT (rubric audit) catches deploy-pipeline drift the
+per-tick 4-screen smoke can't see — the smoke checks "does the live
+page render with the right shell", not "is the bundle carrying every
+literal the founder committed".
+
+**Update cadence:**
+
+When a new visitor-facing literal lands in src/ (e.g. a new CTA copy,
+a new pricing tier, a new schema-equipped route), add it to the
+`PROBES` array in `.hermes/probe-section-J.sh`. Cheap to extend;
+follows the same pattern as Section H's "what to grep" table.
