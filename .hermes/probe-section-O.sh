@@ -53,7 +53,7 @@ BUNDLE_URL_PREFIX="https://mehyar.us/assets/main-"
 DISCOVERY_SHELL=".hermes/.probe-section-O-home.html"
 DISCOVERY_BUNDLE=".hermes/.probe-section-O-bundle.js"
 
-echo "=== O Live-bundle-URL auto-discovery probe (turn-052 new check) ==="
+echo "=== O Live-bundle-URL auto-discovery probe (turn-052 new check; turn-053 CRLF-safe count fix) ==="
 
 # Step 1: fetch the home page shell and extract the bundle URL it references.
 if ! curl -sSL --max-time 15 "$HOME_URL" -o "$DISCOVERY_SHELL" 2>/dev/null; then
@@ -159,7 +159,20 @@ fi
 # every bundle since turn-027). If the discovered bundle is missing
 # this literal, the discovery itself is wrong (the regex matched a
 # sub-resource that isn't the main JS bundle, e.g. a JSON file).
-SKIP_LITERAL_COUNT=$(grep -c -F -- "Skip to the" "$DISCOVERY_BUNDLE" 2>/dev/null || echo 0)
+#
+# TURN-053 FIX (closes the latent turn-052 bug class on this very probe):
+# The original line was
+#   SKIP_LITERAL_COUNT=$(grep -c -F -- "Skip to the" "$DISCOVERY_BUNDLE" 2>/dev/null || echo 0)
+# which is broken on TWO axes:
+#   (a) `|| echo 0` is dead — grep exits 0 on count=0, so the fallback never fires;
+#   (b) `grep -c` emits `<n>\n` even on LF-only input, so the variable becomes
+#       `0\n0` and `[ "$var" -lt 1 ]` throws `integer expression expected`.
+# The fix uses `head -1` + `tr -d` to strip BOTH the trailing LF (always present)
+# and any CR (only present on CRLF-formatted inputs). No `|| echo` fallback — the
+# `head -1` always returns at least one line, and `tr -d` on an empty string
+# returns empty (which the `${var:-0}` default below covers).
+SKIP_LITERAL_COUNT=$(grep -c -F -- "Skip to the" "$DISCOVERY_BUNDLE" 2>/dev/null | head -1 | tr -d ' \t\r\n')
+SKIP_LITERAL_COUNT=${SKIP_LITERAL_COUNT:-0}
 if [ "$SKIP_LITERAL_COUNT" -lt 1 ]; then
   echo "O FAIL: discovered bundle has no 'Skip to the' literal (not the main JS bundle?)"
   rm -f "$DISCOVERY_SHELL" "$DISCOVERY_BUNDLE"
