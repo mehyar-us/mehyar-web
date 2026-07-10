@@ -48,6 +48,8 @@ this is the loop's memory. longer notes go to `.hermes/audit/turn-NNN.md`.
 
 (append below — never overwrite history)
 
+2026-07-10 · shipped turn-050 reconciliation + probe-WIP gitignore (turn-051, sha 1a2e4fa) -- docs-only ship-the-WIP follow-on to turn-050; closed the 4-file working-tree WIP (state.md, learned.md, VISION.md, audit/turn-050.md) + deleted 9 transient probe-WIP files + extended .gitignore with 6 patterns (.hermes/<...>-tNNN-*.{html,js,py} shape + .probe-*-cited.* intermediates) so the drift class won't recur; Section K probe FAIL->PASS delta (36/36 audit files); no live deploy (live bundle unchanged from turn-050 main-1wxJxxD5.js). Pure loop hygiene + audit-trail closure.
+
 2026-07-10 · shipped PWA proper 192/512/1024 icons in manifest + sw.js mehyar-shell-v1 -> v2 cache bust (turn-050, sha 75274ae) -- live manifest went from old single-asset-referenced-2x anti-pattern to 4 properly-sized entries (192 maskable + 512 any + 1024 any + favicon.svg); CF Pages rebuilt and serves the new icons + sw precaches all 3 mark-* PNGs + the favicon.svg. Pure additive PWA hygiene; zero copy risk; install-on-home-screen now shows the correctly-sized maskable icon. Docs-only state bump (tick id 50).
 
 2026-07-09 · shipped 1200x630 OG PNG
