@@ -901,7 +901,28 @@ export function ConversionFlow({
                 {status === "idle" ? (turnstileIssue ? "Cloudflare verification did not complete. Refresh the page or try the checkbox again, then submit." : turnstileEnabled && !turnstileToken ? "Cloudflare verification is ready. Finish the checkbox above, then submit." : "Cloudflare verification, consent, source/campaign metadata, and safe routing are handled in this shared conversion component.") : status === "success" ? "No internal IDs, secrets, or raw backend errors are shown." : status === "error" ? "Please refresh and try again, or email contact@mehyar.us without sensitive data." : "Hold tight — sending."}
               </p>
               {status === "success" && isNewsletter ? (
-                <a href="/micro-offer#intake&utm_campaign=newsletter_thank_you" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "mt-3 rounded-full")}>Request the $330 audit</a>
+                <ul className="mt-4 space-y-2 text-sm leading-6">
+                  <li className="font-semibold">Here is the checklist now — no waiting on an email:</li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 size={14} className="mt-1 flex-shrink-0" aria-hidden="true" />
+                    <span>Find where visitors hesitate before contacting you.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 size={14} className="mt-1 flex-shrink-0" aria-hidden="true" />
+                    <span>Check whether missed calls and emails become tracked follow-up.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 size={14} className="mt-1 flex-shrink-0" aria-hidden="true" />
+                    <span>Spot manual copy-paste work that an AI or system workflow can remove.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 size={14} className="mt-1 flex-shrink-0" aria-hidden="true" />
+                    <span>Separate safe automation ideas from risky customer-data shortcuts.</span>
+                  </li>
+                </ul>
+              ) : null}
+              {status === "success" && isNewsletter ? (
+                <a href="/micro-offer#intake&utm_campaign=newsletter_thank_you" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "mt-4 rounded-full")}>Request the $330 audit</a>
               ) : null}
             </div>
           </div>
