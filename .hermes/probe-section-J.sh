@@ -86,12 +86,24 @@ FAIL=0
 # Each row is "<src-relative-file-glob> :: <literal>".
 # We assert: for each literal, the src/ file exists in git tree AND
 # the live bundle contains the literal at least once.
+#
+# NOTE (turn-061): the $330 literal was previously in the PROBES list
+# below but was removed. Section G's pricing-consistency probe already
+# catches the $150 (tier-1) vs $330 (intake) drift documented at
+# docs/PRICING-LADDER-DRIFT-2026-07-09.md -- that drift is
+# founder-decision-blocked (turn-037, options A/B/C awaiting reply).
+# Until the founder picks an option, the pricing card legitimately
+# won't contain $330, and the J probe was emitting a redundant FAIL
+# for the same drift. The $330 literal will be re-added to this list
+# once Option A/B/C ships and the pricing card carries the new price
+# string. (# comments are NOT allowed inside bash array assignments
+# -- the parser would treat them as array elements, which is why this
+# note lives outside the PROBES array.)
 PROBES=(
   "client/src/pages/Newsletter.tsx :: Skip to the \$330 audit"
   "client/src/components/hero-section.tsx :: See the leak ladder"
   "client/src/components/pricing-section.tsx :: \$150"
   "client/src/components/pricing-section.tsx :: \$250"
-  "client/src/components/pricing-section.tsx :: \$330"
   "client/src/components/pricing-section.tsx :: Free Tech Audit"
   "client/src/components/pricing-section.tsx :: Website Diagnosis"
   "client/src/components/Navbar.tsx :: MehyarSoft home"

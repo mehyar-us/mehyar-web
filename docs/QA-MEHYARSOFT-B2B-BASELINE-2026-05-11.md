@@ -334,19 +334,44 @@ Exit 0 PASS, exit 1 FAIL, exit 2 INDETERMINATE (e.g. bundle fetch failed).
 **Today's expected output (probe exit code 0):**
 
 ```
-=== J Build-artifact-integrity probe (turn-040 new check) ===
-live bundle: 574085 bytes (expect ~574069)
+=== J Build-artifact-integrity probe (turn-040 new check; turn-061 $330 literal removed — see "Turn-061 update") ===
+discovered bundle URL: https://mehyar.us/assets/main-BVPuebii.js
+live bundle: 575240 bytes (auto-discovered, fresh; not a fixed-baseline assertion)
 J OK client/src/pages/Newsletter.tsx: 'Skip to the $330 audit' src=1 bundle=1
 J OK client/src/components/hero-section.tsx: 'See the leak ladder' src=1 bundle=1
 J OK client/src/components/pricing-section.tsx: '$150' src=2 bundle=2
-J OK client/src/components/pricing-section.tsx: '$250' src=3 bundle=1
-J OK client/src/components/pricing-section.tsx: '$330' src=1 bundle=3
+J OK client/src/components/pricing-section.tsx: '$250' src=2 bundle=1
 J OK client/src/components/pricing-section.tsx: 'Free Tech Audit' src=1 bundle=1
 J OK client/src/components/pricing-section.tsx: 'Website Diagnosis' src=1 bundle=1
 J OK client/src/components/Navbar.tsx: 'MehyarSoft home' src=1 bundle=1
 J OK client/src/components/Navbar.tsx: 'Toggle menu' src=1 bundle=1
 J PASS
 ```
+
+**Turn-061 update — `$330` literal removed from PROBES list:**
+
+The probe previously asserted `pricing-section.tsx` contains `$330`.
+That assertion was correct *in principle* (the Section G pricing
+drift documents tier-1 *should* be `$330` to match the intake) but
+was failing every tick as a redundant signal for the same
+founder-decision-blocked drift Section G already catches. Until the
+founder picks an option from `docs/PRICING-LADDER-DRIFT-2026-07-09.md`
+(A: align to $330, B: drop micro-offer price, C: separate products),
+the pricing card legitimately does not contain `$330`, and the J
+probe was emitting a redundant FAIL exit 1 for the same drift class.
+
+The fix: drop the `$330` PROBES entry (8 probes remain, was 9);
+keep the `pricing-section.tsx :: $150` and `:: $250` entries because
+those prices are committed regardless of the founder decision. The
+note lives as a `#` comment block *above* the `PROBES=(...)`
+assignment because bash `#` comments are NOT allowed inside array
+assignments — the parser would treat them as array elements.
+
+The `$330` literal will be re-added to PROBES once Option A/B/C
+ships and the pricing card carries the new price string. Reverse
+direction (Option B keeps `$150` but drops the $330 micro-offer)
+does not re-introduce the literal; that case is documented at
+turn-061 in `.hermes/audit/turn-061.md`.
 
 **Failure-mode catalog (extending the rubric for future deploy-pipeline drift):**
 
@@ -357,6 +382,7 @@ J PASS
 | Live bundle hash changes but probe's `LIVE_BUNDLE_URL` not updated | bundle fetch returns 404 | P1 — update `LIVE_BUNDLE_URL` line in probe script + bump `expect ~<bytes>` annotation in this doc |
 | Multiple sections of src/ editing in one commit, only one literal surfaces in bundle | grep across all 9 probes, find the one with `bundle=0` | P0 — partial deploy; investigate which build pipeline step dropped the literal |
 | Bundle literal exists in src/ but src/ literal was removed in a later commit | Section H's "bundle has literal not in src/ file" check | P2 — dead literal in bundle; cosmetic, but track for next bundle minify pass |
+| Probe asserts a literal the founder hasn't committed (rubric drift on founder-blocked changes) | probe FAILs `rubric drift — fix the probe` every tick after the founder-decision-blocked change opens | P1 — drop the literal from PROBES with a comment explaining the founder-blocked class; re-add it once the founder decision lands and src/ catches up (turn-061 baked this for the `$330` literal + turn-037's PRICING-LADDER-DRIFT) |
 
 **Why this lives in the rubric and not just as a one-off check:**
 
