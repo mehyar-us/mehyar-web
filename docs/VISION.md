@@ -48,7 +48,9 @@ this is the loop's memory. longer notes go to `.hermes/audit/turn-NNN.md`.
 
 (append below — never overwrite history)
 
-2026-07-09 · shipped 1200x630 OG PNG + FAQPage JSON-LD + priceRange schema (turn-002, sha b6486c2) — social previews now real images, FAQPage eligible for SERP rich result. Pure additive SEO.
+2026-07-10 · shipped PWA proper 192/512/1024 icons in manifest + sw.js mehyar-shell-v1 -> v2 cache bust (turn-050, sha 75274ae) -- live manifest went from old single-asset-referenced-2x anti-pattern to 4 properly-sized entries (192 maskable + 512 any + 1024 any + favicon.svg); CF Pages rebuilt and serves the new icons + sw precaches all 3 mark-* PNGs + the favicon.svg. Pure additive PWA hygiene; zero copy risk; install-on-home-screen now shows the correctly-sized maskable icon. Docs-only state bump (tick id 50).
+
+2026-07-09 · shipped 1200x630 OG PNG
 2026-07-09 · shipped per-route meta on pre-rendered shells (turn-003, sha 406eba0) — 13 high-value routes ship unique title/description/canonical/og/twitter; closed W4-SEO. Also wired scripts/** into CF Pages deploy workflow.
 2026-07-09 · shipped hero CTA move /contact → /micro-offer#intake (turn-004, sha 22dd6f0) — "Book a Tech Audit" copy now lands on the dedicated $330 audit landing with form in view. Closed W2-FUNNEL hero-CTA piece.
 2026-07-09 · shipped per-offer CTA labels + service-tagged /contact routing on pricing cards (turn-005, sha c8d2507) — six pricing cards had identical "Book a Tech Audit" copy and the same /contact href, so visitors browsing AI Follow-Up / Internal Sprint / Architecture / Retainer were mis-routed into the slowest funnel for an offer that didn't match. Fixed: per-row ctaLabel + ctaHref; cards 1-5 now route /contact?service=<slug> so ContactSection mounts mode=booking_call with the service slug in serviceCategory (form submission carries the offer slug into CF Functions audit row). Closed W2-FUNNEL piece 2/2.
