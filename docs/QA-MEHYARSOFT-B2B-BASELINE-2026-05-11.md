@@ -457,3 +457,119 @@ If a new kind of audit-trail drift surfaces (e.g. "turn-XXX numbers skip
 because a tick was split" or "non-`.md` audit records exist"), extend
 the probe's find pattern. Cheap to extend; current find is
 `turn-*.md` in `.hermes/audit/`.
+
+## L. Open-ticket-id-reference (added turn-043 — pins ticket citations to kanban DB rows)
+
+Sections G/H/J catch content drift on the LIVE site. Section K catches
+drift in the LOOP'S OWN AUDIT TRAIL (the `.hermes/audit/turn-NNN.md`
+files). Section L catches a cousin class of drift: **stale ticket-id
+citations in state.md / VISION.md / audit / learned / QA baseline**.
+
+The failure mode: a past tick writes `t_xxxxxxxx` into state.md or
+VISION.md, referencing a real kanban ticket. Later, the ticket is
+archived / cleaned up / never existed. state.md still claims it. The
+user re-verifies on receipt (state.md says "ready: t_45ea76a8 W5-PERSUADE")
+and the citation is a fabrication — they look up `t_45ea76a8` on the
+board and it's gone.
+
+Sections G/H/J/K all catch *file-level* drift (src/, build artifacts,
+audit records). Section L is the first probe in the rubric that catches
+*identifier-reference* drift — the loop citing a name that no longer
+resolves. The other "stale identifier" surfaces the loop carries
+(commit SHAs, URLs, env-var values) are checked by external tools
+(`git log`, `curl`, `env | grep`); ticket ids are the only identifier
+class the loop generates and references at high enough volume to need
+its own rubric.
+
+**The invariant the loop verifies on every LOOP-BOOT tick:**
+
+For every ticket-id of the form `t_<8 hex chars>` referenced in
+`.hermes/state.md`, `docs/VISION.md`,
+`docs/QA-MEHYARSOFT-B2B-BASELINE-*.md`, `.hermes/audit/learned.md`,
+or `.hermes/audit/turn-*.md`, that id MUST exist as a row in the
+mehyar-us kanban DB. The reverse direction (id is in DB but never
+cited in state/docs/audit) is informational and NOT a failure — most
+open tickets aren't cited anywhere; that's normal.
+
+The probe script is `.hermes/probe-section-L.sh`. Run from repo root.
+Exit 0 PASS, exit 1 FAIL, exit 2 INDETERMINATE (e.g. mehyar-us kanban
+DB not found at the canonical path).
+
+**Today's expected output (probe exit code 0):**
+
+```
+=== L Open-ticket-id-reference probe (turn-043 new check) ===
+cited ticket-ids in state/docs/audit: 28
+ticket-ids in mehyar-us kanban DB:    47
+L PASS: all 28 cited ticket-ids resolve to real DB rows (drift closed)
+```
+
+**Negative-test verification (the probe has to actually FAIL on stale citations):**
+
+The probe was negative-tested this tick: appending a `t_ffffffff` reference
+to `.hermes/state.md` bumped the cited count to 29, probe exited 1 with
+the offending line printed (`L FAIL: stale ticket-id citations... t_ffffffff`),
+after restoring the original state.md the probe returned to exit 0 with
+28 cited / 47 in DB PASS. Bidirectional drift detection verified.
+
+**Failure-mode catalog (extending the rubric for future ticket-id drift):**
+
+| Drift pattern | Detection | Action |
+| --- | --- | --- |
+| Ticket cited in state.md but archived from board | probe `L FAIL: stale` | P1 — either `hermes kanban reopen` the ticket OR remove the citation from state.md |
+| Ticket id typo in state.md (`t_xxxxxxxx` where the 8 chars don't match a real id) | probe `L FAIL: stale` | P0 — fix the typo, re-run probe |
+| Cited ticket id is from a different board's DB (cross-board bleed) | probe `L FAIL: stale` (the mehyar-us DB doesn't have it) | P0 — fix the board reference, the loop runs against the mehyar-us board only |
+| Mehyar-us kanban DB moved or deleted | probe `L INDETERMINATE: kanban DB not found` | P0 — restore DB, set `MEHYAR_US_KANBAN_DB` env var to override path |
+| Probe script itself untracked (`.hermes/probe-section-L.sh` missing from git) | `git ls-files .hermes/probe-section-*.sh` returns only K, not L | P0 — `git add .hermes/probe-section-L.sh`, re-run probe |
+
+**Implementation notes (gotchas baked into the probe):**
+
+- **Uses python's stdlib sqlite3, NOT the sqlite3 CLI.** The sqlite3 CLI
+  on this Windows host is the Android platform-tools binary
+  (`sqlite3.exe`), which returns "unable to open database file" on real
+  Windows paths. Python's `sqlite3` uses the same SQLite engine and
+  reads the DB fine. The probe shells out to `python` (not `sqlite3`)
+  for that reason.
+- **MSYS path translation.** Both the DB path and the temp-file paths
+  go through a `/c/...` → `C:/...` conversion before being passed to
+  python, because `os.path.exists` in python's posixpath rejects
+  MSYS-style paths on Windows even though bash sees the files fine.
+  The probe does this conversion in two places: once for the DB, once
+  for the temp output file python writes.
+- **Tempfiles live under `.hermes/` not `/tmp`.** MSYS bash's `/tmp`
+  is not the same dir as python's `/tmp` on Windows. Both layers need
+  to see the same files; the probe uses `mktemp -p "$REPO_ROOT/.hermes"`
+  so the temp file is in a path both shells can resolve.
+- **Tempfile cleanup via `trap`.** `trap 'rm -f "$CITED" "$IN_DB"' EXIT`
+  ensures the temp files are removed on success AND failure paths,
+  so the working tree stays clean after every probe run.
+
+**Why this lives in the rubric and not just as a one-off check:**
+
+Section L is the cheap automatic re-check for a class of drift that
+would otherwise rot state.md silently until the user re-verifies on
+receipt. Without Section L, the loop's state.md accumulates stale
+ticket-id references one tick at a time (every time a cited ticket
+is archived) and the user is the only detector. With Section L, the
+same drift catches itself on the next LOOP-BOOT run (~5s wall time,
+exit 1 with the offending id printed). The probe follows the same
+`grep + sort + comm` shape as Section K but adds the python sqlite3
+read for the in-DB side; bash-only would require the sqlite3 CLI,
+which doesn't work on this host.
+
+**Why "L" and not re-letter the rubric:**
+
+Sections A-J have been stable since turn-039 (Section H added, I
+renamed "Open registry"). Section K was added turn-042 at the end
+without renumbering. Section L follows the same convention: append at
+the end, preserve existing mnemonics. A future worker profile
+referencing "QA §I" or "QA §K" still resolves to the right section.
+
+**Update cadence:**
+
+If a new kind of identifier-reference drift surfaces (e.g. commit-SHA
+references in state.md that no longer exist in `git log`), add a
+cousin probe (Section M, etc.) following the same pattern. Each
+identifier class the loop cites at high volume deserves its own
+section. Current scope: ticket ids only; commit SHAs and URLs are
+checked externally and don't need a rubric probe yet.
