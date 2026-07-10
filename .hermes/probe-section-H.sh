@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# Section H Accessibility/SEO smoke probe (turn-039)
+# Runs against the LIVE bundle (not src/) so it measures what visitors get,
+# not what developers wrote. All checks are grep-based against the
+# minified bundle, which preserves tag names, attribute names, and the
+# aria-* / role= / alt= literals.
+#
+# Run from repo root.
+#   bash .hermes/probe-section-I.sh
+# Exit 0 on PASS, 1 on FAIL, 2 on INDETERMINATE.
+
+set -u
+
+LIVE_BUNDLE_URL="https://mehyar.us/assets/main-BKU1Uoxy.js"
+# Use CWD-relative path for the bundle because /tmp doesn't exist on
+# this Windows host (MSYS). Repo-relative keeps the probe portable.
+BUNDLE=".hermes/.probe-section-I-bundle.js"
+
+echo "=== H Accessibility/SEO smoke probe (turn-039 new check) ==="
+
+# Fetch the live bundle fresh; this is the same hash turn-036 deployed and
+# that turn-031/034/036/037/038 all confirmed is the live canonical bundle.
+if ! curl -sSL --max-time 30 "$LIVE_BUNDLE_URL" -o "$BUNDLE" 2>/dev/null; then
+  echo "H INDETERMINATE: could not fetch $LIVE_BUNDLE_URL"
+  exit 2
+fi
+
+if [ ! -s "$BUNDLE" ]; then
+  echo "H INDETERMINATE: bundle fetch returned 0 bytes"
+  exit 2
+fi
+
+BUNDLE_BYTES=$(wc -c < "$BUNDLE")
+echo "live bundle: $BUNDLE_BYTES bytes (expect ~574069)"
+
+FAIL=0
+
+# 1. Skip-link / skip-to-content — Lighthouse "Skip to main content" tap target
+SKIP=$(grep -oE 'Skip to[^"]{0,40}' "$BUNDLE" | head -1)
+if [ -z "$SKIP" ]; then
+  echo "H FAIL: no 'Skip to <content>' link found (a11y: keyboard users can't bypass nav)"
+  FAIL=1
+else
+  echo "H OK skip-link: '$SKIP'"
+fi
+
+# 2. Semantic landmarks — <main>, <nav>, <header>, <footer>, <article>, <section>
+LANDMARKS=$(grep -oE '(main|nav|header|footer|article|section)`' "$BUNDLE" | wc -l)
+if [ "$LANDMARKS" -lt 6 ]; then
+  echo "H FAIL: only $LANDMARKS semantic landmark tags (expect >= 6 — main+nav+header+footer+article+section)"
+  FAIL=1
+else
+  echo "H OK landmarks: $LANDMARKS semantic landmark tag occurrences"
+fi
+
+# 3. ARIA — must have aria-hidden (icon decoration hiding) and aria-label (icon-only buttons)
+ARIA_HIDDEN=$(grep -oE 'aria-hidden' "$BUNDLE" | wc -l)
+ARIA_LABEL=$(grep -oE 'aria-label' "$BUNDLE" | wc -l)
+SR_ONLY=$(grep -oE 'sr-only' "$BUNDLE" | wc -l)
+if [ "$ARIA_HIDDEN" -lt 10 ]; then
+  echo "H FAIL: aria-hidden count = $ARIA_HIDDEN (expect >= 10 — decorative icons hidden from AT)"
+  FAIL=1
+else
+  echo "H OK aria-hidden: $ARIA_HIDDEN occurrences"
+fi
+if [ "$ARIA_LABEL" -lt 1 ]; then
+  echo "H FAIL: aria-label count = 0 (icon-only buttons need labels)"
+  FAIL=1
+else
+  echo "H OK aria-label: $ARIA_LABEL occurrences"
+fi
+if [ "$SR_ONLY" -lt 1 ]; then
+  echo "H FAIL: sr-only count = 0 (visually-hidden text for AT)"
+  FAIL=1
+else
+  echo "H OK sr-only: $SR_ONLY occurrences"
+fi
+
+# 4. lang + viewport on every public shell — fetch home shell and check
+HOME_SHELL=".hermes/.probe-section-I-home.html"
+if curl -sSL --max-time 15 "https://mehyar.us/" -o "$HOME_SHELL" 2>/dev/null; then
+  LANG=$(grep -oE 'lang="[^"]+"' "$HOME_SHELL" | head -1)
+  if [ -z "$LANG" ]; then
+    echo "H FAIL: home shell missing lang attribute on <html>"
+    FAIL=1
+  else
+    echo "H OK lang: $LANG"
+  fi
+  VIEWPORT=$(grep -oE 'meta name="viewport"' "$HOME_SHELL" | wc -l)
+  if [ "$VIEWPORT" -lt 1 ]; then
+    echo "H FAIL: home shell missing viewport meta"
+    FAIL=1
+  else
+    echo "H OK viewport: present"
+  fi
+  CANONICAL=$(grep -oE 'rel="canonical"' "$HOME_SHELL" | wc -l)
+  if [ "$CANONICAL" -lt 1 ]; then
+    echo "H FAIL: home shell missing canonical link"
+    FAIL=1
+  else
+    echo "H OK canonical: present"
+  fi
+else
+  echo "H INDETERMINATE: could not fetch home shell"
+  exit 2
+fi
+
+# 5. JSON-LD on home shell — already covered by Section C, but cheap to re-check
+JSONLD=$(grep -oE 'application/ld\+json' "$HOME_SHELL" | wc -l)
+if [ "$JSONLD" -lt 2 ]; then
+  echo "H FAIL: home shell has only $JSONLD JSON-LD blocks (expect >= 2)"
+  FAIL=1
+else
+  echo "H OK JSON-LD: $JSONLD blocks on home shell"
+fi
+
+if [ "$FAIL" -eq 0 ]; then
+  echo "H PASS"
+  RC=0
+else
+  echo "H FAIL (see lines above)"
+  RC=1
+fi
+
+# Cleanup probe temp files (don't pollute repo with bundle downloads).
+# These start with ".probe-section-I-" so they're easy to identify and
+# can also be matched by `git status -- ':!.hermes/.probe-*'` if the
+# loop wants to keep them as audit artifacts.
+rm -f "$BUNDLE" "$HOME_SHELL"
+
+exit $RC

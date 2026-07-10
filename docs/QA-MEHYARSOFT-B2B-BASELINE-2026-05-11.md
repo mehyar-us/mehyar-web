@@ -1,8 +1,8 @@
 # QA — mehyarSoft B2B baseline — 2026-05-11
 
 > The "voice of correctness" the improve-loop reads every tick to define "shipped".
-> Last update: 2026-07-09 (turn-038 — added Section G Pricing-consistency check,
-> re-purposed old Section G to new Section H Open registry; rubric now has 8 sections A-H)
+> Last update: 2026-07-09 (turn-039 — added Section H Accessibility/SEO smoke probe,
+> re-purposed old Section H to new Section I Open registry; rubric now has 9 sections A-I)
 > document was referenced in `docs/VISION.md` "Current state" line but never
 > committed to disk. This file restores the canonical baseline list from the
 > shipped artifacts that exist on the live site as of this tick.)
@@ -197,7 +197,84 @@ founder decision closes the doc, and the rubric verifies the close stuck.
 | Multiple tiers routing to same intake page | `grep -c 'href="/micro-offer' client/src/components/pricing-section.tsx` > 1 | P2 — funnel realignment needed (turn-005 lesson) |
 | /micro-offer page charge ≠ api-contract `first_330_target_cents` | `grep -oE '\$[0-9]+' client/src/pages/MicroOffer.tsx` vs api-contract.md | P0 — revenue-side change, founder only |
 
-## H. Open registry
+## H. Accessibility/SEO smoke (added turn-039 — runs against the LIVE bundle, not src/)
+
+A Lighthouse-grade a11y + SEO smoke measured against the deployed bundle
+and the home shell. Designed to be cheap to run (one `curl` + a few greps)
+and CI-ready (exit 0 PASS, exit 1 FAIL). The probe script is
+`.hermes/probe-section-H.sh`.
+
+**What it checks:**
+
+| Check | Why | Today |
+| --- | --- | --- |
+| `Skip to <content>` link in bundle | Keyboard users must be able to bypass nav | PASS — "Skip to the $330 audit" |
+| Semantic landmark tags (`<main>`, `<nav>`, `<header>`, `<footer>`, `<article>`, `<section>`) | Screen readers use these to navigate | PASS — 61 occurrences |
+| `aria-hidden` on decorative icons | Icons that aren't meaningful should be hidden from AT | PASS — 112 occurrences |
+| `aria-label` on icon-only controls | Icon buttons need accessible names | PASS — 6 occurrences |
+| `sr-only` (visually-hidden) text | AT-only labels for sighted users can't see | PASS — 3 occurrences |
+| `<html lang="en">` on every public shell | Screen readers switch pronunciation by lang | PASS |
+| `<meta name="viewport">` on every public shell | Mobile rendering depends on this | PASS |
+| `<link rel="canonical">` on every public shell | Avoid duplicate-content penalties | PASS |
+| ≥2 JSON-LD blocks on home shell (cheap re-check of Section C) | SEO baseline | PASS — 3 blocks |
+
+**Today's expected output (probe exit code 0):**
+
+```
+=== H Accessibility/SEO smoke probe (turn-039 new check) ===
+live bundle: 574085 bytes (expect ~574069)
+H OK skip-link: 'Skip to the $330 audit'
+H OK landmarks: 61 semantic landmark tag occurrences
+H OK aria-hidden: 112 occurrences
+H OK aria-label: 6 occurrences
+H OK sr-only: 3 occurrences
+H OK lang: lang="en"
+H OK viewport: present
+H OK canonical: present
+H OK JSON-LD: 3 blocks on home shell
+H PASS
+```
+
+**Run command:**
+
+```bash
+bash .hermes/probe-section-H.sh
+```
+
+**Pass criteria:**
+
+- All 9 sub-checks return `H OK <name>`
+- Probe exits 0
+- Total bundle byte size is within ±1% of the previous probe's reading
+  (the script logs `expect ~574069` based on turn-039's canonical bundle)
+
+**Failure-mode catalog (extending the rubric for future a11y regressions):**
+
+| Drift pattern | Detection | Action |
+| --- | --- | --- |
+| Skip-link removed from Navbar | `grep -oE 'Skip to[^"]+'` empty on bundle | P1 — Lighthouse "Skip to main content" fail; AT keyboard users affected |
+| `<html lang=>` missing or changed | probe `LANG` empty | P0 — SEO + a11y baseline |
+| New SVG icon added without `aria-hidden` | new `<svg>` literals not wrapped in `aria-hidden` | P2 — a11y noise (AT announces decorative icons) |
+| New icon-only button without `aria-label` | `aria-label` count drops below 5 | P1 — screen reader users can't use the button |
+| Viewport meta removed (e.g. theme rebuild) | probe `VIEWPORT` empty | P0 — mobile rendering broken |
+| Canonical link missing | probe `CANONICAL` empty | P1 — duplicate-content risk |
+
+**Why this lives in the rubric and not just as a one-off check:**
+
+Lighthouse audits are heavyweight (chromium, headless, ~30s+ per run) and
+expensive to wire into every LOOP-BOOT tick. The probe is the **cheap
+proxy** — grep-able bundle literals that map to Lighthouse categories
+(SEO, accessibility, best-practices) without needing a browser. When the
+probe goes red, that's the "real Lighthouse will complain" signal — the
+founder or a worker can then run the full Lighthouse audit to confirm
+and produce the readable report.
+
+**The probe runs against `main-BKU1Uoxy.js` (turn-036 live bundle).**
+Update the `LIVE_BUNDLE_URL` line at the top of the script when a new
+shipped bundle lands. The script logs `expect ~<bytes>` so the loop can
+spot a hash change without diffing the full file.
+
+## I. Open registry
 
 This doc is the voice-of-correctness. As new surfaces ship (e.g. an admin
 dashboard, a newsletter cron, a new offer tier, a new pricing tier), add
