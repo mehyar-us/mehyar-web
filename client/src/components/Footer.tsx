@@ -29,7 +29,7 @@ const Footer = () => {
             <h4 className="text-lg font-semibold mb-6">Offers</h4>
             <ul className="space-y-3">
               {[
-                ["Tech Audit", "/services"],
+                ["Tech Audit", "/micro-offer#intake"],
                 ["Website / Booking Cleanup", "/services"],
                 ["AI Follow-Up Flow", "/services"],
                 ["Internal Automation Sprint", "/services"],
