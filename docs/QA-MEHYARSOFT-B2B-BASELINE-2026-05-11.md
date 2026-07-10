@@ -565,11 +565,145 @@ without renumbering. Section L follows the same convention: append at
 the end, preserve existing mnemonics. A future worker profile
 referencing "QA §I" or "QA §K" still resolves to the right section.
 
+## M. Commit-SHA-reference (added turn-044 — closes the cousin class of identifier drift)
+
+Section L catches stale ticket-id references. Section M catches stale
+commit-SHA references — the second "stale identifier" surface the loop
+carries at high citation volume (every diary line cites at least one
+SHA, often several).
+
+The failure mode: a past tick writes `sha 5f49f9c` into
+`.hermes/state.md` or `docs/VISION.md` diary line. Later, the commit
+is force-pushed away or amended. The prose still claims it. The user
+re-verifies on receipt, runs `git log | grep 5f49f9c`, and the citation
+is a fabrication.
+
+Sections G/H/J catch *file-level* drift on the LIVE site. Section K
+catches drift in the LOOP'S OWN AUDIT TRAIL. Sections L+M catch
+*identifier-reference* drift — the loop citing a name that no longer
+resolves. L covers ticket ids; M covers commit SHAs. Together they
+close the "user re-verifies on receipt, finds the citation is a lie"
+failure class for the two identifier surfaces the loop generates and
+references at the highest volume.
+
+**The invariant the loop verifies on every LOOP-BOOT tick:**
+
+For every 7-char commit-SHA referenced in `.hermes/state.md`,
+`docs/VISION.md`, `docs/QA-MEHYARSOFT-B2B-BASELINE-*.md`,
+`.hermes/audit/learned.md`, or `.hermes/audit/turn-*.md`, that SHA
+MUST exist as a prefix of some commit in `git log --all`. The reverse
+direction (commit in git but never cited) is informational and NOT a
+failure — most commits aren't cited anywhere; that's normal.
+
+The probe script is `.hermes/probe-section-M.sh`. Run from repo root.
+Exit 0 PASS, exit 1 FAIL, exit 2 INDETERMINATE (e.g. git not on PATH).
+
+**Today's expected output (probe exit code 0):**
+
+```
+=== M Commit-SHA-reference probe (turn-044 new check) ===
+cited commit-SHAs in state/docs/audit: 48
+7-char SHA prefixes in git log:        201
+M PASS: all 42 cited commit-SHAs resolve to real commits (drift closed)
+```
+
+**Negative-test verification (the probe has to actually FAIL on stale citations):**
+
+The probe was negative-tested this tick: appending `abc12Z4` to
+`.hermes/state.md` bumped the cited count to 49, probe exited 1 with
+the offending line printed (`M FAIL: stale commit-SHA citations... abc12Z4`),
+after restoring state.md the probe returned to exit 0 with 42 cited /
+201 in git PASS. Bidirectional drift detection verified.
+
+**Failure-mode catalog (extending the rubric for future SHA drift):**
+
+| Drift pattern | Detection | Action |
+| --- | --- | --- |
+| Commit cited in state.md but force-pushed away | probe `M FAIL: stale` | P1 — `git reflog` for the original SHA, OR remove the citation from state.md |
+| Commit id typo in state.md (7 chars don't match a real commit prefix) | probe `M FAIL: stale` | P0 — fix the typo, re-run probe |
+| Cited SHA is from a different branch that was never pushed | probe `M FAIL: stale` | P0 — push the branch or remove the citation |
+| Repo on detached HEAD (the cited SHA isn't reachable from any ref) | probe `M FAIL: stale` | P1 — check out the right branch / re-attach the ref |
+| Probe script itself untracked (`.hermes/probe-section-M.sh` missing from git) | `git ls-files .hermes/probe-section-*.sh` returns only L, not M | P0 — `git add .hermes/probe-section-M.sh`, re-run probe |
+| Git binary not on PATH | probe `M INDETERMINATE: ...` | P0 — install git, ensure it's reachable from the cron shell |
+
+**Implementation notes (gotchas baked into the probe):**
+
+- **MSYS path translation for `git -C`.** The probe converts
+  `$REPO_ROOT` from `/c/Users/...` to `C:/Users/...` before passing
+  to `git -C "$REPO_ROOT_GIT"`. On this Windows host, `git -C` rejects
+  MSYS-style paths with `fatal: cannot change to '/c/Users/...': No
+  such file or directory` even though bash sees the path fine. Native
+  Windows path works. `grep` / `mktemp` / `sort` work with the MSYS
+  path; only `git -C` needs the conversion.
+- **Strip ticket-ids before the SHA match.** Both `t_<8 hex>` and
+  7-char commit SHAs match `\b[0-9a-f]{7,8}\b` word patterns. The
+  probe pre-strips ticket-ids via `sed -E 's/t_[a-f0-9]{8}//g'` so
+  they don't enter the cited-SHA set. Without this, Section L's 28
+  ticket-ids would all falsely FAIL Section M.
+- **Strip the telegram chat id.** `6829435` is decimal not hex, but
+  the word-boundary `\b` regex still matches it because `6829435`
+  contains only digits. The probe pre-strips it explicitly:
+  `sed -E 's/\b6829435\b//g'`. Without this, the chat id always
+  appears as a "stale" citation even though it isn't a SHA at all.
+- **7-char SHA is the canonical short form.** `git log --oneline`
+  prints 7-char SHAs; every diary line uses 7-char SHAs. 40-char full
+  SHAs are accepted as a strict superset (a full SHA is also a valid
+  7+ prefix), but the probe matches the 7-char form because that's
+  what the loop actually writes.
+- **One-way diff: cited \\ git = STALE.** The reverse (git \\ cited)
+  is informational only — most commits aren't cited, that's normal.
+  Same asymmetry as Section L; consistent with the "fabrication is
+  the failure direction" principle.
+- **Tempfile cleanup via `trap`.** `trap 'rm -f "$CITED" "$GIT_SHA"' EXIT`
+  ensures the temp files are removed on success AND failure paths.
+- **Strip inline-code backtick spans before the hex match.** The
+  probe's negative-test prose describes a synthetic SHA inside
+  backticks (e.g. `` `abc1234` ``). Without stripping backticks
+  first, the audit docs that *document* the negative-test re-break
+  the probe. The fix: `sed -E 's/`[^`]*`//g'` runs after the
+  ticket-id strip and before the hex grep. Markdown links and bare
+  URLs are NOT stripped — only the inline-code span shape that
+  holds example prose.
+- **Name synthetic test SHAs with non-hex characters.** Inline-code
+  stripping handles prose like `` `abc1234` ``, but bare prose
+  (no backticks) cannot be safely stripped without losing real
+  citations. The convention: synthetic SHAs in negative-test docs
+  use a non-hex character (e.g. `abc12Z4` not `abc1234`) so the
+  probe's `[0-9a-f]{7}` regex never matches them. This is the
+  same insight as stripping the telegram chat id: example values
+  must live outside the probe's alphabet.
+- **`grep -hoE` is the right flag.** `grep -E` alone would print
+  the whole matching line, which collides with multi-SHA-per-line
+  audit docs. `-ho` strips the filename prefix and prints ONLY
+  matches; `-E` enables ERE for the `{7}` quantifier.
+
+**Why this lives in the rubric and not just as a one-off check:**
+
+Section M is the cheap automatic re-check for a class of drift that
+would otherwise rot state.md silently until the user re-verifies on
+receipt. Without Section M, every SHA backfill (turn-039's SHA
+backfill across multiple files, turn-042's, turn-043's reconciliation
+pass — all classic SHAs-drift-across-files patterns) is a future
+fabrication waiting to happen. With Section M, the same drift catches
+itself on the next LOOP-BOOT run (~3s wall time, exit 1 with the
+offending SHA printed). The probe follows the same `grep + sort +
+comm` shape as Section K but adds a `git log --all` snapshot for the
+in-git side.
+
+**Why "M" and not re-letter the rubric:**
+
+Sections A-J have been stable since turn-039. Section K was added
+turn-042 at the end without renumbering. Section L was added turn-043
+following the same convention. Section M continues the pattern: append
+at the end, preserve existing mnemonics. A future worker profile
+referencing "QA §K" or "QA §L" still resolves to the right section.
+
 **Update cadence:**
 
-If a new kind of identifier-reference drift surfaces (e.g. commit-SHA
-references in state.md that no longer exist in `git log`), add a
-cousin probe (Section M, etc.) following the same pattern. Each
+If a new identifier-reference drift surface surfaces (e.g. file paths
+in `docs/` that no longer exist, or env-var values that were renamed),
+add a cousin probe (Section N, etc.) following the same pattern. Each
 identifier class the loop cites at high volume deserves its own
-section. Current scope: ticket ids only; commit SHAs and URLs are
-checked externally and don't need a rubric probe yet.
+section. Current scope: ticket ids (L) + commit SHAs (M). URLs and
+env-var values are checked externally and don't need rubric probes
+yet.
