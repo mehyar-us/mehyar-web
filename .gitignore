@@ -112,3 +112,13 @@ micro-live-fresh.html
 .hermes/audit/*
 !.hermes/audit/*.md
 !.hermes/audit/turn-*.md
+# Loop probe artifacts (turn-051 hygiene): transient live-page captures,
+# intermediate probe-M prefix caches, and one-shot investigation scripts that
+# reference t-NNN-bundle.js by name. The reusable scripts live in `.hermes/probe/`
+# (committed); these match the unversioned `.hermes/<...>-tNNN-*.{html,js,py}` shape.
+.hermes/.probe-*-cited.*
+.hermes/main-live-t*.js
+.hermes/main-live-t*-after.js
+.hermes/home-t*.html
+.hermes/smoke-t*.html
+.hermes/probe-turn-*-*.py
