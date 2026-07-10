@@ -21,10 +21,49 @@
 
 set -u
 
-LIVE_BUNDLE_URL="https://mehyar.us/assets/main-BKU1Uoxy.js"
+# Auto-discover the live bundle URL from the home page shell. See
+# .hermes/probe-section-O.sh for the full rationale; the short version
+# is that CF Pages rolls the bundle hash on every src/ change, and a
+# hard-coded URL would fetch a valid but stale bundle from the edge
+# cache. The stale bundle is still an ancestor of the canonical one,
+# so H/J checks would still PASS — on the wrong file. Auto-discovery
+# keeps H/J in lockstep with what visitors actually load.
+#
+# Override: set HERMES_BUNDLE_URL_OVERRIDE in env to bypass auto-discovery
+# (useful for local dev or air-gapped test runs).
+discover_live_bundle_url() {
+  if [ -n "${HERMES_BUNDLE_URL_OVERRIDE:-}" ]; then
+    echo "$HERMES_BUNDLE_URL_OVERRIDE"
+    return 0
+  fi
+  local HOME_URL="https://mehyar.us/"
+  local SHELL=".hermes/.probe-section-discover-home.html"
+  if ! curl -sSL --max-time 15 "$HOME_URL" -o "$SHELL" 2>/dev/null; then
+    return 2
+  fi
+  if [ ! -s "$SHELL" ]; then
+    return 2
+  fi
+  local PATH_MATCH
+  PATH_MATCH=$(grep -oE '/assets/main-[A-Za-z0-9_-]+\.js' "$SHELL" | head -1)
+  rm -f "$SHELL"
+  if [ -z "$PATH_MATCH" ]; then
+    return 2
+  fi
+  echo "https://mehyar.us${PATH_MATCH}"
+  return 0
+}
+
+LIVE_BUNDLE_URL=$(discover_live_bundle_url)
+DISCOVER_RC=$?
+if [ "$DISCOVER_RC" -ne 0 ] || [ -z "$LIVE_BUNDLE_URL" ]; then
+  echo "J INDETERMINATE: auto-discovery of live bundle URL failed (home unreachable or no main-*.js reference)"
+  exit 2
+fi
 BUNDLE=".hermes/.probe-section-J-bundle.js"
 
 echo "=== J Build-artifact-integrity probe (turn-040 new check) ==="
+echo "discovered bundle URL: $LIVE_BUNDLE_URL"
 
 # Fetch the live bundle fresh; same hash turn-036 deployed and that
 # turn-031/034/036/037/038/039 all confirmed is the live canonical bundle.
@@ -39,7 +78,7 @@ if [ ! -s "$BUNDLE" ]; then
 fi
 
 BUNDLE_BYTES=$(wc -c < "$BUNDLE")
-echo "live bundle: $BUNDLE_BYTES bytes (expect ~574069)"
+echo "live bundle: $BUNDLE_BYTES bytes (auto-discovered, fresh; not a fixed-baseline assertion)"
 
 FAIL=0
 
@@ -69,8 +108,10 @@ for probe in "${PROBES[@]}"; do
     continue
   fi
 
-  src_count=$(grep -c -F -- "$literal" "$src_file" 2>/dev/null || echo 0)
-  bundle_count=$(grep -c -F -- "$literal" "$BUNDLE" 2>/dev/null || echo 0)
+  src_count=$(grep -c -F -- "$literal" "$src_file" 2>/dev/null | tr -d '\n\r ' || echo 0)
+  src_count=${src_count:-0}
+  bundle_count=$(grep -c -F -- "$literal" "$BUNDLE" 2>/dev/null | tr -d '\n\r ' || echo 0)
+  bundle_count=${bundle_count:-0}
 
   if [ "$src_count" -lt 1 ]; then
     echo "J FAIL: literal '$literal' not found in $src_file (rubric drift — fix the probe)"
