@@ -4,7 +4,7 @@
 // NO caching of /api/, /admin, /billing/*, or any function POST endpoint —
 // conversion paths always go straight to the network.
 
-const VERSION = 'mehyar-shell-v1';
+const VERSION = 'mehyar-shell-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -15,6 +15,8 @@ const SHELL_ASSETS = [
   '/favicon.png',
   '/favicon.svg',
   '/assets/mehyarsoft-mark.png',
+  '/assets/mehyarsoft-mark-192.png',
+  '/assets/mehyarsoft-mark-512.png',
   '/assets/mehyarsoft-favicon.svg',
   '/assets/mehyarsoft-favicon.png',
   '/assets/mehyarsoft-logo.svg',
