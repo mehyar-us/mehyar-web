@@ -1,0 +1,23 @@
+WHAT: Imported the existing (but previously unused) BlogSection into Home.tsx between TestimonialsSection and PricingSection. Each card now has a Read-the-post link plus a soft /micro-offer#intake link. Added a / ItemList JSON-LD via the existing scripts/route-jsonld.json + inject-route-jsonld.mjs pipeline so the 3 blog posts (/blog/small-business-tech-audit-revenue-leaks, /blog/missed-calls-crm-follow-up, /blog/when-to-build-custom-software) are explicitly enumerated as ListItems anchored to https://mehyar.us/#blog-index on the home page.
+
+WHY: The 3 blog posts were already in /sitemap.xml and /rss.xml (turn-015) but had zero inbound links from the homepage. Crawlers following the home page would never see them. Wasted SEO surface area + missed educational-to-conversion path.
+
+CHANGE BUDGET: 1 PR (improver/home-blog-teaser-turn-017), 1 commit + merge, 3 files. 89 insertions / 36 deletions.
+
+DEPLOY: github push origin main -> GitHub Actions Deploy to Cloudflare Pages workflow run 16984e6 (success at 2026-07-09T10:12Z). Total deploy lag ~22min.
+
+VERIFIED LIVE:
+- https://mehyar.us/ 200, 8268b shell, 3 JSON-LD blocks (ProfessionalService + FAQPage + ItemList), bundle main-k3nlOQUm.js
+- /booking, /micro-offer, /about, /blog, 3x /blog/<slug> all 200
+- /404 shell preserved; /330 -> /micro-offer 308 chain intact; /api/intake OPTIONS 204; /rss.xml 200
+- test:intake 11/11 (D1+KV+notification); tsc clean; bundle voice-scan clean
+
+VOICE: 5/5 vs VISION.md. Field notes / Where the leaks show up first / Written from real engagements, not marketing. No em dashes.
+
+LINKS:
+- branch: improver/home-blog-teaser-turn-017
+- commit: 726f378
+- merge: 16984e6
+- live: https://mehyar.us/#blog
+
+LEARNED: Use scripts/route-jsonld.json + inject-route-jsonld.mjs as the canonical way to surface home-anchored lists of related pages. Crawlers that do not run JS now see the 3 blog posts explicitly enumerated alongside FAQPage.

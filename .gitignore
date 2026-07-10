@@ -99,6 +99,12 @@ micro-live-fresh.html
 # Probe bundle snapshots cached locally during probe-section-{H,J}.sh runs
 .hermes/.probe-section-*-bundle.js
 .hermes/.probe-section-*-home.html
+# Loop probe artifacts in .hermes/probe/: reusable scripts (turn-NNN-*.py,
+# extract-*.py, turn-NNN-body.txt) are committed and live in git; transient
+# HTML snapshots from curl probes (e.g. home.html from turn-020) stay
+# untracked locally.
+.hermes/probe/*.html
+.hermes/probe/*-live.html
 # Loop audit artifacts: only the structured `.md` files and `learned.md` are
 # legitimate loop records (committed for warm-start + audit-trail). Everything
 # else in `.hermes/audit/` (HTML snapshots, JS bundle captures, PNGs, PR JSONs,

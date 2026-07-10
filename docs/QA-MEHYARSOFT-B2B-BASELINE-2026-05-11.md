@@ -1,8 +1,9 @@
 # QA — mehyarSoft B2B baseline — 2026-05-11
 
-> The "voice of correctness" the improve-loop reads every tick to define "shipped".
-|> Last update: 2026-07-10 (turn-040 — added Section J Build-artifact-integrity probe,
-|> rubric now has 10 sections A-J; Section I Open registry unchanged)
+|> The "voice of correctness" the improve-loop reads every tick to define "shipped".
+||> Last update: 2026-07-10 (turn-042 — added Section K Audit-record-tracking probe,
+||> rubric now has 11 sections A-K; Section I Open registry unchanged; Section J
+||> name stays at J to preserve the "I = Open registry" mnemonic)
 > document was referenced in `docs/VISION.md` "Current state" line but never
 > committed to disk. This file restores the canonical baseline list from the
 > shipped artifacts that exist on the live site as of this tick.)
@@ -369,8 +370,90 @@ page render with the right shell", not "is the bundle carrying every
 literal the founder committed".
 
 **Update cadence:**
-
 When a new visitor-facing literal lands in src/ (e.g. a new CTA copy,
 a new pricing tier, a new schema-equipped route), add it to the
 `PROBES` array in `.hermes/probe-section-J.sh`. Cheap to extend;
 follows the same pattern as Section H's "what to grep" table.
+
+## K. Audit-record-tracking (added turn-042 — closes the drift turn-041 manually fixed)
+
+Sections G / H / J catch content drift on the LIVE site. Section K
+catches drift in the LOOP'S OWN AUDIT TRAIL — the `.hermes/audit/turn-NNN.md`
+files that past ticks journaled in VISION.md but occasionally forgot to
+`git add`. The drift was discovered turn-041: 4 audit `.md` files existed
+on disk (`turn-018`, `turn-028`, `turn-034`, `turn-039`) but `git ls-files`
+returned empty for them. VISION.md referenced them; the actual files
+were untracked. A `git clean -fd` cleanup would have erased them; a
+fresh clone would have shipped without them.
+
+**The invariant the loop verifies on every LOOP-BOOT tick:**
+
+For every `.hermes/audit/turn-NNN*.md` file on disk, the same relative
+path must appear in `git ls-files`. The reverse direction (in-repo but
+missing on disk) is also caught. Bidirectional diff:
+
+- on-disk \ in-repo → ORPHAN (file on disk not in git) — P0, `git add`
+  immediately
+- in-repo \ on-disk → STALE (file in repo but gone from disk) — P1,
+  either restore from git or `git rm` the stale entry
+
+The probe script is `.hermes/probe-section-K.sh`. Run from repo root.
+Exit 0 PASS, exit 1 FAIL, exit 2 INDETERMINATE (e.g. git not available,
+or `.hermes/audit/` doesn't exist).
+
+**Today's expected output (probe exit code 0):**
+
+```
+=== K Audit-record-tracking probe (turn-042 new check) ===
+on-disk audit .md files: 28
+in-repo audit .md files: 28
+K PASS: 28 audit .md files on disk, 28 in git — drift closed
+```
+
+**Negative-test verification (the probe has to actually FAIL on drift):**
+
+The probe was negative-tested this tick: `touch .hermes/audit/turn-999-test-orphan.md`
+bumped on-disk count to 29, probe exited 1 with the orphan line printed;
+after `rm` of the orphan, probe returned to exit 0 with 28/28 PASS. This
+proves the bidirectional diff works in both directions (orphan detection
+verified; stale-detection is the symmetric code path but only negative-tested
+in source review because the loop would never intentionally `git rm` an
+audit record it didn't intend to delete).
+
+**Failure-mode catalog (extending the rubric for future audit-trail drift):**
+
+| Drift pattern | Detection | Action |
+| --- | --- | --- |
+| Audit `.md` created on disk but `git add` forgotten | probe `K FAIL: orphan` | P0 — `git add .hermes/audit/<name>.md`, re-run probe |
+| Audit `.md` deleted on disk but `git rm` forgotten | probe `K FAIL: stale` | P1 — restore from git or `git rm --cached .hermes/audit/<name>.md` |
+| Audit `.md` filename typo (e.g. `turn-018.md` vs `turn-18.md`) | probe shows two unrelated orphans + stale entries | P1 — rename one to match VISION.md diary reference |
+| `.hermes/audit/` directory moved or removed | probe `K INDETERMINATE: audit directory not found` | P0 — restore directory, investigate migration |
+| Probe script itself untracked (`.hermes/probe-section-K.sh` missing from git) | `git ls-files .hermes/probe-section-*.sh` empty | P0 — `git add .hermes/probe-section-K.sh`, re-run probe |
+
+**Why this lives in the rubric and not just as a one-off check:**
+
+Section K is the cheap automatic re-check for the drift turn-041 fixed by
+hand (4 missing audit files closed one tick before Section K existed).
+Without Section K, the next tick that creates an audit `.md` and forgets
+`git add` will repeat the drift silently for N ticks before someone
+notices. With Section K, the same drift catches itself on the next LOOP-BOOT
+run (~5s wall time, exit 1 with the orphan filename printed). The probe
+follows the same `find + sort + comm -23/-13` pattern as Section G/H/J —
+pure bash, no external dependencies beyond `git` and `find`.
+
+**Why "K" and not re-letter the rubric:**
+
+Section I has stayed "Open registry" since the rubric was reconstructed
+turn-028, and the "I = registry" mnemonic is stable for any external
+readers who navigated to the section by letter (e.g. a future worker
+profile referencing "QA §I"). Section K instead of "Section L (move I→J,
+J→K)" preserves the existing section letters for Sections A-J and just
+adds K at the end. The same approach turn-040 used when adding J (kept
+I as "Open registry", added J at the end rather than renumbering).
+
+**Update cadence:**
+
+If a new kind of audit-trail drift surfaces (e.g. "turn-XXX numbers skip
+because a tick was split" or "non-`.md` audit records exist"), extend
+the probe's find pattern. Cheap to extend; current find is
+`turn-*.md` in `.hermes/audit/`.
