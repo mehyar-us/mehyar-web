@@ -1,0 +1,12 @@
+──── mehyar.us · turn 38 · 2026-07-09 23:15 UTC ────
+VERDICT:  ship (docs-only)
+DEPLOY:   no change (live still turn-036 c33755d, main-BKU1Uoxy.js)
+SHIPPED:  1 item (rubric extension)
+
+PROJECT: mehyar.us (mehyarsoft LLC — software + AI + automation agency)
+SUGGESTED: docs-only rubric extension closes the turn-037 audit gap (4 prior audit ticks — 005, 028, 031, 034 — all missed the tier-1 pricing drift)
+DONE:      added Section G "Pricing-consistency" check to docs/QA-MEHYARSOFT-B2B-BASELINE-2026-05-11.md (rubric grew 7→8 sections A-H). New runnable probe .hermes/probe-section-G.sh captures tier-1 price from pricing-section.tsx + most-frequent $ string from MicroOffer.tsx, FAILs on mismatch. Verified FAIL this tick: `G FAIL: tier-1=$150 intake=$330` — the probe correctly catches the open drift. 4-row failure-mode catalog for future drift patterns (VISION vs pricing-section, multi-tier-routing, MicroOffer vs api-contract). Old "G. Open registry" moved to new Section H. Commits: 2b50b36 (rubric + probe + audit log) + 29e92d4 (sha backfill). Both on github main.
+TESTED:    probe-script local execution — exit 1 on drift (correct); Sections A-F unchanged byte-for-byte; live bundle still main-BKU1Uoxy.js (no src/ or scripts/ change so no CF Pages deploy)
+RESULTS:   CF Analytics: monitoring (no visitor flow change — pure docs tick)
+LEARNED:   when a prior audit misses a real drift, the right fix is usually to add the cross-check to the rubric (cheap, reversible, docs-only) rather than just patch the immediate case — the rubric is the institutional memory, the immediate patch is one-shot
+NEXT:      founder decision still pending on docs/PRICING-LADDER-DRIFT-2026-07-09.md (options A/B/C). Section G probe is the automated re-check signal — when it exits 0, the drift is closed. Telegram reply to chat 6829435996 with "ship option X" or reply on the doc unlocks turn-039.
