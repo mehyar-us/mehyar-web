@@ -125,7 +125,7 @@ export async function onRequestPost({ request, env }) {
   if (!draft) return json({ ok: false, error: "draft_not_found" }, 404);
 
   const prospect = await env.LEADS_DB.prepare(
-    `SELECT id, business_name, root_domain, website, email, contact_consent_state, status, last_contact_at FROM prospects WHERE id = ? LIMIT 1`
+    `SELECT id, business_name, root_domain, website, email, consent_state, status, last_contact_at FROM prospects WHERE id = ? LIMIT 1`
   ).bind(prospectId).first();
   if (!prospect) return json({ ok: false, error: "prospect_not_found" }, 404);
 
