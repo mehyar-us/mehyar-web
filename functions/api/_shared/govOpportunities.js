@@ -113,18 +113,46 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
 
 export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keywords = DEFAULT_KEYWORDS, limit = 40 } = {}) {
   if (!apiKey) return [];
-  const params = new URLSearchParams({
-    api_key: apiKey,
-    postedFrom: formatSamDate(dateDaysAgo(30)),
-    postedTo: formatSamDate(dateDaysAgo(0)),
-    limit: String(limit),
-    offset: "0",
-    ptype: "o,k,r,s",
-    title: keywords.slice(0, 5).join(" OR "),
-  });
-  const response = await fetchImpl(`https://api.sam.gov/opportunities/v2/search?${params.toString()}`);
-  if (!response.ok) throw new Error(`sam_${response.status}`);
-  return normalizeSamOpportunities(await response.json());
+  const endDate = new Date(Date.now() - 0 * 86400000);
+  const startDate = new Date(Date.now() - 30 * 86400000);
+  const postedTo = formatSamDate(endDate);
+  const postedFrom = formatSamDate(startDate);
+  const seen = new Set();
+  const merged = [];
+  const headers = {
+    "X-Api-Key": apiKey,           // SAM.gov v2 recommended (verified 2026-07-13)
+    "Accept": "application/json",
+  };
+  // SAM.gov v2's title= param doesn't accept OR chains or spaces — each call
+  // must be a single phrase. Loop one keyword at a time, dedupe by noticeId.
+  for (const kw of keywords.slice(0, 12)) {
+    if (merged.length >= limit * 2) break;
+    const params = new URLSearchParams({
+      postedFrom,
+      postedTo,
+      limit: String(Math.min(limit, 100)),
+      offset: "0",
+      ptype: "o,k,r,s",
+      title: kw,
+    });
+    const response = await fetchImpl(`https://api.sam.gov/opportunities/v2/search?${params.toString()}`, { headers });
+    if (!response.ok) {
+      // non-fatal: skip this keyword, continue with the next
+      console.warn(`sam.gov fetch failed for keyword ${kw}: ${response.status}`);
+      continue;
+    }
+    let json;
+    try { json = await response.json(); } catch { continue; }
+    const items = normalizeSamOpportunities(json);
+    for (const it of items) {
+      const key = `${it.source || "sam.gov"}::${it.source_id || it.noticeId || it.title}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(it);
+      if (merged.length >= limit) break;
+    }
+  }
+  return merged.slice(0, limit);
 }
 
 export function normalizeUsaspendingAwards(payload = {}) {
@@ -490,7 +518,7 @@ function deriveEvaluationFactors(opportunity, sourceRetrievedAt) {
 }
 
 function resolveSamApiKey(env = {}) {
-  return env.MEHYARSOFT_SAM_API_KEY || env.SAM_API_KEY || "";
+  return env.MEHYARSOFT_SAM_API_KEY || env.SAM_API_KEY || env.SAM_GOV_API_KEY || "";
 }
 
 function parseKeywords(value) {
