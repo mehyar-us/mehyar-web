@@ -32,7 +32,21 @@ export async function onRequestPost({ request, env }) {
     }
     env.GOV_INGEST_LIMIT = String(limit);
     const summary = await runGovOpportunityIngest({ env });
-    return jsonResponse({ ok: true, summary }, 200, request, env);
+    // Debug surface — only when explicitly requested in body
+    const debug = body?.debug === true ? {
+      env_keys: Object.keys(env || {}).filter(k => !k.startsWith("_")).sort(),
+      sam_api_key_present: Boolean(env?.SAM_GOV_API_KEY || env?.SAM_API_KEY || env?.MEHYARSOFT_SAM_API_KEY),
+      sam_api_key_lengths: {
+        MEHYARSOFT_SAM_API_KEY: env?.MEHYARSOFT_SAM_API_KEY?.length || 0,
+        SAM_API_KEY: env?.SAM_API_KEY?.length || 0,
+        SAM_GOV_API_KEY: env?.SAM_GOV_API_KEY?.length || 0,
+      },
+      llm_api_key_present: Boolean(env?.LLM_API_KEY),
+      llm_base_url: env?.LLM_BASE_URL || "",
+      llm_model: env?.LLM_MODEL || "",
+      gov_naics: env?.GOV_NAICS || "",
+    } : undefined;
+    return jsonResponse({ ok: true, summary, debug }, 200, request, env);
   } catch (error) {
     console.error("gov refresh error", { error: error?.name || "unknown", message: error?.message || "" });
     return jsonResponse({ ok: false, message: "refresh_failed", error: String(error?.message || error?.name || "unknown") }, 500, request, env);
