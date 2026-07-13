@@ -14,6 +14,7 @@ import Booking from "@/pages/Booking";
 import BillingCheckout from "@/pages/BillingCheckout";
 import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
 import Admin from "@/pages/Admin";
+import AdminProspects, { AdminProspectsProtected } from "@/pages/AdminProspects";
 import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Terms from "@/pages/Terms";
@@ -81,6 +82,7 @@ function App() {
             <Route path="/billing/success" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
             <Route path="/admin" component={Admin} />
+        <Route path="/admin/prospects" component={AdminProspectsProtected} />
             <Route path="/admin/analytics" component={Admin} />
             <Route path="/admin/newsletter" component={Admin} />
             <Route path="/admin/government" component={Admin} />

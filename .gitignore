@@ -128,3 +128,9 @@ micro-live-fresh.html
 # instead; root-level captures are working-tree noise from interrupted
 # investigation scripts.
 main-*.js
+# Loop probe Section Q temp files (turn-059): repo-local curl `-o` cache.
+# Used because the bash sandbox on this Windows + git-bash host silently
+# drops `curl -o /tmp/...` flags (write-path safety filter), which made
+# every Q run report `len=0` and FAIL the envelope check even when the
+# live API was fine. Repo-local paths work; absolute /tmp paths don't.
+.hermes/.probe-q-cache/

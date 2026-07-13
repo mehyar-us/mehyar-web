@@ -1146,6 +1146,7 @@ const Admin = () => {
   const isOpportunityScoutRoute = location.startsWith("/admin/opportunity-scout");
   const isBillingRoute = location.startsWith("/admin/billing");
   const isAnalyticsRoute = location.startsWith("/admin/analytics");
+  const isProspectsRoute = location.startsWith("/admin/prospects");
 
   useEffect(() => {
     document.title = isEmailRoute

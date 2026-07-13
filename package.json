@@ -12,6 +12,7 @@
     "deploy:pages:local": "npm run build:client && tsx scripts/deploy-pages.ts",
     "test:intake": "node scripts/test-intake-functions.mjs",
     "test:offers": "node scripts/test-offer-fulfillment.mjs",
+    "test:prospects": "node tests/test_prospect_pipeline.mjs",
     "test:gov-opportunities": "node scripts/test-gov-opportunities.mjs",
     "test:gov-drafts": "tsx scripts/test-gov-drafting-assist.mjs"
   },
