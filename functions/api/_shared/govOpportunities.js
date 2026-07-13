@@ -1,4 +1,6 @@
 import { generateGovOpportunityDraft, validateGovDraftForOwnerReview } from "./govDraftingAssist.js";
+import { generateGovOpportunityBrief, upsertGovOpportunityBrief, getGovOpportunityBrief } from "./govBriefing.js";
+import { chatJson, safeJsonParse, resolveLlmConfig } from "./llmChat.js";
 
 const SAFE_ADMIN_FAILURE = "Government opportunity admin unavailable.";
 const DEFAULT_KEYWORDS = [
@@ -29,16 +31,20 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
   const keywords = parseKeywords(env?.GOV_OPPORTUNITY_KEYWORDS);
   const samApiKey = resolveSamApiKey(env);
   const summary = {
-    run_id: runId,
-    started_at: startedAt,
-    finished_at: null,
-    usaspending: { fetched: 0, ok: false },
-    sam: { fetched: 0, skipped: !samApiKey, ok: false },
-    inserted: 0,
-    updated: 0,
-    failed: 0,
-    errors: [],
-  };
+      run_id: runId,
+      started_at: startedAt,
+      finished_at: null,
+      usaspending: { fetched: 0, ok: false },
+      sam: { fetched: 0, skipped: !samApiKey, ok: false },
+      inserted: 0,
+      updated: 0,
+      failed: 0,
+      briefs_generated: 0,
+      briefs_template: 0,
+      errors: [],
+    };
+    const llmConfig = resolveLlmConfig(env);
+    summary.llm = { model: llmConfig.model, configured: Boolean(llmConfig.apiKey) };
 
   let normalized = [];
   try {
@@ -61,15 +67,53 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
   }
 
   for (const item of normalized.slice(0, limit * 2)) {
-    try {
-      const result = await upsertGovOpportunity(env.LEADS_DB, item, runId, now);
-      if (result.action === "inserted") summary.inserted += 1;
-      if (result.action === "updated") summary.updated += 1;
-    } catch (error) {
-      summary.failed += 1;
-      summary.errors.push({ source: item.source || "unknown", error: safeErrorName(error) });
+      try {
+        const result = await upsertGovOpportunity(env.LEADS_DB, item, runId, now);
+        if (result.action === "inserted") summary.inserted += 1;
+        if (result.action === "updated") summary.updated += 1;
+        // Generate AI brief for every upserted opportunity (best-effort, never fatal)
+        try {
+          const oppRow = await env.LEADS_DB.prepare(
+            "SELECT id, title, agency, office, source, source_url, opportunity_type, set_aside, naics_codes_json, posted_date, response_deadline, estimated_value, summary FROM gov_opportunities WHERE id = ?"
+          ).bind(result.id).first();
+          if (oppRow) {
+            const deterministicFit = {
+              score: oppRow.fit_score ?? 50,
+              confidence: oppRow.confidence ?? "low",
+              why_fit: oppRow.why_fit ?? "",
+              why_not_fit: oppRow.why_not_fit ?? "",
+            };
+            const normalizedForBrief = {
+              id: oppRow.id,
+              title: oppRow.title,
+              agency: oppRow.agency,
+              office: oppRow.office,
+              source: oppRow.source,
+              source_url: oppRow.source_url,
+              opportunity_type: oppRow.opportunity_type,
+              set_aside: oppRow.set_aside,
+              naics_codes: (() => { try { return JSON.parse(oppRow.naics_codes_json || "[]"); } catch { return []; } })(),
+              posted_date: oppRow.posted_date,
+              response_deadline: oppRow.response_deadline,
+              estimated_value: oppRow.estimated_value,
+              estimated_value_usd: oppRow.estimated_value,
+              summary: oppRow.summary,
+            };
+            const { brief, used_llm, generated_by } = await generateGovOpportunityBrief({
+              env, opportunity: normalizedForBrief, deterministicFit,
+            });
+            await upsertGovOpportunityBrief(env.LEADS_DB, result.id, brief, generated_by);
+            if (used_llm) summary.briefs_generated += 1; else summary.briefs_template += 1;
+          }
+        } catch (briefErr) {
+          // Non-fatal: log and continue
+          summary.errors.push({ source: `${item.source || "unknown"}/brief`, error: safeErrorName(briefErr) });
+        }
+      } catch (error) {
+        summary.failed += 1;
+        summary.errors.push({ source: item.source || "unknown", error: safeErrorName(error) });
+      }
     }
-  }
 
   summary.finished_at = new Date().toISOString();
   await env.LEADS_DB.prepare(`INSERT INTO gov_opportunity_ingest_runs (
