@@ -103,6 +103,7 @@ async function sendViaCfEmailService(env, payload) {
 }
 
 export async function onRequestPost({ request, env }) {
+  try {
   if (!env?.LEADS_DB) return json({ ok: false, error: "missing_db" }, 500, request, env);
   const auth = await verifyAdminToken(request, env);
   if (!auth.ok) return json({ ok: false, error: auth.message }, auth.status, request, env);
@@ -214,6 +215,10 @@ export async function onRequestPost({ request, env }) {
     provider_id: sendResult.provider_id,
     error: sendResult.error || null,
   });
+  } catch (error) {
+    console.error("prospects/send crashed:", { name: error?.name, message: error?.message, stack: error?.stack });
+    return json({ ok: false, error: `internal_${error?.name || "unknown"}`, message: error?.message || String(error) }, 500, request, env);
+  }
 }
 
 export async function onRequestOptions({ request, env }) {
