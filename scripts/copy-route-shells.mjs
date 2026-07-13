@@ -23,7 +23,6 @@ const routeMeta = {
     title: 'MehyarSoft LLC | NYC Software & AI Automation Consultant',
     description:
       'Founder-led software, systems, and AI automation consulting for local businesses and regulated teams losing leads to missed calls, weak websites, manual follow-up, and disconnected tools.',
-    path: '/',
   },
   '/services': {
     title: 'Services & Pricing | MehyarSoft Software Automation Consulting',
@@ -188,6 +187,12 @@ const routeMeta = {
     path: '/unsubscribe',
     robots: 'noindex,follow',
   },
+  '/admin/prospects': {
+    title: 'Prospect Pipeline | MehyarSoft Owner Dashboard',
+    description: 'Owner-gated prospect pipeline: scan local-services businesses for site leaks, draft cold emails, approve and send via Resend with CAN-SPAM + RFC 8058 compliance.',
+    path: '/admin/prospects',
+    robots: 'noindex,noarchive',
+  },
 };
 
 const SITE_ORIGIN = 'https://mehyar.us';
@@ -284,6 +289,7 @@ const directRoutes = [
   'admin/email',
   'admin/email/thread',
   'admin/analytics',
+  'admin/prospects',
   'unsubscribe',
   'privacy-policy',
   'terms',
@@ -297,6 +303,7 @@ const adminTitles = {
   'admin/government': 'Government Opportunities | MehyarSoft',
   'admin/opportunity-scout': 'Opportunity Scout | MehyarSoft',
   'admin/analytics': 'Analytics Dashboard | MehyarSoft',
+  'admin/prospects': 'Prospect Pipeline | MehyarSoft',
 };
 
 function routeShell(route) {
