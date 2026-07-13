@@ -189,7 +189,7 @@ const routeMeta = {
   },
   '/admin/prospects': {
     title: 'Prospect Pipeline | MehyarSoft Owner Dashboard',
-    description: 'Owner-gated prospect pipeline: scan local-services businesses for site leaks, draft cold emails, approve and send via Resend with CAN-SPAM + RFC 8058 compliance.',
+    description: 'Owner-gated prospect pipeline: scan local-services businesses for site leaks, draft cold emails, approve and send via CF Email Service with CAN-SPAM + RFC 8058 compliance.',
     path: '/admin/prospects',
     robots: 'noindex,noarchive',
   },

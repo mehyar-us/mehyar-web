@@ -9,8 +9,12 @@
 import { verifyAdminToken, json, corsHeaders } from "../_shared/adminAuth.js";
 
 const PHYSICAL_ADDRESS = "MehyarSoft LLC, 3400 Coyle St, Apt 411, Elmhurst, NY 11373";
-const FROM_EMAIL_DEFAULT = "info@mehyar.us";
-const REPLY_TO_DEFAULT = "info@mehyar.us";
+// Per user direction (2026-07-13): send from mehyar@mehyar.us so replies go to a
+// person-recognizable address; info@mehyar.us remains the catch-all forward to
+// mrswelim@gmail.com per CF Email Routing. Both addresses work either way; set
+// CONTACT_FROM_EMAIL / CONTACT_REPLY_TO env vars to override.
+const FROM_EMAIL_DEFAULT = "mehyar@mehyar.us";
+const REPLY_TO_DEFAULT = "mehyar@mehyar.us";
 
 function cap(value, max) { return (value || "").length > max ? value.slice(0, max) : value; }
 
@@ -49,33 +53,53 @@ function htmlFromText(body) {
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.5;color:#111">${escaped}<p style="font-size:12px;color:#666;margin-top:24px">${PHYSICAL_ADDRESS} — <a href="https://mehyar.us/unsubscribe">Unsubscribe</a></p></div>`;
 }
 
-async function sendViaResend(env, payload) {
-  if (!env.RESEND_API_KEY) return { ok: false, status: "failed", error: "resend_key_missing" };
-  const headers = {
-    "authorization": `Bearer ${env.RESEND_API_KEY}`,
-    "content-type": "application/json",
-  };
-  if (payload.listUnsubHeader) {
-    headers["list-unsubscribe"] = payload.listUnsubHeader;
-    headers["list-unsubscribe-post"] = "List-Unsubscribe=One-Click";
+async function sendViaCfEmailService(env, payload) {
+  // CF Email Service REST API: POST /accounts/{id}/email/sending/send.
+  // Uses X-Auth-Email + X-Auth-Key (Global Key works; scoped token preferred long-term).
+  // Falls back to a scoped token if CF_EMAIL_API_KEY is set as a Pages env var.
+  const accountId = env?.CF_EMAIL_ACCOUNT_ID;
+  const authHeader = env?.CF_EMAIL_API_KEY
+    ? { "Authorization": `Bearer ${env.CF_EMAIL_API_KEY}` }
+    : { "X-Auth-Email": env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "", "X-Auth-Key": env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_API_KEY || "" };
+  if (!accountId || !authHeader["Authorization"] && !(authHeader["X-Auth-Email"] && authHeader["X-Auth-Key"])) {
+    return { ok: false, status: "failed", error: "cf_email_service_not_configured", provider_id: null };
   }
-  const r = await fetch("https://api.resend.com/emails", {
+  const headers = { "content-type": "application/json", ...authHeader };
+  const body = {
+    from: payload.from,
+    to: Array.isArray(payload.to) ? payload.to : [payload.to],
+    subject: payload.subject,
+    text: payload.text,
+    html: payload.html,
+    reply_to: payload.reply_to,
+  };
+  if (payload.bcc && payload.bcc.length) body.bcc = payload.bcc;
+  if (payload.listUnsubHeader) {
+    body.headers = {
+      "List-Unsubscribe": payload.listUnsubHeader,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "Precedence": "bulk",
+    };
+  }
+  const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      from: payload.from,
-      to: payload.to,
-      bcc: payload.bcc || undefined,
-      reply_to: payload.reply_to,
-      subject: payload.subject,
-      text: payload.text,
-      html: payload.html,
-      tags: payload.tags || [{ name: "campaign", value: "mehyar-web-cold" }],
-    }),
+    body: JSON.stringify(body),
   });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) return { ok: false, status: "failed", error: `resend_${r.status}_${(data?.message || data?.error?.message || "").toString().slice(0, 200)}`, provider_id: data?.id || null };
-  return { ok: true, status: "sent", provider_id: data?.id || null };
+  if (!r.ok) {
+    const err = data?.errors?.[0];
+    return { ok: false, status: "failed", error: `cf_email_${err?.code || r.status}_${(err?.message || "").toString().slice(0, 200)}`, provider_id: null };
+  }
+  const result = data?.result || {};
+  return {
+    ok: true,
+    status: "sent",
+    provider_id: result.message_id || null,
+    delivered: result.delivered || [],
+    queued: result.queued || [],
+    permanent_bounces: result.permanent_bounces || [],
+  };
 }
 
 export async function onRequestPost({ request, env }) {
@@ -117,7 +141,7 @@ export async function onRequestPost({ request, env }) {
     const queueId = crypto.randomUUID();
     await env.LEADS_DB.prepare(`
       INSERT INTO prospect_sends (id, prospect_id, draft_id, provider, to_email, from_email, reply_to, subject, physical_address, status, test_only, failure_reason)
-      VALUES (?, ?, ?, 'resend', ?, ?, ?, ?, ?, 'skipped_suppressed', ?, 'suppression_hit')
+      VALUES (?, ?, ?, 'cf-email', ?, ?, ?, ?, ?, 'skipped_suppressed', ?, 'suppression_hit')
     `).bind(
       queueId, prospectId, draftId,
       toEmail,
@@ -146,26 +170,21 @@ export async function onRequestPost({ request, env }) {
   const queueId = crypto.randomUUID();
   const listUnsubHeader = unsubHeaderFor(prospectId, toHash);
 
-  const sendResult = await sendViaResend(env, {
+  const sendResult = await sendViaCfEmailService(env, {
     from: env.CONTACT_FROM_EMAIL || FROM_EMAIL_DEFAULT,
     to: [toEmail],
-    bcc: testOnly ? undefined : (env.PROSPECT_TEST_BCC || null) ? [env.PROSPECT_TEST_BCC || "mrswelim@gmail.com"] : undefined,
+    bcc: testOnly ? [env.PROSPECT_TEST_BCC || "mrswelim@gmail.com"] : undefined,
     reply_to: env.CONTACT_REPLY_TO || REPLY_TO_DEFAULT,
     subject: draft.subject,
     text: draft.body_text,
     html: htmlFromText(draft.body_text),
     listUnsubHeader,
-    tags: [
-      { name: "campaign", value: "mehyar-web-cold" },
-      { name: "test_only", value: testOnly ? "1" : "0" },
-      { name: "prospect", value: prospectId.slice(0, 16) },
-    ],
   });
 
   const finalStatus = sendResult.ok ? "sent" : "failed";
   await env.LEADS_DB.prepare(`
     INSERT INTO prospect_sends (id, prospect_id, draft_id, provider, provider_id, to_email, from_email, reply_to, subject, physical_address, list_unsub_header, status, test_only, failure_reason, attempted_at, finished_at)
-    VALUES (?, ?, ?, 'resend', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, 'cf-email', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     queueId, prospectId, draftId,
     sendResult.provider_id || null,

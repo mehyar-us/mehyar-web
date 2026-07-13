@@ -138,24 +138,47 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
 }
 
 export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEFAULT_KEYWORDS, limit = 40 } = {}) {
-  const response = await fetchImpl("https://api.usaspending.gov/api/v2/search/spending_by_award/", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      filters: {
-        time_period: [{ start_date: dateDaysAgo(365), end_date: dateDaysAgo(0) }],
-        award_type_codes: ["A", "B", "C", "D"],
-        keywords: keywords.slice(0, 10),
-      },
-      fields: ["Award ID", "Recipient Name", "Awarding Agency", "Awarding Sub Agency", "Award Description", "Start Date", "End Date", "Award Amount", "NAICS Code"],
-      page: 1,
-      limit,
-      sort: "Award Amount",
-      order: "desc",
-    }),
-  });
-  if (!response.ok) throw new Error(`usaspending_${response.status}`);
-  return normalizeUsaspendingAwards(await response.json());
+  // USAspending's TLS handshake occasionally returns HTTP 525 from Cloudflare Worker
+  // egress (browser fetch works fine — it's a CF-to-CF edge handshake quirk). Retry with
+  // explicit headers + cf-bypass on the second attempt via the v1 endpoint fallback.
+  const basePayload = {
+    filters: {
+      time_period: [{ start_date: dateDaysAgo(365), end_date: dateDaysAgo(0) }],
+      award_type_codes: ["A", "B", "C", "D"],
+      keywords: keywords.slice(0, 10),
+    },
+    fields: ["Award ID", "Recipient Name", "Awarding Agency", "Awarding Sub Agency", "Award Description", "Start Date", "End Date", "Award Amount", "NAICS Code"],
+    page: 1,
+    limit,
+    sort: "Award Amount",
+    order: "desc",
+  };
+  const endpoints = [
+    "https://api.usaspending.gov/api/v2/search/spending_by_award/",
+    "https://api.usaspending.gov/api/v1/search/spending_by_award/",
+  ];
+  let lastErr;
+  for (const url of endpoints) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const response = await fetchImpl(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "accept": "application/json",
+            "user-agent": "mehyar-web/1.0 (cf-pages)",
+          },
+          body: JSON.stringify(basePayload),
+        });
+        if (!response.ok) throw new Error(`usaspending_${response.status}`);
+        return normalizeUsaspendingAwards(await response.json());
+      } catch (error) {
+        lastErr = error;
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 500 * attempt));
+      }
+    }
+  }
+  throw lastErr || new Error("usaspending_unknown_failure");
 }
 
 export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keywords = DEFAULT_KEYWORDS, limit = 40 } = {}) {
