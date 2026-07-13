@@ -139,8 +139,8 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
 
 export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEFAULT_KEYWORDS, limit = 40 } = {}) {
   // USAspending's TLS handshake occasionally returns HTTP 525 from Cloudflare Worker
-  // egress (browser fetch works fine — it's a CF-to-CF edge handshake quirk). Retry with
-  // explicit headers + cf-bypass on the second attempt via the v1 endpoint fallback.
+  // egress (CF-to-CF edge handshake quirk). Single retry with v2 → v1 fallback, no
+  // exponential backoff (Pages Functions cap at ~30s; backoff would push us over).
   const basePayload = {
     filters: {
       time_period: [{ start_date: dateDaysAgo(365), end_date: dateDaysAgo(0) }],
@@ -159,23 +159,21 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
   ];
   let lastErr;
   for (const url of endpoints) {
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        const response = await fetchImpl(url, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "accept": "application/json",
-            "user-agent": "mehyar-web/1.0 (cf-pages)",
-          },
-          body: JSON.stringify(basePayload),
-        });
-        if (!response.ok) throw new Error(`usaspending_${response.status}`);
-        return normalizeUsaspendingAwards(await response.json());
-      } catch (error) {
-        lastErr = error;
-        if (attempt < 3) await new Promise((r) => setTimeout(r, 500 * attempt));
-      }
+    try {
+      const response = await fetchImpl(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "accept": "application/json",
+          "user-agent": "mehyar-web/1.0 (cf-pages)",
+        },
+        body: JSON.stringify(basePayload),
+        cf: { cacheTtl: 0, cacheEverything: false },
+      });
+      if (!response.ok) throw new Error(`usaspending_${response.status}`);
+      return normalizeUsaspendingAwards(await response.json());
+    } catch (error) {
+      lastErr = error;
     }
   }
   throw lastErr || new Error("usaspending_unknown_failure");
@@ -195,7 +193,7 @@ export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keyword
   };
   // SAM.gov v2's title= param doesn't accept OR chains or spaces — each call
   // must be a single phrase. Loop one keyword at a time, dedupe by noticeId.
-  for (const kw of keywords.slice(0, 12)) {
+  for (const kw of keywords.slice(0, 6)) {
     if (merged.length >= limit * 2) break;
     const params = new URLSearchParams({
       postedFrom,
