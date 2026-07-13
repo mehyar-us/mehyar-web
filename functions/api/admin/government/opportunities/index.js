@@ -1,4 +1,5 @@
-import { forbidden, getGovOpportunityBrief, jsonResponse, listGovOpportunities, responseHeaders, runGovOpportunityIngest, verifyAdminRequest } from "../../../_shared/govOpportunities.js";
+import { forbidden, jsonResponse, listGovOpportunities, responseHeaders, runGovOpportunityIngest, verifyAdminRequest } from "../../../_shared/govOpportunities.js";
+import { getGovOpportunityBrief } from "../../../_shared/govBriefing.js";
 
 function clampNumber(v, lo, hi, fallback) {
   const n = parseInt(v, 10);
