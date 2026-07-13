@@ -139,8 +139,9 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
 
 export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEFAULT_KEYWORDS, limit = 40 } = {}) {
   // USAspending's TLS handshake occasionally returns HTTP 525 from Cloudflare Worker
-  // egress (CF-to-CF edge handshake quirk). Single retry with v2 → v1 fallback, no
-  // exponential backoff (Pages Functions cap at ~30s; backoff would push us over).
+  // egress (CF-to-CF edge handshake quirk). Hard-cap each request to 8s via AbortController
+  // to keep the whole refresh under the Pages Functions ~30s CPU budget; v2 → v1 fallback
+  // gives one retry path before the function gives up.
   const basePayload = {
     filters: {
       time_period: [{ start_date: dateDaysAgo(365), end_date: dateDaysAgo(0) }],
@@ -159,6 +160,8 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
   ];
   let lastErr;
   for (const url of endpoints) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
       const response = await fetchImpl(url, {
         method: "POST",
@@ -168,11 +171,13 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
           "user-agent": "mehyar-web/1.0 (cf-pages)",
         },
         body: JSON.stringify(basePayload),
-        cf: { cacheTtl: 0, cacheEverything: false },
+        signal: controller.signal,
       });
+      clearTimeout(timer);
       if (!response.ok) throw new Error(`usaspending_${response.status}`);
       return normalizeUsaspendingAwards(await response.json());
     } catch (error) {
+      clearTimeout(timer);
       lastErr = error;
     }
   }
@@ -193,7 +198,7 @@ export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keyword
   };
   // SAM.gov v2's title= param doesn't accept OR chains or spaces — each call
   // must be a single phrase. Loop one keyword at a time, dedupe by noticeId.
-  for (const kw of keywords.slice(0, 6)) {
+  for (const kw of keywords.slice(0, 4)) {                       // Trimmed from 6 → 4 to stay under CPU budget
     if (merged.length >= limit * 2) break;
     const params = new URLSearchParams({
       postedFrom,
@@ -203,7 +208,17 @@ export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keyword
       ptype: "o,k,r,s",
       title: kw,
     });
-    const response = await fetchImpl(`https://api.sam.gov/opportunities/v2/search?${params.toString()}`, { headers });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);   // 10s hard cap per SAM call
+    let response;
+    try {
+      response = await fetchImpl(`https://api.sam.gov/opportunities/v2/search?${params.toString()}`, { headers, signal: controller.signal });
+      clearTimeout(timer);
+    } catch (error) {
+      clearTimeout(timer);
+      console.warn(`sam.gov fetch failed for keyword ${kw}: ${error?.name || "unknown"}`);
+      continue;
+    }
     if (!response.ok) {
       // non-fatal: skip this keyword, continue with the next
       console.warn(`sam.gov fetch failed for keyword ${kw}: ${response.status}`);
