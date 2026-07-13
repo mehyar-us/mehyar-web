@@ -1147,6 +1147,7 @@ const Admin = () => {
   const isBillingRoute = location.startsWith("/admin/billing");
   const isAnalyticsRoute = location.startsWith("/admin/analytics");
   const isProspectsRoute = location.startsWith("/admin/prospects");
+  const isTodayRoute = location.startsWith("/admin/today");
 
   useEffect(() => {
     document.title = isEmailRoute
@@ -1641,7 +1642,8 @@ const Admin = () => {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button variant={!isEmailRoute && !isNewsletterRoute && !isGovernmentRoute && !isOpportunityScoutRoute && !isBillingRoute && !isAnalyticsRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin")}>Metrics</Button>
+                <Button variant={isTodayRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/today")}>Today</Button>
+                <Button variant={!isEmailRoute && !isNewsletterRoute && !isGovernmentRoute && !isOpportunityScoutRoute && !isBillingRoute && !isAnalyticsRoute && !isProspectsRoute && !isTodayRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin")}>Metrics</Button>
                 <Button variant={isAnalyticsRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/analytics")}>Analytics</Button>
                 <Button variant={isNewsletterRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/newsletter")}>Signups</Button>
                 <Button variant={isGovernmentRoute ? "secondary" : "outline"} onClick={() => setLocation("/admin/government")}>Government</Button>

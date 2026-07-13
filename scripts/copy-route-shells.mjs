@@ -290,6 +290,7 @@ const directRoutes = [
   'admin/email/thread',
   'admin/analytics',
   'admin/prospects',
+  'admin/today',
   'unsubscribe',
   'privacy-policy',
   'terms',
@@ -304,6 +305,7 @@ const adminTitles = {
   'admin/opportunity-scout': 'Opportunity Scout | MehyarSoft',
   'admin/analytics': 'Analytics Dashboard | MehyarSoft',
   'admin/prospects': 'Prospect Pipeline | MehyarSoft',
+  'admin/today': 'Today | MehyarSoft',
 };
 
 function routeShell(route) {
