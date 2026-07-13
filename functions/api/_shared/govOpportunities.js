@@ -30,12 +30,15 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
   const limit = clampNumber(env?.GOV_INGEST_LIMIT, 5, 100, 40);
   const keywords = parseKeywords(env?.GOV_OPPORTUNITY_KEYWORDS);
   const samApiKey = resolveSamApiKey(env);
-  const summary = {
+    console.log("[gov-refresh-debug] env-keys:", Object.keys(env || {}).filter(k => !k.startsWith("_")).sort().join(","));
+    console.log("[gov-refresh-debug] sam-prefix-check: MEHYARSOFT_SAM_API_KEY=", env?.MEHYARSOFT_SAM_API_KEY ? "set(" + env.MEHYARSOFT_SAM_API_KEY.length + ")" : "empty", " SAM_API_KEY=", env?.SAM_API_KEY ? "set" : "empty", " SAM_GOV_API_KEY=", env?.SAM_GOV_API_KEY ? "set(" + env.SAM_GOV_API_KEY.length + ")" : "empty");
+    console.log("[gov-refresh-debug] resolved samApiKey len:", samApiKey ? samApiKey.length : 0);
+    const summary = {
       run_id: runId,
       started_at: startedAt,
       finished_at: null,
-      usaspending: { fetched: 0, ok: false },
-      sam: { fetched: 0, skipped: !samApiKey, ok: false },
+      usaspending: { fetched: 0, ok: false, error: null },
+      sam: { fetched: 0, skipped: !samApiKey, ok: false, error: null },
       inserted: 0,
       updated: 0,
       failed: 0,
