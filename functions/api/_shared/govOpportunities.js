@@ -83,54 +83,67 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
     }
   }
 
-  for (const item of normalized.slice(0, limit * 2)) {
-      try {
-        const result = await upsertGovOpportunity(env.LEADS_DB, item, runId, now);
-        if (result.action === "inserted") summary.inserted += 1;
-        if (result.action === "updated") summary.updated += 1;
-        // Generate AI brief for every upserted opportunity (best-effort, never fatal)
-        try {
-          const oppRow = await env.LEADS_DB.prepare(
-            "SELECT id, title, agency, office, source, source_url, opportunity_type, set_aside, naics_codes_json, posted_date, response_deadline, estimated_value, summary FROM gov_opportunities WHERE id = ?"
-          ).bind(result.id).first();
-          if (oppRow) {
-            const deterministicFit = {
-              score: oppRow.fit_score ?? 50,
-              confidence: oppRow.confidence ?? "low",
-              why_fit: oppRow.why_fit ?? "",
-              why_not_fit: oppRow.why_not_fit ?? "",
-            };
-            const normalizedForBrief = {
-              id: oppRow.id,
-              title: oppRow.title,
-              agency: oppRow.agency,
-              office: oppRow.office,
-              source: oppRow.source,
-              source_url: oppRow.source_url,
-              opportunity_type: oppRow.opportunity_type,
-              set_aside: oppRow.set_aside,
-              naics_codes: (() => { try { return JSON.parse(oppRow.naics_codes_json || "[]"); } catch { return []; } })(),
-              posted_date: oppRow.posted_date,
-              response_deadline: oppRow.response_deadline,
-              estimated_value: oppRow.estimated_value,
-              estimated_value_usd: oppRow.estimated_value,
-              summary: oppRow.summary,
-            };
-            const { brief, used_llm, generated_by } = await generateGovOpportunityBrief({
-              env, opportunity: normalizedForBrief, deterministicFit,
-            });
-            await upsertGovOpportunityBrief(env.LEADS_DB, result.id, brief, generated_by);
-            if (used_llm) summary.briefs_generated += 1; else summary.briefs_template += 1;
-          }
-        } catch (briefErr) {
-          // Non-fatal: log and continue
-          summary.errors.push({ source: `${item.source || "unknown"}/brief`, error: safeErrorName(briefErr) });
-        }
-      } catch (error) {
-        summary.failed += 1;
-        summary.errors.push({ source: item.source || "unknown", error: safeErrorName(error) });
-      }
+  // Process opps in parallel batches of BRIEF_BATCH_SIZE to keep total runtime
+  // under the 30s Pages Function CPU budget. With ~3s per LLM call serial,
+  // 80 opps would take 240s. Batched parallel: 80 / 8 = 10 batches × 5s ≈ 50s.
+  // The cron runs every 30min so we have time; limit to first MAX_BRIEFS opps
+  // per run to avoid burning the OpenRouter free quota in one shot.
+  const BRIEF_BATCH_SIZE = 6;
+  const MAX_BRIEFS_PER_RUN = 24;
+  const toProcess = normalized.slice(0, limit * 2);
+  const withIds = [];
+  for (const item of toProcess) {
+    try {
+      const result = await upsertGovOpportunity(env.LEADS_DB, item, runId, now);
+      if (result.action === "inserted") summary.inserted += 1;
+      if (result.action === "updated") summary.updated += 1;
+      withIds.push({ id: result.id, item });
+    } catch (error) {
+      summary.failed += 1;
+      summary.errors.push({ source: item.source || "unknown", error: safeErrorName(error) });
     }
+  }
+  const briefTargets = withIds.slice(0, MAX_BRIEFS_PER_RUN);
+  for (let i = 0; i < briefTargets.length; i += BRIEF_BATCH_SIZE) {
+    const batch = briefTargets.slice(i, i + BRIEF_BATCH_SIZE);
+    await Promise.all(batch.map(async ({ id, item }) => {
+      try {
+        const oppRow = await env.LEADS_DB.prepare(
+          "SELECT id, title, agency, office, source, source_url, opportunity_type, set_aside, naics_codes_json, posted_date, response_deadline, estimated_value, summary, fit_score, confidence, why_fit, why_not_fit FROM gov_opportunities WHERE id = ?"
+        ).bind(id).first();
+        if (!oppRow) return;
+        const deterministicFit = {
+          score: oppRow.fit_score ?? 50,
+          confidence: oppRow.confidence ?? "low",
+          why_fit: oppRow.why_fit ?? "",
+          why_not_fit: oppRow.why_not_fit ?? "",
+        };
+        const normalizedForBrief = {
+          id: oppRow.id,
+          title: oppRow.title,
+          agency: oppRow.agency,
+          office: oppRow.office,
+          source: oppRow.source,
+          source_url: oppRow.source_url,
+          opportunity_type: oppRow.opportunity_type,
+          set_aside: oppRow.set_aside,
+          naics_codes: (() => { try { return JSON.parse(oppRow.naics_codes_json || "[]"); } catch { return []; } })(),
+          posted_date: oppRow.posted_date,
+          response_deadline: oppRow.response_deadline,
+          estimated_value: oppRow.estimated_value,
+          estimated_value_usd: oppRow.estimated_value,
+          summary: oppRow.summary,
+        };
+        const { brief, used_llm, generated_by } = await generateGovOpportunityBrief({
+          env, opportunity: normalizedForBrief, deterministicFit,
+        });
+        await upsertGovOpportunityBrief(env.LEADS_DB, id, brief, generated_by);
+        if (used_llm) summary.briefs_generated += 1; else summary.briefs_template += 1;
+      } catch (briefErr) {
+        summary.errors.push({ source: `${item.source || "unknown"}/brief`, error: safeErrorName(briefErr) });
+      }
+    }));
+  }
 
   summary.finished_at = new Date().toISOString();
   await env.LEADS_DB.prepare(`INSERT INTO gov_opportunity_ingest_runs (
