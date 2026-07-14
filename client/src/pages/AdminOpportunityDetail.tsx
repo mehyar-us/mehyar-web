@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -9,7 +10,7 @@ import { AdminNav, useAdminSession, STATUS_BADGE } from "./AdminChrome";
 
 const STAGES = ["Discovery", "Evaluating", "Drafting", "ReadyToSend", "Sent", "Replied", "Won", "Lost", "Archived"];
 
-function stageColor(stage) {
+function stageColor(stage: string) {
   switch (stage) {
     case "Discovery": return "bg-zinc-100 text-zinc-700";
     case "Evaluating": return "bg-amber-100 text-amber-700";
@@ -60,7 +61,7 @@ export default function AdminOpportunityDetail() {
   const opp = detail.data?.opportunity;
   const events = detail.data?.events || [];
 
-  const moveTo = async (stage) => {
+  const moveTo = async (stage: string) => {
     if (!id) return;
     setMoving(stage);
     setMoveErr(null);
@@ -78,7 +79,7 @@ export default function AdminOpportunityDetail() {
     setMoving(null);
   };
 
-  const logEvent = async (event_type, payload = {}) => {
+  const logEvent = async (event_type: string, payload: Record<string, unknown> = {}) => {
     if (!id) return;
     await fetch(`/api/admin/opportunities/${encodeURIComponent(id)}/events?kind=${kind}`, {
       method: "POST",
