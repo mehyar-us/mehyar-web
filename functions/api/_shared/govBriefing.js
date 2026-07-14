@@ -120,8 +120,9 @@ export async function generateGovOpportunityBrief({ env, opportunity, determinis
   });
 
   if (result.used_llm) {
-    console.log("[gov-brief-debug] LLM returned content[:300]:", String(result.content).slice(0, 300));
+    console.log("[gov-brief-debug] LLM model:", result.model, "content-len:", (result.content||"").length, "content[:500]:", String(result.content || "").slice(0, 500));
     const parsed = safeJsonParse(result.content, {});
+    console.log("[gov-brief-debug] parsed keys:", Object.keys(parsed || {}), "bid_decision:", parsed?.bid_decision);
     const valid =
       parsed.executive_summary && parsed.bid_decision &&
       ["go", "no-go", "watch"].includes(parsed.bid_decision);
