@@ -20,23 +20,20 @@ export async function onRequestGet({ request, env }) {
     const q = (url.searchParams.get("q") || "").slice(0, 100).trim();
     const status = (url.searchParams.get("status") || "").slice(0, 32).trim();
 
-    // Run two separate queries with explicit named binds and the simplest
-    // possible WHERE assembly. No fancy template parameter math.
-    const conds = [];
-    const qBind = q ? `%${q}%` : null;
-    const statusBind = status || null;
-    if (qBind) conds.push("(name LIKE ?q OR email LIKE ?q OR company LIKE ?q OR website LIKE ?q OR phone LIKE ?q OR message LIKE ?q)");
-    if (statusBind) conds.push("status = ?st");
-    const whereSql = conds.length ? "WHERE " + conds.join(" AND ") : "";
-
-    const limitBind = limit;
-    const offsetBind = offset;
-
-    const namedArgs = {};
-    if (qBind) namedArgs.q = qBind;
-    if (statusBind) namedArgs.st = statusBind;
-    namedArgs.lim = limitBind;
-    namedArgs.off = offsetBind;
+    // Positional binds — D1 doesn't accept object form. Keep the bind list
+    // explicit and aligned with the SQL placeholder count.
+    const args = [];
+    const placeholderQs = [];
+    if (q) {
+      placeholderQs.push("(name LIKE ? OR email LIKE ? OR company LIKE ? OR website LIKE ? OR phone LIKE ? OR message LIKE ?)");
+      const wild = `%${q}%`;
+      for (let i = 0; i < 6; i++) args.push(wild);
+    }
+    if (status) {
+      placeholderQs.push("status = ?");
+      args.push(status);
+    }
+    const whereSql = placeholderQs.length ? "WHERE " + placeholderQs.join(" AND ") : "";
 
     const rowsSql = `SELECT id, created_at, source, form_type, status,
                             name, email, phone, company, website,
@@ -45,20 +42,20 @@ export async function onRequestGet({ request, env }) {
                      FROM leads
                      ${whereSql}
                      ORDER BY created_at DESC
-                     LIMIT @lim OFFSET @off`;
+                     LIMIT ? OFFSET ?`;
+    args.push(limit, offset);
 
     let rows, totalRow;
     try {
-      rows = await env.LEADS_DB.prepare(rowsSql).bind(namedArgs).all();
+      rows = await env.LEADS_DB.prepare(rowsSql).bind(...args).all();
     } catch (inner) {
       console.error("leads list: SELECT failed", inner?.message || inner);
       return json({ ok: false, error: "leads_query_failed", details: inner?.message || String(inner) }, 500, request, env);
     }
     try {
-      const countArgs = {};
-      if (qBind) countArgs.q = qBind;
-      if (statusBind) countArgs.st = statusBind;
-      totalRow = await env.LEADS_DB.prepare(`SELECT COUNT(*) AS n FROM leads ${whereSql}`).bind(countArgs).first();
+      // Count uses only the WHERE binds (no LIMIT/OFFSET).
+      const countArgs = args.slice(0, args.length - 2);
+      totalRow = await env.LEADS_DB.prepare(`SELECT COUNT(*) AS n FROM leads ${whereSql}`).bind(...countArgs).first();
     } catch {
       totalRow = { n: (rows.results || []).length };
     }
