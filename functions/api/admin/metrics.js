@@ -2,7 +2,7 @@
 // Accepts either Pages HMAC JWT or Worker UUID token (see _shared/adminAuth.js).
 const SAFE_FAILURE = "Admin metrics unavailable.";
 
-import { verifyAdminToken, json, corsHeaders, isAllowedOrigin } from "../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders, isAllowedOrigin } from "../_shared/adminAuth.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
