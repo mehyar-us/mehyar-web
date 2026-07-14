@@ -17,8 +17,14 @@ export async function onRequestGet({ request, env }) {
 
 export async function onRequestPost({ request, env }) {
   try {
-    if (!(await verifyAdminRequest(request, env))) return forbidden(request, env);
-    const summary = await runGovOpportunityIngest({ env });
+    // Allow either admin OR a service-side X-Gov-Ingest-Token header so the
+    // mehyar-cron Worker can trigger ingest from CF scheduling without a JWT.
+    let authorized = false;
+    const headerToken = (request.headers.get("x-gov-ingest-token") || "").trim();
+    const expectedToken = (env?.GOV_INGEST_TOKEN || env?.SAM_INGEST_TOKEN || "").trim();
+    if (headerToken && expectedToken && headerToken === expectedToken) authorized = true;
+    if (!authorized && !(await verifyAdminRequest(request, env))) return forbidden(request, env);
+    const summary = await runGovOpportunityIngest({ env, now: new Date() });
     return jsonResponse({ ok: true, summary }, 200, request, env);
   } catch (error) {
     console.error("gov ingest error", { error: error?.name || "unknown" });

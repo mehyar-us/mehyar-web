@@ -1,0 +1,24 @@
+name = "mehyar-cron"
+main = "src/index.ts"
+compatibility_date = "2026-05-11"
+
+# Cron trigger — runs daily at 8:30am UTC and triggers the Pages ingest.
+# The Worker fetches the Pages endpoint with the GOV_INGEST_TOKEN header
+# (kept in env/secrets). All runs are logged in cron_runs on Pages and
+# surface at https://mehyar.us/admin → Cron Runs (no Telegram).
+
+[triggers]
+crons = ["30 8 * * *"]
+
+# Same D1 the Pages project uses, so cron_runs rows land where /admin reads.
+[[d1_databases]]
+binding = "LEADS_DB"
+database_name = "mehyar_leads_prod"
+database_id = "e4f22065-e3e8-4772-87a8-51d4976be042"
+
+[vars]
+ALLOWED_ORIGINS = "https://mehyar.us,https://www.mehyar.us"
+ENVIRONMENT = "production"
+PAGES_BASE = "https://mehyar.us"
+# Ingest trigger endpoint on Pages — owner-only; requires GOV_INGEST_TOKEN
+# posted as header `x-gov-ingest-token`.
