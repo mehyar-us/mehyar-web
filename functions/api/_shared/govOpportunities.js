@@ -30,6 +30,8 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
   const limit = clampNumber(env?.GOV_INGEST_LIMIT, 5, 100, 40);
   const keywords = parseKeywords(env?.GOV_OPPORTUNITY_KEYWORDS);
   const samApiKey = resolveSamApiKey(env);
+  // NAICS filter for SAM.gov (e.g. "541511,541512" → custom software / IT services)
+  const naicsFilter = parseNaics(env?.GOV_NAICS);
     console.log("[gov-refresh-debug] env-keys:", Object.keys(env || {}).filter(k => !k.startsWith("_")).sort().join(","));
     console.log("[gov-refresh-debug] sam-prefix-check: MEHYARSOFT_SAM_API_KEY=", env?.MEHYARSOFT_SAM_API_KEY ? "set(" + env.MEHYARSOFT_SAM_API_KEY.length + ")" : "empty", " SAM_API_KEY=", env?.SAM_API_KEY ? "set" : "empty", " SAM_GOV_API_KEY=", env?.SAM_GOV_API_KEY ? "set(" + env.SAM_GOV_API_KEY.length + ")" : "empty");
     console.log("[gov-refresh-debug] resolved samApiKey len:", samApiKey ? samApiKey.length : 0);
@@ -60,7 +62,7 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
 
   if (samApiKey) {
     try {
-      const sam = await fetchSamOpportunities({ fetchImpl, apiKey: samApiKey, keywords, limit });
+      const sam = await fetchSamOpportunities({ fetchImpl, apiKey: samApiKey, keywords, limit, naics: naicsFilter });
       summary.sam = { fetched: sam.length, skipped: false, ok: true };
       normalized = normalized.concat(sam);
     } catch (error) {
@@ -184,10 +186,15 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
   throw lastErr || new Error("usaspending_unknown_failure");
 }
 
-export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keywords = DEFAULT_KEYWORDS, limit = 40 } = {}) {
+export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keywords = DEFAULT_KEYWORDS, limit = 40, naics = [] } = {}) {
   if (!apiKey) return [];
+  // SAM.gov v2 search is keyword-bound. Use a 90-day window so we surface
+  // active (still-responding) opportunities that landed earlier in the quarter
+  // — the 30-day window was missing older set-aside / sole-source opps the
+  // owner still wants to see. (Verified 2026-07-14: bumping to 90 days roughly
+  // 3x's the deduped fetch count from SAM.)
   const endDate = new Date(Date.now() - 0 * 86400000);
-  const startDate = new Date(Date.now() - 30 * 86400000);
+  const startDate = new Date(Date.now() - 90 * 86400000);
   const postedTo = formatSamDate(endDate);
   const postedFrom = formatSamDate(startDate);
   const seen = new Set();
@@ -196,9 +203,13 @@ export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keyword
     "X-Api-Key": apiKey,           // SAM.gov v2 recommended (verified 2026-07-13)
     "Accept": "application/json",
   };
+  // NAICS filter narrows the title-search to opps in your service categories
+  // (custom software, IT services, data processing) — passing naics param
+  // directly to SAM v2 returns more relevant matches than title alone.
+  const naicsParam = Array.isArray(naics) ? naics.filter(Boolean).join(",") : "";
   // SAM.gov v2's title= param doesn't accept OR chains or spaces — each call
   // must be a single phrase. Loop one keyword at a time, dedupe by noticeId.
-  for (const kw of keywords.slice(0, 4)) {                       // Trimmed from 6 → 4 to stay under CPU budget
+  for (const kw of keywords.slice(0, 8)) {                       // Bumped 4 → 8 for better coverage
     if (merged.length >= limit * 2) break;
     const params = new URLSearchParams({
       postedFrom,
@@ -208,6 +219,7 @@ export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keyword
       ptype: "o,k,r,s",
       title: kw,
     });
+    if (naicsParam) params.set("naics", naicsParam);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);   // 10s hard cap per SAM call
     let response;
@@ -607,6 +619,11 @@ function resolveSamApiKey(env = {}) {
 function parseKeywords(value) {
   const custom = clean(value || "").split(",").map((entry) => entry.trim()).filter(Boolean);
   return custom.length ? custom.slice(0, 20) : DEFAULT_KEYWORDS;
+}
+function parseNaics(value) {
+  // GOV_NAICS is comma-separated string of NAICS codes, e.g. "541511,541512,541519"
+  if (typeof value !== "string" || !value.trim()) return [];
+  return value.split(/[,\s]+/).map((code) => code.trim()).filter((code) => /^\d{4,6}$/.test(code));
 }
 function parseJsonArray(value) { try { const parsed = JSON.parse(value || "[]"); return Array.isArray(parsed) ? parsed : []; } catch { return []; } }
 function parseJsonObject(value) { try { const parsed = JSON.parse(value || "{}"); return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {}; } catch { return {}; } }
