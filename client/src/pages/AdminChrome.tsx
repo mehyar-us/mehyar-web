@@ -42,6 +42,9 @@ export function AdminNav({ token, onLogout, isLoading, refreshFn }: {
     { key: "signups", label: "Signups", href: "/admin/newsletter" },
     { key: "government", label: "Government", href: "/admin/government" },
     { key: "scout", label: "Opportunity Scout", href: "/admin/opportunity-scout" },
+    { key: "outreach", label: "Outreach", href: "/admin/outreach" },
+    { key: "sources", label: "Sources", href: "/admin/prospect-sources" },
+    { key: "replies", label: "Replies", href: "/admin/replies" },
     { key: "billing", label: "Billing", href: "/admin/billing" },
     { key: "email", label: "Email", href: "/admin/email" },
   ];

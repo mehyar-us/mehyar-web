@@ -15,15 +15,16 @@
 -- Archived     — owner moved it aside
 
 -- ── prospects: add stage + last_touched_at (idempotent) ────────────────────────
+-- SQLite ALTER TABLE only accepts constant defaults — backfilled below.
 ALTER TABLE prospects ADD COLUMN stage TEXT NOT NULL DEFAULT 'Discovery';
-ALTER TABLE prospects ADD COLUMN last_touched_at TEXT NOT NULL DEFAULT (datetime('now'));
+ALTER TABLE prospects ADD COLUMN last_touched_at TEXT DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_prospects_stage       ON prospects(stage);
 CREATE INDEX IF NOT EXISTS idx_prospects_last_touch  ON prospects(last_touched_at);
 
 -- ── gov_opportunities: add stage + last_touched_at (idempotent) ────────────────
 ALTER TABLE gov_opportunities ADD COLUMN stage TEXT NOT NULL DEFAULT 'Discovery';
-ALTER TABLE gov_opportunities ADD COLUMN last_touched_at TEXT NOT NULL DEFAULT (datetime('now'));
+ALTER TABLE gov_opportunities ADD COLUMN last_touched_at TEXT DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_gov_opportunities_stage      ON gov_opportunities(stage);
 CREATE INDEX IF NOT EXISTS idx_gov_opportunities_last_touch ON gov_opportunities(last_touched_at);
