@@ -122,27 +122,32 @@ export async function generateGovOpportunityBrief({ env, opportunity, determinis
 
   if (result.used_llm) {
     console.log("[gov-brief-debug] LLM model:", result.model, "content-len:", (result.content||"").length, "content[:500]:", String(result.content || "").slice(0, 500));
-    const parsed = safeJsonParse(result.content, {});
-    console.log("[gov-brief-debug] parsed keys:", Object.keys(parsed || {}), "bid_decision:", parsed?.bid_decision);
-    const valid =
-      parsed.executive_summary && parsed.bid_decision &&
-      ["go", "no-go", "watch"].includes(parsed.bid_decision);
-    if (valid) {
-      return {
-        used_llm: true,
-        generated_by: result.model || "unknown",
-        brief: normalize(parsed, opportunity),
-      };
+    if (result.used_llm) {
+      const parsed = safeJsonParse(result.content, {});
+      const valid =
+        parsed.executive_summary && parsed.bid_decision &&
+        ["go", "no-go", "watch"].includes(parsed.bid_decision);
+      if (valid) {
+        return {
+          used_llm: true,
+          generated_by: result.model || "unknown",
+          brief: normalize(parsed, opportunity),
+        };
+      }
+      // LLM returned content but it didn't pass validation — surface why
+      console.log("[gov-brief-debug] validation-failed: keys=", Object.keys(parsed || {}), "bid_decision=", parsed?.bid_decision, "exec_sum_present=", Boolean(parsed.executive_summary));
+      // Fall through to template.
     }
-    // Fall through to template.
-  }
-  // Template fallback: derive a brief from the deterministic fit + the raw opp.
-  return {
-    used_llm: false,
-    generated_by: "template-fallback",
-    llm_error: result.error || (result.used_llm ? "validation_failed" : "no_llm_response"),
-    brief: normalize(templateBrief(opportunity, fitPrior), opportunity),
-  };
+    // Template fallback: derive a brief from the deterministic fit + the raw opp.
+    const fallbackError = !result.used_llm
+      ? (result.error || "no_llm_response")
+      : "validation_failed";
+    return {
+      used_llm: false,
+      generated_by: "template-fallback",
+      llm_error: fallbackError,
+      brief: normalize(templateBrief(opportunity, fitPrior), opportunity),
+    };
 }
 
 function normalize(brief, opp) {
