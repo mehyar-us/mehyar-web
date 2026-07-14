@@ -12,7 +12,7 @@
 //   }
 
 import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
-import { runScan } from "../_shared/prospectScan.js";
+import { runScan } from "../../_shared/prospectScan.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });

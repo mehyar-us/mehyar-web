@@ -3,8 +3,8 @@
 // itself is generated on each POST and stored only in the opportunity_events audit row.
 // For a richer view we recompute it on-demand using the existing pipeline helper.
 
-import { verifyAdminToken, json, corsHeaders } from "../../../../../_shared/adminAuth.js";
-import { generateAutoTenderDraft } from "../../../../../_shared/autoTenderPipeline.js";
+import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { generateAutoTenderDraft } from "../../_shared/autoTenderPipeline.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });

@@ -83,7 +83,7 @@ export default function AdminAutoTender() {
     enabled: !!openRunId && !!token,
     queryKey: ["admin-auto-tender-draft", token, openRunId],
     queryFn: async () => {
-      const r = await fetch(`/api/admin/auto-tender/runs/${encodeURIComponent(openRunId!)}/draft`, {
+      const r = await fetch(`/api/admin/auto-tender/runs/${encodeURIComponent(openRunId!)}`, {
         headers: { authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error(`${r.status}`);
