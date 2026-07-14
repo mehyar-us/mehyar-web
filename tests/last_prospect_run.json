@@ -1,0 +1,156 @@
+{
+  "seed_count": 5,
+  "run_at": "2026-07-13T03:16:41.026Z",
+  "prospects": [
+    {
+      "business_name": "NYC Dental Care",
+      "website": "https://www.nycdentalcarecenter.com",
+      "root_domain": "nycdentalcarecenter.com",
+      "signals": {
+        "status_code": 0,
+        "leak_signals": [
+          "fetch_failed"
+        ],
+        "leak_score": 0,
+        "https_ok": 1,
+        "load_time_ms": 57,
+        "page_weight_kb": 0,
+        "has_viewport": 0,
+        "has_booking_cta": 0,
+        "has_phone_click_to_call": 0,
+        "has_form_action": 0,
+        "has_email_link": 0,
+        "has_address": 0,
+        "detected_platform": "unknown",
+        "title": ""
+      },
+      "draft": {
+        "subject": "30-second review of NYC Dental Care's homepage",
+        "body": "Hi NYC Dental Care team,\n\nI run MehyarSoft LLC — founder-led consulting that helps local and service businesses stop losing customers to weak websites and slow follow-up. I'm a Senior software engineer in NYC.\n\nI checked nycdentalcarecenter.com briefly and noticed your homepage failed to load when I checked.\nIf those sound like the kind of small leaks that quietly cost calls, leads, or bookings, that's the exact kind of audit I do for $150 — a written leak map with the smallest useful next step, no agency theater.\n\nWant me to send the report? Happy to share the PDF and a few screenshots.\n\n— Mehyar Swelim\nMehyarSoft LLC\nhttps://mehyar.us · info@mehyar.us\nUnsubscribe: https://mehyar.us/unsubscribe",
+        "cited_signals": [
+          "fetch_failed"
+        ]
+      }
+    },
+    {
+      "business_name": "Concept Stone NYC",
+      "website": "https://www.conceptstone.nyc",
+      "root_domain": "conceptstone.nyc",
+      "signals": {
+        "status_code": 0,
+        "leak_signals": [
+          "fetch_failed"
+        ],
+        "leak_score": 0,
+        "https_ok": 1,
+        "load_time_ms": 14,
+        "page_weight_kb": 0,
+        "has_viewport": 0,
+        "has_booking_cta": 0,
+        "has_phone_click_to_call": 0,
+        "has_form_action": 0,
+        "has_email_link": 0,
+        "has_address": 0,
+        "detected_platform": "unknown",
+        "title": ""
+      },
+      "draft": {
+        "subject": "one leak at Concept Stone NYC",
+        "body": "Hi Concept Stone NYC team,\n\nI run MehyarSoft LLC — founder-led consulting that helps local and service businesses stop losing customers to weak websites and slow follow-up. I'm a Senior software engineer in NYC.\n\nI checked conceptstone.nyc briefly and noticed your homepage failed to load when I checked.\nIf those sound like the kind of small leaks that quietly cost calls, leads, or bookings, that's the exact kind of audit I do for $150 — a written leak map with the smallest useful next step, no agency theater.\n\nWant me to send the report? Happy to share the PDF and a few screenshots.\n\n— Mehyar Swelim\nMehyarSoft LLC\nhttps://mehyar.us · info@mehyar.us\nUnsubscribe: https://mehyar.us/unsubscribe",
+        "cited_signals": [
+          "fetch_failed"
+        ]
+      }
+    },
+    {
+      "business_name": "Big Apple Renovations",
+      "website": "https://www.bigapplerenovations.com",
+      "root_domain": "bigapplerenovations.com",
+      "signals": {
+        "status_code": 200,
+        "leak_signals": [
+          "no_phone_link",
+          "no_email_link",
+          "no_address"
+        ],
+        "leak_score": 42,
+        "https_ok": 1,
+        "load_time_ms": 2698,
+        "page_weight_kb": 59,
+        "has_viewport": 1,
+        "has_booking_cta": 1,
+        "has_phone_click_to_call": 0,
+        "has_form_action": 1,
+        "has_email_link": 0,
+        "has_address": 0,
+        "detected_platform": "wordpress",
+        "title": "Online Business Marketing Place | Big Apple Renovation"
+      },
+      "draft": {
+        "subject": "small thing I noticed on Big Apple Renovations's site",
+        "body": "Hi Big Apple Renovations team,\n\nI run MehyarSoft LLC — founder-led consulting that helps local and service businesses stop losing customers to weak websites and slow follow-up. I'm a Senior software engineer in NYC.\n\nI checked bigapplerenovations.com briefly and noticed your phone number isn't clickable to call on a phone; your site doesn't expose an email contact, and your site doesn't show a physical address (a Google ranking + trust killer).\nIf those sound like the kind of small leaks that quietly cost calls, leads, or bookings, that's the exact kind of audit I do for $150 — a written leak map with the smallest useful next step, no agency theater.\n\nWant me to send the report? Happy to share the PDF and a few screenshots.\n\n— Mehyar Swelim\nMehyarSoft LLC\nhttps://mehyar.us · info@mehyar.us\nUnsubscribe: https://mehyar.us/unsubscribe",
+        "cited_signals": [
+          "no_phone_link",
+          "no_email_link",
+          "no_address"
+        ]
+      }
+    },
+    {
+      "business_name": "Greenwich Village Therapy",
+      "website": "https://www.wallstreettherapy.com",
+      "root_domain": "wallstreettherapy.com",
+      "signals": {
+        "status_code": 200,
+        "leak_signals": [],
+        "leak_score": 0,
+        "https_ok": 1,
+        "load_time_ms": 586,
+        "page_weight_kb": 314,
+        "has_viewport": 1,
+        "has_booking_cta": 1,
+        "has_phone_click_to_call": 1,
+        "has_form_action": 1,
+        "has_email_link": 1,
+        "has_address": 1,
+        "detected_platform": "wordpress",
+        "title": "Trusted Therapy in NYC | Licensed in New York and CT"
+      },
+      "draft": {
+        "subject": "Greenwich Village Therapy — what I'd fix this week",
+        "body": "Hi Greenwich Village Therapy team,\n\nI run MehyarSoft LLC — founder-led consulting that helps local and service businesses stop losing customers to weak websites and slow follow-up. I'm a Senior software engineer in NYC.\n\nI checked wallstreettherapy.com briefly and noticed some small friction points in the booking path.\nIf those sound like the kind of small leaks that quietly cost calls, leads, or bookings, that's the exact kind of audit I do for $150 — a written leak map with the smallest useful next step, no agency theater.\n\nWant me to send the report? Happy to share the PDF and a few screenshots.\n\n— Mehyar Swelim\nMehyarSoft LLC\nhttps://mehyar.us · info@mehyar.us\nUnsubscribe: https://mehyar.us/unsubscribe",
+        "cited_signals": []
+      }
+    },
+    {
+      "business_name": "Brooklyn Family Dentist",
+      "website": "http://www.brooklynfamilydentist.com",
+      "root_domain": "brooklynfamilydentist.com",
+      "signals": {
+        "status_code": 0,
+        "leak_signals": [
+          "fetch_failed"
+        ],
+        "leak_score": 0,
+        "https_ok": 0,
+        "load_time_ms": 4068,
+        "page_weight_kb": 0,
+        "has_viewport": 0,
+        "has_booking_cta": 0,
+        "has_phone_click_to_call": 0,
+        "has_form_action": 0,
+        "has_email_link": 0,
+        "has_address": 0,
+        "detected_platform": "unknown",
+        "title": ""
+      },
+      "draft": {
+        "subject": "a quick finding on Brooklyn Family Dentist",
+        "body": "Hi Brooklyn Family Dentist team,\n\nI run MehyarSoft LLC — founder-led consulting that helps local and service businesses stop losing customers to weak websites and slow follow-up. I'm a Senior software engineer in NYC.\n\nI checked brooklynfamilydentist.com briefly and noticed your homepage failed to load when I checked.\nIf those sound like the kind of small leaks that quietly cost calls, leads, or bookings, that's the exact kind of audit I do for $150 — a written leak map with the smallest useful next step, no agency theater.\n\nWant me to send the report? Happy to share the PDF and a few screenshots.\n\n— Mehyar Swelim\nMehyarSoft LLC\nhttps://mehyar.us · info@mehyar.us\nUnsubscribe: https://mehyar.us/unsubscribe",
+        "cited_signals": [
+          "fetch_failed"
+        ]
+      }
+    }
+  ]
+}
