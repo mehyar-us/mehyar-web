@@ -31,7 +31,18 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
   const keywords = parseKeywords(env?.GOV_OPPORTUNITY_KEYWORDS);
   const samApiKey = resolveSamApiKey(env);
   // NAICS filter for SAM.gov (e.g. "541511,541512" → custom software / IT services)
-  const naicsFilter = parseNaics(env?.GOV_NAICS);
+  // Default list covers MehyarSoft's service categories. Override via GOV_NAICS env var
+  // (comma-separated). Note: as of 2026-07-14, CF Pages plain_text env vars were reading
+  // as empty at runtime even after redeploy — defaults here keep the pipeline alive.
+  const DEFAULT_NAICS = [
+    "541511", "541512", "541513", "541519",  // Custom Computer Programming Services
+    "541611", "541612", "541618", "541690",  // Management/IT Consulting
+    "541990",                                // All Other Professional/Scientific/Technical
+    "511210", "518210",                      // Software Publishers / Data Processing/Hosting
+    "541715",                                // R&D in Physical/Engineering/Life Sciences
+    "541720",                                // R&D in Social Sciences/ Humanities
+  ];
+  const naicsFilter = parseNaics(env?.GOV_NAICS).length ? parseNaics(env?.GOV_NAICS) : DEFAULT_NAICS;
     console.log("[gov-refresh-debug] env-keys:", Object.keys(env || {}).filter(k => !k.startsWith("_")).sort().join(","));
     console.log("[gov-refresh-debug] sam-prefix-check: MEHYARSOFT_SAM_API_KEY=", env?.MEHYARSOFT_SAM_API_KEY ? "set(" + env.MEHYARSOFT_SAM_API_KEY.length + ")" : "empty", " SAM_API_KEY=", env?.SAM_API_KEY ? "set" : "empty", " SAM_GOV_API_KEY=", env?.SAM_GOV_API_KEY ? "set(" + env.SAM_GOV_API_KEY.length + ")" : "empty");
     console.log("[gov-refresh-debug] resolved samApiKey len:", samApiKey ? samApiKey.length : 0);
