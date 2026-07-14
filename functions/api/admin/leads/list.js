@@ -34,11 +34,10 @@ export async function onRequestGet({ request, env }) {
       args.push(status);
     }
     const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
-    const rowsSql = `SELECT id, created_at, source, source_channel, form_type, status,
+    const rowsSql = `SELECT id, created_at, source, form_type, status,
                             name, first_name, last_name, email, phone, company, business_name,
                             website, service_interest, service_category, budget_range, timeline,
-                            zip_code, message, request_type, offer_code, consent_contact,
-                            utm_source, utm_medium, utm_campaign
+                            zip_code, message, request_type, offer_code, consent_contact
                      FROM leads
                      ${whereSql}
                      ORDER BY created_at DESC
