@@ -10,7 +10,7 @@
 //
 // All runs append to the cron_runs table so /admin can show what happened.
 
-import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
 
 const TEST_PATTERNS = [
   "acceptance",
