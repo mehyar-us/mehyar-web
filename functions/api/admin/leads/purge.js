@@ -80,11 +80,16 @@ export async function onRequestPost({ request, env }) {
     }
 
     // Real delete — chunk in case the table is large.
+    // D1 has FOREIGN KEY constraints from `lead_events.lead_id` and
+    // `lead_offer_evaluations.lead_id` to `leads.id`, so we delete from
+    // the dependent tables FIRST then delete the leads.
     let deleted = 0;
     const chunkSize = 50;
     for (let i = 0; i < ids.length; i += chunkSize) {
       const chunk = ids.slice(i, i + chunkSize);
       const placeholders = chunk.map(() => "?").join(",");
+      await env.LEADS_DB.prepare(`DELETE FROM lead_events WHERE lead_id IN (${placeholders})`).bind(...chunk).run();
+      await env.LEADS_DB.prepare(`DELETE FROM lead_offer_evaluations WHERE lead_id IN (${placeholders})`).bind(...chunk).run();
       const result = await env.LEADS_DB.prepare(`DELETE FROM leads WHERE id IN (${placeholders})`).bind(...chunk).run();
       deleted += (result?.meta?.changes || 0);
     }
