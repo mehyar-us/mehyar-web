@@ -8,8 +8,8 @@
 
 # 1b) Self-contained owner login — bypasses the SPA bundle and the service worker
 #     so a stale SW or browser extension can't break the auth flow.
+#     /owner-login  → /owner-login.html (static file, served verbatim)
 /owner-login         /owner-login.html        301
-/owner-login.html    /owner-login.html        200
 
 # 2) Cloudflare Pages SPA fallback: preserve clean direct routes for Wouter client routing.
 /*    /index.html   200
