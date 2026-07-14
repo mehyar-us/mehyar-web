@@ -20,20 +20,24 @@ export async function onRequestGet({ request, env }) {
     const q = (url.searchParams.get("q") || "").slice(0, 100).trim();
     const status = (url.searchParams.get("status") || "").slice(0, 32).trim();
 
-    // Run two separate queries instead of building conditional WHERE+bind.
-    // Cleaner, no bind-shape mismatch risk, and SQLite is fast enough for the
-    // row counts we're dealing with.
-    let where = [];
-    const args = [];
-    if (q) {
-      where.push("(name LIKE ?1 OR email LIKE ?1 OR company LIKE ?1 OR website LIKE ?1 OR phone LIKE ?1 OR message LIKE ?1)");
-      args.push(`%${q}%`);
-    }
-    if (status) {
-      where.push("status = ?2");
-      args.push(status);
-    }
-    const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
+    // Run two separate queries with explicit named binds and the simplest
+    // possible WHERE assembly. No fancy template parameter math.
+    const conds = [];
+    const qBind = q ? `%${q}%` : null;
+    const statusBind = status || null;
+    if (qBind) conds.push("(name LIKE ?q OR email LIKE ?q OR company LIKE ?q OR website LIKE ?q OR phone LIKE ?q OR message LIKE ?q)");
+    if (statusBind) conds.push("status = ?st");
+    const whereSql = conds.length ? "WHERE " + conds.join(" AND ") : "";
+
+    const limitBind = limit;
+    const offsetBind = offset;
+
+    const namedArgs = {};
+    if (qBind) namedArgs.q = qBind;
+    if (statusBind) namedArgs.st = statusBind;
+    namedArgs.lim = limitBind;
+    namedArgs.off = offsetBind;
+
     const rowsSql = `SELECT id, created_at, source, form_type, status,
                             name, email, phone, company, website,
                             service_interest, budget_range, timeline,
@@ -41,20 +45,20 @@ export async function onRequestGet({ request, env }) {
                      FROM leads
                      ${whereSql}
                      ORDER BY created_at DESC
-                     LIMIT ?3 OFFSET ?4`;
-    args.push(limit, offset);
+                     LIMIT @lim OFFSET @off`;
 
     let rows, totalRow;
     try {
-      rows = await env.LEADS_DB.prepare(rowsSql).bind(...args).all();
+      rows = await env.LEADS_DB.prepare(rowsSql).bind(namedArgs).all();
     } catch (inner) {
-      // If the leads table is missing in this D1 (older schema), surface
-      // an explicit error instead of a Worker-threw-exception 500.
       console.error("leads list: SELECT failed", inner?.message || inner);
       return json({ ok: false, error: "leads_query_failed", details: inner?.message || String(inner) }, 500, request, env);
     }
     try {
-      totalRow = await env.LEADS_DB.prepare(`SELECT COUNT(*) AS n FROM leads ${whereSql}`).bind(...args.slice(0, -2)).first();
+      const countArgs = {};
+      if (qBind) countArgs.q = qBind;
+      if (statusBind) countArgs.st = statusBind;
+      totalRow = await env.LEADS_DB.prepare(`SELECT COUNT(*) AS n FROM leads ${whereSql}`).bind(countArgs).first();
     } catch {
       totalRow = { n: (rows.results || []).length };
     }
