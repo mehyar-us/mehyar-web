@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE_URL = "";
-const DEFAULT_ADMIN_API_BASE_URL = "https://api.mehyar.us";
+const DEFAULT_ADMIN_API_BASE_URL = "/v1";
 
 export const MEHYARSOFT_API_BASE_URL = (
   import.meta.env.VITE_MEHYARSOFT_API_BASE_URL || DEFAULT_API_BASE_URL
