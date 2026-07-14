@@ -31,7 +31,11 @@ export async function onRequest({ request, env, params }) {
 
   // Build upstream URL. params.path is an array of segments for [...path]
   // or a string for [[path]].join('/') whichever it is, just turn it into a path.
-  const pathSegments = Array.isArray(params?.path) ? params.path.join("/") : (params?.path || "");
+  // The SPA bundle prepends `/v1/...` to every admin path (its hardcoded segment)
+  // AND our relay base is `/api/admin-relay`, so we end up with pathSegments
+  // starting with `v1/...`. Strip the leading `v1/` so we don't double-up.
+  const rawSegments = Array.isArray(params?.path) ? params.path.join("/") : (params?.path || "");
+  let pathSegments = rawSegments.replace(/^v1\//, "");
   const url = new URL(request.url);
   const qs = url.searchParams.toString();
   const upstreamUrl = `${WORKER_BASE}/v1/${pathSegments}${qs ? `?${qs}` : ""}`;
