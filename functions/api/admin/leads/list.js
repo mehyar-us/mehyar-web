@@ -35,9 +35,9 @@ export async function onRequestGet({ request, env }) {
     }
     const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
     const rowsSql = `SELECT id, created_at, source, form_type, status,
-                            name, first_name, last_name, email, phone, company, business_name,
-                            website, service_interest, service_category, budget_range, timeline,
-                            zip_code, message, request_type, offer_code, consent_contact
+                            name, email, phone, company, website,
+                            service_interest, budget_range, timeline,
+                            message, consent_contact, consent_marketing
                      FROM leads
                      ${whereSql}
                      ORDER BY created_at DESC
