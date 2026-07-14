@@ -126,7 +126,7 @@ export default function AdminOpportunityDetail() {
                       <>
                         {opp.agency && <div><span className="text-gray-500">Agency:</span> {opp.agency}{opp.office ? ` · ${opp.office}` : ""}</div>}
                         {opp.opportunity_type && <div><span className="text-gray-500">Type:</span> {opp.opportunity_type}</div>}
-                        {opp.set_aside && <div><span className="text-gray-500">Set-Aside:</span> {opp.set_aside}</div>}
+                        {opp.set_aside && opp.set_aside !== "" && <div><span className="text-gray-500">Set-Aside:</span> {opp.set_aside}</div>}
                         {opp.response_deadline && <div>📅 Deadline: <strong>{opp.response_deadline}</strong></div>}
                         {opp.posted_date && <div>📰 Posted: {opp.posted_date}</div>}
                         {opp.fit_score != null && <div>🎯 Fit: <strong>{opp.fit_score}</strong></div>}
@@ -174,7 +174,43 @@ export default function AdminOpportunityDetail() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Left col: deep data */}
             <div className="lg:col-span-2 space-y-4">
-              {kind === "sam" && opp.summary && (
+              {kind === "sam" && opp.brief && (
+                <Card><CardContent className="p-5">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> AI brief</h3>
+                  {opp.brief.executive_summary && (
+                    <div className="text-sm">
+                      <strong>Executive summary:</strong>
+                      <p className="mt-1 whitespace-pre-wrap">{opp.brief.executive_summary}</p>
+                    </div>
+                  )}
+                  {opp.brief.why_we_fit && <div className="mt-2 text-sm">✅ Why we fit: <span className="whitespace-pre-wrap">{opp.brief.why_we_fit}</span></div>}
+                  {opp.brief.why_we_dont_fit && <div className="mt-2 text-sm">⚠ Why we don't: <span className="whitespace-pre-wrap">{opp.brief.why_we_dont_fit}</span></div>}
+                  {opp.brief.bid_decision && <div className="mt-2 text-sm">🎯 Decision: <span className="whitespace-pre-wrap">{opp.brief.bid_decision}</span></div>}
+                  {opp.brief.next_step && <div className="mt-2 text-sm">➡️ Next step: <span className="whitespace-pre-wrap">{opp.brief.next_step}</span></div>}
+                  {Array.isArray(opp.brief.capability_match_json) && opp.brief.capability_match_json.length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Capability match</div>
+                      <div className="flex flex-wrap gap-1">
+                        {opp.brief.capability_match_json.map((c, i) => (
+                          <Badge key={i} className="bg-emerald-100 text-emerald-700">{typeof c === "string" ? c : JSON.stringify(c)}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {Array.isArray(opp.brief.risk_flags_json) && opp.brief.risk_flags_json.length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Risk flags</div>
+                      <div className="flex flex-wrap gap-1">
+                        {opp.brief.risk_flags_json.map((c, i) => (
+                          <Badge key={i} className="bg-amber-100 text-amber-700">{typeof c === "string" ? c : JSON.stringify(c)}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent></Card>
+              )}
+
+              {kind === "sam" && opp.summary && !opp.brief && (
                 <Card><CardContent className="p-5">
                   <h3 className="font-semibold mb-2 flex items-center gap-2"><FileText className="w-4 h-4" /> Summary</h3>
                   <p className="text-sm whitespace-pre-wrap">{opp.summary}</p>
@@ -266,7 +302,43 @@ export default function AdminOpportunityDetail() {
                 <Card><CardContent className="p-5">
                   <h3 className="font-semibold mb-2 flex items-center gap-2"><Mail className="w-4 h-4" /> Latest draft</h3>
                   <div className="text-sm"><strong>Subject:</strong> {opp.latestDraft.subject || "(no subject)"}</div>
-                  {opp.latestDraft.preview && <pre className="mt-2 text-xs text-gray-700 whitespace-pre-wrap bg-zinc-50 p-3 rounded">{opp.latestDraft.preview}</pre>}
+                  {opp.latestDraft.body_text && <pre className="mt-2 text-xs text-gray-700 whitespace-pre-wrap bg-zinc-50 p-3 rounded">{opp.latestDraft.body_text}</pre>}
+                  {opp.latestDraft.body_html && (
+                    <details className="mt-2">
+                      <summary className="text-blue-600 cursor-pointer text-xs">HTML body</summary>
+                      <pre className="mt-1 text-xs text-gray-700 whitespace-pre-wrap bg-zinc-50 p-3 rounded">{opp.latestDraft.body_html}</pre>
+                    </details>
+                  )}
+                </CardContent></Card>
+              )}
+
+              {kind === "prospect" && (opp.recentSends?.length > 0) && (
+                <Card><CardContent className="p-5">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2"><Send className="w-4 h-4" /> Recent sends ({opp.recentSends.length})</h3>
+                  <ul className="text-sm space-y-1">
+                    {opp.recentSends.map((s, i) => (
+                      <li key={i} className="flex items-center gap-2 text-xs">
+                        <span>{new Date(s.created_at).toLocaleDateString()}</span>
+                        <span className="font-mono">{s.status}</span>
+                        <span>{s.to_email}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent></Card>
+              )}
+
+              {kind === "prospect" && (opp.replies?.length > 0) && (
+                <Card><CardContent className="p-5">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2"><Mail className="w-4 h-4" /> Replies ({opp.replies.length})</h3>
+                  <ul className="text-sm space-y-2">
+                    {opp.replies.map((r, i) => (
+                      <li key={i} className="border-l-2 border-emerald-500 pl-2">
+                        <div className="text-xs text-gray-500">{new Date(r.received_at).toLocaleString()} · <span className="font-mono">{r.classification || "?"}</span></div>
+                        {r.subject && <div className="font-medium">{r.subject}</div>}
+                        {r.body_excerpt && <div className="text-xs text-gray-700 mt-0.5 whitespace-pre-wrap">{r.body_excerpt}</div>}
+                      </li>
+                    ))}
+                  </ul>
                 </CardContent></Card>
               )}
             </div>
