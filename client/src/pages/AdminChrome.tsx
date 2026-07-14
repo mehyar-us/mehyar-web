@@ -45,6 +45,7 @@ export function AdminNav({ token, onLogout, isLoading, refreshFn }: {
     { key: "outreach", label: "Outreach", href: "/admin/outreach" },
     { key: "sources", label: "Sources", href: "/admin/prospect-sources" },
     { key: "replies", label: "Replies", href: "/admin/replies" },
+    { key: "auto-tender", label: "🪄 Auto-tender", href: "/admin/auto-tender" },
     { key: "billing", label: "Billing", href: "/admin/billing" },
     { key: "email", label: "Email", href: "/admin/email" },
   ];

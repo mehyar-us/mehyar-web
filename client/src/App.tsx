@@ -21,6 +21,7 @@ import AdminOpportunities from "@/pages/AdminOpportunities";
 import AdminOpportunityDetail from "@/pages/AdminOpportunityDetail";
 import AdminProspectSources from "@/pages/AdminProspectSources";
 import AdminOutreach from "@/pages/AdminOutreach";
+import AdminAutoTender from "@/pages/AdminAutoTender";
 import AdminReplies from "@/pages/AdminReplies";
 import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -91,6 +92,7 @@ function App() {
             <Route path="/admin" component={Admin} />
         <Route path="/admin/prospects" component={AdminProspectsProtected} />
         <Route path="/admin/today" component={AdminToday} />
+        <Route path="/admin/auto-tender" component={AdminAutoTender} />
         <Route path="/admin/audit" component={AdminAudit} />
         <Route path="/admin/opportunities" component={AdminOpportunities} />
         <Route path="/admin/opportunities/:id" component={AdminOpportunityDetail} />
