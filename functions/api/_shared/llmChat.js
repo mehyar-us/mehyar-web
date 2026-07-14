@@ -32,7 +32,10 @@ export async function chatJson({ env, messages, max_tokens = 600, temperature = 
     max_tokens,
     temperature,
   };
-  if (json_mode) body.response_format = { type: "json_object" };
+  // response_format: { type: "json_object" } is OpenAI-specific and rejected
+  // by some OpenRouter free models (e.g. gemma-4-26b returns 400). Instead we
+  // ask for JSON in the system prompt and parse leniently in safeJsonParse.
+  if (json_mode && !model.includes("gemma")) body.response_format = { type: "json_object" };
   try {
     const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
     if (!resp.ok) {
