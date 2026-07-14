@@ -4,18 +4,19 @@ import { chatJson, safeJsonParse, resolveLlmConfig } from "./llmChat.js";
 
 const SAFE_ADMIN_FAILURE = "Government opportunity admin unavailable.";
 const DEFAULT_KEYWORDS = [
-  "software development",
-  "web application development",
-  "website modernization",
-  "workflow automation",
-  "CRM implementation",
-  "data dashboard",
-  "business intelligence",
-  "cloud migration",
-  "API integration",
-  "process automation",
-  "case management system",
-  "help desk modernization",
+  // Direct matches
+  "software", "IT services", "cloud", "data", "API", "SharePoint",
+  "intranet", "database", "SharePoint", "Power Platform",
+  // Common govt phrasing
+  "modernization", "automation", "system integration", "custom software",
+  "application development", "web development", "DevSecOps",
+  "HelpDesk", "case management", "intake", "customer relationship",
+  "CRM", "workflow", "reporting", "dashboard", "analytics",
+  "artificial intelligence", "machine learning", "blockchain",
+  "SharePoint migration", "Office 365", "Azure", "AWS",
+  "electronic records", "records management", "ehr", "EMR",
+  "LIMS", "permitting", "licensing", "case tracking",
+  "small business set-aside", "8(a)", "HUBZone", "WOSB",
 ];
 const POSITIVE_TERMS = [
   "software", "web application", "website", "modernization", "workflow", "automation", "crm", "customer relationship", "dashboard", "business intelligence", "reporting", "cloud", "api", "integration", "records management", "intake", "case management", "email", "help desk", "data", "small business", "rfi", "sources sought", "simplified acquisition", "micro-purchase"
@@ -220,7 +221,7 @@ export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keyword
   const naicsParam = Array.isArray(naics) ? naics.filter(Boolean).join(",") : "";
   // SAM.gov v2's title= param doesn't accept OR chains or spaces — each call
   // must be a single phrase. Loop one keyword at a time, dedupe by noticeId.
-  for (const kw of keywords.slice(0, 8)) {                       // Bumped 4 → 8 for better coverage
+  for (const kw of keywords.slice(0, 12)) {                       // Bumped 4 → 8 for better coverage
     if (merged.length >= limit * 2) break;
     const params = new URLSearchParams({
       postedFrom,
