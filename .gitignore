@@ -134,3 +134,4 @@ main-*.js
 # every Q run report `len=0` and FAIL the envelope check even when the
 # live API was fine. Repo-local paths work; absolute /tmp paths don't.
 .hermes/.probe-q-cache/
+workers/mehyar-cron/worker-configuration.d.ts
