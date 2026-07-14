@@ -118,6 +118,7 @@ export async function generateGovOpportunityBrief({ env, opportunity, determinis
     temperature: 0.1,
     json_mode: true,
   });
+  console.log("[gov-brief-debug] chatJson result.used_llm:", result.used_llm, "error:", result.error, "body-snippet:", (result.body || "").slice(0, 200));
 
   if (result.used_llm) {
     console.log("[gov-brief-debug] LLM model:", result.model, "content-len:", (result.content||"").length, "content[:500]:", String(result.content || "").slice(0, 500));
