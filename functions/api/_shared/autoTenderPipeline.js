@@ -298,8 +298,8 @@ function buildHeuristicCoverLetter(opp = {}, company = COMPANY_PROFILE) {
   text += "[OWNER CONFIRM BEFORE SUBMISSION: All certifications, set-aside eligibility, registration numbers ";
   text += "(UEI, SAM), past performance references, and pricing figures must be verified and confirmed before this letter is submitted.]";
   return text;
-}`;
 }
+
 
 // ── LLM Section K Generator ────────────────────────────────────────────────────
 
@@ -352,7 +352,7 @@ function buildHeuristicSectionK(opp = {}, company = COMPANY_PROFILE) {
       : `This solicitation appears to be unrestricted. ${company.name} will confirm set-aside eligibility before submission.`,
     commercial_off_the_shelf: `${company.name} does not anticipate using commercial off-the-shelf (COTS) items in a manner that would trigger COTS pricing obligations.`,
     senior_key_personnel: "[OWNER CONFIRM: List name, title, and qualifications for each key person. Even placeholders must be confirmed before submission.]",
-    owner's_certification_statement: `The undersigned certifies that the information provided in this proposal is current, accurate, and complete as of the date of submission.`,
+    owners_certification_statement: `The undersigned certifies that the information provided in this proposal is current, accurate, and complete as of the date of submission.`,
     gsa_schedule_holder: false,
     naics_representation: `NAICS ${naics} — ${company.name} represents it qualifies as a small business under this code. [OWNER CONFIRM: Verify NAICS code with SAM.gov entity registration.]`,
     owner_confirmation_required: [
