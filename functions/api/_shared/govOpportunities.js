@@ -134,11 +134,17 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
           estimated_value_usd: oppRow.estimated_value,
           summary: oppRow.summary,
         };
-        const { brief, used_llm, generated_by } = await generateGovOpportunityBrief({
+        const { brief, used_llm, generated_by, llm_error } = await generateGovOpportunityBrief({
           env, opportunity: normalizedForBrief, deterministicFit,
         });
         await upsertGovOpportunityBrief(env.LEADS_DB, id, brief, generated_by);
-        if (used_llm) summary.briefs_generated += 1; else summary.briefs_template += 1;
+        if (used_llm) summary.briefs_generated += 1; else {
+          summary.briefs_template += 1;
+          if (llm_error && summary.brief_errors_count < 3) {
+            summary.brief_errors_count = (summary.brief_errors_count || 0) + 1;
+            summary.errors.push({ source: "llm", error: String(llm_error).slice(0, 200) });
+          }
+        }
       } catch (briefErr) {
         summary.errors.push({ source: `${item.source || "unknown"}/brief`, error: safeErrorName(briefErr) });
       }

@@ -140,6 +140,7 @@ export async function generateGovOpportunityBrief({ env, opportunity, determinis
   return {
     used_llm: false,
     generated_by: "template-fallback",
+    llm_error: result.error || (result.used_llm ? "validation_failed" : "no_llm_response"),
     brief: normalize(templateBrief(opportunity, fitPrior), opportunity),
   };
 }
