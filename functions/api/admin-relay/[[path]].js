@@ -1,7 +1,8 @@
-// Catch-all proxy from /api/v1-proxy/* → https://api.mehyar.us/v1/*
+// Catch-all proxy from /api/admin-relay/* → https://api.mehyar.us/v1/*
 // Same-origin bridge for the SPA bundle. The bundle's API base is now
-// /v1 (same-origin), so the SPA fetch goes to https://mehyar.us/v1/admin/login
-// etc. — no cross-origin, no CORS preflight, no service-worker-induced failures.
+// /api/admin-relay (same-origin) so the SPA fetch goes to
+// https://mehyar.us/api/admin-relay/admin/login etc. — no cross-origin,
+// no CORS preflight, no service-worker-induced failures.
 //
 // Authorization header from the SPA (Bearer <token>) is forwarded verbatim
 // to the Worker so admin auth still gates the protected endpoints.

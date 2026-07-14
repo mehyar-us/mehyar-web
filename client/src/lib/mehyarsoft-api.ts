@@ -1,5 +1,9 @@
 const DEFAULT_API_BASE_URL = "";
-const DEFAULT_ADMIN_API_BASE_URL = "/v1";
+// API base path on the SAME ORIGIN so the browser never makes a cross-origin
+// fetch (which gets blocked by stale service workers or extensions with
+// "Failed to fetch"). Every admin call is routed through the catch-all
+// Pages Function at functions/api/admin-relay/[[path]].js.
+const DEFAULT_ADMIN_API_BASE_URL = "/api/admin-relay";
 
 export const MEHYARSOFT_API_BASE_URL = (
   import.meta.env.VITE_MEHYARSOFT_API_BASE_URL || DEFAULT_API_BASE_URL
