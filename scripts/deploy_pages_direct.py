@@ -69,7 +69,30 @@ def make_zip():
         for fp, zip_path in file_list:
             data = open(fp, "rb").read()
             sha = hashlib.sha256(data).hexdigest()
-            manifest[zip_path] = {"contentType": "application/octet-stream", "size": len(data), "sha256": sha}
+            # Cloudflare Pages requires correct content types:
+            #   .js under functions/ → application/javascript+module (runs as Pages Function)
+            #   .js under anything else (incl. assets/) → application/javascript
+            #   .html → text/html
+            #   .css → text/css
+            #   .json → application/json
+            #   everything else → application/octet-stream
+            if zip_path.startswith("functions/") and zip_path.endswith(".js"):
+                content_type = "application/javascript+module"
+            elif zip_path.endswith(".js"):
+                content_type = "application/javascript"
+            elif zip_path.endswith(".html"):
+                content_type = "text/html"
+            elif zip_path.endswith(".css"):
+                content_type = "text/css"
+            elif zip_path.endswith(".json"):
+                content_type = "application/json"
+            else:
+                content_type = "application/octet-stream"
+            manifest[zip_path] = {
+                "contentType": content_type,
+                "size": len(data),
+                "sha256": sha,
+            }
             zf.write(fp, zip_path)
         # Pages Direct Upload REQUIRES a manifest.json in the zip itself too
         manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
