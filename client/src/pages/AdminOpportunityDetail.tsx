@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, ExternalLink, ChevronLeft, Briefcase, Globe, AlertTriangle, Mail, Phone, MapPin, Clock, FileText, ListChecks, Send, CheckCircle2, History, BookmarkPlus } from "lucide-react";
+import { Loader2, ExternalLink, ChevronLeft, Briefcase, Globe, AlertTriangle, Mail, Phone, MapPin, Clock, FileText, ListChecks, Send, CheckCircle2, History, BookmarkPlus, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +87,28 @@ export default function AdminOpportunityDetail() {
       body: JSON.stringify({ event_type, payload }),
     });
     detail.refetch();
+  };
+
+  const [enriched, setEnriched] = useState<any>(null);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
+  const runEnrich = async (force = false) => {
+    if (!id) return;
+    setEnriching(true);
+    setEnrichError(null);
+    try {
+      const r = await fetch(`/api/admin/opportunities/${encodeURIComponent(id)}/enrich?kind=${kind}`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ force }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.details || data?.error || "enrich_failed");
+      setEnriched(data);
+    } catch (e) {
+      setEnrichError(String((e as Error)?.message || e));
+    }
+    setEnriching(false);
   };
 
   return (
@@ -174,6 +196,35 @@ export default function AdminOpportunityDetail() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Left col: deep data */}
             <div className="lg:col-span-2 space-y-4">
+
+              {/* 🔮 LLM review */}
+              <Card className="border-2 border-violet-300 shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h3 className="text-base font-semibold flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-violet-500" /> AI review
+                      {enriched?.cached && <span className="ml-1 text-xs font-normal text-gray-500">(cached)</span>}
+                      {enriched?.used_llm === false && <span className="ml-1 text-xs font-normal text-gray-500">(heuristic — LLM unavailable)</span>}
+                    </h3>
+                    <Button variant="cta" size="sm" onClick={() => runEnrich(false)} disabled={enriching}>
+                      {enriching ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
+                      {enriching ? "Reviewing…" : enriched ? "Refresh review" : "Run AI review"}
+                    </Button>
+                  </div>
+                  {enrichError && <div className="text-xs text-red-600">{enrichError}</div>}
+                  {!enriched && !enrichError && (
+                    <p className="text-sm text-gray-600">
+                      Press the button to ask the AI to score this {kind === "sam" ? "federal solicitation" : "prospect"} and produce a structured,
+                      emoji-rich breakdown: verdict, why-care, requirements, apply-plan, risks, next action.
+                      Result is cached and recorded in <code>opportunity_events</code>.
+                    </p>
+                  )}
+                  {enriched?.enriched && (
+                    <ReviewBody data={enriched.enriched} />
+                  )}
+                </CardContent>
+              </Card>
+
               {kind === "sam" && opp.brief && (
                 <Card><CardContent className="p-5">
                   <h3 className="font-semibold mb-2 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> AI brief</h3>
@@ -387,6 +438,110 @@ export default function AdminOpportunityDetail() {
             </div>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// ── Pretty LLM review renderer ───────────────────────────────────────────────
+function ReviewBody({ data }) {
+  if (!data) return null;
+  const score = data.score ?? null;
+  const verdictColor =
+    (data.verdict || "").includes("🟢") ? "text-emerald-600" :
+    (data.verdict || "").includes("🔴") ? "text-red-600" :
+    "text-amber-600";
+
+  return (
+    <div className="text-sm space-y-4">
+      {data.headline && (
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className={`text-xl font-bold ${verdictColor}`}>{data.verdict || "?"}</span>
+          {score != null && (
+            <span className="text-gray-500">
+              <span className="font-mono text-2xl text-gray-900">{score}</span><span className="text-gray-400">/100</span>
+            </span>
+          )}
+          <p className="text-gray-700 flex-1 min-w-[260px] leading-snug">{data.headline}</p>
+        </div>
+      )}
+
+      {Array.isArray(data.why_care) && data.why_care.length > 0 && (
+        <Section title="🎯 Why we should care" rows={data.why_care} />
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {Array.isArray(data.must_haves) && data.must_haves.length > 0 && (
+          <Section title="✅ Must-haves" rows={data.must_haves} tone="emerald" />
+        )}
+        {Array.isArray(data.nice_to_haves) && data.nice_to_haves.length > 0 && (
+          <Section title="✨ Nice-to-haves" rows={data.nice_to_haves} tone="violet" />
+        )}
+        {Array.isArray(data.risk_flags) && data.risk_flags.length > 0 && (
+          <Section title="⚠️ Risk flags" rows={data.risk_flags} tone="amber" />
+        )}
+        {(data.estimated_hours != null || data.estimated_value_usd != null || data.win_probability_pct != null) && (
+          <div className="rounded-lg bg-zinc-50 p-3 space-y-1">
+            <div className="text-xs uppercase tracking-wide text-gray-500 font-semibold">📊 Estimates</div>
+            {data.estimated_hours != null && <div>⏱️ <strong>{data.estimated_hours}h</strong> effort</div>}
+            {data.estimated_value_usd != null && <div>💰 <strong>${Number(data.estimated_value_usd).toLocaleString()}</strong> estimated value</div>}
+            {data.win_probability_pct != null && (
+              <div>
+                🏆 Win probability
+                <div className="mt-1 h-2 bg-zinc-200 rounded overflow-hidden">
+                  <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, Math.max(0, Number(data.win_probability_pct) || 0))}%` }} />
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">{data.win_probability_pct}%</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {Array.isArray(data.apply_plan) && data.apply_plan.length > 0 && (
+        <Section title="📋 Apply / outreach plan" rows={data.apply_plan} ordered />
+      )}
+
+      {Array.isArray(data.emails_to_target) && data.emails_to_target.length > 0 && (
+        <div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-1">📧 Targets</div>
+          <div className="flex flex-wrap gap-1">
+            {data.emails_to_target.map((e, i) => (
+              <a key={i} href={`mailto:${e}`} className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800 underline">{e}</a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.next_action && (
+        <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-cyan-50 p-3 border border-emerald-200">
+          <div className="text-xs uppercase tracking-wide text-emerald-700 font-semibold mb-1">➡️ Next action</div>
+          <p className="text-sm font-medium">{data.next_action}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Section({ title, rows, tone = "zinc", ordered = false }) {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const toneClass = {
+    zinc:   "bg-zinc-50 border-zinc-200",
+    emerald:"bg-emerald-50 border-emerald-200",
+    violet: "bg-violet-50 border-violet-200",
+    amber:  "bg-amber-50 border-amber-200",
+  }[tone];
+  return (
+    <div className={`rounded-lg p-3 border ${toneClass}`}>
+      <div className="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-2">{title}</div>
+      {ordered ? (
+        <ol className="space-y-1">
+          {rows.map((r, i) => <li key={i} className="flex gap-2"><span className="font-mono text-gray-500">{i + 1}.</span><span>{r}</span></li>)}
+        </ol>
+      ) : (
+        <ul className="space-y-1">
+          {rows.map((r, i) => <li key={i} className="flex gap-2"><span className="text-gray-400">•</span><span>{r}</span></li>)}
+        </ul>
       )}
     </div>
   );
