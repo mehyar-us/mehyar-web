@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, ExternalLink, ChevronLeft, RefreshCcw, Mail, Activity, Phone, MapPin, Clock, Users, Search, X, Briefcase, Globe } from "lucide-react";
+import { Loader2, ExternalLink, ChevronLeft, RefreshCcw, Mail, Activity, Phone, MapPin, Clock, Users, Search, X, Briefcase, Globe, Trash2, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -246,6 +246,47 @@ export default function AdminToday() {
     sessionStorage.removeItem(TOKEN_KEY);
     setToken(null);
   };
+
+  const [purging, setPurging] = useState<"idle" | "dryrun" | "confirm" | "done">("idle");
+  const [purgePreview, setPurgePreview] = useState<{ matched: number; totalLeads: number; preview?: any[] } | null>(null);
+  const [purgeResult, setPurgeResult] = useState<{ deleted: number; remaining: number } | null>(null);
+  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+
+  const runPurgeDryRun = async () => {
+    setPurging("dryrun");
+    setPurgePreview(null);
+    try {
+      const r = await fetch("/api/admin/leads/purge?dryRun=1", { method: "POST", headers: { authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      if (d.ok) { setPurgePreview({ matched: d.matched, totalLeads: d.totalLeads, preview: d.preview }); }
+      else { toastErr(d.details || d.error || "Purge dry-run failed"); }
+    } catch (e) { toastErr(String(e)); }
+    setPurging("idle");
+  };
+  const runPurgeForReal = async () => {
+    setPurging("confirm");
+    try {
+      const r = await fetch("/api/admin/leads/purge?confirm=DELETE", { method: "POST", headers: { authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      if (d.ok) { setPurgeResult({ deleted: d.deleted, remaining: d.remaining }); allLeadsQuery.refetch(); }
+      else { toastErr(d.details || d.error || "Purge failed"); }
+    } catch (e) { toastErr(String(e)); }
+    setPurging("idle");
+    setShowPurgeConfirm(false);
+  };
+  const toastErr = (m: string) => { console.error("[admin/today]", m); };
+
+  // Cron runs history (the worker-side ingest + purge runs show up here)
+  const cronRunsQuery = useQuery({
+    enabled: !!token,
+    queryKey: ["admin-today-cron-runs", token],
+    queryFn: async () => {
+      const r = await fetch(`/api/admin/cron/runs?limit=20`, { headers: { authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      const data = await r.json();
+      return (data.items || []) as { id: string; name: string; payload: any; created_at: string }[];
+    },
+  });
 
   const isLoading = todayQuery.isFetching || allLeadsQuery.isFetching || prospectsQuery.isFetching || govOppsQuery.isFetching;
   const refreshAll = () => {
@@ -627,6 +668,132 @@ export default function AdminToday() {
       <div className="mt-4 text-xs text-gray-500 text-center">
         Suppression list: {windowData?.suppression_total ?? 0} · prospect pipeline queued: {windowData?.prospect_pipeline.queued_now ?? 0} · unsubscribes in window: {windowData?.prospect_pipeline.unsubscribed_in_window ?? 0}
       </div>
+
+      {/* NEW: Cron Runs (Cloudflare Worker history replaces Telegram) */}
+      <Card className="mb-6 mt-6">
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Cron Runs (from Cloudflare Worker)
+              <span className="text-xs font-normal text-gray-500">({(cronRunsQuery.data || []).length})</span>
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => cronRunsQuery.refetch()} disabled={cronRunsQuery.isFetching}>
+              {cronRunsQuery.isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
+            </Button>
+          </div>
+          <div className="text-xs text-gray-500 mb-3">
+            The Cloudflare Worker <code className="bg-zinc-100 px-1 py-0.5 rounded">mehyar-cron</code> runs the daily SAM.gov ingest and writes here. No more Telegram notifications — this IS the log.
+          </div>
+          {cronRunsQuery.isError ? (
+            <div className="bg-yellow-50 border border-yellow-300 rounded p-3 text-sm text-yellow-900">
+              {String((cronRunsQuery.error as Error)?.message || cronRunsQuery.error)}
+            </div>
+          ) : (cronRunsQuery.data || []).length === 0 ? (
+            <div className="text-sm text-gray-500">No cron runs yet. Once the CF Worker fires, runs will appear here.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th className="py-2 pr-3">When</th>
+                    <th className="py-2 pr-3">Source</th>
+                    <th className="py-2 pr-3">Outcome</th>
+                    <th className="py-2 pr-3">Detail</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(cronRunsQuery.data || []).map((r) => {
+                    const p = r.payload || {};
+                    const ok = p.ok;
+                    const changed = p.deleted != null ? `${p.deleted} deleted` :
+                                    p.inserted != null ? `${p.inserted} inserted` :
+                                    p.dryRun != null ? `dryRun matched=${p.matched}` : "";
+                    return (
+                      <tr key={r.id} className="border-t border-zinc-200 dark:border-zinc-700 align-top">
+                        <td className="py-2 pr-3 text-xs text-gray-500 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                        <td className="py-2 pr-3 text-xs font-mono">{r.name}</td>
+                        <td className="py-2 pr-3"><StatusBadge s={ok === true ? "ok" : ok === false ? (p.error ? "err" : "fail") : "queued"} /></td>
+                        <td className="py-2 pr-3 text-xs">
+                          {changed && <span className="text-emerald-700">{changed}</span>}
+                          {p.error && <span className="text-red-600"> {p.error}</span>}
+                          {p.totalLeads != null && <span className="text-gray-500"> of {p.totalLeads}</span>}
+                          {p.summary && <details className="mt-1"><summary className="text-blue-600 cursor-pointer">summary</summary><pre className="mt-1 text-xs text-gray-600 whitespace-pre-wrap break-all">{JSON.stringify(p.summary, null, 2)}</pre></details>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* NEW: Lead Cleanup (purge test leads) */}
+      <Card className="mb-6">
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <Trash2 className="w-4 h-4" />
+              Lead Cleanup
+              <span className="text-xs font-normal text-gray-500">Remove test / acceptance / QA leads</span>
+            </h2>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={runPurgeDryRun} disabled={purging !== "idle"}>
+                {purging === "dryrun" ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                Preview
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowPurgeConfirm(true)} disabled={purging !== "idle" || !purgePreview}>
+                Delete matches
+              </Button>
+            </div>
+          </div>
+          {showPurgeConfirm && (
+            <div className="bg-red-50 border border-red-300 rounded p-3 mb-3 text-sm flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-semibold text-red-800">Confirm delete of {purgePreview?.matched} lead(s)?</div>
+                <div className="text-xs text-red-700 mt-1">
+                  Real-name leads (matching test patterns) and their dependent rows in <code>lead_events</code> + <code>lead_offer_evaluations</code> will be permanently removed. This is recorded in <code>cron_runs</code>. Cannot be undone.
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowPurgeConfirm(false)}>Cancel</Button>
+                  <Button variant="destructive" size="sm" onClick={runPurgeForReal} disabled={purging === "confirm"}>
+                    {purging === "confirm" ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                    Yes, delete {purgePreview?.matched} rows
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          {purgePreview && (
+            <div className="text-sm">
+              <div className="font-medium">
+                Matched {purgePreview.matched} of {purgePreview.totalLeads} leads
+                {purgeResult ? ` · Deleted ${purgeResult.deleted} · ${purgeResult.remaining} remain` : ""}
+              </div>
+              {purgePreview.preview && (
+                <ul className="mt-2 max-h-48 overflow-y-auto text-xs text-gray-700 space-y-1">
+                  {purgePreview.preview.map((r: any) => (
+                    <li key={r.id}>
+                      <span className="font-mono text-gray-500">{r.id.slice(0, 8)}</span>
+                      <span className="ml-2">{r.name || "—"}</span>
+                      <span className="ml-2 text-gray-500">{r.email}</span>
+                      <span className="ml-2"><Badge>{r.form}</Badge></span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {purgeResult && (
+            <div className="mt-2 text-xs text-emerald-700">
+              ✓ Deleted {purgeResult.deleted} leads, {purgeResult.remaining} remaining. The list above has been refreshed.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
