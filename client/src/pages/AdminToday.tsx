@@ -135,7 +135,7 @@ export default function AdminToday() {
     queryKey: ["admin-today", token, days],
     queryFn: async () => {
       const r = await fetch(`/api/admin/dashboard/today?days=${days}&limit=100`, {
-        headers: { authorization: `Bearer ${token}` },
+        headers: { authorization: *** ${token}` },
       });
       if (!r.ok) {
         if (r.status === 401) { sessionStorage.removeItem(TOKEN_KEY); setToken(null); }
