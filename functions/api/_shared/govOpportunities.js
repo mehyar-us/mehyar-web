@@ -1,6 +1,9 @@
 import { generateGovOpportunityDraft, validateGovDraftForOwnerReview } from "./govDraftingAssist.js";
 import { generateGovOpportunityBrief, upsertGovOpportunityBrief, getGovOpportunityBrief } from "./govBriefing.js";
 import { chatJson, safeJsonParse, resolveLlmConfig } from "./llmChat.js";
+// Accept Worker UUID tokens too (not just Pages HMAC JWT). Defer to the
+// shared helper which already does both shapes.
+import { verifyAdminToken } from "./adminAuth.js";
 
 const SAFE_ADMIN_FAILURE = "Government opportunity admin unavailable.";
 const DEFAULT_KEYWORDS = [
@@ -556,11 +559,11 @@ export async function writeGovEvent(db, opportunityId, eventType, actor, metadat
 }
 
 export async function verifyAdminRequest(request, env) {
-  const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  const secret = env?.ADMIN_SESSION_SECRET || env?.HMAC_SECRET || "";
-  if (!secret || !token) return false;
-  const payload = await verifyToken(token, secret);
-  return Boolean(payload?.sub);
+  // Defer to the shared adminAuth helper — it accepts both Pages HMAC JWT
+  // (payload.signature) AND Worker UUID tokens, where the previous version
+  // of this file only accepted HMAC.
+  const auth = await verifyAdminToken(request, env);
+  return Boolean(auth && auth.ok);
 }
 
 export function responseHeaders(request, env, methods = "GET, POST, OPTIONS") {
