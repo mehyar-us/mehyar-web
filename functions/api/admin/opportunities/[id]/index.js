@@ -99,7 +99,7 @@ async function getSam(env, id) {
 
   // Drafts (we may have started writing this one)
   const drafts = await env.LEADS_DB.prepare(`
-    SELECT id, opportunity_id, stage, subject, body, generated_at, owner_revised_at, generated_by, validated_for_owner_review
+    SELECT id, opportunity_id, subject, generated_at, owner_revised_at, generated_by, validated_for_owner_review
     FROM gov_application_drafts WHERE opportunity_id = ? ORDER BY generated_at DESC LIMIT 5
   `).bind(id).all();
 
