@@ -2,7 +2,7 @@
 // POST /api/admin/outreach/send-due  — approve + dispatch a specific prospect step (requires explicit approval)
 // DELETE /api/admin/outreach/send-due?id=… — cancel/skip a pending send
 
-import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "./_adminAuth_local.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });

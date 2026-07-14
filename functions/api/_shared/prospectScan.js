@@ -15,7 +15,7 @@
 // Nothing here fakes anything. No example.com. No ".test" domains.
 // Real live fetches only.
 
-import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "./adminAuth.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -223,7 +223,7 @@ function normalizeUrl(input) {
   } catch { return null; }
 }
 
-function looksLikeTestDomain(host) {
+export function looksLikeTestDomain(host) {
   if (!host) return true;
   const h = host.toLowerCase();
   return /^(www\.)?(example\.com|example\.org|example\.net|test\.com|foo\.com|bar\.com|localhost)$/.test(h)
@@ -232,7 +232,7 @@ function looksLikeTestDomain(host) {
 }
 
 // ── The actual fetch + parse ─────────────────────────────────────────────────
-async function scanOne(row, userAgent) {
+export async function scanOne(row, userAgent) {
   const start = Date.now();
   let res;
   try {
@@ -369,7 +369,7 @@ function scanSummary(s) {
   return bits.join(" · ");
 }
 
-function summarize(results) {
+export function summarize(results) {
   const r = { count: results.length, with_signals: 0, avg_leak: 0, no_ssl: 0, no_booking_cta: 0, top_hosts: [] };
   let leakSum = 0;
   for (const x of results) {

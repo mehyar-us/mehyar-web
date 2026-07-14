@@ -1,6 +1,6 @@
 // GET /api/case-studies/[slug]  — public read endpoint for a single case study
 // 404 when not found or not published.
-import { json, corsHeaders } from "../../../_shared/adminAuth.js";
+import { json, corsHeaders } from "./_adminAuth_local.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
