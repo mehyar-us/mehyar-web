@@ -16,8 +16,12 @@ import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
 import Admin from "@/pages/Admin";
 import AdminProspects, { AdminProspectsProtected } from "@/pages/AdminProspects";
 import AdminToday from "@/pages/AdminToday";
+import AdminAudit from "@/pages/AdminAudit";
 import AdminOpportunities from "@/pages/AdminOpportunities";
 import AdminOpportunityDetail from "@/pages/AdminOpportunityDetail";
+import AdminProspectSources from "@/pages/AdminProspectSources";
+import AdminOutreach from "@/pages/AdminOutreach";
+import AdminReplies from "@/pages/AdminReplies";
 import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Terms from "@/pages/Terms";
@@ -87,8 +91,12 @@ function App() {
             <Route path="/admin" component={Admin} />
         <Route path="/admin/prospects" component={AdminProspectsProtected} />
         <Route path="/admin/today" component={AdminToday} />
+        <Route path="/admin/audit" component={AdminAudit} />
         <Route path="/admin/opportunities" component={AdminOpportunities} />
         <Route path="/admin/opportunities/:id" component={AdminOpportunityDetail} />
+        <Route path="/admin/prospect-sources" component={AdminProspectSources} />
+        <Route path="/admin/outreach" component={AdminOutreach} />
+        <Route path="/admin/replies" component={AdminReplies} />
             <Route path="/admin/analytics" component={Admin} />
             <Route path="/admin/newsletter" component={Admin} />
             <Route path="/admin/government" component={Admin} />
