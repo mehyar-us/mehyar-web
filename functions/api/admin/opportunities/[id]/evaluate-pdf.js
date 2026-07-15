@@ -8,8 +8,8 @@
 //
 // Result is persisted to gov_opportunity_briefs with type='pdf_eval' and audit-logged.
 
-import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
-import { chat } from "../../_shared/llmChat.js";
+import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
+import { chat } from "../../../_shared/llmChat.js";
 
 const MAX_PDF_BYTES = 8 * 1024 * 1024;   // 8 MB cap per PDF
 const PDF_TIMEOUT_MS = 25_000;
