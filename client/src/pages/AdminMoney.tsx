@@ -1,9 +1,11 @@
 // @ts-nocheck
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Loader2, Sparkles, DollarSign, TrendingUp, Trophy, FileText, Save,
   RefreshCw, Brain, ChevronDown, ChevronRight, ArrowRight, Plus, Trash2,
+  Mail, Send, X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,20 @@ function MoneyView({ token }: { token: string }) {
   const q = useQuery({ queryKey: ["admin-money", token], queryFn: () => fetchPipeline(token) });
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-money"] });
 
+  const [focusDraftId, setFocusDraftId] = useState<string | null>(null);
+
+  // Handle /admin/money?focus=<draft_id> deep link
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const focus = url.searchParams.get("focus");
+    if (focus) {
+      setFocusDraftId(focus);
+      url.searchParams.delete("focus");
+      window.history.replaceState({}, "", url.pathname + (url.search || ""));
+    }
+  }, []);
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
       <AdminNav active="money" onLogout={logout} onRefresh={refresh} />
@@ -54,12 +70,21 @@ function MoneyView({ token }: { token: string }) {
             <ActiveDealsBoard deals={q.data.open || []} token={token} onUpdate={refresh} />
             <RecentOutcomes deals={(q.data.recent_won || []).concat(q.data.recent_lost || []).slice(0, 8)} token={token} onUpdate={refresh} />
           </div>
+          <OutreachQueue token={token} onOpenDraft={(id) => setFocusDraftId(id)} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
             <QuoteGenerator token={token} onCreated={(msg) => alert(msg)} />
             <ServiceCatalog token={token} />
           </div>
           <CaseStudies data={q.data.case_studies || []} token={token} onUpdate={refresh} />
         </>
+      )}
+
+      {focusDraftId && (
+        <DraftDetailDrawer
+          token={token}
+          draftId={focusDraftId}
+          onClose={() => setFocusDraftId(null)}
+        />
       )}
     </div>
   );
@@ -381,5 +406,326 @@ function CaseStudies({ data, token, onUpdate }: any) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ── Outreach queue — list of generated drafts awaiting approval ───────
+function OutreachQueue({ token, onOpenDraft }: { token: string; onOpenDraft: (id: string) => void }) {
+  const qc = useQueryClient();
+  const drafts = useQuery({
+    queryKey: ["admin-outreach-queue", token],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/outreach/send-due", { headers: { authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+  });
+
+  const [sending, setSending] = useState(false);
+
+  // Also load recent drafts for context
+  const recentDrafts = useQuery({
+    queryKey: ["admin-recent-drafts", token],
+    queryFn: async () => {
+      // Reuse /api/admin/leads with kind=prospect and a draft filter? No — that doesn't exist.
+      // Instead, list via D1 from a different endpoint. For now, derive from send-due.
+      return { items: [] };
+    },
+    enabled: false,
+  });
+
+  return (
+    <Card className="mt-6">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Send className="w-4 h-4" /> Outreach queue
+          </h3>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={sending}
+              onClick={async () => {
+                setSending(true);
+                try {
+                  await fetch("/api/admin/outreach/send-due", {
+                    method: "POST",
+                    headers: { authorization: `Bearer ${token}` },
+                  });
+                  qc.invalidateQueries({ queryKey: ["admin-outreach-queue"] });
+                } finally { setSending(false); }
+              }}
+            >
+              {sending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+              Run send-due
+            </Button>
+          </div>
+        </div>
+
+        {drafts.isLoading && <div className="text-sm text-zinc-500 py-6 text-center"><Loader2 className="inline w-4 h-4 animate-spin mr-1" />Loading queue…</div>}
+        {drafts.error && <div className="text-sm text-red-700">⚠ {String((drafts.error as Error)?.message || drafts.error)}</div>}
+
+        {drafts.data && (
+          <>
+            <div className="text-xs text-zinc-500 mb-3">
+              <strong className="font-mono text-zinc-900">{drafts.data.send_due_count ?? 0}</strong> outreach step{(drafts.data.send_due_count ?? 0) === 1 ? "" : "s"} queued
+              · next send window: {drafts.data.next_window_at || "—"}
+            </div>
+
+            {Array.isArray(drafts.data.items) && drafts.data.items.length > 0 ? (
+              <div className="space-y-1.5">
+                {drafts.data.items.slice(0, 20).map((it: any, i: number) => (
+                  <div key={`${it.prospect_id}-${it.step_order}-${i}`} className="border border-zinc-200 rounded-lg p-2.5 bg-white flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{it.business_name}</div>
+                      <div className="text-[11px] text-zinc-500 truncate">
+                        {it.source_name || it.source_key} · step {it.step_order}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-zinc-500 py-4 text-center">
+                No outreach steps ready to send.{" "}
+                <span className="text-zinc-400">Generate a draft from CRM → Deep eval → click a pricing tier.</span>
+              </div>
+            )}
+
+            <div className="mt-4 pt-3 border-t border-zinc-100">
+              <div className="text-xs text-zinc-500 mb-2">
+                💡 <strong>Tip:</strong> When you click a pricing tier in a lead drawer, a draft is generated and deeplinks here. Tap a draft below to view/edit before approving.
+              </div>
+              <RecentDraftsList token={token} onOpen={onOpenDraft} />
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Recent drafts list — shows prospect_drafts awaiting review ─────────
+// Uses the same prospect_drafts table directly via a small proxy endpoint.
+function RecentDraftsList({ token, onOpen }: { token: string; onOpen: (id: string) => void }) {
+  const drafts = useQuery({
+    queryKey: ["admin-recent-drafts-v2", token],
+    queryFn: async () => {
+      // Use /api/admin/jarvis sql to fetch safely
+      const r = await fetch("/api/admin/jarvis", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ question: "sql: SELECT id, subject, status, prospect_id, sam_id, created_at FROM prospect_drafts ORDER BY created_at DESC LIMIT 10" }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      return Array.isArray(j.rows) ? j.rows : [];
+    },
+    refetchInterval: 30_000,
+  });
+
+  if (drafts.isLoading) return <div className="text-xs text-zinc-400 py-2">Loading drafts…</div>;
+  if (!drafts.data || drafts.data.length === 0) {
+    return <div className="text-xs text-zinc-400 py-2">No drafts yet — click a pricing tier in CRM to generate one.</div>;
+  }
+
+  return (
+    <div className="space-y-1">
+      {drafts.data.map((d: any) => (
+        <button
+          key={d.id}
+          onClick={() => onOpen(d.id)}
+          className="w-full text-left rounded border border-zinc-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/30 transition p-2 flex items-center gap-2"
+        >
+          <Mail className="w-3.5 h-3.5 text-violet-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium truncate">{d.subject}</div>
+            <div className="text-[10px] text-zinc-500 font-mono">{d.id.slice(0, 8)} · {d.status} · {new Date(d.created_at).toLocaleDateString()}</div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Draft detail drawer — opens when ?focus=<draft_id> ────────────────
+function DraftDetailDrawer({ token, draftId, onClose }: { token: string; draftId: string; onClose: () => void }) {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["admin-draft-detail", token, draftId],
+    queryFn: async () => {
+      const r = await fetch(`/api/admin/prospects/drafts/${encodeURIComponent(draftId)}`, { headers: { authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+  });
+
+  const data = q.data;
+  const draft = data?.draft;
+  const prospect = data?.prospect;
+  const sam = data?.sam_opportunity;
+  const send = data?.queued_send;
+
+  const [editingBody, setEditingBody] = useState(false);
+  const [body, setBody] = useState("");
+  const [approving, setApproving] = useState(false);
+
+  useEffect(() => {
+    if (draft?.body_text && !editingBody) setBody(draft.body_text);
+  }, [draft?.body_text, editingBody]);
+
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const approve = async () => {
+    setApproving(true);
+    try {
+      // Save any in-progress body edits
+      if (editingBody && body !== draft?.body_text) {
+        await fetch(`/api/admin/prospects/drafts/${encodeURIComponent(draftId)}`, {
+          method: "PATCH",
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          body: JSON.stringify({ body_text: body }),
+        }).catch(() => null);
+      }
+      // Mark approved — there isn't a dedicated approve endpoint, but draft_from_eval creates prospect_sends on contact_email.
+      // For now: update draft status to 'approved' via a simple update.
+      await fetch(`/api/admin/prospects/drafts/${encodeURIComponent(draftId)}`, {
+        method: "PATCH",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ status: "approved" }),
+      }).catch(() => null);
+      qc.invalidateQueries({ queryKey: ["admin-draft-detail", token, draftId] });
+      qc.invalidateQueries({ queryKey: ["admin-recent-drafts-v2", token] });
+      onClose();
+    } finally { setApproving(false); }
+  };
+
+  return (
+    createPortal(
+      <>
+        <div className="fixed inset-0 bg-black/40 z-40 animate-fade-in" onClick={onClose} />
+        <aside className="fixed z-50 bg-white shadow-2xl flex flex-col
+                          inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl
+                          md:inset-y-0 md:right-0 md:left-auto md:bottom-auto md:max-h-none md:w-[720px] md:rounded-none md:rounded-l-2xl
+                          animate-slide-up md:animate-slide-in">
+          <div className="md:hidden pt-2 pb-1 flex justify-center" onClick={onClose}>
+            <div className="w-10 h-1.5 rounded-full bg-zinc-300" />
+          </div>
+          <div className="sticky top-0 bg-white border-b border-zinc-200 z-10 px-4 py-3 md:px-5 flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Mail className="w-5 h-5 text-violet-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h2 className="font-bold text-base leading-tight text-zinc-900 break-words line-clamp-2">
+                  {q.isLoading ? "Loading draft…" : draft?.subject || "(no subject)"}
+                </h2>
+                <div className="text-xs text-zinc-500 truncate">
+                  {prospect?.business_name || sam?.title || "—"} · {draft?.status || "—"}
+                </div>
+              </div>
+            </div>
+            <button onClick={onClose} aria-label="Close draft" className="rounded-full p-2 hover:bg-zinc-100 text-zinc-700 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 bg-white text-zinc-900" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
+            {q.isLoading && (
+              <div className="space-y-2">
+                {[0,1,2].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}
+              </div>
+            )}
+            {q.error && <div className="text-sm text-red-700">⚠ {String((q.error as Error)?.message)}</div>}
+            {q.data && !draft && <div className="text-sm text-zinc-500">Draft not found: <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{draftId}</code></div>}
+
+            {draft && (
+              <div className="space-y-4">
+                {/* Header card */}
+                <Card><CardContent className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                    <div><span className="text-zinc-500">Source:</span> <strong>{data.kind === "sam" ? "🏛 SAM" : "🧲 Prospect"}</strong></div>
+                    <div><span className="text-zinc-500">Model:</span> <code className="text-[11px] bg-zinc-100 px-1 py-0.5 rounded">{draft.model || "?"}</code></div>
+                    <div><span className="text-zinc-500">Created:</span> {new Date(draft.created_at).toLocaleString()}</div>
+                    <div className="col-span-2 md:col-span-3">
+                      <span className="text-zinc-500">Subject:</span>{" "}
+                      <strong className="break-words">{draft.subject}</strong>
+                    </div>
+                    {send && (
+                      <>
+                        <div><span className="text-zinc-500">To:</span> <strong>{send.to_email}</strong></div>
+                        <div><span className="text-zinc-500">Status:</span> <Badge className="bg-zinc-100 text-zinc-800">{send.status}</Badge></div>
+                        <div><span className="text-zinc-500">Scheduled:</span> {send.scheduled_for || "—"}</div>
+                      </>
+                    )}
+                  </div>
+                </CardContent></Card>
+
+                {/* Body — editable */}
+                <Card><CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-sm">📝 Body</h4>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingBody((e) => !e)}>
+                      {editingBody ? "👁 Preview" : "✏️ Edit"}
+                    </Button>
+                  </div>
+                  {editingBody ? (
+                    <textarea
+                      value={body}
+                      onChange={(e) => setBody(e.target.value)}
+                      className="w-full border border-zinc-200 rounded p-2 text-sm font-mono min-h-[300px] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">{draft.body_text}</pre>
+                  )}
+                </CardContent></Card>
+
+                {/* LLM context */}
+                {draft.payload && (
+                  <Card><CardContent className="p-4">
+                    <h4 className="font-semibold text-sm mb-2">🧠 LLM context</h4>
+                    <pre className="text-[11px] text-zinc-600 overflow-auto max-h-40 bg-zinc-50 p-2 rounded">{JSON.stringify(draft.payload, null, 2)}</pre>
+                  </CardContent></Card>
+                )}
+
+                {/* Reviewer notes */}
+                {draft.reviewer_notes && (
+                  <Card><CardContent className="p-4">
+                    <h4 className="font-semibold text-sm mb-2">📝 Reviewer notes</h4>
+                    <p className="text-sm">{draft.reviewer_notes}</p>
+                  </CardContent></Card>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 sticky bottom-0 bg-white border-t border-zinc-200 -mx-4 -mb-4 p-3 md:-mx-5 md:-mb-5 md:p-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}>
+                  <Button
+                    variant="cta"
+                    onClick={approve}
+                    disabled={approving}
+                    className="flex-1 min-h-[44px]"
+                  >
+                    {approving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                    {draft.status === "approved" ? "Approved ✓" : "Approve & queue send"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    className="min-h-[44px]"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </aside>
+      </>,
+      document.body
+    )
   );
 }

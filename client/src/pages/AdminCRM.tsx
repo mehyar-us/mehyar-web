@@ -752,7 +752,7 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
         if (j.draft_id) {
           setTimeout(() => {
             if (confirm("Open this draft in the outreach queue?")) {
-              window.location.href = `/admin/outreach?focus=${j.draft_id}`;
+              window.location.href = `/admin/money?focus=${j.draft_id}`;
             }
           }, 200);
         }
