@@ -104,8 +104,10 @@ JSON only: {"subject": "...", "body": "..."}`;
   let emailBody = `Hi ${contactName},\n\nSaw that ${businessName} ${(lead.root_domain || businessName).includes(".") ? `(${lead.root_domain}) ` : ""}could use a focused ${svcStr.toLowerCase()} — most teams your size see the biggest ROI from exactly this kind of engagement.\n\nI run a one-person software/cloud/AI studio. The ${tierStr} tier ($${priceStr}) covers:\n${scopeList.map((s) => `  • ${s}`).join("\n")}\n\n15 minutes is enough to know if it's a fit: https://mehyar.us/book\n\nMehyar`;
 
   let used_llm = false;
+  let llm_model = null;
+  let llm;
   try {
-    const llm = await chatJson({
+    llm = await chatJson({
       env,
       messages: [
         { role: "system", content: systemPrompt },
@@ -121,6 +123,7 @@ JSON only: {"subject": "...", "body": "..."}`;
         subject = String(parsed.subject).slice(0, 200);
         emailBody = String(parsed.body).slice(0, 1600);
         used_llm = true;
+        llm_model = llm.model || null;
       }
     }
   } catch (e) {
@@ -179,7 +182,7 @@ JSON only: {"subject": "...", "body": "..."}`;
       // body_html — simple HTML version with same body (no images for cold email)
       emailBody.replace(/\n/g, "<br/>"),
       llm.used_llm ? "model" : "fallback_template",
-      llm.model || null,
+      llm_model,
       payload
     ).run();
 
