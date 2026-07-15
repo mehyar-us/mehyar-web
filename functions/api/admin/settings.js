@@ -4,7 +4,7 @@
 //
 // Stores in INTAKE_KV under `settings:<key>`. Owner-only.
 
-import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "../_shared/adminAuth.js";
 
 const MAX_VALUE_BYTES = 8000; // protect against giant blobs
 
