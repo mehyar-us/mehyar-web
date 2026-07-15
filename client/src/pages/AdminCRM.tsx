@@ -335,22 +335,22 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
           <div className="md:hidden pt-2 pb-1 flex justify-center" onClick={onClose}>
             <div className="w-10 h-1.5 rounded-full bg-zinc-300" />
           </div>
-          {/* Drawer header */}
-          <div className="sticky top-0 bg-white border-b z-10 px-4 py-3 md:px-5 flex items-center gap-3">
+          {/* Drawer header — explicit dark text + bg so it stays readable even when html.dark is set */}
+          <div className="sticky top-0 bg-white border-b border-zinc-200 z-10 px-4 py-3 md:px-5 flex items-center gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="text-xl shrink-0">{kind === "sam" ? "🏛" : "🧲"}</div>
               <div className="flex-1 min-w-0">
-                <h2 className="font-bold text-base leading-tight truncate">{opp.title || "Loading…"}</h2>
+                <h2 className="font-bold text-base leading-tight text-zinc-900 break-words line-clamp-2">{opp.title || "Loading…"}</h2>
                 <div className="text-xs text-zinc-500 truncate">{opp.agency || opp.root_domain || "—"}</div>
               </div>
             </div>
-            <button onClick={onClose} aria-label="Close drawer" className="rounded-full p-2 hover:bg-zinc-100 text-zinc-500 min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <button onClick={onClose} aria-label="Close drawer" className="rounded-full p-2 hover:bg-zinc-100 text-zinc-700 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Drawer body */}
-          <div className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
+          <div className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 bg-white text-zinc-900" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
             {q.isLoading && (
               <div className="space-y-2">
                 {[0,1,2].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}

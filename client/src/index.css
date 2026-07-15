@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force light mode on admin pages — the admin uses raw light-mode Tailwind
+   classes that render dark-on-dark when the .dark class is present. */
+html.force-light, html.force-light body { background: #ffffff !important; color: #09090b !important; }
+html.force-light .dark\:bg-zinc-900, html.force-light .dark\:bg-zinc-950, html.force-light .dark\:bg-zinc-800 { background-color: #ffffff !important; }
+html.force-light .dark\:text-zinc-100, html.force-light .dark\:text-zinc-200, html.force-light .dark\:text-zinc-300 { color: #09090b !important; }
+html.force-light .dark\:text-zinc-400, html.force-light .dark\:text-zinc-500 { color: #71717a !important; }
+html.force-light .dark\:border-zinc-700, html.force-light .dark\:border-zinc-800 { border-color: #e4e4e7 !important; }
+
 @layer base {
   :root {
     --background: 43 33% 96%;
@@ -138,6 +146,9 @@
   .animate-slide-in {
     animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   }
+  .animate-slide-up {
+    animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
   .animate-pulse-soft {
     animation: pulseSoft 1.5s ease-in-out infinite;
   }
@@ -150,6 +161,10 @@
 @keyframes slideIn {
   from { transform: translateX(100%); }
   to   { transform: translateX(0); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
 @keyframes pulseSoft {
   0%, 100% { opacity: 1; }
