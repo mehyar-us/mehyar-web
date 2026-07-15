@@ -66,7 +66,7 @@ function SystemView({ token }: { token: string }) {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
       <AdminNav active="system" onLogout={logout} onRefresh={refresh} />
 
       <div className="mb-5">
@@ -247,9 +247,47 @@ function SettingsPanel({ token }: { token: string }) {
   const [model, setModel] = useState("@cf/meta/llama-3.2-3b-instruct");
   const [emailFrom, setEmailFrom] = useState("leads@mehyar.us");
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load existing settings
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/admin/settings", { headers: { authorization: `Bearer ${token}` } });
+        const j = await r.json();
+        if (j.ok && j.settings) {
+          if (typeof j.settings.llm_model === "string") setModel(j.settings.llm_model);
+          if (typeof j.settings.email_from === "string") setEmailFrom(j.settings.email_from);
+          setLoaded(true);
+        }
+      } catch (e) {
+        setError(String((e as any)?.message || e));
+      }
+    })();
+  }, [token]);
+
+  const save = async () => {
+    setSaving(true); setError(null); setSavedAt(null);
+    try {
+      const r = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ settings: { llm_model: model, email_from: emailFrom } }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "save failed");
+      setSavedAt(new Date().toLocaleTimeString());
+    } catch (e) {
+      setError(String((e as any)?.message || e));
+    } finally { setSaving(false); }
+  };
+
   return (
     <Card><CardContent className="p-5">
       <h3 className="font-semibold flex items-center gap-2 mb-3"><ShieldCheck className="w-4 h-4" /> Settings</h3>
+      {!loaded && <div className="text-xs text-zinc-500 mb-2"><Loader2 className="inline w-3 h-3 animate-spin mr-1" />Loading…</div>}
       <div className="space-y-3 text-sm max-w-xl">
         <div>
           <label className="text-xs text-zinc-500">Default LLM model</label>
@@ -260,12 +298,12 @@ function SettingsPanel({ token }: { token: string }) {
           <label className="text-xs text-zinc-500">From address (outbound emails)</label>
           <Input value={emailFrom} onChange={(e) => setEmailFrom(e.target.value)} className="text-sm" />
         </div>
-        <Button disabled={saving} onClick={async () => {
-          setSaving(true);
-          try {
-            await fetch("/api/admin/settings", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ llm_model: model, email_from: emailFrom }) });
-          } finally { setSaving(false); }
-        }}><Save className="w-4 h-4 mr-1" />{saving ? "Saving…" : "Save"}</Button>
+        <Button disabled={saving} onClick={save}>
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+          {saving ? "Saving…" : "Save"}
+        </Button>
+        {savedAt && <p className="text-xs text-emerald-700">✓ Saved at {savedAt}</p>}
+        {error && <p className="text-xs text-red-700">⚠ {error}</p>}
         <p className="text-xs text-zinc-500 pt-2">Settings take effect on the next scheduled cron run.</p>
       </div>
     </CardContent></Card>

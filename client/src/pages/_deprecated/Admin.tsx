@@ -44,7 +44,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import AdminOpportunityScout from "@/pages/AdminOpportunityScout";
+import AdminOpportunityScout from "@/pages/_deprecated/AdminOpportunityScout";
 import {
   AdminAnalyticsDiagnosticsResponse,
   AdminAnalyticsOverview,

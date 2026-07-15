@@ -1,4 +1,5 @@
 import { Router, Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
 import Services from "@/pages/Services";
@@ -13,22 +14,12 @@ import MicroOffer from "@/pages/MicroOffer";
 import Booking from "@/pages/Booking";
 import BillingCheckout from "@/pages/BillingCheckout";
 import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
-import Admin from "@/pages/Admin";
 import QuoteView from "@/pages/QuoteView";
 import AdminNow from "@/pages/AdminNow";
 import AdminCRM from "@/pages/AdminCRM";
 import AdminMoney from "@/pages/AdminMoney";
 import AdminSystem from "@/pages/AdminSystem";
-// legacy pages kept around for backwards-compatible deep-links, but routed away in the SPA nav
-import AdminProspects, { AdminProspectsProtected } from "@/pages/AdminProspects";
-import AdminToday from "@/pages/AdminToday";
-import AdminAudit from "@/pages/AdminAudit";
-import AdminOpportunities from "@/pages/AdminOpportunities";
-import AdminOpportunityDetail from "@/pages/AdminOpportunityDetail";
-import AdminProspectSources from "@/pages/AdminProspectSources";
-import AdminOutreach from "@/pages/AdminOutreach";
-import AdminAutoTender from "@/pages/AdminAutoTender";
-import AdminReplies from "@/pages/AdminReplies";
+import AdminOpportunityDetail from "@/pages/_deprecated/AdminOpportunityDetail";
 import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Terms from "@/pages/Terms";
@@ -37,7 +28,33 @@ import NotFound from "@/pages/not-found";
 import MainLayout from "@/layouts/MainLayout";
 import SeoManager from "@/components/SeoManager";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
-import { useEffect } from "react";
+
+// ── Custom redirect component ─────────────────────────────────────────
+// wouter's built-in <Redirect to="/x" /> does an exact-path match.
+// We need PATTERN-based redirects like /admin/opportunities/:id → /admin/leads/sam/:id
+// so this component matches the `href` pattern and rewrites to `to` with captured params.
+function Redirect({ to, href }: { to: string; href: string }) {
+  const [location, setLocation] = useLocation();
+  useEffect(() => {
+    const paramNames: string[] = [];
+    const re = new RegExp(
+      "^" + href.replace(/:[a-zA-Z_]+/g, (m) => {
+        paramNames.push(m.slice(1));
+        return "([^/]+)";
+      }) + "$"
+    );
+    const m = location.match(re);
+    if (m) {
+      let target = to;
+      m.slice(1).forEach((val, i) => {
+        target = target.replace(`:${paramNames[i]}`, val);
+      });
+      setLocation(target, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
+  return null;
+}
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -101,23 +118,23 @@ function App() {
             <Route path="/admin/leads/:kind/:id" component={AdminOpportunityDetail} />
             <Route path="/admin/money" component={AdminMoney} />
             <Route path="/admin/system" component={AdminSystem} />
-        <Route path="/admin/prospects" component={AdminProspectsProtected} />
-        <Route path="/admin/today" component={AdminToday} />
-        <Route path="/admin/auto-tender" component={AdminAutoTender} />
-        <Route path="/admin/audit" component={AdminAudit} />
-        <Route path="/admin/opportunities" component={AdminOpportunities} />
-        <Route path="/admin/opportunities/:id" component={AdminOpportunityDetail} />
-        <Route path="/admin/prospect-sources" component={AdminProspectSources} />
-        <Route path="/admin/outreach" component={AdminOutreach} />
-        <Route path="/admin/replies" component={AdminReplies} />
-            <Route path="/admin/analytics" component={Admin} />
-            <Route path="/admin/newsletter" component={Admin} />
-            <Route path="/admin/government" component={Admin} />
-            <Route path="/admin/government/:opportunityId" component={Admin} />
-            <Route path="/admin/opportunity-scout" component={Admin} />
-            <Route path="/admin/billing" component={Admin} />
-            <Route path="/admin/email" component={Admin} />
-            <Route path="/admin/email/thread/:threadId" component={Admin} />
+            <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects" />
+            <Redirect to="/admin" href="/admin/today" />
+            <Redirect to="/admin/money" href="/admin/auto-tender" />
+            <Redirect to="/admin/system" href="/admin/audit" />
+            <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities" />
+            <Redirect to="/admin/leads/sam/:id" href="/admin/opportunities/:id" />
+            <Redirect to="/admin/leads?sources=1" href="/admin/prospect-sources" />
+            <Redirect to="/admin/money" href="/admin/outreach" />
+            <Redirect to="/admin/leads" href="/admin/replies" />
+            <Redirect to="/admin/system" href="/admin/analytics" />
+            <Redirect to="/admin/system" href="/admin/newsletter" />
+            <Redirect to="/admin/leads?kind=sam" href="/admin/government" />
+            <Redirect to="/admin/leads/sam/:opportunityId" href="/admin/government/:opportunityId" />
+            <Redirect to="/admin/leads" href="/admin/opportunity-scout" />
+            <Redirect to="/admin/money" href="/admin/billing" />
+            <Redirect to="/admin/leads" href="/admin/email" />
+            <Redirect to="/admin/leads" href="/admin/email/thread/:threadId" />
             <Route path="/unsubscribe" component={Unsubscribe} />
             <Route path="/privacy-policy" component={PrivacyPolicy} />
             <Route path="/terms" component={Terms} />

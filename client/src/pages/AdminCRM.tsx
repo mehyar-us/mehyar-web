@@ -79,12 +79,13 @@ function CrmView({ token }: { token: string }) {
   }, []);
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
       <AdminNav active="crm" onLogout={logout} onRefresh={refresh} />
 
       <div className="mb-5 space-y-3">
         <JarvisBar token={token} placeholder="Try: 'count prospects by city', 'promote all leak>70', 'enrich a0daf6…'" />
         <AiDailySuggestions token={token} onOpen={(id, kind) => openDrawer(id, kind)} />
+        <BusinessScanner token={token} onUpdate={refresh} />
       </div>
 
       {/* Toolbar */}
@@ -317,29 +318,39 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
     queryFn: () => fetchDetail(token, kind, id),
   });
   const opp = q.data?.opportunity || {};
+  const [busyPdf, setBusyPdf] = useState(false);
   const refreshDetail = () => qc.invalidateQueries({ queryKey: ["admin-lead-detail"] });
 
   return (
     createPortal(
       <>
-        <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-        <aside className="fixed top-0 right-0 bottom-0 w-full sm:w-[640px] md:w-[720px] bg-white shadow-2xl z-50 flex flex-col animate-slide-in">
+        <div className="fixed inset-0 bg-black/40 z-40 animate-fade-in" onClick={onClose} />
+        {/* MOBILE: bottom-sheet (full-width, slide up from bottom, max 90vh)
+            DESKTOP (md+): right-side drawer (720px wide) */}
+        <aside className="fixed z-50 bg-white shadow-2xl flex flex-col
+                          inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl
+                          md:inset-y-0 md:right-0 md:left-auto md:bottom-auto md:max-h-none md:w-[720px] md:rounded-none md:rounded-l-2xl
+                          animate-slide-up md:animate-slide-in">
+          {/* Bottom-sheet handle (mobile only) */}
+          <div className="md:hidden pt-2 pb-1 flex justify-center" onClick={onClose}>
+            <div className="w-10 h-1.5 rounded-full bg-zinc-300" />
+          </div>
           {/* Drawer header */}
-          <div className="sticky top-0 bg-white border-b z-10 px-5 py-3 flex items-center gap-3">
+          <div className="sticky top-0 bg-white border-b z-10 px-4 py-3 md:px-5 flex items-center gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="text-xl">{kind === "sam" ? "🏛" : "🧲"}</div>
+              <div className="text-xl shrink-0">{kind === "sam" ? "🏛" : "🧲"}</div>
               <div className="flex-1 min-w-0">
                 <h2 className="font-bold text-base leading-tight truncate">{opp.title || "Loading…"}</h2>
                 <div className="text-xs text-zinc-500 truncate">{opp.agency || opp.root_domain || "—"}</div>
               </div>
             </div>
-            <button onClick={onClose} className="rounded-full p-1.5 hover:bg-zinc-100 text-zinc-500">
+            <button onClick={onClose} aria-label="Close drawer" className="rounded-full p-2 hover:bg-zinc-100 text-zinc-500 min-h-[44px] min-w-[44px] flex items-center justify-center">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Drawer body */}
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
             {q.isLoading && (
               <div className="space-y-2">
                 {[0,1,2].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}
@@ -376,7 +387,38 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
 
                   {kind === "sam" && opp.attachments?.length > 0 && (
                     <Card><CardContent className="p-4">
-                      <h4 className="text-sm font-semibold mb-2">📎 Attachments ({opp.attachments.length})</h4>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-semibold">📎 Attachments ({opp.attachments.length})</h4>
+                        <Button
+                          size="sm"
+                          variant="cta"
+                          disabled={busyPdf}
+                          onClick={async () => {
+                            setBusyPdf(true);
+                            try {
+                              const r = await fetch(`/api/admin/opportunities/${encodeURIComponent(id)}/evaluate-pdf`, {
+                                method: "POST",
+                                headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+                                body: JSON.stringify({ mode: "all" }),
+                              });
+                              const j = await r.json();
+                              if (j.ok && j.aggregate) {
+                                onAction(`📄 PDF eval done — fit ${j.aggregate.best_fit_score}/100 · ${j.aggregate.recommended_services?.[0]?.name || ""}`);
+                                if (j.aggregate.suggested_tiers?.length) {
+                                  alert(`📄 PDF eval fit: ${j.aggregate.best_fit_score}/100\n\nTop services:\n${j.aggregate.recommended_services?.map(s => `• ${s.name}: ${s.rationale}`).join("\n") || "(none)"}\n\nPricing tiers:\n${j.aggregate.suggested_tiers.map(t => `• ${t.name}: $${t.price_usd?.toLocaleString()} — ${t.scope}`).join("\n")}\n\nNext: ${j.aggregate.aggregate_summary?.slice(0, 300)}`);
+                                }
+                                refreshDetail();
+                              } else {
+                                onAction(`PDF eval failed: ${j.error || "unknown"}`);
+                              }
+                            } finally { setBusyPdf(false); }
+                          }}
+                          className="min-h-[44px]"
+                        >
+                          {busyPdf ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Brain className="w-3 h-3 mr-1" />}
+                          Evaluate PDFs
+                        </Button>
+                      </div>
                       <ul className="text-sm space-y-1">
                         {opp.attachments.map((a: any, i: number) => (
                           <li key={i}><a href={a.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">{a.name}</a> {a.type && <span className="text-xs text-zinc-500">· {a.type}</span>}</li>
@@ -441,6 +483,102 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
       </>,
       document.body
     )
+  );
+}
+
+// ── Business scanner ──────────────────────────────────────────────────
+// POST /api/admin/prospects/scan-businesses — find SMBs in a vertical/city,
+// scan their websites for leak signals, optionally auto-draft top picks.
+function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [vertical, setVertical] = useState("");
+  const [city, setCity] = useState("");
+  const [maxResults, setMaxResults] = useState(10);
+  const [autoDraftTop, setAutoDraftTop] = useState(2);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  const submit = async () => {
+    setBusy(true);
+    setResult(null);
+    try {
+      const r = await fetch("/api/admin/prospects/scan-businesses", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          vertical: vertical || undefined,
+          city: city || undefined,
+          max_results: maxResults,
+          auto_draft_top: autoDraftTop,
+        }),
+      });
+      const j = await r.json();
+      setResult(j);
+      if (j.ok && j.scanned > 0) onUpdate?.();
+    } catch (e) {
+      setResult({ ok: false, error: String(e?.message || e) });
+    } finally { setBusy(false); }
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="w-full text-left rounded-lg border border-dashed border-zinc-300 hover:border-emerald-400 hover:bg-emerald-50/30 transition p-3 flex items-center gap-2 text-sm text-zinc-600">
+        <Search className="w-4 h-4 text-emerald-600" />
+        <span className="font-medium text-emerald-700">🧲 Scan for businesses that need our services</span>
+        <span className="text-xs text-zinc-500 ml-auto">vertical + city → leak_score → auto-draft</span>
+      </button>
+    );
+  }
+
+  return (
+    <Card className="border-emerald-300 bg-gradient-to-r from-emerald-50/40 via-white to-cyan-50/40">
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2 text-sm">
+            <Search className="w-4 h-4 text-emerald-600" />
+            🧲 Scan for businesses
+          </h3>
+          <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <Input placeholder="vertical (e.g. dental)" value={vertical} onChange={(e) => setVertical(e.target.value)} className="text-sm" />
+          <Input placeholder="city (e.g. Brooklyn)" value={city} onChange={(e) => setCity(e.target.value)} className="text-sm" />
+          <Input type="number" min={1} max={30} value={maxResults} onChange={(e) => setMaxResults(Number(e.target.value) || 10)} className="text-sm" placeholder="max results" />
+          <Input type="number" min={0} max={5} value={autoDraftTop} onChange={(e) => setAutoDraftTop(Number(e.target.value) || 0)} className="text-sm" placeholder="auto-draft top N" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="cta" onClick={submit} disabled={busy} className="min-h-[44px]">
+            {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+            {busy ? "Scanning…" : "Scan & draft top picks"}
+          </Button>
+          <span className="text-xs text-zinc-500">Filters DB prospects by vertical/city, hits their sites, scores them by leak signals (no SSL, no booking, no form, slow), then drafts the top N.</span>
+        </div>
+        {result && (
+          <div className={`text-xs rounded p-2 ${result.ok ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"}`}>
+            {result.ok ? (
+              <>
+                <div className="font-semibold text-emerald-800">✓ Scanned {result.scanned} · drafted {result.drafted}</div>
+                {result.top_picks && result.top_picks.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {result.top_picks.slice(0, 5).map((p: any) => (
+                      <li key={p.id} className="flex items-center gap-2 text-zinc-700">
+                        <span className="font-medium truncate flex-1">{p.business_name}</span>
+                        <span className="font-mono text-red-700">leak {p.leak_score}</span>
+                        {p.drafted && <Badge className="bg-violet-100 text-violet-800 text-[10px]">drafted</Badge>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {result.scanned === 0 && <div className="mt-1 text-zinc-600">No matching prospects in DB. Add some first, or broaden filters.</div>}
+              </>
+            ) : (
+              <span className="text-red-700">⚠ {result.error || "Scan failed"}</span>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -53,7 +53,7 @@ function NowView({ token }: { token: string }) {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
       <AdminNav active="now" onLogout={logout} onRefresh={refresh} />
 
       {/* Top — Jarvis + Greeting + clock */}

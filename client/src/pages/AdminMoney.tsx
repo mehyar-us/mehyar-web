@@ -31,7 +31,7 @@ function MoneyView({ token }: { token: string }) {
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-money"] });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
       <AdminNav active="money" onLogout={logout} onRefresh={refresh} />
 
       <div className="mb-5">

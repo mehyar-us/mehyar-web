@@ -70,45 +70,87 @@ const TABS = [
 export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|"money"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
   const [, setLocation] = useLocation();
   return (
-    <div className="sticky top-0 z-30 backdrop-blur bg-white/85 border-b border-zinc-200 -mx-6 -mt-6 px-6 py-3 mb-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 mr-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold">M</div>
-          <div>
-            <div className="font-semibold leading-tight">MehyarSoft</div>
-            <div className="text-[10px] text-zinc-500 leading-tight">Admin · 2026</div>
+    <>
+      {/* Desktop nav — sticky horizontal bar with overflow-x scroll for narrow screens */}
+      <div className="sticky top-0 z-30 hidden md:block backdrop-blur bg-white/85 border-b border-zinc-200 -mx-6 -mt-6 px-6 py-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold">M</div>
+            <div>
+              <div className="font-semibold leading-tight whitespace-nowrap">MehyarSoft</div>
+              <div className="text-[10px] text-zinc-500 leading-tight whitespace-nowrap">Admin · 2026</div>
+            </div>
+          </div>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-2 px-2">
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              const isActive = active === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setLocation(t.href)}
+                  className={`group flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition shrink-0 whitespace-nowrap min-h-[44px] ${
+                    isActive
+                      ? "bg-zinc-900 text-white"
+                      : "text-zinc-700 hover:bg-zinc-100"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            {onRefresh && (
+              <Button variant="ghost" size="sm" onClick={onRefresh} className="min-h-[44px] min-w-[44px]"><RefreshCw className="w-4 h-4" /></Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onLogout} className="min-h-[44px]"><LogOut className="w-4 h-4 mr-1" />Logout</Button>
           </div>
         </div>
-        <div className="flex gap-1">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const isActive = active === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setLocation(t.href)}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                  isActive
-                    ? "bg-zinc-900 text-white"
-                    : "text-zinc-700 hover:bg-zinc-100"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{t.label}</span>
-              </button>
-            );
-          })}
+      </div>
+
+      {/* Mobile nav — top header + bottom tab bar (iPhone-safe with safe-area-inset-bottom) */}
+      <div className="md:hidden">
+        <div className="sticky top-0 z-30 backdrop-blur bg-white/90 border-b border-zinc-200 -mx-4 -mt-4 px-4 py-2 mb-3 flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-sm">M</div>
+          <div className="font-semibold text-sm">MehyarSoft</div>
+          <div className="text-[10px] text-zinc-500 ml-1">{TABS.find(t => t.key === active)?.label || ""}</div>
+          <div className="ml-auto flex items-center gap-1">
+            {onRefresh && (
+              <Button variant="ghost" size="sm" onClick={onRefresh} className="h-10 w-10 p-0"><RefreshCw className="w-4 h-4" /></Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onLogout} className="h-10 w-10 p-0"><LogOut className="w-4 h-4" /></Button>
+          </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          {onRefresh && (
-            <Button variant="ghost" size="sm" onClick={onRefresh}><RefreshCw className="w-4 h-4" /></Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={onLogout}><LogOut className="w-4 h-4 mr-1" />Logout</Button>
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-zinc-200" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="flex justify-around items-stretch">
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              const isActive = active === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setLocation(t.href)}
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition ${
+                    isActive ? "text-emerald-600" : "text-zinc-500"
+                  }`}
+                  aria-label={t.label}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? "scale-110" : ""} transition`} />
+                  <span className="text-[10px] font-medium">{t.label.replace(/^\S+\s/, "")}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
+
+// Helper hook — pages should pad bottom content above the fixed mobile tab bar
+export const MOBILE_NAV_HEIGHT = "calc(56px + env(safe-area-inset-bottom, 0px))";
 
 // ── Jarvis command bar — every page can drop one in ───────────────────────
 export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "Ask Jarvis · try 'count prospects last 7d', 'enrich a0daf6…', or 'sql: select *…'" }: { token: string; onResult?: (r: any) => void; defaultQuery?: string; placeholder?: string; }) {
@@ -310,7 +352,7 @@ export function LoginGate({ onLogin }: { onLogin: (t: string) => void }) {
 
 // ── App-level guard (wraps an entire tab) ────────────────────────────────
 export function AdminGate({ children }: { children: (token: string) => React.ReactNode }) {
-  const { token, isLoggedIn, login, logout } = useAdminSession();
+  const { token, isLoggedIn, login } = useAdminSession();
   if (!isLoggedIn) return <LoginGate onLogin={login} />;
-  return <>{children(token!)}{logout && <></>}</>;
+  return <>{children(token!)}</>;
 }

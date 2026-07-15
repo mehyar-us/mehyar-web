@@ -74,15 +74,36 @@ export async function onRequestPost({ request, env }) {
   if (job === "all" || job === "outreach") {
     try {
       const rows = await env.LEADS_DB.prepare(`
-        SELECT p.id AS prospect_id, p.business_name, s.name AS source_name, os.step_order
+        SELECT p.id AS prospect_id, p.business_name, s.name AS source_name, os.step_order, p.source AS source_key
         FROM prospects p
-        JOIN prospect_sources s ON s.id = p.source AND s.active = 1
-        JOIN outreach_steps os ON os.source_id = s.id AND os.active = 1
+        LEFT JOIN prospect_sources s
+          ON LOWER(REPLACE(s.name, ' ', '_')) = p.source
+          OR s.id = p.source
+          OR LOWER(s.name) = LOWER(REPLACE(p.source, '_', ' '))
+        LEFT JOIN outreach_steps os
+          ON os.source_id = s.id
+         AND os.step_order = COALESCE((SELECT MIN(os2.step_order)
+                                          FROM outreach_steps os2
+                                          WHERE os2.source_id = s.id
+                                            AND os2.active = 1), 1)
+         AND os.active = 1
         WHERE p.status = 'queued'
-          AND NOT EXISTS (SELECT 1 FROM prospect_sends ps WHERE ps.prospect_id = p.id AND ps.status IN ('sent','replied'))
+          AND NOT EXISTS (SELECT 1 FROM prospect_sends ps
+                            WHERE ps.prospect_id = p.id
+                              AND ps.status IN ('sent','replied'))
         LIMIT 50
       `).all().catch(() => ({ results: [] }));
-      results.outreach = { ok: true, send_due_count: (rows.results || []).length };
+      results.outreach = {
+        ok: true,
+        send_due_count: (rows.results || []).length,
+        sample: (rows.results || []).slice(0, 5).map(r => ({
+          prospect_id: r.prospect_id,
+          business_name: r.business_name,
+          source_key: r.source_key,
+          source_name: r.source_name,
+          step_order: r.step_order,
+        })),
+      };
     } catch (e) {
       results.outreach = { ok: false, error: String(e?.message || e) };
     }
@@ -92,15 +113,29 @@ export async function onRequestPost({ request, env }) {
   if (job === "all" || job === "deep-evaluate") {
     try {
       const top = await env.LEADS_DB.prepare(`
-        SELECT p.id, p.business_name, p.root_domain
+        SELECT p.id, p.business_name, p.root_domain,
+               COALESCE(s.leak_score, 0) AS leak_score
         FROM prospects p
-        LEFT JOIN prospect_signals s ON s.id = (SELECT id FROM prospect_signals WHERE prospect_id = p.id ORDER BY scanned_at DESC LIMIT 1)
+        LEFT JOIN prospect_signals s ON s.id = (
+          SELECT id FROM prospect_signals
+          WHERE prospect_id = p.id
+          ORDER BY scanned_at DESC LIMIT 1
+        )
         WHERE p.status NOT IN ('archived','rejected')
-          AND (p.last_deep_eval_at IS NULL OR datetime(p.last_deep_eval_at) <= datetime('now','-12 hour'))
-        ORDER BY s.leak_score DESC NULLS LAST
+          AND (p.last_deep_eval_at IS NULL
+               OR datetime(p.last_deep_eval_at) <= datetime('now','-12 hour'))
+        ORDER BY leak_score DESC, p.updated_at DESC
         LIMIT 3
       `).all().catch(() => ({ results: [] }));
-      results.deep_evaluate = { candidates: (top.results || []).length };
+      results.deep_evaluate = {
+        candidates: (top.results || []).length,
+        sample: (top.results || []).slice(0, 3).map(r => ({
+          id: r.id,
+          business_name: r.business_name,
+          root_domain: r.root_domain,
+          leak_score: r.leak_score,
+        })),
+      };
       // We don't invoke the LLM here synchronously to avoid timeouts; instead, log that they were "queued".
       // The /api/admin/leads/<id>/deep-evaluate endpoint is what fires the LLM.
     } catch (e) {
