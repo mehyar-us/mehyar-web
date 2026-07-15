@@ -30,16 +30,23 @@ export async function onRequestGet({ request, env }) {
   // Pull the candidate pool: hottest 30 across both kinds
   // SAM.gov: prefer high fit_score + low days-to-deadline
   // (gov_opportunities.status can be NULL or 'new'; NOT IN excludes NULL rows, so use OR clause)
-  const samRows = await env.LEADS_DB.prepare(`
-    SELECT id, 'sam' AS kind, title, agency AS subtitle, fit_score, stage, response_deadline,
-           CAST(julianday(response_deadline) - julianday('now') AS INTEGER) AS days_to_deadline,
-           ai_suggestion
-    FROM gov_opportunities
-    WHERE (status IS NULL OR status NOT IN ('archived','won','lost','inactive'))
-    ORDER BY (CASE WHEN fit_score IS NULL THEN 0 ELSE fit_score END) DESC,
-             (CASE WHEN response_deadline IS NULL THEN 9999 ELSE julianday(response_deadline) - julianday('now') END) ASC
-    LIMIT 30
-  `).all().catch(() => ({ results: [] }));
+  let samRaw;
+  try {
+    samRaw = await env.LEADS_DB.prepare(`
+      SELECT id, 'sam' AS kind, title, agency AS subtitle, fit_score, stage, response_deadline,
+             CAST(julianday(response_deadline) - julianday('now') AS INTEGER) AS days_to_deadline,
+             ai_suggestion, status
+      FROM gov_opportunities
+      WHERE (status IS NULL OR status NOT IN ('archived','won','lost','inactive'))
+      ORDER BY (CASE WHEN fit_score IS NULL THEN 0 ELSE fit_score END) DESC,
+               (CASE WHEN response_deadline IS NULL THEN 9999 ELSE julianday(response_deadline) - julianday('now') END) ASC
+      LIMIT 30
+    `).all();
+  } catch (e) {
+    console.error("daily-suggestions: SAM query failed:", e?.message || String(e));
+    samRaw = { results: [], error: e?.message };
+  }
+  const samRows = samRaw || { results: [] };
 
   const prospectRows = await env.LEADS_DB.prepare(`
     SELECT id, 'prospect' AS kind, business_name AS title, root_domain AS subtitle,
@@ -57,6 +64,7 @@ export async function onRequestGet({ request, env }) {
   console.log(
     "daily-suggestions: samRows=" + (samRows.results?.length || 0) +
     " prospectRows=" + (prospectRows.results?.length || 0) +
+    " samError=" + (samRaw?.error || "none") +
     " candidates=" + candidates.length
   );
 
@@ -69,6 +77,7 @@ export async function onRequestGet({ request, env }) {
       debug: {
         samRows: (samRows.results || []).length,
         prospectRows: (prospectRows.results || []).length,
+        samError: samRaw?.error || null,
       },
     }, 200, request, env);
   }
