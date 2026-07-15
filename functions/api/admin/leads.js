@@ -77,7 +77,7 @@ export async function onRequestGet({ request, env }) {
           city: p.city || null,
           stage: p.stage || "new",
           leak_score: p.leak_score ?? null,
-          deadline_in_days,
+          deadline_in_days: null,
           ai_suggestion: aiSuggestionForProspect(p, last90),
           sort_key: sortKeyProspect(p, sort),
           created_at: p.created_at,
