@@ -17,3 +17,10 @@
 
 # 2) Cloudflare Pages SPA fallback: preserve clean direct routes for Wouter client routing.
 /*    /index.html   200
+
+# 2b) Hosted quote pages (/q/<slug>) — must be served as SPA so wouter can render
+#     the dynamic slug. CF Pages by default treats `/q/abc` as a static asset
+#     lookup that misses; the catch-all above is processed but the static
+#     middleware can still short-circuit. Explicit mirror rule.
+#     Hosted quote lives at https://mehyar.us/q/<slug>.
+/q/*    /index.html   200

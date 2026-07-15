@@ -40,16 +40,16 @@ export async function onRequestPost({ request, env }) {
   // Resolve the lead to its business name + email + contact
   let lead = null;
   if (lead_kind === "sam") {
-    lead = await env.LEADS_DB.prepare(`SELECT id, title, agency, source_url, response_deadline, summary, raw_json FROM gov_opportunities WHERE id = ?`).bind(lead_id).first().catch(() => null);
+    lead = await env.LEADS_DB.prepare(`SELECT id, title, agency, source_url, response_deadline, summary, raw_json, contact_email FROM gov_opportunities WHERE id = ?`).bind(lead_id).first().catch(() => null);
   } else {
-    lead = await env.LEADS_DB.prepare(`SELECT id, business_name, website, root_domain, contact_email, contact_name, city, industry FROM prospects WHERE id = ?`).bind(lead_id).first().catch(() => null);
+    lead = await env.LEADS_DB.prepare(`SELECT id, business_name, website, root_domain, email, contact_name, city, industry FROM prospects WHERE id = ?`).bind(lead_id).first().catch(() => null);
   }
   if (!lead) return json({ ok: false, error: "lead_not_found" }, 404, request, env);
 
   // Build the email body via LLM (or fallback template)
   const businessName = lead_kind === "sam" ? (lead.agency || lead.title || "your team") : (lead.business_name || lead.root_domain || "your team");
   const contactName = lead.contact_name || "there";
-  const contactEmail = lead.contact_email || (lead_kind === "prospect" ? `hello@${lead.root_domain || "example.com"}` : null);
+  const contactEmail = lead_kind === "prospect" ? lead.email : (lead.contact_email || null);
   const priceStr = (Number(tier_min || 0)).toLocaleString() + "–" + (Number(tier_max || 0)).toLocaleString();
   const tierStr = tier_name || "Recommended";
   const svcStr = service || "AI consulting engagement";

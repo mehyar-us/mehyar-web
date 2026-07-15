@@ -181,6 +181,12 @@ const routeMeta = {
       'Browse MehyarSoft public pages including services, engagement patterns, blog insights, founder story, contact, privacy policy, and terms.',
     path: '/sitemap',
   },
+  '/q': {
+    title: 'Quote | MehyarSoft LLC',
+    description: 'Hosted MehyarSoft quote / invoice / receipt.',
+    path: '/q',
+    robots: 'noindex,follow',
+  },
   '/unsubscribe': {
     title: 'Unsubscribe | MehyarSoft LLC',
     description: 'Unsubscribe from MehyarSoft communications.',
@@ -295,6 +301,7 @@ const directRoutes = [
   'privacy-policy',
   'terms',
   'sitemap',
+  'q',  // hosted quote shell — slug is dynamic, wouter renders on client
 ];
 
 const adminTitles = {

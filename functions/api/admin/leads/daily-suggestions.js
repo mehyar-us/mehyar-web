@@ -29,12 +29,13 @@ export async function onRequestGet({ request, env }) {
 
   // Pull the candidate pool: hottest 30 across both kinds
   // SAM.gov: prefer high fit_score + low days-to-deadline
+  // (gov_opportunities.status defaults to 'new'; use NOT IN to capture both 'new' and any future status)
   const samRows = await env.LEADS_DB.prepare(`
     SELECT id, 'sam' AS kind, title, agency AS subtitle, fit_score, stage, response_deadline,
            CAST(julianday(response_deadline) - julianday('now') AS INTEGER) AS days_to_deadline,
            ai_suggestion
     FROM gov_opportunities
-    WHERE status = 'active' AND stage NOT IN ('won','lost','archived')
+    WHERE status NOT IN ('archived','won','lost','inactive')
     ORDER BY (CASE WHEN fit_score IS NULL THEN 0 ELSE fit_score END) DESC,
              (CASE WHEN response_deadline IS NULL THEN 9999 ELSE julianday(response_deadline) - julianday('now') END) ASC
     LIMIT 30

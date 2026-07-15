@@ -3,7 +3,7 @@
 // GET a hosted quote by public slug.
 // Response: { ok, quote: { quote_number, client_name, items, total_usd, status, due_date, created_at } }
 
-import { json, corsHeaders } from "../../_shared/adminAuth.js";
+import { json, corsHeaders } from "../_shared/adminAuth.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
