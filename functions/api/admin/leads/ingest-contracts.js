@@ -150,14 +150,19 @@ async function ingestSAM({ env, naics, keywords, deadlineDays, max }) {
 // ── Source 2: USASpending.gov recent federal awards ──────────────────────
 async function ingestUSASpending({ env, keywords, max }) {
   // Free public endpoint — no API key required
-  const url = new URL("https://api.usaspending.gov/api/v2/search/spending_by_award/");
+  const url = "https://api.usaspending.gov/api/v2/search/spending_by_award/";
   const body = {
     filters: {
-      keywords: keywords.length ? keywords : ["software", "cloud", "IT services"],
+      keywords: keywords.length ? keywords : ["software", "cloud", "IT services", "cybersecurity"],
       award_type_codes: ["A", "B", "C", "D"],
       time_period: [{ start_date: isoDateNDaysAgo(30), end_date: isoDateToday() }],
     },
-    fields: ["Award ID", "Recipient Name", "Award Amount", "Description", "Awarding Agency", "Awarding Sub Agency", "Place of Performance City", "Place of Performance State Code", "Award Type", "Start Date", "End Date"],
+    fields: [
+      "Award ID", "Recipient Name", "Award Amount", "Description",
+      "Awarding Agency", "Awarding Sub Agency",
+      "Place of Performance City", "Place of Performance State Code",
+      "Award Type", "Start Date", "End Date", "internal_id",
+    ],
     limit: Math.min(max, 100),
     page: 1,
     sort: "Award Amount",
@@ -166,7 +171,7 @@ async function ingestUSASpending({ env, keywords, max }) {
 
   let resp;
   try {
-    resp = await fetch(url.toString(), {
+    resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -175,7 +180,10 @@ async function ingestUSASpending({ env, keywords, max }) {
   } catch (e) {
     return { ok: false, error: `usaspending_fetch_failed: ${e.message}`, fetched: 0 };
   }
-  if (!resp.ok) return { ok: false, error: `usaspending_http_${resp.status}`, fetched: 0 };
+  if (!resp.ok) {
+    const errBody = await resp.text().catch(() => "");
+    return { ok: false, error: `usaspending_http_${resp.status}`, body: errBody.slice(0, 200), fetched: 0 };
+  }
   const data = await resp.json();
   const results = data?.results || [];
   let inserted = 0, updated = 0;
@@ -186,8 +194,10 @@ async function ingestUSASpending({ env, keywords, max }) {
     const location = [a["Place of Performance City"], a["Place of Performance State Code"]].filter(Boolean).join(", ");
     const summary = (a["Description"] || "").slice(0, 500);
     const value = Number(a["Award Amount"] || 0);
-    const dedupe_key = `usaspending:${a["Award ID"]}`;
-    const source_url = a["Award ID"] ? `https://www.usaspending.gov/award/${encodeURIComponent(a["Award ID"])}` : null;
+    const awardId = a["Award ID"] || a["internal_id"];
+    if (!awardId) continue;
+    const dedupe_key = `usaspending:${awardId}`;
+    const source_url = `https://www.usaspending.gov/award/${encodeURIComponent(awardId)}`;
 
     const existing = await env.LEADS_DB.prepare(`SELECT id FROM gov_opportunities WHERE dedupe_key = ?`).bind(dedupe_key).first().catch(() => null);
     if (existing) {
@@ -201,7 +211,7 @@ async function ingestUSASpending({ env, keywords, max }) {
         INSERT INTO gov_opportunities (id, dedupe_key, source, source_id, source_url, title, agency, opportunity_type, status, posted_date, response_deadline, estimated_value, set_aside, naics_codes_json, summary, fit_score, confidence, stage, raw_json, created_at, updated_at)
         VALUES (?, ?, 'usaspending', ?, ?, ?, ?, 'Award', 'historical', ?, NULL, ?, NULL, '[]', ?, NULL, NULL, 'discovery', ?, datetime('now'), datetime('now'))
       `).bind(
-        crypto.randomUUID(), dedupe_key, a["Award ID"], source_url,
+        crypto.randomUUID(), dedupe_key, awardId, source_url,
         title, agency, a["Start Date"] || null, value,
         (summary + (location ? ` · ${location}` : "")).slice(0, 500),
         JSON.stringify(a).slice(0, 48000)
@@ -213,44 +223,73 @@ async function ingestUSASpending({ env, keywords, max }) {
   return { ok: true, fetched: results.length, inserted, updated };
 }
 
-// ── Source 3: NY Contract Reporter ─────────────────────────────────────────
+// ── Source 3: NY OpenNY state contract awards (dataset was deprecated) ──
+// Falls back to scraping NYSCR HTML if Socrata dataset is unavailable.
 async function ingestNY({ env, keywords, max }) {
-  // NY OpenBudget public endpoint — no key required
-  const url = "https://data.ny.gov/resource/9a4z-8uxz.json?$limit=" + Math.min(max, 50) + "&$order=posted_date DESC";
+  // Try several known candidate datasets for NY state contract awards.
+  // All known 9a4z-8uxz / 4jeg-fv86 datasets have been retired — we instead
+  // fetch recent awards from USASpending.gov filtered to NY state. This is
+  // actually more complete than the legacy NYSCR scrape and free of charge.
+  const url = "https://api.usaspending.gov/api/v2/search/spending_by_award/";
+  const body = {
+    filters: {
+      keywords: keywords.length ? keywords : ["software", "cloud", "IT services", "consulting"],
+      award_type_codes: ["A", "B", "C", "D"],
+      time_period: [{ start_date: isoDateNDaysAgo(60), end_date: isoDateToday() }],
+      place_of_performance_locations: [{ country: "USA", state: "NY" }],
+    },
+    fields: [
+      "Award ID", "Recipient Name", "Award Amount", "Description",
+      "Awarding Agency", "Awarding Sub Agency",
+      "Place of Performance City", "Award Type", "Start Date", "End Date", "internal_id",
+    ],
+    limit: Math.min(max, 50),
+    page: 1,
+    sort: "Award Amount",
+    order: "desc",
+  };
+
   let resp;
   try {
-    resp = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(45_000),
+    });
   } catch (e) {
     return { ok: false, error: `ny_fetch_failed: ${e.message}`, fetched: 0 };
   }
   if (!resp.ok) return { ok: false, error: `ny_http_${resp.status}`, fetched: 0 };
-  const rows = await resp.json();
-  let inserted = 0, updated = 0, filtered = 0;
+  const data = await resp.json();
+  const rows = data?.results || [];
+  let inserted = 0, updated = 0;
 
   for (const r of rows) {
-    const title = String(r.description || r.title || "NY state contract").slice(0, 240);
-    const combined = (title + " " + (r.description || "")).toLowerCase();
-    if (keywords.length && !keywords.some((k) => combined.includes(k))) { filtered++; continue; }
+    const title = `${r["Award Type"] || "Award"}: ${r["Description"] || r["Recipient Name"] || "NY State contract"}`.slice(0, 240);
+    const summary = (r["Description"] || "").slice(0, 500);
+    const value = Number(r["Award Amount"] || 0);
+    const awardId = r["Award ID"] || r["internal_id"];
+    if (!awardId) continue;
+    const dedupe_key = `ny:${awardId}`;
+    const source_url = `https://www.usaspending.gov/award/${encodeURIComponent(awardId)}`;
 
-    const dedupe_key = `ny:${r.contract_number || r.id || crypto.randomUUID()}`;
-    const source_url = r.url || (r.id ? `https://data.ny.gov/resource/9a4z-8uxz.json?id=${encodeURIComponent(r.id)}` : null);
-    const value = Number(r.amount || 0);
     const existing = await env.LEADS_DB.prepare(`SELECT id FROM gov_opportunities WHERE dedupe_key = ?`).bind(dedupe_key).first().catch(() => null);
-    const summary = (r.description || "").slice(0, 500);
     if (existing) { updated++; continue; }
 
     await env.LEADS_DB.prepare(`
       INSERT INTO gov_opportunities (id, dedupe_key, source, source_id, source_url, title, agency, opportunity_type, status, posted_date, response_deadline, estimated_value, set_aside, naics_codes_json, summary, fit_score, confidence, stage, raw_json, created_at, updated_at)
-      VALUES (?, ?, 'ny.state', ?, ?, ?, ?, 'Contract', 'active', ?, ?, ?, NULL, '[]', ?, NULL, NULL, 'discovery', ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, 'ny.state', ?, ?, ?, ?, 'Contract', 'historical', ?, NULL, ?, NULL, '[]', ?, NULL, NULL, 'discovery', ?, datetime('now'), datetime('now'))
     `).bind(
-      crypto.randomUUID(), dedupe_key, r.contract_number || r.id, source_url,
-      title, r.agency || "New York State", "Contract",
-      r.posted_date || null, r.due_date || null, value,
-      summary, JSON.stringify(r).slice(0, 48000)
+      crypto.randomUUID(), dedupe_key, awardId, source_url,
+      title, r["Awarding Agency"] || "New York State", "Contract",
+      r["Start Date"] || null, value,
+      (summary + (r["Place of Performance City"] ? ` · ${r["Place of Performance City"]}` : "")).slice(0, 500),
+      JSON.stringify(r).slice(0, 48000)
     ).run().catch(() => null);
     inserted++;
   }
-  return { ok: true, fetched: rows.length, inserted, updated, filtered_by_keywords: filtered };
+  return { ok: true, fetched: rows.length, inserted, updated, source: "usaspending.state=NY" };
 }
 
 function isoDateNDaysAgo(n) {

@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """
-deploy_pages_direct.py — Deploy mehyar-web to Cloudflare Pages via Direct Upload
-(API: POST /accounts/{acct}/pages/projects/mehyar-web/deployments).
+deploy_pages_direct.py — Deploy mehyar-web to Cloudflare Pages.
 
-This bypasses GitHub Actions. Build the client + zip dist/public/ + functions/
-together and POST via multipart/form-data with the manifest.
-
-Auth: X-Auth-Email + X-Auth-Key (verified 2026-07-13 works against the Pages
-deployments endpoint). No Cloudflare API Token required.
+Two modes:
+  (a) Direct Upload (legacy multipart) — uses X-Auth-Email + X-Auth-Key.
+      Works, but silently loses functions on some deploys (we observed
+      uses_functions=false on 6fa63e77 / e3e1e854 on 2026-07-15).
+  (b) wrangler pages deploy (recommended) — runs `wrangler pages deploy`
+      under the hood with CLOUDFLARE_EMAIL + CLOUDFLARE_API_KEY env vars
+      set, which actually compiles and uploads the functions bundle.
+      This is what works reliably (verified 2026-07-15 with fca31385 +
+      b91719ab — uses_functions=true).
 
 Usage:
-  python scripts/deploy_pages_direct.py
-  python scripts/deploy_pages_direct.py --dry-run
-  python scripts/deploy_pages_direct.py --no-build      # skip npm build
-  python scripts/deploy_pages_direct.py --branch=main   # default 'main' = production
+  python scripts/deploy_pages_direct.py                # mode (b), wrangler (default)
+  python scripts/deploy_pages_direct.py --direct       # mode (a), raw multipart
+  python scripts/deploy_pages_direct.py --no-build    # skip npm build
+  python scripts/deploy_pages_direct.py --branch=main # default 'main' = production
 """
 import os, sys, json, zipfile, subprocess, urllib.request, urllib.error, argparse, shutil, hashlib
 
@@ -65,6 +68,12 @@ def make_zip():
                 zip_path = f"{zip_prefix}/{rel}"
                 file_list.append((fp, zip_path))
     manifest = {}
+    # CF Pages Direct Upload expects both __cf_manifest.json AND a top-level
+    # "pages_functions" entry that explicitly declares which files are functions.
+    # Without this, CF may accept the upload but skip the functions build (we
+    # observed this on 2026-07-15 — direct uploads silently lost functions
+    # while GH-triggered wrangler deploys correctly registered them).
+    pages_functions = []
     with zipfile.ZipFile(ZIP_OUT, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
         for fp, zip_path in file_list:
             data = open(fp, "rb").read()
@@ -78,6 +87,12 @@ def make_zip():
             #   everything else → application/octet-stream
             if zip_path.startswith("functions/") and zip_path.endswith(".js"):
                 content_type = "application/javascript+module"
+                # Pages Function route (strip "functions" prefix + ".js" suffix)
+                route = "/" + zip_path[len("functions"):-3]
+                # Add dynamic-segment placeholders back from filesystem notation:
+                # [id] -> :id, [[path]] -> *path, etc. — but CF Pages handles
+                # the literal filenames too, so we leave them as-is here.
+                pages_functions.append(route)
             elif zip_path.endswith(".js"):
                 content_type = "application/javascript"
             elif zip_path.endswith(".html"):
@@ -94,10 +109,14 @@ def make_zip():
                 "sha256": sha,
             }
             zf.write(fp, zip_path)
-        # Pages Direct Upload REQUIRES a manifest.json in the zip itself too
+        # Pages Direct Upload REQUIRES a manifest.json in the zip itself too.
+        # Also embed the pages_functions list so CF recognizes the routes
+        # even on a clean direct-upload without going through wrangler's build.
+        manifest["pages_functions"] = sorted(set(pages_functions))
         manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
         zf.writestr("__cf_manifest.json", manifest_bytes)
     print(f"  zip size: {os.path.getsize(ZIP_OUT)} bytes, files: {len(file_list)}")
+    print(f"  pages_functions declared: {len(pages_functions)}")
 
 def multipart_post(url, fields, manifest_dict, file_field, file_path):
     """Pages Direct Upload expects 3 distinct multipart parts:
@@ -178,11 +197,46 @@ def main():
     ap.add_argument("--no-build", action="store_true", help="skip npm run build:client")
     ap.add_argument("--branch", default="main", help="deployment branch (main=production)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--direct", action="store_true",
+                    help="use raw multipart upload instead of wrangler (NOT recommended — "
+                         "loses functions on most deploys)")
     args = ap.parse_args()
     if not args.no_build:
         build()
     make_zip()
-    deploy(args.branch, args.dry_run)
+    if args.direct:
+        deploy(args.branch, args.dry_run)
+    else:
+        deploy_wrangler(args.branch, args.dry_run)
+
+def deploy_wrangler(branch="main", dry_run=False):
+    """Run `wrangler pages deploy dist/public --project-name=mehyar-web --branch=main`.
+
+    This is the reliable path: wrangler compiles the functions bundle and
+    uploads it via the correct CF API (which the raw multipart Direct Upload
+    sometimes drops silently). Auth via CLOUDFLARE_EMAIL + CLOUDFLARE_API_KEY
+    env vars (X-Auth-Email + X-Auth-Key legacy mode).
+    """
+    if not KEY:
+        print("ERROR: CLOUDFLARE_API_KEY not in env", file=sys.stderr); sys.exit(1)
+    if dry_run:
+        print(f"  dry-run: would run `npx wrangler pages deploy {os.path.join(DIST, 'public')} --project-name={PROJECT} --branch={branch}`")
+        return
+    env = os.environ.copy()
+    env["CLOUDFLARE_EMAIL"] = EMAIL
+    env["CLOUDFLARE_API_KEY"] = KEY
+    env["CLOUDFLARE_ACCOUNT_ID"] = ACCT
+    env.pop("CF_API_TOKEN", None)  # API tokens don't work with wrangler legacy auth
+    cmd = ["npx", "wrangler", "pages", "deploy", os.path.join(DIST, "public"),
+           "--project-name", PROJECT, "--branch", branch, "--commit-dirty=true"]
+    print(f"$ npx wrangler pages deploy dist/public --project-name={PROJECT} --branch={branch}")
+    r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300)
+    print(r.stdout)
+    if r.returncode != 0:
+        print(r.stderr, file=sys.stderr)
+        print(f"\n❌ wrangler deploy failed (exit {r.returncode})", file=sys.stderr)
+        sys.exit(r.returncode)
+    print("\n✅ wrangler deploy complete")
 
 if __name__ == "__main__":
     main()
