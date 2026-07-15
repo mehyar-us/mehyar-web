@@ -37,7 +37,7 @@ const HeroSection = () => {
 
           <div className="mt-4 grid max-w-2xl gap-2 sm:grid-cols-3 sm:gap-3">
             {operatingSignals.map((signal) => (
-              <div key={signal} className="flex items-start gap-2 rounded-xl border border-border bg-white/62 p-2.5 text-sm text-foreground shadow-[0_1px_2px_rgba(10,20,24,0.04)] backdrop-blur dark:bg-white/[0.04] sm:p-3">
+              <div key={signal} className="flex items-start gap-2 rounded-xl border border-border bg-white/62 p-2.5 text-sm text-foreground shadow-[0_1px_2px_rgba(10,20,24,0.04)] backdrop-blur dark:bg-white dark:bg-zinc-900/[0.04] sm:p-3">
                 <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-brand-700 dark:text-brand-100" />
                 <span>{signal}</span>
               </div>
@@ -64,7 +64,7 @@ const HeroSection = () => {
                   ["Operations", "CRM, spreadsheets, inbox handoffs", "Automate"],
                   ["Risk control", "Access, opt-outs, audit trail, change notes", "Stabilize"],
                 ].map(([title, detail, action]) => (
-                  <div key={title} className="grid grid-cols-[1fr_auto] gap-3 rounded-2xl border border-border bg-white/86 p-3 dark:bg-white/[0.04] sm:gap-4 sm:p-4">
+                  <div key={title} className="grid grid-cols-[1fr_auto] gap-3 rounded-2xl border border-border bg-white/86 p-3 dark:bg-white dark:bg-zinc-900/[0.04] sm:gap-4 sm:p-4">
                     <div>
                       <p className="font-semibold text-foreground">{title}</p>
                       <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{detail}</p>

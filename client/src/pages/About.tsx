@@ -43,7 +43,7 @@ const About = () => {
           </div>
 
           <div className="rounded-[1.75rem] border border-border bg-card/88 p-4 shadow-[0_24px_80px_rgba(8,63,84,0.12)] dark:bg-card/80 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
-            <div className="rounded-[1.35rem] border border-border bg-background/70 p-5 dark:bg-white/[0.03]">
+            <div className="rounded-[1.35rem] border border-border bg-background/70 p-5 dark:bg-white dark:bg-zinc-900/[0.03]">
               <img src="/assets/mehyarsoft-logo.svg" alt="MehyarSoft logo" className="mb-6 w-full max-w-sm dark:hidden" />
               <img src="/assets/mehyarsoft-logo-dark.svg" alt="MehyarSoft logo" className="mb-6 hidden w-full max-w-sm dark:block" />
               <div className="grid gap-3">
@@ -121,7 +121,7 @@ const About = () => {
       </section>
 
       <section className="bg-brand-950 px-4 py-16 text-white md:py-20">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 md:flex-row md:items-center md:justify-between md:p-10">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6 rounded-[2rem] border border-white/10 bg-white dark:bg-zinc-900/[0.04] p-6 md:flex-row md:items-center md:justify-between md:p-10">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-100">Next step</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] md:text-4xl">Bring one leak. Leave with one practical path.</h2>

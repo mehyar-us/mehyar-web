@@ -74,7 +74,7 @@ const Blog = () => {
                           Read article <ArrowRight className="h-4 w-4" aria-hidden="true" />
                         </Link>
                         {index === 1 ? (
-                          <div className="mt-5 rounded-2xl border border-brand-700/20 bg-secondary/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                          <div className="mt-5 rounded-2xl border border-brand-700/20 bg-secondary/70 p-4 dark:border-white/10 dark:bg-white dark:bg-zinc-900/[0.04]">
                             <p className="text-sm font-semibold text-foreground">Want the checklist before the audit?</p>
                             <Link href="/newsletter?utm_campaign=blog_inline_cta" className="mt-2 inline-flex text-sm font-semibold text-brand-800 dark:text-brand-100">Get the free AI automation checklist →</Link>
                           </div>
@@ -113,7 +113,7 @@ const Blog = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-brand-700/20 bg-secondary/80 shadow-[0_1px_2px_rgba(10,20,24,0.06)] dark:border-white/10 dark:bg-white/[0.04]">
+            <Card className="border-brand-700/20 bg-secondary/80 shadow-[0_1px_2px_rgba(10,20,24,0.06)] dark:border-white/10 dark:bg-white dark:bg-zinc-900/[0.04]">
               <CardContent className="p-6">
                 <h3 className="text-xl font-bold tracking-[-0.02em] text-foreground">Need a practical next step?</h3>
                 <p className="mt-3 leading-7 text-muted-foreground">Turn one article topic into an audit, cleanup, automation, or support conversation.</p>

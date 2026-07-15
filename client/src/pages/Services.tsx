@@ -34,7 +34,7 @@ const Services = () => {
           </div>
           <div className="grid gap-3 rounded-[1.75rem] border border-border bg-card/88 p-4 shadow-[0_20px_70px_rgba(8,63,84,0.10)] dark:bg-card/80">
             {steps.map((step, index) => (
-              <div key={step} className="flex items-center gap-3 rounded-2xl border border-border bg-white/70 p-4 dark:bg-white/[0.04]">
+              <div key={step} className="flex items-center gap-3 rounded-2xl border border-border bg-white/70 p-4 dark:bg-white dark:bg-zinc-900/[0.04]">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-sm font-bold text-secondary-foreground dark:bg-white/10 dark:text-brand-100">0{index + 1}</span>
                 <p className="font-semibold text-foreground">{step}</p>
               </div>

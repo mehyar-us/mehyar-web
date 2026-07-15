@@ -63,7 +63,7 @@ const Navbar = () => {
             </span>
           </Link>
 
-          <div className="hidden items-center gap-2 rounded-full border border-border/80 bg-white/62 p-1.5 shadow-[0_1px_2px_rgba(10,20,24,0.04)] backdrop-blur xl:flex dark:bg-white/[0.04]">
+          <div className="hidden items-center gap-2 rounded-full border border-border/80 bg-white/62 p-1.5 shadow-[0_1px_2px_rgba(10,20,24,0.04)] backdrop-blur xl:flex dark:bg-white dark:bg-zinc-900/[0.04]">
             {navLinks.map((link) => (
               <Link
                 key={link.href}

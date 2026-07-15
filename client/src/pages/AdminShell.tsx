@@ -322,19 +322,19 @@ export function LoginGate({ onLogin }: { onLogin: (t: string) => void }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-6">
-      <Card className="w-full max-w-sm shadow-xl">
-        <CardContent className="p-7">
-          <div className="flex items-center gap-2 mb-5">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg">M</div>
-            <div>
-              <div className="font-bold text-base">MehyarSoft Admin</div>
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">Built for 2026</div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Input placeholder="username" value={user} onChange={(e) => setUser(e.target.value)} autoComplete="username" />
-            <Input type="password" placeholder="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} autoComplete="current-password" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 p-6">
+          <Card className="w-full max-w-sm shadow-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700">
+            <CardContent className="p-7">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg">M</div>
+                <div>
+                  <div className="font-bold text-base text-zinc-900 dark:text-zinc-100">MehyarSoft Admin</div>
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400">Built for 2026</div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Input className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700" placeholder="username" value={user} onChange={(e) => setUser(e.target.value)} autoComplete="username" />
+                <Input className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700" type="password" placeholder="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} autoComplete="current-password" />
             {error && <div className="text-sm text-red-600">⚠ {error}</div>}
             <Button onClick={submit} disabled={loading || !user || !pw} className="w-full">
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
@@ -342,7 +342,7 @@ export function LoginGate({ onLogin }: { onLogin: (t: string) => void }) {
             </Button>
           </div>
           <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-4 text-center">
-            Press <kbd className="px-1 rounded bg-zinc-100 dark:bg-zinc-800">⌘K</kbd> anywhere to summon Jarvis
+            Press <kbd className="px-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200">⌘K</kbd> anywhere to summon Jarvis
           </div>
         </CardContent>
       </Card>
