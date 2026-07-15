@@ -14,6 +14,11 @@ import Booking from "@/pages/Booking";
 import BillingCheckout from "@/pages/BillingCheckout";
 import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
 import Admin from "@/pages/Admin";
+import AdminNow from "@/pages/AdminNow";
+import AdminCRM from "@/pages/AdminCRM";
+import AdminMoney from "@/pages/AdminMoney";
+import AdminSystem from "@/pages/AdminSystem";
+// legacy pages kept around for backwards-compatible deep-links, but routed away in the SPA nav
 import AdminProspects, { AdminProspectsProtected } from "@/pages/AdminProspects";
 import AdminToday from "@/pages/AdminToday";
 import AdminAudit from "@/pages/AdminAudit";
@@ -89,7 +94,11 @@ function App() {
             <Route path="/billing/checkout/:serviceId" component={BillingCheckout} />
             <Route path="/billing/success" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
-            <Route path="/admin" component={Admin} />
+            <Route path="/admin" component={AdminNow} />
+            <Route path="/admin/leads" component={AdminCRM} />
+            <Route path="/admin/leads/:kind/:id" component={AdminOpportunityDetail} />
+            <Route path="/admin/money" component={AdminMoney} />
+            <Route path="/admin/system" component={AdminSystem} />
         <Route path="/admin/prospects" component={AdminProspectsProtected} />
         <Route path="/admin/today" component={AdminToday} />
         <Route path="/admin/auto-tender" component={AdminAutoTender} />
