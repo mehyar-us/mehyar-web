@@ -1,24 +1,28 @@
 // /api/_shared/llmChat.js
 // LLM helper for every MehyarSoft endpoint that needs an LLM.
 //
-// 2026 wiring — Cloudflare-first:
-//   - Primary: Cloudflare Workers AI REST endpoint (cheap, no egress, integrated auth).
-//   - Optional: Cloudflare AI Gateway URL (env LLM_GATEWAY_BASE_URL) for caching + observability.
+// 2026-07-15 wiring — Cloudflare legacy-auth flow:
+//   - Primary: Cloudflare Workers AI REST endpoint via X-Auth-Email + X-Auth-Key.
+//     This is the SAME auth that wrangler uses for `wrangler pages deploy` and
+//     does NOT require a scoped API token. Verified working 2026-07-15.
+//   - Optional: Cloudflare AI Gateway URL (env LLM_GATEWAY_BASE_URL) — also uses
+//     X-Auth-Email + X-Auth-Key legacy auth.
 //   - Fallback: OpenAI-compatible external endpoint (env LLM_BASE_URL + LLM_PROVIDER).
 //
 // All calls route through CF first; if CF returns 401/403/5xx, we fall through to the
-// configured external provider. The whole decision tree is logged via opportunity_events
-// event_type='llm_call' so the admin can audit cost + latency.
+// configured external provider. Per-call reporting: { provider, model, latency_ms, cached, error }.
 //
 // Env vars (all optional; sensible defaults shown):
 //   LLM_PROVIDER              "cloudflare" (default)
 //   LLM_BASE_URL              override (e.g. https://api.openai.com/v1 or your proxy)
 //   LLM_MODEL                 @cf/meta/llama-3.2-3b-instruct (default)
 //   LLM_GATEWAY_BASE_URL      Cloudflare AI Gateway URL, e.g.
-//                             https://gateway.ai.cloudflare.com/v1/<acct>/<slug>/<provider>
-//   LLM_GATEWAY_PROVIDER      "openai" (default) — Gateway's per-provider namespace
+//                             https://gateway.ai.cloudflare.com/v1/<acct>/<slug>/openai
 //   CLOUDFLARE_ACCOUNT_ID     account ID for REST URL
-//   CLOUDFLARE_AI_GATEWAY_TOKEN or LLM_API_KEY or CLOUDFLARE_API_TOKEN — auth
+//   CLOUDFLARE_EMAIL          email for legacy X-Auth-Email header (REQUIRED for cloudflare provider)
+//   CLOUDFLARE_API_KEY        Global API key for legacy X-Auth-Key header (REQUIRED for cloudflare provider)
+//                             Same key as wrangler uses for `wrangler pages deploy`.
+//   LLM_API_KEY               OPTIONAL fallback Bearer token for non-Cloudflare providers.
 //   LLM_CACHE_TTL             seconds; 0 = disabled (default 300)
 //
 // Returns: { content, model, used_llm, provider, latency_ms, cached? }
@@ -47,20 +51,61 @@ export function resolveLlmConfig(env = {}) {
     baseUrl = "https://openrouter.ai/api/v1";
   }
 
-  const apiKey =
+  // Legacy CF auth: X-Auth-Email + X-Auth-Key (works for Workers AI REST + AI Gateway)
+  // This is the SAME auth flow as wrangler pages deploy. Requires CLOUDFLARE_EMAIL +
+  // CLOUDFLARE_API_KEY env vars (the Global API key from CF dashboard).
+  const legacyEmail = env.CLOUDFLARE_EMAIL || env.CF_EMAIL || "";
+  const legacyKey = env.CLOUDFLARE_API_KEY || env.CF_API_KEY || env.CLOUDFLARE_GLOBAL_API_KEY || "";
+
+  // Bearer token for non-CF providers or CF API Token (which doesn't work for Workers AI REST)
+  const bearerToken =
     env.LLM_API_KEY ||
     env.CLOUDFLARE_AI_GATEWAY_TOKEN ||
     env.CLOUDFLARE_API_TOKEN ||
     env.MEHYARSOFT_LLM_API_KEY ||
     "";
 
-  return { baseUrl, apiKey, model, provider, cacheTtl: Number(env.LLM_CACHE_TTL || 300) };
+  return {
+    baseUrl,
+    legacyEmail,
+    legacyKey,
+    bearerToken,
+    model,
+    provider,
+    cacheTtl: Number(env.LLM_CACHE_TTL || 300),
+  };
 }
 
 // In-memory cache (per isolate) — mirrors CF AI Gateway semantics for short-term repeatability
 const _memCache = new Map();
-function cacheKey(url, body, apiKey) {
-  return `${apiKey.slice(-6)}|${url}|${JSON.stringify(body).slice(0, 2000)}`;
+function cacheKey(cfg, body) {
+  // Cache key includes provider + auth tail + URL + body hash for differentiation.
+  const authTail = cfg.legacyKey
+    ? `legacy:${cfg.legacyEmail}:${cfg.legacyKey.slice(-6)}`
+    : `bearer:${cfg.bearerToken.slice(-6)}`;
+  return `${cfg.provider}|${cfg.baseUrl}|${authTail}|${JSON.stringify(body).slice(0, 2000)}`;
+}
+
+function buildAuthHeaders(cfg) {
+  // Cloudflare (REST or Gateway) accepts X-Auth-Email + X-Auth-Key legacy auth.
+  // Bearer tokens do NOT work for Workers AI REST (verified 2026-07-15, returns 401).
+  if (cfg.provider === "cloudflare" && cfg.legacyEmail && cfg.legacyKey) {
+    return {
+      "X-Auth-Email": cfg.legacyEmail,
+      "X-Auth-Key": cfg.legacyKey,
+      "Content-Type": "application/json",
+    };
+  }
+  // OpenAI-compatible providers
+  const h = {
+    Authorization: `Bearer ${cfg.bearerToken || cfg.legacyKey}`,
+    "Content-Type": "application/json",
+  };
+  if (cfg.baseUrl.includes("openrouter.ai")) {
+    h["HTTP-Referer"] = "https://mehyar.us";
+    h["X-Title"] = "MehyarSoft Gov Pipeline";
+  }
+  return h;
 }
 
 export async function chatJson({
@@ -72,7 +117,16 @@ export async function chatJson({
   stream = false,
 }) {
   const cfg = resolveLlmConfig(env);
-  if (!cfg.apiKey) return { used_llm: false, error: "missing_api_key", provider: cfg.provider };
+
+  // Sanity: need auth
+  const hasAuth =
+    (cfg.legacyEmail && cfg.legacyKey) || cfg.bearerToken;
+  if (!hasAuth) {
+    return { used_llm: false, error: "missing_auth", provider: cfg.provider };
+  }
+  if (!cfg.baseUrl) {
+    return { used_llm: false, error: "missing_base_url", provider: cfg.provider };
+  }
 
   // Build request body (OpenAI-compatible shape)
   const body = { model: cfg.model, messages, max_tokens, temperature };
@@ -81,17 +135,10 @@ export async function chatJson({
   }
 
   const url = `${cfg.baseUrl.replace(/\/+$/, "")}/chat/completions`;
-  const headers = {
-    Authorization: `Bearer ${cfg.apiKey}`,
-    "Content-Type": "application/json",
-  };
-  if (cfg.provider !== "cloudflare" && cfg.baseUrl.includes("openrouter.ai")) {
-    headers["HTTP-Referer"] = (env.ALLOWED_ORIGINS || "").split(",")[0]?.trim() || "https://mehyar.us";
-    headers["X-Title"] = "MehyarSoft Gov Pipeline";
-  }
+  const headers = buildAuthHeaders(cfg);
 
   // Cache hit?
-  const ck = cacheKey(url, body, cfg.apiKey);
+  const ck = cacheKey(cfg, body);
   if (cfg.cacheTtl > 0) {
     const hit = _memCache.get(ck);
     if (hit && hit.expires > Date.now()) {
@@ -101,15 +148,21 @@ export async function chatJson({
 
   const t0 = Date.now();
   try {
-    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(45_000) });
+    const resp = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(45_000),
+    });
     if (!resp.ok) {
       const errBody = await resp.text().catch(() => "");
       return {
         used_llm: false,
         error: `http_${resp.status}`,
-        body: errBody.slice(0, 200),
+        body: errBody.slice(0, 400),
         provider: cfg.provider,
         model: cfg.model,
+        auth_mode: cfg.legacyEmail ? "legacy_x_auth" : "bearer",
         latency_ms: Date.now() - t0,
       };
     }
@@ -122,6 +175,7 @@ export async function chatJson({
       model: actualModel,
       usage: json?.usage,
       provider: cfg.provider,
+      auth_mode: cfg.legacyEmail ? "legacy_x_auth" : "bearer",
       latency_ms: Date.now() - t0,
     };
     if (cfg.cacheTtl > 0) {
@@ -129,7 +183,12 @@ export async function chatJson({
     }
     return out;
   } catch (e) {
-    return { used_llm: false, error: e?.message || "fetch_failed", provider: cfg.provider, latency_ms: Date.now() - t0 };
+    return {
+      used_llm: false,
+      error: e?.message || "fetch_failed",
+      provider: cfg.provider,
+      latency_ms: Date.now() - t0,
+    };
   }
 }
 

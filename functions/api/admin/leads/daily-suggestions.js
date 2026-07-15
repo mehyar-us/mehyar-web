@@ -53,8 +53,24 @@ export async function onRequestGet({ request, env }) {
 
   const candidates = [...(samRows.results || []), ...(prospectRows.results || [])];
 
+  // Debug breadcrumb so we can see counts from CF Pages logs
+  console.log(
+    "daily-suggestions: samRows=" + (samRows.results?.length || 0) +
+    " prospectRows=" + (prospectRows.results?.length || 0) +
+    " candidates=" + candidates.length
+  );
+
   if (candidates.length === 0) {
-    return json({ ok: true, items: [], reasoning: "No active leads.", used_llm: false }, 200, request, env);
+    return json({
+      ok: true,
+      items: [],
+      reasoning: "No active leads.",
+      used_llm: false,
+      debug: {
+        samRows: (samRows.results || []).length,
+        prospectRows: (prospectRows.results || []).length,
+      },
+    }, 200, request, env);
   }
 
   // Pre-rank heuristically so the LLM only has to pick the top N from a manageable shortlist
