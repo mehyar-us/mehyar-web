@@ -216,6 +216,13 @@ JSON only: {"subject": "...", "body": "..."}`;
     queued_for_review: !!contactEmail,
     used_llm,
     subject,
+    body: emailBody,
+    model: llm_model || null,
+    contact_email: contactEmail || null,
+    contact_name: contactName,
+    business_name: businessName,
+    tier: tier_name,
+    price_range: priceStr,
   }, 200, request, env);
 }
 
