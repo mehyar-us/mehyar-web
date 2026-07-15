@@ -118,11 +118,11 @@ function SystemView({ token }: { token: string }) {
         <Card><CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold flex items-center gap-2"><Clock className="w-4 h-4" /> Cron runs</h3>
-            <div className="flex gap-2">
-              {["sam-ingest","outreach","all"].map((j) => (
+            <div className="flex gap-2 flex-wrap">
+              {["sam-ingest","contracts","outreach","all"].map((j) => (
                 <Button key={j} size="sm" variant={j === "all" ? "cta" : "outline"} disabled={runningCron === j} onClick={() => runCron(j)}>
                   {runningCron === j ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-                  {j === "sam-ingest" ? "Run SAM ingest" : j === "outreach" ? "Run outreach scan" : "Run all now"}
+                  {j === "sam-ingest" ? "SAM ingest" : j === "contracts" ? "🆕 Fetch contracts" : j === "outreach" ? "Outreach scan" : "Run all"}
                 </Button>
               ))}
             </div>
@@ -132,7 +132,10 @@ function SystemView({ token }: { token: string }) {
               {lastCronResult.ok ? <strong>✓ Done in {lastCronResult.duration_ms}ms</strong> : <strong>✗ Failed</strong>}
               {lastCronResult.run_id && <span className="ml-2 font-mono opacity-70">{lastCronResult.run_id.slice(0, 8)}</span>}
               {lastCronResult.gov && (
-                <span className="ml-3">🏛 SAM: {lastCronResult.gov.ok !== false ? `+${lastCronResult.gov.inserted || 0} inserted / ${lastCronResult.gov.updated || 0} updated` : `error: ${lastCronResult.gov.error}`}</span>
+                <span className="ml-3">🏛 SAM: {lastCronResult.gov.ok !== false ? `+${lastCronResult.gov.inserted || 0} / ${lastCronResult.gov.updated || 0}` : `error: ${lastCronResult.gov.error}`}</span>
+              )}
+              {lastCronResult.contracts && (
+                <span className="ml-3">🆕 Contracts: {lastCronResult.contracts.ok ? Object.entries(lastCronResult.contracts.sources || {}).map(([k, v]) => `${k}=${v.inserted || 0}/${v.fetched || 0}`).join(" · ") : `error: ${lastCronResult.contracts.error}`}</span>
               )}
               {lastCronResult.outreach && (
                 <span className="ml-3">📤 Outreach: {lastCronResult.outreach.send_due_count ?? 0} due</span>

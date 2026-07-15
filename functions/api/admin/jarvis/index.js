@@ -84,6 +84,7 @@ function appsolutFallback(question) {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function onRequestPost({ request, env }) {
+  const t0 = Date.now();
   const auth = await verifyAdminToken(request, env);
   if (!auth.ok) return json({ ok: false, error: auth.message }, auth.status, request, env);
   if (!env?.LEADS_DB) return json({ ok: false, error: "missing_db" }, 500, request, env);
@@ -121,13 +122,44 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
-  // ── Step 2: Build response ─────────────────────────────────────────────────
+  // ── Step 2: build response ─────────────────────────────────────────────────
   let answer;
   let source = "appsolut";
+  let kind = "info";
+  let extra = {};
+
+  // 2a. Plain "count X" queries → cheap DB COUNT, no LLM
+  const m = question.match(/^count\s+(.+)$/i);
+  if (m) {
+    const target = m[1].trim().toLowerCase();
+    const tableMap = {
+      prospects: "prospects",
+      sam: "gov_opportunities",
+      gov_opportunities: "gov_opportunities",
+      sam_opportunities: "gov_opportunities",
+      leads: "leads",
+      opportunities: "opportunity_events",
+      decisions: "opportunity_decisions",
+      replies: "prospect_replies",
+      sends: "prospect_sends",
+      drafts: "gov_application_drafts",
+    };
+    const tbl = tableMap[target];
+    if (tbl) {
+      try {
+        const r = await env.LEADS_DB.prepare(`SELECT COUNT(*) as n FROM ${tbl}`).first();
+        return json({ ok: true, kind: "count", target, count: r?.n || 0, latency_ms: Date.now() - t0 }, 200, request, env);
+      } catch (e) {
+        // fall through to LLM
+      }
+    }
+  }
 
   if (sqlResult) {
     answer = formatResults(sqlResult.rows);
     source = "sql";
+    kind = "sql";
+    extra = { row_count: sqlResult.count, query: sqlResult.query, elapsed_ms: Date.now() - t0, rows: sqlResult.rows };
   } else if (sqlError) {
     // SQL failed — fall through to LLM or appsolut
     const { content, used_llm, error: llmError } = await chatJson({
@@ -196,6 +228,9 @@ export async function onRequestPost({ request, env }) {
       question,
       answer,
       source, // "sql" | "llm" | "appsolut"
+      kind,   // "sql" | "info" | "count" | ...
+      ...extra,
+      latency_ms: Date.now() - t0,
       sqlResult: sqlResult ? { query: sqlResult.query, count: sqlResult.count } : null,
       sqlError: sqlError || null,
     },

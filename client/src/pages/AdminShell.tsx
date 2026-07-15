@@ -124,7 +124,7 @@ export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "A
       const r = await fetch("/api/admin/jarvis", {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        body: JSON.stringify({ query: useQ }),
+        body: JSON.stringify({ question: useQ }),
       });
       const data = await r.json();
       setResp(data);

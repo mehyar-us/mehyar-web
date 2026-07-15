@@ -39,12 +39,34 @@ export async function onRequestPost({ request, env }) {
   const startedAt = new Date();
   const results = { started_at: startedAt.toISOString(), actor, job };
 
-  // SAM ingest
+  // SAM ingest (legacy govOpportunityIngest)
   if (job === "all" || job === "sam-ingest") {
     try {
       results.gov = await runGovOpportunityIngest({ env, now: startedAt });
     } catch (e) {
       results.gov = { ok: false, error: String(e?.message || e) };
+    }
+  }
+
+  // Multi-source contract ingestion (SAM.gov + USASpending + NY State)
+  if (job === "all" || job === "contracts") {
+    try {
+      const sources = (env.SAM_GOV_API_KEY || env.MEHYARSOFT_SAM_API_KEY)
+        ? ["sam", "usaspending", "ny"]
+        : ["usaspending", "ny"];
+      const url = new URL(request.url);
+      // Reconstruct base URL (CF Pages passes request.url that includes the path; we want the origin)
+      const origin = `${url.protocol}//${url.host}`;
+      const r = await fetch(`${origin}/api/admin/leads/ingest-contracts`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${actor === "cron:hermes" ? env.GOV_INGEST_TOKEN : (authHeader || "").slice(7)}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ sources, deadline_days: 14, max_per_source: 20 }),
+        signal: AbortSignal.timeout(180_000),
+      });
+      const j = await r.json().catch(() => ({}));
+      results.contracts = j;
+    } catch (e) {
+      results.contracts = { ok: false, error: String(e?.message || e) };
     }
   }
 

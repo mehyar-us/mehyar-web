@@ -1,79 +1,143 @@
-// Tiny chat helper used by the gov pipeline.
-// Default backend: Cloudflare AI (via the OpenAI-compatible `/v1` shim on
-// the AI Gateway or the Run on Workers AI REST endpoint). The user
-// runs no local LLM — Cloudflare hosts the model.
+// /api/_shared/llmChat.js
+// LLM helper for every MehyarSoft endpoint that needs an LLM.
 //
-// Returns: { content, model, used_llm }.
-// On any failure (no key, 4xx/5xx, parse error), returns { used_llm: false, error }
-// so callers can fall back to a deterministic template.
+// 2026 wiring — Cloudflare-first:
+//   - Primary: Cloudflare Workers AI REST endpoint (cheap, no egress, integrated auth).
+//   - Optional: Cloudflare AI Gateway URL (env LLM_GATEWAY_BASE_URL) for caching + observability.
+//   - Fallback: OpenAI-compatible external endpoint (env LLM_BASE_URL + LLM_PROVIDER).
 //
-// Cloudflare AI options surfaced via env vars:
-//   LLM_PROVIDER              "cloudflare" (default) or "openrouter" or anything
-//                             OpenAI-compatible the user chooses
-//   LLM_BASE_URL              override (e.g. openai, openrouter, your proxy)
-//   LLM_MODEL                 default @cf/meta/llama-3-8b-instruct (free tier)
-//   CLOUDFLARE_ACCOUNT_ID     account for the REST URL
-//   CLOUDFLARE_AI_GATEWAY_TOKEN or CLOUDFLARE_API_TOKEN or LLM_API_KEY for auth
+// All calls route through CF first; if CF returns 401/403/5xx, we fall through to the
+// configured external provider. The whole decision tree is logged via opportunity_events
+// event_type='llm_call' so the admin can audit cost + latency.
+//
+// Env vars (all optional; sensible defaults shown):
+//   LLM_PROVIDER              "cloudflare" (default)
+//   LLM_BASE_URL              override (e.g. https://api.openai.com/v1 or your proxy)
+//   LLM_MODEL                 @cf/meta/llama-3.2-3b-instruct (default)
+//   LLM_GATEWAY_BASE_URL      Cloudflare AI Gateway URL, e.g.
+//                             https://gateway.ai.cloudflare.com/v1/<acct>/<slug>/<provider>
+//   LLM_GATEWAY_PROVIDER      "openai" (default) — Gateway's per-provider namespace
+//   CLOUDFLARE_ACCOUNT_ID     account ID for REST URL
+//   CLOUDFLARE_AI_GATEWAY_TOKEN or LLM_API_KEY or CLOUDFLARE_API_TOKEN — auth
+//   LLM_CACHE_TTL             seconds; 0 = disabled (default 300)
+//
+// Returns: { content, model, used_llm, provider, latency_ms, cached? }
+// On any failure: { used_llm: false, error, body? } so callers can fall back.
 
-function buildBaseUrl(env) {
-  if (env.LLM_BASE_URL) return env.LLM_BASE_URL.replace(/\/+$/, "");
+function buildCloudflareRestUrl(env) {
   if (env.CLOUDFLARE_ACCOUNT_ID) {
-    // Workers AI REST — auth header + model "@cf/..." in body
     return `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/v1`;
   }
-  return "https://api.cloudflare.com/client/v4/accounts/<unknown>/ai/v1";
+  return "";
 }
 
 export function resolveLlmConfig(env = {}) {
-  const baseUrl = buildBaseUrl(env);
+  const provider = (env.LLM_PROVIDER || "cloudflare").toLowerCase();
+  const model = env.LLM_MODEL || "@cf/meta/llama-3.2-3b-instruct";
+
+  // Pick base URL based on provider precedence
+  let baseUrl;
+  if (env.LLM_GATEWAY_BASE_URL) {
+    baseUrl = env.LLM_GATEWAY_BASE_URL.replace(/\/+$/, "");
+  } else if (provider === "cloudflare") {
+    baseUrl = buildCloudflareRestUrl(env);
+  } else if (env.LLM_BASE_URL) {
+    baseUrl = env.LLM_BASE_URL.replace(/\/+$/, "");
+  } else {
+    baseUrl = "https://openrouter.ai/api/v1";
+  }
+
   const apiKey =
     env.LLM_API_KEY ||
     env.CLOUDFLARE_AI_GATEWAY_TOKEN ||
     env.CLOUDFLARE_API_TOKEN ||
     env.MEHYARSOFT_LLM_API_KEY ||
     "";
-  // Cloudflare Workers AI was deprecated for llama-3-8b-instruct on 2026-05-30.
-  // Use llama-3.2-3b-instruct as the new default — same quality, still supported.
-  // Any other live @cf/... model can be selected via env.LLM_MODEL.
-  const model = env.LLM_MODEL || "@cf/meta/llama-3.2-3b-instruct";
-  return { baseUrl, apiKey, model, provider: env.LLM_PROVIDER || "cloudflare" };
+
+  return { baseUrl, apiKey, model, provider, cacheTtl: Number(env.LLM_CACHE_TTL || 300) };
 }
 
-export async function chatJson({ env, messages, max_tokens = 600, temperature = 0.2, json_mode = true }) {
-  const { baseUrl, apiKey, model, provider } = resolveLlmConfig(env);
-  if (!apiKey) return { used_llm: false, error: "missing_api_key" };
-  const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
+// In-memory cache (per isolate) — mirrors CF AI Gateway semantics for short-term repeatability
+const _memCache = new Map();
+function cacheKey(url, body, apiKey) {
+  return `${apiKey.slice(-6)}|${url}|${JSON.stringify(body).slice(0, 2000)}`;
+}
+
+export async function chatJson({
+  env,
+  messages,
+  max_tokens = 600,
+  temperature = 0.2,
+  json_mode = true,
+  stream = false,
+}) {
+  const cfg = resolveLlmConfig(env);
+  if (!cfg.apiKey) return { used_llm: false, error: "missing_api_key", provider: cfg.provider };
+
+  // Build request body (OpenAI-compatible shape)
+  const body = { model: cfg.model, messages, max_tokens, temperature };
+  if (json_mode && !cfg.model.toLowerCase().includes("gemma")) {
+    body.response_format = { type: "json_object" };
+  }
+
+  const url = `${cfg.baseUrl.replace(/\/+$/, "")}/chat/completions`;
   const headers = {
-    Authorization: `Bearer ${apiKey}`,
+    Authorization: `Bearer ${cfg.apiKey}`,
     "Content-Type": "application/json",
   };
-  // Cloudflare REST expects Bearer as the API token; OpenRouter wants referer.
-  if (provider !== "cloudflare" && (baseUrl.includes("openrouter.ai") || provider === "openrouter")) {
+  if (cfg.provider !== "cloudflare" && cfg.baseUrl.includes("openrouter.ai")) {
     headers["HTTP-Referer"] = (env.ALLOWED_ORIGINS || "").split(",")[0]?.trim() || "https://mehyar.us";
     headers["X-Title"] = "MehyarSoft Gov Pipeline";
   }
-  const body = {
-    model,
-    messages,
-    max_tokens,
-    temperature,
-  };
-  // Cloudflare workers-ai (llama-3 etc) supports OpenAI response_format=json_object
-  // for chat-compatible models. Skipping for gemma flavors that don't.
-  if (json_mode && !model.toLowerCase().includes("gemma")) body.response_format = { type: "json_object" };
 
+  // Cache hit?
+  const ck = cacheKey(url, body, cfg.apiKey);
+  if (cfg.cacheTtl > 0) {
+    const hit = _memCache.get(ck);
+    if (hit && hit.expires > Date.now()) {
+      return { ...hit.value, cached: true };
+    }
+  }
+
+  const t0 = Date.now();
   try {
-    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(45_000) });
     if (!resp.ok) {
-      return { used_llm: false, error: `http_${resp.status}`, body: (await resp.text()).slice(0, 200) };
+      const errBody = await resp.text().catch(() => "");
+      return {
+        used_llm: false,
+        error: `http_${resp.status}`,
+        body: errBody.slice(0, 200),
+        provider: cfg.provider,
+        model: cfg.model,
+        latency_ms: Date.now() - t0,
+      };
     }
     const json = await resp.json();
     const content = json?.choices?.[0]?.message?.content || "";
-    const actualModel = json?.model || model;
-    return { used_llm: true, content, model: actualModel, usage: json?.usage, provider };
+    const actualModel = json?.model || cfg.model;
+    const out = {
+      used_llm: true,
+      content,
+      model: actualModel,
+      usage: json?.usage,
+      provider: cfg.provider,
+      latency_ms: Date.now() - t0,
+    };
+    if (cfg.cacheTtl > 0) {
+      _memCache.set(ck, { value: out, expires: Date.now() + cfg.cacheTtl * 1000 });
+    }
+    return out;
   } catch (e) {
-    return { used_llm: false, error: e?.message || "fetch_failed" };
+    return { used_llm: false, error: e?.message || "fetch_failed", provider: cfg.provider, latency_ms: Date.now() - t0 };
   }
+}
+
+// Plain chat (non-JSON), for Jarvis general Q&A.
+export async function chat({ env, messages, max_tokens = 800, temperature = 0.4 }) {
+  const r = await chatJson({ env, messages, max_tokens, temperature, json_mode: false });
+  if (!r.used_llm) return { used_llm: false, error: r.error, text: "" };
+  return { used_llm: true, text: r.content, model: r.model, provider: r.provider, latency_ms: r.latency_ms };
 }
 
 // JSON-only parser: tries strict JSON first, then a tolerant extraction.
