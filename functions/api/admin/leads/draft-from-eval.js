@@ -161,15 +161,25 @@ JSON only: {"subject": "...", "body": "..."}`;
     }
 
     // Save draft
+    // Schema columns: id, prospect_id, sam_id, subject, body_text, body_html,
+    // cited_signals_json, status, generated_by, model, created_at, updated_at, payload_json
+    // (added in migrations 0013). NO 'body' col, NO 'updated_at'/'created_at'
+    // auto-defaults — supply explicitly.
     await env.LEADS_DB.prepare(`
-      INSERT INTO prospect_drafts (id, prospect_id, sam_id, subject, body, payload_json, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending_review', datetime('now'), datetime('now'))
+      INSERT INTO prospect_drafts (id, prospect_id, sam_id, subject, body_text, body_html,
+                                   cited_signals_json, status, generated_by, model,
+                                   payload_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, '[]', 'draft', ?, ?, ?, datetime('now'))
     `).bind(
       draftId,
       lead_kind === "prospect" ? lead_id : null,
       lead_kind === "sam" ? lead_id : null,
       subject,
       emailBody,
+      // body_html — simple HTML version with same body (no images for cold email)
+      emailBody.replace(/\n/g, "<br/>"),
+      llm.used_llm ? "model" : "fallback_template",
+      llm.model || null,
       payload
     ).run();
 
