@@ -26,6 +26,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
       CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+      CLOUDFLARE_AI_GATEWAY_TOKEN: ${{ secrets.CLOUDFLARE_AI_GATEWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v6.0.2
       - uses: actions/setup-node@v6.4.0
@@ -42,6 +43,19 @@ jobs:
       - run: npm run check
       - run: npm run test:intake
       - run: CUSTOM_DOMAIN=true NODE_ENV=production npm run build:client
+      - name: Probe CF AI Gateway reachability
+        run: |
+          if [ -n "$CLOUDFLARE_AI_GATEWAY_TOKEN" ]; then
+            RESP=$(curl -fsS -o /tmp/ai_test.json -w "%{http_code}" \
+              -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/ai/run/@cf/meta/llama-3.2-3b-instruct" \
+              -H "Authorization: Bearer $CLOUDFLARE_AI_GATEWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data '{"messages":[{"role":"user","content":"Reply OK"}]}')
+            echo "CF AI Gateway: HTTP $RESP"
+            head -c 200 /tmp/ai_test.json
+          else
+            echo "CLOUDFLARE_AI_GATEWAY_TOKEN is empty"
+          fi
       - name: Verify Turnstile site key was compiled into the client bundle
         run: |
           if grep -R "Preparing secure verification" dist/public/assets/*.js >/dev/null; then
@@ -52,7 +66,10 @@ jobs:
           test -f functions/api/client-config.js || { echo "Runtime client config function is missing"; exit 1; }
           ! grep -R "TURNSTILE_SECRET_KEY" dist/public/assets/*.js >/dev/null || { echo "Secret env name leaked into client bundle"; exit 1; }
       - name: Deploy Pages site and Functions
-        run: npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
+        run: |
+          echo "${{ secrets.CLOUDFLARE_AI_GATEWAY_TOKEN }}" | npx wrangler pages secret put CLOUDFLARE_AI_GATEWAY_TOKEN --project-name=mehyar-web || echo "skip secret set"
+          echo "${{ secrets.CLOUDFLARE_AI_GATEWAY_TOKEN }}" | npx wrangler pages secret put LLM_API_KEY --project-name=mehyar-web || echo "skip secret set"
+          npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
       - name: Verify production runtime client config
         run: |
           CONFIG_JSON="$(curl -fsS https://mehyar.us/api/client-config)"
