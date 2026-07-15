@@ -44,8 +44,16 @@ export async function onRequestGet({ request, env }) {
 
     const items = (r.results || []).map((row) => {
       let summary = "";
-      try { summary = String(JSON.parse(row.payload_json || "{}").summary || JSON.parse(row.payload_json || "{}")).slice(0, 200); }
-      catch { summary = String(row.payload_json || "").slice(0, 200); }
+      try {
+        const parsed = JSON.parse(row.payload_json || "{}");
+        // Try common fields first
+        summary = parsed.summary || parsed.message || parsed.action || parsed.error || "";
+        if (!summary) {
+          // Fall back to a flat key list
+          summary = Object.keys(parsed).slice(0, 5).join(", ");
+          if (!summary) summary = JSON.stringify(parsed).slice(0, 200);
+        }
+      } catch { summary = String(row.payload_json || "").slice(0, 200); }
       return {
         id: row.id,
         kind: row.kind,
@@ -55,7 +63,7 @@ export async function onRequestGet({ request, env }) {
         actor: row.actor,
         from_stage: row.from_stage,
         to_stage: row.to_stage,
-        summary,
+        summary: String(summary).slice(0, 200),
         payload: row.payload_json,
         created_at: row.created_at,
       };
