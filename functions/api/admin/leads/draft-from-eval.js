@@ -49,7 +49,15 @@ export async function onRequestPost({ request, env }) {
       } catch { lead.contact_email = null; }
     }
   } else {
-    lead = await env.LEADS_DB.prepare(`SELECT id, business_name, website, root_domain, email, contact_name, city, industry FROM prospects WHERE id = ?`).bind(lead_id).first().catch(() => null);
+    // prospects has email, contact_name doesn't exist — use meta_json as fallback
+    lead = await env.LEADS_DB.prepare(`SELECT id, business_name, website, root_domain, email, city, vertical FROM prospects WHERE id = ?`).bind(lead_id).first().catch(() => null);
+    if (lead) {
+      try {
+        const meta = lead.meta_json ? JSON.parse(lead.meta_json) : {};
+        lead.contact_name = meta?.contact_name || meta?.name || null;
+        lead.industry = lead.vertical || meta?.industry || null;
+      } catch { lead.contact_name = null; lead.industry = lead.vertical || null; }
+    }
   }
   if (!lead) return json({ ok: false, error: "lead_not_found" }, 404, request, env);
 
