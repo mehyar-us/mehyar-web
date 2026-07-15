@@ -95,6 +95,7 @@ function NowView({ token }: { token: string }) {
       {q.data && (
         <>
           <KpiStrip counts={counts} />
+          <AiInsightPanel data={q.data} token={token} />
 
           {/* Three column triage */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
@@ -107,6 +108,62 @@ function NowView({ token }: { token: string }) {
         </>
       )}
     </div>
+  );
+}
+
+// ── AI insight panel — what should I do first today ───────────────────
+function AiInsightPanel({ data, token }: { data: any; token: string }) {
+  const [busy, setBusy] = useState(false);
+  const [insight, setInsight] = useState<{ text: string; actions: { label: string; href: string }[] } | null>(null);
+
+  const load = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/admin/now/insight", { headers: { authorization: `Bearer ${token}` } });
+      const j = await r.json();
+      if (j.ok) setInsight({ text: j.text, actions: j.actions || [] });
+    } finally { setBusy(false); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  if (busy && !insight) {
+    return (
+      <Card className="mt-4 border-violet-200 bg-gradient-to-r from-violet-50/50 via-white to-cyan-50/50">
+        <CardContent className="p-4 animate-pulse">
+          <div className="h-4 bg-violet-100 rounded w-1/3 mb-2" />
+          <div className="h-3 bg-zinc-100 rounded w-full mb-1" />
+          <div className="h-3 bg-zinc-100 rounded w-2/3" />
+        </CardContent>
+      </Card>
+    );
+  }
+  if (!insight) return null;
+  return (
+    <Card className="mt-4 border-violet-300 bg-gradient-to-r from-violet-50/40 via-white to-cyan-50/40">
+      <CardContent className="p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Brain className="w-4 h-4 text-violet-500" />
+            🧠 AI insight — what to do first today
+          </h3>
+          <Button size="sm" variant="ghost" onClick={load} disabled={busy}>
+            {busy ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+            Refresh
+          </Button>
+        </div>
+        <p className="text-sm leading-relaxed text-zinc-700 whitespace-pre-line">{insight.text}</p>
+        {insight.actions?.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-violet-200">
+            {insight.actions.map((a, i) => (
+              <a key={i} href={a.href} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 transition">
+                {a.label} →
+              </a>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

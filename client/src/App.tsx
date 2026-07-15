@@ -14,6 +14,7 @@ import Booking from "@/pages/Booking";
 import BillingCheckout from "@/pages/BillingCheckout";
 import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
 import Admin from "@/pages/Admin";
+import QuoteView from "@/pages/QuoteView";
 import AdminNow from "@/pages/AdminNow";
 import AdminCRM from "@/pages/AdminCRM";
 import AdminMoney from "@/pages/AdminMoney";
@@ -94,6 +95,7 @@ function App() {
             <Route path="/billing/checkout/:serviceId" component={BillingCheckout} />
             <Route path="/billing/success" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
+            <Route path="/q/:slug" component={QuoteView} />
             <Route path="/admin" component={AdminNow} />
             <Route path="/admin/leads" component={AdminCRM} />
             <Route path="/admin/leads/:kind/:id" component={AdminOpportunityDetail} />

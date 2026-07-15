@@ -82,8 +82,9 @@ function CrmView({ token }: { token: string }) {
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <AdminNav active="crm" onLogout={logout} onRefresh={refresh} />
 
-      <div className="mb-5">
+      <div className="mb-5 space-y-3">
         <JarvisBar token={token} placeholder="Try: 'count prospects by city', 'promote all leak>70', 'enrich a0daf6…'" />
+        <AiDailySuggestions token={token} onOpen={(id, kind) => openDrawer(id, kind)} />
       </div>
 
       {/* Toolbar */}
@@ -198,6 +199,73 @@ function CrmView({ token }: { token: string }) {
         />
       )}
     </div>
+  );
+}
+
+// ── AI daily suggestions panel ─────────────────────────────────────────
+function AiDailySuggestions({ token, onOpen }: { token: string; onOpen: (id: string, kind: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [items, setItems] = useState<any[]>([]);
+  const [reasoning, setReasoning] = useState<string>("");
+
+  const load = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/admin/leads/daily-suggestions?limit=5", {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      const j = await r.json();
+      if (j.ok) {
+        setItems(j.items || []);
+        setReasoning(j.reasoning || "");
+      }
+    } finally { setBusy(false); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  if (items.length === 0 && !busy) return null;
+  return (
+    <Card className="border-2 border-gradient-to-r from-violet-300 to-cyan-300 bg-gradient-to-r from-violet-50/40 via-white to-cyan-50/40">
+      <CardContent className="p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-violet-500" />
+            <span>🤖 AI suggests focusing on these {items.length} today</span>
+            <Badge className="ml-1 bg-violet-100 text-violet-800">curated</Badge>
+          </h3>
+          <Button size="sm" variant="ghost" onClick={load} disabled={busy}>
+            {busy ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}Reshuffle
+          </Button>
+        </div>
+        {reasoning && <p className="text-xs text-zinc-600 italic mb-2">💭 {reasoning}</p>}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
+          {items.slice(0, 5).map((it: any, i: number) => (
+            <button
+              key={`${it.kind}:${it.id}`}
+              onClick={() => onOpen(it.id, it.kind)}
+              className="text-left rounded-lg border border-zinc-200 bg-white hover:border-violet-400 hover:shadow-md transition p-2.5"
+            >
+              <div className="flex items-center gap-1 mb-1">
+                <span className="text-xs text-zinc-400 font-mono">#{i + 1}</span>
+                <span className="text-sm">{it.kind === "sam" ? "🏛" : "🧲"}</span>
+                <span className="text-xs text-zinc-500">{it.kind === "sam" ? "SAM" : "Prospect"}</span>
+                {typeof it.priority_score === "number" && (
+                  <span className="ml-auto text-[10px] font-bold text-violet-700 tabular-nums">{it.priority_score}</span>
+                )}
+              </div>
+              <div className="font-medium text-xs leading-tight line-clamp-2 mb-1">{it.title}</div>
+              <div className="text-[10px] text-zinc-500 line-clamp-2">{it.why}</div>
+              {it.suggested_action && (
+                <div className="mt-1.5 pt-1.5 border-t border-zinc-100 text-[10px] text-violet-700">
+                  ➡ {it.suggested_action}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -502,6 +570,8 @@ function OutreachEnqueue({ row, token, onAction }: any) {
 function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; token: string; onAction: (msg: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<any>(null);
+  const [generatingTier, setGeneratingTier] = useState<number | null>(null);
+
   const run = async (force = false) => {
     setBusy(true);
     try {
@@ -520,6 +590,42 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
     } finally { setBusy(false); }
   };
 
+  // Generate an outreach draft seeded from a specific pricing tier
+  const generateDraftFromTier = async (tier: any, service: any) => {
+    setGeneratingTier(tier._idx ?? 0);
+    try {
+      const r = await fetch("/api/admin/leads/draft-from-eval", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          lead_kind: kind,
+          lead_id: id,
+          service: service?.name || "AI consultation",
+          tier_name: tier?.tier || tier?.name,
+          tier_min: tier?.price_min ?? tier?.min,
+          tier_max: tier?.price_max ?? tier?.max,
+          scope: tier?.scope || service?.deliverables || [],
+        }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        onAction(`Draft created · ${j.draft_id?.slice(0, 8) || ""}`);
+        // Optionally deep-link to outreach tab
+        if (j.draft_id) {
+          setTimeout(() => {
+            if (confirm("Open this draft in the outreach queue?")) {
+              window.location.href = `/admin/outreach?focus=${j.draft_id}`;
+            }
+          }, 200);
+        }
+      } else {
+        onAction(`Draft failed: ${j.error}`);
+      }
+    } catch (e: any) {
+      onAction(`Draft error: ${e.message}`);
+    } finally { setGeneratingTier(null); }
+  };
+
   return (
     <Card className="border-2 border-violet-300">
       <CardContent className="p-4">
@@ -534,7 +640,7 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
 
         {!data && !busy && (
           <p className="text-xs text-zinc-600">
-            The AI inspects <strong>all</strong> data (signals, agency, deal type, contact role) and returns 3 services × 3 pricing tiers — packaged as "what MehyarSoft could sell them."
+            The AI inspects <strong>all</strong> data (signals, agency, deal type, contact role) and returns 3 services × 3 pricing tiers — packaged as "what MehyarSoft could sell them." Click any tier to turn it into an outreach draft.
           </p>
         )}
 
@@ -550,13 +656,13 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
           </div>
         )}
 
-        {data && <DeepEvalBody data={data} />}
+        {data && <DeepEvalBody data={data} onGenerate={generateDraftFromTier} generatingTier={generatingTier} />}
       </CardContent>
     </Card>
   );
 }
 
-function DeepEvalBody({ data }: { data: any }) {
+function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGenerate: (tier: any, service: any) => void; generatingTier: number | null }) {
   const verdict = data.verdict;
   const score = data.fit_score ?? data.score;
   const summary = data.executive_summary;
@@ -593,19 +699,33 @@ function DeepEvalBody({ data }: { data: any }) {
       )}
       {tiers.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">💰 Pricing tiers</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">💰 Pricing tiers — click to draft</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            {tiers.slice(0, 3).map((t: any, i: number) => (
-              <div key={i} className={`rounded-lg border p-3 ${i === 1 ? "border-violet-400 bg-violet-50/40" : "border-zinc-200 bg-white"}`}>
-                <div className="flex justify-between items-baseline">
-                  <span className="font-semibold text-sm">{t.tier || t.name}</span>
-                  {i === 1 && <Badge className="bg-violet-100 text-violet-800 text-[10px]">⭐ recommended</Badge>}
-                </div>
-                <div className="text-xl font-bold mt-1">${(t.price_min ?? t.min ?? 0).toLocaleString()}<span className="text-xs font-normal text-zinc-500"> – ${(t.price_max ?? t.max ?? 0).toLocaleString()}</span></div>
-                {t.monthly_min && <div className="text-xs text-zinc-500 mt-0.5">${t.monthly_min} – ${t.monthly_max}/mo retain</div>}
-                {t.scope && <ul className="text-xs mt-2 space-y-0.5">{t.scope.slice(0, 6).map((s: string, j: number) => <li key={j}>· {s}</li>)}</ul>}
-              </div>
-            ))}
+            {tiers.slice(0, 3).map((t: any, i: number) => {
+              const tierKey = t._idx ?? i;
+              const matchingService = services[i] || services[0];
+              return (
+                <button
+                  key={i}
+                  onClick={() => onGenerate({ ...t, _idx: tierKey }, matchingService)}
+                  disabled={generatingTier !== null}
+                  className={`text-left rounded-lg border p-3 transition hover:border-violet-500 hover:shadow-md ${
+                    i === 1 ? "border-violet-400 bg-violet-50/40" : "border-zinc-200 bg-white"
+                  } ${generatingTier === tierKey ? "animate-pulse" : ""}`}
+                >
+                  <div className="flex justify-between items-baseline">
+                    <span className="font-semibold text-sm">{t.tier || t.name}</span>
+                    {i === 1 && <Badge className="bg-violet-100 text-violet-800 text-[10px]">⭐ recommended</Badge>}
+                  </div>
+                  <div className="text-xl font-bold mt-1">${(t.price_min ?? t.min ?? 0).toLocaleString()}<span className="text-xs font-normal text-zinc-500"> – ${(t.price_max ?? t.max ?? 0).toLocaleString()}</span></div>
+                  {t.monthly_min && <div className="text-xs text-zinc-500 mt-0.5">${t.monthly_min} – ${t.monthly_max}/mo retain</div>}
+                  {t.scope && <ul className="text-xs mt-2 space-y-0.5 text-zinc-600">{t.scope.slice(0, 6).map((s: string, j: number) => <li key={j}>· {s}</li>)}</ul>}
+                  <div className="mt-2 pt-2 border-t border-zinc-200 flex items-center gap-1 text-xs text-violet-700 font-medium">
+                    {generatingTier === tierKey ? <><Loader2 className="w-3 h-3 animate-spin" /> Drafting…</> : <><ArrowRight className="w-3 h-3" /> Generate draft from this tier</>}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

@@ -227,10 +227,13 @@ def deploy_wrangler(branch="main", dry_run=False):
     env["CLOUDFLARE_API_KEY"] = KEY
     env["CLOUDFLARE_ACCOUNT_ID"] = ACCT
     env.pop("CF_API_TOKEN", None)  # API tokens don't work with wrangler legacy auth
-    cmd = ["npx", "wrangler", "pages", "deploy", os.path.join(DIST, "public"),
+    # On Windows the bash `npx` shell wrapper sometimes fails to be launched
+    # by Python subprocess (no Win32 program association); use npx.cmd directly.
+    npx_bin = "npx.cmd" if sys.platform == "win32" else "npx"
+    cmd = [npx_bin, "wrangler", "pages", "deploy", os.path.join(DIST, "public"),
            "--project-name", PROJECT, "--branch", branch, "--commit-dirty=true"]
-    print(f"$ npx wrangler pages deploy dist/public --project-name={PROJECT} --branch={branch}")
-    r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300)
+    print(f"$ {npx_bin} wrangler pages deploy dist/public --project-name={PROJECT} --branch={branch}")
+    r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300, shell=(sys.platform == "win32"))
     print(r.stdout)
     if r.returncode != 0:
         print(r.stderr, file=sys.stderr)
