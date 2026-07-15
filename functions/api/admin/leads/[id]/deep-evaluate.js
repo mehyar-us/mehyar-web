@@ -104,6 +104,11 @@ For SAM.gov federal solicitations, recommend services that are compliant with th
       VALUES (?, ?, ?, ?, 'deep_evaluate', 'owner', ?, datetime('now'))
     `).bind(auditId, kind, kind === "sam" ? null : id, kind === "sam" ? id : null, JSON.stringify(payload).slice(0, 18000)).run().catch(() => null);
 
+    // Mark last_deep_eval_at on the prospect so the cron can pick top-N + dedup 12h
+    if (kind === "prospect") {
+      await env.LEADS_DB.prepare(`UPDATE prospects SET last_deep_eval_at = datetime('now') WHERE id = ?`).bind(id).run().catch(() => null);
+    }
+
     return json({ ok: true, evaluation, event_id: auditId, used_llm: !!llm.used_llm }, 200, request, env);
   } catch (e) {
     return json({ ok: false, error: "deep_evaluate_failed", details: String(e?.message || e) }, 500, request, env);

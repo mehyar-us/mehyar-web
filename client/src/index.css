@@ -129,3 +129,29 @@
     @apply min-h-screen overflow-x-hidden;
   }
 }
+
+/* ── Admin shell animations ─────────────────────────────────────────── */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.18s ease-out;
+  }
+  .animate-slide-in {
+    animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .animate-pulse-soft {
+    animation: pulseSoft 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}

@@ -38,12 +38,32 @@ function SystemView({ token }: { token: string }) {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"audit"|"cron"|"backup"|"health"|"settings">("audit");
+  const [runningCron, setRunningCron] = useState<string | null>(null);
+  const [lastCronResult, setLastCronResult] = useState<any>(null);
 
   const audit = useQuery({ queryKey: ["admin-audit", token, q], queryFn: () => fetchAudit(token, q), refetchInterval: 15_000 });
   const cron = useQuery({ queryKey: ["admin-cron", token], queryFn: () => fetchCron(token), refetchInterval: 30_000 });
   const health = useQuery({ queryKey: ["admin-health", token], queryFn: () => fetchHealth(token) });
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-audit"] });
+
+  const runCron = async (job: string) => {
+    setRunningCron(job);
+    setLastCronResult(null);
+    try {
+      const r = await fetch(`/api/admin/cron/run?job=${job}`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const j = await r.json();
+      setLastCronResult(j);
+      // refresh cron table
+      setTimeout(() => qc.invalidateQueries({ queryKey: ["admin-cron"] }), 500);
+    } finally {
+      setRunningCron(null);
+    }
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -96,7 +116,29 @@ function SystemView({ token }: { token: string }) {
 
       {tab === "cron" && (
         <Card><CardContent className="p-4">
-          <h3 className="font-semibold mb-2 flex items-center gap-2"><Clock className="w-4 h-4" /> Cron runs (last {cron.data?.items?.length || 0})</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold flex items-center gap-2"><Clock className="w-4 h-4" /> Cron runs</h3>
+            <div className="flex gap-2">
+              {["sam-ingest","outreach","all"].map((j) => (
+                <Button key={j} size="sm" variant={j === "all" ? "cta" : "outline"} disabled={runningCron === j} onClick={() => runCron(j)}>
+                  {runningCron === j ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                  {j === "sam-ingest" ? "Run SAM ingest" : j === "outreach" ? "Run outreach scan" : "Run all now"}
+                </Button>
+              ))}
+            </div>
+          </div>
+          {lastCronResult && (
+            <div className={`text-xs px-3 py-2 rounded mb-3 ${lastCronResult.ok ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-red-50 border border-red-200 text-red-800"}`}>
+              {lastCronResult.ok ? <strong>✓ Done in {lastCronResult.duration_ms}ms</strong> : <strong>✗ Failed</strong>}
+              {lastCronResult.run_id && <span className="ml-2 font-mono opacity-70">{lastCronResult.run_id.slice(0, 8)}</span>}
+              {lastCronResult.gov && (
+                <span className="ml-3">🏛 SAM: {lastCronResult.gov.ok !== false ? `+${lastCronResult.gov.inserted || 0} inserted / ${lastCronResult.gov.updated || 0} updated` : `error: ${lastCronResult.gov.error}`}</span>
+              )}
+              {lastCronResult.outreach && (
+                <span className="ml-3">📤 Outreach: {lastCronResult.outreach.send_due_count ?? 0} due</span>
+              )}
+            </div>
+          )}
           <table className="w-full text-xs">
             <thead className="bg-zinc-100 text-left">
               <tr>
@@ -110,18 +152,23 @@ function SystemView({ token }: { token: string }) {
               </tr>
             </thead>
             <tbody>
-              {(cron.data?.items || []).map((r: any) => (
-                <tr key={r.id} className="border-b hover:bg-zinc-50">
-                  <td className="p-2 font-mono">{new Date(r.triggered_at).toLocaleString()}</td>
-                  <td className="p-2"><Badge className={r.ok ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}>{r.ok ? "ok" : "fail"}</Badge></td>
-                  <td className="p-2">{r.source || "—"}</td>
-                  <td className="p-2">{r.gov ? (r.gov.ok ? "✓" : `✗ ${r.gov.error || ""}`) : "—"}</td>
-                  <td className="p-2">{r.outreach ? `due=${r.outreach.send_due_count ?? "?"}` : "—"}</td>
-                  <td className="p-2 text-red-700">{Array.isArray(r.errors_json) ? r.errors_json.join("; ") : ""}</td>
-                  <td className="p-2 font-mono">{r.duration_ms ? `${r.duration_ms}ms` : "—"}</td>
-                </tr>
-              ))}
-              {!cron.data?.items?.length && <tr><td colSpan={7} className="text-center text-sm text-zinc-400 py-10">No cron runs yet — Cloudflare Pages scheduled handler logs here.</td></tr>}
+              {(cron.data?.items || []).map((r: any) => {
+                const p = r.payload || {};
+                const gov = p.gov || {};
+                const out = p.outreach || {};
+                return (
+                  <tr key={r.id} className="border-b hover:bg-zinc-50">
+                    <td className="p-2 font-mono">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="p-2"><Badge className={p.ok !== false ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}>{p.ok !== false ? "ok" : "fail"}</Badge></td>
+                    <td className="p-2 text-zinc-500">{r.name || "—"}</td>
+                    <td className="p-2">{gov.ok ? (gov.ok !== false ? `+${gov.inserted || 0}/${gov.updated || 0}` : gov.error?.slice(0, 40)) : "—"}</td>
+                    <td className="p-2">{out.send_due_count != null ? `due=${out.send_due_count}` : "—"}</td>
+                    <td className="p-2 text-red-700 text-xs">{p.errors ? JSON.stringify(p.errors).slice(0, 60) : ""}</td>
+                    <td className="p-2 font-mono">{p.duration_ms ? `${p.duration_ms}ms` : "—"}</td>
+                  </tr>
+                );
+              })}
+              {!cron.data?.items?.length && <tr><td colSpan={7} className="text-center text-sm text-zinc-400 py-10">No cron runs yet — click "Run all now" to invoke the pipeline manually.</td></tr>}
             </tbody>
           </table>
         </CardContent></Card>
