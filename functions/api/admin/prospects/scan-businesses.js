@@ -10,7 +10,7 @@
 //
 // Owner-only.
 
-import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
 
 const MAX_RESULTS = 30;
 const HTTP_TIMEOUT_MS = 12_000;

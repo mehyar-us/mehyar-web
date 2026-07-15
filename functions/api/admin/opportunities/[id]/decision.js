@@ -4,7 +4,7 @@
 //
 // Body: { outcome: 'won'|'lost'|'no_bid', value_usd?: number, reason_code?: string, reason_body?: string }
 
-import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
 
 const ACCEPTED_OUTCOMES = new Set(["won", "lost", "no_bid", "on_hold"]);
 

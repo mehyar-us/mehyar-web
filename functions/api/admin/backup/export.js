@@ -6,7 +6,7 @@
 // `backup:<iso-date>` in INTAKE_KV (1-day TTL-ish via expiry hint) AND return it inline
 // (the client can save-as via Blob URL).
 
-import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
 
 const ALLOWED_TABLES = [
   "leads",
