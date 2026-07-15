@@ -112,7 +112,7 @@ export async function onRequestGet({ request, env }) {
           subtitle: `${s.agency || ""} ${s.set_aside ? "· " + s.set_aside : ""}`.trim().slice(0, 120),
           stage: s.stage || "discovery",
           fit_score: s.fit_score ?? null,
-          leak_score,
+          leak_score: null,
           deadline_in_days: daysLeft,
           ai_suggestion: aiSuggestionForSam(s, daysLeft),
           sort_key: sortKeySam(s, sort),
