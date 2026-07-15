@@ -49,11 +49,11 @@ export const STAGE_BADGE: Record<string, string> = {
   sent: "bg-emerald-100 text-emerald-700",
   replied: "bg-emerald-100 text-emerald-700",
   won: "bg-green-200 text-green-900",
-  lost: "bg-zinc-200 text-zinc-700",
-  archived: "bg-zinc-100 text-zinc-600",
-  no_bid: "bg-zinc-100 text-zinc-600",
+  lost: "bg-zinc-200 text-zinc-700 dark:text-zinc-300",
+  archived: "bg-zinc-100 text-zinc-600 dark:text-zinc-400",
+  no_bid: "bg-zinc-100 text-zinc-600 dark:text-zinc-400",
   on_hold: "bg-amber-100 text-amber-700",
-  unsubscribed: "bg-zinc-200 text-zinc-700",
+  unsubscribed: "bg-zinc-200 text-zinc-700 dark:text-zinc-300",
   bounced: "bg-red-100 text-red-700",
   rejected: "bg-red-100 text-red-700",
   failed: "bg-red-100 text-red-700",
@@ -72,13 +72,13 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|
   return (
     <>
       {/* Desktop nav — sticky horizontal bar with overflow-x scroll for narrow screens */}
-      <div className="sticky top-0 z-30 hidden md:block backdrop-blur bg-white/85 border-b border-zinc-200 -mx-6 -mt-6 px-6 py-3 mb-4">
+      <div className="sticky top-0 z-30 hidden md:block backdrop-blur bg-white dark:bg-zinc-900/85 border-b border-zinc-200 dark:border-zinc-700 -mx-6 -mt-6 px-6 py-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold">M</div>
             <div>
               <div className="font-semibold leading-tight whitespace-nowrap">MehyarSoft</div>
-              <div className="text-[10px] text-zinc-500 leading-tight whitespace-nowrap">Admin · 2026</div>
+              <div className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight whitespace-nowrap">Admin · 2026</div>
             </div>
           </div>
           <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-2 px-2">
@@ -92,7 +92,7 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|
                   className={`group flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition shrink-0 whitespace-nowrap min-h-[44px] ${
                     isActive
                       ? "bg-zinc-900 text-white"
-                      : "text-zinc-700 hover:bg-zinc-100"
+                      : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -112,10 +112,10 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|
 
       {/* Mobile nav — top header + bottom tab bar (iPhone-safe with safe-area-inset-bottom) */}
       <div className="md:hidden">
-        <div className="sticky top-0 z-30 backdrop-blur bg-white/90 border-b border-zinc-200 -mx-4 -mt-4 px-4 py-2 mb-3 flex items-center gap-2">
+        <div className="sticky top-0 z-30 backdrop-blur bg-white dark:bg-zinc-900/90 border-b border-zinc-200 dark:border-zinc-700 -mx-4 -mt-4 px-4 py-2 mb-3 flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-sm">M</div>
           <div className="font-semibold text-sm">MehyarSoft</div>
-          <div className="text-[10px] text-zinc-500 ml-1">{TABS.find(t => t.key === active)?.label || ""}</div>
+          <div className="text-[10px] text-zinc-500 dark:text-zinc-400 ml-1">{TABS.find(t => t.key === active)?.label || ""}</div>
           <div className="ml-auto flex items-center gap-1">
             {onRefresh && (
               <Button variant="ghost" size="sm" onClick={onRefresh} className="h-10 w-10 p-0"><RefreshCw className="w-4 h-4" /></Button>
@@ -123,7 +123,7 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|
             <Button variant="ghost" size="sm" onClick={onLogout} className="h-10 w-10 p-0"><LogOut className="w-4 h-4" /></Button>
           </div>
         </div>
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-zinc-200" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-zinc-900/95 backdrop-blur border-t border-zinc-200 dark:border-zinc-700" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="flex justify-around items-stretch">
             {TABS.map((t) => {
               const Icon = t.icon;
@@ -133,7 +133,7 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|
                   key={t.key}
                   onClick={() => setLocation(t.href)}
                   className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition ${
-                    isActive ? "text-emerald-600" : "text-zinc-500"
+                    isActive ? "text-emerald-600" : "text-zinc-500 dark:text-zinc-400"
                   }`}
                   aria-label={t.label}
                 >
@@ -190,7 +190,7 @@ export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "A
   }, []);
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-zinc-200 bg-white dark:bg-zinc-900 shadow-sm">
       <div className="flex items-center gap-2 px-3 py-2">
         <Command className="w-4 h-4 text-zinc-400" />
         <input
@@ -202,7 +202,7 @@ export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "A
           className="flex-1 bg-transparent text-sm focus:outline-none"
           disabled={running}
         />
-        {q && <button onClick={() => { setQ(""); setResp(null); }} className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>}
+        {q && <button onClick={() => { setQ(""); setResp(null); }} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400"><X className="w-4 h-4" /></button>}
         <Button size="sm" onClick={() => submit()} disabled={!q || running}>
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </Button>
@@ -222,22 +222,22 @@ function JarvisResult({ r }: { r: any }) {
       <div>
         <div className="text-xs uppercase tracking-wide text-emerald-700 font-semibold mb-1">📊 SQL · {r.row_count} rows · {r.elapsed_ms}ms</div>
         {Array.isArray(r.rows) && r.rows.length > 0 ? (
-          <div className="overflow-auto max-h-64 rounded border bg-white">
+          <div className="overflow-auto max-h-64 rounded border bg-white dark:bg-zinc-900">
             <table className="text-xs min-w-full">
-              <thead className="bg-zinc-100 sticky top-0">
+              <thead className="bg-zinc-100 dark:bg-zinc-800 sticky top-0">
                 <tr>{Object.keys(r.rows[0]).map((k) => <th key={k} className="px-2 py-1 text-left font-medium">{k}</th>)}</tr>
               </thead>
               <tbody>
                 {r.rows.slice(0, 30).map((row, i) => (
-                  <tr key={i} className="odd:bg-zinc-50/50">
+                  <tr key={i} className="odd:bg-zinc-50 dark:bg-zinc-800/50/50">
                     {Object.values(row).map((v, j) => <td key={j} className="px-2 py-1 whitespace-nowrap">{String(v ?? "").slice(0, 80)}</td>)}
                   </tr>
                 ))}
               </tbody>
             </table>
-            {r.rows.length > 30 && <div className="text-xs text-zinc-500 px-2 py-1">… {r.rows.length - 30} more rows</div>}
+            {r.rows.length > 30 && <div className="text-xs text-zinc-500 dark:text-zinc-400 px-2 py-1">… {r.rows.length - 30} more rows</div>}
           </div>
-        ) : <div className="text-zinc-500 italic">no rows</div>}
+        ) : <div className="text-zinc-500 dark:text-zinc-400 italic">no rows</div>}
       </div>
     );
   }
@@ -249,7 +249,7 @@ function JarvisResult({ r }: { r: any }) {
         <ul className="text-xs space-y-0.5">
           {r.events?.slice(0, 10).map((e, i) => (
             <li key={i}>
-              <span className="font-mono text-zinc-500">{new Date(e.created_at).toLocaleString()}</span>
+              <span className="font-mono text-zinc-500 dark:text-zinc-400">{new Date(e.created_at).toLocaleString()}</span>
               <span className="ml-2">{String(e.summary || e.payload).slice(0, 120)}</span>
             </li>
           ))}
@@ -270,7 +270,7 @@ export function ScoreBar({ score = 0, max = 100, label = "Score", tone }: { scor
     : (pct >= 60 ? "bg-emerald-500" : pct >= 30 ? "bg-amber-500" : "bg-red-500");
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-zinc-500 w-12">{label}</span>
+      <span className="text-xs text-zinc-500 dark:text-zinc-400 w-12">{label}</span>
       <div className="flex-1 h-1.5 bg-zinc-200 rounded overflow-hidden">
         <div className={`h-full ${color}`} style={{ width: `${(pct/max)*100}%` }} />
       </div>
@@ -284,8 +284,8 @@ export function EmptyState({ icon: Icon = Sparkles, title, desc, actionLabel, on
     <Card>
       <CardContent className="py-12 text-center">
         <Icon className="w-10 h-10 mx-auto text-zinc-300" />
-        <div className="mt-3 text-sm font-medium text-zinc-700">{title}</div>
-        <div className="text-xs text-zinc-500 mt-1">{desc}</div>
+        <div className="mt-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">{title}</div>
+        <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{desc}</div>
         {actionLabel && onAction && (
           <Button size="sm" variant="cta" className="mt-3" onClick={onAction}>{actionLabel}</Button>
         )}
@@ -329,7 +329,7 @@ export function LoginGate({ onLogin }: { onLogin: (t: string) => void }) {
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg">M</div>
             <div>
               <div className="font-bold text-base">MehyarSoft Admin</div>
-              <div className="text-xs text-zinc-500">Built for 2026</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">Built for 2026</div>
             </div>
           </div>
           <div className="space-y-2">
@@ -341,8 +341,8 @@ export function LoginGate({ onLogin }: { onLogin: (t: string) => void }) {
               Sign in
             </Button>
           </div>
-          <div className="text-xs text-zinc-500 mt-4 text-center">
-            Press <kbd className="px-1 rounded bg-zinc-100">⌘K</kbd> anywhere to summon Jarvis
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-4 text-center">
+            Press <kbd className="px-1 rounded bg-zinc-100 dark:bg-zinc-800">⌘K</kbd> anywhere to summon Jarvis
           </div>
         </CardContent>
       </Card>

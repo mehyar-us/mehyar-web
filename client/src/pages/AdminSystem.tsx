@@ -74,7 +74,7 @@ function SystemView({ token }: { token: string }) {
       </div>
 
       {/* Sub-tab strip */}
-      <div className="flex gap-1 mb-3 border-b border-zinc-200">
+      <div className="flex gap-1 mb-3 border-b border-zinc-200 dark:border-zinc-700">
         {[
           { key: "audit", label: "🕵 Audit", desc: "Every event" },
           { key: "cron", label: "⏰ Cron", desc: "Scheduled jobs" },
@@ -84,9 +84,9 @@ function SystemView({ token }: { token: string }) {
         ].map((t) => (
           <button key={t.key} onClick={() => setTab(t.key as any)}
             className={`px-3 py-2 text-sm border-b-2 -mb-px transition ${
-              tab === t.key ? "border-emerald-500 text-emerald-700 font-medium" : "border-transparent text-zinc-600 hover:text-zinc-900"
+              tab === t.key ? "border-emerald-500 text-emerald-700 font-medium" : "border-transparent text-zinc-600 hover:text-zinc-900 dark:text-zinc-100"
             }`}>
-            {t.label} <span className="text-xs text-zinc-500 ml-1">{t.desc}</span>
+            {t.label} <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-1">{t.desc}</span>
           </button>
         ))}
       </div>
@@ -95,17 +95,17 @@ function SystemView({ token }: { token: string }) {
         <Card><CardContent className="p-4">
           <div className="flex gap-2 mb-3">
             <Input placeholder="Search events, payload, kind…" value={q} onChange={(e) => setQ(e.target.value)} className="text-sm" />
-            <span className="text-xs text-zinc-500 self-center ml-auto">{audit.data?.items?.length || 0} events</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 self-center ml-auto">{audit.data?.items?.length || 0} events</span>
           </div>
-          {audit.isLoading ? <div className="py-10 text-center text-sm text-zinc-500"><Loader2 className="inline w-4 h-4 animate-spin mr-2" />Loading…</div> : (
+          {audit.isLoading ? <div className="py-10 text-center text-sm text-zinc-500 dark:text-zinc-400"><Loader2 className="inline w-4 h-4 animate-spin mr-2" />Loading…</div> : (
             <div className="overflow-auto max-h-[60vh] space-y-1 text-xs">
               {(audit.data?.items || []).map((e: any) => (
-                <div key={e.id} className="flex gap-2 items-start border-l-2 border-zinc-200 pl-2 py-1 hover:bg-zinc-50">
-                  <span className="font-mono text-zinc-500 w-32 shrink-0">{new Date(e.created_at).toLocaleString()}</span>
+                <div key={e.id} className="flex gap-2 items-start border-l-2 border-zinc-200 pl-2 py-1 hover:bg-zinc-50 dark:bg-zinc-800/50">
+                  <span className="font-mono text-zinc-500 dark:text-zinc-400 w-32 shrink-0">{new Date(e.created_at).toLocaleString()}</span>
                   <Badge className="text-[10px]">{e.kind || "any"}</Badge>
                   <Badge className="text-[10px] bg-violet-100 text-violet-800">{e.event_type}</Badge>
-                  <span className="font-mono text-xs text-zinc-600">{(e.prospect_id || e.sam_id || "").slice(0, 8)}</span>
-                  <span className="text-zinc-700 flex-1 truncate">{String(e.summary || e.payload || "").slice(0, 140)}</span>
+                  <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">{(e.prospect_id || e.sam_id || "").slice(0, 8)}</span>
+                  <span className="text-zinc-700 dark:text-zinc-300 flex-1 truncate">{String(e.summary || e.payload || "").slice(0, 140)}</span>
                 </div>
               ))}
               {!audit.data?.items?.length && <div className="text-sm text-zinc-400 py-10 text-center">No events yet.</div>}
@@ -143,7 +143,7 @@ function SystemView({ token }: { token: string }) {
             </div>
           )}
           <table className="w-full text-xs">
-            <thead className="bg-zinc-100 text-left">
+            <thead className="bg-zinc-100 dark:bg-zinc-800 text-left">
               <tr>
                 <th className="p-2">Triggered</th>
                 <th className="p-2">Status</th>
@@ -160,10 +160,10 @@ function SystemView({ token }: { token: string }) {
                 const gov = p.gov || {};
                 const out = p.outreach || {};
                 return (
-                  <tr key={r.id} className="border-b hover:bg-zinc-50">
+                  <tr key={r.id} className="border-b hover:bg-zinc-50 dark:bg-zinc-800/50">
                     <td className="p-2 font-mono">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="p-2"><Badge className={p.ok !== false ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}>{p.ok !== false ? "ok" : "fail"}</Badge></td>
-                    <td className="p-2 text-zinc-500">{r.name || "—"}</td>
+                    <td className="p-2 text-zinc-500 dark:text-zinc-400">{r.name || "—"}</td>
                     <td className="p-2">{gov.ok ? (gov.ok !== false ? `+${gov.inserted || 0}/${gov.updated || 0}` : gov.error?.slice(0, 40)) : "—"}</td>
                     <td className="p-2">{out.send_due_count != null ? `due=${out.send_due_count}` : "—"}</td>
                     <td className="p-2 text-red-700 text-xs">{p.errors ? JSON.stringify(p.errors).slice(0, 60) : ""}</td>
@@ -182,20 +182,20 @@ function SystemView({ token }: { token: string }) {
       {tab === "health" && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Card><CardContent className="p-4">
-            <div className="text-xs uppercase text-zinc-500 mb-2 flex items-center gap-1"><Database className="w-3 h-3" /> D1 database</div>
+            <div className="text-xs uppercase text-zinc-500 dark:text-zinc-400 mb-2 flex items-center gap-1"><Database className="w-3 h-3" /> D1 database</div>
             {health.isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
               <>
                 <div className="text-2xl font-bold">{(health.data?.db?.size_mb || 0).toFixed(2)} MB</div>
-                <div className="text-xs text-zinc-500 mt-1">{health.data?.db?.tables || "?"} tables · {health.data?.db?.rows_total || "?"} rows</div>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{health.data?.db?.tables || "?"} tables · {health.data?.db?.rows_total || "?"} rows</div>
               </>
             )}
           </CardContent></Card>
           <Card><CardContent className="p-4">
-            <div className="text-xs uppercase text-zinc-500 mb-2 flex items-center gap-1"><Sparkles className="w-3 h-3" /> LLM provider</div>
+            <div className="text-xs uppercase text-zinc-500 dark:text-zinc-400 mb-2 flex items-center gap-1"><Sparkles className="w-3 h-3" /> LLM provider</div>
             {health.isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
               <>
                 <div className="text-2xl font-bold">{health.data?.llm?.provider || "cloudflare"}</div>
-                <div className="text-xs text-zinc-500 mt-1">{health.data?.llm?.model || "?"}</div>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{health.data?.llm?.model || "?"}</div>
                 <Badge className={health.data?.llm?.reachable ? "bg-emerald-100 text-emerald-800 mt-1" : "bg-amber-100 text-amber-800 mt-1"}>
                   {health.data?.llm?.reachable ? "✓ reachable" : "⚠ fallback heuristic"}
                 </Badge>
@@ -203,9 +203,9 @@ function SystemView({ token }: { token: string }) {
             )}
           </CardContent></Card>
           <Card><CardContent className="p-4">
-            <div className="text-xs uppercase text-zinc-500 mb-2 flex items-center gap-1"><Server className="w-3 h-3" /> Last 24h</div>
+            <div className="text-xs uppercase text-zinc-500 dark:text-zinc-400 mb-2 flex items-center gap-1"><Server className="w-3 h-3" /> Last 24h</div>
             <div className="text-2xl font-bold">{health.data?.errors_24h || 0}</div>
-            <div className="text-xs text-zinc-500 mt-1">{health.data?.requests_24h || 0} API calls · {health.data?.llm_calls_24h || 0} LLM</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{health.data?.requests_24h || 0} API calls · {health.data?.llm_calls_24h || 0} LLM</div>
           </CardContent></Card>
         </div>
       )}
@@ -236,7 +236,7 @@ function BackupPanel({ token }: { token: string }) {
     <div id="backup">
       <Card><CardContent className="p-5">
         <h3 className="font-semibold flex items-center gap-2 mb-2"><Download className="w-4 h-4" /> Backup</h3>
-        <p className="text-sm text-zinc-600 mb-3">Download a JSON dump of your prospects, opportunities, drafts, replies, and audit events. Up to 5,000 rows per table.</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">Download a JSON dump of your prospects, opportunities, drafts, replies, and audit events. Up to 5,000 rows per table.</p>
         <Button variant="cta" onClick={trigger} disabled={busy}>{busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />} Download backup</Button>
       </CardContent></Card>
     </div>
@@ -287,15 +287,15 @@ function SettingsPanel({ token }: { token: string }) {
   return (
     <Card><CardContent className="p-5">
       <h3 className="font-semibold flex items-center gap-2 mb-3"><ShieldCheck className="w-4 h-4" /> Settings</h3>
-      {!loaded && <div className="text-xs text-zinc-500 mb-2"><Loader2 className="inline w-3 h-3 animate-spin mr-1" />Loading…</div>}
+      {!loaded && <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-2"><Loader2 className="inline w-3 h-3 animate-spin mr-1" />Loading…</div>}
       <div className="space-y-3 text-sm max-w-xl">
         <div>
-          <label className="text-xs text-zinc-500">Default LLM model</label>
+          <label className="text-xs text-zinc-500 dark:text-zinc-400">Default LLM model</label>
           <Input value={model} onChange={(e) => setModel(e.target.value)} className="text-sm" />
-          <p className="text-xs text-zinc-500 mt-1">Cloudflare Workers AI · e.g. <code>@cf/meta/llama-3.2-3b-instruct</code>, <code>@cf/mistral/mistral-7b-instruct-v0.1</code></p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Cloudflare Workers AI · e.g. <code>@cf/meta/llama-3.2-3b-instruct</code>, <code>@cf/mistral/mistral-7b-instruct-v0.1</code></p>
         </div>
         <div>
-          <label className="text-xs text-zinc-500">From address (outbound emails)</label>
+          <label className="text-xs text-zinc-500 dark:text-zinc-400">From address (outbound emails)</label>
           <Input value={emailFrom} onChange={(e) => setEmailFrom(e.target.value)} className="text-sm" />
         </div>
         <Button disabled={saving} onClick={save}>
@@ -304,7 +304,7 @@ function SettingsPanel({ token }: { token: string }) {
         </Button>
         {savedAt && <p className="text-xs text-emerald-700">✓ Saved at {savedAt}</p>}
         {error && <p className="text-xs text-red-700">⚠ {error}</p>}
-        <p className="text-xs text-zinc-500 pt-2">Settings take effect on the next scheduled cron run.</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 pt-2">Settings take effect on the next scheduled cron run.</p>
       </div>
     </CardContent></Card>
   );

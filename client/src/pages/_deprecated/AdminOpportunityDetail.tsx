@@ -12,7 +12,7 @@ const STAGES = ["Discovery", "Evaluating", "Drafting", "ReadyToSend", "Sent", "R
 
 function stageColor(stage: string) {
   switch (stage) {
-    case "Discovery": return "bg-zinc-100 text-zinc-700";
+    case "Discovery": return "bg-zinc-100 text-zinc-700 dark:text-zinc-300";
     case "Evaluating": return "bg-amber-100 text-amber-700";
     case "Drafting": return "bg-violet-100 text-violet-700";
     case "ReadyToSend": return "bg-indigo-100 text-indigo-700";
@@ -20,8 +20,8 @@ function stageColor(stage: string) {
     case "Replied": return "bg-cyan-100 text-cyan-700";
     case "Won": return "bg-emerald-100 text-emerald-700";
     case "Lost": return "bg-red-100 text-red-700";
-    case "Archived": return "bg-zinc-200 text-zinc-600 line-through";
-    default: return "bg-zinc-100 text-zinc-700";
+    case "Archived": return "bg-zinc-200 text-zinc-600 dark:text-zinc-400 line-through";
+    default: return "bg-zinc-100 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -141,7 +141,7 @@ export default function AdminOpportunityDetail() {
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <h1 className="text-2xl font-semibold">{kind === "sam" ? opp.title : (opp.business_name || opp.title)}</h1>
                     <Badge className={stageColor(opp.stage)}>{opp.stage}</Badge>
-                    {opp.status && <span className={`rounded-full px-2 py-0.5 text-xs ${(STATUS_BADGE as any)[opp.status] || "bg-zinc-100 text-zinc-700"}`}>{opp.status}</span>}
+                    {opp.status && <span className={`rounded-full px-2 py-0.5 text-xs ${(STATUS_BADGE as any)[opp.status] || "bg-zinc-100 text-zinc-700 dark:text-zinc-300"}`}>{opp.status}</span>}
                   </div>
                   <div className="text-sm text-gray-600 space-y-1">
                     {kind === "sam" ? (
@@ -353,11 +353,11 @@ export default function AdminOpportunityDetail() {
                 <Card><CardContent className="p-5">
                   <h3 className="font-semibold mb-2 flex items-center gap-2"><Mail className="w-4 h-4" /> Latest draft</h3>
                   <div className="text-sm"><strong>Subject:</strong> {opp.latestDraft.subject || "(no subject)"}</div>
-                  {opp.latestDraft.body_text && <pre className="mt-2 text-xs text-gray-700 whitespace-pre-wrap bg-zinc-50 p-3 rounded">{opp.latestDraft.body_text}</pre>}
+                  {opp.latestDraft.body_text && <pre className="mt-2 text-xs text-gray-700 whitespace-pre-wrap bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded">{opp.latestDraft.body_text}</pre>}
                   {opp.latestDraft.body_html && (
                     <details className="mt-2">
                       <summary className="text-blue-600 cursor-pointer text-xs">HTML body</summary>
-                      <pre className="mt-1 text-xs text-gray-700 whitespace-pre-wrap bg-zinc-50 p-3 rounded">{opp.latestDraft.body_html}</pre>
+                      <pre className="mt-1 text-xs text-gray-700 whitespace-pre-wrap bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded">{opp.latestDraft.body_html}</pre>
                     </details>
                   )}
                 </CardContent></Card>
@@ -403,12 +403,12 @@ export default function AdminOpportunityDetail() {
                 ) : (
                   <ol className="text-sm space-y-2">
                     {events.map((e) => (
-                      <li key={e.id} className="flex gap-2 border-l-2 border-zinc-200 pl-2">
+                      <li key={e.id} className="flex gap-2 border-l-2 border-zinc-200 dark:border-zinc-700 pl-2">
                         <div className="flex-1">
                           <div className="font-mono text-xs text-gray-500">{new Date(e.created_at).toLocaleString()}</div>
                           <div><strong>{e.event_type}</strong>{e.from_stage && e.to_stage ? ` (${e.from_stage} → ${e.to_stage})` : ""}</div>
                           {e.payload_json && Object.keys(e.payload_json).length > 0 && (
-                            <pre className="mt-1 text-xs text-gray-600 bg-zinc-50 p-2 rounded">{JSON.stringify(e.payload_json, null, 2).slice(0, 400)}</pre>
+                            <pre className="mt-1 text-xs text-gray-600 bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded">{JSON.stringify(e.payload_json, null, 2).slice(0, 400)}</pre>
                           )}
                         </div>
                       </li>
@@ -481,7 +481,7 @@ function ReviewBody({ data }) {
           <Section title="⚠️ Risk flags" rows={data.risk_flags} tone="amber" />
         )}
         {(data.estimated_hours != null || data.estimated_value_usd != null || data.win_probability_pct != null) && (
-          <div className="rounded-lg bg-zinc-50 p-3 space-y-1">
+          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3 space-y-1">
             <div className="text-xs uppercase tracking-wide text-gray-500 font-semibold">📊 Estimates</div>
             {data.estimated_hours != null && <div>⏱️ <strong>{data.estimated_hours}h</strong> effort</div>}
             {data.estimated_value_usd != null && <div>💰 <strong>${Number(data.estimated_value_usd).toLocaleString()}</strong> estimated value</div>}
@@ -526,7 +526,7 @@ function ReviewBody({ data }) {
 function Section({ title, rows, tone = "zinc", ordered = false }) {
   if (!Array.isArray(rows) || rows.length === 0) return null;
   const toneClass = {
-    zinc:   "bg-zinc-50 border-zinc-200",
+    zinc:   "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700",
     emerald:"bg-emerald-50 border-emerald-200",
     violet: "bg-violet-50 border-violet-200",
     amber:  "bg-amber-50 border-amber-200",

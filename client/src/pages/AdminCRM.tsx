@@ -89,10 +89,10 @@ function CrmView({ token }: { token: string }) {
       </div>
 
       {/* Toolbar */}
-      <Card className="mb-4 sticky top-16 z-10 backdrop-blur bg-white/95">
+      <Card className="mb-4 sticky top-16 z-10 backdrop-blur bg-white dark:bg-zinc-900/95">
         <CardContent className="p-3 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 flex-1 min-w-[200px] bg-zinc-50 rounded-lg px-2.5 py-1.5 border border-zinc-200">
+            <div className="flex items-center gap-1.5 flex-1 min-w-[200px] bg-zinc-50 dark:bg-zinc-800/50 rounded-lg px-2.5 py-1.5 border border-zinc-200 dark:border-zinc-700">
               <Search className="w-4 h-4 text-zinc-400" />
               <Input
                 placeholder="Filter by name, domain, agency, city…"
@@ -100,27 +100,27 @@ function CrmView({ token }: { token: string }) {
                 onChange={(e) => setQ(e.target.value)}
                 className="border-0 bg-transparent focus-visible:ring-0 px-0 text-sm h-7"
               />
-              {q && <button onClick={() => setQ("")} className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>}
+              {q && <button onClick={() => setQ("")} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400"><X className="w-4 h-4" /></button>}
             </div>
             <div className="flex gap-1">
               {(["all","prospect","sam"] as const).map((k) => (
                 <button key={k} onClick={() => setKind(k)}
-                  className={`px-2.5 py-1.5 text-xs rounded-full transition ${kind === k ? "bg-zinc-900 text-white shadow-sm" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                  className={`px-2.5 py-1.5 text-xs rounded-full transition ${kind === k ? "bg-zinc-900 text-white shadow-sm" : "bg-zinc-100 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200"}`}>
                   {k === "all" ? "All" : k === "sam" ? "🏛 SAM.gov" : "🧲 Prospects"}
                 </button>
               ))}
             </div>
             <button onClick={() => setShowFilters((s) => !s)}
-              className={`px-2.5 py-1.5 text-xs rounded-full border ${showFilters ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400"}`}>
+              className={`px-2.5 py-1.5 text-xs rounded-full border ${showFilters ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500"}`}>
               <Filter className="inline w-3 h-3 mr-1" />Filters
             </button>
-            <span className="text-xs text-zinc-500 ml-auto tabular-nums">{filtered.length} leads</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto tabular-nums">{filtered.length} leads</span>
           </div>
           {showFilters && (
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-100">
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-zinc-500">Stage:</span>
-                <select value={stage} onChange={(e) => setStage(e.target.value)} className="text-xs border rounded px-2 py-1.5 bg-white">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">Stage:</span>
+                <select value={stage} onChange={(e) => setStage(e.target.value)} className="text-xs border rounded px-2 py-1.5 bg-white dark:bg-zinc-900">
                   <option value="">all</option>
                   {["new","scanned","draft_needed","drafting","ready","queued","sent","replied","won","lost","archived"].map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -128,8 +128,8 @@ function CrmView({ token }: { token: string }) {
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-zinc-500">Sort:</span>
-                <select value={sort} onChange={(e) => setSort(e.target.value as any)} className="text-xs border rounded px-2 py-1.5 bg-white">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">Sort:</span>
+                <select value={sort} onChange={(e) => setSort(e.target.value as any)} className="text-xs border rounded px-2 py-1.5 bg-white dark:bg-zinc-900">
                   <option value="deadline_asc">⏰ Deadline (soonest)</option>
                   <option value="leak_desc">🩸 Leak score (high→low)</option>
                   <option value="fit_desc">🎯 Fit score (high→low)</option>
@@ -166,9 +166,9 @@ function CrmView({ token }: { token: string }) {
       )}
 
       {leadQ.data && filtered.length === 0 && (
-        <Card><CardContent className="py-16 text-center text-sm text-zinc-500">
+        <Card><CardContent className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">
           <Sparkles className="inline w-10 h-10 mb-3 text-zinc-300" />
-          <div className="font-medium text-zinc-700">No leads match these filters.</div>
+          <div className="font-medium text-zinc-700 dark:text-zinc-300">No leads match these filters.</div>
           <div className="text-xs text-zinc-400 mt-1">Try clearing the search box or switching kind to "All".</div>
           {(q || stage) && (
             <Button size="sm" variant="outline" className="mt-3" onClick={() => { setQ(""); setStage(""); }}>Clear filters</Button>
@@ -239,26 +239,26 @@ function AiDailySuggestions({ token, onOpen }: { token: string; onOpen: (id: str
             {busy ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}Reshuffle
           </Button>
         </div>
-        {reasoning && <p className="text-xs text-zinc-600 italic mb-2">💭 {reasoning}</p>}
+        {reasoning && <p className="text-xs text-zinc-600 dark:text-zinc-400 italic mb-2">💭 {reasoning}</p>}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
           {items.slice(0, 5).map((it: any, i: number) => (
             <button
               key={`${it.kind}:${it.id}`}
               onClick={() => onOpen(it.id, it.kind)}
-              className="text-left rounded-lg border border-zinc-200 bg-white hover:border-violet-400 hover:shadow-md transition p-2.5"
+              className="text-left rounded-lg border border-zinc-200 bg-white dark:bg-zinc-900 hover:border-violet-400 hover:shadow-md transition p-2.5"
             >
               <div className="flex items-center gap-1 mb-1">
                 <span className="text-xs text-zinc-400 font-mono">#{i + 1}</span>
                 <span className="text-sm">{it.kind === "sam" ? "🏛" : "🧲"}</span>
-                <span className="text-xs text-zinc-500">{it.kind === "sam" ? "SAM" : "Prospect"}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">{it.kind === "sam" ? "SAM" : "Prospect"}</span>
                 {typeof it.priority_score === "number" && (
                   <span className="ml-auto text-[10px] font-bold text-violet-700 tabular-nums">{it.priority_score}</span>
                 )}
               </div>
               <div className="font-medium text-xs leading-tight line-clamp-2 mb-1">{it.title}</div>
-              <div className="text-[10px] text-zinc-500 line-clamp-2">{it.why}</div>
+              <div className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-2">{it.why}</div>
               {it.suggested_action && (
-                <div className="mt-1.5 pt-1.5 border-t border-zinc-100 text-[10px] text-violet-700">
+                <div className="mt-1.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800 text-[10px] text-violet-700">
                   ➡ {it.suggested_action}
                 </div>
               )}
@@ -276,8 +276,8 @@ function LeadRow({ row, onOpen }: { row: any; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className={`w-full text-left rounded-lg border bg-white hover:bg-zinc-50 hover:border-zinc-400 hover:shadow-sm transition p-3 ${
-        isHot ? "border-amber-300" : "border-zinc-200"
+      className={`w-full text-left rounded-lg border bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:bg-zinc-800/50 hover:border-zinc-400 dark:hover:border-zinc-500 hover:shadow-sm transition p-3 ${
+        isHot ? "border-amber-300" : "border-zinc-200 dark:border-zinc-700"
       }`}
     >
       <div className="flex flex-wrap items-start gap-3">
@@ -285,14 +285,14 @@ function LeadRow({ row, onOpen }: { row: any; onOpen: () => void }) {
         <div className="flex-1 min-w-[200px]">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-sm leading-tight">{row.title}</h3>
-            <Badge className={`text-[10px] ${STAGE_BADGE[row.stage] || "bg-zinc-100 text-zinc-700"}`}>{row.stage}</Badge>
+            <Badge className={`text-[10px] ${STAGE_BADGE[row.stage] || "bg-zinc-100 text-zinc-700 dark:text-zinc-300"}`}>{row.stage}</Badge>
             {row.deadline_in_days != null && row.kind === "sam" && (
-              <span className={`text-[11px] font-mono font-bold ${row.deadline_in_days <= 0 ? "text-red-700" : row.deadline_in_days <= 2 ? "text-red-600" : "text-zinc-500"}`}>
+              <span className={`text-[11px] font-mono font-bold ${row.deadline_in_days <= 0 ? "text-red-700" : row.deadline_in_days <= 2 ? "text-red-600" : "text-zinc-500 dark:text-zinc-400"}`}>
                 {row.deadline_in_days <= 0 ? "OVERDUE" : `D-${row.deadline_in_days}`}
               </span>
             )}
           </div>
-          <div className="text-xs text-zinc-500 mt-1 line-clamp-1">{row.subtitle || ""}</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-1">{row.subtitle || ""}</div>
           {row.ai_suggestion && (
             <div className="mt-1.5 text-xs text-violet-700 inline-flex items-center gap-1">
               🧠 {row.ai_suggestion}
@@ -327,7 +327,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
         <div className="fixed inset-0 bg-black/40 z-40 animate-fade-in" onClick={onClose} />
         {/* MOBILE: bottom-sheet (full-width, slide up from bottom, max 90vh)
             DESKTOP (md+): right-side drawer (720px wide) */}
-        <aside className="fixed z-50 bg-white shadow-2xl flex flex-col
+        <aside className="fixed z-50 bg-white dark:bg-zinc-900 shadow-2xl flex flex-col
                           inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl
                           md:inset-y-0 md:right-0 md:left-auto md:bottom-auto md:max-h-none md:w-[720px] md:rounded-none md:rounded-l-2xl
                           animate-slide-up md:animate-slide-in">
@@ -336,21 +336,21 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
             <div className="w-10 h-1.5 rounded-full bg-zinc-300" />
           </div>
           {/* Drawer header — explicit dark text + bg so it stays readable even when html.dark is set */}
-          <div className="sticky top-0 bg-white border-b border-zinc-200 z-10 px-4 py-3 md:px-5 flex items-center gap-3">
+          <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700 z-10 px-4 py-3 md:px-5 flex items-center gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="text-xl shrink-0">{kind === "sam" ? "🏛" : "🧲"}</div>
               <div className="flex-1 min-w-0">
-                <h2 className="font-bold text-base leading-tight text-zinc-900 break-words line-clamp-2">{opp.title || "Loading…"}</h2>
-                <div className="text-xs text-zinc-500 truncate">{opp.agency || opp.root_domain || "—"}</div>
+                <h2 className="font-bold text-base leading-tight text-zinc-900 dark:text-zinc-100 break-words line-clamp-2">{opp.title || "Loading…"}</h2>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{opp.agency || opp.root_domain || "—"}</div>
               </div>
             </div>
-            <button onClick={onClose} aria-label="Close drawer" className="rounded-full p-2 hover:bg-zinc-100 text-zinc-700 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
+            <button onClick={onClose} aria-label="Close drawer" className="rounded-full p-2 hover:bg-zinc-100 text-zinc-700 dark:text-zinc-300 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Drawer body */}
-          <div className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 bg-white text-zinc-900" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
+          <div className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 bg-white text-zinc-900 dark:text-zinc-100" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
             {q.isLoading && (
               <div className="space-y-2">
                 {[0,1,2].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}
@@ -368,7 +368,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                       <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2"><ArrowRight className="w-4 h-4" /> How to apply</h4>
                       <ol className="space-y-1 text-sm">
                         {opp.how_to_apply.map((s: any, i: number) => (
-                          <li key={i} className="flex gap-2"><span className="font-mono text-zinc-400 w-5">{s.step}.</span><span>{s.label}{s.url && <> · <a href={s.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">open</a></>}{s.value && <span className="text-xs text-zinc-500"> — {String(s.value).slice(0, 100)}</span>}</span></li>
+                          <li key={i} className="flex gap-2"><span className="font-mono text-zinc-400 w-5">{s.step}.</span><span>{s.label}{s.url && <> · <a href={s.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">open</a></>}{s.value && <span className="text-xs text-zinc-500 dark:text-zinc-400"> — {String(s.value).slice(0, 100)}</span>}</span></li>
                         ))}
                       </ol>
                     </CardContent></Card>
@@ -379,7 +379,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                       <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2"><Brain className="w-4 h-4" /> Requirements</h4>
                       <ul className="space-y-1 text-sm">
                         {opp.requirements.map((r: any, i: number) => (
-                          <li key={i}><Badge className="mr-1 bg-zinc-100 text-zinc-700">{r.label}</Badge>{String(r.value).slice(0, 160)}</li>
+                          <li key={i}><Badge className="mr-1 bg-zinc-100 text-zinc-700 dark:text-zinc-300">{r.label}</Badge>{String(r.value).slice(0, 160)}</li>
                         ))}
                       </ul>
                     </CardContent></Card>
@@ -421,7 +421,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                       </div>
                       <ul className="text-sm space-y-1">
                         {opp.attachments.map((a: any, i: number) => (
-                          <li key={i}><a href={a.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">{a.name}</a> {a.type && <span className="text-xs text-zinc-500">· {a.type}</span>}</li>
+                          <li key={i}><a href={a.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">{a.name}</a> {a.type && <span className="text-xs text-zinc-500 dark:text-zinc-400">· {a.type}</span>}</li>
                         ))}
                       </ul>
                     </CardContent></Card>
@@ -436,11 +436,11 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                       <h4 className="text-sm font-semibold mb-2">📇 Contacts</h4>
                       <ul className="text-sm space-y-2">
                         {opp.poc.map((c: any, i: number) => (
-                          <li key={i} className="border-l-2 border-zinc-200 pl-2">
+                          <li key={i} className="border-l-2 border-zinc-200 dark:border-zinc-700 pl-2">
                             <div className="font-medium">{c.name || "—"}</div>
-                            {c.role && <div className="text-xs text-zinc-500">{c.role}</div>}
+                            {c.role && <div className="text-xs text-zinc-500 dark:text-zinc-400">{c.role}</div>}
                             {c.email && <a href={`mailto:${c.email}`} className="text-blue-700 text-xs underline block">{c.email}</a>}
-                            {c.phone && <span className="text-xs text-zinc-600">{c.phone}</span>}
+                            {c.phone && <span className="text-xs text-zinc-600 dark:text-zinc-400">{c.phone}</span>}
                           </li>
                         ))}
                       </ul>
@@ -461,11 +461,11 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                         ].map(([label, val]) => (
                           <div key={label as string} className="flex items-center gap-1.5">
                             <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px] text-white ${val ? "bg-emerald-500" : "bg-red-400"}`}>{val ? "✓" : "✕"}</span>
-                            <span className="text-zinc-700">{label as string}</span>
+                            <span className="text-zinc-700 dark:text-zinc-300">{label as string}</span>
                           </div>
                         ))}
                       </div>
-                      <div className="text-xs text-zinc-500 mt-2 pt-2 border-t border-zinc-100">
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                         <div>Platform: <strong>{opp.signals.detected_platform || "?"}</strong></div>
                         <div>HTTP {opp.signals.status_code} · {opp.signals.load_time_ms}ms · {opp.signals.page_weight_kb}KB</div>
                         {typeof opp.signals.leak_score === "number" && <ScoreBar score={opp.signals.leak_score} label="leak" tone="leak" />}
@@ -523,10 +523,10 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
   if (!open) {
     return (
       <button onClick={() => setOpen(true)}
-        className="w-full text-left rounded-lg border border-dashed border-zinc-300 hover:border-emerald-400 hover:bg-emerald-50/30 transition p-3 flex items-center gap-2 text-sm text-zinc-600">
+        className="w-full text-left rounded-lg border border-dashed border-zinc-300 hover:border-emerald-400 hover:bg-emerald-50/30 transition p-3 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
         <Search className="w-4 h-4 text-emerald-600" />
         <span className="font-medium text-emerald-700">🧲 Scan for businesses that need our services</span>
-        <span className="text-xs text-zinc-500 ml-auto">vertical + city → leak_score → auto-draft</span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">vertical + city → leak_score → auto-draft</span>
       </button>
     );
   }
@@ -539,7 +539,7 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
             <Search className="w-4 h-4 text-emerald-600" />
             🧲 Scan for businesses
           </h3>
-          <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>
+          <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400"><X className="w-4 h-4" /></button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <Input placeholder="vertical (e.g. dental)" value={vertical} onChange={(e) => setVertical(e.target.value)} className="text-sm" />
@@ -552,7 +552,7 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
             {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
             {busy ? "Scanning…" : "Scan & draft top picks"}
           </Button>
-          <span className="text-xs text-zinc-500">Filters DB prospects by vertical/city, hits their sites, scores them by leak signals (no SSL, no booking, no form, slow), then drafts the top N.</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Filters DB prospects by vertical/city, hits their sites, scores them by leak signals (no SSL, no booking, no form, slow), then drafts the top N.</span>
         </div>
         {result && (
           <div className={`text-xs rounded p-2 ${result.ok ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"}`}>
@@ -562,7 +562,7 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
                 {result.top_picks && result.top_picks.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {result.top_picks.slice(0, 5).map((p: any) => (
-                      <li key={p.id} className="flex items-center gap-2 text-zinc-700">
+                      <li key={p.id} className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
                         <span className="font-medium truncate flex-1">{p.business_name}</span>
                         <span className="font-mono text-red-700">leak {p.leak_score}</span>
                         {p.drafted && <Badge className="bg-violet-100 text-violet-800 text-[10px]">drafted</Badge>}
@@ -570,7 +570,7 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
                     ))}
                   </ul>
                 )}
-                {result.scanned === 0 && <div className="mt-1 text-zinc-600">No matching prospects in DB. Add some first, or broaden filters.</div>}
+                {result.scanned === 0 && <div className="mt-1 text-zinc-600 dark:text-zinc-400">No matching prospects in DB. Add some first, or broaden filters.</div>}
               </>
             ) : (
               <span className="text-red-700">⚠ {result.error || "Scan failed"}</span>
@@ -639,7 +639,7 @@ function StageMover({ row, token, onUpdate }: any) {
             className={`text-xs px-2 py-1 rounded-full transition ${
               s === row.stage
                 ? "bg-zinc-900 text-white font-semibold ring-2 ring-emerald-400"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                : "bg-zinc-100 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200"
             }`}>
             {s}{s === row.stage && <CheckCircle2 className="inline w-3 h-3 ml-1" />}
           </button>
@@ -699,7 +699,7 @@ function OutreachEnqueue({ row, token, onAction }: any) {
         {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
         Enqueue day-0 cold email
       </Button>
-      <div className="text-xs text-zinc-500 mt-1">Sends only after manual approval.</div>
+      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Sends only after manual approval.</div>
     </CardContent></Card>
   );
 }
@@ -777,7 +777,7 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
         </div>
 
         {!data && !busy && (
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
             The AI inspects <strong>all</strong> data (signals, agency, deal type, contact role) and returns 3 services × 3 pricing tiers — packaged as "what MehyarSoft could sell them." Click any tier to turn it into an outreach draft.
           </p>
         )}
@@ -785,11 +785,11 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
         {busy && (
           <div className="space-y-2 animate-pulse">
             <div className="h-4 bg-zinc-200 rounded w-1/3" />
-            <div className="h-3 bg-zinc-100 rounded w-full" />
+            <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded w-full" />
             <div className="grid grid-cols-3 gap-2">
-              <div className="h-20 bg-zinc-100 rounded" />
-              <div className="h-20 bg-zinc-100 rounded" />
-              <div className="h-20 bg-zinc-100 rounded" />
+              <div className="h-20 bg-zinc-100 dark:bg-zinc-800 rounded" />
+              <div className="h-20 bg-zinc-100 dark:bg-zinc-800 rounded" />
+              <div className="h-20 bg-zinc-100 dark:bg-zinc-800 rounded" />
             </div>
           </div>
         )}
@@ -810,25 +810,25 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
   return (
     <div className="space-y-3 text-sm">
       {verdict && (
-        <div className="flex flex-wrap items-baseline gap-2 p-2.5 rounded-lg bg-zinc-50 border border-zinc-200">
+        <div className="flex flex-wrap items-baseline gap-2 p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
           <span className="text-base font-bold">{verdict}</span>
-          {typeof score === "number" && <span className="font-mono text-2xl font-bold text-zinc-900">{score}<span className="text-base text-zinc-400">/100</span></span>}
+          {typeof score === "number" && <span className="font-mono text-2xl font-bold text-zinc-900 dark:text-zinc-100">{score}<span className="text-base text-zinc-400">/100</span></span>}
           {data.used_llm === false && <Badge className="bg-amber-100 text-amber-800">heuristic</Badge>}
           {data.used_llm === true && <Badge className="bg-emerald-100 text-emerald-800">AI</Badge>}
         </div>
       )}
-      {summary && <p className="text-zinc-700">{summary}</p>}
+      {summary && <p className="text-zinc-700 dark:text-zinc-300">{summary}</p>}
       {services.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">🛠 What we could sell them</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">🛠 What we could sell them</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {services.slice(0, 3).map((s: any, i: number) => (
-              <div key={i} className="rounded-lg border border-zinc-200 bg-white p-3">
+              <div key={i} className="rounded-lg border border-zinc-200 bg-white dark:bg-zinc-900 p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-base">{s.icon || "🛠"}</span>
                   <span className="font-medium text-sm">{s.name}</span>
                 </div>
-                {s.description && <p className="text-xs text-zinc-600">{s.description}</p>}
+                {s.description && <p className="text-xs text-zinc-600 dark:text-zinc-400">{s.description}</p>}
                 {s.deliverables && <ul className="text-xs mt-1.5 space-y-0.5">{s.deliverables.slice(0, 4).map((d: string, j: number) => <li key={j}>· {d}</li>)}</ul>}
               </div>
             ))}
@@ -837,7 +837,7 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
       )}
       {tiers.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">💰 Pricing tiers — click to draft</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">💰 Pricing tiers — click to draft</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {tiers.slice(0, 3).map((t: any, i: number) => {
               const tierKey = t._idx ?? i;
@@ -848,17 +848,17 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
                   onClick={() => onGenerate({ ...t, _idx: tierKey }, matchingService)}
                   disabled={generatingTier !== null}
                   className={`text-left rounded-lg border p-3 transition hover:border-violet-500 hover:shadow-md ${
-                    i === 1 ? "border-violet-400 bg-violet-50/40" : "border-zinc-200 bg-white"
+                    i === 1 ? "border-violet-400 bg-violet-50/40" : "border-zinc-200 bg-white dark:bg-zinc-900"
                   } ${generatingTier === tierKey ? "animate-pulse" : ""}`}
                 >
                   <div className="flex justify-between items-baseline">
                     <span className="font-semibold text-sm">{t.tier || t.name}</span>
                     {i === 1 && <Badge className="bg-violet-100 text-violet-800 text-[10px]">⭐ recommended</Badge>}
                   </div>
-                  <div className="text-xl font-bold mt-1">${(t.price_min ?? t.min ?? 0).toLocaleString()}<span className="text-xs font-normal text-zinc-500"> – ${(t.price_max ?? t.max ?? 0).toLocaleString()}</span></div>
-                  {t.monthly_min && <div className="text-xs text-zinc-500 mt-0.5">${t.monthly_min} – ${t.monthly_max}/mo retain</div>}
-                  {t.scope && <ul className="text-xs mt-2 space-y-0.5 text-zinc-600">{t.scope.slice(0, 6).map((s: string, j: number) => <li key={j}>· {s}</li>)}</ul>}
-                  <div className="mt-2 pt-2 border-t border-zinc-200 flex items-center gap-1 text-xs text-violet-700 font-medium">
+                  <div className="text-xl font-bold mt-1">${(t.price_min ?? t.min ?? 0).toLocaleString()}<span className="text-xs font-normal text-zinc-500 dark:text-zinc-400"> – ${(t.price_max ?? t.max ?? 0).toLocaleString()}</span></div>
+                  {t.monthly_min && <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">${t.monthly_min} – ${t.monthly_max}/mo retain</div>}
+                  {t.scope && <ul className="text-xs mt-2 space-y-0.5 text-zinc-600 dark:text-zinc-400">{t.scope.slice(0, 6).map((s: string, j: number) => <li key={j}>· {s}</li>)}</ul>}
+                  <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700 flex items-center gap-1 text-xs text-violet-700 font-medium">
                     {generatingTier === tierKey ? <><Loader2 className="w-3 h-3 animate-spin" /> Drafting…</> : <><ArrowRight className="w-3 h-3" /> Generate draft from this tier</>}
                   </div>
                 </button>
@@ -869,7 +869,7 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
       )}
       {Array.isArray(data.risk_flags) && data.risk_flags.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1">⚠️ Risk flags</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">⚠️ Risk flags</div>
           <ul className="text-xs text-amber-700 space-y-0.5">{data.risk_flags.slice(0, 5).map((r: string, i: number) => <li key={i}>· {r}</li>)}</ul>
         </div>
       )}

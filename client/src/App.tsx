@@ -78,18 +78,16 @@ function ScrollToTop() {
 }
 
 function App() {
-  // Initialize theme from localStorage — but FORCE LIGHT MODE on /admin/* paths
-  // because the admin UI uses raw light-mode Tailwind classes (bg-white, text-zinc-700, etc.)
-  // and renders dark-on-dark in dark mode. Marketing pages keep the toggle.
+  // Initialize theme from localStorage.
+  // The useTheme hook (used by ThemeToggle component) also manages the .dark
+  // class, but we apply it here once on mount so the first paint is correct
+  // and matches the user's saved preference (no flash of wrong theme).
   useEffect(() => {
-    const isAdmin = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
-    const isDarkMode = localStorage.getItem("darkMode") === "true";
-    if (isDarkMode && !isAdmin) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      if (isAdmin) document.documentElement.classList.add("force-light");
-    }
+    const saved = localStorage.getItem("darkMode");
+    const wantsDark = saved !== null
+      ? saved === "true"
+      : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false);
+    document.documentElement.classList.toggle("dark", wantsDark);
   }, []);
 
   return (
