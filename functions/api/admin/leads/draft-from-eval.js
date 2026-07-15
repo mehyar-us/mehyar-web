@@ -187,11 +187,17 @@ JSON only: {"subject": "...", "body": "..."}`;
     ).run();
 
     // Queue a send entry (only if we have an email)
+    // Schema requires: from_email, to_email, subject, physical_address, status, created_at
     if (prospectId && contactEmail) {
+      const fromEmail = env.MEHYAR_FROM_EMAIL || env.CONTACT_FROM_EMAIL || "leads@mehyar.us";
+      const physicalAddress = env.MEHYAR_PHYSICAL_ADDRESS || "MehyarSwelim LLC · 123 Main St · New York, NY 10001";
       await env.LEADS_DB.prepare(`
-        INSERT INTO prospect_sends (id, prospect_id, draft_id, channel, status, scheduled_for, created_at, updated_at)
-        VALUES (?, ?, ?, 'email', 'queued_for_review', datetime('now','+1 minute'), datetime('now'), datetime('now'))
-      `).bind(sendId, prospectId, draftId).run();
+        INSERT INTO prospect_sends (id, prospect_id, draft_id, channel, status, scheduled_for,
+                                   to_email, from_email, subject, physical_address,
+                                   created_at, updated_at)
+        VALUES (?, ?, ?, 'email', 'queued_for_review', datetime('now','+1 minute'),
+                ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(sendId, prospectId, draftId, contactEmail, fromEmail, subject, physicalAddress).run();
     }
 
     // Audit
