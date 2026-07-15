@@ -20,13 +20,13 @@ export async function onRequestGet({ request, env }) {
   if (!env?.LEADS_DB) return json({ ok: false, error: "missing_db" }, 500, request, env);
 
   // Pull the current state
-  // (gov_opportunities.status defaults to 'new'; use NOT IN to capture both)
+  // (gov_opportunities.status can be NULL or 'new'; NOT IN excludes NULL rows, so use OR clause)
   const sam = await env.LEADS_DB.prepare(`
     SELECT id, title, agency, fit_score, response_deadline,
            CAST(julianday(response_deadline) - julianday('now') AS INTEGER) AS d,
            stage, ai_suggestion
     FROM gov_opportunities
-    WHERE status NOT IN ('archived','won','lost','inactive')
+    WHERE (status IS NULL OR status NOT IN ('archived','won','lost','inactive'))
     ORDER BY (CASE WHEN fit_score IS NULL THEN 0 ELSE fit_score END) DESC,
              (CASE WHEN response_deadline IS NULL THEN 9999 ELSE julianday(response_deadline) - julianday('now') END) ASC
     LIMIT 6
@@ -42,8 +42,8 @@ export async function onRequestGet({ request, env }) {
 
   const counts = await env.LEADS_DB.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM gov_opportunities WHERE status NOT IN ('archived','won','lost','inactive')) as sam_active,
-      (SELECT COUNT(*) FROM gov_opportunities WHERE status NOT IN ('archived','won','lost','inactive') AND julianday(response_deadline) - julianday('now') <= 7) as sam_due_7d,
+      (SELECT COUNT(*) FROM gov_opportunities WHERE status IS NULL OR status NOT IN ('archived','won','lost','inactive')) as sam_active,
+      (SELECT COUNT(*) FROM gov_opportunities WHERE (status IS NULL OR status NOT IN ('archived','won','lost','inactive')) AND julianday(response_deadline) - julianday('now') <= 7) as sam_due_7d,
       (SELECT COUNT(*) FROM gov_opportunities WHERE stage='drafting' OR stage='evaluating') as sam_in_progress,
       (SELECT COUNT(*) FROM prospects WHERE status NOT IN ('archived','won','lost','unsubscribed')) as pros_total,
       (SELECT COUNT(*) FROM prospects WHERE status NOT IN ('archived','won','lost','unsubscribed') AND leak_score >= 60) as pros_hot,
