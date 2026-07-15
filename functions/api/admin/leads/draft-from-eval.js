@@ -40,7 +40,14 @@ export async function onRequestPost({ request, env }) {
   // Resolve the lead to its business name + email + contact
   let lead = null;
   if (lead_kind === "sam") {
-    lead = await env.LEADS_DB.prepare(`SELECT id, title, agency, source_url, response_deadline, summary, raw_json, contact_email FROM gov_opportunities WHERE id = ?`).bind(lead_id).first().catch(() => null);
+    // gov_opportunities has no contact_email column — extract from raw_json if present
+    lead = await env.LEADS_DB.prepare(`SELECT id, title, agency, source_url, response_deadline, summary, raw_json FROM gov_opportunities WHERE id = ?`).bind(lead_id).first().catch(() => null);
+    if (lead) {
+      try {
+        const raw = lead.raw_json ? JSON.parse(lead.raw_json) : {};
+        lead.contact_email = raw?.poc?.[0]?.email || raw?.contact_email || raw?.email || null;
+      } catch { lead.contact_email = null; }
+    }
   } else {
     lead = await env.LEADS_DB.prepare(`SELECT id, business_name, website, root_domain, email, contact_name, city, industry FROM prospects WHERE id = ?`).bind(lead_id).first().catch(() => null);
   }
