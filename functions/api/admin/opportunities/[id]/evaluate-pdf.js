@@ -8,8 +8,8 @@
 //
 // Result is persisted to gov_opportunity_briefs with type='pdf_eval' and audit-logged.
 
-import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
-import { callLLM } from "../../../_shared/llmChat.js";
+import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { chat } from "../../_shared/llmChat.js";
 
 const MAX_PDF_BYTES = 8 * 1024 * 1024;   // 8 MB cap per PDF
 const PDF_TIMEOUT_MS = 25_000;
@@ -251,7 +251,7 @@ ${cleanText}`
   let used_llm = false;
   let result = null;
   try {
-    const llmResp = await callLLM(env, messages, { max_tokens: 1800, temperature: 0.3 });
+    const llmResp = await chat({ env, messages, max_tokens: 1800, temperature: 0.3 });
     used_llm = llmResp?.ok !== false;
     const text = llmResp?.text || "";
     // Extract JSON from response
