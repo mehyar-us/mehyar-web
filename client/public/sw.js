@@ -4,7 +4,7 @@
 // NO caching of /api/, /admin, /billing/*, or any function POST endpoint —
 // conversion paths always go straight to the network.
 
-const VERSION = 'mehyar-shell-v2';
+const VERSION = 'mehyar-shell-v3';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -30,6 +30,12 @@ self.addEventListener('install', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -38,6 +44,10 @@ self.addEventListener('activate', (event) => {
       )
     ).then(() => self.clients.claim())
   );
+  // Tell all open tabs to reload so they get the fresh app shell
+  self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
+    clients.forEach((c) => c.postMessage({ type: 'SW_UPDATED', version: VERSION }));
+  });
 });
 
 function isConversionPath(url) {

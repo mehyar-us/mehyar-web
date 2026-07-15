@@ -25,6 +25,28 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
+        .then((reg) => {
+          // Listen for SW update messages and auto-reload so users get the fresh shell
+          navigator.serviceWorker.addEventListener("message", (e) => {
+            if (e.data?.type === "SW_UPDATED") {
+              // Hard-reload bypasses HTTP cache for the HTML + bundle
+              window.location.reload();
+            }
+          });
+          // If a new SW is waiting, activate it immediately
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+          reg.addEventListener("updatefound", () => {
+            const newSw = reg.installing;
+            if (!newSw) return;
+            newSw.addEventListener("statechange", () => {
+              if (newSw.state === "installed" && navigator.serviceWorker.controller) {
+                newSw.postMessage({ type: "SKIP_WAITING" });
+              }
+            });
+          });
+        })
         .catch(() => {
           // SW registration is best-effort; the app must work without it.
         });
