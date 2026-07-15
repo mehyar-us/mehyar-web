@@ -24,7 +24,7 @@ export async function onRequestGet({ request, env }) {
   const sam = await env.LEADS_DB.prepare(`
     SELECT id, title, agency, fit_score, response_deadline,
            CAST(julianday(response_deadline) - julianday('now') AS INTEGER) AS d,
-           stage, ai_suggestion
+           stage, next_action, why_fit
     FROM gov_opportunities
     WHERE (status IS NULL OR status NOT IN ('archived','won','lost','inactive'))
     ORDER BY (CASE WHEN fit_score IS NULL THEN 0 ELSE fit_score END) DESC,

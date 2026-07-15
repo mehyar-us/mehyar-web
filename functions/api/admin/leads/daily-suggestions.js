@@ -35,7 +35,7 @@ export async function onRequestGet({ request, env }) {
     samRaw = await env.LEADS_DB.prepare(`
       SELECT id, 'sam' AS kind, title, agency AS subtitle, fit_score, stage, response_deadline,
              CAST(julianday(response_deadline) - julianday('now') AS INTEGER) AS days_to_deadline,
-             ai_suggestion, status
+             status
       FROM gov_opportunities
       WHERE (status IS NULL OR status NOT IN ('archived','won','lost','inactive'))
       ORDER BY (CASE WHEN fit_score IS NULL THEN 0 ELSE fit_score END) DESC,
@@ -50,7 +50,7 @@ export async function onRequestGet({ request, env }) {
 
   const prospectRows = await env.LEADS_DB.prepare(`
     SELECT id, 'prospect' AS kind, business_name AS title, root_domain AS subtitle,
-           leak_score, stage, last_touched_at, ai_suggestion
+           leak_score, stage, last_touched_at
     FROM prospects
     WHERE status NOT IN ('archived','won','lost','unsubscribed','bounced')
     ORDER BY (CASE WHEN leak_score IS NULL THEN 0 ELSE leak_score END) DESC,
