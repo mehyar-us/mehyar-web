@@ -1,11 +1,12 @@
 // @ts-nocheck
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Loader2, Sparkles, Filter, Search, ChevronRight,
   Briefcase, Globe, Send, Phone, Mail, Calendar, RefreshCw,
   X, Plus, Brain, CheckCircle2, ArrowRight, MailIcon, Trash2,
+  MessageSquare, Check,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -709,6 +710,7 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<any>(null);
   const [generatingTier, setGeneratingTier] = useState<number | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const run = async (force = false) => {
     setBusy(true);
@@ -772,7 +774,7 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
             <Badge className="ml-1">3 services · 3 price tiers</Badge>
           </h4>
           <Button size="sm" variant="cta" onClick={() => run(false)} disabled={busy}>
-            {busy ? <><Loader2 className="w-4 h-4 animate-spin mr-1" />Evaluating (10-30s)…</> : <><Sparkles className="w-4 h-4 mr-1" />{data ? "Refresh" : "Deep evaluate"}</>}
+            {busy ? <><Loader2 className="w-4 h-4 animate-spin mr-1" />Evaluating (10-30s)…</> : <><Sparkles className="w-4 h-4 mr-1" />{data ? "Refresh" : "Deep evaluate"}</> }
           </Button>
         </div>
 
@@ -794,7 +796,36 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
           </div>
         )}
 
-        {data && <DeepEvalBody data={data} onGenerate={generateDraftFromTier} generatingTier={generatingTier} />}
+        {data && (
+          <>
+            <DeepEvalBody data={data} onGenerate={generateDraftFromTier} generatingTier={generatingTier} />
+            <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                💬 Want to refine? Tell the AI what to add, remove, or change — it'll suggest a structured patch you can apply.
+              </div>
+              <Button
+                size="sm"
+                variant={chatOpen ? "default" : "outline"}
+                onClick={() => setChatOpen((v) => !v)}
+              >
+                <MessageSquare className="w-3.5 h-3.5 mr-1" />
+                {chatOpen ? "Hide chat" : "Refine with AI"}
+              </Button>
+            </div>
+            {chatOpen && (
+              <DeepEvalChat
+                kind={kind}
+                id={id}
+                token={token}
+                currentEval={data}
+                onApplied={(newEval, reason) => {
+                  setData(newEval);
+                  onAction(`Eval refined · ${reason}`);
+                }}
+              />
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -879,6 +910,236 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
           <p className="text-sm font-medium">{data.next_action}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── DeepEvalChat — refine the saved evaluation through a multi-turn LLM chat ─
+//
+// Each user message returns:
+//   - reply: conversational response
+//   - patch: optional structured change (add/remove/edit services/tiers/score/etc.)
+//   - new_eval_preview: the merged result if you applied the patch
+//
+// Apply button saves new_eval as the canonical deep_evaluate (old one stays in
+// opportunity_events history with _applied_reason). Conversation is persisted
+// for multi-turn coherence and audit.
+
+type ChatTurn = {
+  role: "user" | "assistant";
+  content: string;
+  patch?: any;
+  new_eval_preview?: any;
+  applied?: boolean;
+  rejected?: boolean;
+  ts?: string;
+};
+
+function DeepEvalChat({
+  kind, id, token, currentEval, onApplied,
+}: {
+  kind: string;
+  id: string;
+  token: string;
+  currentEval: any;
+  onApplied: (newEval: any, reason: string) => void;
+}) {
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [pendingPatch, setPendingPatch] = useState<{
+    patch: any; new_eval_preview: any; turnIdx: number;
+  } | null>(null);
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Always send the latest known evaluation
+  const evalRef = useRef(currentEval);
+  useEffect(() => { evalRef.current = currentEval; }, [currentEval]);
+
+  // Autoscroll
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [turns.length, sending]);
+
+  const send = async () => {
+    const msg = input.trim();
+    if (!msg || sending) return;
+    setInput("");
+    setSending(true);
+    const userTurn: ChatTurn = { role: "user", content: msg, ts: new Date().toISOString() };
+    setTurns((t) => [...t, userTurn]);
+    try {
+      const r = await fetch(
+        `/api/admin/leads/${encodeURIComponent(id)}/chat-eval?kind=${kind}`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          body: JSON.stringify({ message: msg, current_eval: evalRef.current }),
+        }
+      );
+      const j = await r.json();
+      if (!j.ok) {
+        setTurns((t) => [...t, { role: "assistant", content: `⚠ ${j.error || "request failed"}: ${j.details || ""}`, ts: new Date().toISOString() }]);
+        return;
+      }
+      const asst: ChatTurn = {
+        role: "assistant",
+        content: j.reply || "(no reply)",
+        patch: j.patch || null,
+        new_eval_preview: j.new_eval_preview || null,
+        ts: new Date().toISOString(),
+      };
+      setTurns((t) => {
+        const next = [...t, asst];
+        if (j.patch && j.new_eval_preview) {
+          setPendingPatch({ patch: j.patch, new_eval_preview: j.new_eval_preview, turnIdx: next.length - 1 });
+        }
+        return next;
+      });
+    } catch (e: any) {
+      setTurns((t) => [...t, { role: "assistant", content: `⚠ ${e?.message || "network error"}`, ts: new Date().toISOString() }]);
+    } finally { setSending(false); }
+  };
+
+  const applyPatch = async () => {
+    if (!pendingPatch || applying) return;
+    setApplying(true);
+    try {
+      const r = await fetch(
+        `/api/admin/leads/${encodeURIComponent(id)}/chat-eval/apply?kind=${kind}`,
+        {
+          method: "PUT",
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          body: JSON.stringify({
+            new_eval: pendingPatch.new_eval_preview,
+            reason: pendingPatch.patch.reason || "Chat refinement",
+          }),
+        }
+      );
+      const j = await r.json();
+      if (!j.ok) {
+        setTurns((t) => [...t, { role: "assistant", content: `⚠ apply failed: ${j.error || "unknown"}: ${j.details || ""}`, ts: new Date().toISOString() }]);
+        return;
+      }
+      // Mark turn applied
+      setTurns((t) => t.map((x, i) => i === pendingPatch.turnIdx ? { ...x, applied: true } : x));
+      // Notify parent to swap in the new eval
+      onApplied(pendingPatch.new_eval_preview, pendingPatch.patch.reason || "applied");
+      setPendingPatch(null);
+    } catch (e: any) {
+      setTurns((t) => [...t, { role: "assistant", content: `⚠ ${e?.message || "apply network error"}`, ts: new Date().toISOString() }]);
+    } finally { setApplying(false); }
+  };
+
+  const rejectPatch = () => {
+    if (!pendingPatch) return;
+    setTurns((t) => t.map((x, i) => i === pendingPatch.turnIdx ? { ...x, rejected: true } : x));
+    setPendingPatch(null);
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-violet-200 dark:border-violet-700 bg-violet-50/30 dark:bg-violet-950/20 p-2">
+      <div
+        ref={scrollRef}
+        className="max-h-72 overflow-y-auto overscroll-contain space-y-2 px-1 py-1"
+      >
+        {turns.length === 0 && (
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 px-2 py-3 text-center">
+            💡 Try asking: <em>"Add a HIPAA compliance service"</em>, <em>"Why is the Growth tier $8k?"</em>, <em>"Drop the Starter tier — they're too small for our minimum"</em>, or <em>"Raise fit score to 80, they already have a procurement portal"</em>.
+          </div>
+        )}
+        {turns.map((t, i) => (
+          <div
+            key={i}
+            className={`rounded-lg p-2 text-sm ${
+              t.role === "user"
+                ? "bg-cyan-100 dark:bg-cyan-900/40 ml-6"
+                : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 mr-6"
+            }`}
+          >
+            <div className="flex items-baseline justify-between gap-2 mb-1">
+              <span className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400">
+                {t.role === "user" ? "🧑 you" : "🤖 assistant"}
+                {t.applied && <span className="ml-2 text-emerald-700 dark:text-emerald-400 normal-case font-normal">✓ applied</span>}
+                {t.rejected && <span className="ml-2 text-zinc-500 dark:text-zinc-400 normal-case font-normal">dismissed</span>}
+              </span>
+              {t.ts && <span className="text-[10px] text-zinc-400">{new Date(t.ts).toLocaleTimeString()}</span>}
+            </div>
+            <div className="whitespace-pre-wrap leading-relaxed">{t.content}</div>
+            {t.patch && (
+              <div className="mt-2 p-2 rounded bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                <div className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 mb-1">
+                  📝 Proposed changes
+                  {t.patch.reason && <span className="font-normal text-zinc-400"> — {t.patch.reason}</span>}
+                </div>
+                <ul className="text-xs space-y-0.5">
+                  {t.patch.set && Object.entries(t.patch.set).map(([k, v]) => (
+                    <li key={k}><span className="text-zinc-500">set</span> <code className="text-cyan-700 dark:text-cyan-300">{k}</code> → {JSON.stringify(v)}</li>
+                  ))}
+                  {t.patch.add_services?.map((s: any, j: number) => (
+                    <li key={`as-${j}`}>+ service <strong>{s.name}</strong>{s.description && <span className="text-zinc-500"> — {s.description.slice(0, 80)}{s.description.length > 80 ? "…" : ""}</span>}</li>
+                  ))}
+                  {t.patch.remove_service_names?.map((n: string, j: number) => (
+                    <li key={`rs-${j}`}><span className="text-red-700 dark:text-red-400">− service</span> {n}</li>
+                  ))}
+                  {t.patch.add_pricing_tiers?.map((tier: any, j: number) => (
+                    <li key={`at-${j}`}>+ tier <strong>{tier.tier}</strong> ${tier.price_min?.toLocaleString()}–${tier.price_max?.toLocaleString()}</li>
+                  ))}
+                  {t.patch.remove_pricing_tier_names?.map((n: string, j: number) => (
+                    <li key={`rt-${j}`}><span className="text-red-700 dark:text-red-400">− tier</span> {n}</li>
+                  ))}
+                  {t.patch.edit_pricing_tiers?.map((tier: any, j: number) => (
+                    <li key={`et-${j}`}>~ tier <strong>{tier.match_name}</strong> → ${tier.price_min?.toLocaleString()}–${tier.price_max?.toLocaleString()}/mo ${tier.monthly_min?.toLocaleString()}–${tier.monthly_max?.toLocaleString()}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ))}
+        {sending && (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 mr-6">
+            <div className="flex items-center gap-2 text-sm text-zinc-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>Thinking…</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {pendingPatch && (
+        <div className="mt-2 flex items-center gap-2 p-2 rounded bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-700">
+          <span className="text-xs flex-1 text-emerald-900 dark:text-emerald-200">
+            💡 Apply this patch to the saved evaluation?
+          </span>
+          <Button size="sm" variant="cta" onClick={applyPatch} disabled={applying} className="min-h-[36px]">
+            {applying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
+            Apply
+          </Button>
+          <Button size="sm" variant="outline" onClick={rejectPatch} disabled={applying} className="min-h-[36px]">
+            <X className="w-3 h-3 mr-1" />
+            Dismiss
+          </Button>
+        </div>
+      )}
+
+      <div className="mt-2 flex items-end gap-2">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+          }}
+          rows={2}
+          placeholder="Ask the AI to refine the evaluation…"
+          disabled={sending}
+          className="flex-1 resize-none rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 text-sm p-2 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:opacity-50"
+        />
+        <Button onClick={send} disabled={sending || !input.trim()} className="min-h-[44px]">
+          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          <span className="sr-only">Send</span>
+        </Button>
+      </div>
     </div>
   );
 }
