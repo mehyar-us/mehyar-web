@@ -38,12 +38,14 @@ function CrmView({ token }: { token: string }) {
   const [kind, setKind] = useState<"all"|"prospect"|"sam">("all");
   const [stage, setStage] = useState<string>("");
   const [sort, setSort] = useState<"deadline_asc"|"leak_desc"|"fit_desc"|"created_desc">("created_desc");
+  const [includeImminent, setIncludeImminent] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [openKind, setOpenKind] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const params = new URLSearchParams({ q, kind, stage, sort });
+  if (includeImminent) params.set("include_imminent", "true");
   const leadQ = useQuery({ queryKey: ["admin-crm", token, params.toString()], queryFn: () => fetchCRM(token, params.toString()) });
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-crm"] });
@@ -87,6 +89,7 @@ function CrmView({ token }: { token: string }) {
         <JarvisBar token={token} placeholder="Try: 'count prospects by city', 'promote all leak>70', 'enrich a0daf6…'" />
         <AiDailySuggestions token={token} onOpen={(id, kind) => openDrawer(id, kind)} />
         <BusinessScanner token={token} onUpdate={refresh} />
+        <EUScouter token={token} onUpdate={refresh} />
       </div>
 
       {/* Toolbar */}
@@ -115,7 +118,19 @@ function CrmView({ token }: { token: string }) {
               className={`px-2.5 py-1.5 text-xs rounded-full border ${showFilters ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500"}`}>
               <Filter className="inline w-3 h-3 mr-1" />Filters
             </button>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto tabular-nums">{filtered.length} leads</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto tabular-nums">
+              {filtered.length} leads
+              {leadQ.data?.hidden_imminent > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIncludeImminent((v) => !v)}
+                  className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 hover:bg-amber-200 dark:hover:bg-amber-900"
+                  title={`${leadQ.data.hidden_imminent} opportunities hidden because deadline < ${leadQ.data.min_days ?? 7} days. Click to ${includeImminent ? "hide" : "show"} them anyway.`}
+                >
+                  {includeImminent ? "✓" : "🚫"} {leadQ.data.hidden_imminent} {"<"}7d
+                </button>
+              )}
+            </span>
           </div>
           {showFilters && (
             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
@@ -1141,5 +1156,259 @@ function DeepEvalChat({
         </Button>
       </div>
     </div>
+  );
+}
+
+// ── EUScouter — pull real EU businesses + EU gov contracts to outreach ───
+//
+// Two sources:
+//   1. OpenStreetMap Overpass API — real businesses by category in EU cities
+//      (no API key required). Free.
+//   2. TED (Tenders Electronic Daily) — EU public procurement notices,
+//      equivalent to SAM.gov. Free public data.
+//
+// Inserts new prospects / opportunities to D1 with proper source attribution
+// so existing prospect-sources/scan and gov deep-evaluate pipelines pick them up.
+
+const EU_COUNTRIES = [
+  { code: "DE", label: "🇩🇪 Germany" },
+  { code: "FR", label: "🇫🇷 France" },
+  { code: "NL", label: "🇳🇱 Netherlands" },
+  { code: "ES", label: "🇪🇸 Spain" },
+  { code: "IT", label: "🇮🇹 Italy" },
+  { code: "IE", label: "🇮🇪 Ireland" },
+  { code: "BE", label: "🇧🇪 Belgium" },
+  { code: "AT", label: "🇦🇹 Austria" },
+  { code: "SE", label: "🇸🇪 Sweden" },
+  { code: "DK", label: "🇩🇰 Denmark" },
+  { code: "FI", label: "🇫🇮 Finland" },
+  { code: "PL", label: "🇵🇱 Poland" },
+];
+
+const EU_VERTICALS = [
+  "dental", "cafe", "restaurant", "gym", "clinic", "law_firm",
+  "agency", "hotel", "spa", "veterinary", "coworking", "bakery",
+  "florist", "accounting", "pharmacy",
+];
+
+function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [countries, setCountries] = useState<string[]>(["DE", "FR", "NL"]);
+  const [verticals, setVerticals] = useState<string[]>(["dental", "cafe", "gym", "clinic"]);
+  const [maxPerCity, setMaxPerCity] = useState(15);
+  const [maxTotal, setMaxTotal] = useState(60);
+  const [busyBiz, setBusyBiz] = useState(false);
+  const [busyGov, setBusyGov] = useState(false);
+  const [dryRun, setDryRun] = useState(true);
+  const [bizResult, setBizResult] = useState<any>(null);
+  const [govResult, setGovResult] = useState<any>(null);
+  const [daysBack, setDaysBack] = useState(14);
+  const [minValueEur, setMinValueEur] = useState(0);
+
+  const toggleCountry = (code: string) => {
+    setCountries((cs) => cs.includes(code) ? cs.filter((c) => c !== code) : [...cs, code]);
+  };
+  const toggleVertical = (v: string) => {
+    setVerticals((vs) => vs.includes(v) ? vs.filter((x) => x !== v) : [...vs, v]);
+  };
+
+  const runBusinesses = async () => {
+    if (countries.length === 0) return;
+    setBusyBiz(true);
+    setBizResult(null);
+    try {
+      const r = await fetch("/api/admin/prospect-sources/eu-businesses", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          countries, verticals,
+          max_per_city: maxPerCity,
+          max_total: maxTotal,
+          include_website_only: true,
+          dry_run: dryRun,
+        }),
+      });
+      const j = await r.json();
+      setBizResult(j);
+      if (j.ok && !dryRun && j.inserted > 0) onUpdate?.();
+    } catch (e: any) {
+      setBizResult({ ok: false, error: String(e?.message || e) });
+    } finally { setBusyBiz(false); }
+  };
+
+  const runGov = async () => {
+    if (countries.length === 0) return;
+    setBusyGov(true);
+    setGovResult(null);
+    try {
+      const r = await fetch("/api/admin/prospect-sources/eu-gov", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          countries,
+          days_back: daysBack,
+          min_value_eur: minValueEur,
+          max_results: maxTotal,
+          dry_run: dryRun,
+        }),
+      });
+      const j = await r.json();
+      setGovResult(j);
+      if (j.ok && !dryRun && j.inserted > 0) onUpdate?.();
+    } catch (e: any) {
+      setGovResult({ ok: false, error: String(e?.message || e) });
+    } finally { setBusyGov(false); }
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="w-full text-left rounded-lg border border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-50/30 transition p-3 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <span className="text-base">🇪🇺</span>
+        <span className="font-medium text-blue-700">Find EU businesses + EU gov contracts to outreach</span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">12 EU markets · OSM + TED · free public sources</span>
+      </button>
+    );
+  }
+
+  return (
+    <Card className="border-blue-300 bg-gradient-to-r from-blue-50/40 via-white to-cyan-50/40">
+      <CardContent className="p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2 text-sm">
+            <span className="text-base">🇪🇺</span>
+            EU scouter — businesses + gov contracts
+          </h3>
+          <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400"><X className="w-4 h-4" /></button>
+        </div>
+
+        {/* Country + vertical selectors */}
+        <div>
+          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">COUNTRIES ({countries.length} selected)</div>
+          <div className="flex flex-wrap gap-1">
+            {EU_COUNTRIES.map((c) => (
+              <button key={c.code} onClick={() => toggleCountry(c.code)}
+                className={`px-2 py-1 text-xs rounded-full border transition ${
+                  countries.includes(c.code)
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-blue-400"
+                }`}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">VERTICALS (businesses only — {verticals.length})</div>
+          <div className="flex flex-wrap gap-1">
+            {EU_VERTICALS.map((v) => (
+              <button key={v} onClick={() => toggleVertical(v)}
+                className={`px-2 py-1 text-xs rounded-full border transition ${
+                  verticals.includes(v)
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-white text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400"
+                }`}>
+                {v.replace("_", " ")}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <label className="text-xs flex flex-col gap-0.5">
+            <span className="text-zinc-500 dark:text-zinc-400">Max per city</span>
+            <Input type="number" min={1} max={50} value={maxPerCity} onChange={(e) => setMaxPerCity(Number(e.target.value) || 15)} className="text-sm h-9" />
+          </label>
+          <label className="text-xs flex flex-col gap-0.5">
+            <span className="text-zinc-500 dark:text-zinc-400">Max total</span>
+            <Input type="number" min={1} max={500} value={maxTotal} onChange={(e) => setMaxTotal(Number(e.target.value) || 60)} className="text-sm h-9" />
+          </label>
+          <label className="text-xs flex flex-col gap-0.5">
+            <span className="text-zinc-500 dark:text-zinc-400">Gov days back</span>
+            <Input type="number" min={1} max={60} value={daysBack} onChange={(e) => setDaysBack(Number(e.target.value) || 14)} className="text-sm h-9" />
+          </label>
+          <label className="text-xs flex flex-col gap-0.5">
+            <span className="text-zinc-500 dark:text-zinc-400">Min gov value €</span>
+            <Input type="number" min={0} value={minValueEur} onChange={(e) => setMinValueEur(Number(e.target.value) || 0)} className="text-sm h-9" />
+          </label>
+        </div>
+
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} className="accent-blue-600" />
+          <span className="text-zinc-700 dark:text-zinc-300">
+            <strong>Dry run</strong> — preview results without inserting to DB
+          </span>
+        </label>
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="cta" onClick={runBusinesses} disabled={busyBiz || busyGov || countries.length === 0} className="min-h-[40px]">
+            {busyBiz ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+            🧲 {dryRun ? "Preview" : "Import"} EU businesses
+          </Button>
+          <Button size="sm" variant="outline" onClick={runGov} disabled={busyBiz || busyGov || countries.length === 0} className="min-h-[40px]">
+            {busyGov ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+            🏛 {dryRun ? "Preview" : "Import"} EU gov contracts
+          </Button>
+        </div>
+
+        {bizResult && (
+          <div className={`text-xs rounded p-2 ${bizResult.ok ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"}`}>
+            {bizResult.ok ? (
+              <>
+                <div className="font-semibold text-emerald-800 mb-1">
+                  {dryRun ? "🔍 Preview · " : "✓ Imported · "}
+                  {bizResult.results_found} businesses found · {bizResult.unique_after_dedup} unique
+                  {!dryRun && ` · ${bizResult.inserted} new · ${bizResult.skipped_existing} skipped`}
+                </div>
+                {bizResult.sample && bizResult.sample.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 text-zinc-700 dark:text-zinc-300">
+                    {bizResult.sample.map((b: any, i: number) => (
+                      <li key={i} className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono text-zinc-500 w-4">{i + 1}.</span>
+                        <strong className="truncate flex-1">{b.business_name}</strong>
+                        <span className="text-[10px] text-zinc-500">· {b.city}, {b.country}</span>
+                        <span className="text-[10px] text-blue-700">· {b.vertical}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : (
+              <div className="text-red-700">⚠ {bizResult.error || "failed"}</div>
+            )}
+          </div>
+        )}
+
+        {govResult && (
+          <div className={`text-xs rounded p-2 ${govResult.ok ? "bg-blue-50 border border-blue-200" : "bg-red-50 border border-red-200"}`}>
+            {govResult.ok ? (
+              <>
+                <div className="font-semibold text-blue-800 mb-1">
+                  {dryRun ? "🔍 Preview · " : "✓ Imported · "}
+                  {govResult.results_found} EU gov contracts found ({govResult.source})
+                  {!dryRun && ` · ${govResult.inserted} new · ${govResult.skipped_existing} skipped`}
+                </div>
+                {govResult.sample && govResult.sample.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 text-zinc-700 dark:text-zinc-300">
+                    {govResult.sample.map((g: any, i: number) => (
+                      <li key={i} className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono text-zinc-500 w-4">{i + 1}.</span>
+                        <strong className="truncate flex-1">{g.title}</strong>
+                        <span className="text-[10px] text-zinc-500">· {g.buyer}, {g.country}</span>
+                        {g.deadline && <span className="text-[10px] text-amber-700">· due {g.deadline}</span>}
+                        {g.value && <span className="text-[10px] text-emerald-700">· €{g.value?.toLocaleString()}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : (
+              <div className="text-red-700">⚠ {govResult.error || "failed"}</div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

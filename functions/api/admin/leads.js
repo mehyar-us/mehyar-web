@@ -99,6 +99,18 @@ export async function onRequestGet({ request, env }) {
         params.push(like, like, like, like);
       }
       if (stage) { sql += ` AND stage = ?`; params.push(stage); }
+
+      // ── Deadline filter ─────────────────────────────────────────────
+      // Default: hide opportunities with <7 days to response_deadline
+      // (too late to put together a serious proposal/pitch).
+      // Admins can override with ?include_imminent=true to see them anyway.
+      const includeImminent = url.searchParams.get("include_imminent") === "true";
+      const minDays = Math.max(0, parseInt(url.searchParams.get("min_days") || "7", 10) || 7);
+      // Use date(response_deadline) — NULL deadlines are treated as 'no deadline known' (kept)
+      sql += includeImminent
+        ? ``
+        : ` AND (response_deadline IS NULL OR date(response_deadline) >= date('now', '+${minDays} days'))`;
+
       sql += ` ORDER BY ${sort === "deadline_asc" ? "date(response_deadline) ASC" : sort === "fit_desc" ? "fit_score DESC NULLS LAST" : "created_at DESC"}`;
       sql += ` LIMIT ?`; params.push(limit);
       const r = await env.LEADS_DB.prepare(sql).bind(...params).all().catch(() => ({ results: [] }));
@@ -140,7 +152,30 @@ export async function onRequestGet({ request, env }) {
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
     });
 
-    return json({ ok: true, items: items.slice(0, limit), total: items.length, updatedAt: new Date().toISOString() }, 200, request, env);
+    // Quick count of how many SAM opps were filtered out by the deadline cutoff.
+    // Helps the UI show "X hidden — too close to deadline" without a second round-trip.
+    let hidden_imminent = 0;
+    if ((kind === "all" || kind === "sam") && !includeImminent) {
+      try {
+        const r2 = await env.LEADS_DB.prepare(`
+          SELECT COUNT(*) as n FROM gov_opportunities
+          WHERE response_deadline IS NOT NULL
+            AND date(response_deadline) >= date('now')
+            AND date(response_deadline) < date('now', '+${minDays} days')
+        `).first();
+        hidden_imminent = Number(r2?.n || 0);
+      } catch {}
+    }
+
+    return json({
+      ok: true,
+      items: items.slice(0, limit),
+      total: items.length,
+      hidden_imminent,
+      min_days: minDays,
+      include_imminent: includeImminent,
+      updatedAt: new Date().toISOString(),
+    }, 200, request, env);
   } catch (e) {
     return json({ ok: false, error: "leads_list_failed", details: String(e?.message || e) }, 500, request, env);
   }
