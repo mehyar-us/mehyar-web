@@ -1948,7 +1948,7 @@ function DeepAnalyzeChat({ id, token, analysis, onApply, onClose }: any) {
 function FindJobsPanel({ token, onUpdate }: { token: string; onUpdate?: () => void }) {
   const [open, setOpen] = useState(false);
   const [dryRun, setDryRun] = useState(true);
-  const [sources, setSources] = useState<string[]>(["remoteok", "weworkremotely", "arbeitnow"]);
+  const [sources, setSources] = useState<string[]>(["remoteok", "arbeitnow", "remotive", "himalayas"]);
   const [minBudget, setMinBudget] = useState(0);
   const [maxResults, setMaxResults] = useState(40);
   const [kwText, setKwText] = useState("");
@@ -1990,15 +1990,16 @@ function FindJobsPanel({ token, onUpdate }: { token: string; onUpdate?: () => vo
         </div>
         {!open ? (
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Pulls from <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">RemoteOK</code>, <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">WeWorkRemotely</code>, <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">ArbeitNow</code> — filtered to your keywords + last 24h.
+            Pulls from <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">RemoteOK</code>, <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">ArbeitNow</code>, <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">Remotive</code>, <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">Himalayas</code> — filtered to your keywords + last 14 days.
           </p>
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
               {[
                 { id: "remoteok", label: "RemoteOK" },
-                { id: "weworkremotely", label: "WeWorkRemotely" },
                 { id: "arbeitnow", label: "ArbeitNow" },
+                { id: "remotive", label: "Remotive" },
+                { id: "himalayas", label: "Himalayas" },
               ].map((s) => (
                 <button key={s.id}
                   onClick={() => toggleSrc(s.id)}

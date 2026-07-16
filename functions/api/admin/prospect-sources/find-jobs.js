@@ -6,10 +6,11 @@
 // `prospects` table as a `prospect` (kind=prospect) so the AI scan + deep-eval
 // + outreach pipelines can pick them up as outreach targets.
 //
-// Sources:
-//   - RemoteOK JSON feed (https://remoteok.com/api) — free, no key, ~1000 jobs/day
-//   - WeWorkRemotely API feed (https://weworkremotely.com/categories/remote-programming-jobs.json) — free
-//   - ArbeitNow (https://www.arbeitnow.com/api/job-board-api) — free, EU-friendly
+// Sources (all free, no API key needed):
+//   - RemoteOK   (https://remoteok.com/api)               — public JSON
+//   - ArbeitNow  (https://www.arbeitnow.com/api/job-board-api) — public JSON, EU-friendly
+//   - Remotive   (https://remotive.com/api/remote-jobs)   — public JSON
+//   - Himalayas   (https://himalayas.app/jobs/api)         — public JSON
 //
 // Each match is deduped by (title + company + url) hash so re-runs don't duplicate.
 //
@@ -28,7 +29,9 @@ const DEFAULT_KEYWORDS = [
   "automation engineer", "n8n", "zapier", "make.com", "llm", "openai",
 ];
 
-const MAX_FETCH_AGE_MS = 24 * 3600 * 1000; // only jobs from last 24h
+const MAX_FETCH_AGE_MS = 14 * 24 * 3600 * 1000; // jobs from last 14 days
+const SOURCE_TIMEOUT_MS = 12_000;              // per-source timeout
+const TOTAL_TIMEOUT_MS = 60_000;               // total budget per source fetch
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -53,9 +56,10 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { body = {}; }
 
+  const ALLOWED = ["remoteok", "arbeitnow", "remotive", "himalayas"];
   const sources = Array.isArray(body.sources) && body.sources.length
-    ? body.sources.filter((s) => ["remoteok", "weworkremotely", "arbeitnow"].includes(s))
-    : ["remoteok", "weworkremotely", "arbeitnow"];
+    ? body.sources.filter((s) => ALLOWED.includes(s))
+    : ALLOWED;
   const keywords = Array.isArray(body.keywords) && body.keywords.length
     ? body.keywords.map((k) => String(k).toLowerCase())
     : DEFAULT_KEYWORDS;
@@ -162,8 +166,9 @@ export async function onRequestPost({ request, env }) {
 
 async function fetchSource(source, keywords, minBudget, remoteOnly, max) {
   if (source === "remoteok") return fetchRemoteOK(keywords, minBudget, remoteOnly, max);
-  if (source === "weworkremotely") return fetchWeWorkRemotely(keywords, minBudget, remoteOnly, max);
   if (source === "arbeitnow") return fetchArbeitNow(keywords, minBudget, remoteOnly, max);
+  if (source === "remotive") return fetchRemotive(keywords, minBudget, remoteOnly, max);
+  if (source === "himalayas") return fetchHimalayas(keywords, minBudget, remoteOnly, max);
   return [];
 }
 
@@ -271,7 +276,7 @@ async function fetchWeWorkRemotely(keywords, minBudget, remoteOnly, max) {
 
 async function fetchArbeitNow(keywords, minBudget, remoteOnly, max) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 18_000);
+  const timer = setTimeout(() => ctrl.abort(), SOURCE_TIMEOUT_MS);
   let r;
   try {
     r = await fetch("https://www.arbeitnow.com/api/job-board-api", {
@@ -302,6 +307,99 @@ async function fetchArbeitNow(keywords, minBudget, remoteOnly, max) {
       salary_currency: "USD",
       remote: !!job.remote,
       posted_at: job.created_at ? new Date(job.created_at * 1000).toISOString() : null,
+      company_website: null,
+    };
+    out.push(item);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+// Remotive — remotive.com/api/remote-jobs
+async function fetchRemotive(keywords, minBudget, remoteOnly, max) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), SOURCE_TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch("https://remotive.com/api/remote-jobs?limit=100", {
+      headers: { "user-agent": "Mozilla/5.0 (MehyarSoft/1.0)" },
+      signal: ctrl.signal,
+    });
+  } finally { clearTimeout(timer); }
+  if (!r.ok) throw new Error(`remotive_http_${r.status}`);
+  const j = await r.json();
+  const list = Array.isArray(j?.jobs) ? j.jobs : (Array.isArray(j) ? j : []);
+  const out = [];
+  for (const job of list) {
+    const title = job.title || "";
+    const company = job.company_name || "";
+    const text = `${title} ${(job.tags || []).join(" ")} ${job.description || ""} ${job.category || ""}`;
+    if (!matchesKeywords(text, keywords)) continue;
+    if (remoteOnly && !/remote/i.test(job.job_type || "remote")) continue;
+    const salary = String(job.salary || "");
+    let salary_min = null, salary_max = null;
+    if (salary) {
+      const nums = salary.match(/\$?\d[\d,]*k?/g) || [];
+      const parsed = nums.map((n) => Number(n.replace(/[$,k]/gi, "")) * (/k/i.test(n) ? 1000 : 1));
+      if (parsed.length) { salary_min = Math.min(...parsed); salary_max = Math.max(...parsed); }
+    }
+    const item = {
+      source: "remotive",
+      title,
+      company,
+      url: job.url,
+      location: job.candidate_required_location || "Remote",
+      country: job.country || "",
+      tags: Array.isArray(job.tags) ? job.tags : [],
+      salary_min,
+      salary_max,
+      salary_currency: "USD",
+      remote: true,
+      posted_at: job.publication_date || null,
+      company_website: null,
+    };
+    out.push(item);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+// Himalayas — himalayas.app/jobs/api
+async function fetchHimalayas(keywords, minBudget, remoteOnly, max) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), SOURCE_TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch("https://himalayas.app/jobs/api?limit=100", {
+      headers: { "user-agent": "Mozilla/5.0 (MehyarSoft/1.0)" },
+      signal: ctrl.signal,
+    });
+  } finally { clearTimeout(timer); }
+  if (!r.ok) throw new Error(`himalayas_http_${r.status}`);
+  const j = await r.json();
+  const list = Array.isArray(j?.jobs) ? j.jobs : (Array.isArray(j) ? j : []);
+  const out = [];
+  for (const job of list) {
+    const title = job.title || "";
+    const company = job.companyName || job.company || "";
+    const text = `${title} ${(job.employmentType || "")} ${(job.seniority || []).join(" ")} ${job.excerpt || ""}`;
+    if (!matchesKeywords(text, keywords)) continue;
+    if (remoteOnly && !(Array.isArray(job.locationRestrictions) && job.locationRestrictions.length === 0) && !/worldwide|anywhere/i.test(job.locationRestrictions?.join(" ") || "")) {
+      // Himalayas lists which regions are excluded — assume remote if no restrictions or "Worldwide"
+    }
+    const item = {
+      source: "himalayas",
+      title,
+      company,
+      url: job.url || `https://himalayas.app/jobs/${job.companySlug || ""}-${job.slug || ""}`,
+      location: "Remote",
+      country: "",
+      tags: Array.isArray(job.seniority) ? job.seniority : [],
+      salary_min: job.minSalary || null,
+      salary_max: job.maxSalary || null,
+      salary_currency: job.currency || "USD",
+      remote: true,
+      posted_at: job.updatedAt ? new Date(job.updatedAt * 1000).toISOString() : null,
       company_website: null,
     };
     out.push(item);
