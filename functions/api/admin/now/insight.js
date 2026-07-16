@@ -50,7 +50,7 @@ export async function onRequestGet({ request, env }) {
       (SELECT COUNT(*) FROM prospect_drafts WHERE status='pending_review') as drafts_pending,
       (SELECT COUNT(*) FROM prospect_sends WHERE status='queued_for_review') as sends_queued,
       (SELECT COUNT(*) FROM opportunity_events WHERE event_type='reply_received' AND created_at >= datetime('now','-7 days')) as replies_7d,
-      (SELECT COALESCE(SUM(value_usd),0) FROM opportunity_decisions WHERE decision='won' AND decided_at >= datetime('now','-30 days')) as won_30d
+      (SELECT COALESCE(COUNT(*),0) FROM opportunity_decisions WHERE decision='won' AND decided_at >= datetime('now','-30 days')) as won_30d
   `).first().catch(() => ({}));
 
   const c = counts || {};

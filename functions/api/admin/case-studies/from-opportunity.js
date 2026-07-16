@@ -24,10 +24,10 @@ export async function onRequestPost({ request, env }) {
     if (!opp) return json({ ok: false, error: "opportunity_not_found" }, 404, request, env);
 
     const decision = await env.LEADS_DB.prepare(`
-      SELECT outcome, value_usd, notes FROM opportunity_decisions
-      WHERE sam_id = ? ORDER BY decided_at DESC LIMIT 1
+      SELECT decision, reason_code, reason_body FROM opportunity_decisions
+      WHERE opportunity_id = ? AND kind = 'sam' ORDER BY decided_at DESC LIMIT 1
     `).bind(opportunityId).first().catch(() => null);
-    if (!decision || decision.outcome !== "won") {
+    if (!decision || decision.decision !== "won") {
       return json({ ok: false, error: "decision_not_won", message: "Mark the deal Won first." }, 400, request, env);
     }
 

@@ -62,7 +62,7 @@ export async function onRequestGet({ request, env, params }) {
     `).bind(id).first().catch(() => null);
     if (!row) return json({ ok: false, error: "not_found" }, 404, request, env);
 
-    const raw = safeJson(row.raw_json || row.meta_json || "{}", {});
+    const raw = safeJson(row.raw_json || "{}", {});
 
     // Extract attachments / poc / requirements / how-to-apply
     const attachments = extractAttachments(raw);
@@ -78,8 +78,8 @@ export async function onRequestGet({ request, env, params }) {
     `).bind(id).first().catch(() => null);
 
     const decision = await env.LEADS_DB.prepare(`
-      SELECT outcome, value_usd, notes, decided_at
-      FROM opportunity_decisions WHERE sam_id = ? ORDER BY decided_at DESC LIMIT 1
+      SELECT decision, reason_code, reason_body, decided_by, decided_at
+      FROM opportunity_decisions WHERE opportunity_id = ? ORDER BY decided_at DESC LIMIT 1
     `).bind(id).first().catch(() => null);
 
     return json({

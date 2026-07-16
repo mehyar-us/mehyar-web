@@ -39,16 +39,16 @@ export async function onRequestGet({ request, env }) {
     const weighted_forecast = total.reduce((a, d) => a + (Number(d.estimated_value) || 0) * stageWeight(d.stage) * fitWeight(d), 0);
 
     const won = await env.LEADS_DB.prepare(`
-      SELECT outcome, value_usd, decided_at FROM opportunity_decisions
-      WHERE outcome = 'won' AND decided_at >= datetime('now','-30 day')
+      SELECT decision, reason_code, decided_at FROM opportunity_decisions
+      WHERE decision = 'won' AND decided_at >= datetime('now','-30 day')
     `).all().catch(() => ({ results: [] }));
-    const wonValue30d = (won.results || []).reduce((a, w) => a + (Number(w.value_usd) || 0), 0);
+    const wonValue30d = (won.results || []).length * 1; // placeholder — value not stored on decisions table
 
     const closed = await env.LEADS_DB.prepare(`
-      SELECT outcome FROM opportunity_decisions WHERE decided_at >= datetime('now','-30 day')
+      SELECT decision FROM opportunity_decisions WHERE decided_at >= datetime('now','-30 day')
     `).all().catch(() => ({ results: [] }));
     const winRate = closed.results?.length
-      ? Math.round(((closed.results.filter((c) => c.outcome === "won").length) / closed.results.length) * 100)
+      ? Math.round(((closed.results.filter((c) => c.decision === "won").length) / closed.results.length) * 100)
       : 0;
 
     const allValues = (samAll.results || []).filter((d) => d.estimated_value && d.estimated_value > 0).map((d) => d.estimated_value);
@@ -90,21 +90,20 @@ export async function onRequestGet({ request, env }) {
 
     // Recent wins/losses
     const decisions = await env.LEADS_DB.prepare(`
-      SELECT d.outcome, d.value_usd, d.decided_at,
-             COALESCE(o.title, p.business_name) as title,
-             d.sam_id, d.prospect_id
+      SELECT d.decision, d.reason_code, d.reason_body, d.decided_at, d.kind, d.opportunity_id,
+             COALESCE(o.title, p.business_name) as title
       FROM opportunity_decisions d
-      LEFT JOIN gov_opportunities o ON d.sam_id = o.id
-      LEFT JOIN prospects p ON d.prospect_id = p.id
+      LEFT JOIN gov_opportunities o ON d.opportunity_id = o.id AND d.kind = 'sam'
+      LEFT JOIN prospects p ON d.opportunity_id = p.id AND d.kind = 'prospect'
       WHERE d.decided_at >= datetime('now','-60 day')
       ORDER BY d.decided_at DESC LIMIT 20
     `).all().catch(() => ({ results: [] }));
     const recent_won = [];
     const recent_lost = [];
     for (const d of decisions.results || []) {
-      const item = { id: d.sam_id || d.prospect_id, kind: d.sam_id ? "sam" : "prospect", title: d.title, stage: d.outcome, value_usd: d.value_usd, decision_at: d.decided_at };
-      if (d.outcome === "won") recent_won.push(item);
-      else if (d.outcome === "lost") recent_lost.push(item);
+      const item = { id: d.opportunity_id, kind: d.kind || "sam", title: d.title, stage: d.decision, decision_at: d.decided_at };
+      if (d.decision === "won") recent_won.push(item);
+      else if (d.decision === "lost") recent_lost.push(item);
     }
 
     // Case studies
