@@ -61,7 +61,7 @@ function NowView({ token }: { token: string }) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px]">
             <h1 className="text-xl font-bold">{greetingFor(now)}, Mehyar.</h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">
+            <p className="text-xs $1">
               {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
               {" · "}
               <span className="font-mono">{now.toLocaleTimeString()}</span>
@@ -86,7 +86,7 @@ function NowView({ token }: { token: string }) {
       )}
 
       {q.isError && (
-        <Card><CardContent className="py-8 text-sm text-red-700 flex items-center gap-2">
+        <Card><CardContent className="py-8 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
           ⚠ {String((q.error as Error)?.message || q.error)}
           <Button size="sm" variant="outline" onClick={refresh}>Retry</Button>
         </CardContent></Card>
@@ -140,11 +140,11 @@ function AiInsightPanel({ data, token }: { data: any; token: string }) {
   }
   if (!insight) return null;
   return (
-    <Card className="mt-4 border-violet-300 bg-gradient-to-r from-violet-50/40 via-white to-cyan-50/40">
+    <Card className="mt-4 border-violet-300 dark:border-violet-700 bg-gradient-to-r from-violet-50/40 via-white to-cyan-50/40 dark:from-violet-950/40 dark:via-zinc-900 dark:to-cyan-950/40">
       <CardContent className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <h3 className="font-semibold flex items-center gap-2">
-            <Brain className="w-4 h-4 text-violet-500" />
+          <h3 className="font-semibold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+            <Brain className="w-4 h-4 text-violet-500 dark:text-violet-400" />
             🧠 AI insight — what to do first today
           </h3>
           <Button size="sm" variant="ghost" onClick={load} disabled={busy}>
@@ -152,11 +152,11 @@ function AiInsightPanel({ data, token }: { data: any; token: string }) {
             Refresh
           </Button>
         </div>
-        <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 dark:text-zinc-300 whitespace-pre-line">{insight.text}</p>
+        <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200 whitespace-pre-line">{insight.text}</p>
         {insight.actions?.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-violet-200">
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-violet-200 dark:border-violet-800">
             {insight.actions.map((a, i) => (
-              <a key={i} href={a.href} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 transition">
+              <a key={i} href={a.href} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-violet-600 dark:bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 dark:hover:bg-violet-500 transition">
                 {a.label} →
               </a>
             ))}
@@ -178,21 +178,21 @@ function greetingFor(d: Date) {
 
 function KpiStrip({ counts }: any) {
   const strip = [
-    { key: "sam_active",       label: "🟢 SAM live",       val: counts.sam_active,         tone: counts.sam_active       ? "text-emerald-700" : "text-zinc-500 dark:text-zinc-400 dark:text-zinc-400" },
-    { key: "sam_due_48h",      label: "🔥 Due ≤48h",       val: counts.sam_due_48h,        tone: counts.sam_due_48h      ? "text-red-700"    : "text-zinc-500 dark:text-zinc-400 dark:text-zinc-400" },
-    { key: "prospects_live",   label: "🧲 Live prospects", val: counts.prospects_live,     tone: "text-indigo-700" },
-    { key: "drafts_to_review", label: "📝 Drafts to review", val: counts.drafts_to_review, tone: counts.drafts_to_review ? "text-violet-700" : "text-zinc-500 dark:text-zinc-400 dark:text-zinc-400" },
-    { key: "outreach_due",     label: "📤 Outreach due",   val: counts.outreach_due,       tone: "text-amber-700" },
-    { key: "replies_24h",      label: "📬 Replies 24h",    val: counts.replies_24h,        tone: counts.replies_24h      ? "text-emerald-700" : "text-zinc-500 dark:text-zinc-400 dark:text-zinc-400" },
-    { key: "won_30d",          label: "💰 Won 30d",        val: counts.won_30d,            tone: "text-green-700" },
-    { key: "pipeline_value",   label: "💎 Pipeline $",     val: counts.pipeline_value,     tone: "text-cyan-700", prefix: "$" },
+    { key: "sam_active",       label: "🟢 SAM live",       val: counts.sam_active,         tone: counts.sam_active       ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400" },
+    { key: "sam_due_48h",      label: "🔥 Due ≤48h",       val: counts.sam_due_48h,        tone: counts.sam_due_48h      ? "text-red-700 dark:text-red-400"    : "text-zinc-500 dark:text-zinc-400" },
+    { key: "prospects_live",   label: "🧲 Live prospects", val: counts.prospects_live,     tone: "text-indigo-700 dark:text-indigo-400" },
+    { key: "drafts_to_review", label: "📝 Drafts to review", val: counts.drafts_to_review, tone: counts.drafts_to_review ? "text-violet-700 dark:text-violet-400" : "text-zinc-500 dark:text-zinc-400" },
+    { key: "outreach_due",     label: "📤 Outreach due",   val: counts.outreach_due,       tone: "text-amber-700 dark:text-amber-400" },
+    { key: "replies_24h",      label: "📬 Replies 24h",    val: counts.replies_24h,        tone: counts.replies_24h      ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400" },
+    { key: "won_30d",          label: "💰 Won 30d",        val: counts.won_30d,            tone: "text-green-700 dark:text-green-400" },
+    { key: "pipeline_value",   label: "💎 Pipeline $",     val: counts.pipeline_value,     tone: "text-cyan-700 dark:text-cyan-400", prefix: "$" },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
       {strip.map((s) => (
         <Card key={s.key} className="hover:border-zinc-300 dark:hover:border-zinc-600 transition">
           <CardContent className="p-3">
-            <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 leading-tight">{s.label}</div>
+            <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 leading-tight">{s.label}</div>
             <div className={`text-xl font-bold mt-1 leading-tight tabular-nums ${s.tone}`}>
               {s.prefix || ""}{(s.val ?? 0).toLocaleString()}
             </div>
@@ -204,28 +204,34 @@ function KpiStrip({ counts }: any) {
 }
 
 function Column({ title, sub, items, accent, onClick }: any) {
-  const border = accent === "red" ? "border-red-300" : accent === "amber" ? "border-amber-300" : "border-sky-300";
+  const border = accent === "red" ? "border-red-300 dark:border-red-700" : accent === "amber" ? "border-amber-300 dark:border-amber-700" : "border-sky-300 dark:border-sky-700";
   const titleIcon = accent === "red" ? "🔥" : accent === "amber" ? "📅" : "🌤";
   const titleLabel = title.replace(/^\S+\s/, "");
+  const badgeBg = accent === "red" ? "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200" : accent === "amber" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200" : "bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-200";
+  const headerBg = accent === "red"
+    ? "bg-gradient-to-b from-red-50 to-white dark:from-red-950/50 dark:to-zinc-900"
+    : accent === "amber"
+    ? "bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/50 dark:to-zinc-900"
+    : "bg-gradient-to-b from-sky-50 to-white dark:from-sky-950/50 dark:to-zinc-900";
 
   return (
     <div>
-      <div className={`rounded-t-xl border ${border} bg-gradient-to-b from-white px-4 py-3`}>
-        <h3 className="font-bold flex items-center gap-2">
+      <div className={`rounded-t-xl border ${border} ${headerBg} px-4 py-3`}>
+        <h3 className="font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
           <span>{titleIcon}</span>{titleLabel}
-          <Badge className={`ml-2 ${accent === "red" ? "bg-red-100 text-red-800" : accent === "amber" ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}`}>{items.length}</Badge>
+          <Badge className={`ml-2 ${badgeBg}`}>{items.length}</Badge>
         </h3>
-        <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mt-0.5">{sub}</div>
+        <div className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">{sub}</div>
       </div>
-      <div className="space-y-2 border-l border-r border-b border-zinc-200 rounded-b-xl bg-white dark:bg-zinc-900 p-2 min-h-[280px]">
+      <div className="space-y-2 border-l border-r border-b border-zinc-200 dark:border-zinc-700 rounded-b-xl bg-white dark:bg-zinc-900 p-2 min-h-[280px]">
         {items.length === 0 ? (
-          <div className="text-center text-xs text-zinc-400 dark:text-zinc-400 py-16">
-            <CheckCircle2 className="inline w-6 h-6 mb-1 text-emerald-300" />
-            <div>Inbox zero</div>
+          <div className="text-center text-xs text-zinc-500 dark:text-zinc-300 py-16">
+            <CheckCircle2 className="inline w-6 h-6 mb-1 text-emerald-500 dark:text-emerald-400" />
+            <div className="font-medium">Inbox zero</div>
           </div>
         ) : items.map((it: any, i: number) => (
           <button key={i} onClick={() => onClick(it)}
-            className="block w-full text-left rounded-lg border border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50 dark:bg-zinc-800/50 transition p-3 cursor-pointer">
+            className="block w-full text-left rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition p-3 cursor-pointer">
             <NowItem item={it} />
           </button>
         ))}
@@ -240,23 +246,23 @@ function NowItem({ item }: { item: any }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium text-sm leading-tight">{item.title}</span>
         {item.kind && <Badge className="text-[10px]">{item.kind === "sam" ? "🏛" : item.kind === "prospect" ? "🧲" : item.kind === "outreach" ? "📤" : item.kind === "auto_tender" ? "🪄" : item.kind === "reply" ? "📬" : item.kind}</Badge>}
-        {item.stage && <Badge className={`text-[10px] ${STAGE_BADGE[item.stage] || "bg-zinc-100 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300"}`}>{item.stage}</Badge>}
+        {item.stage && <Badge className={`text-[10px] ${STAGE_BADGE[item.stage] || "bg-zinc-100 dark:bg-zinc-800 $1"}`}>{item.stage}</Badge>}
         {typeof item.leak_score === "number" && <ScoreBar score={item.leak_score} max={100} label="leak" tone="leak" />}
         {typeof item.fit_score === "number" && <ScoreBar score={item.fit_score} max={100} label="fit" />}
         {item.deadline_in_days != null && (
-          <span className={`ml-auto text-[11px] font-mono ${item.deadline_in_days <= 2 ? "text-red-700" : "text-zinc-500 dark:text-zinc-400 dark:text-zinc-400"}`}>
+          <span className={`ml-auto text-[11px] font-mono ${item.deadline_in_days <= 2 ? "text-red-700 dark:text-red-400" : "$1"}`}>
             {item.deadline_in_days <= 0 ? "OVERDUE" : `D-${item.deadline_in_days}`}
           </span>
         )}
       </div>
-      {item.subtitle && <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mt-1 line-clamp-2">{item.subtitle}</div>}
+      {item.subtitle && <div className="text-xs $1 mt-1 line-clamp-2">{item.subtitle}</div>}
       {item.suggestion && (
-        <div className="text-xs bg-violet-50 border border-violet-100 rounded px-2 py-1.5 mt-2 text-violet-800">
+        <div className="text-xs bg-violet-50 border border-violet-100 rounded px-2 py-1.5 mt-2 text-violet-800 dark:text-violet-300">
           🧠 {item.suggestion}
         </div>
       )}
       {item.deeplink && (
-        <div className="inline-flex items-center gap-1 text-xs text-blue-700 mt-1.5">
+        <div className="inline-flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400 mt-1.5">
           Open <ChevronRight className="w-3 h-3" />
         </div>
       )}
@@ -274,29 +280,29 @@ function OpsFooter({ data, token }: { data: any; token: string }) {
     <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-3">
       <Card className="hover:border-zinc-300 dark:hover:border-zinc-600 transition cursor-pointer" onClick={() => window.location.href = "/admin/system"}>
         <CardContent className="p-3">
-          <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 flex items-center gap-1"><Hourglass className="w-3 h-3" />Cron</div>
+          <div className="text-[10px] uppercase tracking-wide $1 flex items-center gap-1"><Hourglass className="w-3 h-3" />Cron</div>
           <div className="text-base font-bold mt-1">Last: <span className="font-mono">{lastCron?.triggered_at?.slice(11, 19) || "—"}</span> UTC</div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">{lastCron?.status || "—"}</div>
+          <div className="text-xs $1">{lastCron?.status || "—"}</div>
         </CardContent>
       </Card>
       <Card>
         <CardContent className="p-3">
-          <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 flex items-center gap-1"><Brain className="w-3 h-3" />AI spend (today)</div>
-          <div className="text-xl font-bold text-violet-700 tabular-nums">${aiSpend.toFixed(2)}</div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 tabular-nums">{ops.llm_calls_today || 0} LLM calls</div>
+          <div className="text-[10px] uppercase tracking-wide $1 flex items-center gap-1"><Brain className="w-3 h-3" />AI spend (today)</div>
+          <div className="text-xl font-bold text-violet-700 dark:text-violet-400 tabular-nums">${aiSpend.toFixed(2)}</div>
+          <div className="text-xs $1 tabular-nums">{ops.llm_calls_today || 0} LLM calls</div>
         </CardContent>
       </Card>
-      <Card className={errs > 0 ? "border-red-300" : ""}>
+      <Card className={errs > 0 ? "border-red-300 dark:border-red-700" : ""}>
         <CardContent className="p-3">
-          <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 flex items-center gap-1"><Bell className="w-3 h-3" />Errors 24h</div>
-          <div className={`text-xl font-bold tabular-nums ${errs > 0 ? "text-red-700" : "text-emerald-700"}`}>{errs}</div>
+          <div className="text-[10px] uppercase tracking-wide $1 flex items-center gap-1"><Bell className="w-3 h-3" />Errors 24h</div>
+          <div className={`text-xl font-bold tabular-nums ${errs > 0 ? "text-red-700 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}>{errs}</div>
         </CardContent>
       </Card>
       <Card>
         <CardContent className="p-3">
-          <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 flex items-center gap-1"><Database className="w-3 h-3" />Last backup</div>
+          <div className="text-[10px] uppercase tracking-wide $1 flex items-center gap-1"><Database className="w-3 h-3" />Last backup</div>
           <div className="text-base font-bold mt-1">{backups?.at?.slice(0, 10) || "—"}</div>
-          <a href="/admin/system#backup" className="text-xs text-blue-700 hover:underline">Download latest →</a>
+          <a href="/admin/system#backup" className="text-xs text-blue-700 dark:text-blue-400 hover:underline">Download latest →</a>
         </CardContent>
       </Card>
     </div>

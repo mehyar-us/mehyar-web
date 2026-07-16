@@ -30,12 +30,17 @@ export async function onRequestGet({ request, env }) {
   if (!env?.LEADS_DB) return json({ ok: false, error: "missing_db" }, 500, request, env);
 
   const url = new URL(request.url);
-  const q = String(url.searchParams.get("q") || "").trim().toLowerCase();
-  const kind = url.searchParams.get("kind") || "all";
-  const stage = String(url.searchParams.get("stage") || "").trim();
-  const sort = url.searchParams.get("sort") || "created_desc";
-  const focus = url.searchParams.get("focus");
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "100", 10) || 100, 200);
+    const q = String(url.searchParams.get("q") || "").trim().toLowerCase();
+    const kind = url.searchParams.get("kind") || "all";
+    const stage = String(url.searchParams.get("stage") || "").trim();
+    const sort = url.searchParams.get("sort") || "created_desc";
+    const focus = url.searchParams.get("focus");
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "100", 10) || 100, 200);
+    // Deadline filter — hoisted to function scope so the hidden_imminent count
+    // query below can reference the same minDays.
+    const includeImminent = url.searchParams.get("include_imminent") === "true";
+    const includeOverdue = url.searchParams.get("include_overdue") === "true";
+    const minDays = Math.max(0, parseInt(url.searchParams.get("min_days") || "7", 10) || 7);
 
   try {
     const items = [];
@@ -101,13 +106,11 @@ export async function onRequestGet({ request, env }) {
       if (stage) { sql += ` AND stage = ?`; params.push(stage); }
 
       // ── Deadline filter ─────────────────────────────────────────────
-      // Default: hide opportunities whose deadline has already passed OR is <7 days out.
-      // (Too late to put together a serious proposal/pitch.)
-      // Admins can override with ?include_imminent=true to see <7d, or
-      // ?include_overdue=true to also see past-deadline (rarely useful).
-            const includeImminent = url.searchParams.get("include_imminent") === "true";
-            const includeOverdue = url.searchParams.get("include_overdue") === "true";
-            const minDays = Math.max(0, parseInt(url.searchParams.get("min_days") || "7", 10) || 7);
+      // ── Deadline filter ─────────────────────────────────────────────
+            // Default: hide opportunities whose deadline has already passed OR is <7 days out.
+            // (Too late to put together a serious proposal/pitch.)
+            // Admins can override with ?include_imminent=true to see <7d, or
+            // ?include_overdue=true to also see past-deadline (rarely useful).
             let deadlineFilter;
             if (includeOverdue) {
               // Show everything including past-due (imminent-only filter still applies)
