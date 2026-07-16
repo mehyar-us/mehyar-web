@@ -55,16 +55,26 @@ export async function onRequestPost({ request, env }) {
         ? ["sam", "usaspending", "ny"]
         : ["usaspending", "ny"];
       const url = new URL(request.url);
-      // Reconstruct base URL (CF Pages passes request.url that includes the path; we want the origin)
       const origin = `${url.protocol}//${url.host}`;
-      const r = await fetch(`${origin}/api/admin/leads/ingest-contracts`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${actor === "cron:hermes" ? env.GOV_INGEST_TOKEN : (authHeader || "").slice(7)}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ sources, deadline_days: 14, max_per_source: 20 }),
-        signal: AbortSignal.timeout(180_000),
-      });
-      const j = await r.json().catch(() => ({}));
-      results.contracts = j;
+      // Always forward the GOV_INGEST_TOKEN for nested calls — it's the only
+      // token the recursive ingest endpoint accepts for machine-to-machine.
+      // The admin token has a JWT shape that ingest-contracts rejects.
+      const forwardToken = env.GOV_INGEST_TOKEN || "";
+      if (!forwardToken) {
+        results.contracts = { ok: false, error: "missing_gov_ingest_token" };
+      } else {
+        const r = await fetch(`${origin}/api/admin/leads/ingest-contracts`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${forwardToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ sources, deadline_days: 14, max_per_source: 20 }),
+          signal: AbortSignal.timeout(180_000),
+        });
+        const j = await r.json().catch(() => ({}));
+        results.contracts = j;
+      }
     } catch (e) {
       results.contracts = { ok: false, error: String(e?.message || e) };
     }
