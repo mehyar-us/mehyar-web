@@ -11,8 +11,22 @@ export async function onRequestOptions({ request, env }) {
 }
 
 export async function onRequestPost({ request, env, params }) {
-  const auth = await verifyAdminToken(request, env);
-  if (!auth.ok) return json({ ok: false, error: auth.message }, auth.status, request, env);
+  // Accept either an admin session token OR the GOV_INGEST_TOKEN
+  // (machine-to-machine, used by the daily cron runner).
+  const authHeader = request.headers.get("authorization") || "";
+  let authorized = false;
+  let actor = "anonymous";
+  if (authHeader.startsWith("Bearer ")) {
+    const tok = authHeader.slice(7);
+    if (tok && env.GOV_INGEST_TOKEN && tok === env.GOV_INGEST_TOKEN) {
+      authorized = true;
+      actor = "cron:hermes";
+    } else {
+      const a = await verifyAdminToken(request, env);
+      if (a.ok) { authorized = true; actor = "owner"; }
+    }
+  }
+  if (!authorized) return json({ ok: false, error: "unauthorized" }, 401, request, env);
   if (!env?.LEADS_DB) return json({ ok: false, error: "missing_db" }, 500, request, env);
 
   const url = new URL(request.url);
