@@ -6,7 +6,7 @@ import {
   Loader2, Sparkles, Filter, Search, ChevronRight,
   Briefcase, Globe, Send, Phone, Mail, Calendar, RefreshCw,
   X, Plus, Brain, CheckCircle2, ArrowRight, MailIcon, Trash2,
-  MessageSquare, Check,
+  MessageSquare, Check, ExternalLink, AlertTriangle, Clock, DollarSign, Target, Zap,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +90,7 @@ function CrmView({ token }: { token: string }) {
         <AiDailySuggestions token={token} onOpen={(id, kind) => openDrawer(id, kind)} />
         <BusinessScanner token={token} onUpdate={refresh} />
         <EUScouter token={token} onUpdate={refresh} />
+        <FindJobsPanel token={token} onUpdate={refresh} />
       </div>
 
       {/* Toolbar */}
@@ -97,19 +98,19 @@ function CrmView({ token }: { token: string }) {
         <CardContent className="p-3 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 flex-1 min-w-[200px] bg-zinc-50 dark:bg-zinc-800/50 rounded-lg px-2.5 py-1.5 border border-zinc-200 dark:border-zinc-700">
-              <Search className="w-4 h-4 text-zinc-400" />
+              <Search className="w-4 h-4 text-zinc-400 dark:text-zinc-400" />
               <Input
                 placeholder="Filter by name, domain, agency, city…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="border-0 bg-transparent focus-visible:ring-0 px-0 text-sm h-7"
               />
-              {q && <button onClick={() => setQ("")} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400"><X className="w-4 h-4" /></button>}
+              {q && <button onClick={() => setQ("")} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:text-zinc-400"><X className="w-4 h-4" /></button>}
             </div>
             <div className="flex gap-1">
               {(["all","prospect","sam"] as const).map((k) => (
                 <button key={k} onClick={() => setKind(k)}
-                  className={`px-2.5 py-1.5 text-xs rounded-full transition ${kind === k ? "bg-zinc-900 text-white shadow-sm" : "bg-zinc-100 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200"}`}>
+                  className={`px-2.5 py-1.5 text-xs rounded-full transition ${kind === k ? "bg-zinc-900 text-white shadow-sm" : "bg-zinc-100 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300 hover:bg-zinc-200 dark:bg-zinc-700"}`}>
                   {k === "all" ? "All" : k === "sam" ? "🏛 SAM.gov" : "🧲 Prospects"}
                 </button>
               ))}
@@ -118,7 +119,7 @@ function CrmView({ token }: { token: string }) {
               className={`px-2.5 py-1.5 text-xs rounded-full border ${showFilters ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500"}`}>
               <Filter className="inline w-3 h-3 mr-1" />Filters
             </button>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto tabular-nums">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 ml-auto tabular-nums">
               {filtered.length} leads
               {leadQ.data?.hidden_imminent > 0 && (
                 <button
@@ -135,7 +136,7 @@ function CrmView({ token }: { token: string }) {
           {showFilters && (
             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Stage:</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Stage:</span>
                 <select value={stage} onChange={(e) => setStage(e.target.value)} className="text-xs border rounded px-2 py-1.5 bg-white dark:bg-zinc-900">
                   <option value="">all</option>
                   {["new","scanned","draft_needed","drafting","ready","queued","sent","replied","won","lost","archived"].map((s) => (
@@ -144,7 +145,7 @@ function CrmView({ token }: { token: string }) {
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Sort:</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Sort:</span>
                 <select value={sort} onChange={(e) => setSort(e.target.value as any)} className="text-xs border rounded px-2 py-1.5 bg-white dark:bg-zinc-900">
                   <option value="deadline_asc">⏰ Deadline (soonest)</option>
                   <option value="leak_desc">🩸 Leak score (high→low)</option>
@@ -182,10 +183,10 @@ function CrmView({ token }: { token: string }) {
       )}
 
       {leadQ.data && filtered.length === 0 && (
-        <Card><CardContent className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          <Sparkles className="inline w-10 h-10 mb-3 text-zinc-300" />
-          <div className="font-medium text-zinc-700 dark:text-zinc-300">No leads match these filters.</div>
-          <div className="text-xs text-zinc-400 mt-1">Try clearing the search box or switching kind to "All".</div>
+        <Card><CardContent className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">
+          <Sparkles className="inline w-10 h-10 mb-3 text-zinc-300 dark:text-zinc-300" />
+          <div className="font-medium text-zinc-700 dark:text-zinc-300 dark:text-zinc-300">No leads match these filters.</div>
+          <div className="text-xs text-zinc-400 dark:text-zinc-400 mt-1">Try clearing the search box or switching kind to "All".</div>
           {(q || stage) && (
             <Button size="sm" variant="outline" className="mt-3" onClick={() => { setQ(""); setStage(""); }}>Clear filters</Button>
           )}
@@ -255,7 +256,7 @@ function AiDailySuggestions({ token, onOpen }: { token: string; onOpen: (id: str
             {busy ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}Reshuffle
           </Button>
         </div>
-        {reasoning && <p className="text-xs text-zinc-600 dark:text-zinc-400 italic mb-2">💭 {reasoning}</p>}
+        {reasoning && <p className="text-xs text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 italic mb-2">💭 {reasoning}</p>}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
           {items.slice(0, 5).map((it: any, i: number) => (
             <button
@@ -264,15 +265,15 @@ function AiDailySuggestions({ token, onOpen }: { token: string; onOpen: (id: str
               className="text-left rounded-lg border border-zinc-200 bg-white dark:bg-zinc-900 hover:border-violet-400 hover:shadow-md transition p-2.5"
             >
               <div className="flex items-center gap-1 mb-1">
-                <span className="text-xs text-zinc-400 font-mono">#{i + 1}</span>
+                <span className="text-xs text-zinc-400 dark:text-zinc-400 font-mono">#{i + 1}</span>
                 <span className="text-sm">{it.kind === "sam" ? "🏛" : "🧲"}</span>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">{it.kind === "sam" ? "SAM" : "Prospect"}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">{it.kind === "sam" ? "SAM" : "Prospect"}</span>
                 {typeof it.priority_score === "number" && (
                   <span className="ml-auto text-[10px] font-bold text-violet-700 tabular-nums">{it.priority_score}</span>
                 )}
               </div>
               <div className="font-medium text-xs leading-tight line-clamp-2 mb-1">{it.title}</div>
-              <div className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-2">{it.why}</div>
+              <div className="text-[10px] text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 line-clamp-2">{it.why}</div>
               {it.suggested_action && (
                 <div className="mt-1.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800 text-[10px] text-violet-700">
                   ➡ {it.suggested_action}
@@ -301,14 +302,14 @@ function LeadRow({ row, onOpen }: { row: any; onOpen: () => void }) {
         <div className="flex-1 min-w-[200px]">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-sm leading-tight">{row.title}</h3>
-            <Badge className={`text-[10px] ${STAGE_BADGE[row.stage] || "bg-zinc-100 text-zinc-700 dark:text-zinc-300"}`}>{row.stage}</Badge>
+            <Badge className={`text-[10px] ${STAGE_BADGE[row.stage] || "bg-zinc-100 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300"}`}>{row.stage}</Badge>
             {row.deadline_in_days != null && row.kind === "sam" && (
-              <span className={`text-[11px] font-mono font-bold ${row.deadline_in_days <= 0 ? "text-red-700" : row.deadline_in_days <= 2 ? "text-red-600" : "text-zinc-500 dark:text-zinc-400"}`}>
+              <span className={`text-[11px] font-mono font-bold ${row.deadline_in_days <= 0 ? "text-red-700" : row.deadline_in_days <= 2 ? "text-red-600" : "text-zinc-500 dark:text-zinc-400 dark:text-zinc-400"}`}>
                 {row.deadline_in_days <= 0 ? "OVERDUE" : `D-${row.deadline_in_days}`}
               </span>
             )}
           </div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-1">{row.subtitle || ""}</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mt-1 line-clamp-1">{row.subtitle || ""}</div>
           {row.ai_suggestion && (
             <div className="mt-1.5 text-xs text-violet-700 inline-flex items-center gap-1">
               🧠 {row.ai_suggestion}
@@ -319,7 +320,7 @@ function LeadRow({ row, onOpen }: { row: any; onOpen: () => void }) {
           {typeof row.leak_score === "number" && <ScoreBar score={row.leak_score} max={100} label="leak" tone="leak" />}
           {typeof row.fit_score === "number" && <ScoreBar score={row.fit_score} max={100} label="fit" />}
         </div>
-        <ChevronRight className="w-4 h-4 text-zinc-400 mt-1 shrink-0" />
+        <ChevronRight className="w-4 h-4 text-zinc-400 dark:text-zinc-400 mt-1 shrink-0" />
       </div>
     </button>
   );
@@ -349,7 +350,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                           animate-slide-up md:animate-slide-in">
           {/* Bottom-sheet handle (mobile only) */}
           <div className="md:hidden pt-2 pb-1 flex justify-center" onClick={onClose}>
-            <div className="w-10 h-1.5 rounded-full bg-zinc-300" />
+            <div className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" />
           </div>
           {/* Drawer header — explicit dark text + bg so it stays readable even when html.dark is set */}
           <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700 z-10 px-4 py-3 md:px-5 flex items-center gap-3">
@@ -357,10 +358,10 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
               <div className="text-xl shrink-0">{kind === "sam" ? "🏛" : "🧲"}</div>
               <div className="flex-1 min-w-0">
                 <h2 className="font-bold text-base leading-tight text-zinc-900 dark:text-zinc-100 break-words line-clamp-2">{opp.title || "Loading…"}</h2>
-                <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{opp.agency || opp.root_domain || "—"}</div>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 truncate">{opp.agency || opp.root_domain || "—"}</div>
               </div>
             </div>
-            <button onClick={onClose} aria-label="Close drawer" className="rounded-full p-2 hover:bg-zinc-100 text-zinc-700 dark:text-zinc-300 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
+            <button onClick={onClose} aria-label="Close drawer" className="rounded-full p-2 hover:bg-zinc-100 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -384,7 +385,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                       <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2"><ArrowRight className="w-4 h-4" /> How to apply</h4>
                       <ol className="space-y-1 text-sm">
                         {opp.how_to_apply.map((s: any, i: number) => (
-                          <li key={i} className="flex gap-2"><span className="font-mono text-zinc-400 w-5">{s.step}.</span><span>{s.label}{s.url && <> · <a href={s.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">open</a></>}{s.value && <span className="text-xs text-zinc-500 dark:text-zinc-400"> — {String(s.value).slice(0, 100)}</span>}</span></li>
+                          <li key={i} className="flex gap-2"><span className="font-mono text-zinc-400 dark:text-zinc-400 w-5">{s.step}.</span><span>{s.label}{s.url && <> · <a href={s.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">open</a></>}{s.value && <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400"> — {String(s.value).slice(0, 100)}</span>}</span></li>
                         ))}
                       </ol>
                     </CardContent></Card>
@@ -395,7 +396,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                       <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2"><Brain className="w-4 h-4" /> Requirements</h4>
                       <ul className="space-y-1 text-sm">
                         {opp.requirements.map((r: any, i: number) => (
-                          <li key={i}><Badge className="mr-1 bg-zinc-100 text-zinc-700 dark:text-zinc-300">{r.label}</Badge>{String(r.value).slice(0, 160)}</li>
+                          <li key={i}><Badge className="mr-1 bg-zinc-100 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300">{r.label}</Badge>{String(r.value).slice(0, 160)}</li>
                         ))}
                       </ul>
                     </CardContent></Card>
@@ -437,13 +438,14 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                       </div>
                       <ul className="text-sm space-y-1">
                         {opp.attachments.map((a: any, i: number) => (
-                          <li key={i}><a href={a.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">{a.name}</a> {a.type && <span className="text-xs text-zinc-500 dark:text-zinc-400">· {a.type}</span>}</li>
+                          <li key={i}><a href={a.url} className="text-blue-700 underline" target="_blank" rel="noreferrer">{a.name}</a> {a.type && <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">· {a.type}</span>}</li>
                         ))}
                       </ul>
                     </CardContent></Card>
                   )}
 
                   <DeepEval kind={kind} id={id} token={token} onAction={onAction} />
+                  {kind === "prospect" && <DeepAnalyze id={id} token={token} onAction={onAction} />}
                 </div>
 
                 <div className="space-y-3">
@@ -454,9 +456,9 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                         {opp.poc.map((c: any, i: number) => (
                           <li key={i} className="border-l-2 border-zinc-200 dark:border-zinc-700 pl-2">
                             <div className="font-medium">{c.name || "—"}</div>
-                            {c.role && <div className="text-xs text-zinc-500 dark:text-zinc-400">{c.role}</div>}
+                            {c.role && <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">{c.role}</div>}
                             {c.email && <a href={`mailto:${c.email}`} className="text-blue-700 text-xs underline block">{c.email}</a>}
-                            {c.phone && <span className="text-xs text-zinc-600 dark:text-zinc-400">{c.phone}</span>}
+                            {c.phone && <span className="text-xs text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">{c.phone}</span>}
                           </li>
                         ))}
                       </ul>
@@ -477,7 +479,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
                         ].map(([label, val]) => (
                           <div key={label as string} className="flex items-center gap-1.5">
                             <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px] text-white ${val ? "bg-emerald-500" : "bg-red-400"}`}>{val ? "✓" : "✕"}</span>
-                            <span className="text-zinc-700 dark:text-zinc-300">{label as string}</span>
+                            <span className="text-zinc-700 dark:text-zinc-300 dark:text-zinc-300">{label as string}</span>
                           </div>
                         ))}
                       </div>
@@ -539,10 +541,10 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
   if (!open) {
     return (
       <button onClick={() => setOpen(true)}
-        className="w-full text-left rounded-lg border border-dashed border-zinc-300 hover:border-emerald-400 hover:bg-emerald-50/30 transition p-3 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        className="w-full text-left rounded-lg border border-dashed border-zinc-300 hover:border-emerald-400 hover:bg-emerald-50/30 transition p-3 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">
         <Search className="w-4 h-4 text-emerald-600" />
         <span className="font-medium text-emerald-700">🧲 Scan for businesses that need our services</span>
-        <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">vertical + city → leak_score → auto-draft</span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 ml-auto">vertical + city → leak_score → auto-draft</span>
       </button>
     );
   }
@@ -555,7 +557,7 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
             <Search className="w-4 h-4 text-emerald-600" />
             🧲 Scan for businesses
           </h3>
-          <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400"><X className="w-4 h-4" /></button>
+          <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:text-zinc-400"><X className="w-4 h-4" /></button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <Input placeholder="vertical (e.g. dental)" value={vertical} onChange={(e) => setVertical(e.target.value)} className="text-sm" />
@@ -568,7 +570,7 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
             {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
             {busy ? "Scanning…" : "Scan & draft top picks"}
           </Button>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">Filters DB prospects by vertical/city, hits their sites, scores them by leak signals (no SSL, no booking, no form, slow), then drafts the top N.</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Filters DB prospects by vertical/city, hits their sites, scores them by leak signals (no SSL, no booking, no form, slow), then drafts the top N.</span>
         </div>
         {result && (
           <div className={`text-xs rounded p-2 ${result.ok ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"}`}>
@@ -578,7 +580,7 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
                 {result.top_picks && result.top_picks.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {result.top_picks.slice(0, 5).map((p: any) => (
-                      <li key={p.id} className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                      <li key={p.id} className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300">
                         <span className="font-medium truncate flex-1">{p.business_name}</span>
                         <span className="font-mono text-red-700">leak {p.leak_score}</span>
                         {p.drafted && <Badge className="bg-violet-100 text-violet-800 text-[10px]">drafted</Badge>}
@@ -586,7 +588,7 @@ function BusinessScanner({ token, onUpdate }: { token: string; onUpdate?: () => 
                     ))}
                   </ul>
                 )}
-                {result.scanned === 0 && <div className="mt-1 text-zinc-600 dark:text-zinc-400">No matching prospects in DB. Add some first, or broaden filters.</div>}
+                {result.scanned === 0 && <div className="mt-1 text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">No matching prospects in DB. Add some first, or broaden filters.</div>}
               </>
             ) : (
               <span className="text-red-700">⚠ {result.error || "Scan failed"}</span>
@@ -645,7 +647,7 @@ function StageMover({ row, token, onUpdate }: any) {
     <Card><CardContent className="p-4">
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-semibold">📊 Pipeline</h4>
-        {busy && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
+        {busy && <Loader2 className="w-3 h-3 animate-spin text-zinc-400 dark:text-zinc-400" />}
       </div>
       <div className="flex flex-wrap gap-1.5">
         {STAGES.map((s) => (
@@ -655,7 +657,7 @@ function StageMover({ row, token, onUpdate }: any) {
             className={`text-xs px-2 py-1 rounded-full transition ${
               s === row.stage
                 ? "bg-zinc-900 text-white font-semibold ring-2 ring-emerald-400"
-                : "bg-zinc-100 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200"
+                : "bg-zinc-100 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300 hover:bg-zinc-200 dark:bg-zinc-700"
             }`}>
             {s}{s === row.stage && <CheckCircle2 className="inline w-3 h-3 ml-1" />}
           </button>
@@ -715,7 +717,7 @@ function OutreachEnqueue({ row, token, onAction }: any) {
         {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
         Enqueue day-0 cold email
       </Button>
-      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Sends only after manual approval.</div>
+      <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mt-1">Sends only after manual approval.</div>
     </CardContent></Card>
   );
 }
@@ -794,14 +796,14 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
         </div>
 
         {!data && !busy && (
-          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">
             The AI inspects <strong>all</strong> data (signals, agency, deal type, contact role) and returns 3 services × 3 pricing tiers — packaged as "what MehyarSoft could sell them." Click any tier to turn it into an outreach draft.
           </p>
         )}
 
         {busy && (
           <div className="space-y-2 animate-pulse">
-            <div className="h-4 bg-zinc-200 rounded w-1/3" />
+            <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3" />
             <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded w-full" />
             <div className="grid grid-cols-3 gap-2">
               <div className="h-20 bg-zinc-100 dark:bg-zinc-800 rounded" />
@@ -815,7 +817,7 @@ function DeepEval({ kind, id, token, onAction }: { kind: string; id: string; tok
           <>
             <DeepEvalBody data={data} onGenerate={generateDraftFromTier} generatingTier={generatingTier} />
             <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">
                 💬 Want to refine? Tell the AI what to add, remove, or change — it'll suggest a structured patch you can apply.
               </div>
               <Button
@@ -858,15 +860,15 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
       {verdict && (
         <div className="flex flex-wrap items-baseline gap-2 p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
           <span className="text-base font-bold">{verdict}</span>
-          {typeof score === "number" && <span className="font-mono text-2xl font-bold text-zinc-900 dark:text-zinc-100">{score}<span className="text-base text-zinc-400">/100</span></span>}
+          {typeof score === "number" && <span className="font-mono text-2xl font-bold text-zinc-900 dark:text-zinc-100">{score}<span className="text-base text-zinc-400 dark:text-zinc-400">/100</span></span>}
           {data.used_llm === false && <Badge className="bg-amber-100 text-amber-800">heuristic</Badge>}
           {data.used_llm === true && <Badge className="bg-emerald-100 text-emerald-800">AI</Badge>}
         </div>
       )}
-      {summary && <p className="text-zinc-700 dark:text-zinc-300">{summary}</p>}
+      {summary && <p className="text-zinc-700 dark:text-zinc-300 dark:text-zinc-300">{summary}</p>}
       {services.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">🛠 What we could sell them</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mb-1.5">🛠 What we could sell them</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {services.slice(0, 3).map((s: any, i: number) => (
               <div key={i} className="rounded-lg border border-zinc-200 bg-white dark:bg-zinc-900 p-3">
@@ -874,7 +876,7 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
                   <span className="text-base">{s.icon || "🛠"}</span>
                   <span className="font-medium text-sm">{s.name}</span>
                 </div>
-                {s.description && <p className="text-xs text-zinc-600 dark:text-zinc-400">{s.description}</p>}
+                {s.description && <p className="text-xs text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">{s.description}</p>}
                 {s.deliverables && <ul className="text-xs mt-1.5 space-y-0.5">{s.deliverables.slice(0, 4).map((d: string, j: number) => <li key={j}>· {d}</li>)}</ul>}
               </div>
             ))}
@@ -883,7 +885,7 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
       )}
       {tiers.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">💰 Pricing tiers — click to draft</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mb-1.5">💰 Pricing tiers — click to draft</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {tiers.slice(0, 3).map((t: any, i: number) => {
               const tierKey = t._idx ?? i;
@@ -901,9 +903,9 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
                     <span className="font-semibold text-sm">{t.tier || t.name}</span>
                     {i === 1 && <Badge className="bg-violet-100 text-violet-800 text-[10px]">⭐ recommended</Badge>}
                   </div>
-                  <div className="text-xl font-bold mt-1">${(t.price_min ?? t.min ?? 0).toLocaleString()}<span className="text-xs font-normal text-zinc-500 dark:text-zinc-400"> – ${(t.price_max ?? t.max ?? 0).toLocaleString()}</span></div>
-                  {t.monthly_min && <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">${t.monthly_min} – ${t.monthly_max}/mo retain</div>}
-                  {t.scope && <ul className="text-xs mt-2 space-y-0.5 text-zinc-600 dark:text-zinc-400">{t.scope.slice(0, 6).map((s: string, j: number) => <li key={j}>· {s}</li>)}</ul>}
+                  <div className="text-xl font-bold mt-1">${(t.price_min ?? t.min ?? 0).toLocaleString()}<span className="text-xs font-normal text-zinc-500 dark:text-zinc-400 dark:text-zinc-400"> – ${(t.price_max ?? t.max ?? 0).toLocaleString()}</span></div>
+                  {t.monthly_min && <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mt-0.5">${t.monthly_min} – ${t.monthly_max}/mo retain</div>}
+                  {t.scope && <ul className="text-xs mt-2 space-y-0.5 text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">{t.scope.slice(0, 6).map((s: string, j: number) => <li key={j}>· {s}</li>)}</ul>}
                   <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700 flex items-center gap-1 text-xs text-violet-700 font-medium">
                     {generatingTier === tierKey ? <><Loader2 className="w-3 h-3 animate-spin" /> Drafting…</> : <><ArrowRight className="w-3 h-3" /> Generate draft from this tier</>}
                   </div>
@@ -915,7 +917,7 @@ function DeepEvalBody({ data, onGenerate, generatingTier }: { data: any; onGener
       )}
       {Array.isArray(data.risk_flags) && data.risk_flags.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">⚠️ Risk flags</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mb-1">⚠️ Risk flags</div>
           <ul className="text-xs text-amber-700 space-y-0.5">{data.risk_flags.slice(0, 5).map((r: string, i: number) => <li key={i}>· {r}</li>)}</ul>
         </div>
       )}
@@ -1060,7 +1062,7 @@ function DeepEvalChat({
         className="max-h-72 overflow-y-auto overscroll-contain space-y-2 px-1 py-1"
       >
         {turns.length === 0 && (
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 px-2 py-3 text-center">
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 px-2 py-3 text-center">
             💡 Try asking: <em>"Add a HIPAA compliance service"</em>, <em>"Why is the Growth tier $8k?"</em>, <em>"Drop the Starter tier — they're too small for our minimum"</em>, or <em>"Raise fit score to 80, they already have a procurement portal"</em>.
           </div>
         )}
@@ -1074,26 +1076,26 @@ function DeepEvalChat({
             }`}
           >
             <div className="flex items-baseline justify-between gap-2 mb-1">
-              <span className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400">
+              <span className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">
                 {t.role === "user" ? "🧑 you" : "🤖 assistant"}
                 {t.applied && <span className="ml-2 text-emerald-700 dark:text-emerald-400 normal-case font-normal">✓ applied</span>}
-                {t.rejected && <span className="ml-2 text-zinc-500 dark:text-zinc-400 normal-case font-normal">dismissed</span>}
+                {t.rejected && <span className="ml-2 text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 normal-case font-normal">dismissed</span>}
               </span>
-              {t.ts && <span className="text-[10px] text-zinc-400">{new Date(t.ts).toLocaleTimeString()}</span>}
+              {t.ts && <span className="text-[10px] text-zinc-400 dark:text-zinc-400">{new Date(t.ts).toLocaleTimeString()}</span>}
             </div>
             <div className="whitespace-pre-wrap leading-relaxed">{t.content}</div>
             {t.patch && (
               <div className="mt-2 p-2 rounded bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-                <div className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 mb-1">
+                <div className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mb-1">
                   📝 Proposed changes
-                  {t.patch.reason && <span className="font-normal text-zinc-400"> — {t.patch.reason}</span>}
+                  {t.patch.reason && <span className="font-normal text-zinc-400 dark:text-zinc-400"> — {t.patch.reason}</span>}
                 </div>
                 <ul className="text-xs space-y-0.5">
                   {t.patch.set && Object.entries(t.patch.set).map(([k, v]) => (
-                    <li key={k}><span className="text-zinc-500">set</span> <code className="text-cyan-700 dark:text-cyan-300">{k}</code> → {JSON.stringify(v)}</li>
+                    <li key={k}><span className="text-zinc-500 dark:text-zinc-400">set</span> <code className="text-cyan-700 dark:text-cyan-300">{k}</code> → {JSON.stringify(v)}</li>
                   ))}
                   {t.patch.add_services?.map((s: any, j: number) => (
-                    <li key={`as-${j}`}>+ service <strong>{s.name}</strong>{s.description && <span className="text-zinc-500"> — {s.description.slice(0, 80)}{s.description.length > 80 ? "…" : ""}</span>}</li>
+                    <li key={`as-${j}`}>+ service <strong>{s.name}</strong>{s.description && <span className="text-zinc-500 dark:text-zinc-400"> — {s.description.slice(0, 80)}{s.description.length > 80 ? "…" : ""}</span>}</li>
                   ))}
                   {t.patch.remove_service_names?.map((n: string, j: number) => (
                     <li key={`rs-${j}`}><span className="text-red-700 dark:text-red-400">− service</span> {n}</li>
@@ -1114,7 +1116,7 @@ function DeepEvalChat({
         ))}
         {sending && (
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 mr-6">
-            <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span>Thinking…</span>
             </div>
@@ -1148,7 +1150,7 @@ function DeepEvalChat({
           rows={2}
           placeholder="Ask the AI to refine the evaluation…"
           disabled={sending}
-          className="flex-1 resize-none rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 text-sm p-2 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:opacity-50"
+          className="flex-1 resize-none rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:text-zinc-400 text-sm p-2 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:opacity-50"
         />
         <Button onClick={send} disabled={sending || !input.trim()} className="min-h-[44px]">
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -1263,10 +1265,10 @@ function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }
   if (!open) {
     return (
       <button onClick={() => setOpen(true)}
-        className="w-full text-left rounded-lg border border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-50/30 transition p-3 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        className="w-full text-left rounded-lg border border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-50/30 transition p-3 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">
         <span className="text-base">🇪🇺</span>
         <span className="font-medium text-blue-700">Find EU businesses + EU gov contracts to outreach</span>
-        <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">12 EU markets · OSM + TED · free public sources</span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 ml-auto">12 EU markets · OSM + TED · free public sources</span>
       </button>
     );
   }
@@ -1279,12 +1281,12 @@ function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }
             <span className="text-base">🇪🇺</span>
             EU scouter — businesses + gov contracts
           </h3>
-          <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400"><X className="w-4 h-4" /></button>
+          <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:text-zinc-400"><X className="w-4 h-4" /></button>
         </div>
 
         {/* Country + vertical selectors */}
         <div>
-          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">COUNTRIES ({countries.length} selected)</div>
+          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mb-1">COUNTRIES ({countries.length} selected)</div>
           <div className="flex flex-wrap gap-1">
             {EU_COUNTRIES.map((c) => (
               <button key={c.code} onClick={() => toggleCountry(c.code)}
@@ -1300,7 +1302,7 @@ function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }
         </div>
 
         <div>
-          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">VERTICALS (businesses only — {verticals.length})</div>
+          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 mb-1">VERTICALS (businesses only — {verticals.length})</div>
           <div className="flex flex-wrap gap-1">
             {EU_VERTICALS.map((v) => (
               <button key={v} onClick={() => toggleVertical(v)}
@@ -1317,26 +1319,26 @@ function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <label className="text-xs flex flex-col gap-0.5">
-            <span className="text-zinc-500 dark:text-zinc-400">Max per city</span>
+            <span className="text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Max per city</span>
             <Input type="number" min={1} max={50} value={maxPerCity} onChange={(e) => setMaxPerCity(Number(e.target.value) || 15)} className="text-sm h-9" />
           </label>
           <label className="text-xs flex flex-col gap-0.5">
-            <span className="text-zinc-500 dark:text-zinc-400">Max total</span>
+            <span className="text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Max total</span>
             <Input type="number" min={1} max={500} value={maxTotal} onChange={(e) => setMaxTotal(Number(e.target.value) || 60)} className="text-sm h-9" />
           </label>
           <label className="text-xs flex flex-col gap-0.5">
-            <span className="text-zinc-500 dark:text-zinc-400">Gov days back</span>
+            <span className="text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Gov days back</span>
             <Input type="number" min={1} max={60} value={daysBack} onChange={(e) => setDaysBack(Number(e.target.value) || 14)} className="text-sm h-9" />
           </label>
           <label className="text-xs flex flex-col gap-0.5">
-            <span className="text-zinc-500 dark:text-zinc-400">Min gov value €</span>
+            <span className="text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Min gov value €</span>
             <Input type="number" min={0} value={minValueEur} onChange={(e) => setMinValueEur(Number(e.target.value) || 0)} className="text-sm h-9" />
           </label>
         </div>
 
         <label className="flex items-center gap-2 text-xs">
           <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} className="accent-blue-600" />
-          <span className="text-zinc-700 dark:text-zinc-300">
+          <span className="text-zinc-700 dark:text-zinc-300 dark:text-zinc-300">
             <strong>Dry run</strong> — preview results without inserting to DB
           </span>
         </label>
@@ -1362,12 +1364,12 @@ function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }
                   {!dryRun && ` · ${bizResult.inserted} new · ${bizResult.skipped_existing} skipped`}
                 </div>
                 {bizResult.sample && bizResult.sample.length > 0 && (
-                  <ul className="mt-1 space-y-0.5 text-zinc-700 dark:text-zinc-300">
+                  <ul className="mt-1 space-y-0.5 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300">
                     {bizResult.sample.map((b: any, i: number) => (
                       <li key={i} className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-mono text-zinc-500 w-4">{i + 1}.</span>
+                        <span className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 w-4">{i + 1}.</span>
                         <strong className="truncate flex-1">{b.business_name}</strong>
-                        <span className="text-[10px] text-zinc-500">· {b.city}, {b.country}</span>
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400">· {b.city}, {b.country}</span>
                         <span className="text-[10px] text-blue-700">· {b.vertical}</span>
                       </li>
                     ))}
@@ -1390,12 +1392,12 @@ function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }
                   {!dryRun && ` · ${govResult.inserted} new · ${govResult.skipped_existing} skipped`}
                 </div>
                 {govResult.sample && govResult.sample.length > 0 && (
-                  <ul className="mt-1 space-y-0.5 text-zinc-700 dark:text-zinc-300">
+                  <ul className="mt-1 space-y-0.5 text-zinc-700 dark:text-zinc-300 dark:text-zinc-300">
                     {govResult.sample.map((g: any, i: number) => (
                       <li key={i} className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-mono text-zinc-500 w-4">{i + 1}.</span>
+                        <span className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 w-4">{i + 1}.</span>
                         <strong className="truncate flex-1">{g.title}</strong>
-                        <span className="text-[10px] text-zinc-500">· {g.buyer}, {g.country}</span>
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400">· {g.buyer}, {g.country}</span>
                         {g.deadline && <span className="text-[10px] text-amber-700">· due {g.deadline}</span>}
                         {g.value && <span className="text-[10px] text-emerald-700">· €{g.value?.toLocaleString()}</span>}
                       </li>
@@ -1407,6 +1409,672 @@ function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }
               <div className="text-red-700">⚠ {govResult.error || "failed"}</div>
             )}
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Deep Analyze (full AI analysis with pricing + execution plan + Jarvis chat) ──
+// Goes far beyond DeepEval. Uses the /api/admin/prospects/<id>/deep-analyze
+// endpoint. Cached for 12h. User can refine via /chat-analyze (multi-turn).
+
+function DeepAnalyze({ id, token, onAction }: { id: string; token: string; onAction: (msg: string) => void }) {
+  const [open, setOpen] = useState(true);
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"plan"|"chat"|"json">("plan");
+  const [cached, setCached] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+
+  const load = async (force = false) => {
+    setLoading(true); setError(null);
+    try {
+      const r = await fetch(`/api/admin/prospects/${encodeURIComponent(id)}/deep-analyze`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ force }),
+      });
+      const j = await r.json();
+      if (!j.ok) { setError(j.error || "failed"); return; }
+      setAnalysis(j.analysis);
+      setCached(!!j.cached);
+    } catch (e) { setError(String(e)); }
+    setLoading(false);
+  };
+
+  return (
+    <Card className="border-2 border-violet-200 dark:border-violet-800">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-base flex items-center gap-2">
+              <Brain className="w-4 h-4 text-violet-500" /> Jarvis Deep-Analyze
+              <Badge variant="secondary" className="text-[10px]">2026 c2c pricing</Badge>
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Full business intel + 3-tier pricing + execution plan · 12h cache</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost" onClick={() => setOpen((o) => !o)}>{open ? "Hide" : "Open"}</Button>
+          </div>
+        </div>
+
+        {!open ? null : !analysis && !loading && !error ? (
+          <div className="text-center py-6 space-y-3">
+            <Sparkles className="w-8 h-8 text-violet-400 mx-auto" />
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">
+              Generate a complete analysis: pain points, services, 3-tier pricing, 4-12 week plan, and outreach hook.
+            </p>
+            <Button onClick={() => load(false)} className="bg-violet-600 hover:bg-violet-700">
+              <Brain className="w-4 h-4 mr-2" /> Analyze this business
+            </Button>
+          </div>
+        ) : null}
+
+        {loading && (
+          <div className="flex items-center justify-center py-8 text-sm text-zinc-500 dark:text-zinc-400">
+            <Loader2 className="w-5 h-5 animate-spin mr-2 text-violet-500" />
+            Analyzing… (LLM call, ~10-30s)
+          </div>
+        )}
+
+        {error && (
+          <div className="text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3 text-red-700 dark:text-red-300">
+            ⚠ {error}
+          </div>
+        )}
+
+        {analysis && (
+          <>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex gap-1">
+                {[
+                  { k: "plan", label: "Plan" },
+                  { k: "chat", label: "💬 Refine" },
+                  { k: "json", label: "JSON" },
+                ].map((t) => (
+                  <button key={t.k}
+                    onClick={() => { setActiveTab(t.k as any); if (t.k === "chat") setChatOpen(true); }}
+                    className={`px-3 py-1 rounded text-xs font-medium transition ${activeTab === t.k ? "bg-violet-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <div className="ml-auto flex items-center gap-1">
+                {cached && <Badge variant="outline" className="text-[10px]">cached</Badge>}
+                <Button size="sm" variant="ghost" onClick={() => load(true)} className="h-7 text-xs">
+                  <RefreshCw className="w-3 h-3 mr-1" />Re-run
+                </Button>
+              </div>
+            </div>
+
+            {activeTab === "plan" && <DeepAnalyzeView analysis={analysis} />}
+            {activeTab === "chat" && chatOpen && (
+              <DeepAnalyzeChat
+                id={id} token={token}
+                analysis={analysis}
+                onApply={(updated) => { setAnalysis(updated); onAction("Analysis updated"); }}
+                onClose={() => { setChatOpen(false); setActiveTab("plan"); }}
+              />
+            )}
+            {activeTab === "json" && (
+              <pre className="text-[10px] bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded p-3 max-h-96 overflow-auto whitespace-pre-wrap break-all">
+                {JSON.stringify(analysis, null, 2)}
+              </pre>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Pretty rendering of the deep-analysis JSON
+function DeepAnalyzeView({ analysis }: { analysis: any }) {
+  const verdict = analysis.verdict || "🟡 evaluate further";
+  const fitScore = Number(analysis.fit_score || 0);
+  const conf = analysis.confidence || "medium";
+  const bi = analysis.business_intelligence || {};
+  const pains = analysis.pain_points || [];
+  const services = analysis.proposed_services || [];
+  const tiers = analysis.pricing_tiers || [];
+  const plan = analysis.execution_plan || [];
+  const risks = analysis.risk_flags || [];
+  const out = analysis.outreach_angle || {};
+
+  return (
+    <div className="space-y-3">
+      {/* Verdict + score */}
+      <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50 rounded p-3">
+        <div className="text-2xl">{verdict.includes("🟢") ? "🟢" : verdict.includes("🔴") ? "🔴" : "🟡"}</div>
+        <div className="flex-1">
+          <div className="font-semibold text-sm">{verdict}</div>
+          <div className="text-[10px] text-zinc-500 dark:text-zinc-400">confidence: {conf} · reasoning below</div>
+        </div>
+        <div className="text-right">
+          <div className="text-3xl font-bold text-violet-600 dark:text-violet-400">{fitScore}</div>
+          <div className="text-[10px] text-zinc-500 dark:text-zinc-400">/100 fit</div>
+        </div>
+      </div>
+
+      {/* Business intel */}
+      <details className="bg-zinc-50 dark:bg-zinc-800/50 rounded p-3" open>
+        <summary className="font-semibold text-sm cursor-pointer flex items-center gap-2">
+          🏢 Business Intelligence
+        </summary>
+        <div className="mt-2 space-y-1.5 text-xs">
+          {bi.what_they_do && <p><span className="font-semibold">What they do:</span> {bi.what_they_do}</p>}
+          {bi.target_market && <p><span className="font-semibold">Target market:</span> {bi.target_market}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            {bi.likely_revenue_band && <div><span className="text-zinc-500 dark:text-zinc-400">Revenue band:</span> {bi.likely_revenue_band}</div>}
+            {bi.likely_team_size && <div><span className="text-zinc-500 dark:text-zinc-400">Team:</span> {bi.likely_team_size}</div>}
+          </div>
+          {(bi.tech_stack_signals?.length || 0) > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {bi.tech_stack_signals.map((t: string, i: number) => (
+                <Badge key={i} variant="secondary" className="text-[10px]">{t}</Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
+
+      {/* Pain points */}
+      {pains.length > 0 && (
+        <details className="bg-zinc-50 dark:bg-zinc-800/50 rounded p-3" open>
+          <summary className="font-semibold text-sm cursor-pointer flex items-center gap-2">
+            ⚠ Pain Points <Badge variant="secondary" className="text-[10px]">{pains.length}</Badge>
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {pains.map((p: any, i: number) => {
+              const sevColor = p.severity === "critical" ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
+                : p.severity === "high" ? "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200"
+                : p.severity === "medium" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                : "bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200";
+              return (
+                <li key={i} className="border-l-2 border-zinc-300 dark:border-zinc-600 pl-2 py-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${sevColor}`}>{p.severity}</span>
+                    <strong className="text-sm">{p.title}</strong>
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 ml-auto">{p.estimated_hours}h</span>
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5"><span className="font-semibold">Evidence:</span> {p.evidence}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5"><span className="font-semibold">Fix:</span> {p.fix_summary}</p>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
+
+      {/* Services */}
+      {services.length > 0 && (
+        <details className="bg-zinc-50 dark:bg-zinc-800/50 rounded p-3">
+          <summary className="font-semibold text-sm cursor-pointer flex items-center gap-2">
+            🛠 Services We'd Offer <Badge variant="secondary" className="text-[10px]">{services.length}</Badge>
+          </summary>
+          <div className="mt-2 space-y-2">
+            {services.map((s: any, i: number) => (
+              <div key={i} className="border border-zinc-200 dark:border-zinc-700 rounded p-2 bg-white dark:bg-zinc-900">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xl">{s.icon}</span>
+                  <strong className="text-sm">{s.name}</strong>
+                  <Badge variant="outline" className="text-[10px] ml-auto">{s.estimated_hours}h @ ${s.blended_hourly_rate}/hr</Badge>
+                </div>
+                {s.description && <p className="text-xs text-zinc-600 dark:text-zinc-300">{s.description}</p>}
+                {s.deliverables?.length > 0 && (
+                  <ul className="text-xs text-zinc-600 dark:text-zinc-300 mt-1 list-disc pl-4">
+                    {s.deliverables.map((d: string, j: number) => <li key={j}>{d}</li>)}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {/* Pricing tiers */}
+      {tiers.length > 0 && (
+        <details className="bg-zinc-50 dark:bg-zinc-800/50 rounded p-3" open>
+          <summary className="font-semibold text-sm cursor-pointer flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-emerald-500" /> Pricing Tiers
+            <Badge variant="secondary" className="text-[10px]">2026 c2c</Badge>
+          </summary>
+          <div className="mt-2 grid gap-2 md:grid-cols-3">
+            {tiers.map((t: any, i: number) => {
+              const isMid = t.tier === "Growth";
+              return (
+                <div key={i} className={`rounded p-3 border-2 ${isMid ? "border-emerald-400 bg-emerald-50/40 dark:bg-emerald-900/10" : "border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <strong className="text-sm">{t.tier}</strong>
+                    {isMid && <Badge className="bg-emerald-500 text-[10px]">Recommended</Badge>}
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300 mb-2">{t.rationale}</p>
+                  <div className="space-y-1 text-xs">
+                    <div className="font-semibold text-emerald-700 dark:text-emerald-400">
+                      ${t.one_time_min?.toLocaleString()} – ${t.one_time_max?.toLocaleString()}
+                    </div>
+                    <div className="text-zinc-500 dark:text-zinc-400">one-time · {t.estimated_total_hours}h</div>
+                    {t.monthly_min > 0 && (
+                      <div className="text-zinc-700 dark:text-zinc-300">
+                        + ${t.monthly_min} – ${t.monthly_max}/mo retainer
+                      </div>
+                    )}
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">~{t.estimated_completion_weeks} weeks</div>
+                  </div>
+                  {t.scope?.length > 0 && (
+                    <details className="mt-2">
+                      <summary className="text-[10px] cursor-pointer text-zinc-600 dark:text-zinc-400">scope ({t.scope.length} items)</summary>
+                      <ul className="text-[10px] text-zinc-600 dark:text-zinc-300 mt-1 list-disc pl-3">
+                        {t.scope.map((s: string, j: number) => <li key={j}>{s}</li>)}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      )}
+
+      {/* Execution plan */}
+      {plan.length > 0 && (
+        <details className="bg-zinc-50 dark:bg-zinc-800/50 rounded p-3">
+          <summary className="font-semibold text-sm cursor-pointer flex items-center gap-2">
+            <Target className="w-4 h-4 text-blue-500" /> Execution Plan
+            <Badge variant="secondary" className="text-[10px]">{plan.length} weeks</Badge>
+          </summary>
+          <ol className="mt-2 space-y-1.5">
+            {plan.map((w: any, i: number) => (
+              <li key={i} className="flex gap-2 items-start">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 text-xs font-bold flex items-center justify-center">
+                  W{w.week}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <strong className="text-sm">{w.phase}</strong>
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400">{w.estimated_hours}h</span>
+                  </div>
+                  {w.milestones?.length > 0 && (
+                    <ul className="text-xs text-zinc-600 dark:text-zinc-300 list-disc pl-4 mt-0.5">
+                      {w.milestones.map((m: string, j: number) => <li key={j}>{m}</li>)}
+                    </ul>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+
+      {/* Risk flags */}
+      {risks.length > 0 && (
+        <details className="bg-zinc-50 dark:bg-zinc-800/50 rounded p-3">
+          <summary className="font-semibold text-sm cursor-pointer flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" /> Risks <Badge variant="secondary" className="text-[10px]">{risks.length}</Badge>
+          </summary>
+          <ul className="mt-2 space-y-1.5">
+            {risks.map((r: any, i: number) => (
+              <li key={i} className="text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className={`text-[10px] ${r.severity === "high" ? "border-red-400 text-red-700 dark:text-red-300" : r.severity === "medium" ? "border-amber-400 text-amber-700 dark:text-amber-300" : "border-zinc-400 text-zinc-600 dark:text-zinc-300"}`}>{r.severity}</Badge>
+                  <strong>{r.risk}</strong>
+                </div>
+                <p className="text-zinc-600 dark:text-zinc-300 ml-1 mt-0.5">↪ {r.mitigation}</p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {/* Outreach angle */}
+      {out.hook && (
+        <details className="bg-gradient-to-br from-emerald-50 to-cyan-50 dark:from-emerald-900/20 dark:to-cyan-900/20 rounded p-3" open>
+          <summary className="font-semibold text-sm cursor-pointer flex items-center gap-2">
+            ✉️ Outreach Angle
+          </summary>
+          <div className="mt-2 space-y-1.5 text-xs">
+            <div><span className="text-zinc-500 dark:text-zinc-400">Subject:</span> <strong>{out.subject_line}</strong></div>
+            <div className="bg-white dark:bg-zinc-900 rounded p-2 border border-zinc-200 dark:border-zinc-700">
+              <p className="italic">{out.hook}</p>
+              {out.call_to_action && <p className="mt-1 font-semibold">{out.call_to_action}</p>}
+            </div>
+          </div>
+        </details>
+      )}
+
+      {analysis.reasoning_summary && (
+        <div className="text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800/50 rounded p-2 italic">
+          💭 {analysis.reasoning_summary}
+        </div>
+      )}
+
+      {analysis.next_action && (
+        <div className="text-xs bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded p-2 flex items-start gap-2">
+          <Zap className="w-4 h-4 text-violet-500 shrink-0 mt-0.5" />
+          <span><span className="font-semibold">Next action:</span> {analysis.next_action}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Multi-turn chat to refine the deep analysis. Sends message → LLM proposes
+// a structured patch → user previews the merged analysis → applies to save.
+function DeepAnalyzeChat({ id, token, analysis, onApply, onClose }: any) {
+  const [messages, setMessages] = useState<Array<{ role: "user"|"assistant"; content: string; patch?: any }>>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [currentAnalysis, setCurrentAnalysis] = useState<any>(analysis);
+  const [pendingPatch, setPendingPatch] = useState<any>(null);
+  const [preview, setPreview] = useState<any>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setCurrentAnalysis(analysis); }, [analysis]);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [messages, pendingPatch]);
+
+  const send = async () => {
+    const txt = input.trim();
+    if (!txt || busy) return;
+    setInput("");
+    setBusy(true);
+    setMessages((m) => [...m, { role: "user", content: txt }]);
+    try {
+      const r = await fetch(`/api/admin/prospects/${encodeURIComponent(id)}/chat-analyze`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ message: txt, current_analysis: currentAnalysis }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "failed");
+      setMessages((m) => [...m, { role: "assistant", content: j.reply, patch: j.patch }]);
+      if (j.patch) {
+        setPendingPatch(j.patch);
+        setPreview(j.new_analysis_preview);
+      } else {
+        setPendingPatch(null);
+        setPreview(null);
+      }
+    } catch (e: any) {
+      setMessages((m) => [...m, { role: "assistant", content: `⚠ ${String(e?.message || e)}` }]);
+    }
+    setBusy(false);
+  };
+
+  const apply = async () => {
+    if (!preview || busy) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/prospects/${encodeURIComponent(id)}/chat-analyze/apply`, {
+        method: "PUT",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ new_analysis: preview, reason: pendingPatch?.reason || "Chat refinement" }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "failed");
+      setCurrentAnalysis(preview);
+      setPendingPatch(null);
+      setPreview(null);
+      onApply?.(preview);
+    } catch (e: any) {
+      setMessages((m) => [...m, { role: "assistant", content: `⚠ ${String(e?.message || e)}` }]);
+    }
+    setBusy(false);
+  };
+
+  const dismiss = () => { setPendingPatch(null); setPreview(null); };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-violet-500" />
+          <strong className="text-sm">Jarvis — refine the analysis</strong>
+        </div>
+        <Button size="sm" variant="ghost" onClick={onClose}>×</Button>
+      </div>
+
+      {/* Message thread */}
+      <div ref={scrollRef} className="bg-zinc-50 dark:bg-zinc-800/30 rounded border border-zinc-200 dark:border-zinc-700 p-2 max-h-72 overflow-y-auto space-y-2">
+        {messages.length === 0 && (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 italic text-center py-4">
+            Try: "make it sound less corporate", "drop the Premium tier", "add a risk about slow content updates", "raise the Growth one-time to $15k", "tighten the outreach hook to one sentence"
+          </p>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${m.role === "user" ? "bg-violet-600 text-white" : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700"}`}>
+              <div className="whitespace-pre-wrap">{m.content}</div>
+              {m.patch && (
+                <div className="mt-1 text-[10px] opacity-80">
+                  📝 proposed patch: {Object.keys(m.patch).filter((k) => k !== "reason").join(", ")}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="flex justify-start">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs flex items-center gap-2">
+              <Loader2 className="w-3 h-3 animate-spin" /> Thinking…
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pending patch preview */}
+      {pendingPatch && preview && (
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-800 rounded p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <strong className="text-sm text-emerald-800 dark:text-emerald-200">Patch ready to apply</strong>
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 ml-auto">{pendingPatch.reason}</span>
+          </div>
+          <details>
+            <summary className="text-xs cursor-pointer text-emerald-700 dark:text-emerald-300">Show preview diff</summary>
+            <div className="mt-2 text-[10px] space-y-1 max-h-40 overflow-y-auto">
+              {pendingPatch.set && Object.entries(pendingPatch.set).map(([k, v]) => (
+                <div key={k} className="flex gap-2">
+                  <Badge variant="outline" className="text-[9px]">set {k}</Badge>
+                  <span className="font-mono">{JSON.stringify(v)}</span>
+                </div>
+              ))}
+              {pendingPatch.add_pain_points?.map((p: any, i: number) => (
+                <div key={"pp"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px] bg-green-100">+ pain</Badge><span>{p.title}</span></div>
+              ))}
+              {pendingPatch.remove_pain_points?.map((t: string, i: number) => (
+                <div key={"rp"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px] bg-red-100">− pain</Badge><span>{t}</span></div>
+              ))}
+              {pendingPatch.edit_services?.map((s: any, i: number) => (
+                <div key={"es"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px]">edit svc</Badge><span>{s.match_name}</span></div>
+              ))}
+              {pendingPatch.add_services?.map((s: any, i: number) => (
+                <div key={"as"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px] bg-green-100">+ svc</Badge><span>{s.name}</span></div>
+              ))}
+              {pendingPatch.remove_services?.map((t: string, i: number) => (
+                <div key={"rs"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px] bg-red-100">− svc</Badge><span>{t}</span></div>
+              ))}
+              {pendingPatch.edit_tiers?.map((t: any, i: number) => (
+                <div key={"et"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px]">edit tier</Badge><span>{t.match_tier}</span></div>
+              ))}
+              {pendingPatch.add_tiers?.map((t: any, i: number) => (
+                <div key={"at"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px] bg-green-100">+ tier</Badge><span>{t.tier}</span></div>
+              ))}
+              {pendingPatch.remove_tiers?.map((t: string, i: number) => (
+                <div key={"rt"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px] bg-red-100">− tier</Badge><span>{t}</span></div>
+              ))}
+              {pendingPatch.edit_plan_weeks?.map((w: any, i: number) => (
+                <div key={"ew"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px]">edit W{w.match_week}</Badge></div>
+              ))}
+              {pendingPatch.add_plan_weeks?.map((w: any, i: number) => (
+                <div key={"aw"+i} className="flex gap-2"><Badge variant="outline" className="text-[9px] bg-green-100">+ W{w.week}</Badge></div>
+              ))}
+              {pendingPatch.set_outreach && (
+                <div className="flex gap-2"><Badge variant="outline" className="text-[9px]">set outreach</Badge></div>
+              )}
+            </div>
+          </details>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={apply} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700">
+              <Check className="w-3 h-3 mr-1" />Apply + save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={dismiss} disabled={busy}>Dismiss</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="flex gap-2">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          placeholder="Ask Jarvis to change something or ask about the analysis…"
+          disabled={busy}
+          className="text-sm"
+        />
+        <Button onClick={send} disabled={busy || !input.trim()} size="sm">
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+// Live job search across RemoteOK, WeWorkRemotely, and ArbeitNow public feeds.
+// Inserts matched jobs as new prospects so the scan + draft + outreach
+// pipelines pick them up automatically.
+
+function FindJobsPanel({ token, onUpdate }: { token: string; onUpdate?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [dryRun, setDryRun] = useState(true);
+  const [sources, setSources] = useState<string[]>(["remoteok", "weworkremotely", "arbeitnow"]);
+  const [minBudget, setMinBudget] = useState(0);
+  const [maxResults, setMaxResults] = useState(40);
+  const [kwText, setKwText] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+
+  const toggleSrc = (s: string) =>
+    setSources((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+
+  const run = async () => {
+    setBusy(true); setResult(null);
+    try {
+      const keywords = kwText.split(",").map((s) => s.trim()).filter(Boolean);
+      const r = await fetch("/api/admin/prospect-sources/find-jobs", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          sources, min_budget_usd: minBudget, max_results: maxResults,
+          keywords: keywords.length ? keywords : undefined,
+          dry_run: dryRun,
+        }),
+      });
+      const j = await r.json();
+      setResult(j);
+      if (j?.ok && !dryRun && j.inserted > 0) onUpdate?.();
+    } catch (e) { setResult({ ok: false, error: String(e) }); }
+    setBusy(false);
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-base flex items-center gap-2">💼 Find Jobs Right Now</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Live remote + freelance postings · auto-imported as prospects</p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => setOpen((o) => !o)}>{open ? "Hide" : "Open"}</Button>
+        </div>
+        {!open ? (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Pulls from <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">RemoteOK</code>, <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">WeWorkRemotely</code>, <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">ArbeitNow</code> — filtered to your keywords + last 24h.
+          </p>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "remoteok", label: "RemoteOK" },
+                { id: "weworkremotely", label: "WeWorkRemotely" },
+                { id: "arbeitnow", label: "ArbeitNow" },
+              ].map((s) => (
+                <button key={s.id}
+                  onClick={() => toggleSrc(s.id)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${sources.includes(s.id) ? "bg-emerald-500 text-white border-emerald-500" : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700"}`}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs space-y-1">
+                <span className="text-zinc-500 dark:text-zinc-400">Min salary (USD/yr or $/hr equiv)</span>
+                <Input type="number" min="0" step="5000" value={minBudget} onChange={(e) => setMinBudget(Number(e.target.value || 0))} className="h-8 text-xs" />
+              </label>
+              <label className="text-xs space-y-1">
+                <span className="text-zinc-500 dark:text-zinc-400">Max results</span>
+                <Input type="number" min="5" max="200" step="5" value={maxResults} onChange={(e) => setMaxResults(Number(e.target.value || 40))} className="h-8 text-xs" />
+              </label>
+            </div>
+            <Input
+              placeholder="Extra keywords (comma-separated) — leave blank for default list"
+              value={kwText}
+              onChange={(e) => setKwText(e.target.value)}
+              className="text-xs"
+            />
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} className="rounded" />
+              <span className="text-zinc-600 dark:text-zinc-300">Dry run (preview only — don't import)</span>
+            </label>
+            <Button onClick={run} disabled={busy || sources.length === 0} className="w-full">
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
+              {busy ? "Searching…" : dryRun ? "🔍 Preview matches" : `🚀 Find + Import ${sources.length === 1 ? sources[0] : sources.length + " sources"}`}
+            </Button>
+            {result && (
+              <div className={`text-xs rounded p-3 space-y-2 ${result.ok ? "bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800" : "bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800"}`}>
+                {result.ok ? (
+                  <>
+                    <div className="font-semibold text-emerald-800 dark:text-emerald-200">
+                      {result.dry_run ? "🔍 Preview — " : "✓ Imported — "}
+                      {result.fetched} fetched → {result.unique_after_dedup} unique
+                      {!result.dry_run && ` · ${result.inserted} new prospects · ${result.skipped_existing} already in CRM`}
+                    </div>
+                    {result.sample?.length > 0 && (
+                      <ul className="mt-2 space-y-1.5">
+                        {result.sample.map((j: any, i: number) => (
+                          <li key={i} className="border-l-2 border-emerald-300 dark:border-emerald-700 pl-2 py-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 w-4">{i + 1}.</span>
+                              <a href={j.url} target="_blank" rel="noreferrer" className="font-medium text-blue-700 dark:text-blue-400 hover:underline truncate flex-1">
+                                {j.title}
+                              </a>
+                              <a href={j.url} target="_blank" rel="noreferrer"><ExternalLink className="w-3 h-3 text-zinc-400" /></a>
+                            </div>
+                            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 ml-5">
+                              {j.company} · {j.location || "Remote"} · <Badge variant="secondary" className="text-[9px] py-0">{j.source}</Badge>
+                              {(j.salary_min || j.salary_max) && (
+                                <span className="ml-1 text-emerald-700 dark:text-emerald-400">
+                                  {j.salary_min ? `$${j.salary_min.toLocaleString()}` : ""}{j.salary_min && j.salary_max ? "–" : ""}{j.salary_max ? `$${j.salary_max.toLocaleString()}` : ""}
+                                </span>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {result.errors?.length > 0 && (
+                      <div className="text-[10px] text-amber-700 dark:text-amber-400 mt-2">
+                        ⚠ {result.errors.length} source errors (see logs)
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-red-700 dark:text-red-300">⚠ {result.error || "failed"}</div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
