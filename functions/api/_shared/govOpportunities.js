@@ -67,12 +67,19 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
     summary.llm = { model: llmConfig.model, configured: Boolean(llmConfig.apiKey) };
 
   let normalized = [];
-  try {
-    const awards = await fetchUsaspendingAwards({ fetchImpl, keywords, limit });
-    summary.usaspending = { fetched: awards.length, ok: true };
-    normalized = normalized.concat(awards);
-  } catch (error) {
-    summary.errors.push({ source: "usaspending", error: safeErrorName(error) });
+  // USASpending is gated behind an env flag because it's flaky from
+  // Cloudflare Workers' edge network (random 525 SSL handshake failures).
+  // Default OFF. Enable with GOV_INCLUDE_USASPENDING=true if you want it.
+  if (env?.GOV_INCLUDE_USASPENDING === "true") {
+    try {
+      const awards = await fetchUsaspendingAwards({ fetchImpl, keywords, limit });
+      summary.usaspending = { fetched: awards.length, ok: true };
+      normalized = normalized.concat(awards);
+    } catch (error) {
+      summary.errors.push({ source: "usaspending", error: safeErrorName(error) });
+    }
+  } else {
+    summary.usaspending = { fetched: 0, ok: false, error: "disabled_via_env" };
   }
 
   if (samApiKey) {
