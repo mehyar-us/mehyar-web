@@ -194,27 +194,37 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
     "https://api.usaspending.gov/api/v2/search/spending_by_award/",
     "https://api.usaspending.gov/api/v1/search/spending_by_award/",
   ];
+  // USASpending's heavy POST query often takes 15-25s on the free tier.
+  // Bumped from 8s → 30s and added a single retry on timeout.
+  const TIMEOUT_MS = 30_000;
   let lastErr;
-  for (const url of endpoints) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    try {
-      const response = await fetchImpl(url, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "accept": "application/json",
-          "user-agent": "mehyar-web/1.0 (cf-pages)",
-        },
-        body: JSON.stringify(basePayload),
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (!response.ok) throw new Error(`usaspending_${response.status}`);
-      return normalizeUsaspendingAwards(await response.json());
-    } catch (error) {
-      clearTimeout(timer);
-      lastErr = error;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const url of endpoints) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        const response = await fetchImpl(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "accept": "application/json",
+            "user-agent": "mehyar-web/1.0 (cf-pages)",
+          },
+          body: JSON.stringify(basePayload),
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        if (!response.ok) throw new Error(`usaspending_${response.status}`);
+        return normalizeUsaspendingAwards(await response.json());
+      } catch (error) {
+        clearTimeout(timer);
+        lastErr = error;
+        // Only retry on network/timeout failures (abort). HTTP 4xx/5xx should not retry.
+        if (error?.name !== "AbortError" && !String(error?.message || "").includes("fetch")) {
+          throw error;
+        }
+        // Continue to next endpoint or attempt.
+      }
     }
   }
   throw lastErr || new Error("usaspending_unknown_failure");

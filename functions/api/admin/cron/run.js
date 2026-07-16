@@ -109,7 +109,10 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
-  // LLM deep-evaluate for top-3 prospects with highest leak_score (max 3/day to limit cost)
+  // LLM deep-evaluate for top prospects (max 2/day to limit cost).
+  // Actually fires the LLM by invoking the same handler the UI uses,
+  // rather than just logging "candidates". Catches per-prospect failures
+  // so a single bad row doesn't kill the rest of the batch.
   if (job === "all" || job === "deep-evaluate") {
     try {
       const top = await env.LEADS_DB.prepare(`
@@ -125,19 +128,51 @@ export async function onRequestPost({ request, env }) {
           AND (p.last_deep_eval_at IS NULL
                OR datetime(p.last_deep_eval_at) <= datetime('now','-12 hour'))
         ORDER BY leak_score DESC, p.updated_at DESC
-        LIMIT 3
+        LIMIT 2
       `).all().catch(() => ({ results: [] }));
+
+      const url = new URL(request.url);
+      const origin = `${url.protocol}//${url.host}`;
+      const evalResults = [];
+      for (const r of (top.results || [])) {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 75_000); // LLM call — give it room
+          const er = await fetch(`${origin}/api/admin/leads/${encodeURIComponent(r.id)}/deep-evaluate?kind=prospect`, {
+            method: "POST",
+            headers: {
+              "authorization": `Bearer ${env.GOV_INGEST_TOKEN}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({ force: false }),
+            signal: ctrl.signal,
+          });
+          clearTimeout(timer);
+          const ej = await er.json().catch(() => ({}));
+          evalResults.push({
+            id: r.id, business_name: r.business_name, leak_score: r.leak_score,
+            ok: ej.ok || false, cached: ej.cached || false,
+            fit_score: ej.evaluation?.fit_score ?? null,
+            used_llm: ej.used_llm ?? null,
+            error: ej.ok ? null : (ej.error || "unknown"),
+          });
+          // Mark last_deep_eval_at so we don't re-eval next run
+          await env.LEADS_DB.prepare(
+            `UPDATE prospects SET last_deep_eval_at = datetime('now') WHERE id = ?`
+          ).bind(r.id).run().catch(() => null);
+        } catch (e) {
+          evalResults.push({
+            id: r.id, business_name: r.business_name, leak_score: r.leak_score,
+            ok: false, error: String(e?.message || e),
+          });
+        }
+      }
       results.deep_evaluate = {
         candidates: (top.results || []).length,
-        sample: (top.results || []).slice(0, 3).map(r => ({
-          id: r.id,
-          business_name: r.business_name,
-          root_domain: r.root_domain,
-          leak_score: r.leak_score,
-        })),
+        fired: evalResults.length,
+        succeeded: evalResults.filter((r) => r.ok).length,
+        sample: evalResults,
       };
-      // We don't invoke the LLM here synchronously to avoid timeouts; instead, log that they were "queued".
-      // The /api/admin/leads/<id>/deep-evaluate endpoint is what fires the LLM.
     } catch (e) {
       results.deep_evaluate = { ok: false, error: String(e?.message || e) };
     }
