@@ -205,6 +205,44 @@ export async function onRequestPost({ request, env }) {
     VALUES (?, ?, ?, datetime('now'))
   `).bind(runId, `manual:${job}`, JSON.stringify({ ...results, duration_ms, source: `manual:${actor}` }).slice(0, 18000)).run().catch(() => null);
 
+  // ── Mayor engine: delegate to /api/mayor/* endpoints via internal fetch ──
+  if (job === "all" || job === "mayor_discover") {
+    try {
+      const r = await fetch(new URL("/api/mayor/discover", request.url), {
+        method: "POST",
+        headers: { "authorization": `Bearer ${env.GOV_INGEST_TOKEN}` },
+      });
+      results.mayor_discover = await r.json().catch(() => ({ ok: false, error: "parse_failed" }));
+    } catch (e) { results.mayor_discover = { ok: false, error: String(e?.message || e) }; }
+  }
+  if (job === "all" || job === "mayor_outreach") {
+    try {
+      const r = await fetch(new URL("/api/mayor/outreach", request.url), {
+        method: "POST",
+        headers: { "authorization": `Bearer ${env.GOV_INGEST_TOKEN}` },
+      });
+      results.mayor_outreach = await r.json().catch(() => ({ ok: false, error: "parse_failed" }));
+    } catch (e) { results.mayor_outreach = { ok: false, error: String(e?.message || e) }; }
+  }
+  if (job === "all" || job === "mayor_followup") {
+    try {
+      const r = await fetch(new URL("/api/mayor/followup", request.url), {
+        method: "POST",
+        headers: { "authorization": `Bearer ${env.GOV_INGEST_TOKEN}` },
+      });
+      results.mayor_followup = await r.json().catch(() => ({ ok: false, error: "parse_failed" }));
+    } catch (e) { results.mayor_followup = { ok: false, error: String(e?.message || e) }; }
+  }
+  if (job === "all" || job === "mayor_digest") {
+    try {
+      const r = await fetch(new URL("/api/mayor/digest", request.url), {
+        method: "POST",
+        headers: { "authorization": `Bearer ${env.GOV_INGEST_TOKEN}` },
+      });
+      results.mayor_digest = await r.json().catch(() => ({ ok: false, error: "parse_failed" }));
+    } catch (e) { results.mayor_digest = { ok: false, error: String(e?.message || e) }; }
+  }
+
   return json({
     ok: true,
     run_id: runId,

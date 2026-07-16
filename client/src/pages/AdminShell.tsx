@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Loader2, Sparkles, LogOut, Search, Zap, Briefcase, DollarSign, Settings,
+  Loader2, Sparkles, LogOut, Search, Activity, Briefcase, DollarSign, Settings,
   RefreshCw, Bell, ChevronRight, X, Command, Send, Mail, Brain, ArrowRight,
   Home,
 } from "lucide-react";
@@ -62,7 +62,7 @@ export const STAGE_BADGE: Record<string, string> = {
 
 // ── Tab definitions ───────────────────────────────────────────────────────
 const TABS = [
-  { key: "now",   label: "⚡ Now",      href: "/admin",                  icon: Zap,         tagline: "Inbox-zero for the next 5 minutes" },
+  { key: "now",   label: "🏛 Mayor",    href: "/admin/mayor",             icon: Activity,    tagline: "AI operator running the site — observe, don't push" },
   { key: "crm",   label: "🧲 CRM",      href: "/admin/leads",            icon: Briefcase,   tagline: "Every lead, every deal — one table" },
   { key: "money", label: "💰 Money",    href: "/admin/money",            icon: DollarSign,  tagline: "Forecast · Win · Case studies" },
   { key: "system", label: "⚙ System",   href: "/admin/system",           icon: Settings,    tagline: "Audit · Cron · Backups" },

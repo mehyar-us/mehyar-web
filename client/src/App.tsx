@@ -17,6 +17,7 @@ import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
 import QuoteView from "@/pages/QuoteView";
 import AdminNow from "@/pages/AdminNow";
 import AdminCRM from "@/pages/AdminCRM";
+import AdminMayor from "@/pages/AdminMayor";
 import AdminMoney from "@/pages/AdminMoney";
 import AdminSystem from "@/pages/AdminSystem";
 import AdminOpportunityDetail from "@/pages/_deprecated/AdminOpportunityDetail";
@@ -117,13 +118,16 @@ function App() {
             <Route path="/billing/success" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
             <Route path="/q/:slug" component={QuoteView} />
-            <Route path="/admin" component={AdminNow} />
+            <Route path="/admin" component={AdminMayor} />
+            <Route path="/admin/mayor" component={AdminMayor} />
+            <Route path="/admin/now" component={AdminMayor} />
             <Route path="/admin/leads" component={AdminCRM} />
             <Route path="/admin/leads/:kind/:id" component={AdminOpportunityDetail} />
             <Route path="/admin/money" component={AdminMoney} />
             <Route path="/admin/system" component={AdminSystem} />
             <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects" />
-            <Redirect to="/admin" href="/admin/today" />
+            <Redirect to="/admin/mayor" href="/admin/today" />
+            <Redirect to="/admin/mayor" href="/admin/now" />
             <Redirect to="/admin/money" href="/admin/auto-tender" />
             <Redirect to="/admin/system" href="/admin/audit" />
             <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities" />
