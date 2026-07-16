@@ -51,6 +51,15 @@ def make_zip():
     if os.path.exists(ZIP_OUT):
         os.remove(ZIP_OUT)
     os.makedirs(DIST, exist_ok=True)
+    # Also sync functions/ → dist/public/functions/ so wrangler's pages
+    # deploy picks them up (wrangler only looks inside the deploy dir).
+    src_funcs = "functions"
+    dst_funcs = os.path.join(DIST, "public", "functions")
+    if os.path.isdir(src_funcs):
+        if os.path.exists(dst_funcs):
+            shutil.rmtree(dst_funcs)
+        shutil.copytree(src_funcs, dst_funcs)
+        print(f"  synced {src_funcs} -> {dst_funcs}")
     file_list = []
     # Source roots and how to map them into the zip
     src_dirs = [

@@ -65,7 +65,7 @@ function NowView({ token }: { token: string }) {
               {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
               {" · "}
               <span className="font-mono">{now.toLocaleTimeString()}</span>
-              <Badge className={`ml-2 ${tone === "hot" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
+              <Badge className={`ml-2 ${tone === "hot" ? "bg-red-100 dark:bg-red-900/40 text-red-800" : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800"}`}>
                 {tone === "hot" ? "🔥 hot" : "😌 calm"}
               </Badge>
             </p>
@@ -129,9 +129,9 @@ function AiInsightPanel({ data, token }: { data: any; token: string }) {
 
   if (busy && !insight) {
     return (
-      <Card className="mt-4 border-violet-200 bg-gradient-to-r from-violet-50/50 via-white to-cyan-50/50">
+      <Card className="mt-4 border-violet-200 dark:border-violet-800 bg-gradient-to-r from-violet-50/50 via-white to-cyan-50/50">
         <CardContent className="p-4 animate-pulse">
-          <div className="h-4 bg-violet-100 rounded w-1/3 mb-2" />
+          <div className="h-4 bg-violet-100 dark:bg-violet-900/40 rounded w-1/3 mb-2" />
           <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded w-full mb-1" />
           <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded w-2/3" />
         </CardContent>
