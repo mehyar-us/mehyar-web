@@ -23,7 +23,7 @@
 // Pricing tier edits are clamped to the MehyarSoft 2026 c2c ranges.
 // Owner-only.
 
-import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
 import { chatJson } from "../../../_shared/llmChat.js";
 
 const MAX_MESSAGE_LEN = 4000;
