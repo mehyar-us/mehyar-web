@@ -135,3 +135,4 @@ main-*.js
 # live API was fine. Repo-local paths work; absolute /tmp paths don't.
 .hermes/.probe-q-cache/
 workers/mehyar-cron/worker-configuration.d.ts
+scripts/__pycache__/
