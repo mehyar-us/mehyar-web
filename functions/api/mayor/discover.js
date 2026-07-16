@@ -29,25 +29,59 @@ async function bearerAccepted(request, env) {
 async function discoverSamGov(env, maxResults = 5) {
   const apiKey = env?.MEHYARSOFT_SAM_API_KEY || env?.SAM_GOV_API_KEY;
   if (!apiKey) return { ok: false, error: "no_sam_key", opps: [] };
-  const today = new Date().toISOString().slice(0, 10);
-  const future = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-  const url = `https://api.sam.gov/opportunities/v2/search?limit=${maxResults}&postedFrom=${today}&postedTo=${today}&naicsCode=541511,541512&setAside=YES&state=NY,NJ`;
-  try {
-    const resp = await fetch(url, { headers: { "X-Api-Key": apiKey } });
-    if (!resp.ok) return { ok: false, error: `sam_http_${resp.status}`, opps: [] };
-    const data = await resp.json();
-    const opps = (data?.opportunitiesData || []).slice(0, maxResults).map(o => ({
-      title: o?.title || "(untitled)",
-      agency: o?.departmentName || "",
-      solicitation: o?.solicitationNumber || "",
-      deadline: o?.responseDeadLine || "",
-      naics: o?.naicsCode || "",
-      set_aside: o?.typeOfSetAsideDescription || "",
-    }));
-    return { ok: true, opps };
-  } catch (e) {
-    return { ok: false, error: String(e?.message || e), opps: [] };
+  // SAM API requires MM/DD/YYYY (US format). Build with UTC explicitly
+  // so the runtime's locale can't reorder the digits.
+  const fmt = d => {
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const y = d.getUTCFullYear();
+    return `${m}/${day}/${y}`;
+  };
+  const today = fmt(new Date());
+  const future = fmt(new Date(Date.now() + 30 * 86400000));
+  const naicsCodes = ["541511", "541512"];
+  const allOpps = [];
+  let totalRecords = 0;
+  let firstErr = null;
+  for (const naics of naicsCodes) {
+     const url = `https://api.sam.gov/opportunities/v2/search?limit=${Math.ceil(maxResults / naicsCodes.length) + 2}&postedFrom=${today}&postedTo=${future}&naicsCode=${naics}&typeOfSetAside=SBA`;
+     console.log("[mayor/discover] SAM url:", url);
+     let data;
+     try {
+       const resp = await fetch(url, { headers: { "X-Api-Key": apiKey } });
+       if (!resp.ok) {
+        if (!firstErr) firstErr = `sam_http_${resp.status}_${naics} :: ${url}`;
+        continue;
+      }
+       data = await resp.json();
+     } catch (e) {
+       if (!firstErr) firstErr = String(e?.message || e);
+       continue;
+     }
+     totalRecords += data?.totalRecords || 0;
+     for (const o of (data?.opportunitiesData || [])) {
+       allOpps.push({
+         title: o?.title || "(untitled)",
+         agency: o?.fullParentPathName || o?.departmentName || "",
+         solicitation: o?.solicitationNumber || "",
+         notice_id: o?.noticeId || "",
+         deadline: o?.responseDeadLine || "",
+         naics: o?.naicsCode || naics,
+         set_aside: o?.typeOfSetAsideDescription || "",
+                 posted: o?.postedDate || "",
+               });
+             }
+           }
+           // dedupe by notice_id
+  const seen = new Set();
+  const dedup = [];
+  for (const o of allOpps) {
+    if (!o.notice_id || seen.has(o.notice_id)) continue;
+    seen.add(o.notice_id);
+    dedup.push(o);
+    if (dedup.length >= maxResults) break;
   }
+  return { ok: true, opps: dedup, total_records: totalRecords, error: firstErr };
 }
 
 // ── Local Brooklyn/NYC business discovery (uses Google free text search) ─

@@ -119,6 +119,7 @@ async function dispatchViaCfEmail(env, { to, subject, text }) {
     return { ok: false, error: "email_service_not_configured" };
   }
 
+  // Prefer Bearer (scoped token) over X-Auth-Email + X-Auth-Key (Global API)
   const authHeader = apiToken
     ? { "Authorization": `Bearer ${apiToken}` }
     : { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey };
