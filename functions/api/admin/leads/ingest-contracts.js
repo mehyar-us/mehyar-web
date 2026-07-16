@@ -267,7 +267,7 @@ async function ingestNY({ env, keywords, max }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(20_000), // NY data is huge; cap so the cron doesn't blow the 100s CF Pages budget
     });
   } catch (e) {
     return { ok: false, error: `ny_fetch_failed: ${e.message}`, fetched: 0 };

@@ -195,10 +195,11 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
     "https://api.usaspending.gov/api/v1/search/spending_by_award/",
   ];
   // USASpending's heavy POST query often takes 15-25s on the free tier.
-  // Bumped from 8s → 30s and added a single retry on timeout.
+  // Bumped from 8s → 30s and added retries on timeout AND transient HTTP errors.
   const TIMEOUT_MS = 30_000;
+  const RETRYABLE_HTTP = new Set([502, 503, 504, 525, 526, 429]);
   let lastErr;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     for (const url of endpoints) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -214,16 +215,23 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
           signal: controller.signal,
         });
         clearTimeout(timer);
-        if (!response.ok) throw new Error(`usaspending_${response.status}`);
+        if (!response.ok) {
+          // Only retry transient server errors (5xx, 429).
+          if (RETRYABLE_HTTP.has(response.status) && attempt < 2) {
+            lastErr = new Error(`usaspending_${response.status}`);
+            await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+            continue;
+          }
+          throw new Error(`usaspending_${response.status}`);
+        }
         return normalizeUsaspendingAwards(await response.json());
       } catch (error) {
         clearTimeout(timer);
         lastErr = error;
-        // Only retry on network/timeout failures (abort). HTTP 4xx/5xx should not retry.
+        // Continue to next endpoint on timeout/network errors.
         if (error?.name !== "AbortError" && !String(error?.message || "").includes("fetch")) {
           throw error;
         }
-        // Continue to next endpoint or attempt.
       }
     }
   }

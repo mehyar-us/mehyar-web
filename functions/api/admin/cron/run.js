@@ -48,32 +48,38 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
-  // Multi-source contract ingestion (SAM.gov + USASpending + NY State)
+  // Multi-source contract ingestion (SAM.gov is reliable + authenticated).
+  // USASpending is kept as a manual-only fallback because it's flaky from
+  // Cloudflare Workers (random 525 SSL handshake failures) and isn't worth
+  // the operational pain for daily cron. Admin can still trigger it via
+  // the system page with ?include_unreliable=true.
   if (job === "all" || job === "contracts") {
     try {
-      const sources = (env.SAM_GOV_API_KEY || env.MEHYARSOFT_SAM_API_KEY)
-        ? ["sam", "usaspending", "ny"]
-        : ["usaspending", "ny"];
-      const url = new URL(request.url);
-      const origin = `${url.protocol}//${url.host}`;
-      // Always forward the GOV_INGEST_TOKEN for nested calls — it's the only
-      // token the recursive ingest endpoint accepts for machine-to-machine.
-      // The admin token has a JWT shape that ingest-contracts rejects.
-      const forwardToken = env.GOV_INGEST_TOKEN || "";
-      if (!forwardToken) {
-        results.contracts = { ok: false, error: "missing_gov_ingest_token" };
+      const sources = [];
+      if (env.SAM_GOV_API_KEY || env.MEHYARSOFT_SAM_API_KEY) sources.push("sam");
+      // Only include usaspending if explicitly opted in via env var
+      if (env.CRON_INCLUDE_USASPENDING === "true") sources.push("usaspending");
+      if (sources.length === 0) {
+        results.contracts = { ok: false, error: "no_reliable_sources_configured", sources: {} };
       } else {
-        const r = await fetch(`${origin}/api/admin/leads/ingest-contracts`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${forwardToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ sources, deadline_days: 14, max_per_source: 20 }),
-          signal: AbortSignal.timeout(180_000),
-        });
-        const j = await r.json().catch(() => ({}));
-        results.contracts = j;
+        const url = new URL(request.url);
+        const origin = `${url.protocol}//${url.host}`;
+        const forwardToken = env.GOV_INGEST_TOKEN || "";
+        if (!forwardToken) {
+          results.contracts = { ok: false, error: "missing_gov_ingest_token" };
+        } else {
+          const r = await fetch(`${origin}/api/admin/leads/ingest-contracts`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${forwardToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ sources, deadline_days: 14, max_per_source: 20 }),
+            signal: AbortSignal.timeout(180_000),
+          });
+          const j = await r.json().catch(() => ({}));
+          results.contracts = j;
+        }
       }
     } catch (e) {
       results.contracts = { ok: false, error: String(e?.message || e) };
@@ -144,10 +150,13 @@ export async function onRequestPost({ request, env }) {
       const url = new URL(request.url);
       const origin = `${url.protocol}//${url.host}`;
       const evalResults = [];
-      for (const r of (top.results || [])) {
+      // Reduced to 1 prospect + 45s LLM budget so the full cron stays well
+      // under the Cloudflare Pages 100s execution limit.
+      const candidates = (top.results || []).slice(0, 1);
+      for (const r of candidates) {
         try {
           const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 75_000); // LLM call — give it room
+          const timer = setTimeout(() => ctrl.abort(), 45_000); // LLM call budget
           const er = await fetch(`${origin}/api/admin/leads/${encodeURIComponent(r.id)}/deep-evaluate?kind=prospect`, {
             method: "POST",
             headers: {
