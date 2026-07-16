@@ -7,11 +7,12 @@
 // ============================================================================
 
 import { useEffect, useState } from "react";
-import { useLocation, useRoute } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2, Sparkles, LogOut, Search, Zap, Briefcase, DollarSign, Settings,
   RefreshCw, Bell, ChevronRight, X, Command, Send, Mail, Brain, ArrowRight,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,13 +75,27 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|
       {/* Desktop nav — sticky horizontal bar with overflow-x scroll for narrow screens */}
       <div className="sticky top-0 z-30 hidden md:block backdrop-blur bg-white dark:bg-zinc-900/85 border-b border-zinc-200 dark:border-zinc-700 -mx-6 -mt-6 px-6 py-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Always-visible "back to main site" anchor so admin never feels trapped */}
+          <a
+            href="/"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition shrink-0"
+            title="Back to mehyar.us (public site)"
+          >
+            <Home className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">mehyar.us</span>
+          </a>
+          <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700 shrink-0" />
+          <Link
+            to="/admin/now"
+            className="flex items-center gap-2 shrink-0 hover:opacity-80 transition"
+            title="Back to Admin home"
+          >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold">M</div>
             <div>
               <div className="font-semibold leading-tight whitespace-nowrap">MehyarSoft</div>
               <div className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight whitespace-nowrap">Admin · 2026</div>
             </div>
-          </div>
+          </Link>
           <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-2 px-2">
             {TABS.map((t) => {
               const Icon = t.icon;
@@ -113,9 +128,18 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|
       {/* Mobile nav — top header + bottom tab bar (iPhone-safe with safe-area-inset-bottom) */}
       <div className="md:hidden">
         <div className="sticky top-0 z-30 backdrop-blur bg-white dark:bg-zinc-900/90 border-b border-zinc-200 dark:border-zinc-700 -mx-4 -mt-4 px-4 py-2 mb-3 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-sm">M</div>
-          <div className="font-semibold text-sm">MehyarSoft</div>
-          <div className="text-[10px] text-zinc-500 dark:text-zinc-400 ml-1">{TABS.find(t => t.key === active)?.label || ""}</div>
+          <a
+            href="/"
+            className="flex items-center justify-center w-9 h-9 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition shrink-0"
+            title="Back to mehyar.us"
+          >
+            <Home className="w-4 h-4" />
+          </a>
+          <Link to="/admin/now" className="flex items-center gap-2 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-sm">M</div>
+            <div className="font-semibold text-sm">MehyarSoft</div>
+            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 ml-1">{TABS.find(t => t.key === active)?.label || ""}</div>
+          </Link>
           <div className="ml-auto flex items-center gap-1">
             {onRefresh && (
               <Button variant="ghost" size="sm" onClick={onRefresh} className="h-10 w-10 p-0"><RefreshCw className="w-4 h-4" /></Button>

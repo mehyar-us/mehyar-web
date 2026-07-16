@@ -101,15 +101,26 @@ export async function onRequestGet({ request, env }) {
       if (stage) { sql += ` AND stage = ?`; params.push(stage); }
 
       // ── Deadline filter ─────────────────────────────────────────────
-      // Default: hide opportunities with <7 days to response_deadline
-      // (too late to put together a serious proposal/pitch).
-      // Admins can override with ?include_imminent=true to see them anyway.
-      const includeImminent = url.searchParams.get("include_imminent") === "true";
-      const minDays = Math.max(0, parseInt(url.searchParams.get("min_days") || "7", 10) || 7);
-      // Use date(response_deadline) — NULL deadlines are treated as 'no deadline known' (kept)
-      sql += includeImminent
-        ? ``
-        : ` AND (response_deadline IS NULL OR date(response_deadline) >= date('now', '+${minDays} days'))`;
+      // Default: hide opportunities whose deadline has already passed OR is <7 days out.
+      // (Too late to put together a serious proposal/pitch.)
+      // Admins can override with ?include_imminent=true to see <7d, or
+      // ?include_overdue=true to also see past-deadline (rarely useful).
+            const includeImminent = url.searchParams.get("include_imminent") === "true";
+            const includeOverdue = url.searchParams.get("include_overdue") === "true";
+            const minDays = Math.max(0, parseInt(url.searchParams.get("min_days") || "7", 10) || 7);
+            let deadlineFilter;
+            if (includeOverdue) {
+              // Show everything including past-due (imminent-only filter still applies)
+              deadlineFilter = includeImminent
+                ? ``
+                : ` AND (response_deadline IS NULL OR date(response_deadline) >= date('now', '+${minDays} days'))`;
+            } else {
+              // Default: hide overdue AND <7d (and keep NULL deadlines)
+              deadlineFilter = includeImminent
+                ? ` AND (response_deadline IS NULL OR date(response_deadline) >= date('now'))`
+                : ` AND (response_deadline IS NULL OR date(response_deadline) >= date('now', '+${minDays} days'))`;
+            }
+            sql += deadlineFilter;
 
       sql += ` ORDER BY ${sort === "deadline_asc" ? "date(response_deadline) ASC" : sort === "fit_desc" ? "fit_score DESC NULLS LAST" : "created_at DESC"}`;
       sql += ` LIMIT ?`; params.push(limit);
@@ -153,29 +164,34 @@ export async function onRequestGet({ request, env }) {
     });
 
     // Quick count of how many SAM opps were filtered out by the deadline cutoff.
-    // Helps the UI show "X hidden — too close to deadline" without a second round-trip.
-    let hidden_imminent = 0;
-    if ((kind === "all" || kind === "sam") && !includeImminent) {
-      try {
-        const r2 = await env.LEADS_DB.prepare(`
-          SELECT COUNT(*) as n FROM gov_opportunities
-          WHERE response_deadline IS NOT NULL
-            AND date(response_deadline) >= date('now')
-            AND date(response_deadline) < date('now', '+${minDays} days')
-        `).first();
-        hidden_imminent = Number(r2?.n || 0);
-      } catch {}
-    }
+        // Helps the UI show "X hidden — too close to deadline" without a second round-trip.
+        let hidden_imminent = 0;
+        let hidden_overdue = 0;
+        if ((kind === "all" || kind === "sam")) {
+          try {
+            const r2 = await env.LEADS_DB.prepare(`
+              SELECT
+                SUM(CASE WHEN date(response_deadline) >= date('now') AND date(response_deadline) < date('now', '+${minDays} days') THEN 1 ELSE 0 END) as imminent,
+                SUM(CASE WHEN date(response_deadline) < date('now') THEN 1 ELSE 0 END) as overdue
+              FROM gov_opportunities
+              WHERE response_deadline IS NOT NULL
+            `).first();
+            hidden_imminent = Number(r2?.imminent || 0);
+            hidden_overdue = Number(r2?.overdue || 0);
+          } catch {}
+        }
 
-    return json({
-      ok: true,
-      items: items.slice(0, limit),
-      total: items.length,
-      hidden_imminent,
-      min_days: minDays,
-      include_imminent: includeImminent,
-      updatedAt: new Date().toISOString(),
-    }, 200, request, env);
+        return json({
+          ok: true,
+          items: items.slice(0, limit),
+          total: items.length,
+          hidden_imminent,
+          hidden_overdue,
+          min_days: minDays,
+          include_imminent: includeImminent,
+          include_overdue: includeOverdue,
+          updatedAt: new Date().toISOString(),
+        }, 200, request, env);
   } catch (e) {
     return json({ ok: false, error: "leads_list_failed", details: String(e?.message || e) }, 500, request, env);
   }
