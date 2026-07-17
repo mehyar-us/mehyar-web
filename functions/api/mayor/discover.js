@@ -225,6 +225,8 @@ async function ingestProspect(env, p) {
 async function scheduleSequenceFor(env, prospectId, prospect) {
   if (!env?.LEADS_DB) return false;
   const steps = buildSequenceSteps(prospect, new Date());
+  let inserted = 0, errors = 0;
+  let lastErr = null;
   for (const s of steps) {
     try {
       await env.LEADS_DB.prepare(
@@ -237,9 +239,47 @@ async function scheduleSequenceFor(env, prospectId, prospect) {
         s.subject, s.body_text, s.send_after_days,
         s.status, s.scheduled_for,
       ).run();
-    } catch (_) { /* skip dupes */ }
+      inserted++;
+    } catch (e) {
+      errors++;
+      lastErr = String(e?.message || e);
+    }
   }
-  return true;
+  if (errors > 0) {
+    await logEvent(env, "discovery",
+      `Sequence INSERT failed for ${prospectId}: ${errors} errors, last: ${lastErr}`,
+      { loop: "discovery", details: { prospectId, errors, lastErr } });
+  }
+  return inserted > 0;
+}
+
+// One-shot backfill: scrape emails for any existing prospects that have
+// a website but no email yet. Triggered when env.MAYOR_BACKFILL_EMAILS=1
+async function backfillEmails(env) {
+  if (!env?.LEADS_DB) return { ok: false, error: "missing_db" };
+  try {
+    const { results } = await env.LEADS_DB.prepare(
+      `SELECT id, business_name, website FROM prospects
+       WHERE (email IS NULL OR email = '')
+         AND website IS NOT NULL AND website != ''
+       LIMIT 50`
+    ).all();
+    let filled = 0;
+    for (const p of (results || [])) {
+      const email = await findContactEmail(env, p.website);
+      if (email) {
+        await env.LEADS_DB.prepare(
+          `UPDATE prospects SET email = ?, email_source = 'backfill_scrape',
+             last_touched_at = datetime('now'), updated_at = datetime('now')
+           WHERE id = ?`
+        ).bind(email, p.id).run().catch(() => null);
+        filled++;
+      }
+    }
+    return { ok: true, scanned: (results || []).length, filled };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────
@@ -253,6 +293,9 @@ export async function onRequestPost({ request, env }) {
   if (isPaused(settings)) {
     return json({ ok: false, error: "paused", until: settings.paused_until?.value }, 403, request, env);
   }
+
+  const url = new URL(request.url);
+  const doBackfill = url.searchParams.get("backfill") === "1";
 
   const start = Date.now();
   const sam = await discoverSamGov(env, 5);
@@ -268,6 +311,12 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
+  // Optional backfill of emails for existing prospects
+  let backfillResult = null;
+  if (doBackfill) {
+    backfillResult = await backfillEmails(env);
+  }
+
   // Update warmup day
   const wd = parseInt(settings.warmup_day?.value || "0", 10);
   await setSetting(env, "warmup_day", String(wd + 1));
@@ -275,7 +324,7 @@ export async function onRequestPost({ request, env }) {
   const remaining = await capRemaining(env);
 
   await logEvent(env, "discovery",
-    `SAM=${sam.opps.length} · local=${biz.businesses.length} · scheduled=${scheduled.length}`,
+    `SAM=${sam.opps.length} · local=${biz.businesses.length} · scheduled=${scheduled.length}${backfillResult ? ` · backfill=${backfillResult.filled}/${backfillResult.scanned}` : ""}`,
     {
       loop: "discovery",
       details: {
@@ -284,6 +333,7 @@ export async function onRequestPost({ request, env }) {
         scheduled,
         sam_error: sam.error,
         biz_error: biz.error,
+        backfill: backfillResult,
         cap_remaining: remaining,
         duration_ms: Date.now() - start,
       },
@@ -293,6 +343,7 @@ export async function onRequestPost({ request, env }) {
     ok: true,
     sam: { found: sam.opps.length, opps: sam.opps, error: sam.error },
     local: { found: biz.businesses.length, businesses: biz.businesses, scheduled: scheduled.length, error: biz.error },
+    backfill: backfillResult,
     cap_remaining: remaining,
     duration_ms: Date.now() - start,
   }, 200, request, env);

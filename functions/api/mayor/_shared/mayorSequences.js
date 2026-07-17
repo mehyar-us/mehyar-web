@@ -93,6 +93,7 @@ export function buildSequenceSteps(prospect, baseDate = new Date()) {
       step_no: n,
       subject: tpl.subject,
       body_text: tpl.body_text,
+      send_after_days: tpl.send_after_days,
       scheduled_for: due.toISOString(),
       status: "queued",
     });

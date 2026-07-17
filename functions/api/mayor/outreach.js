@@ -36,8 +36,12 @@ async function fetchDueSteps(env, limit) {
        ORDER BY s.scheduled_for ASC
        LIMIT ?`
     ).bind(now, limit).all();
+    console.log(`[mayor/outreach] fetchDueSteps: ${(results || []).length} candidates`);
     return results || [];
-  } catch (e) { return []; }
+  } catch (e) {
+    console.log(`[mayor/outreach] fetchDueSteps ERROR: ${e?.message}`);
+    return [];
+  }
 }
 
 export async function onRequestPost({ request, env }) {
