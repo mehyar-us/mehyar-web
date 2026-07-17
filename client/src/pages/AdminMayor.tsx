@@ -12,7 +12,14 @@ import {
 } from "./AdminShell";
 
 const POLL_MS = 30_000;
-const TOK = () => localStorage.getItem(TOKEN_KEY) || "";
+// BUGFIX (2026-07-17): was `localStorage` which never held the token because
+// useAdminSession() in AdminShell.tsx writes to sessionStorage on login. The
+// api() helper here therefore sent `Authorization: Bearer ` (empty), the
+// mayor endpoints returned 401, the `if (s.ok)` guards skipped setStatus/
+// setEvents/setReplies, and the page rendered the empty fallback state
+// (RUNNING · day 0 · Today sent 0/25 · Cap remaining 0 · all "never").
+// Reading from sessionStorage aligns this page with AdminShell.
+const TOK = () => (typeof sessionStorage !== "undefined" ? sessionStorage.getItem(TOKEN_KEY) : null) || "";
 
 function fmtTime(iso: string) {
   if (!iso) return "—";
