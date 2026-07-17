@@ -22,15 +22,15 @@ const managedApps: ManagedApp[] = [
     id: "rizza",
     name: "Rizza",
     url: "https://rizza.app",
-    tagline: "Track, organize, and share your work in one place.",
+    tagline: "Your AI wingman in your pocket.",
     description:
-      "A clean workspace app that handles subscriptions and event-style data types so teams and solo users can keep work moving without juggling five tools.",
-    audience: "Teams and solo operators who need one place to track, organize, and share work.",
+      "Built on a simple idea: everyone deserves a wingman. Rizza reads the dating-app conversation, gets the vibe, and hands you replies that actually land — witty, flirty, and always you, just sharper.",
+    audience: "Anyone staring at a dating-app chat knowing the perfect reply exists but can't quite find it.",
     highlights: [
-      "Manage subscription events and ongoing work in a single view",
-      "Share progress with teammates or clients without exporting",
-      "Lightweight onboarding, no complex setup required",
-      "Built for the everyday workflow, not enterprise ceremony",
+      "Reads the conversation and matches the vibe before it suggests anything",
+      "Witty, flirty replies that still sound like you — not a chatbot",
+      "Hands you options fast so you stop overthinking the text back",
+      "Designed for the moment of \"what do I say next,\" not enterprise workflows",
     ],
     logo: "/assets/rizza-logo.png",
     accentClass: "from-brand-100 to-white dark:from-brand-900 dark:to-brand-950",
@@ -106,7 +106,7 @@ const Apps = () => {
 
       <QuickAnswer
         question="What apps does MehyarSoft operate?"
-        answer="MehyarSoft builds, ships, and operates its own apps — including Rizza (workspace tracking) and AiMech (AI diagnostics for everyday car owners). The same playbook is offered to clients as a custom-app build engagement."
+        answer="MehyarSoft builds, ships, and operates its own apps — including Rizza (an AI wingman for dating-app replies) and AiMech (AI diagnostics for everyday car owners). The same playbook is offered to clients as a custom-app build engagement."
         ctaHref="/contact"
         ctaLabel="Talk about your app"
       />

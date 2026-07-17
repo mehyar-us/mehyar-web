@@ -125,42 +125,42 @@ export const blogPosts: BlogPost[] = [
     hoverColorClass: "text-accent-dark"
   },
   {
-    id: 4,
-    title: "Rizza App Is Live: Track, Organize, and Share Your Work Without the Overhead",
-    slug: "rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
-    date: "2026-07-17",
-    author: "Mehyar Swelim",
-    category: "Apps",
-    excerpt: "We shipped Rizza — a workspace app for teams and solo operators who need one place to track, organize, and share work without paying for enterprise ceremony. Built and operated by MehyarSoft.",
-    readTime: 4,
-    image: "/assets/rizza-logo.png",
-    content: [
-      "Rizza.app is live. It is the first app we are publicly operating under the MehyarSoft umbrella — a workspace for teams and solo operators who need one place to track, organize, and share work.",
-      "Most \"work tracker\" tools charge you for the privilege of configuring them. Rizza handles subscriptions and event-style data types in one view, with shareable progress that does not require a demo call to understand. Onboarding is intentionally light: open it, create a workspace, and start tracking what matters today.",
-      "Rizza is also a working example of what MehyarSoft ships for clients. The same stack, the same marketing-grade launch pattern, and the same boring infrastructure choices (Cloudflare Workers, D1, Pages) get reused across every product we build."
-    ],
-    sections: [
-      {
-        title: "What Rizza does",
-        content: [
-          "Rizza manages two data types out of the box: subscription events and ongoing work. That is enough to cover the everyday workflow most small teams actually run — recurring commitments plus a steady stream of tasks.",
-          "Sharing progress is built in. You do not have to export to a PDF or schedule a status meeting. The workspace already shows the right slice to the right person."
-        ]
-      },
-      {
-        title: "Why MehyarSoft operates it",
-        content: [
-          "Building and operating your own product is the fastest way to stay honest about the MehyarSoft app playbook. Every friction we hit shipping Rizza is a friction we know how to remove for clients.",
-          "If you are considering a custom-app or PWA build, Rizza is a live reference you can click through end-to-end."
-        ]
-      }
-    ],
-    tags: ["Rizza", "Apps", "Productivity", "Launch"],
-    badgeColorClass: "text-primary",
-    badgeBgClass: "bg-primary/10",
-    textColorClass: "text-primary",
-    hoverColorClass: "text-primary-dark"
-  },
+      id: 4,
+      title: "Rizza App Is Live: A World-Class AI Wingman in Your Pocket",
+      slug: "rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
+      date: "2026-07-17",
+      author: "Mehyar Swelim",
+      category: "Apps",
+      excerpt: "We shipped Rizza — an AI wingman that reads the dating-app conversation, gets the vibe, and hands you replies that actually land. Witty, flirty, and always you — just sharper.",
+      readTime: 3,
+      image: "/assets/rizza-logo.png",
+      content: [
+        "Rizza.app is live. It is the first app we are publicly operating under the MehyarSoft umbrella — and it was built on a simple idea: everyone deserves a wingman.",
+        "Staring at a dating-app chat, knowing the perfect reply exists but not being able to find it — we've all been there. Rizza puts a world-class AI wingman in your pocket that reads the conversation, gets the vibe, and hands you replies that actually land. Witty, flirty, and always you — just sharper.",
+        "Rizza is also a working example of what MehyarSoft ships for clients: a small, focused consumer app on a boring infrastructure stack (Cloudflare Workers, D1, Pages), launched with a real SEO shell and a real PWA install path from day one."
+      ],
+      sections: [
+        {
+          title: "What Rizza does",
+          content: [
+            "You paste the conversation or open it inside Rizza. The app reads the last few exchanges, reads the vibe, and returns a few reply options — witty, flirty, sincere, or playful, depending on what the moment calls for.",
+            "You stay in control of what you actually send. Rizza just removes the overthinking between the screenshot and the reply."
+          ]
+        },
+        {
+          title: "Why MehyarSoft operates it",
+          content: [
+            "Building and operating our own consumer product keeps us honest about the MehyarSoft app playbook. Every friction we hit shipping Rizza — from real-time latency to a clean install flow — is a friction we know how to remove for clients.",
+            "If you are considering a custom-app or PWA build, Rizza is a live reference you can click through end-to-end."
+          ]
+        }
+      ],
+      tags: ["Rizza", "Apps", "Consumer", "AI Wingman", "Launch"],
+      badgeColorClass: "text-primary",
+      badgeBgClass: "bg-primary/10",
+      textColorClass: "text-primary",
+      hoverColorClass: "text-primary-dark"
+    },
   {
     id: 5,
     title: "AiMech Is Live: An AI Mechanic for Everyday Car Owners",
