@@ -111,17 +111,21 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
 
 async function dispatchViaCfEmail(env, { to, subject, text }) {
   const accountId = env?.CF_EMAIL_ACCOUNT_ID;
-  const apiToken  = env?.CF_EMAIL_API_KEY;
+  // Email-send-specific token (preferred) — separate from CF_API_TOKEN
+  // which lacks email-send scope. Set CF_EMAIL_SEND_TOKEN in Pages secrets.
+  const emailSendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
+  // Fallback: Global API key (X-Auth-Email + X-Auth-Key) — works if the
+  // Global key has Email Routing Write permission.
   const apiEmail  = env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "";
   const apiKey    = env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_API_KEY || "";
 
-  if (!accountId || (!apiToken && !apiKey)) {
+  if (!accountId || (!emailSendToken && !apiKey)) {
     return { ok: false, error: "email_service_not_configured" };
   }
 
-  // Prefer Bearer (scoped token) over X-Auth-Email + X-Auth-Key (Global API)
-  const authHeader = apiToken
-    ? { "Authorization": `Bearer ${apiToken}` }
+  // Prefer the dedicated email-send token (Bearer) over the global key
+  const authHeader = emailSendToken
+    ? { "Authorization": `Bearer ${emailSendToken}` }
     : { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey };
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
