@@ -86,6 +86,60 @@ async function discoverSamGov(env, maxResults = 5) {
 
 // ── Local Brooklyn/NYC business discovery (uses Google free text search) ─
 
+async function findContactEmail(env, website) {
+  if (!website) return "";
+  // Try common contact paths and extract any email from the HTML.
+  const base = website.replace(/\/$/, "");
+  const candidates = [
+    website,
+    `${base}/contact`,
+    `${base}/contact-us`,
+    `${base}/contact.html`,
+    `${base}/about`,
+    `${base}/about-us`,
+    `${base}/team`,
+    `${base}/get-in-touch`,
+  ];
+  const emailRe = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+  // Preferred email prefixes (in priority order)
+  const preferredPrefixes = ["info@", "contact@", "hello@", "owner@", "team@", "book@", "orders@"];
+  // Known false positives — JS/asset paths and dev agencies that built the site
+  const blacklist = [
+    "example.com", "domain.com", "yourdomain.com",
+    "intl-segmenter", "11.7.10", "11.8.0",  // ICU/JS internals
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico",
+    "wixpress.com", "squarespace.com", "w3.org", "googleapis.com",
+    "cloudflare.com", "jquery.com", "schema.org",
+    "@11.",  // JS engine paths
+  ];
+  const collected = new Set();
+  for (const url of candidates) {
+    try {
+      const resp = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 MehyarBot" },
+        redirect: "follow",
+      });
+      if (!resp.ok) continue;
+      const html = await resp.text();
+      const emails = html.match(emailRe) || [];
+      for (const e of emails) {
+        const lc = e.toLowerCase();
+        if (blacklist.some(b => lc.includes(b))) continue;
+        collected.add(e);
+      }
+    } catch (_) { /* skip */ }
+  }
+  if (collected.size === 0) return "";
+  // Prefer contact/info emails over random ones
+  for (const pref of preferredPrefixes) {
+    for (const e of collected) {
+      if (e.toLowerCase().startsWith(pref)) return e;
+    }
+  }
+  // Otherwise, return the first one
+  return [...collected][0];
+}
+
 async function discoverLocalBiz(env, maxResults = 10) {
   const apiKey = env?.GOOGLE_PLACES_API_KEY || env?.MEHYAR_GOOGLE_PLACES_API_KEY;
   if (!apiKey) return { ok: false, error: "no_google_key", businesses: [] };
@@ -97,8 +151,7 @@ async function discoverLocalBiz(env, maxResults = 10) {
       const resp = await fetch(url);
       const data = await resp.json();
       for (const r of (data?.results || []).slice(0, 3)) {
-        // Hit Place Details for website + phone + email (Places API doesn't
-        // return email by default; we look in meta later)
+        // Hit Place Details for website + phone
         let website = r?.website || "";
         let phone = r?.formatted_phone_number || "";
         if (r?.place_id) {
@@ -109,13 +162,19 @@ async function discoverLocalBiz(env, maxResults = 10) {
             const d = dData?.result || {};
             website = website || d.website || "";
             phone = phone || d.formatted_phone_number || "";
-          } catch (_) { /* fall back to text-search result */ }
+          } catch (_) { /* fall back */ }
+        }
+        // Scrape website for contact email (Places API doesn't expose it)
+        let email = "";
+        if (website) {
+          try { email = await findContactEmail(env, website); } catch (_) {}
         }
         found.push({
           business_name: r?.name || "",
           place_id: r?.place_id || "",
           website,
           phone,
+          email,
           address: r?.formatted_address || "",
           vertical: q.split(" ")[0],
           city: "Brooklyn",
@@ -136,13 +195,14 @@ async function ingestProspect(env, p) {
   if (!env?.LEADS_DB) return null;
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  // Match the existing prospects schema (see functions/api/prospects/scan.js)
+  // Match the existing prospects schema (see functions/api/prospects/scan.js + seed.js)
+  // email + email_source are part of the schema; place_id preserved in meta_json.
   try {
     await env.LEADS_DB.prepare(
       `INSERT OR IGNORE INTO prospects
          (id, source, source_ref, business_name, website, root_domain,
-          vertical, city, region, country, meta_json, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')`
+          email, email_source, vertical, city, region, country, meta_json, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')`
     ).bind(
       id,
       "mayor_discovery",
@@ -150,11 +210,13 @@ async function ingestProspect(env, p) {
       p.business_name || "(unknown)",
       p.website || "",
       p.root_domain || (p.website || "").replace(/^https?:\/\//, "").split("/")[0] || "",
+      p.email || "",
+      p.email ? "scrape" : null,
       (p.vertical || "").slice(0, 80),
       p.city || "Brooklyn",
       p.state || "NY",
       "US",
-      JSON.stringify({ address: p.address, rating: p.rating, source: "google_places" }),
+      JSON.stringify({ address: p.address, phone: p.phone, rating: p.rating, source: "google_places" }),
     ).run();
   } catch (e) { /* table may not exist yet */ }
   return id;
