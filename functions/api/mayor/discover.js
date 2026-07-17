@@ -87,7 +87,7 @@ async function discoverSamGov(env, maxResults = 5) {
 // ── Local Brooklyn/NYC business discovery (uses Google free text search) ─
 
 async function discoverLocalBiz(env, maxResults = 10) {
-  const apiKey = env?.GOOGLE_PLACES_API_KEY;
+  const apiKey = env?.GOOGLE_PLACES_API_KEY || env?.MEHYAR_GOOGLE_PLACES_API_KEY;
   if (!apiKey) return { ok: false, error: "no_google_key", businesses: [] };
   const queries = ["bakery in Brooklyn NY", "cafe in Brooklyn NY", "dental office Brooklyn NY", "gym Brooklyn NY"];
   const found = [];
@@ -97,9 +97,25 @@ async function discoverLocalBiz(env, maxResults = 10) {
       const resp = await fetch(url);
       const data = await resp.json();
       for (const r of (data?.results || []).slice(0, 3)) {
+        // Hit Place Details for website + phone + email (Places API doesn't
+        // return email by default; we look in meta later)
+        let website = r?.website || "";
+        let phone = r?.formatted_phone_number || "";
+        if (r?.place_id) {
+          try {
+            const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${r.place_id}&fields=website,formatted_phone_number,url&key=${apiKey}`;
+            const dResp = await fetch(detailsUrl);
+            const dData = await dResp.json();
+            const d = dData?.result || {};
+            website = website || d.website || "";
+            phone = phone || d.formatted_phone_number || "";
+          } catch (_) { /* fall back to text-search result */ }
+        }
         found.push({
           business_name: r?.name || "",
-          website: r?.website || "",
+          place_id: r?.place_id || "",
+          website,
+          phone,
           address: r?.formatted_address || "",
           vertical: q.split(" ")[0],
           city: "Brooklyn",
@@ -120,22 +136,25 @@ async function ingestProspect(env, p) {
   if (!env?.LEADS_DB) return null;
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+  // Match the existing prospects schema (see functions/api/prospects/scan.js)
   try {
     await env.LEADS_DB.prepare(
       `INSERT OR IGNORE INTO prospects
-         (id, business_name, website, root_domain, email, phone,
-          city, vertical, status, source_kind, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'discovered', 'mayor_discovery', ?, ?)`
+         (id, source, source_ref, business_name, website, root_domain,
+          vertical, city, region, country, meta_json, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')`
     ).bind(
       id,
+      "mayor_discovery",
+      p.place_id || p.business_name || "",
       p.business_name || "(unknown)",
       p.website || "",
-      p.root_domain || (p.website || "").replace(/^https?:\/\//, "").split("/")[0],
-      p.email || "",
-      p.phone || "",
-      p.city || "",
-      p.vertical || "",
-      now, now,
+      p.root_domain || (p.website || "").replace(/^https?:\/\//, "").split("/")[0] || "",
+      (p.vertical || "").slice(0, 80),
+      p.city || "Brooklyn",
+      p.state || "NY",
+      "US",
+      JSON.stringify({ address: p.address, rating: p.rating, source: "google_places" }),
     ).run();
   } catch (e) { /* table may not exist yet */ }
   return id;
@@ -177,10 +196,9 @@ export async function onRequestPost({ request, env }) {
   const sam = await discoverSamGov(env, 5);
   const biz = await discoverLocalBiz(env, 8);
 
-  // Schedule outreach for new businesses
+  // Schedule outreach for new businesses (include all, even without website)
   const scheduled = [];
   for (const b of (biz.businesses || [])) {
-    if (!b.website) continue;
     const id = await ingestProspect(env, b);
     if (id) {
       await scheduleSequenceFor(env, id, b);
