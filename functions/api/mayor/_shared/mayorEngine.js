@@ -9,8 +9,15 @@
 
 import { canSendNow, bumpDailySendCount } from "./mayorGuardrails.js";
 import { logEvent } from "./mayorDb.js";
-
 const PHYSICAL_ADDRESS = "MehyarSoft LLC, 3400 Coyle St, Apt 411, Elmhurst, NY 11373";
+
+// Email Service is enabled only for the rochelle.love zone on this CF account.
+// For outbound from other zones, we send as @rochelle.love instead.
+// Defaults resolved per-call from env (env is not in module scope at import time).
+function resolveSendingFrom(env) {
+  const domain = env?.MAYOR_SENDING_DOMAIN || "rochelle.love";
+  return env?.MAYOR_SENDING_FROM_EMAIL || `team@${domain}`;
+}
 function htmlFromText(body) {
   const escaped = body.split("\n").map(line =>
     line.trim() === "" ? "<br>"
@@ -120,7 +127,7 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
 
 async function dispatchViaResend(env, { to, subject, text, html }) {
   const apiKey = env?.RESEND_API_KEY;
-  const fromEmail = env?.RESEND_FROM_EMAIL || env?.MAYOR_FROM_EMAIL || "info@mehyar.us";
+  const fromEmail = env?.RESEND_FROM_EMAIL || env?.MAYOR_FROM_EMAIL || resolveSendingFrom(env);
   if (!apiKey) return { ok: false, error: "resend_not_configured" };
 
   // Resend REST API: https://resend.com/docs/api-reference/emails/send-email
@@ -156,7 +163,10 @@ async function dispatchViaResend(env, { to, subject, text, html }) {
 
 async function dispatchViaCfEmail(env, { to, subject, text }) {
   const accountId = env?.CF_EMAIL_ACCOUNT_ID;
-  const FROM_EMAIL = env?.MAYOR_FROM_EMAIL || "info@mehyar.us";
+  // Email Service is enabled only for the rochelle.love zone on this account,
+  // so we always send as the configured SENDING_FROM (default team@rochelle.love).
+  const fromEmail = env?.MAYOR_FROM_EMAIL || resolveSendingFrom(env);
+  const FROM_EMAIL = fromEmail;
   // Email-send-specific token (preferred) — separate from CF_API_TOKEN
   // which lacks email-send scope. Set CF_EMAIL_SEND_TOKEN in Pages secrets.
   const emailSendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
