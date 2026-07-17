@@ -330,7 +330,24 @@ async function rescheduleFromExistingProspects(env, limit = 30) {
         } catch (_) {}
       }
     }
-    return { ok: true, scanned: (results || []).length, scheduled };
+
+    // Also: mark queued sequences for prospects with NO email as 'skipped'
+    // (they'll never send anyway, and they clog the queue)
+    let skipped = 0;
+    try {
+      const r = await env.LEADS_DB.prepare(
+        `UPDATE prospect_sequences
+         SET status = 'skipped', sent_at = datetime('now')
+         WHERE status = 'queued'
+           AND prospect_id IN (
+             SELECT p.id FROM prospects p
+             WHERE p.email IS NULL OR p.email = ''
+           )`
+      ).run();
+      skipped = r.meta?.changes || 0;
+    } catch (_) {}
+
+    return { ok: true, scanned: (results || []).length, scheduled, skipped_no_email: skipped };
   } catch (e) {
     return { ok: false, error: String(e?.message || e) };
   }
