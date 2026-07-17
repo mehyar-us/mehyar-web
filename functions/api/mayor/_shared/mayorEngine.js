@@ -40,7 +40,19 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
     return { ok: false, reason: guard.reason };
   }
 
-  // Dispatch via CF Email service (mirrors /api/prospects/send.js)
+  // Priority: Resend (free tier works with verified domains, no account upgrade needed)
+  // → CF Email Service (requires paid account, disabled on free tier)
+  // → No-op (log error)
+  const resendKey = env?.RESEND_API_KEY;
+  if (resendKey) {
+    const r = await dispatchViaResend(env, { to, subject, text });
+    console.log(`[mayor/email] resend(${to}) → ${JSON.stringify(r)}`);
+    if (r.ok) return r;
+    // fall through to CF Email Service if Resend fails
+    console.log(`[mayor/email] resend failed, falling back to CF: ${r.error}`);
+  }
+
+  // Dispatch via CF Email service (requires paid account with Email Sending enabled)
   const result = await dispatchViaCfEmail(env, {
     to: toEmail,
     subject: sequence.subject,
@@ -105,6 +117,42 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
 }
 
 // ── CF Email service dispatcher ────────────────────────────────────────────
+
+async function dispatchViaResend(env, { to, subject, text, html }) {
+  const apiKey = env?.RESEND_API_KEY;
+  const fromEmail = env?.RESEND_FROM_EMAIL || env?.MAYOR_FROM_EMAIL || "info@mehyar.us";
+  if (!apiKey) return { ok: false, error: "resend_not_configured" };
+
+  // Resend REST API: https://resend.com/docs/api-reference/emails/send-email
+  try {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `Mehyar <${fromEmail}>`,
+        to: [to],
+        subject,
+        text,
+        html: html || htmlFromText(text),
+        headers: {
+          "List-Unsubscribe": "<mailto:unsubscribe@mehyar.us>",
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.ok && data?.id) {
+      return { ok: true, provider_id: data.id };
+    }
+    const err = data?.message || data?.name || `HTTP ${resp.status}`;
+    return { ok: false, error: `resend_${resp.status}: ${err}` };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
 
 async function dispatchViaCfEmail(env, { to, subject, text }) {
   const accountId = env?.CF_EMAIL_ACCOUNT_ID;
