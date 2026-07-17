@@ -123,15 +123,26 @@ async function dispatchViaCfEmail(env, { to, subject, text }) {
     return { ok: false, error: "email_service_not_configured" };
   }
 
-  // Prefer the dedicated email-send token (Bearer) over the global key
-  const authHeader = emailSendToken
-    ? { "Authorization": `Bearer ${emailSendToken}` }
-    : { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey };
+// Build candidate auth strategies. We'll try them in order until one succeeds.
+// ALWAYS try Bearer first, then fall back to Global Key, then fall back
+// to either one more time (in case a flaky network caused the first failure).
+const authStrategies = [];
+if (emailSendToken) {
+  authStrategies.push({ name: "bearer", headers: { "Authorization": `Bearer ${emailSendToken}` } });
+}
+if (apiEmail && apiKey) {
+  authStrategies.push({ name: "global_key", headers: { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey } });
+}
+if (authStrategies.length === 0) {
+  return { ok: false, error: "email_service_not_configured" };
+}
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
+  // Cloudflare Email Service REST API uses FLAT string fields (not nested objects).
+  // See: https://developers.cloudflare.com/email-service/api/send-emails/rest-api/
   const payload = {
-    from: { email: FROM_EMAIL, name: "Mehyar" },
-    to: [{ email: to }],
+    from: FROM_EMAIL,
+    to,
     subject,
     text,
     html: htmlFromText(text),
@@ -141,17 +152,28 @@ async function dispatchViaCfEmail(env, { to, subject, text }) {
     },
   };
   try {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader },
-      body: JSON.stringify(payload),
-    });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data?.success === false) {
+    let lastErr = null;
+    for (const strat of authStrategies) {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...strat.headers },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data?.success !== false) {
+        console.log(`[mayor/email] sent via ${strat.name} to ${to}`);
+        return { ok: true, provider_id: data?.result?.id || null };
+      }
       const err = data?.errors?.[0]?.message || `HTTP ${resp.status}`;
-      return { ok: false, error: err };
+      lastErr = `${strat.name}: ${err}`;
+      console.log(`[mayor/email] ${strat.name} failed (${to}): ${err}`);
+      // Auth errors fall through to next strategy; schema errors don't
+      if (!String(err).toLowerCase().includes("authentication") &&
+          resp.status !== 401 && resp.status !== 403) {
+        return { ok: false, error: err };
+      }
     }
-    return { ok: true, provider_id: data?.result?.id || null };
+    return { ok: false, error: lastErr || "all_auth_strategies_failed" };
   } catch (e) {
     return { ok: false, error: String(e?.message || e) };
   }

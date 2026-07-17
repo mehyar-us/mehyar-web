@@ -28,7 +28,7 @@ async function fetchDueSteps(env, limit) {
     const { results } = await env.LEADS_DB.prepare(
       `SELECT s.id, s.prospect_id, s.step_no, s.subject, s.body_text,
               s.send_after_days, s.status, s.scheduled_for,
-              p.business_name, p.email, p.vertical, p.first_name
+              p.business_name, p.email, p.vertical
        FROM prospect_sequences s
        LEFT JOIN prospects p ON p.id = s.prospect_id
        WHERE s.status = 'queued'
@@ -65,16 +65,26 @@ export async function onRequestPost({ request, env }) {
   }
 
   const candidates = await fetchDueSteps(env, Math.min(remaining * 2, 200));
+  console.log(`[mayor/outreach] fetched ${(candidates || []).length} candidates`);
   let sent = 0, skipped = 0, failed = 0;
   const sentDetails = [];
+  const debugLog = [];
   for (const step of candidates) {
     if (remaining <= 0) break;
-    if (!step.email) { skipped++; continue; }
+    if (!step.email) {
+      console.log(`[mayor/outreach] skipping ${step.id} — no email (prospect_id=${step.prospect_id?.slice(0,8)})`);
+      debugLog.push(`skip-no-email:${step.prospect_id?.slice(0,8)}`);
+      skipped++;
+      continue;
+    }
+    console.log(`[mayor/outreach] sending ${step.id} to ${step.email} step=${step.step_no}`);
     const result = await sendSequenceStep(env, {
       sequence: { id: step.id, prospect_id: step.prospect_id,
                   step_no: step.step_no, subject: step.subject, body_text: step.body_text },
-      prospect: { email: step.email, business_name: step.business_name, vertical: step.vertical, first_name: step.first_name },
+      prospect: { email: step.email, business_name: step.business_name, vertical: step.vertical },
     });
+    console.log(`[mayor/outreach]   result:`, JSON.stringify(result));
+    debugLog.push(`${step.email} -> ok=${result.ok} reason=${result.reason || '-'} err=${result.error || '-'}`);
     if (result.ok) { sent++; remaining--; sentDetails.push({ to: step.email, step: step.step_no, id: result.send_id }); }
     else if (result.reason) skipped++;
     else failed++;
@@ -83,8 +93,8 @@ export async function onRequestPost({ request, env }) {
   await setSetting(env, "outreach_run_at", new Date().toISOString());
 
   await logEvent(env, "outreach",
-    `Sent ${sent}, skipped ${skipped}, failed ${failed}`,
-    { loop: "outreach", details: { sent, skipped, failed, sentDetails, duration_ms: Date.now() - start } });
+    `Sent ${sent}, skipped ${skipped}, failed ${failed} (candidates=${(candidates||[]).length})`,
+    { loop: "outreach", details: { sent, skipped, failed, candidates_count: (candidates||[]).length, sentDetails, debugLog, duration_ms: Date.now() - start } });
 
   return json({ ok: true, sent, skipped, failed, cap_remaining: remaining, duration_ms: Date.now() - start }, 200, request, env);
 }

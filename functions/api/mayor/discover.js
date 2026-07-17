@@ -193,20 +193,30 @@ async function discoverLocalBiz(env, maxResults = 10) {
 
 async function ingestProspect(env, p) {
   if (!env?.LEADS_DB) return null;
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
-  // Match the existing prospects schema (see functions/api/prospects/scan.js + seed.js)
-  // email + email_source are part of the schema; place_id preserved in meta_json.
+  // Use a stable ID derived from place_id (or business_name) so we can
+  // reliably upsert. INSERT OR IGNORE silently skips when the (source, source_ref)
+  // already exists, which leaves sequences pointing at non-existent prospect IDs.
+  const stableId = p.place_id
+    ? `gp_${p.place_id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 36)}`
+    : `bn_${(p.business_name || "unknown").replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 36)}`;
+  const sourceRef = p.place_id || p.business_name || "";
   try {
+    // Upsert: insert if missing, otherwise update with freshest data
     await env.LEADS_DB.prepare(
-      `INSERT OR IGNORE INTO prospects
+      `INSERT INTO prospects
          (id, source, source_ref, business_name, website, root_domain,
           email, email_source, vertical, city, region, country, meta_json, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')`
+       VALUES (?, 'mayor_discovery', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'US', ?, 'new')
+       ON CONFLICT(id) DO UPDATE SET
+         business_name = excluded.business_name,
+         website = excluded.website,
+         email = COALESCE(NULLIF(excluded.email, ''), prospects.email),
+         meta_json = excluded.meta_json,
+         last_touched_at = datetime('now'),
+         updated_at = datetime('now')`
     ).bind(
-      id,
-      "mayor_discovery",
-      p.place_id || p.business_name || "",
+      stableId,
+      sourceRef,
       p.business_name || "(unknown)",
       p.website || "",
       p.root_domain || (p.website || "").replace(/^https?:\/\//, "").split("/")[0] || "",
@@ -215,11 +225,16 @@ async function ingestProspect(env, p) {
       (p.vertical || "").slice(0, 80),
       p.city || "Brooklyn",
       p.state || "NY",
-      "US",
       JSON.stringify({ address: p.address, phone: p.phone, rating: p.rating, source: "google_places" }),
     ).run();
-  } catch (e) { /* table may not exist yet */ }
-  return id;
+    return stableId;
+  } catch (e) {
+    console.log(`[mayor/discover] prospect UPSERT FAILED for ${p.business_name}: ${e?.message}`);
+    await logEvent(env, "discovery",
+      `Prospect UPSERT failed for ${p.business_name}: ${e?.message}`,
+      { loop: "discovery", details: { biz: p.business_name, error: String(e?.message) } });
+    return null;
+  }
 }
 
 async function scheduleSequenceFor(env, prospectId, prospect) {
@@ -229,6 +244,15 @@ async function scheduleSequenceFor(env, prospectId, prospect) {
   let lastErr = null;
   for (const s of steps) {
     try {
+      // Log exactly what we're sending
+      console.log(`[mayor/discover] inserting step ${s.step_no} for ${prospectId}:`, JSON.stringify({
+        step_no: typeof s.step_no + ":" + s.step_no,
+        subject: typeof s.subject + ":" + (s.subject || "(null)").slice(0, 30),
+        body_text: typeof s.body_text + ":" + (s.body_text || "(null)").slice(0, 30),
+        send_after_days: typeof s.send_after_days + ":" + s.send_after_days,
+        status: typeof s.status + ":" + s.status,
+        scheduled_for: typeof s.scheduled_for + ":" + s.scheduled_for,
+      }));
       await env.LEADS_DB.prepare(
         `INSERT INTO prospect_sequences
            (id, prospect_id, step_no, subject, body_text, send_after_days,
@@ -243,6 +267,7 @@ async function scheduleSequenceFor(env, prospectId, prospect) {
     } catch (e) {
       errors++;
       lastErr = String(e?.message || e);
+      console.log(`[mayor/discover] INSERT err: ${lastErr}`);
     }
   }
   if (errors > 0) {
@@ -251,6 +276,64 @@ async function scheduleSequenceFor(env, prospectId, prospect) {
       { loop: "discovery", details: { prospectId, errors, lastErr } });
   }
   return inserted > 0;
+}
+
+// Clean up orphan sequences: delete sequences that reference a prospect_id
+// that no longer exists in the prospects table. Triggered with ?cleanup=1
+async function cleanupOrphanSequences(env) {
+  if (!env?.LEADS_DB) return { ok: false, error: "missing_db" };
+  try {
+    const r = await env.LEADS_DB.prepare(
+      `DELETE FROM prospect_sequences
+       WHERE prospect_id NOT IN (SELECT id FROM prospects)`
+    ).run();
+    return { ok: true, deleted: r.meta?.changes || 0 };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
+
+// Reschedule sequences for prospects that have an email but no active sequence
+async function rescheduleFromExistingProspects(env, limit = 30) {
+  if (!env?.LEADS_DB) return { ok: false, error: "missing_db" };
+  try {
+    // Find prospects with email but no queued sequence
+    const { results } = await env.LEADS_DB.prepare(
+      `SELECT p.id, p.business_name, p.email, p.vertical
+       FROM prospects p
+       WHERE p.email IS NOT NULL AND p.email != ''
+         AND NOT EXISTS (
+           SELECT 1 FROM prospect_sequences s
+           WHERE s.prospect_id = p.id AND s.status = 'queued'
+         )
+       LIMIT ?`
+    ).bind(limit).all();
+    let scheduled = 0;
+    for (const p of (results || [])) {
+      const steps = buildSequenceSteps({
+        business_name: p.business_name,
+        vertical: p.vertical,
+      }, new Date());
+      for (const s of steps) {
+        try {
+          await env.LEADS_DB.prepare(
+            `INSERT INTO prospect_sequences
+               (id, prospect_id, step_no, subject, body_text, send_after_days,
+                status, scheduled_for, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+          ).bind(
+            crypto.randomUUID(), p.id, s.step_no,
+            s.subject, s.body_text, s.send_after_days,
+            s.status, s.scheduled_for,
+          ).run();
+          scheduled++;
+        } catch (_) {}
+      }
+    }
+    return { ok: true, scanned: (results || []).length, scheduled };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
 }
 
 // One-shot backfill: scrape emails for any existing prospects that have
@@ -296,6 +379,8 @@ export async function onRequestPost({ request, env }) {
 
   const url = new URL(request.url);
   const doBackfill = url.searchParams.get("backfill") === "1";
+  const doCleanup = url.searchParams.get("cleanup") === "1";
+  const doReschedule = url.searchParams.get("reschedule") === "1";
 
   const start = Date.now();
   const sam = await discoverSamGov(env, 5);
@@ -315,6 +400,18 @@ export async function onRequestPost({ request, env }) {
   let backfillResult = null;
   if (doBackfill) {
     backfillResult = await backfillEmails(env);
+  }
+
+  // Optional cleanup of orphan sequences
+  let cleanupResult = null;
+  if (doCleanup) {
+    cleanupResult = await cleanupOrphanSequences(env);
+  }
+
+  // Optional reschedule for prospects that have email but no sequence
+  let rescheduleResult = null;
+  if (doReschedule) {
+    rescheduleResult = await rescheduleFromExistingProspects(env);
   }
 
   // Update warmup day
@@ -344,6 +441,8 @@ export async function onRequestPost({ request, env }) {
     sam: { found: sam.opps.length, opps: sam.opps, error: sam.error },
     local: { found: biz.businesses.length, businesses: biz.businesses, scheduled: scheduled.length, error: biz.error },
     backfill: backfillResult,
+    cleanup: cleanupResult,
+    reschedule: rescheduleResult,
     cap_remaining: remaining,
     duration_ms: Date.now() - start,
   }, 200, request, env);
