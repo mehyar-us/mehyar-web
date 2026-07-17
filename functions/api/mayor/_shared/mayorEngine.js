@@ -11,9 +11,6 @@ import { canSendNow, bumpDailySendCount } from "./mayorGuardrails.js";
 import { logEvent } from "./mayorDb.js";
 
 const PHYSICAL_ADDRESS = "MehyarSoft LLC, 3400 Coyle St, Apt 411, Elmhurst, NY 11373";
-const FROM_EMAIL = "mehyar@mehyar.us";   // replies route to info@ via forwarding
-
-// Same helper used by /api/prospects/send.js — kept here for symmetry.
 function htmlFromText(body) {
   const escaped = body.split("\n").map(line =>
     line.trim() === "" ? "<br>"
@@ -111,6 +108,7 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
 
 async function dispatchViaCfEmail(env, { to, subject, text }) {
   const accountId = env?.CF_EMAIL_ACCOUNT_ID;
+  const FROM_EMAIL = env?.MAYOR_FROM_EMAIL || "info@mehyar.us";
   // Email-send-specific token (preferred) — separate from CF_API_TOKEN
   // which lacks email-send scope. Set CF_EMAIL_SEND_TOKEN in Pages secrets.
   const emailSendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
