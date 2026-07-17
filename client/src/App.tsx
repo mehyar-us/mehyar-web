@@ -5,6 +5,7 @@ import Home from "@/pages/Home";
 import Services from "@/pages/Services";
 import Portfolio from "@/pages/Portfolio";
 import PortfolioDetail from "@/pages/PortfolioDetail";
+import Apps from "@/pages/Apps";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import Newsletter from "@/pages/Newsletter";
@@ -103,6 +104,7 @@ function App() {
             <Route path="/services" component={Services} />
             <Route path="/portfolio" component={Portfolio} />
             <Route path="/portfolio/:id" component={PortfolioDetail} />
+            <Route path="/apps" component={Apps} />
             <Route path="/blog" component={Blog} />
             <Route path="/blog/:slug" component={BlogPost} />
             <Route path="/newsletter" component={Newsletter} />

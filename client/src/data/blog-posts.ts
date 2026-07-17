@@ -123,6 +123,80 @@ export const blogPosts: BlogPost[] = [
     badgeBgClass: "bg-accent/10",
     textColorClass: "text-accent",
     hoverColorClass: "text-accent-dark"
+  },
+  {
+    id: 4,
+    title: "Rizza App Is Live: Track, Organize, and Share Your Work Without the Overhead",
+    slug: "rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
+    date: "2026-07-17",
+    author: "Mehyar Swelim",
+    category: "Apps",
+    excerpt: "We shipped Rizza — a workspace app for teams and solo operators who need one place to track, organize, and share work without paying for enterprise ceremony. Built and operated by MehyarSoft.",
+    readTime: 4,
+    image: "/assets/rizza-logo.png",
+    content: [
+      "Rizza.app is live. It is the first app we are publicly operating under the MehyarSoft umbrella — a workspace for teams and solo operators who need one place to track, organize, and share work.",
+      "Most \"work tracker\" tools charge you for the privilege of configuring them. Rizza handles subscriptions and event-style data types in one view, with shareable progress that does not require a demo call to understand. Onboarding is intentionally light: open it, create a workspace, and start tracking what matters today.",
+      "Rizza is also a working example of what MehyarSoft ships for clients. The same stack, the same marketing-grade launch pattern, and the same boring infrastructure choices (Cloudflare Workers, D1, Pages) get reused across every product we build."
+    ],
+    sections: [
+      {
+        title: "What Rizza does",
+        content: [
+          "Rizza manages two data types out of the box: subscription events and ongoing work. That is enough to cover the everyday workflow most small teams actually run — recurring commitments plus a steady stream of tasks.",
+          "Sharing progress is built in. You do not have to export to a PDF or schedule a status meeting. The workspace already shows the right slice to the right person."
+        ]
+      },
+      {
+        title: "Why MehyarSoft operates it",
+        content: [
+          "Building and operating your own product is the fastest way to stay honest about the MehyarSoft app playbook. Every friction we hit shipping Rizza is a friction we know how to remove for clients.",
+          "If you are considering a custom-app or PWA build, Rizza is a live reference you can click through end-to-end."
+        ]
+      }
+    ],
+    tags: ["Rizza", "Apps", "Productivity", "Launch"],
+    badgeColorClass: "text-primary",
+    badgeBgClass: "bg-primary/10",
+    textColorClass: "text-primary",
+    hoverColorClass: "text-primary-dark"
+  },
+  {
+    id: 5,
+    title: "AiMech Is Live: An AI Mechanic for Everyday Car Owners",
+    slug: "aimech-app-launch-ai-mechanic-for-everyday-car-owners",
+    date: "2026-07-17",
+    author: "Mehyar Swelim",
+    category: "Apps",
+    excerpt: "AiMech.app combines AI-driven technical analysis with workflow automation so everyday car owners can describe a sound, a symptom, or a dashboard light and get a clear next step — without the dealership runaround.",
+    readTime: 5,
+    image: "/assets/aimech-logo.png",
+    content: [
+      "AiMech.app is live. It is an intelligent diagnostics and automation platform built for everyday car owners, not for professional technicians who already own an OBD-II scanner and a Snap-on subscription.",
+      "Most car problems start with a sentence, not a code: \"There is a clicking sound when I turn left,\" \"The check-engine light came back,\" \"My brakes feel spongy this week.\" AiMech takes that sentence, runs it through AI diagnostics backed by real automotive data, and returns a plain-English answer plus a workflow for what to do next — book a shop, watch and wait, or stop driving immediately.",
+      "The goal is not to replace a trusted mechanic. The goal is to make sure you walk into that conversation already knowing what is probably wrong, what it usually costs, and what questions to ask."
+    ],
+    sections: [
+      {
+        title: "What AiMech does",
+        content: [
+          "AiMech combines technical analysis with workflow automation. You describe the problem in your own words; the system pulls together likely causes, severity, and the next step that matches the situation — DIY watch, mobile mechanic, or shop visit.",
+          "It also keeps a running history per car, so you are not re-explaining the same squeak every six months."
+        ]
+      },
+      {
+        title: "Why this matters for everyday drivers",
+        content: [
+          "Car ownership is full of asymmetric information. A shop knows what is wrong; you know what you heard. AiMech narrows that gap so you can make a confident decision before paying for diagnostics.",
+          "It is also the second live example of MehyarSoft's app-launch playbook: real domain, real PWA, real SEO shell, real analytics — shipped in days, not quarters."
+        ]
+      }
+    ],
+    tags: ["AiMech", "Apps", "AI", "Consumer"],
+    badgeColorClass: "text-secondary",
+    badgeBgClass: "bg-secondary/10",
+    textColorClass: "text-secondary",
+    hoverColorClass: "text-secondary-dark"
   }
 ];
 

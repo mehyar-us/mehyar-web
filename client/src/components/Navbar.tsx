@@ -23,6 +23,7 @@ const Navbar = () => {
     { href: "/", label: "Home" },
     { href: "/services", label: "Services" },
     { href: "/portfolio", label: "Portfolio" },
+    { href: "/apps", label: "Apps" },
     { href: "/about", label: "About" },
     { href: "/blog", label: "Blog" },
     { href: "/contact", label: "Contact" },
