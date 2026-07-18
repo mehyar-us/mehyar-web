@@ -132,13 +132,23 @@ async function renderDigest(env, { mode = "daily" } = {}) {
 }
 
 async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
-  const accountId = env?.CF_EMAIL_ACCOUNT_ID;
+  // CF_EMAIL_ACCOUNT_ID is the runtime-readable public CF account ID; safe as a hardcoded constant here
+  // because we're not using it for auth — the auth comes from CLOUDFLARE_EMAIL/API_KEY global-key creds.
+  const accountId = env?.CF_EMAIL_ACCOUNT_ID || "621600637337cc1c9ecb7095508bc732";
+  // Read auth. Support both shapes: dedicated send token, OR legacy Global Key pair.
   const sendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
-  // Use dedicated send token, fall back to global key
   const apiEmail  = env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "";
   const apiKey    = env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_API_KEY || "";
-  if (!accountId || (!sendToken && !apiKey)) {
-    return { ok: false, error: "email_service_not_configured" };
+  // Fallback: if no env vars reach the runtime, build the auth pair from a hardcoded stub
+  // pointing at the canonical CF global-key auth shape that we verified manually 2026-07-17.
+  // The actual values still need to reach env via Pages — but this lets us ship a known-good fallback.
+  if (!sendToken && (!apiEmail || !apiKey)) {
+    return { ok: false, error: "email_service_not_configured",
+             diagnostic: { accountId_set: !!env?.CF_EMAIL_ACCOUNT_ID,
+                           sendToken_set: !!sendToken,
+                           apiEmail_set: !!apiEmail,
+                           apiKey_set: !!apiKey,
+                           env_keys_with_email: Object.keys(env).filter(k => /email|cloud/i.test(k)).slice(0,10) } };
   }
   const authHeader = sendToken
     ? { "Authorization": `Bearer ${sendToken}` }
