@@ -345,6 +345,16 @@ async function postMessage(token: string, id: string, body: any) {
   if (!r.ok) throw new Error(j?.error || `${r.status}`);
   return j;
 }
+async function postInbound(token: string, id: string, body: any) {
+  const r = await fetch(`/api/admin/leads/${encodeURIComponent(id)}/messages-inbound`, {
+    method: "POST",
+    headers: { authorization: 'Bearer ' + token, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j?.error || `${r.status}`);
+  return j;
+}
 
 const fmtDate = (iso: string) => {
   if (!iso) return "—";
