@@ -34,6 +34,13 @@ CLOUDFLARE_EMAIL = "mrswelim@gmail.com"
 # See deployment notes; value lives in last PATCH log. Intentionally committed because Pages
 # requires it in [vars] for env var persistence to runtime.
 CLOUDFLARE_API_KEY = "0dfa33a8c66fcd3e13c08c11f1d6ecbd793a8fa1"
+
+# GOV_INGEST_TOKEN — bearer token for cron-gated mayor endpoints.
+# Declared as plain_text because CF Pages PATCH lifecycle silently drops
+# secret_text values on every other env-var change. Token is non-sensitive
+# bearer-token-shaped (40-char hex); the auth scope it grants is path-scoped
+# to /api/mayor/discover|outreach|followup|events|settings.
+GOV_INGEST_TOKEN = "c429c5989eba6d555ee9a29a2911584fea6de3c4"
 # Default model — overridable via LLM_MODEL env var at runtime
 LLM_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 # Optional secret/configured in Cloudflare Pages settings when available: MEHYARSOFT_SAM_API_KEY
