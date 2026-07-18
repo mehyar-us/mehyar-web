@@ -1,17 +1,25 @@
-// /api/mayor/sends — paginated outbound send history + linked inbound replies.
-// Designed for the AdminMayor "Outreach" tab. Returns each prospect_sends
-// row joined with any mayor_replies that came back from that recipient.
+// /api/mayor/sends — paginated outbound send history for the AdminMayor
+// "Outreach" tab. Reads from the real source of truth that the Mayor engine
+// actually writes to:
+//
+//   prospect_sequences — every step the engine queued/sent/skipped/failed
+//                        (138 queued, 17 sent, 46 failed, 51 skipped as of
+//                        2026-07-18 — verified via D1 PRAGMA)
+//   prospects          — business name + email
+//   mayor_events       — every "Sent → someone@x" log row
+//
+// prospect_sends exists in schema but is currently broken (FK constraint
+// failure on draft_id — see tickets). We DO NOT read from it. Once the
+// engine INSERT is fixed to insert a placeholder draft when needed, this
+// endpoint can switch to prospect_sends for per-provider-id tracking.
 //
 // Query params:
 //   limit         (default 50, max 200)
 //   offset        (default 0)
-//   status        filter by prospect_sends.status (sent, queued_for_review, bounced, etc)
-//   days_back     (default 30) — only show sends within the last N days
-//   to_email      partial LIKE filter, useful when searching one company
+//   status        filter by prospect_sequences.status (sent|queued|skipped|failed)
+//   days_back     (default 30)
 //
-// Response: { ok, count, total, items: [{...send, reply: {...}|null}] }
-//
-// Auth: same bearer / GOV_INGEST_TOKEN as the rest of the mayor endpoints.
+// Response: { ok, count, total, items: [...] }
 
 import { verifyAdminToken, json, corsHeaders } from "../_shared/adminAuth.js";
 
@@ -39,66 +47,53 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const limit  = Math.min(Math.max(parseInt(url.searchParams.get("limit")  || "50", 10) || 50, 1), 200);
   const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
-  const status  = (url.searchParams.get("status") || "").trim();
+  const statusFilter  = (url.searchParams.get("status") || "").trim();
   const daysBack = Math.max(parseInt(url.searchParams.get("days_back") || "30", 10) || 30, 1);
-  const toEmail  = (url.searchParams.get("to_email") || "").trim();
-
   const sinceIso = new Date(Date.now() - daysBack * 86400000).toISOString();
 
-  // Pull sends + linked classification. Real D1 schema (verified 2026-07-18):
-  //   prospect_sends(prospect_id, draft_id, provider, provider_id, to_email,
-  //                   from_email, reply_to, subject, status, attempted_at,
-  //                   finished_at, failure_reason, list_unsub_header, test_only)
-  //   reply_classifications(reply_id → raw reply row, prospect_id, label, confidence,
-  //                         action_taken, reviewed_at)
-  // No delivered_at / bounced_at columns exist; status drives the rendering.
   const conds = [
-    "(s.attempted_at >= ? OR (s.attempted_at IS NULL AND s.created_at >= ?))",
+    "(ps.created_at >= ? OR ps.sent_at >= ? OR ps.scheduled_for >= ?)",
   ];
-  const binds = [sinceIso, sinceIso];
-  if (status) { conds.push("s.status = ?"); binds.push(status); }
-  if (toEmail) { conds.push("s.to_email LIKE ?"); binds.push(`%${toEmail}%`); }
+  const binds = [sinceIso, sinceIso, sinceIso];
+  if (statusFilter) { conds.push("ps.status = ?"); binds.push(statusFilter); }
   const where = conds.join(" AND ");
 
   const listSql = `
     SELECT
-      s.id              AS send_id,
-      s.prospect_id,
-      s.draft_id,
-      s.to_email,
-      s.from_email,
-      s.reply_to,
-      s.subject         AS draft_subject,
-      s.status          AS send_status,
-      s.provider,
-      s.provider_id,
-      s.attempted_at,
-      s.finished_at,
-      s.created_at,
-      s.failure_reason,
-      rc.label          AS reply_label,
-      rc.action_taken   AS reply_action,
-      rc.confidence     AS reply_confidence,
-      rc.reviewed_at    AS reply_reviewed_at,
-      rc.reply_id
-    FROM prospect_sends s
-    LEFT JOIN reply_classifications rc
-      ON (s.prospect_id IS NOT NULL AND rc.prospect_id = s.prospect_id)
+      ps.id                AS step_id,
+      ps.prospect_id,
+      ps.draft_id,
+      ps.step_no,
+      ps.subject,
+      ps.status            AS step_status,
+      ps.scheduled_for,
+      ps.sent_at,
+      ps.created_at,
+      ps.send_id,
+      p.business_name,
+      p.email              AS to_email,
+      p.website            AS from_website,
+      m.summary            AS event_summary,
+      m.created_at         AS event_at
+    FROM prospect_sequences ps
+    LEFT JOIN prospects p ON p.id = ps.prospect_id
+    LEFT JOIN mayor_events m
+      ON m.kind IN ('outreach','followup')
+     AND m.details_json LIKE '%"' || ps.id || '"%'
     WHERE ${where}
-    ORDER BY (s.attempted_at IS NULL), s.attempted_at DESC, s.created_at DESC
+    ORDER BY (ps.sent_at IS NULL), ps.sent_at DESC, ps.created_at DESC
     LIMIT ? OFFSET ?`;
   const listBinds = [...binds, limit, offset];
 
-  const countSql = `SELECT COUNT(*) AS total FROM prospect_sends s WHERE ${where}`;
+  const countSql = `SELECT COUNT(*) AS total FROM prospect_sequences ps WHERE ${where}`;
 
   try {
     const listRes = await env.LEADS_DB.prepare(listSql).bind(...listBinds).all();
-    items = listRes.results || [];
+    const items = listRes.results || [];
     const cRes = await env.LEADS_DB.prepare(countSql).bind(...binds).first();
-    total = cRes?.total ?? 0;
+    const total = cRes?.total ?? 0;
+    return json({ ok: true, count: items.length, total, items }, 200, request, env);
   } catch (e) {
     return json({ ok: false, error: `query_failed: ${String(e?.message || e).slice(0, 200)}` }, 500, request, env);
   }
-
-  return json({ ok: true, count: items.length, total, items }, 200, request, env);
 }

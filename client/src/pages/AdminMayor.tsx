@@ -335,33 +335,33 @@ export default function AdminMayor() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <SummaryCard
               label="Sent"
-              value={outboundSummary?.sent_total ?? null}
+              value={outboundSummary?.steps_sent ?? null}
               color="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-              sub="provider accepted"
+              sub="step_no=1..3"
             />
             <SummaryCard
-              label="Bounced"
-              value={outboundSummary?.bounced ?? null}
-              color="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
-              sub="hard bounces"
+              label="Queued"
+              value={outboundSummary?.steps_queued ?? null}
+              color="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+              sub="awaiting send"
             />
             <SummaryCard
-              label="Replied"
-              value={outboundSummary?.replied_total ?? null}
-              color="bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
-              sub="any inbound"
-            />
-            <SummaryCard
-              label="Interested"
-              value={outboundSummary?.replied_interested ?? null}
-              color="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-              sub="passing-sales bar"
-            />
-            <SummaryCard
-              label="Unsubscribed"
-              value={outboundSummary?.replied_unsubscribed ?? null}
+              label="Skipped"
+              value={outboundSummary?.steps_skipped ?? null}
               color="bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
-              sub="left the list"
+              sub="cap/cool-down"
+            />
+            <SummaryCard
+              label="Failed"
+              value={outboundSummary?.steps_failed ?? null}
+              color="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+              sub="send error"
+            />
+            <SummaryCard
+              label="Total"
+              value={outboundSummary?.steps_total ?? null}
+              color="bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
+              sub={`last ${outboundSummary?.days_back ?? 30}d`}
             />
           </div>
 
@@ -372,11 +372,11 @@ export default function AdminMayor() {
                 <table className="w-full text-sm">
                   <thead className="bg-zinc-100 dark:bg-zinc-800 text-xs uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
                     <tr>
-                      <th className="text-left p-2">Sent</th>
-                      <th className="text-left p-2">To</th>
+                      <th className="text-left p-2">When</th>
+                      <th className="text-left p-2">Recipient</th>
                       <th className="text-left p-2">From</th>
                       <th className="text-left p-2">Status</th>
-                      <th className="text-left p-2">Reply</th>
+                      <th className="text-left p-2">Event</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -388,43 +388,43 @@ export default function AdminMayor() {
                       </tr>
                     )}
                     {sends?.items?.map((s: any) => (
-                      <tr key={s.send_id} className="border-t border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                      <tr key={s.step_id} className="border-t border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900">
                         <td className="p-2 text-xs whitespace-nowrap text-zinc-600 dark:text-zinc-300">
-                          {fmtTime(s.attempted_at || s.created_at)}
+                          {fmtTime(s.sent_at || s.created_at)}
                         </td>
                         <td className="p-2">
-                          <div className="font-medium truncate max-w-[200px]" title={s.to_email}>{s.to_email}</div>
-                          <div className="text-[11px] text-zinc-400 truncate">provider: {s.provider}{s.provider_id ? ` · id ${s.provider_id.slice(0,18)}…` : ''}</div>
-                        </td>
-                        <td className="p-2 text-xs">
-                          <div className="truncate max-w-[160px]">{s.from_email}</div>
-                          {s.reply_to && <div className="text-[11px] text-zinc-400">↳ {s.reply_to}</div>}
-                        </td>
-                        <td className="p-2 text-xs">
-                          <SendStatusBadge status={s.send_status} />
-                          {s.finished_at && (
-                            <div className="text-[10px] text-zinc-400">finished {fmtTime(s.finished_at)}</div>
+                          <div className="font-medium truncate max-w-[200px]" title={s.to_email}>
+                            {s.business_name || s.to_email || '(no recipient)'}
+                          </div>
+                          {s.business_name && s.to_email && (
+                            <div className="text-[11px] text-zinc-400 truncate" title={s.to_email}>{s.to_email}</div>
                           )}
-                          {s.failure_reason && (
-                            <div className="text-[10px] text-red-600 dark:text-red-400 truncate max-w-[160px]" title={s.failure_reason}>{s.failure_reason}</div>
-                          )}
+                          <div className="text-[11px] text-zinc-400 truncate">
+                            step {s.step_no || '?'}{s.subject ? ` · ${s.subject.slice(0, 40)}${s.subject.length > 40 ? '…' : ''}` : ''}
+                          </div>
                         </td>
                         <td className="p-2 text-xs">
-                          {s.reply_id ? (
-                            <div>
-                              <div className="font-medium text-emerald-700 dark:text-emerald-400 truncate max-w-[180px]" title="reply from recipient">
-                                reply received
-                              </div>
-                              <div className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-                                <span className="px-1.5 py-0 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-300">{s.reply_label || '?'}</span>
-                                <span className="text-zinc-400">{s.reply_confidence ? `${Math.round(s.reply_confidence*100)}% conf` : ''}</span>
-                              </div>
-                              {s.reply_action && (
-                                <div className="text-[11px] text-zinc-500 mt-0.5">action: <span className="font-medium">{s.reply_action}</span></div>
-                              )}
-                            </div>
+                          <div className="truncate max-w-[160px] text-zinc-500 dark:text-zinc-400">
+                            mehyar.us
+                          </div>
+                          <div className="text-[11px] text-zinc-400">
+                            MAYOR
+                          </div>
+                        </td>
+                        <td className="p-2 text-xs">
+                          <SendStatusBadge status={s.step_status} />
+                          {s.sent_at && (
+                            <div className="text-[10px] text-zinc-400">sent {fmtTime(s.sent_at)}</div>
+                          )}
+                          {s.event_at && s.event_at !== s.sent_at && (
+                            <div className="text-[10px] text-zinc-400">event {fmtTime(s.event_at)}</div>
+                          )}
+                        </td>
+                        <td className="p-2 text-xs text-zinc-400">
+                          {s.event_summary ? (
+                            <span className="truncate max-w-[180px] block">{s.event_summary}</span>
                           ) : (
-                            <span className="text-zinc-400">— no classification —</span>
+                            <span>— no event —</span>
                           )}
                         </td>
                       </tr>
