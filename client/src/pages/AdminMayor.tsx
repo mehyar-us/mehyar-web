@@ -60,6 +60,30 @@ function eventColor(kind: string) {
   }; return c[kind as string] || "text-zinc-600 dark:text-zinc-300";
 }
 
+function SummaryCard({ label, value, color, sub }: { label: string; value: number | null; color: string; sub?: string; }) {
+  return (
+    <div className={`rounded-lg p-3 ${color}`}>
+      <div className="text-xs uppercase tracking-wide opacity-80">{label}</div>
+      <div className="text-2xl font-bold mt-1">{value === null ? '—' : value}</div>
+      {sub && <div className="text-[11px] opacity-70 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+function SendStatusBadge({ status }: { status?: string }) {
+  const map: Record<string, string> = {
+    sent:                "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+    delivered:           "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+    bounced:             "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+    failed:              "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+    queued_for_review:   "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    queued:              "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    scheduled:           "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  };
+  const cls = map[status || ""] || "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+  return <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-medium ${cls}`}>{status || "unknown"}</span>;
+}
+
 async function api(path: string, opts: any = {}): Promise<any> {
   const t = TOK();
   const r = await fetch(path, {
@@ -78,6 +102,8 @@ export default function AdminMayor() {
   const [status, setStatus] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [replies, setReplies] = useState<any[]>([]);
+  const [outboundSummary, setOutboundSummary] = useState<any>(null);
+  const [sends, setSends] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pauseOpen, setPauseOpen] = useState(false);
@@ -86,14 +112,18 @@ export default function AdminMayor() {
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      const [s, e, r] = await Promise.all([
+      const [s, e, r, sum, sn] = await Promise.all([
         api("/api/mayor/status"),
         api("/api/mayor/events?limit=50"),
         api("/api/mayor/replies?needs_action=1&limit=20"),
+        api(`/api/mayor/outbound-summary?days_back=30`),
+        api(`/api/mayor/sends?limit=30&days_back=30`),
       ]);
       if (s.ok) setStatus(s.data);
       if (e.ok) setEvents(e.data.events || []);
       if (r.ok) setReplies(r.data.replies || []);
+      if (sum.ok) setOutboundSummary(sum.data);
+      if (sn.ok) setSends(sn.data);
       setError(null);
     } catch (e) {
       setError(String((e as any)?.message || e));
@@ -286,6 +316,119 @@ export default function AdminMayor() {
                   ))}
                 </ul>
               )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── Outreach — what was sent / delivered / replied ── */}
+        <div className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Send className="w-4 h-4" /> Outreach — last 30 days
+            </h2>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              {sends ? `${sends.count} of ${sends.total} total` : 'loading…'}
+            </span>
+          </div>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <SummaryCard
+              label="Sent"
+              value={outboundSummary?.sent_total ?? null}
+              color="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+              sub="provider accepted"
+            />
+            <SummaryCard
+              label="Bounced"
+              value={outboundSummary?.bounced ?? null}
+              color="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+              sub="hard bounces"
+            />
+            <SummaryCard
+              label="Replied"
+              value={outboundSummary?.replied_total ?? null}
+              color="bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
+              sub="any inbound"
+            />
+            <SummaryCard
+              label="Interested"
+              value={outboundSummary?.replied_interested ?? null}
+              color="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+              sub="passing-sales bar"
+            />
+            <SummaryCard
+              label="Unsubscribed"
+              value={outboundSummary?.replied_unsubscribed ?? null}
+              color="bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
+              sub="left the list"
+            />
+          </div>
+
+          {/* Send history table */}
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-100 dark:bg-zinc-800 text-xs uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
+                    <tr>
+                      <th className="text-left p-2">Sent</th>
+                      <th className="text-left p-2">To</th>
+                      <th className="text-left p-2">From</th>
+                      <th className="text-left p-2">Status</th>
+                      <th className="text-left p-2">Reply</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(!sends || sends.items?.length === 0) && (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-zinc-500">
+                          No sends in last 30 days.
+                        </td>
+                      </tr>
+                    )}
+                    {sends?.items?.map((s: any) => (
+                      <tr key={s.send_id} className="border-t border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                        <td className="p-2 text-xs whitespace-nowrap text-zinc-600 dark:text-zinc-300">
+                          {fmtTime(s.attempted_at || s.created_at)}
+                        </td>
+                        <td className="p-2">
+                          <div className="font-medium truncate max-w-[200px]" title={s.to_email}>{s.to_email}</div>
+                          <div className="text-[11px] text-zinc-400 truncate">provider: {s.provider}{s.provider_id ? ` · id ${s.provider_id.slice(0,18)}…` : ''}</div>
+                        </td>
+                        <td className="p-2 text-xs">
+                          <div className="truncate max-w-[160px]">{s.from_email}</div>
+                          {s.reply_to && <div className="text-[11px] text-zinc-400">↳ {s.reply_to}</div>}
+                        </td>
+                        <td className="p-2 text-xs">
+                          <SendStatusBadge status={s.send_status} />
+                          {s.delivered_at && (
+                            <div className="text-[10px] text-zinc-400">delivered {fmtTime(s.delivered_at)}</div>
+                          )}
+                          {s.bounced_at && (
+                            <div className="text-[10px] text-red-600 dark:text-red-400">bounced {fmtTime(s.bounced_at)}</div>
+                          )}
+                        </td>
+                        <td className="p-2 text-xs">
+                          {s.reply_id ? (
+                            <div>
+                              <div className="font-medium text-emerald-700 dark:text-emerald-400 truncate max-w-[180px]" title={s.reply_subject}>
+                                {s.reply_subject || '(no subject)'}
+                              </div>
+                              <div className="text-[11px] text-zinc-500 flex items-center gap-1.5">
+                                <span className="px-1.5 py-0 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-300">{s.reply_classification || '?'}</span>
+                                <span className="text-zinc-400">{fmtAgo(s.reply_received_at)}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-zinc-400">— no reply —</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </div>
