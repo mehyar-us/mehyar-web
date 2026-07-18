@@ -61,7 +61,7 @@ function NowView({ token }: { token: string }) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px]">
             <h1 className="text-xl font-bold">{greetingFor(now)}, Mehyar.</h1>
-            <p className="text-xs $1">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
               {" · "}
               <span className="font-mono">{now.toLocaleTimeString()}</span>
@@ -246,16 +246,16 @@ function NowItem({ item }: { item: any }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium text-sm leading-tight">{item.title}</span>
         {item.kind && <Badge className="text-[10px]">{item.kind === "sam" ? "🏛" : item.kind === "prospect" ? "🧲" : item.kind === "outreach" ? "📤" : item.kind === "auto_tender" ? "🪄" : item.kind === "reply" ? "📬" : item.kind}</Badge>}
-        {item.stage && <Badge className={`text-[10px] ${STAGE_BADGE[item.stage] || "bg-zinc-100 dark:bg-zinc-800 $1"}`}>{item.stage}</Badge>}
+        {item.stage && <Badge className={`text-[10px] ${STAGE_BADGE[item.stage] || "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"}`}>{item.stage}</Badge>}
         {typeof item.leak_score === "number" && <ScoreBar score={item.leak_score} max={100} label="leak" tone="leak" />}
         {typeof item.fit_score === "number" && <ScoreBar score={item.fit_score} max={100} label="fit" />}
         {item.deadline_in_days != null && (
-          <span className={`ml-auto text-[11px] font-mono ${item.deadline_in_days <= 2 ? "text-red-700 dark:text-red-400" : "$1"}`}>
+          <span className={`ml-auto text-[11px] font-mono ${item.deadline_in_days <= 2 ? "text-red-700 dark:text-red-400" : "text-zinc-500 dark:text-zinc-400"}`}>
             {item.deadline_in_days <= 0 ? "OVERDUE" : `D-${item.deadline_in_days}`}
           </span>
         )}
       </div>
-      {item.subtitle && <div className="text-xs $1 mt-1 line-clamp-2">{item.subtitle}</div>}
+      {item.subtitle && <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2">{item.subtitle}</div>}
       {item.suggestion && (
         <div className="text-xs bg-violet-50 border border-violet-100 rounded px-2 py-1.5 mt-2 text-violet-800 dark:text-violet-300">
           🧠 {item.suggestion}
@@ -280,27 +280,27 @@ function OpsFooter({ data, token }: { data: any; token: string }) {
     <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-3">
       <Card className="hover:border-zinc-300 dark:hover:border-zinc-600 transition cursor-pointer" onClick={() => window.location.href = "/admin/system"}>
         <CardContent className="p-3">
-          <div className="text-[10px] uppercase tracking-wide $1 flex items-center gap-1"><Hourglass className="w-3 h-3" />Cron</div>
+          <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Hourglass className="w-3 h-3" />Cron</div>
           <div className="text-base font-bold mt-1">Last: <span className="font-mono">{lastCron?.triggered_at?.slice(11, 19) || "—"}</span> UTC</div>
-          <div className="text-xs $1">{lastCron?.status || "—"}</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">{lastCron?.status || "—"}</div>
         </CardContent>
       </Card>
       <Card>
         <CardContent className="p-3">
-          <div className="text-[10px] uppercase tracking-wide $1 flex items-center gap-1"><Brain className="w-3 h-3" />AI spend (today)</div>
+          <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Brain className="w-3 h-3" />AI spend (today)</div>
           <div className="text-xl font-bold text-violet-700 dark:text-violet-400 tabular-nums">${aiSpend.toFixed(2)}</div>
-          <div className="text-xs $1 tabular-nums">{ops.llm_calls_today || 0} LLM calls</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">{ops.llm_calls_today || 0} LLM calls</div>
         </CardContent>
       </Card>
       <Card className={errs > 0 ? "border-red-300 dark:border-red-700" : ""}>
         <CardContent className="p-3">
-          <div className="text-[10px] uppercase tracking-wide $1 flex items-center gap-1"><Bell className="w-3 h-3" />Errors 24h</div>
+          <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Bell className="w-3 h-3" />Errors 24h</div>
           <div className={`text-xl font-bold tabular-nums ${errs > 0 ? "text-red-700 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}>{errs}</div>
         </CardContent>
       </Card>
       <Card>
         <CardContent className="p-3">
-          <div className="text-[10px] uppercase tracking-wide $1 flex items-center gap-1"><Database className="w-3 h-3" />Last backup</div>
+          <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Database className="w-3 h-3" />Last backup</div>
           <div className="text-base font-bold mt-1">{backups?.at?.slice(0, 10) || "—"}</div>
           <a href="/admin/system#backup" className="text-xs text-blue-700 dark:text-blue-400 hover:underline">Download latest →</a>
         </CardContent>

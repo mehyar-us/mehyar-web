@@ -55,7 +55,7 @@ function MoneyView({ token }: { token: string }) {
       </div>
 
       {q.isLoading && (
-        <div className="text-center py-20 $1"><Loader2 className="inline w-6 h-6 animate-spin mr-2" />Loading pipeline…</div>
+        <div className="text-center py-20 text-zinc-500 dark:text-zinc-400"><Loader2 className="inline w-6 h-6 animate-spin mr-2" />Loading pipeline…</div>
       )}
 
       {q.isError && (
@@ -107,7 +107,7 @@ function ForecastStrip({ kpis }: any) {
       {cells.map((c) => (
         <Card key={c.label}>
           <CardContent className="p-3">
-            <div className="text-[11px] uppercase tracking-wide $1 leading-tight">{c.label}</div>
+            <div className="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 leading-tight">{c.label}</div>
             <div className={`text-xl font-bold mt-1 leading-tight ${c.tone}`}>{c.prefix || ""}{(c.val ?? 0).toLocaleString()}{c.suffix || ""}</div>
           </CardContent>
         </Card>
@@ -129,12 +129,12 @@ function Funnel({ data }: any) {
             const pct = Math.max(8, ((Number(s.value_usd_total) || 0) / max) * 100);
             return (
               <div key={s.stage} className="flex items-center gap-2 text-sm">
-                <span className="w-24 capitalize $1">{s.stage}</span>
+                <span className="w-24 capitalize text-zinc-500 dark:text-zinc-400">{s.stage}</span>
                 <div className="flex-1 h-7 bg-zinc-100 dark:bg-zinc-800 rounded overflow-hidden relative">
                   <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-500 to-cyan-500" style={{ width: `${pct}%` }} />
                   <div className="absolute inset-0 flex items-center px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100">
                     {s.count} · ${(Number(s.value_usd_total) || 0).toLocaleString()}
-                    <span className="ml-auto pr-2 text-xs $1">avg ${Math.round(Number(s.avg_value_usd) || 0).toLocaleString()}</span>
+                    <span className="ml-auto pr-2 text-xs text-zinc-500 dark:text-zinc-400">avg ${Math.round(Number(s.avg_value_usd) || 0).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -153,7 +153,7 @@ function ActiveDealsBoard({ deals, token, onUpdate }: any) {
     <Card>
       <CardContent className="p-4">
         <h3 className="font-semibold mb-2">🔥 Open deals</h3>
-        {!deals?.length ? <div className="text-sm $1">No open deals yet.</div> : (
+        {!deals?.length ? <div className="text-sm text-zinc-500 dark:text-zinc-400">No open deals yet.</div> : (
           <div className="space-y-1">
             {deals.slice(0, 12).map((d: any) => (
               <div key={d.id}
@@ -176,12 +176,12 @@ function ActiveDealsBoard({ deals, token, onUpdate }: any) {
                   <span className="font-medium truncate flex-1">{d.title}</span>
                   <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400">${(d.estimated_value_usd || 0).toLocaleString()}</span>
                 </div>
-                {d.subtitle && <div className="text-xs $1 mt-0.5 truncate">{d.subtitle}</div>}
+                {d.subtitle && <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">{d.subtitle}</div>}
               </div>
             ))}
           </div>
         )}
-        <div className="text-xs $1 mt-2">💡 Double-click any deal to mark Won (auto-drafts a case study + post-mortem).</div>
+        <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">💡 Double-click any deal to mark Won (auto-drafts a case study + post-mortem).</div>
       </CardContent>
     </Card>
   );
@@ -204,7 +204,7 @@ function RecentOutcomes({ deals, token, onUpdate }: any) {
                 <span className="font-medium truncate flex-1">{d.title}</span>
                 <span className="text-xs font-mono">${(d.value_usd || 0).toLocaleString()}</span>
               </div>
-              {d.decision_at && <div className="text-xs $1 mt-0.5">{new Date(d.decision_at).toLocaleDateString()}</div>}
+              {d.decision_at && <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{new Date(d.decision_at).toLocaleDateString()}</div>}
             </li>
           ))}
         </ul>
@@ -277,25 +277,25 @@ function QuoteGenerator({ token, onCreated }: { token: string; onCreated: (msg: 
           <div className="space-y-3 mt-3 pt-3 border-t">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label className="text-xs $1">Client name *</label>
+                <label className="text-xs text-zinc-500 dark:text-zinc-400">Client name *</label>
                 <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Acme Corp" />
               </div>
               <div>
-                <label className="text-xs $1">Client email</label>
+                <label className="text-xs text-zinc-500 dark:text-zinc-400">Client email</label>
                 <Input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="billing@acme.com" />
               </div>
               <div className="md:col-span-2">
-                <label className="text-xs $1">Address (optional)</label>
+                <label className="text-xs text-zinc-500 dark:text-zinc-400">Address (optional)</label>
                 <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} placeholder="123 Main St, City" />
               </div>
               <div>
-                <label className="text-xs $1">Payment due (days)</label>
+                <label className="text-xs text-zinc-500 dark:text-zinc-400">Payment due (days)</label>
                 <Input type="number" value={dueDays} onChange={(e) => setDueDays(Number(e.target.value))} />
               </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs $1">Line items</label>
+                <label className="text-xs text-zinc-500 dark:text-zinc-400">Line items</label>
                 <Button size="sm" variant="outline" onClick={add}>+ Add item</Button>
               </div>
               <div className="space-y-2">
@@ -310,7 +310,7 @@ function QuoteGenerator({ token, onCreated }: { token: string; onCreated: (msg: 
                 ))}
               </div>
               <div className="text-right mt-2 text-sm">
-                <span className="$1">Subtotal:</span>{" "}
+                <span className="text-zinc-500 dark:text-zinc-400">Subtotal:</span>{" "}
                 <span className="font-bold text-emerald-700 dark:text-emerald-400">${subtotal.toLocaleString()}</span>
               </div>
             </div>
@@ -320,7 +320,7 @@ function QuoteGenerator({ token, onCreated }: { token: string; onCreated: (msg: 
               </Button>
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             </div>
-            <p className="text-xs $1">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
               💡 Quote generates a hosted public URL you can send to the client. Set status=invoice later when payment is received.
             </p>
           </div>
@@ -346,7 +346,7 @@ function ServiceCatalog({ token }: { token: string }) {
     <Card>
       <CardContent className="p-4">
         <h3 className="font-semibold mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> 🧾 MehyarSoft service catalog</h3>
-        <p className="text-xs $1 mb-3">Click any row to copy a ready-to-paste quote block.</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">Click any row to copy a ready-to-paste quote block.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {SAMPLES.map((s, i) => (
             <button
@@ -361,7 +361,7 @@ function ServiceCatalog({ token }: { token: string }) {
                 <span className="font-medium text-sm">{s.name}</span>
                 <span className="font-mono text-emerald-700 dark:text-emerald-400 text-xs">{s.price}</span>
               </div>
-              <div className="text-xs $1 mt-0.5">{s.desc}</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{s.desc}</div>
               <div className="text-[10px] text-zinc-400 dark:text-zinc-400 mt-1">⏱ {s.time}</div>
             </button>
           ))}
@@ -390,14 +390,14 @@ function CaseStudies({ data, token, onUpdate }: any) {
       <CardContent className="p-4">
         <h3 className="font-semibold mb-2 flex items-center gap-2"><FileText className="w-4 h-4" /> Case studies</h3>
         {data.length === 0 ? (
-          <div className="text-sm $1">Mark a deal Won and the AI will draft a public case study for SEO.</div>
+          <div className="text-sm text-zinc-500 dark:text-zinc-400">Mark a deal Won and the AI will draft a public case study for SEO.</div>
         ) : (
           <ul className="space-y-1">
             {data.map((cs: any) => (
               <li key={cs.id} className="border rounded p-2 flex items-start gap-2">
                 <div className="flex-1">
                   <div className="font-medium">{cs.title}</div>
-                  <div className="text-xs $1">/{cs.slug} · {cs.published ? "🟢 published" : "🟡 draft"}</div>
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400">/{cs.slug} · {cs.published ? "🟢 published" : "🟡 draft"}</div>
                 </div>
                 <a href={`/case-studies/${cs.slug}`} className="text-blue-700 dark:text-blue-400 text-xs underline">view →</a>
               </li>
@@ -463,12 +463,12 @@ function OutreachQueue({ token, onOpenDraft }: { token: string; onOpenDraft: (id
           </div>
         </div>
 
-        {drafts.isLoading && <div className="text-sm $1 py-6 text-center"><Loader2 className="inline w-4 h-4 animate-spin mr-1" />Loading queue…</div>}
+        {drafts.isLoading && <div className="text-sm text-zinc-500 dark:text-zinc-400 py-6 text-center"><Loader2 className="inline w-4 h-4 animate-spin mr-1" />Loading queue…</div>}
         {drafts.error && <div className="text-sm text-red-700 dark:text-red-400">⚠ {String((drafts.error as Error)?.message || drafts.error)}</div>}
 
         {drafts.data && (
           <>
-            <div className="text-xs $1 mb-3">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
               <strong className="font-mono text-zinc-900 dark:text-zinc-100">{drafts.data.send_due_count ?? 0}</strong> outreach step{(drafts.data.send_due_count ?? 0) === 1 ? "" : "s"} queued
               · next send window: {drafts.data.next_window_at || "—"}
             </div>
@@ -479,7 +479,7 @@ function OutreachQueue({ token, onOpenDraft }: { token: string; onOpenDraft: (id
                   <div key={`${it.prospect_id}-${it.step_order}-${i}`} className="border border-zinc-200 rounded-lg p-2.5 bg-white dark:bg-zinc-900 flex items-center gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{it.business_name}</div>
-                      <div className="text-[11px] $1 truncate">
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
                         {it.source_name || it.source_key} · step {it.step_order}
                       </div>
                     </div>
@@ -487,14 +487,14 @@ function OutreachQueue({ token, onOpenDraft }: { token: string; onOpenDraft: (id
                 ))}
               </div>
             ) : (
-              <div className="text-sm $1 py-4 text-center">
+              <div className="text-sm text-zinc-500 dark:text-zinc-400 py-4 text-center">
                 No outreach steps ready to send.{" "}
                 <span className="text-zinc-400 dark:text-zinc-400">Generate a draft from CRM → Deep eval → click a pricing tier.</span>
               </div>
             )}
 
             <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-              <div className="text-xs $1 mb-2">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
                 💡 <strong>Tip:</strong> When you click a pricing tier in a lead drawer, a draft is generated and deeplinks here. Tap a draft below to view/edit before approving.
               </div>
               <RecentDraftsList token={token} onOpen={onOpenDraft} />
@@ -541,7 +541,7 @@ function RecentDraftsList({ token, onOpen }: { token: string; onOpen: (id: strin
           <Mail className="w-3.5 h-3.5 text-violet-600 shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-medium truncate">{d.subject}</div>
-            <div className="text-[10px] $1 font-mono">{d.id.slice(0, 8)} · {d.status} · {new Date(d.created_at).toLocaleDateString()}</div>
+            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">{d.id.slice(0, 8)} · {d.status} · {new Date(d.created_at).toLocaleDateString()}</div>
           </div>
           <ChevronRight className="w-4 h-4 text-zinc-400 dark:text-zinc-400 shrink-0" />
         </button>
@@ -625,12 +625,12 @@ function DraftDetailDrawer({ token, draftId, onClose }: { token: string; draftId
                 <h2 className="font-bold text-base leading-tight text-zinc-900 dark:text-zinc-100 break-words line-clamp-2">
                   {q.isLoading ? "Loading draft…" : draft?.subject || "(no subject)"}
                 </h2>
-                <div className="text-xs $1 truncate">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
                   {prospect?.business_name || sam?.title || "—"} · {draft?.status || "—"}
                 </div>
               </div>
             </div>
-            <button onClick={onClose} aria-label="Close draft" className="rounded-full p-2 hover:bg-zinc-100 dark:bg-zinc-800 $1 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
+            <button onClick={onClose} aria-label="Close draft" className="rounded-full p-2 hover:bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -642,25 +642,25 @@ function DraftDetailDrawer({ token, draftId, onClose }: { token: string; draftId
               </div>
             )}
             {q.error && <div className="text-sm text-red-700 dark:text-red-400">⚠ {String((q.error as Error)?.message)}</div>}
-            {q.data && !draft && <div className="text-sm $1">Draft not found: <code className="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">{draftId}</code></div>}
+            {q.data && !draft && <div className="text-sm text-zinc-500 dark:text-zinc-400">Draft not found: <code className="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">{draftId}</code></div>}
 
             {draft && (
               <div className="space-y-4">
                 {/* Header card */}
                 <Card><CardContent className="p-4">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                    <div><span className="$1">Source:</span> <strong>{data.kind === "sam" ? "🏛 SAM" : "🧲 Prospect"}</strong></div>
-                    <div><span className="$1">Model:</span> <code className="text-[11px] bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">{draft.model || "?"}</code></div>
-                    <div><span className="$1">Created:</span> {new Date(draft.created_at).toLocaleString()}</div>
+                    <div><span className="text-zinc-500 dark:text-zinc-400">Source:</span> <strong>{data.kind === "sam" ? "🏛 SAM" : "🧲 Prospect"}</strong></div>
+                    <div><span className="text-zinc-500 dark:text-zinc-400">Model:</span> <code className="text-[11px] bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">{draft.model || "?"}</code></div>
+                    <div><span className="text-zinc-500 dark:text-zinc-400">Created:</span> {new Date(draft.created_at).toLocaleString()}</div>
                     <div className="col-span-2 md:col-span-3">
-                      <span className="$1">Subject:</span>{" "}
+                      <span className="text-zinc-500 dark:text-zinc-400">Subject:</span>{" "}
                       <strong className="break-words">{draft.subject}</strong>
                     </div>
                     {send && (
                       <>
-                        <div><span className="$1">To:</span> <strong>{send.to_email}</strong></div>
-                        <div><span className="$1">Status:</span> <Badge className="bg-zinc-100 text-zinc-800 dark:text-zinc-200">{send.status}</Badge></div>
-                        <div><span className="$1">Scheduled:</span> {send.scheduled_for || "—"}</div>
+                        <div><span className="text-zinc-500 dark:text-zinc-400">To:</span> <strong>{send.to_email}</strong></div>
+                        <div><span className="text-zinc-500 dark:text-zinc-400">Status:</span> <Badge className="bg-zinc-100 text-zinc-800 dark:text-zinc-200">{send.status}</Badge></div>
+                        <div><span className="text-zinc-500 dark:text-zinc-400">Scheduled:</span> {send.scheduled_for || "—"}</div>
                       </>
                     )}
                   </div>

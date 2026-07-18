@@ -1,0 +1,32 @@
+# Forbidden patterns — Section R probe (turn-068)
+#
+# Each line is a literal (extended-regex) that, if found in client/src/ +
+# functions/api/ + migrations/ + .hermes/audit/, means a placeholder escaped
+# into shipped code or audit prose.
+#
+# Categories:
+#   - sed-replacement artifacts: $1, $2, *** — emitted when a token was
+#     bulk-replaced with the wrong anchor regex (turn-065 cron shadow,
+#     be975c7 dark-mode fix that wiped text-zinc-N chains wholesale)
+#   - WIP markers: <this-commit>, <TODO>, <FIXME>, <placeholder> — left
+#     when a draft slipped past the audit stage
+#
+# IMPORTANT — sed-replacement patterns use trailing non-digit char to avoid
+# matching the start of real dollar amounts like $150, $1,000, $1k. The
+# dark-mode fix regression (be975c7) emitted `$1` followed by space, `"`,
+# `}`, `)`, etc — never a digit. The boundary char list `[^0-9,]` is the
+# discriminator.
+#
+# Add a new pattern here when a new drift class surfaces. Re-run
+# `bash .hermes/probe-section-R.sh` after editing.
+
+# sed-replacement artifacts (must be followed by non-digit, non-comma)
+\$1[^0-9,]
+\$2[^0-9,]
+\*\*\*[^*]
+
+# WIP markers
+<this-commit>
+<TODO>
+<FIXME>
+<placeholder>
