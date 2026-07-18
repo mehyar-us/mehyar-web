@@ -149,9 +149,10 @@ async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
   const authHeader = sendToken
     ? { "Authorization": `Bearer ${sendToken}` }
     : { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey };
-  // Per-zone gate: mehyar.us was just onboarded for Email Sending (2026-07-18).
-  // Default back to mehyar.us zone, override-able via MAYOR_DIGEST_FROM_EMAIL.
-  const fromEmail = env?.MAYOR_DIGEST_FROM_EMAIL || "mayor@mehyar.us";
+  // Per-zone gate: external sends only deliver from team@rochelle.love today.
+  // mehyar.us returns 200 OK but delivered:[], meaning DNS/SPF/DKIM not yet propagated
+  // post-onboard. Use rochelle.love as the live sender; override via MAYOR_DIGEST_FROM_EMAIL.
+  const fromEmail = env?.MAYOR_DIGEST_FROM_EMAIL || "team@rochelle.love";
   const replyTo   = env?.MAYOR_DIGEST_REPLY_TO   || "info@mehyar.us";
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
   // CF Email Service payload (verified 2026-07-17/18). Both flat-string and array shapes work.
