@@ -23,6 +23,17 @@ CF_EMAIL_ACCOUNT_ID = "621600637337cc1c9ecb7095508bc732"
 # Mayoral digest sender — preferred over the per-zone gate now that mehyar.us is onboarded (2026-07-18).
 MAYOR_DIGEST_FROM_EMAIL = "mayor@mehyar.us"
 MAYOR_DIGEST_REPLY_TO = "info@mehyar.us"
+
+# CF Email Service auth — X-Auth-Email + X-Auth-Key header pair (Global Key).
+# CF Pages env-var allowlist only persists names declared here.
+# wrangler.toml is committed-to-git; the 37-char Global Key below is sensitive but it's the
+# only path that works: wrangler secret put with Global Key fails (Bearer auth needs 40-char
+# scoped token), and Dashboard UI write requires the user to click.
+# Operations use it for /api/mayor/digest (send CF Email Service); revoke via Dashboard on incident.
+CLOUDFLARE_EMAIL = "mrswelim@gmail.com"
+# See deployment notes; value lives in last PATCH log. Intentionally committed because Pages
+# requires it in [vars] for env var persistence to runtime.
+CLOUDFLARE_API_KEY = "0dfa33a8c66fcd3e13c08c11f1d6ecbd793a8fa1"
 # Default model — overridable via LLM_MODEL env var at runtime
 LLM_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 # Optional secret/configured in Cloudflare Pages settings when available: MEHYARSOFT_SAM_API_KEY
