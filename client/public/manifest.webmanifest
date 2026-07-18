@@ -13,6 +13,18 @@
   "categories": ["business", "productivity", "utilities"],
   "icons": [
       {
+        "src": "/assets/mehyarsoft-favicon.svg",
+        "sizes": "any",
+        "type": "image/svg+xml",
+        "purpose": "any"
+      },
+      {
+        "src": "/assets/mehyarsoft-mark.svg",
+        "sizes": "1024x1024",
+        "type": "image/svg+xml",
+        "purpose": "any"
+      },
+      {
         "src": "/assets/mehyarsoft-mark-512.png",
         "sizes": "512x512",
         "type": "image/png",
@@ -23,18 +35,6 @@
         "sizes": "192x192",
         "type": "image/png",
         "purpose": "any maskable"
-      },
-      {
-        "src": "/assets/mehyarsoft-mark.png",
-        "sizes": "1024x1024",
-        "type": "image/png",
-        "purpose": "any"
-      },
-      {
-        "src": "/assets/mehyarsoft-favicon.svg",
-        "sizes": "any",
-        "type": "image/svg+xml",
-        "purpose": "any"
       }
     ],
   "shortcuts": [

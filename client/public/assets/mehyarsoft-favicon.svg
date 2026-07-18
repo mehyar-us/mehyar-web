@@ -1,5 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
-  <title id="title">MehyarSoft favicon</title>
-  <desc id="desc">MehyarSoft robot icon mark.</desc>
-  <image href="/assets/mehyarsoft-favicon.png" x="0" y="0" width="1024" height="1024" preserveAspectRatio="xMidYMid meet" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="fav-title fav-desc">
+  <title id="fav-title">MehyarSoft favicon</title>
+  <desc id="fav-desc">MehyarSoft square icon favicon — deep-teal rounded badge with a stylized M letterform and circuit-node motif.</desc>
+
+  <defs>
+    <linearGradient id="fav-fill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#062f42" />
+      <stop offset="0.55" stop-color="#0b5268" />
+      <stop offset="1" stop-color="#28b1c5" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="220" ry="220" fill="url(#fav-fill)" />
+  <path d="M 250 760 L 250 250 L 300 250 L 512 552 L 724 250 L 774 250 L 774 760 L 682 760 L 682 460 L 532 668 L 492 668 L 342 460 L 342 760 Z"
+        fill="#ffffff" />
+  <circle cx="512" cy="380" r="26" fill="#28b1c5" />
+  <circle cx="370" cy="490" r="16" fill="#7dd0db" />
+  <circle cx="654" cy="490" r="16" fill="#7dd0db" />
+  <line x1="370" y1="490" x2="512" y2="380" stroke="#7dd0db" stroke-width="6" />
+  <line x1="654" y1="490" x2="512" y2="380" stroke="#7dd0db" stroke-width="6" />
 </svg>

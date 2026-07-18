@@ -1,17 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 180" width="760" height="180" role="img" aria-labelledby="title desc">
-  <title id="title">MehyarSoft logo</title>
-  <desc id="desc">MehyarSoft robot mark with a clean founder-led software consulting wordmark.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 180" width="760" height="180" role="img" aria-labelledby="msh-title msh-desc">
+  <title id="msh-title">MehyarSoft</title>
+  <desc id="msh-desc">MehyarSoft LLC horizontal logo. Rounded teal icon badge containing a stylized M letterform with circuit-node motif, followed by the MehyarSoft wordmark and the tagline SOFTWARE • SYSTEMS • AI. Self-contained vector — right-click and open the SVG in a new tab to see it stand alone.</desc>
+
   <defs>
-    <linearGradient id="mehyarsoft-wordmark-light" x1="0" y1="0" x2="1" y2="0">
+    <linearGradient id="msh-mark-fill" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#062f42" />
-      <stop offset="0.54" stop-color="#083f54" />
+      <stop offset="0.55" stop-color="#0b5268" />
+      <stop offset="1" stop-color="#28b1c5" />
+    </linearGradient>
+    <linearGradient id="msh-mark-stroke" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#28b1c5" />
+      <stop offset="1" stop-color="#7dd0db" />
+    </linearGradient>
+    <linearGradient id="msh-wordmark-light" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#062f42" />
+      <stop offset="0.6" stop-color="#083f54" />
       <stop offset="1" stop-color="#0b5268" />
     </linearGradient>
   </defs>
-  <image href="/assets/mehyarsoft-mark.png" x="0" y="14" width="152" height="152" preserveAspectRatio="xMidYMid meet" />
-  <g fill="url(#mehyarsoft-wordmark-light)">
-    <text x="176" y="107" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="76" font-weight="760" letter-spacing="-3.4">Mehyar</text>
-    <text x="448" y="107" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="76" font-weight="420" letter-spacing="-3.9">Soft</text>
+
+  <!-- Icon badge: rounded square with the M-S letterform. -->
+  <g transform="translate(14 14)">
+    <rect width="152" height="152" rx="36" ry="36" fill="url(#msh-mark-fill)" />
+    <rect x="3" y="3" width="146" height="146" rx="33" ry="33"
+          fill="none" stroke="url(#msh-mark-stroke)" stroke-width="1.5" opacity="0.7" />
+    <!-- Stylized M -->
+    <path d="M 35 120 L 35 32 L 42 32 L 76 84 L 110 32 L 117 32 L 117 120 L 105 120 L 105 64 L 81 92 L 71 92 L 47 64 L 47 120 Z"
+          fill="#ffffff" />
+    <!-- Circuit nodes -->
+    <circle cx="76" cy="58" r="4" fill="#28b1c5" />
+    <circle cx="56" cy="76" r="2.5" fill="#7dd0db" />
+    <circle cx="96" cy="76" r="2.5" fill="#7dd0db" />
+    <line x1="56" y1="76" x2="76" y2="58" stroke="#7dd0db" stroke-width="1.2" />
+    <line x1="96" y1="76" x2="76" y2="58" stroke="#7dd0db" stroke-width="1.2" />
   </g>
-  <text x="181" y="139" fill="#46616b" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="650" letter-spacing="3.4">SOFTWARE • SYSTEMS • AI</text>
+
+  <!-- Wordmark -->
+  <g fill="url(#msh-wordmark-light)" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif">
+    <text x="186" y="107" font-size="76" font-weight="760" letter-spacing="-3.4">Mehyar</text>
+    <text x="448" y="107" font-size="76" font-weight="420" letter-spacing="-3.9">Soft</text>
+  </g>
+  <text x="191" y="139" fill="#46616b" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif"
+        font-size="18" font-weight="650" letter-spacing="3.4">SOFTWARE • SYSTEMS • AI</text>
 </svg>

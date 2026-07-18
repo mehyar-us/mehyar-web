@@ -46,10 +46,10 @@ const Navbar = () => {
             aria-label="MehyarSoft home"
           >
             <img
-              src="/assets/mehyarsoft-mark.png"
+              src="/assets/mehyarsoft-mark.svg"
               alt=""
               aria-hidden="true"
-              className="h-11 w-11 shrink-0 rounded-xl object-contain shadow-[0_10px_26px_rgba(8,63,84,0.18)] transition-transform duration-200 group-hover:scale-[1.02] sm:h-12 sm:w-12 lg:h-[3.35rem] lg:w-[3.35rem]"
+              className="h-11 w-11 shrink-0 rounded-xl bg-brand-100 object-contain shadow-[0_10px_26px_rgba(8,63,84,0.18)] transition-transform duration-200 group-hover:scale-[1.02] sm:h-12 sm:w-12 lg:h-[3.35rem] lg:w-[3.35rem]"
               width="1024"
               height="1024"
               decoding="async"

@@ -1,5 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
-  <title id="title">MehyarSoft mark</title>
-  <desc id="desc">MehyarSoft robot icon mark.</desc>
-  <image href="/assets/mehyarsoft-mark.png" x="0" y="0" width="1024" height="1024" preserveAspectRatio="xMidYMid meet" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-labelledby="msm-title msm-desc">
+  <title id="msm-title">MehyarSoft mark</title>
+  <desc id="msm-desc">MehyarSoft LLC square icon mark. Deep-teal rounded badge with a stylized M letterform, a circuit-node network, and an AI dot grid. Self-contained vector — no external PNG dependency.</desc>
+
+  <defs>
+    <linearGradient id="msm-fill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#062f42" />
+      <stop offset="0.55" stop-color="#0b5268" />
+      <stop offset="1" stop-color="#28b1c5" />
+    </linearGradient>
+    <linearGradient id="msm-stroke" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#28b1c5" />
+      <stop offset="1" stop-color="#7dd0db" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="220" ry="220" fill="url(#msm-fill)" />
+  <rect x="20" y="20" width="984" height="984" rx="206" ry="206"
+        fill="none" stroke="url(#msm-stroke)" stroke-width="6" opacity="0.7" />
+
+  <!-- Stylized M (Mehyar) -->
+  <path d="M 250 760 L 250 250 L 300 250 L 512 552 L 724 250 L 774 250 L 774 760 L 682 760 L 682 460 L 532 668 L 492 668 L 342 460 L 342 760 Z"
+        fill="#ffffff" />
+
+  <!-- Circuit motif -->
+  <circle cx="512" cy="380" r="26" fill="#28b1c5" />
+  <circle cx="370" cy="490" r="16" fill="#7dd0db" />
+  <circle cx="654" cy="490" r="16" fill="#7dd0db" />
+  <line x1="370" y1="490" x2="512" y2="380" stroke="#7dd0db" stroke-width="6" />
+  <line x1="654" y1="490" x2="512" y2="380" stroke="#7dd0db" stroke-width="6" />
+
+  <!-- AI dot grid -->
+  <g fill="#7dd0db" opacity="0.5">
+    <circle cx="850" cy="930" r="10" />
+    <circle cx="898" cy="930" r="10" />
+    <circle cx="946" cy="930" r="10" />
+    <circle cx="850" cy="880" r="10" />
+    <circle cx="898" cy="880" r="10" />
+    <circle cx="946" cy="880" r="10" />
+    <circle cx="850" cy="830" r="10" />
+    <circle cx="898" cy="830" r="10" />
+    <circle cx="946" cy="830" r="10" />
+  </g>
 </svg>

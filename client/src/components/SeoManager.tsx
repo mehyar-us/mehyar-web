@@ -6,7 +6,8 @@ import { services } from "@/data/services";
 
 const SITE_ORIGIN = "https://mehyar.us";
 const SITE_NAME = "MehyarSoft LLC";
-const SOCIAL_IMAGE = `${SITE_ORIGIN}/assets/mehyarsoft-social.svg`;
+const SOCIAL_IMAGE = `${SITE_ORIGIN}/assets/mehyarsoft-social-1200x630.png`;
+const SVG_LOGO = `${SITE_ORIGIN}/assets/mehyarsoft-logo.svg`;
 
 interface SeoMeta {
   title: string;
@@ -25,7 +26,7 @@ const organization = {
   name: SITE_NAME,
   legalName: SITE_NAME,
   url: `${SITE_ORIGIN}/`,
-  logo: `${SITE_ORIGIN}/assets/mehyarsoft-mark.png`,
+  logo: SVG_LOGO,
   email: "info@mehyar.us",
   founder: { "@type": "Person", name: "Mehyar Swelim" },
 };
