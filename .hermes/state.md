@@ -5,15 +5,15 @@
 
 | field                          | value                                    |
 | ------------------------------ | ---------------------------------------- |
-| last_tick_at                   | 2026-07-18T19:05Z (turn-064, complete) |
+| last_tick_at                   | 2026-07-18T19:10Z (turn-064, complete) |
 | last_tick_id                   | 64 |
 | live_url                       | https://mehyar.us |
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up |
-| deployed_sha                   | aa0a950 (turn-064 docs-only ship — turn-063 SHA-placeholder backfill; live bundle main-D9Djrf2D.js 678,754 bytes confirmed via probe O at turn-064 start; remote HEAD matches local HEAD post-push) |
-| last_deploy_sha                | aa0a950 (turn-064 is docs-only; visitor-facing bundle unchanged) |
-| deploy_status                  | green (turn-064 docs-only ship on github main; live bundle main-D9Djrf2D.js 678,754 bytes unchanged from turn-063; 9-probe regression clean: G FAIL exit 1 founder-blocked expected, H/J/K/L/M/N/O/Q all PASS; Section K pre-commit guard 48/48 PASS; 4-line guardrail still pending bootstrap; triple-verified push per git-credential-helper-hermes skill pitfall #10) |
+| deployed_sha                   | 4615712 (turn-064 closure — docs-only ship of state + VISION diary + learned note on top of aa0a950 SHA-placeholder backfill; live bundle main-D9Djrf2D.js 678,754 bytes unchanged from turn-063; remote HEAD matches local HEAD post-push) |
+| last_deploy_sha                | 4615712 (turn-064 is docs-only; visitor-facing bundle unchanged) |
+| deploy_status                  | green (turn-064 docs-only ship on github main (2 commits: aa0a950 SHA-placeholder backfill + 4615712 closure); live bundle main-D9Djrf2D.js 678,754 bytes unchanged from turn-063; 9-probe regression clean: G FAIL exit 1 founder-blocked expected, H/J/K/L/M/N/O/Q all PASS; Section K 48/48 PASS; 4-screen smoke 200/308/308/404 unchanged from turn-063 baseline; triple-verified push per git-credential-helper-hermes skill pitfall #10 for BOTH commits) |
 | cf_analytics_token_present     | yes |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
 | open_tickets                   | 3 (ready: t_45ea76a8 W5-PERSUADE, t_90f2136f BOARD-HANDOFF; blocked: t_5118925e P0 Mayor Mode paused + digest email runtime auth missing; todo: 0; closed this tick: 0; LOOP-T054/T060/T062 referenced in state as `<new-NNN-id>` are the improver-ship-of-the-doc-tick tickets, not yet created in DB; verified turn-063 via `hermes kanban --board mehyar-us list --status {ready,blocked,todo}`) |
