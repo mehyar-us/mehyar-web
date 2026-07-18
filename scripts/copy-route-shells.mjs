@@ -109,12 +109,18 @@ const routeMeta = {
     path: '/newsletter',
   },
   '/about': {
-    title: 'Founder Story | MehyarSoft LLC NYC Software Consultant',
-    description:
-      'Meet Mehyar Swelim, Syrian founder of MehyarSoft LLC in NYC, providing senior software, systems, and AI automation consulting for businesses with practical operational problems.',
-    path: '/about',
-  },
-  '/330': {
+      title: 'Founder Story | MehyarSoft LLC NYC Software Consultant',
+      description:
+        'Meet Mehyar Swelim, Syrian founder of MehyarSoft LLC in NYC, providing senior software, systems, and AI automation consulting for businesses with practical operational problems.',
+      path: '/about',
+    },
+    '/apps': {
+      title: 'Apps MehyarSoft Builds and Operates | MehyarSoft',
+      description:
+        'Live apps shipped by MehyarSoft: Rizza (AI dating-app wingman) and AiMech (AI mechanic for everyday car owners). See the apps, the launch notes, and the app-launch playbook behind them.',
+      path: '/apps',
+    },
+    '/330': {
     title: '$330 Website + Booking Leak Audit | MehyarSoft',
     description:
       'A focused $330 MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks before buying more software.',
@@ -280,8 +286,9 @@ const directRoutes = [
   'newsletter',
   'free-checklist',
   'about',
-  '330',
-  'micro-offer',
+    'apps',
+    '330',
+    'micro-offer',
   'booking',
   'book',
   'contact',
