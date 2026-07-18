@@ -89,33 +89,6 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
     ).run();
   } catch (e) { /* table may not exist yet */ }
 
-  // ALSO write into prospect_messages so the admin thread timeline can render
-  // this send (the singular source-of-truth for the email-thread observability view).
-  // Migration 0017 introduced prospect_messages; if the migration hasn't run, swallow.
-  const messageId = `<${sendId}@mehyar.us>`;
-  try {
-    await env.LEADS_DB.prepare(
-      `INSERT INTO prospect_messages
-        (id, prospect_id, lead_kind, thread_id, direction, message_id_header,
-         from_email, to_email, reply_to, subject, body_text, body_excerpt,
-         provider, provider_id, status, sequence_id, step_no,
-         sent_at, queued_at, created_at, updated_at, failure_reason)
-       VALUES (?, ?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?, 'cf-email', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      sendId, sequence.prospect_id, null, sequence.prospect_id, messageId,
-      FROM_EMAIL, toEmail, FROM_EMAIL, sequence.subject,
-      sequence.body_text || "",
-      (sequence.body_text || "").replace(/\s+/g, " ").slice(0, 320),
-      finalStatus === "sent" ? "sent" : "failed",
-      sequence.id, sequence.step_no,
-      result.provider_id || null,
-      now, now, now, now,
-      result.error || null,
-    ).run();
-  } catch (e) {
-    console.log(`[mayor/email] prospect_messages insert failed (non-fatal): ${e?.message}`);
-  }
-
   await env.LEADS_DB.prepare(
     `UPDATE prospect_sequences
      SET status = ?, sent_at = ?, send_id = ?
