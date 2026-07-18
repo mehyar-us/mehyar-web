@@ -20,6 +20,9 @@ CLOUDFLARE_ACCOUNT_ID = "621600637337cc1c9ecb7095508bc732"
 # with CLOUDFLARE_EMAIL/API_KEY aliases. The actual secret values are set in the Cloudflare Dashboard
 # (Pages → mehyar-web → Settings → Environment variables) — do NOT commit the keys here.
 CF_EMAIL_ACCOUNT_ID = "621600637337cc1c9ecb7095508bc732"
+# Mayoral digest sender — preferred over the per-zone gate now that mehyar.us is onboarded (2026-07-18).
+MAYOR_DIGEST_FROM_EMAIL = "mayor@mehyar.us"
+MAYOR_DIGEST_REPLY_TO = "info@mehyar.us"
 # Default model — overridable via LLM_MODEL env var at runtime
 LLM_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 # Optional secret/configured in Cloudflare Pages settings when available: MEHYARSOFT_SAM_API_KEY
