@@ -137,11 +137,11 @@ async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
   // Use dedicated send token (env?.CF_EMAIL_SEND_TOKEN), fall back to global key
   const apiEmail  = env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "";
   const apiKey    = env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_API_KEY || "";
-  if (!accountId || (!apiToken && !apiKey)) {
+  if (!accountId || (!emailSendToken && !apiKey)) {
     return { ok: false, error: "email_service_not_configured" };
   }
   const authHeader = emailSendToken
-    ? { "Authorization": `Bearer ${apiToken}` }
+    ? { "Authorization": `Bearer ${emailSendToken}` }
     : { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey };
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
   const payload = {
