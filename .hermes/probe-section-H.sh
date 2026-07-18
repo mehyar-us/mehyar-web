@@ -6,7 +6,7 @@
 # aria-* / role= / alt= literals.
 #
 # Run from repo root.
-#   bash .hermes/probe-section-I.sh
+#   bash .hermes/probe-section-H.sh
 # Exit 0 on PASS, 1 on FAIL, 2 on INDETERMINATE.
 
 set -u
@@ -33,7 +33,7 @@ discover_live_bundle_url() {
     return 0
   fi
   local HOME_URL="https://mehyar.us/"
-  local SHELL=".hermes/.probe-section-discover-home.html"
+  local SHELL=".hermes/.probe-section-H-discover-home.html"
   if ! curl -sSL --max-time 15 "$HOME_URL" -o "$SHELL" 2>/dev/null; then
     return 2
   fi
@@ -58,7 +58,7 @@ if [ "$DISCOVER_RC" -ne 0 ] || [ -z "$LIVE_BUNDLE_URL" ]; then
 fi
 # Use CWD-relative path for the bundle because /tmp doesn't exist on
 # this Windows host (MSYS). Repo-relative keeps the probe portable.
-BUNDLE=".hermes/.probe-section-I-bundle.js"
+BUNDLE=".hermes/.probe-section-H-bundle.js"
 
 echo "=== H Accessibility/SEO smoke probe (turn-039 new check) ==="
 echo "discovered bundle URL: $LIVE_BUNDLE_URL"
@@ -90,7 +90,25 @@ else
 fi
 
 # 2. Semantic landmarks — <main>, <nav>, <header>, <footer>, <article>, <section>
-LANDMARKS=$(grep -oE 'jsx\("(main|nav|header|footer|article|section)"' "$BUNDLE" | wc -l)
+# The minifier emits jsx() in one of these shapes depending on tree-shaking
+# and aliasing:
+#   (a) direct         jsx("tag"     or jsx(`tag`
+#   (b) alias-renamed  (0,X.jsx)("tag"  or (0,X.jsx)(`tag`
+# Turn-039 originally matched shape (a) with double-quote.
+# Turn-062 caught a backtick-vs-double-quote switch.
+# Turn-063 catches the alias-renamed wrapper "(0,X.jsx)(" form that landed
+# between turn-061 (main-p303-96M.js, 666,443 bytes) and turn-063
+# (main--TRCB9Vb.js, 655,228 bytes). The count must be >= 6 (one of
+# each: main + nav + header + footer + article + section), and the
+# design baseline is 49 (turn-062 verified). The python helper handles
+# both shapes with both quote styles in one regex without the shell-
+# quoting pitfalls that bit turn-062's inline-regex attempt (the
+# alternation `("|"`\``\`) gets eaten by both bash and grep -oE).
+# See .hermes/probe-section-H-count-landmarks.py for the helper and
+# .hermes/probe-section-H-count-landmarks-negative-test.py for the
+# 5-case verification (real bundle 49 + shape a/b/c 6/6/6 + empty 0 +
+# no-landmarks 0).
+LANDMARKS=$(python .hermes/probe-section-H-count-landmarks.py "$BUNDLE")
 if [ "$LANDMARKS" -lt 6 ]; then
   echo "H FAIL: only $LANDMARKS semantic landmark tags (expect >= 6 — main+nav+header+footer+article+section)"
   FAIL=1
@@ -122,7 +140,7 @@ else
 fi
 
 # 4. lang + viewport on every public shell — fetch home shell and check
-HOME_SHELL=".hermes/.probe-section-I-home.html"
+HOME_SHELL=".hermes/.probe-section-H-home.html"
 if curl -sSL --max-time 15 "https://mehyar.us/" -o "$HOME_SHELL" 2>/dev/null; then
   LANG=$(grep -oE 'lang="[^"]+"' "$HOME_SHELL" | head -1)
   if [ -z "$LANG" ]; then
@@ -168,7 +186,7 @@ else
 fi
 
 # Cleanup probe temp files (don't pollute repo with bundle downloads).
-# These start with ".probe-section-I-" so they're easy to identify and
+# These start with ".probe-section-H-" so they're easy to identify and
 # can also be matched by `git status -- ':!.hermes/.probe-*'` if the
 # loop wants to keep them as audit artifacts.
 rm -f "$BUNDLE" "$HOME_SHELL"

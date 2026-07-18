@@ -210,10 +210,10 @@ and CI-ready (exit 0 PASS, exit 1 FAIL). The probe script is
 | Check | Why | Today |
 | --- | --- | --- |
 | `Skip to <content>` link in bundle | Keyboard users must be able to bypass nav | PASS — "Skip to the $330 audit" |
-| Semantic landmark tags (`<main>`, `<nav>`, `<header>`, `<footer>`, `<article>`, `<section>`) | Screen readers use these to navigate | PASS — 49 occurrences (`jsx("tag")` form on live bundle `main-p303-96M.js`) |
-| `aria-hidden` on decorative icons | Icons that aren't meaningful should be hidden from AT | PASS — 112 occurrences |
-| `aria-label` on icon-only controls | Icon buttons need accessible names | PASS — 6 occurrences |
-| `sr-only` (visually-hidden) text | AT-only labels for sighted users can't see | PASS — 3 occurrences |
+| Semantic landmark tags (`<main>`, `<nav>`, `<header>`, `<footer>`, `<article>`, `<section>`) | Screen readers use these to navigate | PASS — 49 occurrences (`(0,X.jsx)(\`tag\`)` form on live bundle `main--TRCB9Vb.js`) |
+| `aria-hidden` on decorative icons | Icons that aren't meaningful should be hidden from AT | PASS — 63 occurrences |
+| `aria-label` on icon-only controls | Icon buttons need accessible names | PASS — 9 occurrences |
+| `sr-only` (visually-hidden) text | AT-only labels for sighted users can't see | PASS — 4 occurrences |
 | `<html lang="en">` on every public shell | Screen readers switch pronunciation by lang | PASS |
 | `<meta name="viewport">` on every public shell | Mobile rendering depends on this | PASS |
 | `<link rel="canonical">` on every public shell | Avoid duplicate-content penalties | PASS |
@@ -223,12 +223,13 @@ and CI-ready (exit 0 PASS, exit 1 FAIL). The probe script is
 
 ```
 === H Accessibility/SEO smoke probe (turn-039 new check) ===
-live bundle: 574085 bytes (expect ~574069)
-H OK skip-link: 'Skip to the $330 audit'
-H OK landmarks: 61 semantic landmark tag occurrences
-H OK aria-hidden: 112 occurrences
-H OK aria-label: 6 occurrences
-H OK sr-only: 3 occurrences
+discovered bundle URL: https://mehyar.us/assets/main--TRCB9Vb.js
+live bundle: 655228 bytes (auto-discovered, fresh; not a fixed-baseline assertion)
+H OK skip-link: 'Skip to the $330 audit`})]})]}),(0,N.jsx)(`div`'
+H OK landmarks: 49 semantic landmark tag occurrences
+H OK aria-hidden: 63 occurrences
+H OK aria-label: 9 occurrences
+H OK sr-only: 4 occurrences
 H OK lang: lang="en"
 H OK viewport: present
 H OK canonical: present

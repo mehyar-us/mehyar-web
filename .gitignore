@@ -136,3 +136,6 @@ main-*.js
 .hermes/.probe-q-cache/
 workers/mehyar-cron/worker-configuration.d.ts
 scripts/__pycache__/
+# Loop probe Section H python helper cache (turn-063): repo-local python
+# __pycache__ from probe-section-H-count-landmarks.py + negative-test.py.
+.hermes/__pycache__/
