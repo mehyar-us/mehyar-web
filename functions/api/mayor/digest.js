@@ -133,23 +133,30 @@ async function renderDigest(env, { mode = "daily" } = {}) {
 
 async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
   const accountId = env?.CF_EMAIL_ACCOUNT_ID;
-  const emailSendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
-  // Use dedicated send token (env?.CF_EMAIL_SEND_TOKEN), fall back to global key
+  const sendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
+  // Use dedicated send token, fall back to global key
   const apiEmail  = env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "";
   const apiKey    = env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_API_KEY || "";
-  if (!accountId || (!emailSendToken && !apiKey)) {
+  if (!accountId || (!sendToken && !apiKey)) {
     return { ok: false, error: "email_service_not_configured" };
   }
-  const authHeader = emailSendToken
-    ? { "Authorization": `Bearer ${emailSendToken}` }
+  const authHeader = sendToken
+    ? { "Authorization": `Bearer ${sendToken}` }
     : { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey };
+  // CF Email Service is per-zone gated (only rochelle.love has the $5/mo subscription
+  // on this account). Send FROM the rochelle.love zone for any non-self recipient.
+  const fromEmail = env?.MAYOR_DIGEST_FROM_EMAIL || "team@rochelle.love";
+  const replyTo   = env?.MAYOR_DIGEST_REPLY_TO   || "info@mehyar.us";
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
+  // CF Email Service flat-string payload (NOT [{email:..}] like the older /send endpoint).
+  // Per skill cloudflare-email-service verified 2026-07-17.
   const payload = {
-    from: { email: "mayor@mehyar.us", name: "Mayor" },
-    to: [{ email: to }],
+    from: fromEmail,
+    to: to,                       // string, not array
     subject: rendered.subject,
     text: rendered.text,
     html: rendered.html,
+    reply_to: replyTo,
   };
   try {
     const resp = await fetch(url, {
@@ -159,9 +166,15 @@ async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok || data?.success === false) {
-      return { ok: false, error: data?.errors?.[0]?.message || `HTTP ${resp.status}` };
+      const err = data?.errors?.[0];
+      return { ok: false, error: err?.message || `HTTP ${resp.status}`,
+               code: err?.code || resp.status,
+               delivered: data?.result?.delivered || [],
+               permanent_bounces: data?.result?.permanent_bounces || [] };
     }
-    return { ok: true, provider_id: data?.result?.id || null };
+    return { ok: true, provider_id: data?.result?.message_id || null,
+             delivered: data?.result?.delivered || [],
+             queued: data?.result?.queued || [] };
   } catch (e) {
     return { ok: false, error: String(e?.message || e) };
   }
