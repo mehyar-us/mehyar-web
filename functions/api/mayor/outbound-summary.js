@@ -39,10 +39,10 @@ export async function onRequestGet({ request, env }) {
   const replyCountsSql = `
     SELECT
       COUNT(*) AS total,
-      SUM(CASE WHEN classification = 'interested' THEN 1 ELSE 0 END) AS interested,
-      SUM(CASE WHEN classification = 'unsubscribe' OR recommended_action = 'unsubscribe' THEN 1 ELSE 0 END) AS unsubscribed,
-      SUM(CASE WHEN classification = 'objection' THEN 1 ELSE 0 END) AS objections
-    FROM prospect_replies WHERE received_at >= ?`;
+      SUM(CASE WHEN label LIKE '%interested%' OR label = 'positive' THEN 1 ELSE 0 END) AS interested,
+      SUM(CASE WHEN label LIKE '%unsubscrib%' OR action_taken LIKE '%unsubscrib%' THEN 1 ELSE 0 END) AS unsubscribed,
+      SUM(CASE WHEN label LIKE '%objection%' OR label = 'negative' THEN 1 ELSE 0 END) AS objections
+    FROM reply_classifications WHERE created_at >= ?`;
 
   try {
     const [sc, rc] = await Promise.all([

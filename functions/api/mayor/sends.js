@@ -45,11 +45,17 @@ export async function onRequestGet({ request, env }) {
 
   const sinceIso = new Date(Date.now() - daysBack * 86400000).toISOString();
 
-  // Pull sends + linked reply + light prospect metadata.
-  // prospect_id may be NULL (SAM-led drafts have NULL prospect_id — see migration 0014),
-  // so we left-join mayor_replies.on prospect_id match. Reply text not exposed — privacy.
-  const conds = ["s.attempted_at >= ?"];
-  const binds = [sinceIso];
+  // Pull sends + linked classification. Real D1 schema (verified 2026-07-18):
+  //   prospect_sends(prospect_id, draft_id, provider, provider_id, to_email,
+  //                   from_email, reply_to, subject, status, attempted_at,
+  //                   finished_at, failure_reason, list_unsub_header, test_only)
+  //   reply_classifications(reply_id → raw reply row, prospect_id, label, confidence,
+  //                         action_taken, reviewed_at)
+  // No delivered_at / bounced_at columns exist; status drives the rendering.
+  const conds = [
+    "(s.attempted_at >= ? OR (s.attempted_at IS NULL AND s.created_at >= ?))",
+  ];
+  const binds = [sinceIso, sinceIso];
   if (status) { conds.push("s.status = ?"); binds.push(status); }
   if (toEmail) { conds.push("s.to_email LIKE ?"); binds.push(`%${toEmail}%`); }
   const where = conds.join(" AND ");
@@ -66,69 +72,33 @@ export async function onRequestGet({ request, env }) {
       s.status          AS send_status,
       s.provider,
       s.provider_id,
-      s.channel,
-      s.created_at,
-      s.scheduled_for,
       s.attempted_at,
       s.finished_at,
-      s.delivered_at,
-      s.bounced_at,
-      s.updated_at,
-      r.id              AS reply_id,
-      r.subject         AS reply_subject,
-      r.from_email      AS reply_from,
-      r.received_at     AS reply_received_at,
-      r.classification  AS reply_classification,
-      r.sentiment_score AS reply_sentiment,
-      r.recommended_action AS reply_action
+      s.created_at,
+      s.failure_reason,
+      rc.label          AS reply_label,
+      rc.action_taken   AS reply_action,
+      rc.confidence     AS reply_confidence,
+      rc.reviewed_at    AS reply_reviewed_at,
+      rc.reply_id
     FROM prospect_sends s
-    LEFT JOIN prospect_replies r
-      ON (s.prospect_id IS NOT NULL AND r.prospect_id = s.prospect_id)
+    LEFT JOIN reply_classifications rc
+      ON (s.prospect_id IS NOT NULL AND rc.prospect_id = s.prospect_id)
     WHERE ${where}
-    ORDER BY s.attempted_at DESC, s.created_at DESC
+    ORDER BY (s.attempted_at IS NULL), s.attempted_at DESC, s.created_at DESC
     LIMIT ? OFFSET ?`;
   const listBinds = [...binds, limit, offset];
 
   const countSql = `SELECT COUNT(*) AS total FROM prospect_sends s WHERE ${where}`;
 
-  // Some columns may not exist on older installs (delivered_at, bounced_at added later).
-  // Try the richer query first; fall back to a minimal one if D1 throws "no such column".
-  let items = [];
-  let total = 0;
   try {
     const listRes = await env.LEADS_DB.prepare(listSql).bind(...listBinds).all();
     items = listRes.results || [];
     const cRes = await env.LEADS_DB.prepare(countSql).bind(...binds).first();
     total = cRes?.total ?? 0;
   } catch (e) {
-    const msg = String(e?.message || e);
-    // If missing columns (delivered_at / bounced_at / replied_at), retry with a stable subset.
-    if (/no such column/i.test(msg)) {
-      const lightSql = `
-        SELECT
-          s.id AS send_id, s.prospect_id, s.draft_id,
-          s.to_email, s.from_email, s.reply_to,
-          s.status AS send_status, s.provider, s.provider_id, s.channel,
-          s.created_at, s.scheduled_for, s.attempted_at, s.finished_at,
-          s.updated_at,
-          r.id AS reply_id, r.subject AS reply_subject,
-          r.from_email AS reply_from, r.received_at AS reply_received_at,
-          r.classification AS reply_classification,
-          r.recommended_action AS reply_action
-        FROM prospect_sends s
-        LEFT JOIN prospect_replies r
-          ON (s.prospect_id IS NOT NULL AND r.prospect_id = s.prospect_id)
-        WHERE ${where}
-        ORDER BY s.attempted_at DESC, s.created_at DESC
-        LIMIT ? OFFSET ?`;
-      const listRes = await env.LEADS_DB.prepare(lightSql).bind(...listBinds).all();
-      items = listRes.results || [];
-      const cRes = await env.LEADS_DB.prepare(countSql).bind(...binds).first();
-      total = cRes?.total ?? 0;
-      return json({ ok: true, count: items.length, total, items, schema: "light" }, 200, request, env);
-    }
-    return json({ ok: false, error: `query_failed: ${msg.slice(0, 200)}` }, 500, request, env);
+    return json({ ok: false, error: `query_failed: ${String(e?.message || e).slice(0, 200)}` }, 500, request, env);
   }
 
-  return json({ ok: true, count: items.length, total, items, schema: "full" }, 200, request, env);
+  return json({ ok: true, count: items.length, total, items }, 200, request, env);
 }

@@ -402,26 +402,29 @@ export default function AdminMayor() {
                         </td>
                         <td className="p-2 text-xs">
                           <SendStatusBadge status={s.send_status} />
-                          {s.delivered_at && (
-                            <div className="text-[10px] text-zinc-400">delivered {fmtTime(s.delivered_at)}</div>
+                          {s.finished_at && (
+                            <div className="text-[10px] text-zinc-400">finished {fmtTime(s.finished_at)}</div>
                           )}
-                          {s.bounced_at && (
-                            <div className="text-[10px] text-red-600 dark:text-red-400">bounced {fmtTime(s.bounced_at)}</div>
+                          {s.failure_reason && (
+                            <div className="text-[10px] text-red-600 dark:text-red-400 truncate max-w-[160px]" title={s.failure_reason}>{s.failure_reason}</div>
                           )}
                         </td>
                         <td className="p-2 text-xs">
                           {s.reply_id ? (
                             <div>
-                              <div className="font-medium text-emerald-700 dark:text-emerald-400 truncate max-w-[180px]" title={s.reply_subject}>
-                                {s.reply_subject || '(no subject)'}
+                              <div className="font-medium text-emerald-700 dark:text-emerald-400 truncate max-w-[180px]" title="reply from recipient">
+                                reply received
                               </div>
                               <div className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-                                <span className="px-1.5 py-0 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-300">{s.reply_classification || '?'}</span>
-                                <span className="text-zinc-400">{fmtAgo(s.reply_received_at)}</span>
+                                <span className="px-1.5 py-0 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-300">{s.reply_label || '?'}</span>
+                                <span className="text-zinc-400">{s.reply_confidence ? `${Math.round(s.reply_confidence*100)}% conf` : ''}</span>
                               </div>
+                              {s.reply_action && (
+                                <div className="text-[11px] text-zinc-500 mt-0.5">action: <span className="font-medium">{s.reply_action}</span></div>
+                              )}
                             </div>
                           ) : (
-                            <span className="text-zinc-400">— no reply —</span>
+                            <span className="text-zinc-400">— no classification —</span>
                           )}
                         </td>
                       </tr>
