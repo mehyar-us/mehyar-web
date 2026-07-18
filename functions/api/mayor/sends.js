@@ -62,7 +62,6 @@ export async function onRequestGet({ request, env }) {
     SELECT
       ps.id                AS step_id,
       ps.prospect_id,
-      ps.draft_id,
       ps.step_no,
       ps.subject,
       ps.status            AS step_status,
