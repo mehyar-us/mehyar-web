@@ -132,37 +132,32 @@ async function renderDigest(env, { mode = "daily" } = {}) {
 }
 
 async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
-  // CF_EMAIL_ACCOUNT_ID is the runtime-readable public CF account ID; safe as a hardcoded constant here
-  // because we're not using it for auth — the auth comes from CLOUDFLARE_EMAIL/API_KEY global-key creds.
+  // Public account id — safe to default since it isn't a credential.
   const accountId = env?.CF_EMAIL_ACCOUNT_ID || "621600637337cc1c9ecb7095508bc732";
-  // Read auth. Support both shapes: dedicated send token, OR legacy Global Key pair.
+  // Try the dedicated send-token first (40-char scoped), fall back to Global Key pair.
   const sendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
   const apiEmail  = env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "";
   const apiKey    = env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_API_KEY || "";
-  // Fallback: if no env vars reach the runtime, build the auth pair from a hardcoded stub
-  // pointing at the canonical CF global-key auth shape that we verified manually 2026-07-17.
-  // The actual values still need to reach env via Pages — but this lets us ship a known-good fallback.
   if (!sendToken && (!apiEmail || !apiKey)) {
     return { ok: false, error: "email_service_not_configured",
              diagnostic: { accountId_set: !!env?.CF_EMAIL_ACCOUNT_ID,
                            sendToken_set: !!sendToken,
                            apiEmail_set: !!apiEmail,
                            apiKey_set: !!apiKey,
-                           env_keys_with_email: Object.keys(env).filter(k => /email|cloud/i.test(k)).slice(0,10) } };
+                           env_keys_relevant: Object.keys(env).filter(k => /email|cloud/i.test(k)).slice(0,12) } };
   }
   const authHeader = sendToken
     ? { "Authorization": `Bearer ${sendToken}` }
     : { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey };
-  // CF Email Service is per-zone gated (only rochelle.love has the $5/mo subscription
-  // on this account). Send FROM the rochelle.love zone for any non-self recipient.
-  const fromEmail = env?.MAYOR_DIGEST_FROM_EMAIL || "team@rochelle.love";
+  // Per-zone gate: mehyar.us was just onboarded for Email Sending (2026-07-18).
+  // Default back to mehyar.us zone, override-able via MAYOR_DIGEST_FROM_EMAIL.
+  const fromEmail = env?.MAYOR_DIGEST_FROM_EMAIL || "mayor@mehyar.us";
   const replyTo   = env?.MAYOR_DIGEST_REPLY_TO   || "info@mehyar.us";
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
-  // CF Email Service flat-string payload (NOT [{email:..}] like the older /send endpoint).
-  // Per skill cloudflare-email-service verified 2026-07-17.
+  // CF Email Service payload (verified 2026-07-17/18). Both flat-string and array shapes work.
   const payload = {
     from: fromEmail,
-    to: to,                       // string, not array
+    to: to,
     subject: rendered.subject,
     text: rendered.text,
     html: rendered.html,
