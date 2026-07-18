@@ -90,7 +90,7 @@ else
 fi
 
 # 2. Semantic landmarks — <main>, <nav>, <header>, <footer>, <article>, <section>
-LANDMARKS=$(grep -oE '(main|nav|header|footer|article|section)`' "$BUNDLE" | wc -l)
+LANDMARKS=$(grep -oE 'jsx\("(main|nav|header|footer|article|section)"' "$BUNDLE" | wc -l)
 if [ "$LANDMARKS" -lt 6 ]; then
   echo "H FAIL: only $LANDMARKS semantic landmark tags (expect >= 6 — main+nav+header+footer+article+section)"
   FAIL=1

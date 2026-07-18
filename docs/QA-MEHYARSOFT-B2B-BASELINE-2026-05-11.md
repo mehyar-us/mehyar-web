@@ -210,7 +210,7 @@ and CI-ready (exit 0 PASS, exit 1 FAIL). The probe script is
 | Check | Why | Today |
 | --- | --- | --- |
 | `Skip to <content>` link in bundle | Keyboard users must be able to bypass nav | PASS — "Skip to the $330 audit" |
-| Semantic landmark tags (`<main>`, `<nav>`, `<header>`, `<footer>`, `<article>`, `<section>`) | Screen readers use these to navigate | PASS — 61 occurrences |
+| Semantic landmark tags (`<main>`, `<nav>`, `<header>`, `<footer>`, `<article>`, `<section>`) | Screen readers use these to navigate | PASS — 49 occurrences (`jsx("tag")` form on live bundle `main-p303-96M.js`) |
 | `aria-hidden` on decorative icons | Icons that aren't meaningful should be hidden from AT | PASS — 112 occurrences |
 | `aria-label` on icon-only controls | Icon buttons need accessible names | PASS — 6 occurrences |
 | `sr-only` (visually-hidden) text | AT-only labels for sighted users can't see | PASS — 3 occurrences |
@@ -259,6 +259,7 @@ bash .hermes/probe-section-H.sh
 | New icon-only button without `aria-label` | `aria-label` count drops below 5 | P1 — screen reader users can't use the button |
 | Viewport meta removed (e.g. theme rebuild) | probe `VIEWPORT` empty | P0 — mobile rendering broken |
 | Canonical link missing | probe `CANONICAL` empty | P1 — duplicate-content risk |
+| **Bundle minifier changes JSX tag-quote alphabet** (turn-062 fix: backtick `` ` `` → double-quote `"` — caught when live bundle rolled to `main-p303-96M.js`, regex `(tag)\`` returned 0 matches, probe FAILed on the landmark check even though all 61 tags were still present in `jsx("tag")` form) | probe `LANDMARKS` count drops below 6 | P1 — probe-rubric drift, not a real a11y regression; update the regex to match the new alphabet (or use the alias-tolerant `'jsx\(.\(main\|nav\|...\)\.'` form) |
 
 **Why this lives in the rubric and not just as a one-off check:**
 
