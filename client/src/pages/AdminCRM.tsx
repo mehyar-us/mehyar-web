@@ -326,6 +326,376 @@ function LeadRow({ row, onOpen }: { row: any; onOpen: () => void }) {
   );
 }
 
+// ── Email thread observability ──────────────────────────────────────────
+// /api/admin/leads/:id/messages — full timeline + drafts + compose actions.
+async function fetchMessages(token: string, id: string) {
+  const r = await fetch(`/api/admin/leads/${encodeURIComponent(id)}/messages`, {
+    headers: { authorization: 'Bearer ' + token },
+  });
+  if (!r.ok) throw new Error(`${r.status}`);
+  return r.json();
+}
+async function postMessage(token: string, id: string, body: any) {
+  const r = await fetch(`/api/admin/leads/${encodeURIComponent(id)}/messages`, {
+    method: "POST",
+    headers: { authorization: 'Bearer ' + token, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j?.error || `${r.status}`);
+  return j;
+}
+
+const fmtDate = (iso: string) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
+};
+const fmtAgo = (iso: string) => {
+  if (!iso) return "never";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000) return "just now";
+  if (ms < 3600_000) return `${Math.round(ms / 60_000)}m ago`;
+  if (ms < 86400_000) return `${Math.round(ms / 3600_000)}h ago`;
+  return `${Math.round(ms / 86400_000)}d ago`;
+};
+
+function StatusBadge({ status }: { status?: string }) {
+  const map: Record<string, string> = {
+    sent:        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+    delivered:   "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+    received:    "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
+    "auto-replied": "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+    classified:  "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
+    queued:      "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    bounced:     "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+    failed:      "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+  };
+  const cls = map[status || ""] || "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+  return <span className={`inline-block px-1.5 py-0 rounded text-[10px] font-medium uppercase tracking-wide ${cls}`}>{status || "unknown"}</span>;
+}
+
+function ProspectThread({ token, id }: { token: string; id: string }) {
+  const qc = useQueryClient();
+  const q = useQuery({
+    enabled: !!id && !!token,
+    queryKey: ["admin-prospect-messages", token, id],
+    queryFn: () => fetchMessages(token, id),
+  });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-prospect-messages"] });
+
+  const [compose, setCompose] = useState<{ subject?: string; body?: string; replyToId?: string } | null>(null);
+  const [followup, setFollowup] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  if (q.isLoading) {
+    return <div className="space-y-2">{[0, 1, 2].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-3 h-16" /></Card>)}</div>;
+  }
+  if (q.error) {
+    return <div className="text-sm text-red-700 dark:text-red-400">⚠ {String((q.error as Error)?.message)}</div>;
+  }
+  const data = q.data;
+  if (!data) return null;
+  const counts = data.counts || { outbound: 0, inbound: 0, drafts_pending: 0, drafts_failed: 0, messages_total: 0 };
+  const timeline: any[] = data.timeline || [];
+  const drafts: any[] = data.drafts || [];
+  const alerts: any[] = data.alerts || [];
+  const lastIn: any = data.last_inbound;
+
+  // ─── Inline compose / reply / followup actions ─────────────────────────
+  const onSendCompose = async () => {
+    if (!compose?.body) return;
+    try {
+      await postMessage(token, id, {
+        action: "compose",
+        subject: compose.subject || "Quick follow-up",
+        body_text: compose.body,
+      });
+      setCompose(null);
+      refresh();
+    } catch (e: any) {
+      alert("Send failed: " + (e?.message || e));
+    }
+  };
+  const onQueueFollowup = async (subject: string, body: string) => {
+    try {
+      await postMessage(token, id, { action: "enqueue-followup", subject, body, step_no: 2 });
+      setFollowup(false);
+      refresh();
+    } catch (e: any) {
+      alert("Queue failed: " + (e?.message || e));
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* ── summary row ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <SummaryPill label="Sent"    value={counts.outbound}        accent="emerald" />
+        <SummaryPill label="Received" value={counts.inbound}         accent="cyan" />
+        <SummaryPill label="Drafts queued"  value={counts.drafts_pending}  accent="amber" />
+        <SummaryPill label="Last reply" value={lastIn ? fmtAgo(lastIn.received_at) : "never"} accent={lastIn ? "violet" : "zinc"} raw />
+      </div>
+
+      {/* ── last inbound + classification ── */}
+      {lastIn && (
+        <Card>
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Latest inbound</div>
+                <div className="text-sm font-medium truncate max-w-[420px]">{lastIn.subject}</div>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">{lastIn.from_email} · {fmtDate(lastIn.received_at)}</div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {lastIn.classification && (
+                  <span className="px-1.5 py-0 rounded text-[11px] bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">{lastIn.classification}</span>
+                )}
+                {lastIn.recommended_action && (
+                  <span className="px-1.5 py-0 rounded text-[11px] bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">→ {lastIn.recommended_action}</span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── suppression alerts ── */}
+      {alerts.length > 0 && (
+        <div className="rounded-lg p-2 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-900 dark:text-red-300 text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          <strong>Suppressed:</strong> this contact is on the suppression list (reason: {alerts[0]?.reason || "—"})
+        </div>
+      )}
+
+      {/* ── action buttons ── */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setCompose({ subject: lastIn ? `Re: ${lastIn.subject?.replace(/^re:\s*/i, "")}` : "Quick follow-up", body: "" })}
+          className="rounded-lg px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs flex items-center gap-1.5">
+          <Send className="w-3 h-3" />Reply now
+        </button>
+        <button
+          onClick={() => setFollowup(true)}
+          className="rounded-lg px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs flex items-center gap-1.5">
+          <Clock className="w-3 h-3" />Queue followup
+        </button>
+        {counts.drafts_pending > 0 && (
+          <button
+            onClick={async () => {
+              try {
+                const r = await postMessage(token, id, { action: "send-due" });
+                alert("Kicked outreach loop.\n" + JSON.stringify(r, null, 2).slice(0, 400));
+                refresh();
+              } catch (e: any) { alert("Kick failed: " + (e?.message || e)); }
+            }}
+            className="rounded-lg px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs flex items-center gap-1.5">
+            <Zap className="w-3 h-3" />Run mayor now
+          </button>
+        )}
+        <button
+          onClick={refresh}
+          className="rounded-lg p-1.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          title="Refresh">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* ── compose form (immediate send) ── */}
+      {compose && (
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <strong className="text-sm">Compose reply</strong>
+              <button onClick={() => setCompose(null)} className="text-xs text-zinc-500 dark:text-zinc-400 hover:underline">cancel</button>
+            </div>
+            <input
+              className="w-full rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-sm"
+              placeholder="Subject"
+              value={compose.subject || ""}
+              onChange={(e) => setCompose({ ...compose, subject: e.target.value })}
+            />
+            <textarea
+              className="w-full rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm"
+              rows={6}
+              placeholder="Type the message you'd like to send…"
+              value={compose.body || ""}
+              onChange={(e) => setCompose({ ...compose, body: e.target.value })}
+            />
+            <div className="flex gap-2">
+              <button onClick={onSendCompose} className="rounded-lg px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs flex items-center gap-1.5">
+                <Send className="w-3 h-3" />Send now
+              </button>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 self-center">Sends immediately via CF Email; reply expected within a few seconds.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── followup queue form ── */}
+      {followup && <FollowupForm leadId={id} token={token} onQueue={onQueueFollowup} onCancel={() => setFollowup(false)} />}
+
+      {/* ── pending drafts ── */}
+      {drafts.length > 0 && (
+        <Card>
+          <CardContent className="p-3">
+            <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-amber-600" /> Pending sequences</h4>
+            <ul className="text-xs space-y-1">
+              {drafts.map((d: any) => (
+                <li key={d.id} className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-1 last:border-0">
+                  <span className="font-mono text-zinc-400 w-6">step {d.step_no}</span>
+                  <StatusBadge status={d.status} />
+                  <span className="truncate flex-1" title={d.subject}>{d.subject}</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 text-[11px]">{d.scheduled_for ? fmtDate(d.scheduled_for) : "—"}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── timeline (THE big view) ── */}
+      <div className="space-y-2">
+        <h4 className="text-sm font-semibold flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> Timeline ({timeline.length} message{timeline.length === 1 ? "" : "s"})</h4>
+        {timeline.length === 0 && (
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 italic p-3 border border-dashed border-zinc-300 dark:border-zinc-700 rounded">
+            No email traffic yet. The mayor hasn't sent anything to this lead, and no reply has come back. Click <em>Run mayor now</em> once outbound is unlocked, or use the buttons above to queue/compose manually.
+          </div>
+        )}
+        {timeline.map((m: any) => {
+          const isOut = m.direction === "outbound";
+          const isOpen = expanded[m.id];
+          return (
+            <div key={m.id} className={`flex ${isOut ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[92%] rounded-xl shadow-sm border
+                ${isOut
+                  ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
+                  : "bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800"}`}>
+                <button
+                  onClick={() => setExpanded({ ...expanded, [m.id]: !isOpen })}
+                  className="w-full text-left p-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[10px] uppercase tracking-wider font-bold ${isOut ? "text-emerald-700 dark:text-emerald-400" : "text-cyan-700 dark:text-cyan-400"}`}>
+                      {isOut ? "→ Sent" : "← Received"}
+                    </span>
+                    <StatusBadge status={m.status} />
+                    {m.step_no && <span className="text-[10px] px-1 rounded bg-zinc-100 dark:bg-zinc-800">step {m.step_no}</span>}
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">{fmtAgo(m.sent_at || m.received_at || m.queued_at || m.created_at)}</span>
+                  </div>
+                  <div className="text-sm font-medium mt-1 truncate" title={m.subject}>{m.subject}</div>
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    {isOut ? `to ${m.to_email}` : `from ${m.from_email}`}
+                    {m.provider_id && <span className="ml-2 font-mono">id {String(m.provider_id).slice(0, 18)}…</span>}
+                  </div>
+                  {!isOpen && m.body_excerpt && (
+                    <div className="text-xs text-zinc-600 dark:text-zinc-300 mt-1.5 line-clamp-2">{m.body_excerpt}</div>
+                  )}
+                </button>
+                {isOpen && (
+                  <div className="px-3 pb-3 space-y-2 border-t border-zinc-200/60 dark:border-zinc-700/60 pt-2">
+                    {m.body_text && (
+                      <pre className="text-xs whitespace-pre-wrap font-sans text-zinc-700 dark:text-zinc-200 bg-white/50 dark:bg-black/20 rounded p-2 max-h-72 overflow-y-auto">{m.body_text}</pre>
+                    )}
+                    {m.body_html && (
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-zinc-500 dark:text-zinc-400">HTML body</summary>
+                        <pre className="text-[10px] whitespace-pre-wrap font-mono text-zinc-600 dark:text-zinc-300 bg-white/50 dark:bg-black/20 rounded p-2 max-h-40 overflow-y-auto">{m.body_html}</pre>
+                      </details>
+                    )}
+                    {m.failure_reason && (
+                      <div className="text-xs text-red-700 dark:text-red-400">
+                        <AlertTriangle className="inline w-3 h-3 mr-1" />{m.failure_reason}
+                      </div>
+                    )}
+                    {m.sent_at && <div className="text-[11px] text-zinc-500 dark:text-zinc-400">sent {fmtDate(m.sent_at)}</div>}
+                    {m.received_at && <div className="text-[11px] text-zinc-500 dark:text-zinc-400">received {fmtDate(m.received_at)}</div>}
+                    {m.delivered_at && <div className="text-[11px] text-emerald-700 dark:text-emerald-400">delivered {fmtDate(m.delivered_at)}</div>}
+                    {/* owner re-classify */}
+                    {isOut === false && (
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <select
+                          defaultValue={m.classification || ""}
+                          onChange={async (e) => {
+                            try {
+                              await postMessage(token, id, { action: "mark-classified", message_id: m.id, classification: e.target.value });
+                              refresh();
+                            } catch (err: any) { alert(String(err?.message || err)); }
+                          }}
+                          className="text-[11px] border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded px-1.5 py-0.5">
+                          <option value="">— classify —</option>
+                          <option value="interested">interested</option>
+                          <option value="objection">objection</option>
+                          <option value="unsubscribe">unsubscribe</option>
+                          <option value="out_of_office">out_of_office</option>
+                          <option value="fyi">fyi</option>
+                        </select>
+                        <button
+                          onClick={() => setCompose({ subject: `Re: ${m.subject?.replace(/^re:\s*/i, "")}`, body: "" })}
+                          className="text-[11px] rounded px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white">Reply</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SummaryPill({ label, value, accent, raw }: { label: string; value: any; accent: string; raw?: boolean }) {
+  const map: Record<string, string> = {
+    emerald: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+    cyan:    "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
+    amber:   "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    violet:  "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
+    zinc:    "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
+  };
+  const cls = map[accent] || map.zinc;
+  return (
+    <div className={`rounded-lg p-2 ${cls}`}>
+      <div className="text-[10px] uppercase tracking-wide opacity-80">{label}</div>
+      <div className={`font-bold ${raw ? "text-sm" : "text-xl"} mt-0.5`}>{value}</div>
+    </div>
+  );
+}
+
+function FollowupForm({ leadId, token, onQueue, onCancel }: { leadId: string; token: string; onQueue: (subj: string, body: string) => void; onCancel: () => void }) {
+  const [subject, setSubject] = useState("Following up");
+  const [body, setBody] = useState("");
+  return (
+    <Card>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <strong className="text-sm">Queue followup</strong>
+          <button onClick={onCancel} className="text-xs text-zinc-500 dark:text-zinc-400 hover:underline">cancel</button>
+        </div>
+        <input
+          className="w-full rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-sm"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Subject"
+        />
+        <textarea
+          rows={5}
+          className="w-full rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Type the followup…"
+        />
+        <button
+          onClick={() => onQueue(subject, body)}
+          className="rounded-lg px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs flex items-center gap-1.5">
+          <Clock className="w-3 h-3" />Add to mayor queue (step 2)
+        </button>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Right-side drawer ──────────────────────────────────────────────────
 function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
   const qc = useQueryClient();
@@ -336,6 +706,7 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
   });
   const opp = q.data?.opportunity || {};
   const [busyPdf, setBusyPdf] = useState(false);
+  const [tab, setTab] = useState<"overview" | "thread" | "history">("overview");
   const refreshDetail = () => qc.invalidateQueries({ queryKey: ["admin-lead-detail"] });
 
   return (
@@ -368,6 +739,27 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
 
           {/* Drawer body — min-h-0 is critical for overflow-y-auto to work inside a flex container */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 md:p-5 bg-white text-zinc-900 dark:text-zinc-100" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
+            {/* ── Drawer-level tabs (Observation system) ── */}
+            <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 -mx-4 md:-mx-5 px-4 md:px-5 -mt-4 md:-mt-5 pt-4 md:pt-5 mb-3 border-b border-zinc-200 dark:border-zinc-700">
+              <nav className="flex gap-1" aria-label="Lead sections">
+                {[
+                  { id: "overview", label: "Overview", icon: Briefcase },
+                  { id: "thread", label: "Email Thread", icon: MailIcon },
+                ].map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setTab(id as any)}
+                    className={`px-3 py-1.5 text-xs font-medium border-b-2 -mb-px flex items-center gap-1.5
+                      ${tab === id
+                        ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
+                        : "border-transparent text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"}`}>
+                    <Icon className="w-3.5 h-3.5" />
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
             {q.isLoading && (
               <div className="space-y-2">
                 {[0,1,2].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}
@@ -377,7 +769,12 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
 
             {opp.id && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                <div className="lg:col-span-2 space-y-3">
+                {tab === "thread" ? (
+                  <div className="lg:col-span-3">
+                    <ProspectThread token={token} id={id} />
+                  </div>
+                ) : (
+                  <div className="lg:col-span-2 space-y-3">
                   <StageMover row={{...opp, kind, id}} token={token} onUpdate={() => { refreshDetail(); onRefresh(); }} />
 
                   {kind === "sam" && opp.how_to_apply?.length > 0 && (
@@ -493,7 +890,8 @@ function LeadDrawer({ token, kind, id, onClose, onAction, onRefresh }: any) {
 
                   {kind === "sam" && <WinLoseQuick row={{id, kind}} token={token} onAction={(msg) => { onAction(msg); }} />}
                   {kind === "prospect" && <OutreachEnqueue row={{id}} token={token} onAction={(msg) => { onAction(msg); }} />}
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
