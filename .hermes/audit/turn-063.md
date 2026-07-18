@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-18
 **Type:** docs-only ship (probe + python helper + negative test + rubric); no src/ change; no live deploy
-**SHA:** <this-commit> on `mehyar-us/mehyar-web` main
+**SHA:** 7b8c421 on `mehyar-us/mehyar-web` main
 **Live bundle:** unchanged `main-D9Djrf2D.js` (678,754 bytes) — verified via probe O at turn-063 start
 
 ## What happened

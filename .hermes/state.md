@@ -11,8 +11,8 @@
 | deploy_target                  | Cloudflare Pages (github-org/mehyar-web) |
 | repo                           | C:/Users/mehya/OneDrive/Documents/GitHub/mehyar-web |
 | live_url_status                | up |
-| deployed_sha                   | <turn-063-sha> (turn-063 docs-only ship; live bundle main-D9Djrf2D.js 678,754 bytes confirmed via probe O at turn-063 start) |
-| last_deploy_sha                | <turn-063-sha> (turn-063 is docs-only; visitor-facing bundle unchanged) |
+| deployed_sha                   | 7b8c421 (turn-063 docs-only ship; live bundle main-D9Djrf2D.js 678,754 bytes confirmed via probe O at turn-063 start; remote HEAD matches local HEAD post-push) |
+| last_deploy_sha                | 7b8c421 (turn-063 is docs-only; visitor-facing bundle unchanged) |
 | deploy_status                  | green (turn-063 docs-only ship on github main; live bundle main-D9Djrf2D.js 678,754 bytes auto-discovered; 9-probe regression clean: G FAIL exit 1 founder-blocked expected, H/J/K/L/M/N/O/Q all PASS; negative-test 5/5 cases PASS) |
 | cf_analytics_token_present     | yes |
 | cf_analytics_7d                | {visits: ?, conversions: ?, top_pages: ?} |
