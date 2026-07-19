@@ -26,6 +26,7 @@ import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Terms from "@/pages/Terms";
 import Sitemap from "@/pages/Sitemap";
+import DataDeletion from "@/pages/DataDeletion";
 import NotFound from "@/pages/not-found";
 import MainLayout from "@/layouts/MainLayout";
 import SeoManager from "@/components/SeoManager";
@@ -173,7 +174,9 @@ function App() {
             <Route path="/terms" component={Terms} />
             <Route path="/terms/" component={Terms} />
             <Route path="/sitemap" component={Sitemap} />
-            <Route path="/sitemap/" component={Sitemap} />
+                        <Route path="/sitemap/" component={Sitemap} />
+                        <Route path="/data-deletion" component={DataDeletion} />
+                        <Route path="/data-deletion/" component={DataDeletion} />
 
             {/* ─── Legacy admin route redirects (both slash forms) ──── */}
             <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects" />

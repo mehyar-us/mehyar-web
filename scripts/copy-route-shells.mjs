@@ -182,11 +182,17 @@ const routeMeta = {
     path: '/terms',
   },
   '/sitemap': {
-    title: 'Sitemap | MehyarSoft LLC',
-    description:
-      'Browse MehyarSoft public pages including services, engagement patterns, blog insights, founder story, contact, privacy policy, and terms.',
-    path: '/sitemap',
-  },
+      title: 'Sitemap | MehyarSoft LLC',
+      description:
+        'Browse MehyarSoft public pages including services, engagement patterns, blog insights, founder story, contact, privacy policy, and terms.',
+      path: '/sitemap',
+    },
+    '/data-deletion': {
+      title: 'Data Deletion | MehyarSoft LLC',
+      description:
+        'Request deletion of your data from any MehyarSoft app (Rizza, AiMech). In-app controls plus a plain-English email fallback.',
+      path: '/data-deletion',
+    },
   '/q': {
     title: 'Quote | MehyarSoft LLC',
     description: 'Hosted MehyarSoft quote / invoice / receipt.',
@@ -306,10 +312,11 @@ const directRoutes = [
   'admin/today',
   'unsubscribe',
   'privacy-policy',
-  'terms',
-  'sitemap',
-  'q',  // hosted quote shell — slug is dynamic, wouter renders on client
-];
+    'terms',
+    'sitemap',
+    'data-deletion',
+    'q',  // hosted quote shell — slug is dynamic, wouter renders on client
+  ];
 
 const adminTitles = {
   'admin/email': 'Email Command Center | MehyarSoft',

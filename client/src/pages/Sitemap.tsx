@@ -15,8 +15,9 @@ const coreRoutes = [
   { label: "Free AI Automation Checklist", href: "/newsletter", description: "Newsletter/signup funnel for the free checklist and practical automation updates." },
   { label: "Contact", href: "/contact", description: "Send a leak — audits, cleanup, automations, and systems consulting." },
   { label: "Privacy Policy", href: "/privacy-policy", description: "How contact requests, analytics, and opt-out handling work." },
-  { label: "Terms", href: "/terms", description: "Website terms and engagement boundaries." },
-];
+    { label: "Terms", href: "/terms", description: "Website terms and engagement boundaries." },
+    { label: "Data Deletion", href: "/data-deletion", description: "Request deletion of your data from any MehyarSoft app (Rizza, AiMech)." },
+  ];
 
 const detailRoutes = [
   ...projects.map((project) => ({ label: project.title, href: `/portfolio/${project.id}`, description: project.description })),

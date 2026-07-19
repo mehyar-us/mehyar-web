@@ -72,6 +72,7 @@ const Footer = () => {
           <div className="mt-4 md:mt-0 flex flex-wrap gap-x-6 gap-y-2 justify-center">
             <Link href="/privacy-policy" className="text-neutral-400 hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="text-neutral-400 hover:text-white transition-colors">Terms of Service</Link>
+            <Link href="/data-deletion" className="text-neutral-400 hover:text-white transition-colors">Data Deletion</Link>
             <Link href="/unsubscribe" className="text-neutral-400 hover:text-white transition-colors">Unsubscribe</Link>
             <Link href="/sitemap" className="text-neutral-400 hover:text-white transition-colors">Sitemap</Link>
           </div>

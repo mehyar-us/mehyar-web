@@ -21,6 +21,7 @@
   <url><loc>https://mehyar.us/apps</loc></url>
   <url><loc>https://mehyar.us/contact</loc></url>
   <url><loc>https://mehyar.us/privacy-policy</loc></url>
-  <url><loc>https://mehyar.us/terms</loc></url>
-  <url><loc>https://mehyar.us/sitemap</loc></url>
+    <url><loc>https://mehyar.us/terms</loc></url>
+    <url><loc>https://mehyar.us/data-deletion</loc></url>
+    <url><loc>https://mehyar.us/sitemap</loc></url>
 </urlset>

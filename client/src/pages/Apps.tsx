@@ -282,6 +282,21 @@ const Apps = () => {
       </section>
 
       <CTASection />
+
+      <section className="bg-background px-4 pb-16 md:pb-20">
+        <div className="mx-auto max-w-5xl rounded-2xl border border-border bg-card/50 p-6 text-sm leading-6 text-muted-foreground md:p-8">
+          <p className="font-semibold text-foreground">Your data, your call</p>
+          <p className="mt-2">
+            Every MehyarSoft-built app exposes an in-app account deletion path plus an email
+            fallback. We action deletion requests within 14 days and confirm in writing.
+            {" "}
+            <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
+              See the data-deletion policy
+            </Link>{" "}
+            for the full process, app-by-app details (Rizza, AiMech), and the request form.
+          </p>
+        </div>
+      </section>
     </>
   );
 };
