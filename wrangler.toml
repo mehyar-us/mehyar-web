@@ -29,6 +29,25 @@ MAYOR_DIGEST_REPLY_TO = "info@mehyar.us"
 # Outreach send-path sender. Default if unset: team@mehyar.us (set in
 # mayorEngine.js; this var lets you override without redeploying).
 MAYOR_FROM_EMAIL = "team@mehyar.us"
+# Reply-To for cold outreach. Defaults to MAYOR_FROM_EMAIL at runtime
+# if unset. Distinct value lets "Reply" go to a different inbox.
+MAYOR_REPLY_TO = "info@mehyar.us"
+# CAN-SPAM physical address (required on every cold send).
+MAYOR_PHYSICAL_ADDRESS = "MehyarSoft LLC, 228 Park Ave S #92842, New York, NY 10003"
+# Google Places API key — enables /api/mayor/discover to pull real
+# Brooklyn businesses. Free tier; get at https://console.cloud.google.com
+# (Places API enabled). Without it, /discover returns ok:true with
+# cap_remaining=100 and zero new rows (healhty env = key present).
+GOOGLE_PLACES_API_KEY = ""
+# Inbound webhook auth — shared secret between CF Email Routing → mehyar.us
+# and our POST /api/mayor/inbound/email endpoint. CF Email Routing
+# forwards raw MIME; the endpoint authenticates with this token + classifies
+# + inserts into prospect_replies. 32+ chars recommended.
+INBOUND_EMAIL_TOKEN = "inbound-7a8c3e2f1d4b6e5a8c2f9d0e3b7a1c4f"
+# Auto-reply enabled flag. When '1', the /inbound/email endpoint sends
+# an auto-reply to non-unsubscribe, non-bounce replies (interest/objection/
+# out_of_office/warm). '0' = never auto-reply (manual mode).
+INBOUND_AUTO_REPLY = "1"
 
 # CF Email Service auth — X-Auth-Email + X-Auth-Key header pair (Global Key).
 # CF Pages env-var allowlist only persists names declared here.

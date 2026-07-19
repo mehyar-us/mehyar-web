@@ -20,7 +20,7 @@ import {
   CheckCircle2, Clock, ShieldAlert, RefreshCw, Mail, DollarSign,
   FileText, Briefcase, ExternalLink, Filter, ChevronDown, ChevronRight,
   Eye, Inbox, TrendingUp, Package, Globe, Phone, MapPin,
-  Hash, Tag, Layers, BarChart3, Users, Target,
+  Hash, Tag, Layers, BarChart3, Users, Target, FileSignature, Plus,
 } from "lucide-react";
 import {
   AdminNav, useAdminSession, TOKEN_KEY, MOBILE_NAV_HEIGHT, EmptyState,
@@ -812,19 +812,165 @@ function PipelineTab({ discovered, loading }: { discovered: any; loading: boolea
   );
 }
 
+// ── TAB: Contracts (signed-engagement pipeline) ──────────────────────────────
+function ContractsTab({ contracts, loading, onRefresh }: { contracts: any; loading: boolean; onRefresh: () => void }) {
+  const totals = contracts?.totals || {};
+  const items = contracts?.contracts || [];
+  return (
+    <>
+      {/* KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <SummaryCard label="Pipeline value" value={`$${((totals.pipeline_value_usd || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} color="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" sub={`${totals.contracts_total || 0} contracts`} />
+        <SummaryCard label="Won" value={`$${((totals.won_value_usd || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} color="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" sub={`${totals.paid || 0} paid`} />
+        <SummaryCard label="Proposed" value={totals.proposed || 0} color="bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200" sub="awaiting prospect" />
+        <SummaryCard label="In flight" value={`${(totals.sent || 0) + (totals.viewed || 0) + (totals.accepted || 0) + (totals.contracted || 0) + (totals.invoiced || 0)}`} color="bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300" sub="sent→invoiced" />
+        <SummaryCard label="Lost" value={totals.lost || 0} color="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" sub="cancelled+lost" />
+      </div>
+
+      {/* Contracts table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
+            <h2 className="font-semibold flex items-center gap-2">
+              <FileSignature className="w-4 h-4" /> Contracts ({items.length})
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+              Each prospect → one or more contracts, tracked from proposed → sent → viewed → accepted → contracted → invoiced → paid → delivered.
+              Pipeline value = sum of price_committed (or price_high if not set) across all open contracts.
+              Won value = sum across paid + delivered only.
+            </p>
+          </div>
+          {loading && <div className="p-4 text-sm text-zinc-500">Loading…</div>}
+          {!loading && items.length === 0 && (
+            <div className="p-6 text-center text-sm text-zinc-500">No contracts yet. Create one from a prospect detail page or click <strong>Create contract</strong> in the table below.</div>
+          )}
+          {items.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
+                  <tr>
+                    <th className="text-left p-2">Business</th>
+                    <th className="text-left p-2">Service</th>
+                    <th className="text-left p-2">Status</th>
+                    <th className="text-left p-2">Price</th>
+                    <th className="text-left p-2">Lifecycle</th>
+                    <th className="text-left p-2">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((c: any) => {
+                    const priceCommitted = c.price_committed || c.price_high || 0;
+                    const lifecycle = [
+                      c.proposed_at && "📝 proposed",
+                      c.sent_at && "✉ sent",
+                      c.viewed_at && "👁 viewed",
+                      c.accepted_at && "✓ accepted",
+                      c.contracted_at && "📜 contracted",
+                      c.invoiced_at && "🧾 invoiced",
+                      c.paid_at && "💰 paid",
+                      c.delivered_at && "📦 delivered",
+                    ].filter(Boolean).join(" → ");
+                    return (
+                      <tr key={c.id} className="border-t border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                        <td className="p-2">
+                          <div className="font-medium">{c.business_name || c.prospect_id}</div>
+                          <div className="text-[11px] text-zinc-400 truncate max-w-[180px]">{c.prospect_email || ''}</div>
+                        </td>
+                        <td className="p-2 text-xs">
+                          <div className="font-medium">{c.service_title}</div>
+                          {c.service_id && <div className="text-[10px] text-zinc-400">{c.service_id}</div>}
+                        </td>
+                        <td className="p-2 text-xs"><SendStatusBadge status={c.status} /></td>
+                        <td className="p-2 text-xs">
+                          <div className="font-semibold">${(priceCommitted / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                          {c.price_low && c.price_high && c.price_low !== c.price_high && (
+                            <div className="text-[10px] text-zinc-400">${(c.price_low/100).toLocaleString()} – ${(c.price_high/100).toLocaleString()}</div>
+                          )}
+                          <div className="text-[10px] text-zinc-400">{c.price_model}</div>
+                        </td>
+                        <td className="p-2 text-[10px] text-zinc-500 max-w-[300px]">{lifecycle || "—"}</td>
+                        <td className="p-2 text-[11px] text-zinc-500 whitespace-nowrap">{fmtAgo(c.proposed_at || c.created_at)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
 // ── TAB: Prospect Detail ────────────────────────────────────────────────────
 function ProspectDetail({ id, onClose, onProspectUpdate }: { id: string; onClose: () => void; onProspectUpdate?: () => void }) {
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [actionMsg, setActionMsg] = useState<{ kind: "ok" | "err" | "info"; text: string } | null>(null);
-  const [actionBusy, setActionBusy] = useState<string | null>(null);
+    const [contracts, setContracts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [actionMsg, setActionMsg] = useState<{ kind: "ok" | "err" | "info"; text: string } | null>(null);
+    const [actionBusy, setActionBusy] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const r = await api(`/api/mayor/prospect/${id}`);
-    setData(r.data);
-    setLoading(false);
-  }, [id]);
+    const loadData = useCallback(async () => {
+      setLoading(true);
+      const [r, c] = await Promise.all([
+        api(`/api/mayor/prospect/${id}`),
+        api(`/api/mayor/contracts?prospect_id=${id}`),
+      ]);
+      setData(r.data);
+      setContracts(c.data?.contracts || []);
+      setLoading(false);
+    }, [id]);
+
+    const createContract = useCallback(async (svc: any) => {
+      setActionBusy("create-contract");
+      setActionMsg(null);
+      try {
+        const r = await api(`/api/mayor/contracts`, {
+          method: "POST",
+          body: JSON.stringify({
+            prospect_id: id,
+            service_id: svc.id,
+            service_title: svc.title,
+            scope_text: svc.hint,
+            price_model: svc.id === "crm-support-retainer" ? "monthly" : (svc.id === "systems-integration" ? "hourly" : "one_time"),
+            price_low: svc.low,
+            price_high: svc.high,
+            status: "proposed",
+            notes: `Generated from matchServicesToProspect on ${new Date().toISOString()}`,
+          }),
+        });
+        if (r.ok) {
+          setActionMsg({ kind: "ok", text: `Contract proposed · ${r.data?.contract_id}` });
+          await loadData();
+          onProspectUpdate?.();
+        } else {
+          setActionMsg({ kind: "err", text: `create failed: ${r.data?.error || r.status}` });
+        }
+      } finally {
+        setActionBusy(null);
+      }
+    }, [id, loadData, onProspectUpdate]);
+
+    const transitionContract = useCallback(async (contractId: string, action: string) => {
+      setActionBusy(`contract-${action}`);
+      setActionMsg(null);
+      try {
+        const r = await api(`/api/mayor/contracts/${contractId}`, {
+          method: "POST",
+          body: JSON.stringify({ action }),
+        });
+        if (r.ok) {
+          setActionMsg({ kind: "ok", text: `Contract ${action} ✓ · now ${r.data?.new_status}` });
+          await loadData();
+          onProspectUpdate?.();
+        } else {
+          setActionMsg({ kind: "err", text: `${action} failed: ${r.data?.error || r.status}` });
+        }
+      } finally {
+        setActionBusy(null);
+      }
+    }, [loadData, onProspectUpdate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1072,30 +1218,114 @@ function ProspectDetail({ id, onClose, onProspectUpdate }: { id: string; onClose
         <Card>
           <CardContent className="p-4">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <DollarSign className="w-4 h-4" /> What we could sell them
-            </h3>
-            <ul className="space-y-2">
-              {matches.map((m, i) => (
-                <li key={m.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="font-medium text-sm">{m.title}</div>
-                      <div className="text-[11px] text-zinc-500">fit {m.fit}/100 · {m.reason}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-[11px] text-zinc-500">${m.low.toLocaleString()} – ${m.high.toLocaleString()}</div>
-                    </div>
+                          <DollarSign className="w-4 h-4" /> What we could sell them
+                        </h3>
+                        <ul className="space-y-2">
+                          {matches.map((m, i) => (
+                            <li key={m.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="font-medium text-sm">{m.title}</div>
+                                  <div className="text-[11px] text-zinc-500">fit {m.fit}/100 · {m.reason}</div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <div className="text-[11px] text-zinc-500">${m.low.toLocaleString()} – ${m.high.toLocaleString()}</div>
+                                  <button onClick={() => createContract(m)} disabled={actionBusy === "create-contract"}
+                                    className="rounded-md px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-medium flex items-center gap-1 disabled:opacity-50">
+                                    <Plus className="w-3 h-3" /> Propose contract
+                                  </button>
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="mt-3 text-[11px] text-zinc-500">
+                          Match by vertical + leak signals. Numbers reflect the public service
+                          catalog from <a className="text-brand-700 underline" href="/services">/services</a>.
+                          Click <strong>Propose contract</strong> on any match to create a `prospect_contracts` row ready for tracking.
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-3 text-[11px] text-zinc-500">
-              Match by vertical + leak signals. Numbers reflect the public service
-              catalog from <a className="text-brand-700 underline" href="/services">/services</a>.
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+
+                  {/* Contracts */}
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2">
+                        <FileSignature className="w-4 h-4" /> Contracts ({contracts.length})
+                      </h3>
+                      {contracts.length === 0 ? (
+                        <div className="text-sm text-zinc-500">
+                          No contracts yet. Use <strong>Propose contract</strong> on a matched service above, or the <strong>Contracts</strong> tab to create one.
+                        </div>
+                      ) : (
+                        <ul className="space-y-3">
+                          {contracts.map((c: any) => {
+                            const price = c.price_committed || c.price_high || 0;
+                            const lifecycle = [
+                              c.proposed_at && "📝 proposed",
+                              c.sent_at && "✉ sent",
+                              c.viewed_at && "👁 viewed",
+                              c.accepted_at && "✓ accepted",
+                              c.contracted_at && "📜 contracted",
+                              c.invoiced_at && "🧾 invoiced",
+                              c.paid_at && "💰 paid",
+                              c.delivered_at && "📦 delivered",
+                            ].filter(Boolean);
+                            const nextAction = (() => {
+                              if (c.status === "proposed") return "send";
+                              if (c.status === "sent") return "view";
+                              if (c.status === "viewed") return "accept";
+                              if (c.status === "accepted") return "contract";
+                              if (c.status === "contracted") return "invoice";
+                              if (c.status === "invoiced") return "pay";
+                              if (c.status === "paid_full") return "deliver";
+                              return null;
+                            })();
+                            return (
+                              <li key={c.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                                <div className="flex items-start justify-between gap-2 flex-wrap">
+                                  <div className="min-w-0">
+                                    <div className="font-medium">{c.service_title}</div>
+                                    {c.scope_text && <div className="text-[11px] text-zinc-500 mt-0.5">{c.scope_text}</div>}
+                                    <div className="text-[11px] text-zinc-500 mt-1">
+                                      <strong>${(price/100).toLocaleString()}</strong>
+                                      {c.price_low && c.price_high && c.price_low !== c.price_high && ` (range $${(c.price_low/100).toLocaleString()}-$${((c.price_high || 0)/100).toLocaleString()})`}
+                                      {' · '}{c.price_model}
+                                    </div>
+                                  </div>
+                                  <SendStatusBadge status={c.status} />
+                                </div>
+                                {lifecycle.length > 0 && (
+                                  <div className="mt-2 text-[10px] text-zinc-500">{lifecycle.join(" → ")}</div>
+                                )}
+                                {nextAction && (
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    <button onClick={() => transitionContract(c.id, nextAction)} disabled={!!actionBusy}
+                                      className="rounded-md px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-medium disabled:opacity-50">
+                                      {actionBusy === `contract-${nextAction}` ? `${nextAction}…` : `→ ${nextAction}`}
+                                    </button>
+                                    {(c.status === "proposed" || c.status === "sent") && (
+                                      <button onClick={() => transitionContract(c.id, "lost")} disabled={!!actionBusy}
+                                        className="rounded-md px-2 py-1 bg-zinc-600 hover:bg-zinc-700 text-white text-[10px] font-medium disabled:opacity-50">
+                                        → lost
+                                      </button>
+                                    )}
+                                    {(c.status === "invoiced" || c.status === "contracted") && (
+                                      <button onClick={() => transitionContract(c.id, "cancel")} disabled={!!actionBusy}
+                                        className="rounded-md px-2 py-1 bg-zinc-600 hover:bg-zinc-700 text-white text-[10px] font-medium disabled:opacity-50">
+                                        → cancel
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </CardContent>
+                  </Card>
 
       {/* Drafts */}
       <Card>
@@ -1257,6 +1487,7 @@ export default function AdminMayor() {
     const [sends, setSends] = useState<any>(null);
     const [discovered, setDiscovered] = useState<any>(null);
     const [health, setHealth] = useState<any>(null);
+  const [contracts, setContracts] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [pauseOpen, setPauseOpen] = useState(false);
@@ -1265,22 +1496,24 @@ export default function AdminMayor() {
 
     const refresh = useCallback(async (): Promise<void> => {
       try {
-        const [s, e, r, sum, sn, d, h] = await Promise.all([
-          api("/api/mayor/status"),
-          api("/api/mayor/events?limit=50"),
-          api("/api/mayor/replies?needs_action=1&limit=20"),
-          api(`/api/mayor/outbound-summary?days_back=30`),
-          api(`/api/mayor/sends?limit=30&days_back=30`),
-          api(`/api/mayor/discovered?limit=100`),
-          api(`/api/mayor/health`),
-        ]);
-        if (s.ok) setStatus(s.data);
-        if (e.ok) setEvents(e.data.events || []);
-        if (r.ok) setReplies(r.data.replies || []);
-        if (sum.ok) setOutboundSummary(sum.data);
-        if (sn.ok) setSends(sn.data);
-        if (d.ok) setDiscovered(d.data);
-        if (h.ok) setHealth(h.data);
+        const [s, e, r, sum, sn, d, h, c] = await Promise.all([
+                api("/api/mayor/status"),
+                api("/api/mayor/events?limit=50"),
+                api("/api/mayor/replies?needs_action=1&limit=20"),
+                api(`/api/mayor/outbound-summary?days_back=30`),
+                api(`/api/mayor/sends?limit=30&days_back=30`),
+                api(`/api/mayor/discovered?limit=100`),
+                api(`/api/mayor/health`),
+                api(`/api/mayor/contracts?limit=100`),
+              ]);
+              if (s.ok) setStatus(s.data);
+              if (e.ok) setEvents(e.data.events || []);
+              if (r.ok) setReplies(r.data.replies || []);
+              if (sum.ok) setOutboundSummary(sum.data);
+              if (sn.ok) setSends(sn.data);
+              if (d.ok) setDiscovered(d.data);
+              if (h.ok) setHealth(h.data);
+              if (c.ok) setContracts(c.data);
         setError(null);
       } catch (e) {
         setError(String((e as any)?.message || e));
@@ -1366,7 +1599,8 @@ export default function AdminMayor() {
             { id: "outreach",   label: "Outreach",   icon: Send },
             { id: "replies",    label: "Replies",    icon: Inbox },
             { id: "pipeline",   label: "Pipeline",   icon: DollarSign },
-            { id: "prospect",   label: "Prospect",   icon: Eye, disabled: !selectedProspect },
+                        { id: "contracts",  label: "Contracts",  icon: FileSignature },
+                        { id: "prospect",   label: "Prospect",   icon: Eye, disabled: !selectedProspect },
           ] as const).map(t => {
             const Icon = t.icon;
             const active = tab === t.id;
@@ -1395,10 +1629,11 @@ export default function AdminMayor() {
 
         {/* ── Tab content ── */}
         {tab === "live"       && <LiveTab status={status} events={events} replies={replies} outboundSummary={outboundSummary} sends={sends} health={health} loading={loading} error={error} onRunDiscovery={runDiscoveryNow} busy={busy} />}
-        {tab === "discovered" && <DiscoveredTab data={discovered} loading={loading} onSelect={(id) => { setSelectedProspect(id); setTab("prospect"); }} />}
-        {tab === "outreach"   && <OutreachTab sends={sends} loading={loading} />}
-        {tab === "replies"    && <RepliesTab replies={replies} loading={loading} />}
-        {tab === "pipeline"   && <PipelineTab discovered={discovered} loading={loading} />}
+                {tab === "discovered" && <DiscoveredTab data={discovered} loading={loading} onSelect={(id) => { setSelectedProspect(id); setTab("prospect"); }} />}
+                {tab === "outreach"   && <OutreachTab sends={sends} loading={loading} />}
+                {tab === "replies"    && <RepliesTab replies={replies} loading={loading} />}
+                {tab === "pipeline"   && <PipelineTab discovered={discovered} loading={loading} />}
+                {tab === "contracts"  && <ContractsTab contracts={contracts} loading={loading} onRefresh={refresh} />}
         {tab === "prospect"   && (
                   selectedProspect
                     ? <ProspectDetail id={selectedProspect} onClose={() => { setSelectedProspect(null); setTab("discovered"); }} onProspectUpdate={refresh} />
