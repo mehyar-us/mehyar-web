@@ -1,0 +1,44 @@
+name = "mehyar-cron-orchestrator"
+main = "src/index.js"
+compatibility_date = "2026-05-11"
+
+# ── CF-native cron triggers ──────────────────────────────────────────────
+# This is the ONLY execution path for the Mayor engine in production (Path-B
+# "nothing local" requirement). No Hermes cron, no GitHub Actions, no local
+# machine involvement.
+#
+# Cadence: 0 13 * * * — 8 AM ET (winter). During EDT the wall-clock shifts
+# to 9 AM ET; cron runs at 13:00 UTC regardless of DST, so the local hour
+# naturally tracks the user's timezone without explicit DST handling. If
+# the user wants strict 8 AM ET in summer, add a second trigger with
+# `crons = ["0 12 * * *"]` instead.
+#
+# Add additional triggers as comma-separated strings:
+#   crons = ["0 13 * * *", "0 18 * * 1"]   # daily 13:00 UTC + Mondays 18:00 UTC
+#
+# If you ever need to add a new trigger:
+#   1. Add the cron expression below
+#   2. `wrangler deploy` (or `scripts/deploy_cron_worker.sh`)
+#   3. Verify via `wrangler tail`
+#
+# To STOP the cron entirely: remove the [[triggers]] block and redeploy.
+[[triggers]]
+crons = ["0 13 * * *"]
+
+# ── Secrets (set via `wrangler secret put` or in CF Dashboard) ─────────────
+# GOV_INGEST_TOKEN: 40-char bearer token. MUST match the value in the Pages
+# project's env_vars (declared in the Pages wrangler.toml [vars] as
+# GOV_INGEST_TOKEN). Set via:
+#   wrangler secret put GOV_INGEST_TOKEN
+# Value source-of-truth: ~/.hermes/.env GOV_INGEST_TOKEN (40-char hex).
+#
+# PAGES_ORIGIN: base URL of the Pages project. Defaults to mehyar.us. Override
+# for staging/preview runs:
+#   wrangler secret put PAGES_ORIGIN  # https://<preview>.mehyar-web.pages.dev
+
+[vars]
+PAGES_ORIGIN = "https://mehyar.us"
+# GOV_INGEST_TOKEN is declared here as plain_text to satisfy the
+# wrangler.toml [vars] allowlist gate. It is also present in the Pages
+# project's [vars]. If you rotate it, update BOTH places.
+GOV_INGEST_TOKEN = "c429c5989eba6d555ee9a29a2911584fea6de3c4"

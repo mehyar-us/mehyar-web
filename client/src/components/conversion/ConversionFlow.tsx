@@ -37,6 +37,10 @@ type ConversionFlowProps = {
   featureFlags?: {
     allowHiddenPaymentTest?: boolean;
     compact?: boolean;
+    // compactTopics: hide the topics-checkboxes + frequency dropdown for
+    // newsletter_signup mode. Used by the ChecklistPopup so the modal stays
+    // short and scannable — the user just gives an email and gets the checklist.
+    compactTopics?: boolean;
   };
   adminContext?: {
     operator?: string;
@@ -454,6 +458,7 @@ export function ConversionFlow({
   const serviceOption = serviceOptions.find((option) => option.value === service) ?? serviceOptions[serviceOptions.length - 1];
   const notSureSelected = Boolean(serviceOption.notSure);
   const compact = Boolean(featureFlags?.compact);
+  const compactTopics = Boolean(featureFlags?.compactTopics);
   const sourceValue = source || urlDefaults.source;
   const campaignValue = campaign || urlDefaults.campaign;
 
@@ -709,7 +714,7 @@ export function ConversionFlow({
           </div>
         )}
 
-        {isNewsletter ? (
+        {isNewsletter && !compactTopics ? (
           <div className={cn("space-y-4 rounded-2xl border p-4", isFooter ? "border-white/15 bg-black/15" : "border-border bg-white dark:bg-white/[0.04]")}>
             <div className="grid gap-3 sm:grid-cols-2">
               {topicOptions.map((topic) => (
@@ -896,50 +901,23 @@ export function ConversionFlow({
             {status === "submitting" ? <Loader2 size={16} className="mt-0.5 flex-shrink-0 animate-spin" aria-hidden="true" /> : null}
             {status === "error" ? <AlertCircle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" /> : null}
             <div>
-              <p className="font-semibold">{status === "success" ? copy.success : status === "error" ? "The request did not send" : status === "submitting" ? "Sending securely" : turnstileIssue ? "The security check needs another try" : turnstileEnabled && !turnstileToken ? "Complete the security check to submit" : "Ready when the required fields are complete"}</p>
+              <p className="font-semibold">{status === "success" ? copy.success : status === "error" ? "The request did not send" : status === "submitting" ? "Sending…" : "Ready to send"}</p>
               <p className="mt-1 leading-6">
-                {status === "idle" ? (turnstileIssue ? "Cloudflare verification did not complete. Refresh the page or try the checkbox again, then submit." : turnstileEnabled && !turnstileToken ? "Cloudflare verification is ready. Finish the checkbox above, then submit." : "Cloudflare verification, consent, source/campaign metadata, and safe routing are handled in this shared conversion component.") : status === "success" ? "No internal IDs, secrets, or raw backend errors are shown." : status === "error" ? "Please refresh and try again, or email contact@mehyar.us without sensitive data." : "Hold tight — sending."}
+                {status === "success"
+                  ? "Sent. You'll get one practical next step by email."
+                  : status === "error"
+                  ? "Try again, or email contact@mehyar.us."
+                  : status === "submitting"
+                  ? "Hold tight."
+                  : "Fill the required fields above to send."}
               </p>
-              {status === "success" && isNewsletter ? (
-                <ul className="mt-4 space-y-2 text-sm leading-6">
-                  <li className="font-semibold">Here is the checklist now — no waiting on an email:</li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 size={14} className="mt-1 flex-shrink-0" aria-hidden="true" />
-                    <span>Find where visitors hesitate before contacting you.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 size={14} className="mt-1 flex-shrink-0" aria-hidden="true" />
-                    <span>Check whether missed calls and emails become tracked follow-up.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 size={14} className="mt-1 flex-shrink-0" aria-hidden="true" />
-                    <span>Spot manual copy-paste work that an AI or system workflow can remove.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 size={14} className="mt-1 flex-shrink-0" aria-hidden="true" />
-                    <span>Separate safe automation ideas from risky customer-data shortcuts.</span>
-                  </li>
-                </ul>
-              ) : null}
-              {status === "success" && isNewsletter ? (
-                <a href="/micro-offer#intake&utm_campaign=newsletter_thank_you" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "mt-4 rounded-full")}>Request the $330 audit</a>
-              ) : null}
             </div>
           </div>
         </div>
 
-        {isNewsletter && !showDetails ? (
-          <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => setShowDetails(true)}>
-            Add optional topics and frequency
-          </Button>
-        ) : null}
-
-        <Button type="submit" disabled={!canSubmit} className="w-full rounded-xl bg-action px-5 py-5 text-sm font-semibold text-white shadow-lg shadow-brand-900/20 transition hover:bg-action-strong disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-950">
-          {status === "submitting" ? "Sending securely..." : copy.submit}
+        <Button type="submit" disabled={!canSubmit} size="lg" className="w-full rounded-2xl bg-action px-6 py-6 text-base font-semibold text-white shadow-lg shadow-brand-900/20 transition hover:bg-action-strong disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-950">
+          {status === "submitting" ? "Sending…" : copy.submit}
         </Button>
-        <p className={cn("text-xs leading-5", isFooter ? "text-neutral-400" : "text-muted-foreground")}>
-          Protected by Cloudflare Turnstile where applicable. Never submit passwords, API keys, PHI, payment data, or confidential customer lists.
-        </p>
       </form>
     </section>
   );

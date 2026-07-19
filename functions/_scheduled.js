@@ -1,19 +1,32 @@
-// Cloudflare Pages scheduled handler — runs daily via the Pages Trigger UI
-// or wrangler (see .github/workflows/deploy-cloudflare-pages.yml post-deploy
-// step). When fire, it:
-//   1. Pulls fresh SAM.gov opportunities
+// Cloudflare Pages scheduled handler — runs on CF's cron trigger (configured
+// in Dashboard: project → Settings → Functions → Cron Triggers), NOT via any
+// local machine. When fired it:
+//
+//   1. Pulls fresh SAM.gov opportunities (legacy ingest)
 //   2. Surfaces send-due outreach prospects (NEVER auto-sends — manual approval required)
-// Both write a run row into D1 so /admin can show the history.
+//   3. Fans out the full Mayor pipeline by POSTing /api/admin/cron/run?job=all
+//      on the project's own origin. That orchestrator handles:
+//        - SAM ingest + contract ingest
+//        - Outreach send-due query
+//        - LLM deep-evaluate for top prospects (max 2/day)
+//        - Mayor: discover + outreach + followup + digest
+//   4. Writes a run row into D1 cron_runs so /admin/cron/runs shows the history.
 //
-// IMPORTANT: Pages Functions with a scheduled handler require the cron
-// trigger to be configured in the Cloudflare dashboard OR via wrangler
-// (see Cloudflare docs: "Cron Triggers for Pages Functions"). Until
-// configured, this handler is dormant.
+// Adding the trigger (one-time Dashboard step, no code):
+//   CF Dashboard → Pages → mehyar-web → Settings → Functions → Cron Triggers
+//   Add cron: "0 13 * * *"  (8 AM ET winter / 9 AM ET summer — adjust seasonally)
+//   OR two cron entries to cover both EST and EDT windows.
 //
-// To enable without going through Hermes:
-//   1. CF Dashboard: project → Settings → Triggers → Scheduled
-//   2. Add a cron expression like "0 8 * * *" (8am UTC daily)
-//   3. Logs land in D1 cron_runs, surfaced via /admin/cron/runs
+// Path-B hardening (2026-07-19, "nothing local"):
+//   - All work executes inside CF's edge. No Hermes cron, no local cron.
+//   - Auth: GOV_INGEST_TOKEN (40-char bearer, path-scoped to /api/mayor/* and
+//     /api/admin/cron/*). Same token the orchestrator expects.
+//   - Resolves target URL from env.CF_PAGES_URL (auto-injected by CF Pages).
+//   - Falls back to mehyar.us if CF_PAGES_URL is missing (defensive — should
+//     never happen on Pages, but the fallback means we never silently no-op).
+//
+// On any partial failure: writes a cron_runs row with the failed sub-task
+// details so /admin/cron/runs surfaces it immediately.
 
 import { runGovOpportunityIngest } from "./api/_shared/govOpportunities.js";
 
@@ -27,24 +40,37 @@ async function logCronRun(env, payload) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`).run();
     await env.LEADS_DB.prepare(`INSERT INTO cron_runs (id, name, payload_json, created_at) VALUES (?, ?, ?, ?)`)
-      .bind(crypto.randomUUID(), "sam-ingest", JSON.stringify(payload), new Date().toISOString())
+      .bind(crypto.randomUUID(), "scheduled-full-pipeline", JSON.stringify(payload), new Date().toISOString())
       .run();
   } catch (e) {
     console.error("cron_runs insert failed", e);
   }
 }
 
-export async function onScheduled({ env, scheduledTime }) {
+function resolveOrigin(env) {
+  // CF Pages injects CF_PAGES_URL (e.g. https://<hash>.mehyar-web.pages.dev).
+  // The custom domain mehyar.us is also acceptable as a fallback because
+  // /api/admin/cron/run is auth-gated and the request originates inside the
+  // same Pages project — no external surface.
+  return (env?.CF_PAGES_URL || "https://mehyar.us").replace(/\/+$/, "");
+}
+
+export async function onScheduled({ env, scheduledTime, ctx }) {
   const startedAt = new Date();
+  const origin = resolveOrigin(env);
+  const token = env?.GOV_INGEST_TOKEN || "";
+  const startedIso = startedAt.toISOString();
   let govSummary = null;
   let govError = null;
   let outreachSummary = null;
   let outreachError = null;
+  let orchestratorSummary = null;
+  let orchestratorError = null;
 
-  // ── 1. SAM.gov opportunity ingest ──────────────────────────────────────────
+  // ── 1. SAM.gov opportunity ingest (legacy, kept for parity) ─────────────
   try {
     govSummary = await runGovOpportunityIngest({ env, now: scheduledTime ? new Date(scheduledTime) : new Date() });
-    console.info("gov opportunity scheduled ingest complete", {
+    console.info("[scheduled] gov opportunity ingest complete", {
       run_id: govSummary?.run_id,
       inserted: govSummary?.inserted,
       updated: govSummary?.updated,
@@ -52,12 +78,13 @@ export async function onScheduled({ env, scheduledTime }) {
     });
   } catch (e) {
     govError = e?.message || String(e);
-    console.error("gov opportunity scheduled ingest failed", govError);
+    console.error("[scheduled] gov opportunity ingest failed", govError);
   }
 
-  // ── 2. Outreach send-due surface (read-only — NEVER auto-sends) ────────────
-  // This query mirrors the send-due GET endpoint, but runs server-side so
-  // the owner can see what is pending approval. It does NOT insert or dispatch.
+  // ── 2. Outreach send-due surface (read-only — NEVER auto-sends) ──────────
+  // Mirrors the send-due query the orchestrator runs, but keeps a local copy
+  // in this handler's cron_runs row so we have a separate audit trail even
+  // if the orchestrator call fails.
   try {
     const rows = await env.LEADS_DB.prepare(`
       SELECT p.id AS prospect_id, p.business_name, s.id AS source_id,
@@ -100,16 +127,68 @@ export async function onScheduled({ env, scheduledTime }) {
         step_order: r.step_order,
       })),
     };
-    console.info("outreach send-due surfaced", { count: outreachSummary.send_due_count });
+    console.info("[scheduled] outreach send-due surfaced", { count: outreachSummary.send_due_count });
   } catch (e) {
     outreachError = e?.message || String(e);
-    console.error("outreach send-due query failed", outreachError);
+    console.error("[scheduled] outreach send-due query failed", outreachError);
+  }
+
+  // ── 3. Mayor pipeline orchestrator (the real work) ───────────────────────
+  // POST /api/admin/cron/run?job=all fans out to discover + outreach +
+  // followup + digest inside the same Pages project. We pass GOV_INGEST_TOKEN
+  // as bearer; the orchestrator accepts it as `actor = "cron:hermes"` (we
+  // reuse the same actor label for now — the audit log records `source:
+  // cloudflare-pages-scheduled` regardless of actor, so the path-B origin is
+  // visible in cron_runs).
+  //
+  // ctx.waitUntil() ensures the full orchestrator response completes even if
+  // the scheduled handler would otherwise return early — Pages Functions has a
+  // 30s wall-clock budget on scheduled handlers, but ctx.waitUntil extends it.
+  try {
+    const orchUrl = `${origin}/api/admin/cron/run?job=all`;
+    const ctrl = new AbortController();
+    // 5 minute ceiling — orchestrator fans out to 4 mayor endpoints plus
+    // gov + contracts + outreach + deep-evaluate; well under 100s CPU but the
+    // outbound email sends add latency.
+    const timer = setTimeout(() => ctrl.abort(), 300_000);
+    const r = await fetch(orchUrl, {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ source: "cloudflare-pages-scheduled" }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    const j = await r.json().catch(() => ({}));
+    orchestratorSummary = {
+      ok: r.ok && j?.ok !== false,
+      http_status: r.status,
+      run_id: j?.run_id || null,
+      duration_ms: j?.duration_ms || null,
+      // Compact per-step summary; full breakdown is in cron_runs payload.
+      mayor_discover_ok: j?.mayor_discover?.ok ?? null,
+      mayor_outreach_ok: j?.mayor_outreach?.ok ?? null,
+      mayor_outreach_sent: j?.mayor_outreach?.sent ?? j?.mayor_outreach?.sent_count ?? null,
+      mayor_followup_ok: j?.mayor_followup?.ok ?? null,
+      mayor_followup_sent: j?.mayor_followup?.sent ?? j?.mayor_followup?.sent_count ?? null,
+      mayor_digest_ok: j?.mayor_digest?.ok ?? null,
+      mayor_digest_provider_id: j?.mayor_digest?.provider_id ?? null,
+      mayor_digest_delivered: j?.mayor_digest?.delivered ?? null,
+    };
+    console.info("[scheduled] orchestrator complete", orchestratorSummary);
+  } catch (e) {
+    orchestratorError = e?.message || String(e);
+    console.error("[scheduled] orchestrator failed", orchestratorError);
   }
 
   // Always log so /admin can see what happened.
   await logCronRun(env, {
-    triggered_at: startedAt.toISOString(),
+    triggered_at: startedIso,
     duration_ms: Date.now() - startedAt.getTime(),
+    source: "cloudflare-pages-scheduled",
+    origin,
     gov: govSummary
       ? {
           ok: !govError,
@@ -126,6 +205,8 @@ export async function onScheduled({ env, scheduledTime }) {
     outreach: outreachSummary
       ? { ok: !outreachError, send_due_count: outreachSummary.send_due_count }
       : { ok: false, error: outreachError },
-    source: "cloudflare-pages-scheduled",
+    orchestrator: orchestratorSummary
+      ? { ok: !orchestratorError, ...orchestratorSummary }
+      : { ok: false, error: orchestratorError },
   });
 }

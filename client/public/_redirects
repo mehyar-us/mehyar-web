@@ -1,7 +1,10 @@
 # 1) Legacy /330 short-URL alias for the $330 audit offer — 308 to canonical /micro-offer.
-#    /330 → /micro-offer → /micro-offer/ (two hops: this redirect + CF Pages auto trailing-slash).
-#    Both `/330` and `/330/` paths are covered so any external / short-URL link lands on canonical.
+#    /330 → /micro-offer.
+#    Both with and without trailing slash so any external / short-URL link lands on canonical.
 #    CF Pages uses :splat on the destination side to substitute the wildcard segment.
+#    (Removed the trailing-slash row from the SPA-fallback line; we use a Router-side hook
+#     to strip trailing slashes before Wouter matches, see client/src/hooks/useStrippedLocation.ts
+#     and the hook prop on <Router> in App.tsx.)
 /330            /micro-offer            308
 /330/           /micro-offer/           308
 /330/*          /micro-offer/:splat     308
@@ -16,11 +19,11 @@
 /v1/*               /api/v1-proxy/:splat      200
 
 # 2) Cloudflare Pages SPA fallback: preserve clean direct routes for Wouter client routing.
+#    The Router hook (useStrippedLocation) handles trailing slashes before matching.
+#    DO NOT remove this line — without it direct loads of /portfolio/:id etc fail.
 /*    /index.html   200
 
 # 2b) Hosted quote pages (/q/<slug>) — must be served as SPA so wouter can render
-#     the dynamic slug. CF Pages by default treats `/q/abc` as a static asset
-#     lookup that misses; the catch-all above is processed but the static
-#     middleware can still short-circuit. Explicit mirror rule.
-#     Hosted quote lives at https://mehyar.us/q/<slug>.
+#     the dynamic slug. The catch-all above is processed but the static
+#     middleware can still short-circuit on dynamic paths. Explicit mirror rule.
 /q/*    /index.html   200

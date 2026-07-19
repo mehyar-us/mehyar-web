@@ -1,11 +1,13 @@
 import { Link } from "wouter";
-import NewsletterSignup from "@/components/NewsletterSignup";
+import { useState } from "react";
+import ChecklistPopup from "@/components/ChecklistPopup";
 
 const Footer = () => {
+  const [checklistOpen, setChecklistOpen] = useState(false);
   return (
     <footer className="bg-neutral-900 text-white py-16 px-4">
       <div className="container mx-auto">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-[1fr_0.75fr_0.75fr_1.2fr]">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-3">
           <div>
             <Link href="/" className="inline-flex items-center mb-6" aria-label="MehyarSoft home">
                 <img
@@ -50,18 +52,16 @@ const Footer = () => {
               <li><Link href="/apps" className="text-neutral-300 hover:text-white transition-colors">Apps</Link></li>
               <li><Link href="/blog" className="text-neutral-300 hover:text-white transition-colors">Insights</Link></li>
               <li><Link href="/contact" className="text-neutral-300 hover:text-white transition-colors">Contact</Link></li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setChecklistOpen(true)}
+                  className="text-left text-neutral-300 hover:text-white transition-colors"
+                >
+                  Get the free AI checklist →
+                </button>
+              </li>
             </ul>
-          </div>
-
-          <div>
-            <NewsletterSignup
-              variant="footer"
-              compact
-              source="footer_newsletter"
-              title="Get the free AI checklist."
-              description="A practical checklist for missed calls, weak follow-up, website leaks, and manual work."
-            />
-            <Link href="/newsletter" className="mt-3 inline-flex text-sm font-semibold text-neutral-300 transition-colors hover:text-white">Open the full checklist page →</Link>
           </div>
         </div>
 
@@ -69,7 +69,7 @@ const Footer = () => {
           <p className="text-neutral-400">
             © {new Date().getFullYear()} MehyarSoft LLC. All rights reserved.
           </p>
-          <div className="mt-4 md:mt-0 flex space-x-6">
+          <div className="mt-4 md:mt-0 flex flex-wrap gap-x-6 gap-y-2 justify-center">
             <Link href="/privacy-policy" className="text-neutral-400 hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="text-neutral-400 hover:text-white transition-colors">Terms of Service</Link>
             <Link href="/unsubscribe" className="text-neutral-400 hover:text-white transition-colors">Unsubscribe</Link>
@@ -77,6 +77,14 @@ const Footer = () => {
           </div>
         </div>
       </div>
+
+      {/* Popup is mounted at the footer so it inherits the page tree and can
+          be opened from any link/button. Persistent across all public pages. */}
+      <ChecklistPopup
+        open={checklistOpen}
+        onOpenChange={setChecklistOpen}
+        source="footer"
+      />
     </footer>
   );
 };

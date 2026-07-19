@@ -167,27 +167,29 @@ async function dispatchViaCfEmail(env, { to, subject, text }) {
   // so we always send as the configured SENDING_FROM (default team@rochelle.love).
   const fromEmail = env?.MAYOR_FROM_EMAIL || resolveSendingFrom(env);
   const FROM_EMAIL = fromEmail;
-  // Email-send-specific token (preferred) — separate from CF_API_TOKEN
-  // which lacks email-send scope. Set CF_EMAIL_SEND_TOKEN in Pages secrets.
-  const emailSendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
-  // Fallback: Global API key (X-Auth-Email + X-Auth-Key) — works if the
-  // Global key has Email Routing Write permission.
+  // Auth strategy — X-Auth-Email + X-Auth-Key with the 37-char CF Global Key is the
+  // ONLY pattern that authenticates against /accounts/{id}/email/sending/send today.
+  // Verified 2026-07-19: the 40-char scoped CLOUDFLARE_API_KEY returns 401 "Authentication
+  // error" when sent as either Authorization: Bearer OR X-Auth-Key. The Global Key works
+  // only as X-Auth-Key. Source-of-truth: ~/.hermes/.env: CLOUDFLARE_API_TOKEN (37 chars).
   const apiEmail  = env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "";
-  const apiKey    = env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_API_KEY || "";
+  const apiKey    = env?.CF_EMAIL_GLOBAL_KEY || env?.CF_EMAIL_API_KEY || env?.CLOUDFLARE_API_TOKEN || "";
+  // Optional Bearer fallback for a scoped email-send token (40-char). Set in Dashboard.
+  const emailSendToken = env?.CF_EMAIL_SEND_TOKEN || "";
 
-  if (!accountId || (!emailSendToken && !apiKey)) {
+  if (!accountId || (!apiKey && !emailSendToken)) {
     return { ok: false, error: "email_service_not_configured" };
   }
 
-// Build candidate auth strategies. We'll try them in order until one succeeds.
-// ALWAYS try Bearer first, then fall back to Global Key, then fall back
-// to either one more time (in case a flaky network caused the first failure).
+// Build candidate auth strategies. Prefer Global Key (X-Auth headers) — this is the
+// ONLY one that currently authenticates per the 2026-07-19 test. Bearer is fallback
+// for a future scoped email-send token if it's ever set in Dashboard.
 const authStrategies = [];
-if (emailSendToken) {
-  authStrategies.push({ name: "bearer", headers: { "Authorization": `Bearer ${emailSendToken}` } });
-}
 if (apiEmail && apiKey) {
   authStrategies.push({ name: "global_key", headers: { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey } });
+}
+if (emailSendToken) {
+  authStrategies.push({ name: "bearer", headers: { "Authorization": `Bearer ${emailSendToken}` } });
 }
 if (authStrategies.length === 0) {
   return { ok: false, error: "email_service_not_configured" };

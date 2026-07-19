@@ -134,21 +134,35 @@ async function renderDigest(env, { mode = "daily" } = {}) {
 async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
   // Public account id — safe to default since it isn't a credential.
   const accountId = env?.CF_EMAIL_ACCOUNT_ID || "621600637337cc1c9ecb7095508bc732";
-  // Try the dedicated send-token first (40-char scoped), fall back to Global Key pair.
-  const sendToken = env?.CF_EMAIL_SEND_TOKEN || env?.CF_EMAIL_API_KEY;
-  const apiEmail  = env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "";
-  const apiKey    = env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_API_KEY || "";
-  if (!sendToken && (!apiEmail || !apiKey)) {
+  // Auth strategy — X-Auth-Email + X-Auth-Key with the 37-char CF Global Key is the
+  // ONLY pattern that authenticates against /accounts/{id}/email/sending/send today.
+  // Verified 2026-07-19: the 40-char scoped CLOUDFLARE_API_KEY returns 401 "Authentication
+  // error" when sent as either Authorization: Bearer OR X-Auth-Key. The Global Key works
+  // only as X-Auth-Key. Source-of-truth: ~/.hermes/.env: CLOUDFLARE_API_TOKEN (37 chars).
+  const apiEmail = env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL_API_EMAIL || "";
+  const apiKey   = env?.CF_EMAIL_GLOBAL_KEY || env?.CF_EMAIL_API_KEY || env?.CLOUDFLARE_API_TOKEN || "";
+  // Optional Bearer fallback for a scoped email-send token (40-char). Set in Dashboard.
+  const sendToken = env?.CF_EMAIL_SEND_TOKEN || "";
+  if (!apiEmail && !sendToken) {
     return { ok: false, error: "email_service_not_configured",
              diagnostic: { accountId_set: !!env?.CF_EMAIL_ACCOUNT_ID,
-                           sendToken_set: !!sendToken,
                            apiEmail_set: !!apiEmail,
                            apiKey_set: !!apiKey,
+                           sendToken_set: !!sendToken,
                            env_keys_relevant: Object.keys(env).filter(k => /email|cloud/i.test(k)).slice(0,12) } };
   }
-  const authHeader = sendToken
-    ? { "Authorization": `Bearer ${sendToken}` }
-    : { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey };
+  // Build candidate auth strategies. Prefer Global Key (X-Auth headers) — this is the
+  // ONLY one that currently authenticates per the 2026-07-19 test.
+  const authStrategies = [];
+  if (apiEmail && apiKey) {
+    authStrategies.push({ name: "global_key", headers: { "X-Auth-Email": apiEmail, "X-Auth-Key": apiKey } });
+  }
+  if (sendToken) {
+    authStrategies.push({ name: "bearer_send_token", headers: { "Authorization": `Bearer ${sendToken}` } });
+  }
+  if (authStrategies.length === 0) {
+    return { ok: false, error: "email_service_not_configured" };
+  }
   // Per-zone gate: external sends only deliver from team@rochelle.love today.
   // mehyar.us returns 200 OK but delivered:[], meaning DNS/SPF/DKIM not yet propagated
   // post-onboard. Use rochelle.love as the live sender; override via MAYOR_DIGEST_FROM_EMAIL.
@@ -165,22 +179,39 @@ async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
     reply_to: replyTo,
   };
   try {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader },
-      body: JSON.stringify(payload),
-    });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data?.success === false) {
-      const err = data?.errors?.[0];
-      return { ok: false, error: err?.message || `HTTP ${resp.status}`,
-               code: err?.code || resp.status,
-               delivered: data?.result?.delivered || [],
-               permanent_bounces: data?.result?.permanent_bounces || [] };
+    let lastErr = null;
+    let lastData = null;
+    for (const strat of authStrategies) {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...strat.headers },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data?.success !== false) {
+        console.log(`[mayor/digest] sent via ${strat.name} to ${to}`);
+        return { ok: true,
+                 auth_used: strat.name,
+                 provider_id: data?.result?.message_id || null,
+                 delivered: data?.result?.delivered || [],
+                 queued: data?.result?.queued || [] };
+      }
+      lastData = data;
+      const err = data?.errors?.[0]?.message || `HTTP ${resp.status}`;
+      lastErr = `${strat.name}: ${err}`;
+      console.log(`[mayor/digest] ${strat.name} failed (${to}): ${err}`);
+      // Auth errors fall through to next strategy; schema errors don't
+      if (!String(err).toLowerCase().includes("authentication") &&
+          resp.status !== 401 && resp.status !== 403) {
+        break;
+      }
     }
-    return { ok: true, provider_id: data?.result?.message_id || null,
-             delivered: data?.result?.delivered || [],
-             queued: data?.result?.queued || [] };
+    const errObj = lastData?.errors?.[0];
+    return { ok: false,
+             error: lastErr || "all_auth_strategies_failed",
+             code: errObj?.code || null,
+             delivered: lastData?.result?.delivered || [],
+             permanent_bounces: lastData?.result?.permanent_bounces || [] };
   } catch (e) {
     return { ok: false, error: String(e?.message || e) };
   }
@@ -196,14 +227,23 @@ export async function onRequestPost({ request, env }) {
   const result = await dispatchDigest(env, rendered, url.searchParams.get("to") || "info@mehyar.us");
   if (result.ok) {
     const kind = mode === "weekly" ? "weekly_digest" : "digest";
+    const nowIso = new Date().toISOString();
     await env.LEADS_DB.prepare(
       `INSERT INTO mayor_events (id, kind, loop, summary, details_json, digest_sent)
        VALUES (?, ?, ?, ?, ?, 1)`
     ).bind(
       crypto.randomUUID(), kind, "digest",
       `Digest sent (${rendered.event_count} events)`,
-      JSON.stringify({ provider_id: result.provider_id, mode }),
+      JSON.stringify({ provider_id: result.provider_id, mode, auth_used: result.auth_used }),
     ).run();
+    // Track digest_run_at so /admin/mayor shows fresh. The /admin/mayor status
+    // endpoint reads mayor_settings.digest_run_at and surfaces it as
+    // last_runs.digest. Without this write the UI shows "" forever.
+    await env.LEADS_DB.prepare(
+      `INSERT INTO mayor_settings (key, value, updated_at)
+       VALUES ('digest_run_at', ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+    ).bind(nowIso).run().catch((e) => console.error("[mayor/digest] digest_run_at write failed", e?.message));
   }
   return json({ ok: result.ok, error: result.error || null, ...rendered.stats }, result.ok ? 200 : 500, request, env);
 }

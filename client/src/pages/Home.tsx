@@ -4,8 +4,8 @@ import WhyChooseUs from "@/components/why-choose-us";
 import TestimonialsSection from "@/components/testimonials-section";
 import BlogSection from "@/components/blog-section";
 import PricingSection from "@/components/pricing-section";
-import ContactSection from "@/components/contact-section";
 import QuickAnswer from "@/components/QuickAnswer";
+import HomeCtaSection from "@/components/HomeCtaSection";
 
 const Home = () => {
   return (
@@ -21,7 +21,7 @@ const Home = () => {
       <TestimonialsSection />
       <BlogSection />
       <PricingSection />
-      <ContactSection />
+      <HomeCtaSection />
     </>
   );
 };

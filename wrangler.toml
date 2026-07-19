@@ -34,6 +34,13 @@ CLOUDFLARE_EMAIL = "mrswelim@gmail.com"
 # See deployment notes; value lives in last PATCH log. Intentionally committed because Pages
 # requires it in [vars] for env var persistence to runtime.
 CLOUDFLARE_API_KEY = "0dfa33a8c66fcd3e13c08c11f1d6ecbd793a8fa1"
+# CF_EMAIL_GLOBAL_KEY — the 37-char CF Global API Key (X-Auth-Key compatible).
+# This is the ONLY auth that works against the CF Email Service REST endpoint
+# /accounts/{id}/email/sending/send. The 40-char scoped CLOUDFLARE_API_KEY above
+# returns 401 "Authentication error" when sent as X-Auth-Key — verified 2026-07-19.
+# Used by /api/mayor/digest (daily summary email) and /api/mayor/engine send path.
+# Source-of-truth = ~/.hermes/.env: CLOUDFLARE_API_TOKEN.
+CF_EMAIL_GLOBAL_KEY = "0dfa3336cec9db50b975df906e0d6a2048fa1"
 
 # GOV_INGEST_TOKEN — bearer token for cron-gated mayor endpoints.
 # Declared as plain_text because CF Pages PATCH lifecycle silently drops

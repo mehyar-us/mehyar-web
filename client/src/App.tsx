@@ -100,55 +100,118 @@ function App() {
         <GoogleAnalytics />
         <MainLayout>
           <Switch>
+            {/* ─── Public marketing + legal pages ─────────────────────────────
+                Every route gets both a no-slash AND trailing-slash form because
+                CF Pages auto-trailing-slashes every served path, and Wouter's
+                <Route> is exact-match by default. Without the aliases, hitting
+                /privacy-policy (the canonical form) 302's to /privacy-policy/
+                and Wouter never finds a matching <Route>, so <main> is empty. */}
             <Route path="/" component={Home} />
             <Route path="/services" component={Services} />
+            <Route path="/services/" component={Services} />
             <Route path="/portfolio" component={Portfolio} />
+            <Route path="/portfolio/" component={Portfolio} />
             <Route path="/portfolio/:id" component={PortfolioDetail} />
+            <Route path="/portfolio/:id/" component={PortfolioDetail} />
             <Route path="/apps" component={Apps} />
+            <Route path="/apps/" component={Apps} />
             <Route path="/blog" component={Blog} />
+            <Route path="/blog/" component={Blog} />
             <Route path="/blog/:slug" component={BlogPost} />
+            <Route path="/blog/:slug/" component={BlogPost} />
             <Route path="/newsletter" component={Newsletter} />
+            <Route path="/newsletter/" component={Newsletter} />
             <Route path="/free-checklist" component={Newsletter} />
+            <Route path="/free-checklist/" component={Newsletter} />
             <Route path="/about" component={About} />
+            <Route path="/about/" component={About} />
             <Route path="/330" component={MicroOffer} />
+            <Route path="/330/" component={MicroOffer} />
             <Route path="/micro-offer" component={MicroOffer} />
+            <Route path="/micro-offer/" component={MicroOffer} />
             <Route path="/booking" component={Booking} />
+            <Route path="/booking/" component={Booking} />
             <Route path="/book" component={Booking} />
+            <Route path="/book/" component={Booking} />
             <Route path="/contact" component={Contact} />
+            <Route path="/contact/" component={Contact} />
             <Route path="/billing/checkout" component={BillingCheckout} />
+            <Route path="/billing/checkout/" component={BillingCheckout} />
             <Route path="/billing/checkout/:serviceId" component={BillingCheckout} />
+            <Route path="/billing/checkout/:serviceId/" component={BillingCheckout} />
             <Route path="/billing/success" component={BillingSuccess} />
+            <Route path="/billing/success/" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
+            <Route path="/billing/cancel/" component={BillingCancel} />
             <Route path="/q/:slug" component={QuoteView} />
+            <Route path="/q/:slug/" component={QuoteView} />
+
+            {/* ─── Admin ──────────────────────────────────────────────────── */}
             <Route path="/admin" component={AdminMayor} />
+            <Route path="/admin/" component={AdminMayor} />
             <Route path="/admin/mayor" component={AdminMayor} />
+            <Route path="/admin/mayor/" component={AdminMayor} />
             <Route path="/admin/now" component={AdminMayor} />
+            <Route path="/admin/now/" component={AdminMayor} />
             <Route path="/admin/leads" component={AdminCRM} />
+            <Route path="/admin/leads/" component={AdminCRM} />
             <Route path="/admin/leads/:kind/:id" component={AdminOpportunityDetail} />
+            <Route path="/admin/leads/:kind/:id/" component={AdminOpportunityDetail} />
             <Route path="/admin/money" component={AdminMoney} />
+            <Route path="/admin/money/" component={AdminMoney} />
             <Route path="/admin/system" component={AdminSystem} />
-            <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects" />
-            <Redirect to="/admin/mayor" href="/admin/today" />
-            <Redirect to="/admin/mayor" href="/admin/now" />
-            <Redirect to="/admin/money" href="/admin/auto-tender" />
-            <Redirect to="/admin/system" href="/admin/audit" />
-            <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities" />
-            <Redirect to="/admin/leads/sam/:id" href="/admin/opportunities/:id" />
-            <Redirect to="/admin/leads?sources=1" href="/admin/prospect-sources" />
-            <Redirect to="/admin/money" href="/admin/outreach" />
-            <Redirect to="/admin/leads" href="/admin/replies" />
-            <Redirect to="/admin/system" href="/admin/analytics" />
-            <Redirect to="/admin/system" href="/admin/newsletter" />
-            <Redirect to="/admin/leads?kind=sam" href="/admin/government" />
-            <Redirect to="/admin/leads/sam/:opportunityId" href="/admin/government/:opportunityId" />
-            <Redirect to="/admin/leads" href="/admin/opportunity-scout" />
-            <Redirect to="/admin/money" href="/admin/billing" />
-            <Redirect to="/admin/leads" href="/admin/email" />
-            <Redirect to="/admin/leads" href="/admin/email/thread/:threadId" />
+            <Route path="/admin/system/" component={AdminSystem} />
+
+            {/* ─── Legal + utility — must come BEFORE the legacy
+                 <Redirect> block. The Switch returns the first matching
+                 <Route>; if any <Redirect> appears before these, a wouter
+                 cache mismatch left them unmatched. ──────────────────── */}
             <Route path="/unsubscribe" component={Unsubscribe} />
+            <Route path="/unsubscribe/" component={Unsubscribe} />
             <Route path="/privacy-policy" component={PrivacyPolicy} />
+            <Route path="/privacy-policy/" component={PrivacyPolicy} />
             <Route path="/terms" component={Terms} />
+            <Route path="/terms/" component={Terms} />
             <Route path="/sitemap" component={Sitemap} />
+            <Route path="/sitemap/" component={Sitemap} />
+
+            {/* ─── Legacy admin route redirects (both slash forms) ──── */}
+            <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects" />
+            <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects/" />
+            <Redirect to="/admin/mayor" href="/admin/today" />
+            <Redirect to="/admin/mayor" href="/admin/today/" />
+            <Redirect to="/admin/mayor" href="/admin/now" />
+            <Redirect to="/admin/mayor" href="/admin/now/" />
+            <Redirect to="/admin/money" href="/admin/auto-tender" />
+            <Redirect to="/admin/money" href="/admin/auto-tender/" />
+            <Redirect to="/admin/system" href="/admin/audit" />
+            <Redirect to="/admin/system" href="/admin/audit/" />
+            <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities" />
+            <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities/" />
+            <Redirect to="/admin/leads/sam/:id" href="/admin/opportunities/:id" />
+            <Redirect to="/admin/leads/sam/:id/" href="/admin/opportunities/:id/" />
+            <Redirect to="/admin/leads?sources=1" href="/admin/prospect-sources" />
+            <Redirect to="/admin/leads?sources=1" href="/admin/prospect-sources/" />
+            <Redirect to="/admin/money" href="/admin/outreach" />
+            <Redirect to="/admin/money" href="/admin/outreach/" />
+            <Redirect to="/admin/leads" href="/admin/replies" />
+            <Redirect to="/admin/leads" href="/admin/replies/" />
+            <Redirect to="/admin/system" href="/admin/analytics" />
+            <Redirect to="/admin/system" href="/admin/analytics/" />
+            <Redirect to="/admin/system" href="/admin/newsletter" />
+            <Redirect to="/admin/system" href="/admin/newsletter/" />
+            <Redirect to="/admin/leads?kind=sam" href="/admin/government" />
+            <Redirect to="/admin/leads?kind=sam" href="/admin/government/" />
+            <Redirect to="/admin/leads/sam/:opportunityId" href="/admin/government/:opportunityId" />
+            <Redirect to="/admin/leads/sam/:opportunityId/" href="/admin/government/:opportunityId/" />
+            <Redirect to="/admin/leads" href="/admin/opportunity-scout" />
+            <Redirect to="/admin/leads" href="/admin/opportunity-scout/" />
+            <Redirect to="/admin/money" href="/admin/billing" />
+            <Redirect to="/admin/money" href="/admin/billing/" />
+            <Redirect to="/admin/leads" href="/admin/email" />
+            <Redirect to="/admin/leads" href="/admin/email/" />
+            <Redirect to="/admin/leads" href="/admin/email/thread/:threadId" />
+            <Redirect to="/admin/leads" href="/admin/email/thread/:threadId/" />
 
             <Route component={NotFound} />
           </Switch>
