@@ -64,6 +64,7 @@ export async function onRequestGet({ request, env }) {
       ps.prospect_id,
       ps.step_no,
       ps.subject,
+      ps.body_text         AS body_text,
       ps.status            AS step_status,
       ps.scheduled_for,
       ps.sent_at,
@@ -73,12 +74,17 @@ export async function onRequestGet({ request, env }) {
       p.email              AS to_email,
       p.website            AS from_website,
       m.summary            AS event_summary,
-      m.created_at         AS event_at
+      m.created_at         AS event_at,
+      pd.subject           AS draft_subject,
+      pd.body_text         AS draft_body_text,
+      pd.cited_signals_json AS draft_cited_signals
     FROM prospect_sequences ps
     LEFT JOIN prospects p ON p.id = ps.prospect_id
     LEFT JOIN mayor_events m
       ON m.kind IN ('outreach','followup')
      AND m.details_json LIKE '%"' || ps.id || '"%'
+    LEFT JOIN prospect_drafts pd
+      ON pd.id = ps.send_id
     WHERE ${where}
     ORDER BY (ps.sent_at IS NULL), ps.sent_at DESC, ps.created_at DESC
     LIMIT ? OFFSET ?`;

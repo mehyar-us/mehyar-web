@@ -539,7 +539,7 @@ function OutreachTab({ sends, loading }: { sends: any; loading: boolean }) {
                 {sends.items.map((s: any) => {
                   const isOpen = expanded === s.step_id;
                   return (
-                    <RowExpand key={s.step_id} isOpen={isOpen} onClick={() => setExpanded(isOpen ? null : s.step_id)}>
+                    <RowExpand key={s.step_id} isOpen={isOpen} onClick={() => setExpanded(isOpen ? null : s.step_id)} row={s}>
                       <td className="p-2 text-xs whitespace-nowrap text-zinc-600 dark:text-zinc-300">
                         {fmtTime(s.sent_at || s.created_at)}
                       </td>
@@ -579,7 +579,7 @@ function OutreachTab({ sends, loading }: { sends: any; loading: boolean }) {
   );
 }
 
-function RowExpand({ children, isOpen, onClick }: any) {
+function RowExpand({ children, isOpen, onClick, row }: any) {
   return (
     <>
       <tr onClick={onClick} className="border-t border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
@@ -591,7 +591,7 @@ function RowExpand({ children, isOpen, onClick }: any) {
       {isOpen && (
         <tr className="bg-zinc-50 dark:bg-zinc-900/40">
           <td colSpan={6} className="p-3">
-            <ExpandedSendBody />
+            <ExpandedSendBody row={row} />
           </td>
         </tr>
       )}
@@ -599,10 +599,76 @@ function RowExpand({ children, isOpen, onClick }: any) {
   );
 }
 
-function ExpandedSendBody() {
+function ExpandedSendBody({ row }: { row: any }) {
+  // Prefer the newer draft body (cited_signals + structured copy) when joined;
+  // fall back to the legacy sequence body_text.
+  const bodyText = row?.draft_body_text || row?.body_text || '';
+  const subject = row?.draft_subject || row?.subject || '(no subject)';
+  let citedSignals: string[] = [];
+  try {
+    const raw = row?.draft_cited_signals;
+    if (typeof raw === 'string') {
+      citedSignals = JSON.parse(raw);
+    } else if (Array.isArray(raw)) {
+      citedSignals = raw;
+    }
+  } catch {}
+
+  const copyToClipboard = async (text: string) => {
+    try { await navigator.clipboard.writeText(text); } catch {}
+  };
+
   return (
-    <div className="text-xs text-zinc-600 dark:text-zinc-300 italic">
-      Full email body is shown in the Prospects tab drill-down. Use that view for the rendered body text.
+    <div className="space-y-3">
+      {/* Subject + recipient + copy button */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="text-[11px] uppercase tracking-wide text-zinc-500 font-semibold">Subject</div>
+          <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{subject}</div>
+          {row?.to_email && (
+            <div className="text-[11px] text-zinc-500 mt-0.5">
+              To: <span className="font-mono">{row.to_email}</span>
+              {row.from_website && <> · From: <span className="font-mono">{row.from_website}</span></>}
+            </div>
+          )}
+        </div>
+        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(`${subject}\n\n${bodyText}`); }}
+          className="rounded-md px-2 py-1 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 text-[10px] font-medium flex items-center gap-1 shrink-0">
+          <FileText className="w-3 h-3" /> Copy full email
+        </button>
+      </div>
+
+      {/* Cited leak signals (newer draft body has these) */}
+      {citedSignals.length > 0 && (
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-zinc-500 font-semibold mb-1">
+            Cited leak signals
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {citedSignals.map((s: string, i: number) => (
+              <span key={i} className="rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-2 py-0.5 text-[10px] font-mono">
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Email body */}
+      <div>
+        <div className="text-[11px] uppercase tracking-wide text-zinc-500 font-semibold mb-1">
+          Body ({bodyText.length.toLocaleString()} chars)
+        </div>
+        {bodyText ? (
+          <pre className="text-xs whitespace-pre-wrap font-sans text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 p-3 rounded-lg max-h-[500px] overflow-y-auto">
+{bodyText}
+          </pre>
+        ) : (
+          <div className="text-xs italic text-zinc-500">
+            No body stored for this sequence step. The legacy engine may not have written body_text — check mayor_events for the actual sent payload.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
