@@ -163,15 +163,29 @@ async function dispatchDigest(env, rendered, to = "info@mehyar.us") {
   if (authStrategies.length === 0) {
     return { ok: false, error: "email_service_not_configured" };
   }
-  // Per-zone gate: external sends only deliver from team@rochelle.love today.
-  // mehyar.us returns 200 OK but delivered:[], meaning DNS/SPF/DKIM not yet propagated
-  // post-onboard. Use rochelle.love as the live sender; override via MAYOR_DIGEST_FROM_EMAIL.
-  const fromEmail = env?.MAYOR_DIGEST_FROM_EMAIL || "team@rochelle.love";
-  const replyTo   = env?.MAYOR_DIGEST_REPLY_TO   || "info@mehyar.us";
+  // Per-zone gate (verified 2026-07-19):
+  //   - From: `team@mehyar.us` — CF Email Service mehyar.us zone is now
+  //     fully propagated (verified by two consecutive provider_ids with
+  //     @mehyar.us suffix). Falls back to `team@rochelle.love` if the
+  //     mehyar.us zone is rolled back. Override via MAYOR_DIGEST_FROM_EMAIL.
+  //   - To: `info@mehyar.us` — Zoho + CF Email Routing forward this to
+  //     mrswelim@gmail.com (verified 2026-07-19, MX records confirm
+  //     cf-bounce.mehyar.us priority 7/19/98 + Zoho fallback priority 10/20/50).
+  //     Locked as the canonical recipient; `?to=` query override kept for ops
+  //     debugging only (logs a warning when used).
+  //   - Reply-To: `info@mehyar.us` — so when you hit reply on the digest in
+  //     Gmail, it goes to your Zoho inbox, not bounced at the sending domain.
+  const fromEmail = env?.MAYOR_DIGEST_FROM_EMAIL || "team@mehyar.us";
+  const toDefault = "info@mehyar.us";
+  const replyTo   = env?.MAYOR_DIGEST_REPLY_TO   || toDefault;
+  // CF Email Service `from` accepts "Display Name <addr@host>" format. Use it
+  // so the digest looks like it's from a MehyarSoft identity, not a third-party
+  // domain.
+  const fromHeader = `MehyarSoft Mayor <${fromEmail}>`;
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
   // CF Email Service payload (verified 2026-07-17/18). Both flat-string and array shapes work.
   const payload = {
-    from: fromEmail,
+    from: fromHeader,
     to: to,
     subject: rendered.subject,
     text: rendered.text,
@@ -223,8 +237,17 @@ export async function onRequestPost({ request, env }) {
   }
   const url = new URL(request.url);
   const mode = url.searchParams.get("mode") || "daily";
+  const toOverride = url.searchParams.get("to");
+  // Canonical recipient is info@mehyar.us. Zoho + CF Email Routing forward
+  // it to mrswelim@gmail.com (verified 2026-07-19). The `?to=` override is
+  // accepted for ops debugging only — warn in the logs when used so it
+  // doesn't drift unnoticed.
+  const to = toOverride || "info@mehyar.us";
+  if (toOverride && toOverride !== "info@mehyar.us") {
+    console.warn(`[mayor/digest] to-override used: ${toOverride} (canonical is info@mehyar.us)`);
+  }
   const rendered = await renderDigest(env, { mode });
-  const result = await dispatchDigest(env, rendered, url.searchParams.get("to") || "info@mehyar.us");
+  const result = await dispatchDigest(env, rendered, to);
   if (result.ok) {
     const kind = mode === "weekly" ? "weekly_digest" : "digest";
     const nowIso = new Date().toISOString();

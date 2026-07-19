@@ -20,9 +20,15 @@ CLOUDFLARE_ACCOUNT_ID = "621600637337cc1c9ecb7095508bc732"
 # with CLOUDFLARE_EMAIL/API_KEY aliases. The actual secret values are set in the Cloudflare Dashboard
 # (Pages → mehyar-web → Settings → Environment variables) — do NOT commit the keys here.
 CF_EMAIL_ACCOUNT_ID = "621600637337cc1c9ecb7095508bc732"
-# Mayoral digest sender — preferred over the per-zone gate now that mehyar.us is onboarded (2026-07-18).
-MAYOR_DIGEST_FROM_EMAIL = "mayor@mehyar.us"
+# Mayoral digest sender — canonical mehyar.us zone.
+# Verified working 2026-07-19: CF Email Service mehyar.us zone propagated,
+# provider_ids now end with @mehyar.us. Display name is set in digest.js
+# to "MehyarSoft Mayor <team@mehyar.us>".
+MAYOR_DIGEST_FROM_EMAIL = "team@mehyar.us"
 MAYOR_DIGEST_REPLY_TO = "info@mehyar.us"
+# Outreach send-path sender. Default if unset: team@mehyar.us (set in
+# mayorEngine.js; this var lets you override without redeploying).
+MAYOR_FROM_EMAIL = "team@mehyar.us"
 
 # CF Email Service auth — X-Auth-Email + X-Auth-Key header pair (Global Key).
 # CF Pages env-var allowlist only persists names declared here.

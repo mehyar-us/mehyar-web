@@ -163,10 +163,11 @@ async function dispatchViaResend(env, { to, subject, text, html }) {
 
 async function dispatchViaCfEmail(env, { to, subject, text }) {
   const accountId = env?.CF_EMAIL_ACCOUNT_ID;
-  // Email Service is enabled only for the rochelle.love zone on this account,
-  // so we always send as the configured SENDING_FROM (default team@rochelle.love).
-  const fromEmail = env?.MAYOR_FROM_EMAIL || resolveSendingFrom(env);
-  const FROM_EMAIL = fromEmail;
+  // Email Service is enabled for the mehyar.us zone as of 2026-07-19
+    // (verified by two consecutive provider_ids with @mehyar.us suffix). The
+    // rochelle.love fallback is kept in case the mehyar.us zone is rolled back.
+    const fromEmail = env?.MAYOR_FROM_EMAIL || env?.MAYOR_SENDING_FROM_EMAIL || "team@mehyar.us";
+    const FROM_EMAIL = fromEmail;
   // Auth strategy — X-Auth-Email + X-Auth-Key with the 37-char CF Global Key is the
   // ONLY pattern that authenticates against /accounts/{id}/email/sending/send today.
   // Verified 2026-07-19: the 40-char scoped CLOUDFLARE_API_KEY returns 401 "Authentication
