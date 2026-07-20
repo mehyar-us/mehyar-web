@@ -147,21 +147,28 @@ function App() {
             <Route path="/q/:slug" component={QuoteView} />
             <Route path="/q/:slug/" component={QuoteView} />
 
-            {/* ─── Admin ──────────────────────────────────────────────────── */}
-            <Route path="/admin" component={AdminMayor} />
-            <Route path="/admin/" component={AdminMayor} />
-            <Route path="/admin/mayor" component={AdminMayor} />
-            <Route path="/admin/mayor/" component={AdminMayor} />
-            <Route path="/admin/now" component={AdminMayor} />
-            <Route path="/admin/now/" component={AdminMayor} />
-            <Route path="/admin/leads" component={AdminCRM} />
-            <Route path="/admin/leads/" component={AdminCRM} />
-            <Route path="/admin/leads/:kind/:id" component={AdminOpportunityDetail} />
-            <Route path="/admin/leads/:kind/:id/" component={AdminOpportunityDetail} />
-            <Route path="/admin/money" component={AdminMoney} />
-            <Route path="/admin/money/" component={AdminMoney} />
-            <Route path="/admin/system" component={AdminSystem} />
-            <Route path="/admin/system/" component={AdminSystem} />
+            {/* ─── Admin ────────────────────────────────────────────────────
+                            /admin  →  AdminNow (the calm landing)
+                            /admin/mayor  →  AdminMayor (the ultra-minimal Mayor view)
+                            /admin/leads  →  AdminCRM (every lead, every deal)
+                            /admin/money  →  AdminMoney (forecast · win · case studies)
+                            /admin/system →  AdminSystem (audit · cron · backups)
+                            Each route ships with both the bare and trailing-slash alias
+                            because CF Pages auto-trailing-slashes every served path. */}
+                        <Route path="/admin" component={AdminNow} />
+                        <Route path="/admin/" component={AdminNow} />
+                        <Route path="/admin/now" component={AdminNow} />
+                        <Route path="/admin/now/" component={AdminNow} />
+                        <Route path="/admin/mayor" component={AdminMayor} />
+                        <Route path="/admin/mayor/" component={AdminMayor} />
+                        <Route path="/admin/leads" component={AdminCRM} />
+                        <Route path="/admin/leads/" component={AdminCRM} />
+                        <Route path="/admin/leads/:kind/:id" component={AdminOpportunityDetail} />
+                        <Route path="/admin/leads/:kind/:id/" component={AdminOpportunityDetail} />
+                        <Route path="/admin/money" component={AdminMoney} />
+                        <Route path="/admin/money/" component={AdminMoney} />
+                        <Route path="/admin/system" component={AdminSystem} />
+                        <Route path="/admin/system/" component={AdminSystem} />
 
             {/* ─── Legal + utility — must come BEFORE the legacy
                  <Redirect> block. The Switch returns the first matching
@@ -180,15 +187,13 @@ function App() {
 
             {/* ─── Legacy admin route redirects (both slash forms) ──── */}
             <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects" />
-            <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects/" />
-            <Redirect to="/admin/mayor" href="/admin/today" />
-            <Redirect to="/admin/mayor" href="/admin/today/" />
-            <Redirect to="/admin/mayor" href="/admin/now" />
-            <Redirect to="/admin/mayor" href="/admin/now/" />
-            <Redirect to="/admin/money" href="/admin/auto-tender" />
-            <Redirect to="/admin/money" href="/admin/auto-tender/" />
-            <Redirect to="/admin/system" href="/admin/audit" />
-            <Redirect to="/admin/system" href="/admin/audit/" />
+                        <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects/" />
+                        <Redirect to="/admin/now" href="/admin/today" />
+                        <Redirect to="/admin/now" href="/admin/today/" />
+                        <Redirect to="/admin/money" href="/admin/auto-tender" />
+                        <Redirect to="/admin/money" href="/admin/auto-tender/" />
+                        <Redirect to="/admin/system" href="/admin/audit" />
+                        <Redirect to="/admin/system" href="/admin/audit/" />
             <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities" />
             <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities/" />
             <Redirect to="/admin/leads/sam/:id" href="/admin/opportunities/:id" />

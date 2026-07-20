@@ -20,17 +20,52 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 // ── Session ────────────────────────────────────────────────────────────────
+// Persist the admin token in localStorage with a 30-day TTL.
+// (Was sessionStorage — wiped on every tab close, which broke the
+// "I open the admin on my iPhone, switch to Telegram, come back later"
+// flow. With localStorage the user logs in once and stays in for a month.)
 export const TOKEN_KEY = "mehyarsoft_admin_token";
+const TOKEN_TS_KEY = "mehyarsoft_admin_token_ts";
+const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function readStoredToken(): string | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const t = localStorage.getItem(TOKEN_KEY);
+    const ts = Number(localStorage.getItem(TOKEN_TS_KEY) || "0");
+    if (!t) return null;
+    if (ts && Date.now() - ts > TOKEN_TTL_MS) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_TS_KEY);
+      return null;
+    }
+    return t;
+  } catch {
+    return null;
+  }
+}
 
 export function useAdminSession() {
-  const [token, setToken] = useState<string | null>(() => (typeof sessionStorage !== "undefined" ? sessionStorage.getItem(TOKEN_KEY) : null));
+  const [token, setToken] = useState<string | null>(() => readStoredToken());
   useEffect(() => {
-    const onFocus = () => setToken(sessionStorage.getItem(TOKEN_KEY));
+    const onFocus = () => setToken(readStoredToken());
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, []);
-  const login = (t) => { sessionStorage.setItem(TOKEN_KEY, t); setToken(t); };
-  const logout = () => { sessionStorage.removeItem(TOKEN_KEY); setToken(null); };
+  const login = (t: string) => {
+    try {
+      localStorage.setItem(TOKEN_KEY, t);
+      localStorage.setItem(TOKEN_TS_KEY, String(Date.now()));
+    } catch { /* private mode / quota */ }
+    setToken(t);
+  };
+  const logout = () => {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_TS_KEY);
+    } catch { /* noop */ }
+    setToken(null);
+  };
   return { token, isLoggedIn: !!token, login, logout };
 }
 

@@ -302,7 +302,13 @@ const directRoutes = [
   'billing/success',
   'billing/cancel',
   'admin',
-  'admin/newsletter',
+    'admin/now',
+    'admin/mayor',
+    'admin/leads',
+    'admin/leads/prospect',
+    'admin/money',
+    'admin/system',
+    'admin/newsletter',
   'admin/government',
   'admin/opportunity-scout',
   'admin/email',
@@ -319,6 +325,12 @@ const directRoutes = [
   ];
 
 const adminTitles = {
+  'admin/now': 'Now | MehyarSoft Admin',
+  'admin/mayor': 'Mayor Mission Control | MehyarSoft Admin',
+  'admin/leads': 'Leads & Replies | MehyarSoft Admin',
+  'admin/leads/prospect': 'Prospect | MehyarSoft Admin',
+  'admin/money': 'Money | MehyarSoft Admin',
+  'admin/system': 'System | MehyarSoft Admin',
   'admin/email': 'Email Command Center | MehyarSoft',
   'admin/email/thread': 'Email Command Center | MehyarSoft',
   'admin/newsletter': 'Newsletter Money Cockpit | MehyarSoft',
