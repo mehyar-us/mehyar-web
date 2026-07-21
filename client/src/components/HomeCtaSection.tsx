@@ -69,7 +69,7 @@ const HomeCtaSection = () => {
 
         <p className="mx-auto mt-5 max-w-xl text-center text-xs leading-5 text-muted-foreground">
           Or email{" "}
-          <a className="underline" href="mailto:contact@mehyar.us">contact@mehyar.us</a>
+          <a className="underline" href="mailto:info@mehyar.us">info@mehyar.us</a>
           {" "}with a short brief.
         </p>
       </div>

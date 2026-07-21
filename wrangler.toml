@@ -9,7 +9,7 @@ pages_build_output_dir = "dist/public"
 [vars]
 VITE_TURNSTILE_SITE_KEY = "0x4AAAAAADQCOtotqrJrS80U"
 ENVIRONMENT = "production"
-CONTACT_TO_EMAIL = "mrswelim@gmail.com"
+CONTACT_TO_EMAIL = "info@mehyar.us"
 CONTACT_FROM_EMAIL = "leads@mehyar.us"
 ALLOWED_ORIGINS = "https://mehyar.us,https://www.mehyar.us"
 GOV_INGEST_LIMIT = "40"
@@ -93,4 +93,4 @@ id = "cd017aca74a64cd48625450432db204e"
 
 # Send Email binding NOTIFY_EMAIL is configured at the Cloudflare Pages project level via API/Dashboard.
 # Pages wrangler.toml validation rejects [[send_email]], so keep the binding out of this file.
-# Destination: mrswelim@gmail.com
+# Destination: info@mehyar.us (Zoho Mail)

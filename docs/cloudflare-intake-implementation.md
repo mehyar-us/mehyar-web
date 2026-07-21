@@ -21,7 +21,7 @@ Status: implementation artifact for `t_358804fe`
 - `migrations/0001_cloudflare_intake.sql` contains the D1 baseline schema.
 - `wrangler.toml` defines Pages output, required variable names, and binding names. Replace placeholder D1/KV ids in Cloudflare before production deploy.
 - `.github/workflows/deploy-cloudflare-pages.yml` builds, checks, runs intake unit tests, and deploys Pages + Functions with GitHub secrets.
-- Contact UI now submits to `/api/intake`, requires consent, loads Turnstile from `VITE_TURNSTILE_SITE_KEY`, and keeps `contact@mehyar.us` as fallback.
+- Contact UI now submits to `/api/intake`, requires consent, loads Turnstile from `VITE_TURNSTILE_SITE_KEY`, and keeps `info@mehyar.us` as fallback.
 
 ## Required Cloudflare production setup before live acceptance
 

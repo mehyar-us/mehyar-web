@@ -610,7 +610,7 @@ export function ConversionFlow({
       setStatus("error");
       toast({
         title: isUnsubscribe ? "Could not process request" : "Could not send request",
-        description: error instanceof Error ? error.message : "Please refresh and try again, or email contact@mehyar.us.",
+        description: error instanceof Error ? error.message : "Please refresh and try again, or email info@mehyar.us.",
         variant: "destructive",
       });
       setTurnstileToken("");
@@ -906,7 +906,7 @@ export function ConversionFlow({
                 {status === "success"
                   ? "Sent. You'll get one practical next step by email."
                   : status === "error"
-                  ? "Try again, or email contact@mehyar.us."
+                  ? "Try again, or email info@mehyar.us."
                   : status === "submitting"
                   ? "Hold tight."
                   : "Fill the required fields above to send."}

@@ -1,5 +1,5 @@
 const SAFE_SUCCESS = "Thanks — your request was received.";
-const SAFE_FAILURE = "We could not receive the request. Please email contact@mehyar.us.";
+const SAFE_FAILURE = "We could not receive the request. Please email info@mehyar.us.";
 const FORM_TYPES = new Set(["contact", "audit", "booking", "micro_offer", "newsletter", "phone_help"]);
 const FIELD_LIMITS = {
   request_type: 40,
@@ -299,7 +299,7 @@ async function sendNotification(env, leadId, data, referrer) {
     try {
       await env.NOTIFY_EMAIL.send({
         from: env.CONTACT_FROM_EMAIL || "leads@mehyar.us",
-        to: env.CONTACT_TO_EMAIL || "mrswelim@gmail.com",
+        to: env.CONTACT_TO_EMAIL || "info@mehyar.us",
         replyTo: data.email,
         subject,
         text,
@@ -317,7 +317,7 @@ async function sendNotification(env, leadId, data, referrer) {
         headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
         body: JSON.stringify({
           from: env.CONTACT_FROM_EMAIL || "leads@mehyar.us",
-          to: env.CONTACT_TO_EMAIL || "mrswelim@gmail.com",
+          to: env.CONTACT_TO_EMAIL || "info@mehyar.us",
           reply_to: data.email,
           subject,
           text,
@@ -346,7 +346,7 @@ async function sendNotification(env, leadId, data, referrer) {
       const sendResponse = await fetch(`${apiBase}/v1/admin/notifications/intake`, {
         method: "POST",
         headers: { authorization: `Bearer ${login.token}`, "content-type": "application/json" },
-        body: JSON.stringify({ to: env.CONTACT_TO_EMAIL || "mrswelim@gmail.com", subject, content: text, lead_id: leadId }),
+        body: JSON.stringify({ to: env.CONTACT_TO_EMAIL || "info@mehyar.us", subject, content: text, lead_id: leadId }),
       });
       if (!sendResponse.ok) return { ok: false, status: "failed", error: `owner_notify_${sendResponse.status}` };
       return { ok: true, status: "sent" };

@@ -145,7 +145,7 @@ Expected top-level response can be direct or wrapped as `{ dashboard: ... }` / `
 
 ### Admin email command center
 
-The frontend uses the live admin API for contact@mehyar.us email operations:
+The frontend uses the live admin API for info@mehyar.us email operations:
 
 - `GET /v1/admin/email/threads?limit=25`
 - `GET /v1/admin/email/threads/:threadId`

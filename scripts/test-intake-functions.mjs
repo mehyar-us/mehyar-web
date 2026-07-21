@@ -109,7 +109,7 @@ function env() {
     TURNSTILE_SECRET_KEY: "unit-test-secret",
     HMAC_SECRET: "unit-test-hmac",
     ALLOWED_ORIGINS: "https://mehyar.us,http://localhost:5173",
-    CONTACT_TO_EMAIL: "owner@example.test",
+    CONTACT_TO_EMAIL: "info@mehyar.us",
     CONTACT_FROM_EMAIL: "leads@example.test",
     LEADS_DB: db,
     INTAKE_KV: new MockKV(),
@@ -166,6 +166,7 @@ assert.equal(validEnv.__db.leads[0].email, "unit@test.example");
 assert.equal(validEnv.__db.leads[0].consent_contact, 1);
 assert.equal(validEnv.__db.leads[0].notification_status, "sent");
 assert.equal(validEnv.__email.sent.length, 1);
+assert.equal(validEnv.__email.sent[0].to, "info@mehyar.us");
 assert.equal(validEnv.__db.events.some((event) => event.event_type === "lead_created"), true);
 assert.equal(validEnv.__db.events.some((event) => event.event_type === "notification_sent"), true);
 

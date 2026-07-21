@@ -28,7 +28,7 @@ Free-tier path:
 - Cloudflare Turnstile: bot prevention on all public forms.
 - Cloudflare D1: canonical lead/contact database.
 - Cloudflare KV: lightweight rate-limit counters, nonce/idempotency cache, suppression flags.
-- Cloudflare Email Routing: free inbound aliases like `contact@mehyar.us` -> `mrswelim@gmail.com`.
+- Zoho Mail handles the `info@mehyar.us` business inbox for inbound booking and contact requests.
 - Cloudflare Workers Send Email binding if enabled on the account; otherwise Resend free tier as the only non-Cloudflare fallback for outbound form notifications.
 - Cloudflare Web Analytics: page analytics without client PII harvesting.
 
@@ -198,14 +198,10 @@ Validation inputs:
 
 Two-part email plan:
 
-1. Inbound/routing, free and Cloudflare-native:
-   - Enable Cloudflare Email Routing for `mehyar.us`.
-   - Add destination address `mrswelim@gmail.com` and complete destination verification.
-   - Create aliases:
-     - `contact@mehyar.us` -> `mrswelim@gmail.com`
-     - `leads@mehyar.us` -> `mrswelim@gmail.com`
-     - `audit@mehyar.us` -> `mrswelim@gmail.com`
-   - Use these aliases in website copy if a direct email fallback is needed.
+1. Inbound mail, Zoho-managed:
+   - Keep the `mehyar.us` MX records pointed at Zoho Mail.
+   - Confirm `info@mehyar.us` is the Zoho business inbox for booking and contact requests.
+   - Use `info@mehyar.us` in website copy as the direct email fallback.
 
 2. Form notification from Worker:
    - Preferred: Cloudflare Workers Send Email binding, if available on the account.
@@ -375,7 +371,7 @@ Required frontend changes in implementation task:
 1. Add Turnstile component to contact/signup forms.
 2. Replace `mailto:` submit with `fetch('/api/intake', { method: 'POST', ... })`.
 3. Show success/error states without exposing backend details.
-4. Keep an email fallback link to `contact@mehyar.us` for visitors who prefer direct mail.
+4. Keep an email fallback link to `info@mehyar.us` for visitors who prefer direct mail.
 5. Add explicit consent checkbox: `I agree that MehyarSoft LLC may contact me about this request.`
 6. Optional marketing consent must be separate and unchecked by default.
 
@@ -474,7 +470,7 @@ Rollback:
 - Keep the current GitHub Pages deployment workflow until Cloudflare Pages is proven.
 - DNS rollback: point `mehyar.us` back to GitHub Pages if Cloudflare Pages fails.
 - Application rollback: use Cloudflare Pages deployment rollback to previous successful deployment.
-- Contact fallback: keep direct `contact@mehyar.us` mail link visible while form intake matures.
+- Contact fallback: keep direct `info@mehyar.us` mail link visible while form intake matures.
 
 ## 12. Implementation acceptance criteria
 

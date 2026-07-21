@@ -198,7 +198,7 @@ function SyncStatusCard({ sync, onSync, isSyncing }: { sync?: AdminEmailSyncStat
       <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Badge className="border-border bg-secondary text-secondary-foreground hover:bg-secondary">contact@mehyar.us</Badge>
+            <Badge className="border-border bg-secondary text-secondary-foreground hover:bg-secondary">info@mehyar.us</Badge>
             <Badge className={hasError ? "bg-red-100 text-red-900 hover:bg-red-100 dark:bg-red-400/15 dark:text-red-100" : "bg-emerald-100 text-emerald-900 hover:bg-emerald-100 dark:bg-emerald-400/15 dark:text-emerald-100"}>
               {hasError ? "Sync needs attention" : labelize(sync?.last_status || "scheduler ready")}
             </Badge>
@@ -1033,7 +1033,7 @@ function ThreadDetail({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h4 className="text-lg font-semibold tracking-[-0.02em] text-foreground">AI-assisted reply</h4>
-              <p className="mt-1 text-sm text-muted-foreground">AI can draft only. Boss edits, approves, and confirms before anything sends from contact@mehyar.us.</p>
+              <p className="mt-1 text-sm text-muted-foreground">AI can draft only. Boss edits, approves, and confirms before anything sends from info@mehyar.us.</p>
             </div>
             <Button variant="outline" onClick={onGenerateDraft} disabled={isBusy}>
               <Sparkles aria-hidden="true" />
@@ -1208,7 +1208,7 @@ const Admin = () => {
     } catch (error) {
       toast({
         title: "Email inbox unavailable",
-        description: error instanceof Error ? error.message : "Could not load contact@mehyar.us inbox.",
+        description: error instanceof Error ? error.message : "Could not load info@mehyar.us inbox.",
         variant: "destructive",
       });
     } finally {
@@ -1559,7 +1559,7 @@ const Admin = () => {
       return;
     }
     const recipient = [...(threadDetail?.messages || [])].reverse().find((message) => message.direction !== "outbound")?.from_email || threadDetail?.thread.primary_email || "the original inbound sender";
-    const confirmed = window.confirm(`Manual send confirmation required. Send exactly one reviewed reply from contact@mehyar.us to ${recipient}? This is not a bulk or autonomous send.`);
+    const confirmed = window.confirm(`Manual send confirmation required. Send exactly one reviewed reply from info@mehyar.us to ${recipient}? This is not a bulk or autonomous send.`);
     if (!confirmed) return;
     setIsDraftBusy(true);
     try {
@@ -1588,7 +1588,7 @@ const Admin = () => {
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg">
               {isEmailRoute
-                ? "Private contact@mehyar.us inbox, lead context, AI draft assistance, and manual reply controls. AI drafts only; Boss reviews before send."
+                ? "Private info@mehyar.us inbox, lead context, AI draft assistance, and manual reply controls. AI drafts only; Boss reviews before send."
                 : isNewsletterRoute
                   ? "Private signup cockpit for source attribution, consent, suppressions, subscriber promotion, follow-up timing, offer fit, and manual Zoho draft actions."
                   : isGovernmentRoute

@@ -1515,7 +1515,7 @@ export const mehyarSoftApi = {
   async syncEmail(token: string) {
     const response = await postJson<unknown>(
       "/v1/admin/mail/sync",
-      { provider: "zoho", account: "contact@mehyar.us", mode: "incremental" },
+      { provider: "zoho", account: "info@mehyar.us", mode: "incremental" },
       token,
       adminEndpoint,
     );

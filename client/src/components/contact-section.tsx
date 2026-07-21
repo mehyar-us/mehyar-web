@@ -113,8 +113,8 @@ const ContactSection = ({
               <div className="ml-4">
                 <h4 className="font-semibold text-ink dark:text-white">Email fallback</h4>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">If the security check fails, send the same short brief directly.</p>
-                <a href="mailto:contact@mehyar.us" className="mt-2 inline-flex text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100">
-                  contact@mehyar.us
+                <a href="mailto:info@mehyar.us" className="mt-2 inline-flex text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100">
+                  info@mehyar.us
                 </a>
               </div>
             </div>
