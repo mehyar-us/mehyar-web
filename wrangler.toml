@@ -58,6 +58,7 @@ INBOUND_AUTO_REPLY = "1"
 CLOUDFLARE_EMAIL = "mrswelim@gmail.com"
 # See deployment notes; value lives in last PATCH log. Intentionally committed because Pages
 # requires it in [vars] for env var persistence to runtime.
+# touch 2026-07-22 to force env-var pickup
 # 2026-07-22: this is the 37-char Global API Key, identical to CF_EMAIL_GLOBAL_KEY below.
 # The previous 40-char scoped value failed X-Auth-Key against /ai/v1/chat/completions
 # (returns 401 Authentication error), which silently disabled the LLM probe path used by
