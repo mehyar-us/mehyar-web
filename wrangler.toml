@@ -73,6 +73,17 @@ CF_EMAIL_GLOBAL_KEY = "0dfa3336cec9db50b975df906e0d6a2048fa1"
 # bearer-token-shaped (40-char hex); the auth scope it grants is path-scoped
 # to /api/mayor/discover|outreach|followup|events|settings.
 GOV_INGEST_TOKEN = "c429c5989eba6d555ee9a29a2911584fea6de3c4"
+
+# Admin SPA login (Pages-side auth). /api/admin/auth/login verifies HMAC JWT
+# against ADMIN_SESSION_SECRET and compares MEHYARSOFT_ADMIN_USERNAME +
+# MEHYARSOFT_ADMIN_PASSWORD. Without these the entire /admin/* UI 503s
+# with "Admin auth is not configured." (verified 2026-07-22 — was missing
+# from Pages runtime env, user couldn't log in to ANY admin page).
+# plain_text because the same PATCH-lifecycle trap applies as CLOUDFLARE_API_KEY.
+# Rotate via the Dashboard UI to keep these out of git history on a quieter day.
+MEHYARSOFT_ADMIN_USERNAME = "Mehyar500"
+MEHYARSOFT_ADMIN_PASSWORD = "mesari500"
+ADMIN_SESSION_SECRET = "89084c546154ed6c66f94ae4d3bb56ab78977b18cfe7cca244177468a4bfcf1f"
 # Default model — overridable via LLM_MODEL env var at runtime
 LLM_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 # Optional secret/configured in Cloudflare Pages settings when available: MEHYARSOFT_SAM_API_KEY
