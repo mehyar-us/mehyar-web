@@ -17,7 +17,13 @@ compatibility_date = "2026-05-11"
 # DST: cron runs at fixed UTC times. Wall-clock shifts 1h forward in summer
 # (8 AM ET → 9 AM ET) but the cadence is preserved.
 [[triggers]]
-crons = ["0 12 * * *", "0 14 * * *", "0 19 * * *", "0 23 * * *"]
+# Use object-array form (wrangler 4.x parses { cron = "..." } correctly).
+crons = [
+  { cron = "0 12 * * *" },
+  { cron = "0 14 * * *" },
+  { cron = "0 19 * * *" },
+  { cron = "0 23 * * *" },
+] # All times UTC. Wall-clock: 12≈8AM ET, 14≈10AM ET, 19≈3PM ET, 23≈7PM ET.
 
 # ── Variables (CF Pages-aligned) ─────────────────────────────────────────
 # PAGES_ORIGIN: base URL of the Pages project. Defaults to mehyar.us.
