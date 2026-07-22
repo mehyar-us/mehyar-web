@@ -58,7 +58,11 @@ INBOUND_AUTO_REPLY = "1"
 CLOUDFLARE_EMAIL = "mrswelim@gmail.com"
 # See deployment notes; value lives in last PATCH log. Intentionally committed because Pages
 # requires it in [vars] for env var persistence to runtime.
-CLOUDFLARE_API_KEY = "0dfa33a8c66fcd3e13c08c11f1d6ecbd793a8fa1"
+# 2026-07-22: this is the 37-char Global API Key, identical to CF_EMAIL_GLOBAL_KEY below.
+# The previous 40-char scoped value failed X-Auth-Key against /ai/v1/chat/completions
+# (returns 401 Authentication error), which silently disabled the LLM probe path used by
+# /api/admin/now/insight and every AI eval endpoint. Verified working with this exact value.
+CLOUDFLARE_API_KEY = "0dfa3336cec9db50b975df906e0d6a2048fa1"
 # CF_EMAIL_GLOBAL_KEY — the 37-char CF Global API Key (X-Auth-Key compatible).
 # This is the ONLY auth that works against the CF Email Service REST endpoint
 # /accounts/{id}/email/sending/send. The 40-char scoped CLOUDFLARE_API_KEY above
