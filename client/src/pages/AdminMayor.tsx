@@ -108,7 +108,7 @@ function MayorView({ token }: { token: string }) {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
-      <AdminNav active="mayor" onLogout={logout} onRefresh={refresh} />
+      <AdminNav active="now" onLogout={logout} onRefresh={refresh} />
 
       {/* ── Title ─────────────────────────────────────────────────── */}
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">

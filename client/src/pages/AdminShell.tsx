@@ -103,7 +103,7 @@ const TABS = [
   { key: "system", label: "⚙ System",   href: "/admin/system",           icon: Settings,    tagline: "Audit · Cron · Backups" },
 ];
 
-export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"crm"|"money"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
+export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"mayor"|"crm"|"money"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
   const [, setLocation] = useLocation();
   return (
     <>
