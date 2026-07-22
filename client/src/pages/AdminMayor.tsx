@@ -11,7 +11,7 @@
 // (verified by /api/admin/auth/login) persisted in localStorage 30-day TTL.
 
 import { useEffect, useState, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import {
   Pause, Play, Mail, Send, Reply, AlertTriangle, RefreshCw, CheckCircle2,
   Loader2, ArrowRight, Activity, Clock, ExternalLink, Sparkles,
@@ -59,9 +59,9 @@ function fmtWhenNext(iso: string | null | undefined) {
   return `in ${Math.round(ms / 86400_000)}d`;
 }
 
-function StatBox({ label, value, sub, icon: Icon, color }: any) {
-  return (
-    <div className={`rounded-xl p-4 border border-zinc-200 dark:border-zinc-700 ${color || "bg-white dark:bg-zinc-900"}`}>
+function StatBox({ label, value, sub, icon: Icon, color, href }: any) {
+  const body = (
+    <div className={`rounded-xl p-4 border border-zinc-200 dark:border-zinc-700 ${color || "bg-white dark:bg-zinc-900"} h-full transition group-hover:border-violet-400 dark:group-hover:border-violet-500`}>
       <div className="flex items-center justify-between">
         <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 font-semibold">{label}</div>
         {Icon && <Icon className="w-4 h-4 opacity-60" />}
@@ -70,6 +70,14 @@ function StatBox({ label, value, sub, icon: Icon, color }: any) {
       {sub && <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{sub}</div>}
     </div>
   );
+  if (href) {
+    return (
+      <Link href={href} aria-label={`${label}: ${value}. Click for details.`} className="block group">
+        {body}
+      </Link>
+    );
+  }
+  return body;
 }
 
 export default function AdminMayor() {
@@ -237,6 +245,26 @@ function MayorView({ token }: { token: string }) {
     }
   };
 
+  // Manually trigger one of the cron windows on demand.
+  const [triggering, setTriggering] = useState<string | null>(null);
+  const [triggerResult, setTriggerResult] = useState<any>(null);
+  const runJob = async (job: string) => {
+    setTriggering(job);
+    try {
+      const r = await fetch(`/api/admin/cron/run?job=${encodeURIComponent(job)}`, {
+        method: "POST",
+        headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const j = await r.json().catch(() => ({}));
+      setTriggerResult({ job, ...j });
+      await refresh();
+      setTimeout(() => setTriggerResult(null), 6000);
+    } finally {
+      setTriggering(null);
+    }
+  };
+
   const refreshInsight = async () => {
     setAiBusy(true);
     try {
@@ -320,18 +348,69 @@ function MayorView({ token }: { token: string }) {
         </CardContent>
       </Card>
 
+      {/* ── TRIGGER ANYTHING — on-demand cron windows ─────────────── */}
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                Trigger anything
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Fire one of the four daily windows right now. Useful when you want fresh data on the dashboard.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {([
+              { id: "discover", label: "🔍 Discover + outreach", color: "bg-violet-600 hover:bg-violet-700" },
+              { id: "outreach", label: "📤 Outreach",           color: "bg-amber-600 hover:bg-amber-700" },
+              { id: "followup", label: "🔁 Follow-up",          color: "bg-sky-600 hover:bg-sky-700" },
+              { id: "all",      label: "⚡ Full sweep",         color: "bg-emerald-600 hover:bg-emerald-700" },
+            ] as const).map((j) => {
+              const isTriggering = triggering === j.id;
+              return (
+                <button
+                  key={j.id}
+                  onClick={() => runJob(j.id)}
+                  disabled={!!triggering}
+                  className={`min-h-[48px] px-3 py-2 rounded-lg text-white text-sm font-medium transition disabled:opacity-50 active:scale-95 ${j.color} text-white shadow-sm flex items-center justify-center gap-2`}
+                >
+                  {isTriggering && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {j.label}
+                </button>
+              );
+            })}
+          </div>
+          {triggerResult && (
+            <div className="mt-3 text-xs bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 font-mono text-zinc-700 dark:text-zinc-300">
+              ✓ <strong>{triggerResult.job}</strong> ran in {triggerResult.duration_ms ?? "?"}ms ·
+              sam_fetched={triggerResult.gov_ingest?.summary?.sam?.fetched ?? "-"} ·
+              drafted={triggerResult.auto_draft?.drafted ?? "-"} ·
+              local={triggerResult.mayor_discover?.local?.found ?? "-"}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ── STAT STRIP — Pulse in one row ──────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
         <StatBox label="Engine" value={isPaused ? "PAUSED" : "RUNNING"} icon={isPaused ? Pause : CheckCircle2}
           color={isPaused ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200" : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200"} />
         <StatBox label="Sent today" value={`${sentToday}/${cap}`} icon={Send}
-          color={sentToday > 0 ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200" : undefined} />
+          color={sentToday > 0 ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200" : undefined}
+          href="/admin/money#outreach-queue" />
         <StatBox label="Pipeline $" value={`$${(funnel.pipeline_value || 0).toLocaleString()}`} icon={TrendingUp}
-          color="bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200" />
-        <StatBox label="SAM opps" value={liveOppCount} sub={`${funnel.sam_due_48h || 0} due 48h`} icon={Database} />
-        <StatBox label="Open drafts" value={openDrafts} sub={`${queuedForSend} queued`} icon={Brain} />
+          color="bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200"
+          href="/admin/money" />
+        <StatBox label="SAM opps" value={liveOppCount} sub={`${funnel.sam_due_48h || 0} due 48h`} icon={Database}
+          href="/admin/leads?kind=sam" />
+        <StatBox label="Open drafts" value={openDrafts} sub={`${queuedForSend} queued`} icon={Brain}
+          href="/admin/leads?kind=all&stage=draft_needed" />
         <StatBox label="Replies" value={replies.length} sub={replies.length === 0 ? "all handled" : "need eyes"} icon={Reply}
-          color={replies.length > 0 ? "bg-violet-50 dark:bg-violet-950/30 border-violet-200" : undefined} />
+          color={replies.length > 0 ? "bg-violet-50 dark:bg-violet-950/30 border-violet-200" : undefined}
+          href="/admin/leads?kind=replies" />
       </div>
 
       {/* ── THREE COLUMNS: HAPPENED · HAPPENING · WILL HAPPEN ──────── */}

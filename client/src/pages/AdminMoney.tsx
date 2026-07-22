@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Textarea } from "@/components/ui/input";
-import { AdminNav, JarvisBar, AdminGate, useAdminSession, STAGE_BADGE } from "./AdminShell";
+import { AdminNav, MayorBar, AdminGate, useAdminSession, STAGE_BADGE } from "./AdminShell";
 
 const STAGES = ["discovery","evaluating","drafting","ready","queued","sent","replied"];
 const CLOSED = ["won","lost","no_bid","on_hold","archived"];
@@ -51,7 +51,7 @@ function MoneyView({ token }: { token: string }) {
       <AdminNav active="money" onLogout={logout} onRefresh={refresh} />
 
       <div className="mb-5">
-        <JarvisBar token={token} placeholder="Try: 'forecast for next 30 days', 'show closed-won this quarter'" />
+        <MayorBar token={token} placeholder="Try: 'forecast for next 30 days', 'show closed-won this quarter'" />
       </div>
 
       {q.isLoading && (
@@ -435,7 +435,7 @@ function OutreachQueue({ token, onOpenDraft }: { token: string; onOpenDraft: (id
   });
 
   return (
-    <Card className="mt-6">
+    <Card id="outreach-queue" className="mt-6 scroll-mt-20">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className="font-semibold flex items-center gap-2">
@@ -513,7 +513,7 @@ function RecentDraftsList({ token, onOpen }: { token: string; onOpen: (id: strin
     queryKey: ["admin-recent-drafts-v2", token],
     queryFn: async () => {
       // Use /api/admin/jarvis sql to fetch safely
-      const r = await fetch("/api/admin/jarvis", {
+      const r = await fetch("/api/admin/mayor", {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
         body: JSON.stringify({ question: "sql: SELECT id, subject, status, prospect_id, sam_id, created_at FROM prospect_drafts ORDER BY created_at DESC LIMIT 10" }),

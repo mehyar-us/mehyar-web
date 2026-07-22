@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 import {
   Loader2, Sparkles, Zap, Flame, Send, Mail, Calendar, Bell, RefreshCw,
   ChevronRight, Brain, Hourglass, Briefcase, Globe, ArrowRight, CheckCircle2,
@@ -9,7 +10,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AdminNav, JarvisBar, AdminGate, useAdminSession, STAGE_BADGE, ScoreBar, EmptyState } from "./AdminShell";
+import { AdminNav, MayorBar, AdminGate, useAdminSession, STAGE_BADGE, ScoreBar, EmptyState } from "./AdminShell";
 
 async function fetchNow(token: string) {
   const r = await fetch("/api/admin/dashboard/now", { headers: { authorization: "Bearer " + token } });
@@ -81,7 +82,7 @@ function NowView({ token }: { token: string }) {
     <div className="p-4 md:p-6 max-w-7xl mx-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}>
       <AdminNav active="now" onLogout={logout} onRefresh={refresh} />
 
-      {/* Top — Jarvis + Greeting + clock */}
+      {/* Top — Mayor + Greeting + clock */}
       <div className="mb-5 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px]">
@@ -96,7 +97,7 @@ function NowView({ token }: { token: string }) {
             </p>
           </div>
         </div>
-        <JarvisBar token={token} placeholder="Try: 'count prospects last 7d', 'sql: select * from…', 'show today's stage changes'" />
+        <MayorBar token={token} placeholder="Try: 'count prospects last 7d', 'sql: select * from…', 'show today's stage changes'" />
       </div>
 
       {q.isLoading && (
@@ -163,7 +164,21 @@ function AiInsightPanel({ data, token }: { data: any; token: string }) {
       </Card>
     );
   }
+  return <InsightCard insight={insight} onRefresh={load} busy={busy} />;
+}
+
+function InsightCard({ insight, onRefresh, busy }: any) {
   if (!insight) return null;
+  // Per-tone styling — each action chip uses an accent matching the KPI category.
+  const toneCls: Record<string, string> = {
+    violet:  "bg-violet-600 dark:bg-violet-600 text-white hover:bg-violet-700 dark:hover:bg-violet-500",
+    emerald: "bg-emerald-600 dark:bg-emerald-600 text-white hover:bg-emerald-700 dark:hover:bg-emerald-500",
+    amber:   "bg-amber-500 dark:bg-amber-500 text-white hover:bg-amber-600 dark:hover:bg-amber-400",
+    red:     "bg-red-600 dark:bg-red-600 text-white hover:bg-red-700 dark:hover:bg-red-500",
+    sky:     "bg-sky-600 dark:bg-sky-600 text-white hover:bg-sky-700 dark:hover:bg-sky-500",
+  };
+  const actions: any[] = insight?.actions || [];
+
   return (
     <Card className="mt-4 border-violet-300 dark:border-violet-700 bg-gradient-to-r from-violet-50/40 via-white to-cyan-50/40 dark:from-violet-950/40 dark:via-zinc-900 dark:to-cyan-950/40">
       <CardContent className="p-4">
@@ -172,19 +187,33 @@ function AiInsightPanel({ data, token }: { data: any; token: string }) {
             <Brain className="w-4 h-4 text-violet-500 dark:text-violet-400" />
             🧠 AI insight — what to do first today
           </h3>
-          <Button size="sm" variant="ghost" onClick={load} disabled={busy}>
+          <Button size="sm" variant="ghost" onClick={onRefresh} disabled={busy} aria-label="Refresh insight">
             {busy ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
             Refresh
           </Button>
         </div>
-        <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200 whitespace-pre-line">{insight.text}</p>
-        {insight.actions?.length > 0 && (
+        <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200 whitespace-pre-line">
+          {insight?.text || "Mayor is still warming up — refresh in a moment."}
+        </p>
+        {actions.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-violet-200 dark:border-violet-800">
-            {insight.actions.map((a, i) => (
-              <a key={i} href={a.href} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-violet-600 dark:bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 dark:hover:bg-violet-500 transition">
-                {a.label} →
-              </a>
+            {actions.map((a, i) => (
+              <Link
+                key={i}
+                href={a.href}
+                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition active:scale-95 ${toneCls[a.tone] || toneCls.violet}`}
+              >
+                {a.label} <ArrowRight className="w-3 h-3" />
+              </Link>
             ))}
+          </div>
+        )}
+        {insight?.used_llm && (
+          <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2 pt-2 border-t border-violet-100 dark:border-violet-900/50 flex items-center gap-2">
+            <Sparkles className="w-3 h-3" />
+            <span>Powered by Workers AI · {insight?.model || "@cf/meta/llama-3.2-3b-instruct"}</span>
+            {insight?.latency_ms != null && <span className="tabular-nums">· {insight.latency_ms}ms</span>}
+            {!insight?.used_llm && insight?.error && <span className="text-amber-700 dark:text-amber-300">· heuristic fallback ({insight.error})</span>}
           </div>
         )}
       </CardContent>
@@ -202,27 +231,106 @@ function greetingFor(d: Date) {
 }
 
 function KpiStrip({ counts }: any) {
+  // Each KPI card is a clickable Link that deep-links into the CRM
+  // (or outreach queue for outreach_due) with the appropriate ?kind=
+  // query param so the CRM's sticky 4-tab header pre-selects the
+  // matching tab on arrival. Wouter's <Link> performs client-side
+  // navigation — no full page reload.
   const strip = [
-    { key: "sam_active",       label: "🟢 SAM live",       val: counts.sam_active,         tone: counts.sam_active       ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400" },
-    { key: "sam_due_48h",      label: "🔥 Due ≤48h",       val: counts.sam_due_48h,        tone: counts.sam_due_48h      ? "text-red-700 dark:text-red-400"    : "text-zinc-500 dark:text-zinc-400" },
-    { key: "prospects_live",   label: "🧲 Live prospects", val: counts.prospects_live,     tone: "text-indigo-700 dark:text-indigo-400" },
-    { key: "drafts_to_review", label: "📝 Drafts to review", val: counts.drafts_to_review, tone: counts.drafts_to_review ? "text-violet-700 dark:text-violet-400" : "text-zinc-500 dark:text-zinc-400" },
-    { key: "outreach_due",     label: "📤 Outreach due",   val: counts.outreach_due,       tone: "text-amber-700 dark:text-amber-400" },
-    { key: "replies_24h",      label: "📬 Replies 24h",    val: counts.replies_24h,        tone: counts.replies_24h      ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400" },
-    { key: "won_30d",          label: "💰 Won 30d",        val: counts.won_30d,            tone: "text-green-700 dark:text-green-400" },
-    { key: "pipeline_value",   label: "💎 Pipeline $",     val: counts.pipeline_value,     tone: "text-cyan-700 dark:text-cyan-400", prefix: "$" },
+    {
+      key: "sam_active",
+      label: "🟢 SAM live",
+      val: counts.sam_active,
+      tone: counts.sam_active ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400",
+      href: "/admin/leads?kind=sam",
+      desc: "Live government opportunities — click to open the Government Opps tab.",
+    },
+    {
+      key: "sam_due_48h",
+      label: "🔥 Due ≤48h",
+      val: counts.sam_due_48h,
+      tone: counts.sam_due_48h ? "text-red-700 dark:text-red-400" : "text-zinc-500 dark:text-zinc-400",
+      href: "/admin/leads?kind=sam&sort=deadline_asc",
+      desc: "SAM opportunities due in the next 48 hours.",
+    },
+    {
+      key: "prospects_live",
+      label: "🧲 Local biz",
+      val: counts.prospects_live,
+      tone: "text-indigo-700 dark:text-indigo-400",
+      href: "/admin/leads?kind=prospect",
+      desc: "Local business prospects — click to open the Local Biz tab.",
+    },
+    {
+      key: "drafts_to_review",
+      label: "📝 Drafts to review",
+      val: counts.drafts_to_review,
+      tone: counts.drafts_to_review ? "text-violet-700 dark:text-violet-400" : "text-zinc-500 dark:text-zinc-400",
+      href: "/admin/money#drafts",
+      desc: "Draft outreach emails awaiting your review.",
+    },
+    {
+      key: "outreach_due",
+      label: "📤 Outreach due",
+      val: counts.outreach_due,
+      tone: "text-amber-700 dark:text-amber-400",
+      href: "/admin/money#outreach-queue",
+      desc: "Sequenced outreach steps ready to fire (may require approval).",
+    },
+    {
+      key: "replies_24h",
+      label: "📬 Replies 24h",
+      val: counts.replies_24h,
+      tone: counts.replies_24h ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400",
+      href: "/admin/leads?kind=replies",
+      desc: "Unread inbound replies that need a human eye.",
+    },
+    {
+      key: "won_30d",
+      label: "💰 Won 30d",
+      val: counts.won_30d,
+      tone: "text-green-700 dark:text-green-400",
+      href: "/admin/leads?kind=sam&stage=won",
+      desc: "Opportunities marked Won in the last 30 days.",
+    },
+    {
+      key: "pipeline_value",
+      label: "💎 Pipeline $",
+      val: counts.pipeline_value,
+      tone: "text-cyan-700 dark:text-cyan-400",
+      prefix: "$",
+      href: "/admin/money",
+      desc: "Your Money dashboard — pipeline, contracts, and outreach ROI.",
+    },
   ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2">
       {strip.map((s) => (
-        <Card key={s.key} className="hover:border-zinc-300 dark:hover:border-zinc-600 transition">
-          <CardContent className="p-3">
-            <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 leading-tight">{s.label}</div>
-            <div className={`text-xl font-bold mt-1 leading-tight tabular-nums ${s.tone}`}>
-              {s.prefix || ""}{(s.val ?? 0).toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
+        <Link
+          key={s.key}
+          href={s.href}
+          className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-xl group"
+          aria-label={`${s.label}: ${s.val ?? 0}. ${s.desc}`}
+        >
+          <Card className="h-full border-zinc-200 dark:border-zinc-700 group-hover:border-violet-400 dark:group-hover:border-violet-500 group-active:scale-[0.98] transition cursor-pointer">
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 leading-tight group-hover:text-violet-700 dark:group-hover:text-violet-300 transition">
+                  {s.label}
+                </div>
+                <ChevronRight className="w-3 h-3 text-zinc-400 dark:text-zinc-500 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition shrink-0" />
+              </div>
+              <div className={`text-2xl font-bold mt-1 leading-tight tabular-nums ${s.tone}`}>
+                {s.prefix || ""}{(s.val ?? 0).toLocaleString()}
+              </div>
+              {/* Hint text shows on hover/focus for affordance */}
+              <div className="text-[9px] text-zinc-500 dark:text-zinc-400 mt-1 leading-tight opacity-0 group-hover:opacity-100 transition max-h-0 group-hover:max-h-12 overflow-hidden">
+                {s.desc}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       ))}
     </div>
   );

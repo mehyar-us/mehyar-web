@@ -119,7 +119,9 @@ export async function onRequestGet({ request, env }) {
   };
 
   // AI insight via CF Workers AI (uses the lowest-cost call path; cached).
-  const insight = await composeInsight(env, engagementState).catch((e) => ({
+  // We post-process the text into structured action chips so the UI can
+  // render clickable links — even though the LLM generated plain prose.
+  let insight = await composeInsight(env, engagementState).catch((e) => ({
     used_llm: false,
     content: heuristicInsight(engagementState),
     parsed: null,
@@ -129,6 +131,7 @@ export async function onRequestGet({ request, env }) {
     model: "n/a",
     error: String(e?.message || e),
   }));
+  insight.actions = buildInsightActions(insight.content || "", engagementState);
 
   return json({
     ok: true,
@@ -194,4 +197,41 @@ function heuristicInsight(s) {
     lines.push(`Engine logged ${s.ops.errors_24h} error${s.ops.errors_24h === 1 ? "" : "s"} in the last 24h — check the SYSTEM tab.`);
   if (lines.length === 0) lines.push(`All clear. Mayor is running and there's nothing urgent. Watch the cron logs.`);
   return lines.join(" ");
+}
+
+// Convert the LLM/heuristic prose into structured action chips the dashboard
+// can render as clickable buttons. We match against noun phrases that map
+// cleanly to canonical CRM routes — no fancy NLP required.
+function buildInsightActions(text, s) {
+  const actions = [];
+  const low = String(text || "").toLowerCase();
+  const has = (kw) => low.includes(kw);
+
+  // Always offer the highest-leverage action first if its count is non-zero.
+  if ((s.queue?.open_drafts || 0) > 0 || has("draft")) {
+    actions.push({ label: `📝 Review ${s.queue?.open_drafts || 0} draft${(s.queue?.open_drafts || 0) === 1 ? "" : "s"}`, href: "/admin/leads?kind=all&stage=draft_needed", tone: "violet" });
+  }
+  if ((s.queue?.queued_for_send || 0) > 0 || has("queued")) {
+    actions.push({ label: `📤 Approve ${s.queue?.queued_for_send || 0} outreach send`, href: "/admin/money#outreach-queue", tone: "amber" });
+  }
+  if ((s.replies_needing_action || 0) > 0 || has("repl")) {
+    actions.push({ label: `💌 Open ${s.replies_needing_action || 0} replies`, href: "/admin/leads?kind=replies", tone: "emerald" });
+  }
+  if ((s.sam?.due_48h || 0) > 0 || has("sam") || has("due")) {
+    actions.push({ label: `🏛 ${s.sam?.due_48h || 0} SAM due in 48h`, href: "/admin/leads?kind=sam&sort=deadline_asc", tone: "red" });
+  }
+  if ((s.ops?.errors_24h || 0) > 0 || has("error")) {
+    actions.push({ label: `⚠ ${s.ops?.errors_24h || 0} engine error${(s.ops?.errors_24h || 0) === 1 ? "" : "s"}`, href: "/admin/system", tone: "amber" });
+  }
+  if (s.paused || has("paused") || has("resume")) {
+    actions.push({ label: `▶ Resume Mayor`, href: "/admin/mayor", tone: "violet" });
+  }
+
+  // Always provide a fallback so the panel never feels empty.
+  if (actions.length === 0) {
+    actions.push({ label: "🔄 Refresh state", href: "/admin/now", tone: "sky" });
+  }
+  // De-dupe by href, keep first occurrence, cap at 4 chips.
+  const seen = new Set();
+  return actions.filter((a) => (seen.has(a.href) ? false : (seen.add(a.href), true))).slice(0, 4);
 }

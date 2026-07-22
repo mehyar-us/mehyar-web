@@ -6,13 +6,13 @@ import {
   Loader2, Sparkles, Filter, Search, ChevronRight,
   Briefcase, Globe, Send, Phone, Mail, Calendar, RefreshCw,
   X, Plus, Brain, CheckCircle2, ArrowRight, MailIcon, Trash2,
-  MessageSquare, Check, ExternalLink, AlertTriangle, Clock, DollarSign, Target, Zap,
+  MessageSquare, MessageCircle, Check, ExternalLink, AlertTriangle, Clock, DollarSign, Target, Zap,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { AdminNav, JarvisBar, AdminGate, useAdminSession, STAGE_BADGE, ScoreBar } from "./AdminShell";
+import { AdminNav, MayorBar, AdminGate, useAdminSession, STAGE_BADGE, ScoreBar } from "./AdminShell";
 
 async function fetchCRM(token: string, params: string) {
   const r = await fetch(`/api/admin/leads?${params}`, { headers: { authorization: `Bearer ${token}` } });
@@ -35,7 +35,7 @@ function CrmView({ token }: { token: string }) {
   const { logout } = useAdminSession();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
-  const [kind, setKind] = useState<"all"|"prospect"|"sam">("all");
+  const [kind, setKind] = useState<"all"|"prospect"|"sam"|"replies">("all");
   const [stage, setStage] = useState<string>("");
   const [sort, setSort] = useState<"deadline_asc"|"leak_desc"|"fit_desc"|"created_desc">("created_desc");
   const [includeImminent, setIncludeImminent] = useState(false);
@@ -44,11 +44,54 @@ function CrmView({ token }: { token: string }) {
   const [toast, setToast] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
+  // ── Deep-link sync: read ?kind= ?stage= ?sort= from URL on every render.
+  // Pages like /admin/leads?kind=replies (from the Mayor dashboard KPI cards)
+  // land here and pre-select the matching sticky-tab on arrival. We parse on
+  // every paint and let useState's equality check absorb unchanged values.
+  const search = typeof window !== "undefined" ? window.location.search : "";
+  useEffect(() => {
+    const url = new URLSearchParams(search);
+    const k = url.get("kind");
+    if (k === "prospect" || k === "sam" || k === "replies" || k === "all") setKind(k);
+    const st = url.get("stage");
+    if (st) setStage(st);
+    const so = url.get("sort");
+    if (so === "deadline_asc" || so === "leak_desc" || so === "fit_desc" || so === "created_desc") setSort(so);
+  }, [search]);
+
   const params = new URLSearchParams({ q, kind, stage, sort });
   if (includeImminent) params.set("include_imminent", "true");
-  const leadQ = useQuery({ queryKey: ["admin-crm", token, params.toString()], queryFn: () => fetchCRM(token, params.toString()) });
+  const leadQ = useQuery({
+    queryKey: ["admin-crm", token, params.toString()],
+    queryFn: () => fetchCRM(token, params.toString()),
+    enabled: kind !== "replies", // replies have their own endpoint
+  });
+
+  // Replies tab fetches from a separate endpoint that surfaces prospect_replies.
+  const repliesQ = useQuery({
+    queryKey: ["admin-crm-replies", token, q],
+    queryFn: async () => {
+      const r = await fetch(`/api/admin/mayor/replies?needs_action=1&limit=100&q=${encodeURIComponent(q)}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.json();
+    },
+    enabled: kind === "replies",
+  });
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-crm"] });
+
+  // Mark a prospect_reply as handled (clears needs_action flag from D1).
+  const markReplyHandled = async (replyId: string) => {
+    try {
+      const r = await fetch(`/api/admin/mayor/replies/${replyId}/mark-handled`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (r.ok) qc.invalidateQueries({ queryKey: ["admin-crm-replies"] });
+    } catch { /* ignore */ }
+  };
 
   // Auto-clear toast
   useEffect(() => {
@@ -86,42 +129,76 @@ function CrmView({ token }: { token: string }) {
       <AdminNav active="crm" onLogout={logout} onRefresh={refresh} />
 
       <div className="mb-5 space-y-3">
-        <JarvisBar token={token} placeholder="Try: 'count prospects by city', 'promote all leak>70', 'enrich a0daf6…'" />
+        <MayorBar token={token} placeholder="Try: 'count prospects by city', 'promote all leak>70', 'enrich a0daf6…'" />
         <AiDailySuggestions token={token} onOpen={(id, kind) => openDrawer(id, kind)} />
         <BusinessScanner token={token} onUpdate={refresh} />
         <EUScouter token={token} onUpdate={refresh} />
         <FindJobsPanel token={token} onUpdate={refresh} />
       </div>
 
-      {/* Toolbar */}
-      <Card className="mb-4 sticky top-16 z-10 backdrop-blur bg-white dark:bg-zinc-900/95">
+      {/* ── Sticky 4-tab CRM header (always below navbar / sticky on scroll) ─── */}
+      <div className="sticky top-14 md:top-16 z-20 -mx-4 md:-mx-6 -mt-2 mb-4">
+        <div className="backdrop-blur bg-white/95 dark:bg-zinc-900/95 border-b border-zinc-200 dark:border-zinc-700 px-4 md:px-6">
+          <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto py-2">
+            {([
+              { k: "all",      label: "All",                icon: "🗂", count: filtered.length },
+              { k: "sam",      label: "🏛 Government Opps", icon: "🏛",  count: null },
+              { k: "prospect", label: "🧲 Local Biz",       icon: "🧲", count: null },
+              { k: "replies",  label: "💌 Replies",         icon: "💌", count: kind === "replies" ? (repliesQ.data?.replies?.length ?? null) : null },
+            ] as const).map((t) => {
+              const active = kind === t.k;
+              return (
+                <button
+                  key={t.k}
+                  onClick={() => setKind(t.k as any)}
+                  className={`shrink-0 px-3 md:px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition flex items-center gap-1.5 ${
+                    active
+                      ? "border-violet-600 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/30"
+                      : "border-transparent text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-600"
+                  }`}
+                >
+                  <span>{t.label}</span>
+                  {t.count != null && (
+                    <span className={`text-[10px] tabular-nums px-1.5 py-0.5 rounded-full ${
+                      active ? "bg-violet-200 dark:bg-violet-800 text-violet-900 dark:text-violet-100" : "bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
+                    }`}>{t.count}</span>
+                  )}
+                </button>
+              );
+            })}
+            <span className="ml-auto text-[10px] text-zinc-500 dark:text-zinc-400 tabular-nums shrink-0">
+              {kind === "replies"
+                ? `${(repliesQ.data?.replies || []).length} reply${(repliesQ.data?.replies || []).length === 1 ? "" : "ies"}`
+                : `${filtered.length} lead${filtered.length === 1 ? "" : "s"}`}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Toolbar (search + sort + filters) — visible on all tabs except pure-replies */}
+      <Card className="mb-4 sticky top-[88px] md:top-[100px] z-10 backdrop-blur bg-white dark:bg-zinc-900/95">
         <CardContent className="p-3 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 flex-1 min-w-[200px] bg-zinc-50 dark:bg-zinc-800/50 rounded-lg px-2.5 py-1.5 border border-zinc-200 dark:border-zinc-700">
               <Search className="w-4 h-4 text-zinc-400 dark:text-zinc-400" />
               <Input
-                placeholder="Filter by name, domain, agency, city…"
+                placeholder={kind === "replies" ? "Search replies by sender, subject, body…" : "Filter by name, domain, agency, city…"}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="border-0 bg-transparent focus-visible:ring-0 px-0 text-sm h-7"
               />
               {q && <button onClick={() => setQ("")} className="text-zinc-500 dark:text-zinc-400"><X className="w-4 h-4" /></button>}
             </div>
-            <div className="flex gap-1">
-              {(["all","prospect","sam"] as const).map((k) => (
-                <button key={k} onClick={() => setKind(k)}
-                  className={`px-2.5 py-1.5 text-xs rounded-full transition ${kind === k ? "bg-zinc-900 text-white shadow-sm" : "bg-zinc-100 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:bg-zinc-700"}`}>
-                  {k === "all" ? "All" : k === "sam" ? "🏛 SAM.gov" : "🧲 Prospects"}
+            {kind !== "replies" && (
+              <>
+                <button onClick={() => setShowFilters((s) => !s)}
+                  className={`px-2.5 py-1.5 text-xs rounded-full border ${showFilters ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500"}`}>
+                  <Filter className="inline w-3 h-3 mr-1" />Filters
                 </button>
-              ))}
-            </div>
-            <button onClick={() => setShowFilters((s) => !s)}
-              className={`px-2.5 py-1.5 text-xs rounded-full border ${showFilters ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500"}`}>
-              <Filter className="inline w-3 h-3 mr-1" />Filters
-            </button>
+              </>
+            )}
             <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto tabular-nums">
-              {filtered.length} leads
-              {leadQ.data?.hidden_imminent > 0 && (
+              {leadQ.data?.hidden_imminent > 0 && kind !== "replies" && (
                 <button
                   type="button"
                   onClick={() => setIncludeImminent((v) => !v)}
@@ -133,7 +210,7 @@ function CrmView({ token }: { token: string }) {
               )}
             </span>
           </div>
-          {showFilters && (
+          {showFilters && kind !== "replies" && (
             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">Stage:</span>
@@ -153,7 +230,7 @@ function CrmView({ token }: { token: string }) {
                   <option value="created_desc">🕒 Newest first</option>
                 </select>
               </div>
-              <BulkActions token={token} ids={filtered.map((x:any) => x.id)} kind={kind} onDone={() => { refresh(); setToast(`Bulk action queued on ${filtered.length} leads`); }} />
+              <BulkActions token={token} ids={filtered.map((x:any) => x.id)} kind={kind === "replies" ? "any" : kind} onDone={() => { refresh(); setToast(`Bulk action queued on ${filtered.length} leads`); }} />
             </div>
           )}
         </CardContent>
@@ -182,7 +259,57 @@ function CrmView({ token }: { token: string }) {
         </CardContent></Card>
       )}
 
-      {leadQ.data && filtered.length === 0 && (
+      {repliesQ.isError && kind === "replies" && (
+        <Card><CardContent className="py-8 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
+          ⚠ Failed to load replies: {String((repliesQ.error as Error)?.message || repliesQ.error)}
+          <Button size="sm" variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["admin-crm-replies"] })}>Retry</Button>
+        </CardContent></Card>
+      )}
+
+      {kind === "replies" && (
+        repliesQ.data?.replies?.length > 0 ? (
+          <div className="space-y-2">
+            {repliesQ.data.replies.map((r: any) => (
+              <Card key={r.id} className="hover:border-emerald-300 dark:hover:border-emerald-700 transition">
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold truncate">{r.from_name || r.from_email || "(unknown sender)"}</span>
+                        {r.classification && (
+                          <Badge variant="outline" className="text-[10px] uppercase">{r.classification}</Badge>
+                        )}
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 tabular-nums">
+                          {r.received_at ? new Date(r.received_at).toLocaleString() : ""}
+                        </span>
+                      </div>
+                      {r.subject && <div className="text-sm font-medium mb-1 line-clamp-1">{r.subject}</div>}
+                      {r.body_excerpt && <div className="text-xs text-zinc-700 dark:text-zinc-300 line-clamp-3">{r.body_excerpt}</div>}
+                      <div className="flex items-center gap-3 mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                        {r.prospect_id && (
+                          <a href={`/admin/leads?kind=prospect&focus=${r.prospect_id}`} className="underline hover:text-violet-700">
+                            open prospect →
+                          </a>
+                        )}
+                        {r.prospect_email && <span className="font-mono">{r.prospect_email}</span>}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => markReplyHandled(r.id)}>Handled</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : !repliesQ.isLoading && (
+          <Card><CardContent className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">
+            <MessageCircle className="inline w-10 h-10 mb-3 text-zinc-300 dark:text-zinc-600" />
+            <div className="font-medium text-zinc-700 dark:text-zinc-200">No replies need attention right now.</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Mayor is auto-classifying inbound replies; this view shows ones not yet handled.</div>
+          </CardContent></Card>
+        )
+      )}
+
+      {leadQ.data && filtered.length === 0 && kind !== "replies" && (
         <Card><CardContent className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">
           <Sparkles className="inline w-10 h-10 mb-3 text-zinc-300 dark:text-zinc-300" />
           <div className="font-medium text-zinc-500 dark:text-zinc-400">No leads match these filters.</div>
@@ -193,7 +320,7 @@ function CrmView({ token }: { token: string }) {
         </CardContent></Card>
       )}
 
-      {leadQ.data && filtered.length > 0 && (
+      {leadQ.data && filtered.length > 0 && kind !== "replies" && (
         <div className="space-y-2">
           {filtered.map((it: any) => (
             <LeadRow
@@ -1148,7 +1275,7 @@ function DeepEvalChat({
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
           }}
           rows={2}
-          placeholder="Ask the AI to refine the evaluation…"
+          placeholder="Ask the Mayor to refine the evaluation…"
           disabled={sending}
           className="flex-1 resize-none rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 text-sm p-2 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:opacity-50"
         />
@@ -1415,7 +1542,7 @@ function EUScouter({ token, onUpdate }: { token: string; onUpdate?: () => void }
   );
 }
 
-// ─── Deep Analyze (full AI analysis with pricing + execution plan + Jarvis chat) ──
+// ─── Deep Analyze (full AI analysis with pricing + execution plan + Mayor chat) ──
 // Goes far beyond DeepEval. Uses the /api/admin/prospects/<id>/deep-analyze
 // endpoint. Cached for 12h. User can refine via /chat-analyze (multi-turn).
 
@@ -1450,7 +1577,7 @@ function DeepAnalyze({ id, token, onAction }: { id: string; token: string; onAct
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-base flex items-center gap-2">
-              <Brain className="w-4 h-4 text-violet-500" /> Jarvis Deep-Analyze
+              <Brain className="w-4 h-4 text-violet-500" /> Mayor Deep-Analyze
               <Badge variant="secondary" className="text-[10px]">2026 c2c pricing</Badge>
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">Full business intel + 3-tier pricing + execution plan · 12h cache</p>
@@ -1830,7 +1957,7 @@ function DeepAnalyzeChat({ id, token, analysis, onApply, onClose }: any) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-violet-500" />
-          <strong className="text-sm">Jarvis — refine the analysis</strong>
+          <strong className="text-sm">Mayor — refine the analysis</strong>
         </div>
         <Button size="sm" variant="ghost" onClick={onClose}>×</Button>
       </div>
@@ -1930,7 +2057,7 @@ function DeepAnalyzeChat({ id, token, analysis, onApply, onClose }: any) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="Ask Jarvis to change something or ask about the analysis…"
+          placeholder="Ask Mayor to change something or ask about the analysis…"
           disabled={busy}
           className="text-sm"
         />
