@@ -1,38 +1,62 @@
 /**
  * mehyar-cron-orchestrator
  *
- * Single-purpose CF Worker (separate from Pages project) that fires on a
- * CF-native cron schedule and POSTs /api/admin/cron/run?job=all on the
- * mehyar.us Pages origin. This is the ONLY path that runs the Mayor engine
- * pipeline in production (Path-B "nothing local" requirement).
+ * Single-purpose CF Worker (separate from Pages project) that fires 4×/day
+ * on CF-native cron triggers and POSTs the matching Pages endpoint on the
+ * mehyar.us origin. This is the ONLY path that runs the Mayor engine in
+ * production.
  *
- * Triggers configured in wrangler.toml:
- *   - "0 13 * * *"  daily 8 AM ET (winter) — full Mayor pipeline
+ * Four windows per day (UTC):
+ *   12:00 →  discover + outreach         (the full morning pipeline)
+ *   14:00 →  outreach only              (catch up any new prospects)
+ *   19:00 →  followup                    (3-step bump sequences)
+ *   23:00 →  digest + weekly summary     (Mon adds weekly)
  *
- * Auth: GOV_INGEST_TOKEN (40-char bearer) read from `wrangler.toml [vars]`
+ * For each window we route to a specific `?job=` query on
+ * /api/admin/cron/run so the Pages orchestrator only does work relevant
+ * to that window — keeps wall-clock low + log noise minimal.
+ *
+ * Auth: GOV_INGEST_TOKEN (40-char bearer) read from wrangler.toml [vars]
  * and passed as Authorization header on the POST.
  *
  * Logs: structured console.log lines; visible via `wrangler tail`.
- * No external storage / no DB writes — every aspect of the run is logged
- * inside the Pages endpoint we call (which already writes to cron_runs).
  */
 
+const ROUTES = {
+  // 12 UTC — discover + outreach
+  12: { job: "discover,outreach" },
+  // 14 UTC — outreach (catch-up)
+  14: { job: "outreach" },
+  // 19 UTC — followup
+  19: { job: "followup" },
+  // 23 UTC — digest (always); weekly summary on Mondays
+  23: { job: "digest,weekly" },
+};
+
+function pickRoute() {
+  const h = new Date().getUTCHours();
+  return ROUTES[h] || { job: "discover,outreach" };
+}
+
 export default {
-  /**
-   * CF-native cron trigger. Runs inside Cloudflare's edge; no local machine,
-   * no Hermes cron, no GitHub Actions involved.
-   */
   async scheduled(event, env, ctx) {
     const startedAt = new Date();
-    const target = `${env.PAGES_ORIGIN || "https://mehyar.us"}/api/admin/cron/run?job=all`;
-    const body = JSON.stringify({ source: "cf-worker-cron" });
+    const route = pickRoute();
+    const target =
+      `${env.PAGES_ORIGIN || "https://mehyar.us"}/api/admin/cron/run?job=${encodeURIComponent(route.job)}`;
+    const body = JSON.stringify({
+      source: "cf-worker-cron",
+      fired_at: startedAt.toISOString(),
+      route,
+    });
 
     console.log(`[cron-orchestrator] firing at ${startedAt.toISOString()} → ${target}`);
 
     try {
       const ctrl = new AbortController();
-      // 5 minute ceiling — orchestrator fans out to 4 mayor endpoints +
-      // email send. 300s is well above the wall-clock budget of the orchestrator.
+      // 5-minute ceiling per window. Pages orchestrator fans out to N
+      // mayor endpoints + email send. 300s is well above the wall-clock
+      // budget of a single window.
       const timer = setTimeout(() => ctrl.abort(), 300_000);
 
       const resp = await fetch(target, {
@@ -43,7 +67,7 @@ export default {
           // Identify this request as the orchestrator cron. Avoids the CF
           // WAF bot-default 403 that hits bare Python urllib requests with
           // missing/short User-Agent headers.
-          "user-agent": "cf-worker-cron-orchestrator/1.0 (+https://mehyar.us/admin/mayor)",
+          "user-agent": "cf-worker-cron-orchestrator/2.0 (+https://mehyar.us/admin/mayor)",
         },
         body,
         signal: ctrl.signal,
@@ -59,6 +83,8 @@ export default {
         ok: resp.ok && parsed?.ok !== false,
         http_status: resp.status,
         duration_ms: durationMs,
+        job: route.job,
+        hour_utc: new Date().getUTCHours(),
         run_id: parsed?.run_id || null,
         mayor: {
           discover_ok: parsed?.mayor_discover?.ok ?? null,
@@ -84,8 +110,8 @@ export default {
   },
 
   /**
-   * HTTP handler — used only for manual trigger via curl from the admin
-   * console or for ops verification. NOT the production cron path.
+   * HTTP handler — for /health verification and /trigger manual ops runs.
+   * POST /trigger accepts {"job": "..."} body to force a specific pipeline.
    */
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -93,23 +119,49 @@ export default {
       return new Response(JSON.stringify({
         ok: true,
         worker: "mehyar-cron-orchestrator",
-        version: "1.0",
-        // The scheduled handler is wired via wrangler.toml [[triggers]].
-        // We can confirm via env. CF_PAGES_URL or by reading the cron from
-        // a known constant — actual cron expr is in wrangler.toml, not env.
-      }), {
-        headers: { "content-type": "application/json" },
-      });
+        version: "2.0",
+        schedule: Object.entries(ROUTES).map(([h, r]) => ({ hour_utc: Number(h), job: r.job })),
+        now_utc_hour: new Date().getUTCHours(),
+        next_route: pickRoute(),
+      }), { headers: { "content-type": "application/json" } });
     }
 
     if (url.pathname === "/trigger" && request.method === "POST") {
-      // Same path as the scheduled handler — useful for manual ops runs.
-      const ev = { scheduledTime: new Date(), cron: "manual" };
-      const ctx = { waitUntil: () => {} };
-      await this.scheduled(ev, env, ctx);
-      return new Response(JSON.stringify({ ok: true, triggered: true }), {
-        headers: { "content-type": "application/json" },
-      });
+      // Manual ops trigger: read body for override job
+      let overrideJob = null;
+      try {
+        const j = await request.json().catch(() => ({}));
+        if (j?.job && typeof j.job === "string") overrideJob = j.job;
+      } catch {}
+      const route = overrideJob ? { job: overrideJob } : pickRoute();
+      const target =
+        `${env.PAGES_ORIGIN || "https://mehyar.us"}/api/admin/cron/run?job=${encodeURIComponent(route.job)}`;
+      const body = JSON.stringify({ source: "cf-worker-cron-manual", route });
+
+      try {
+        const resp = await fetch(target, {
+          method: "POST",
+          headers: {
+            "authorization": `Bearer ${env.GOV_INGEST_TOKEN}`,
+            "content-type": "application/json",
+            "user-agent": "cf-worker-cron-orchestrator/2.0-manual",
+          },
+          body,
+        });
+        const txt = await resp.text();
+        let parsed; try { parsed = JSON.parse(txt); } catch { parsed = { raw: txt.slice(0, 1000) }; }
+        return new Response(JSON.stringify({
+          ok: resp.ok,
+          status: resp.status,
+          job: route.job,
+          response: parsed,
+        }), { headers: { "content-type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e?.message || String(e) }), {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        });
+      }
     }
 
     return new Response("mehyar-cron-orchestrator — POST /trigger or GET /health", {

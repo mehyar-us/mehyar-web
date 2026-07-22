@@ -206,13 +206,40 @@ export async function onRequestPost({ request, env }) {
   `).bind(runId, `manual:${job}`, JSON.stringify({ ...results, duration_ms, source: `manual:${actor}` }).slice(0, 18000)).run().catch(() => null);
 
   // ── Mayor engine: delegate to /api/mayor/* endpoints via internal fetch ──
-  if (job === "all" || job === "mayor_discover") {
+  if (job === "all" || job === "discover" || job === "mayor_discover") {
     try {
-      const r = await fetch(new URL("/api/mayor/discover", request.url), {
-        method: "POST",
-        headers: { "authorization": `Bearer ${env.GOV_INGEST_TOKEN}` },
-      });
-      results.mayor_discover = await r.json().catch(() => ({ ok: false, error: "parse_failed" }));
+      // Discover: SAM.gov + Brooklyn local + AI fit-score (parallel fanout inside).
+      const url = new URL(request.url);
+      const origin = `${url.protocol}//${url.host}`;
+      // 1. SAM.gov ingest (LLM-scored via _shared/cloudflareAI.js)
+      try {
+        const govResp = await fetch(new URL("/api/admin/government/opportunities/refresh", request.url), {
+          method: "POST",
+          headers: {
+            "authorization": `Bearer ${env.GOV_INGEST_TOKEN}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ source: "sam", max: 30 }),
+        });
+        const gj = await govResp.json().catch(() => ({}));
+        results.gov_ingest = { ok: gj.ok || false, ...gj };
+      } catch (e) { results.gov_ingest = { ok: false, error: String(e?.message || e) }; }
+      // 2. Mayor discover (local biz + sequence build)
+      try {
+        const r = await fetch(new URL("/api/mayor/discover", request.url), {
+          method: "POST",
+          headers: { "authorization": `Bearer ${env.GOV_INGEST_TOKEN}` },
+        });
+        results.mayor_discover = await r.json().catch(() => ({ ok: false, error: "parse_failed" }));
+      } catch (e) { results.mayor_discover = { ok: false, error: String(e?.message || e) }; }
+      // 3. Auto-draft: pick top opps above fit threshold, generate drafts via CF AI
+      try {
+        const ad = await fetch(new URL("/api/admin/mayor/auto-draft", request.url), {
+          method: "POST",
+          headers: { "authorization": `Bearer ${env.GOV_INGEST_TOKEN}` },
+        });
+        results.auto_draft = await ad.json().catch(() => ({ ok: false, error: "parse_failed" }));
+      } catch (e) { results.auto_draft = { ok: false, error: String(e?.message || e) }; }
     } catch (e) { results.mayor_discover = { ok: false, error: String(e?.message || e) }; }
   }
   if (job === "all" || job === "mayor_outreach") {

@@ -3,42 +3,30 @@ main = "src/index.js"
 compatibility_date = "2026-05-11"
 
 # ── CF-native cron triggers ──────────────────────────────────────────────
-# This is the ONLY execution path for the Mayor engine in production (Path-B
-# "nothing local" requirement). No Hermes cron, no GitHub Actions, no local
-# machine involvement.
+# This is the ONLY execution path for the Mayor engine in production.
 #
-# Cadence: 0 13 * * * — 8 AM ET (winter). During EDT the wall-clock shifts
-# to 9 AM ET; cron runs at 13:00 UTC regardless of DST, so the local hour
-# naturally tracks the user's timezone without explicit DST handling. If
-# the user wants strict 8 AM ET in summer, add a second trigger with
-# `crons = ["0 12 * * *"]` instead.
+# Four times per day, all UTC (CF cron ignores local timezones):
+#   12:00 UTC  ≈  8 AM ET   →  discover + outreach (full morning loop)
+#   14:00 UTC  ≈ 10 AM ET   →  outreach only (catch-up for new prospects)
+#   19:00 UTC  ≈  3 PM ET   →  followup (3-step bump sequence)
+#   23:00 UTC  ≈  7 PM ET   →  digest + weekly summary (Mon only fires weekly)
 #
-# Add additional triggers as comma-separated strings:
-#   crons = ["0 13 * * *", "0 18 * * 1"]   # daily 13:00 UTC + Mondays 18:00 UTC
+# Stage partitions look like this so discover fires once and stays current
+# with the latest 90-day SAM.gov ingest window.
 #
-# If you ever need to add a new trigger:
-#   1. Add the cron expression below
-#   2. `wrangler deploy` (or `scripts/deploy_cron_worker.sh`)
-#   3. Verify via `wrangler tail`
-#
-# To STOP the cron entirely: remove the [[triggers]] block and redeploy.
+# DST: cron runs at fixed UTC times. Wall-clock shifts 1h forward in summer
+# (8 AM ET → 9 AM ET) but the cadence is preserved.
 [[triggers]]
-crons = ["0 13 * * *"]
+crons = ["0 12 * * *", "0 14 * * *", "0 19 * * *", "0 23 * * *"]
 
-# ── Secrets (set via `wrangler secret put` or in CF Dashboard) ─────────────
-# GOV_INGEST_TOKEN: 40-char bearer token. MUST match the value in the Pages
-# project's env_vars (declared in the Pages wrangler.toml [vars] as
-# GOV_INGEST_TOKEN). Set via:
-#   wrangler secret put GOV_INGEST_TOKEN
-# Value source-of-truth: ~/.hermes/.env GOV_INGEST_TOKEN (40-char hex).
-#
-# PAGES_ORIGIN: base URL of the Pages project. Defaults to mehyar.us. Override
-# for staging/preview runs:
-#   wrangler secret put PAGES_ORIGIN  # https://<preview>.mehyar-web.pages.dev
-
+# ── Variables (CF Pages-aligned) ─────────────────────────────────────────
+# PAGES_ORIGIN: base URL of the Pages project. Defaults to mehyar.us.
+# Override for staging by setting via `wrangler secret put` or wrangler.toml.
 [vars]
 PAGES_ORIGIN = "https://mehyar.us"
-# GOV_INGEST_TOKEN is declared here as plain_text to satisfy the
-# wrangler.toml [vars] allowlist gate. It is also present in the Pages
-# project's [vars]. If you rotate it, update BOTH places.
-GOV_INGEST_TOKEN = "c429c5989eba6d555ee9a29a2911584fea6de3c4"
+# Maps a cron window to a job. The cron worker reads the CURRENT hour and
+# routes the POST accordingly. See src/index.js for the routing logic.
+# Window 1 (8 AM ET): discover + outreach
+# Window 2 (10 AM ET): outreach only
+# Window 3 (3 PM ET): followup only
+# Window 4 (7 PM ET): digest (Mon weekly adds more)

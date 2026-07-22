@@ -12,9 +12,34 @@ import { Badge } from "@/components/ui/badge";
 import { AdminNav, JarvisBar, AdminGate, useAdminSession, STAGE_BADGE, ScoreBar, EmptyState } from "./AdminShell";
 
 async function fetchNow(token: string) {
-  const r = await fetch("/api/admin/now", { headers: { authorization: `Bearer ${token}` } });
+  const r = await fetch("/api/admin/dashboard/now", { headers: { authorization: "Bearer " + token } });
   if (!r.ok) throw new Error(`${r.status}`);
-  return r.json();
+  const d = await r.json();
+  const s = d.state || {};
+  return {
+    ok: d.ok,
+    updatedAt: d.generated_at,
+    counts: {
+      sam_active: s.sam?.active || 0,
+      sam_due_48h: s.sam?.due_48h || 0,
+      prospects_live: 0,
+      drafts_to_review: s.queue?.open_drafts || 0,
+      outreach_due: s.queue?.queued_for_send || 0,
+      replies_24h: s.replies_needing_action || 0,
+      won_30d: 0,
+      pipeline_value: s.contracts?.active_value || 0,
+    },
+    buckets: { now: [], today: [], week: [] },
+    ops: {
+      last_cron: s.ops?.cron_last || null,
+      ai_spend_today: 0,
+      errors_24h: s.ops?.errors_24h || 0,
+      llm_calls_today: 0,
+      last_backup: null,
+    },
+    tone: s.ops?.errors_24h > 2 ? "hot" : "calm",
+    insight: d.insight,
+  };
 }
 
 export default function AdminNow() {

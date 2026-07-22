@@ -39,6 +39,17 @@ function fmtAgo(iso: string | null | undefined) {
   return `${Math.round(ms / 86400_000)}d ago`;
 }
 
+function heuristicInsight(s: any) {
+  const lines = [];
+  if (s.paused) lines.push(`Mayor is paused — resume it from the Mayor page if you want activity today.`);
+  else if ((s.queue?.open_drafts || 0) > 0) lines.push(`Review ${s.queue.open_drafts} open draft${s.queue.open_drafts === 1 ? "" : "s"}; ${s.queue.queued_for_send || 0} queued for send.`);
+  else if ((s.sam?.due_48h || 0) > 0) lines.push(`${s.sam.due_48h} SAM opp${s.sam.due_48h === 1 ? "" : "s"} due in the next 48h — open the Daily picks and deep-evaluate the top one.`);
+  else lines.push(`Inbox zero on drafts and SAM. Mayor is running steady.`);
+  if ((s.replies_needing_action || 0) > 0) lines.push(`${s.replies_needing_action} repl${s.replies_needing_action === 1 ? "y" : "ies"} need your eyes in the Replies tab.`);
+  if (lines.length === 0) lines.push(`All clear. Mayor is running and there's nothing urgent. Watch the cron logs.`);
+  return lines.join(" ");
+}
+
 function fmtWhenNext(iso: string | null | undefined) {
   if (!iso) return "";
   const ms = new Date(iso).getTime() - Date.now();
@@ -163,20 +174,40 @@ function MayorView({ token }: { token: string }) {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [s, r, sd, op, sg, ai] = await Promise.all([
-        fetchAuth("/api/mayor/status"),
-        fetchAuth("/api/mayor/replies?needs_action=1&limit=10"),
-        fetchAuth("/api/admin/outreach"),
-        fetchAuth("/api/admin/government/opportunities"),
-        fetchAuth("/api/admin/leads/daily-suggestions"),
-        fetchAuth("/api/admin/now/insight"),
-      ]);
-      setStatus(s?.status || s || null);
-      setReplies(r?.replies || []);
-      setSends(sd || null);
-      setOpps(op || null);
-      setSuggestions(sg?.items || []);
-      if (ai && ai.ok) setInsight({ text: ai.text, actions: ai.actions || [], used_llm: ai.used_llm });
+      // ONE consolidated round-trip — the mayor state cache. Cuts CF
+      // function invocations from 6 to 1 per 30s poll, and the AI insight
+      // (CF Workers AI) is composed server-side.
+      const d = await fetchAuth("/api/admin/dashboard/now");
+      if (!d || !d.ok) throw new Error(d?.message || "dashboard_unavailable");
+      const s = d.state || {};
+      const mh = d.mayor_health || {};
+      // Synthesize the legacy fields the JSX depends on
+      const statusLike = {
+        paused: s.paused,
+        sent_today: s.daily_sent,
+        cap: s.daily_cap,
+        warmup_day: mh.warmup_day ?? 0,
+        cap_remaining: (s.daily_cap || 100) - (s.daily_sent || 0),
+        funnel: s.funnel,
+        last_runs: mh.last_runs || {},
+        bounce_rate_30d: 0,
+        queue: s.queue,
+        events: s.events || [],
+      };
+      setStatus(statusLike);
+      setReplies(new Array(s.replies_needing_action || 0).fill({ placeholder: true }));
+      setSends({ items: [] });
+      setOpps({ items: [], total: s.sam?.active || 0 });
+      setSuggestions([]);
+      if (d.insight) {
+        setInsight({
+          text: d.insight.content || heuristicInsight(s),
+          actions: [],
+          used_llm: d.insight.used_llm,
+        });
+      } else {
+        setInsight({ text: heuristicInsight(s), actions: [], used_llm: false });
+      }
     } catch (e: any) {
       setError(String(e?.message || e));
     } finally {

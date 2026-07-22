@@ -104,7 +104,7 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
   const withIds = [];
   for (const item of toProcess) {
     try {
-      const result = await upsertGovOpportunity(env.LEADS_DB, item, runId, now);
+      const result = await upsertGovOpportunity(env.LEADS_DB, item, runId, now, env);
       if (result.action === "inserted") summary.inserted += 1;
       if (result.action === "updated") summary.updated += 1;
       withIds.push({ id: result.id, item });
@@ -413,8 +413,42 @@ export function scoreGovOpportunity(item, now = new Date()) {
   return { fit_score: score, confidence, why_fit: whyFit.join(" "), why_not_fit: whyNotFit.join(" "), next_action: nextAction };
 }
 
-export async function upsertGovOpportunity(db, item, runId, now = new Date()) {
-  const scored = scoreGovOpportunity(item, now);
+export async function upsertGovOpportunity(db, item, runId, now = new Date(), env = null) {
+  const heuristic = scoreGovOpportunity(item, now);
+  // Try CF AI fit-score for higher fidelity. Falls back to heuristic when
+  // LLM is unavailable or returns garbage. Cached for 24h via the orchestrator.
+  let ai = null;
+  if (env && (env.GOV_USE_LLM_FITSCORE === "1" || env.GOV_USE_LLM_FITSCORE === undefined)) {
+    try {
+      const { fitScoreOne } = await import("./cloudflareAI.js");
+      const r = await fitScoreOne(env, {
+        title: item.title,
+        agency: item.agency,
+        setAside: item.set_aside,
+        naicsCodes: item.naics_codes || [],
+        responseDeadline: item.response_deadline,
+        estimatedValue: item.estimated_value,
+        opportunityType: item.opportunity_type,
+        summary: item.summary,
+        source: item.source,
+      });
+      if (r?.used_llm && r?.parsed && Number.isFinite(Number(r.parsed.fit_score))) {
+        ai = r.parsed;
+      }
+    } catch (e) {
+      // LLM failed; heuristic stays the truth.
+    }
+  }
+  const scored = ai
+    ? {
+        fit_score: Math.max(0, Math.min(100, Number(ai.fit_score))),
+        confidence: ai.confidence || heuristic.confidence,
+        why_fit: Array.isArray(ai.why_fit) ? ai.why_fit.join(" ") : heuristic.why_fit,
+        why_not_fit: Array.isArray(ai.why_not_fit) ? ai.why_not_fit.join(" ") : heuristic.why_not_fit,
+        next_action: ai.next_action || heuristic.next_action,
+        llm_scored: true,
+      }
+    : heuristic;
   const dedupeKey = await sha256Hex([item.source, item.source_id || "", item.title || "", item.agency || ""].join("|"));
   const existing = await db.prepare("SELECT id FROM gov_opportunities WHERE dedupe_key = ? LIMIT 1").bind(dedupeKey).first();
   const id = existing?.id || crypto.randomUUID();
