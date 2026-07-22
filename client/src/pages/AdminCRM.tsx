@@ -141,8 +141,8 @@ function CrmView({ token }: { token: string }) {
         <div className="backdrop-blur bg-white/95 dark:bg-zinc-900/95 border-b border-zinc-200 dark:border-zinc-700 px-4 md:px-6">
           <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto py-2">
             {([
-              { k: "all",      label: "All",                icon: "🗂", count: filtered.length },
-              { k: "sam",      label: "🏛 Government Opps", icon: "🏛",  count: null },
+              { k: "all",      label: "📋 Inbox (mixed)",   icon: "📋", count: filtered.length, mixed: true },
+              { k: "sam",      label: "🏛 Gov Opps",        icon: "🏛",  count: null },
               { k: "prospect", label: "🧲 Local Biz",       icon: "🧲", count: null },
               { k: "replies",  label: "💌 Replies",         icon: "💌", count: kind === "replies" ? (repliesQ.data?.replies?.length ?? null) : null },
             ] as const).map((t) => {
@@ -151,16 +151,24 @@ function CrmView({ token }: { token: string }) {
                 <button
                   key={t.k}
                   onClick={() => setKind(t.k as any)}
+                  aria-pressed={active}
+                  aria-current={active ? "page" : undefined}
                   className={`shrink-0 px-3 md:px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition flex items-center gap-1.5 ${
                     active
-                      ? "border-violet-600 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/30"
+                      ? t.mixed
+                        ? "border-amber-500 text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30"
+                        : "border-violet-600 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/30"
                       : "border-transparent text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-600"
                   }`}
                 >
                   <span>{t.label}</span>
                   {t.count != null && (
                     <span className={`text-[10px] tabular-nums px-1.5 py-0.5 rounded-full ${
-                      active ? "bg-violet-200 dark:bg-violet-800 text-violet-900 dark:text-violet-100" : "bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
+                      active
+                        ? t.mixed
+                          ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
+                          : "bg-violet-200 dark:bg-violet-800 text-violet-900 dark:text-violet-100"
+                        : "bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
                     }`}>{t.count}</span>
                   )}
                 </button>
@@ -174,6 +182,89 @@ function CrmView({ token }: { token: string }) {
           </div>
         </div>
       </div>
+
+      {/* ── Active-filter banner (explains what's in view so nothing feels
+              mixed-up) — only shown when not on the "All" tab ─── */}
+      {kind !== "all" && kind !== "replies" && (
+        <div className="mb-3 px-4 md:px-0 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-200 font-medium">
+            <Filter className="w-3 h-3" />
+            Filter: {kind === "sam" ? "Government opportunities only" : "Local business prospects only"}
+          </span>
+          <button
+            onClick={() => setKind("all")}
+            className="text-[11px] underline text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+          >
+            show mixed inbox →
+          </button>
+          <span className="ml-auto text-[10px] text-zinc-500 dark:text-zinc-400 tabular-nums">
+            {filtered.length} of {leadQ.data?.total ?? "—"} total
+          </span>
+        </div>
+      )}
+
+      {kind === "replies" && (
+        <div className="mb-3 px-4 md:px-0 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-200 font-medium">
+            <Filter className="w-3 h-3" />
+            Filter: Inbound replies needing your eyes
+          </span>
+          <button
+            onClick={() => setKind("all")}
+            className="text-[11px] underline text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+          >
+            show mixed inbox →
+          </button>
+        </div>
+      )}
+
+      {kind === "all" && (
+        <div className="mb-3 px-4 md:px-0 flex items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-200 font-medium">
+            ⚠ Mixed inbox — showing government + local-business items together
+          </span>
+          <button
+            onClick={() => setKind("sam")}
+            className="text-[11px] underline text-violet-700 dark:text-violet-300 hover:text-violet-900"
+          >
+            split: Gov → 
+          </button>
+          <button
+            onClick={() => setKind("prospect")}
+            className="text-[11px] underline text-violet-700 dark:text-violet-300 hover:text-violet-900"
+          >
+            split: Local →
+          </button>
+        </div>
+      )}
+
+
+      {/* ── Sub-tabs by lifecycle — only on pure-kind tabs (sam/prospect) ─── */}
+      {(kind === "sam" || kind === "prospect") && (
+        <div className="mb-3 flex items-center gap-1.5 text-xs overflow-x-auto">
+          <button onClick={() => setStage("")}
+            className={`px-2.5 py-1 rounded-full border transition whitespace-nowrap ${
+              !stage ? "bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-700" : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            }`}>All stages</button>
+          {[
+            { k: "new", l: "🆕 New" },
+            { k: "scanned", l: "🔎 Scanned" },
+            { k: "draft_needed", l: "✍️ Drafts needed" },
+            { k: "drafting", l: "📝 Drafting" },
+            { k: "ready", l: "✅ Ready" },
+            { k: "queued", l: "📤 Queued" },
+            { k: "sent", l: "📬 Sent" },
+            { k: "replied", l: "💬 Replied" },
+            { k: "won", l: "🏆 Won" },
+            { k: "lost", l: "❌ Lost" },
+          ].map((s) => (
+            <button key={s.k} onClick={() => setStage(s.k)}
+              className={`px-2.5 py-1 rounded-full border transition whitespace-nowrap ${
+                stage === s.k ? "bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-700" : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}>{s.l}</button>
+          ))}
+        </div>
+      )}
 
       {/* Toolbar (search + sort + filters) — visible on all tabs except pure-replies */}
       <Card className="mb-4 sticky top-[88px] md:top-[100px] z-10 backdrop-blur bg-white dark:bg-zinc-900/95">
