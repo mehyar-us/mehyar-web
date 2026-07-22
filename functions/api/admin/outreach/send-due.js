@@ -1,6 +1,5 @@
 // GET  /api/admin/outreach/send-due  — return prospects whose next step is due (never auto-sends; returns pending queue)
 // POST /api/admin/outreach/send-due  — approve + dispatch a specific prospect step (requires explicit approval)
-// DELETE /api/admin/outreach/send-due?id=… — cancel/skip a pending send
 
 import { verifyAdminToken, json, corsHeaders } from "./_adminAuth_local.js";
 
@@ -19,14 +18,9 @@ export async function onRequestGet({ request, env }) {
 
   try {
     // Find prospects in 'queued' status whose next step is due.
-    // A step is due when:
-    //   1. prospect is in 'queued' stage
-    //   2. They have no reply classified as 'replied' blocking them (skip_if_replied)
-    //   3. All previous steps have been sent (last_sent_at set)
-    //   4. delay_days have passed since the previous step's last_sent_at
-    //
-    // We return a list grouped by source + step for the owner to review and trigger manually.
-    const rows = await env.LEADS_DB.prepare(`
+    // Build the SQL first; only call .bind() if we actually have a parameter.
+    // (D1 throws D1_TYPE_ERROR if you call .bind(undefined).)
+    const sql = `
       SELECT
         p.id                           AS prospect_id,
         p.business_name,
@@ -59,12 +53,11 @@ export async function onRequestGet({ request, env }) {
       JOIN prospect_sources s ON s.id = p.source AND s.active = 1
       JOIN outreach_steps   os ON os.source_id = s.id
         AND os.step_order = (
-          -- find the next unsent step for this prospect+source
           SELECT MIN(os2.step_order)
           FROM outreach_steps os2
           WHERE os2.source_id = s.id
             AND os2.active = 1
-            AND os2.require_manual_approval = 1  -- must require approval
+            AND os2.require_manual_approval = 1
             AND NOT EXISTS (
               SELECT 1 FROM prospect_sends ps
               WHERE ps.prospect_id = p.id
@@ -74,27 +67,27 @@ export async function onRequestGet({ request, env }) {
         )
       WHERE p.status = 'queued'
         AND os.active = 1
-        -- 30-day rule: never surface if prospect is < 30 days old
         AND (s.enforce_30day = 0 OR datetime(p.created_at) <= datetime('now', '-30 days'))
-        -- 90-day dedup: skip if last_contact_at < 90 days ago
         AND (p.last_contact_at IS NULL
              OR datetime(p.last_contact_at) <= datetime('now', '-' || s.dedup_days || ' days'))
-        -- skip-if-replied guard
         AND (os.skip_if_replied = 0 OR NOT EXISTS (
           SELECT 1 FROM prospect_replies pr
           JOIN reply_classifications rc ON rc.reply_id = pr.id
           WHERE pr.prospect_id = p.id AND rc.label IN ('interest','warm','replied')
         ))
-        -- delay guard: step is due only after delay_days have passed since last_sent_at
         AND (
           p.last_sent_at IS NULL
           OR datetime(p.last_sent_at, '+' || os.delay_days || ' days') <= datetime('now')
         )
         ${sourceId ? "AND s.id = ?" : ""}
       ORDER BY s.id, os.step_order, p.created_at
-    `).bind(sourceId ? sourceId : undefined).all();
+    `;
+    const stmt = env.LEADS_DB.prepare(sql);
+    const bound = sourceId ? stmt.bind(sourceId) : stmt;
+    const sendDueRows = await bound.all();
+    const rows = sendDueRows.results || [];
 
-    const items = (rows.results || []).map((r) => ({
+    const items = rows.map((r) => ({
       prospect_id: r.prospect_id,
       business_name: r.business_name,
       root_domain: r.root_domain,
