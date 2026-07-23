@@ -15,8 +15,8 @@
 //
 // Auth: admin bearer token.
 
-import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
-import { ensureSentHistorySchema } from "../../../_shared/migrateSentSends.js";
+import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { ensureSentHistorySchema } from "../../_shared/migrateSentSends.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });

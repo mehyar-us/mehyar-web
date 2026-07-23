@@ -26,7 +26,7 @@
 //
 // Auth: admin bearer token.
 
-import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
+import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
