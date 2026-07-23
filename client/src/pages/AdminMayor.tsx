@@ -11,6 +11,7 @@
 // (verified by /api/admin/auth/login) persisted in localStorage 30-day TTL.
 
 import { useEffect, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import {
   Pause, Play, Mail, Send, Reply, AlertTriangle, RefreshCw, CheckCircle2,
@@ -78,6 +79,163 @@ function StatBox({ label, value, sub, icon: Icon, color, href }: any) {
     );
   }
   return body;
+}
+
+// ── Pipeline audit card ────────────────────────────────────────────
+function PipelineAuditCard({ token }: { token: string }) {
+  const [days, setDays] = useState(30);
+  const auditQ = useQuery({
+    queryKey: ["admin-pipeline-audit", token, days],
+    queryFn: async () => {
+      const r = await fetch(`/api/admin/mayor/pipeline-audit?days=${days}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.json();
+    },
+    refetchInterval: 60_000,
+  });
+
+  const f = auditQ.data?.funnel;
+  const suggestions: any[] = auditQ.data?.suggestions || [];
+  const drops: string[] = auditQ.data?.drops || [];
+  const stepConv: any[] = auditQ.data?.step_conversion || [];
+
+  return (
+    <Card className="mb-4 border-violet-200 dark:border-violet-800">
+      <CardContent className="p-4 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="text-base font-semibold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+              <Sparkles className="w-4 h-4 text-violet-500 dark:text-violet-400" />
+              Pipeline audit &amp; suggestions
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              {auditQ.data?.summary || "Loading…"}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <select value={days} onChange={(e) => setDays(parseInt(e.target.value, 10))}
+              className="text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 bg-white dark:bg-zinc-900">
+              <option value="7">last 7d</option>
+              <option value="14">last 14d</option>
+              <option value="30">last 30d</option>
+              <option value="90">last 90d</option>
+            </select>
+            <Button size="sm" variant="ghost" onClick={() => auditQ.refetch()} aria-label="Re-run audit">
+              <RefreshCw className={`w-3 h-3 mr-1 ${auditQ.isFetching ? "animate-spin" : ""}`} />Refresh
+            </Button>
+          </div>
+        </div>
+
+        {auditQ.isLoading && (
+          <div className="animate-pulse space-y-2">
+            <div className="h-16 bg-violet-50 dark:bg-violet-900/30 rounded" />
+            <div className="h-24 bg-zinc-100 dark:bg-zinc-800 rounded" />
+          </div>
+        )}
+
+        {auditQ.data && f && (
+          <>
+            {/* Funnel viz */}
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-center">
+              {stepConv.map((s: any) => (
+                <div key={s.stage} className="rounded-lg border border-zinc-200 dark:border-zinc-700 px-2 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 font-semibold">{s.stage}</div>
+                  <div className="text-xl font-bold tabular-nums text-violet-700 dark:text-violet-300">{s.count}</div>
+                  {s.conversion_from_prev !== null && (
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 tabular-nums">
+                      ↓ {s.conversion_from_prev}%
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Rates row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-[11px]">
+              <Rate label="Reply rate" value={`${f.reply_rate}%`} ok={f.reply_rate >= 5} sub={`${f.replied}/${f.sent}`} />
+              <Rate label="Interest rate" value={`${f.interest_rate}%`} ok={f.interest_rate >= 2} sub={`${f.interested} interested`} />
+              <Rate label="Bounce rate" value={`${f.bounce_rate}%`} ok={f.bounce_rate < 5} sub="target <5%" />
+              <Rate label="Bottleneck"
+                value={auditQ.data.bottleneck?.stage === "none" ? "✅ none" : auditQ.data.bottleneck?.stage}
+                ok={auditQ.data.bottleneck?.stage === "none"}
+                sub={auditQ.data.bottleneck?.stage === "none" ? "healthy" : `${auditQ.data.bottleneck?.conversion_pct}% conversion`}
+              />
+            </div>
+
+            {/* Drops */}
+            {drops.length > 0 && (
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
+                <h3 className="text-xs font-bold text-amber-800 dark:text-amber-200 flex items-center gap-1.5 mb-1.5">
+                  <AlertTriangle className="w-3 h-3" />Drops detected
+                </h3>
+                <ul className="space-y-1 text-[11px] text-amber-900 dark:text-amber-300 list-disc pl-5">
+                  {drops.map((d, i) => <li key={i}>{d}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {/* Suggestions */}
+            <div>
+              <h3 className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5 mb-2">
+                <Zap className="w-3 h-3" />Suggested fixes (priority order)
+              </h3>
+              <div className="space-y-2">
+                {suggestions.map((s, i) => (
+                  <SuggestionRow key={i} s={s} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Rate({ label, value, ok, sub }: any) {
+  return (
+    <div className={`rounded-lg border px-2 py-2 ${
+      ok ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30" : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30"
+    }`}>
+      <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 font-semibold">{label}</div>
+      <div className={`text-base font-bold tabular-nums ${ok ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>{value}</div>
+      <div className="text-[9px] text-zinc-500 dark:text-zinc-400">{sub}</div>
+    </div>
+  );
+}
+
+function SuggestionRow({ s }: { s: any }) {
+  const tone = s.priority === "high" ? "violet" : s.priority === "medium" ? "amber" : "sky";
+  const toneBg = tone === "violet" ? "bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-200" :
+                  tone === "amber"  ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200" :
+                                       "bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200";
+  return (
+    <div className={`rounded-lg border p-3 space-y-1.5 ${
+      tone === "violet" ? "border-violet-200 dark:border-violet-800 bg-violet-50/40 dark:bg-violet-950/20" :
+      tone === "amber"  ? "border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20" :
+                           "border-sky-200 dark:border-sky-800 bg-sky-50/40 dark:bg-sky-950/20"
+    }`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 min-w-0">
+          <Badge className={toneBg}>{s.priority}</Badge>
+          <div className="min-w-0">
+            <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{s.title}</div>
+            <div className="text-[11px] text-zinc-600 dark:text-zinc-300 mt-0.5">{s.why}</div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 italic">→ {s.how}</div>
+            <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-1">↑ Expected lift: {s.expected_lift}</div>
+          </div>
+        </div>
+        {s.action_href && (
+          <Link href={s.action_href}
+            className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-500 text-white text-xs font-medium transition active:scale-95 whitespace-nowrap">
+            {s.action_label || "→ Act"}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function AdminMayor() {
@@ -412,6 +570,9 @@ function MayorView({ token }: { token: string }) {
           color={replies.length > 0 ? "bg-violet-50 dark:bg-violet-950/30 border-violet-200" : undefined}
           href="/admin/leads?kind=replies" />
       </div>
+
+      {/* ── PIPELINE AUDIT — funnel + suggested fixes ──────────────── */}
+      <PipelineAuditCard token={token} />
 
       {/* ── THREE COLUMNS: HAPPENED · HAPPENING · WILL HAPPEN ──────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">

@@ -171,8 +171,8 @@ export async function onRequestPost({ request, env }) {
     await env.LEADS_DB.prepare(`
       INSERT INTO prospect_sends
         (id, prospect_id, draft_id, created_at, scheduled_for, attempted_at, provider, to_email,
-         from_email, reply_to, subject, list_unsub_header, physical_address, status, test_only)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0)
+         from_email, from_name, reply_to, subject, body_text, list_unsub_header, physical_address, status, test_only)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0)
     `).bind(
       sendId,
       prospect_id,
@@ -183,8 +183,10 @@ export async function onRequestPost({ request, env }) {
       "manual_approval",
       String(to_email || prospect.email || "").slice(0, 254),
       String(step.from_email || "hello@mehyar.us").slice(0, 254),
+      String(step.from_name || "Mehyar").slice(0, 120),
       String(step.from_email || "hello@mehyar.us").slice(0, 254),
       resolvedSubject.slice(0, 500),
+      String(resolvedBody || "").slice(0, 32000),
       `mailto:unsubscribe@mehyar.us?subject=unsubscribe%3A${encodeURIComponent(prospect.root_domain || "")}`,
       "123 Main St, Suite 100, New York, NY 10001",
     ).run();

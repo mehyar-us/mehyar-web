@@ -2,7 +2,7 @@
 // ============================================================================
 // MehyarSoft Admin — 2026 redesign
 //   4 tabs: NOW · CRM · MONEY · SYSTEM
-//   Top bar: Jarvis search + session
+//   Top bar: Mayor search + session
 //   Side rail: tab-specific filters
 // ============================================================================
 
@@ -99,11 +99,12 @@ export const STAGE_BADGE: Record<string, string> = {
 const TABS = [
   { key: "now",   label: "🏛 Mayor",    href: "/admin/mayor",             icon: Activity,    tagline: "AI operator running the site — observe, don't push" },
   { key: "crm",   label: "🧲 CRM",      href: "/admin/leads",            icon: Briefcase,   tagline: "Every lead, every deal — one table" },
+  { key: "sent",  label: "📤 Sent",     href: "/admin/sent",             icon: Send,        tagline: "Outbound history — to/from/subject/body/replies" },
   { key: "money", label: "💰 Money",    href: "/admin/money",            icon: DollarSign,  tagline: "Forecast · Win · Case studies" },
   { key: "system", label: "⚙ System",   href: "/admin/system",           icon: Settings,    tagline: "Audit · Cron · Backups" },
 ];
 
-export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"mayor"|"crm"|"money"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
+export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"mayor"|"crm"|"sent"|"money"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
   const [, setLocation] = useLocation();
   return (
     <>
@@ -211,8 +212,8 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"mayor
 // Helper hook — pages should pad bottom content above the fixed mobile tab bar
 export const MOBILE_NAV_HEIGHT = "calc(56px + env(safe-area-inset-bottom, 0px))";
 
-// ── Jarvis command bar — every page can drop one in ───────────────────────
-export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "Ask Jarvis · try 'count prospects last 7d', 'enrich a0daf6…', or 'sql: select *…'" }: { token: string; onResult?: (r: any) => void; defaultQuery?: string; placeholder?: string; }) {
+// ── Mayor command bar — every page can drop one in ───────────────────────
+export function MayorBar({ token, onResult, defaultQuery = "", placeholder = "Ask Mayor · try 'count prospects last 7d', 'enrich a0daf6…', or 'sql: select *…'" }: { token: string; onResult?: (r: any) => void; defaultQuery?: string; placeholder?: string; }) {
   const [q, setQ] = useState(defaultQuery);
   const [running, setRunning] = useState(false);
   const [resp, setResp] = useState<any>(null);
@@ -222,7 +223,7 @@ export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "A
     if (!useQ) return;
     setRunning(true); setResp(null);
     try {
-      const r = await fetch("/api/admin/jarvis", {
+      const r = await fetch("/api/admin/mayor", {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
         body: JSON.stringify({ question: useQ }),
@@ -240,7 +241,7 @@ export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "A
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        const el = document.querySelector<HTMLInputElement>('[data-jarvis-input]');
+        const el = document.querySelector<HTMLInputElement>('[data-mayor-input]');
         el?.focus();
       }
     };
@@ -253,7 +254,7 @@ export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "A
       <div className="flex items-center gap-2 px-3 py-2">
         <Command className="w-4 h-4 text-zinc-400" />
         <input
-          data-jarvis-input
+          data-mayor-input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
@@ -268,14 +269,14 @@ export function JarvisBar({ token, onResult, defaultQuery = "", placeholder = "A
       </div>
       {resp && (
         <div className={`px-4 py-3 border-t text-sm ${resp.ok ? "bg-emerald-50/40 border-emerald-100" : "bg-red-50 border-red-100"}`}>
-          {resp.ok ? <JarvisResult r={resp} /> : <div className="text-red-700">⚠ {String(resp.error || resp.details || "failed")}</div>}
+          {resp.ok ? <MayorResult r={resp} /> : <div className="text-red-700">⚠ {String(resp.error || resp.details || "failed")}</div>}
         </div>
       )}
     </div>
   );
 }
 
-function JarvisResult({ r }: { r: any }) {
+function MayorResult({ r }: { r: any }) {
   if (r.kind === "sql") {
     return (
       <div>
@@ -401,7 +402,7 @@ export function LoginGate({ onLogin }: { onLogin: (t: string) => void }) {
             </Button>
           </div>
           <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-4 text-center">
-            Press <kbd className="px-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200">⌘K</kbd> anywhere to summon Jarvis
+            Press <kbd className="px-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200">⌘K</kbd> anywhere to summon the Mayor
           </div>
         </CardContent>
       </Card>
