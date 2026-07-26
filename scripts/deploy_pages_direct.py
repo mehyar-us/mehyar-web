@@ -19,6 +19,7 @@ Usage:
   python scripts/deploy_pages_direct.py --branch=main # default 'main' = production
 """
 import os, sys, json, zipfile, subprocess, urllib.request, urllib.error, argparse, shutil, hashlib
+from contextlib import contextmanager
 
 ACCT  = "621600637337cc1c9ecb7095508bc732"
 EMAIL = "mrswelim@gmail.com"
@@ -165,6 +166,79 @@ def multipart_post(url, fields, manifest_dict, file_field, file_path):
     with urllib.request.urlopen(req, timeout=180) as r:
         return r.status, r.read().decode("utf-8", "replace")
 
+def cf_get_json(url):
+    req = urllib.request.Request(url, headers={
+        "X-Auth-Email": EMAIL,
+        "X-Auth-Key": KEY,
+        "Content-Type": "application/json",
+    })
+    with urllib.request.urlopen(req, timeout=60) as r:
+        body = json.loads(r.read().decode("utf-8", "replace"))
+    if not body.get("success"):
+        raise RuntimeError(f"Cloudflare API error: {body.get('errors', [])[:3]}")
+    return body
+
+def _toml_quote(value):
+    return json.dumps(str(value))
+
+def pages_env_vars_for_branch(branch):
+    env_name = "production" if branch == "main" else "preview"
+    url = f"https://api.cloudflare.com/client/v4/accounts/{ACCT}/pages/projects/{PROJECT}"
+    project = cf_get_json(url)["result"]
+    env_vars = project.get("deployment_configs", {}).get(env_name, {}).get("env_vars", {})
+    merged = {}
+    for name, meta in env_vars.items():
+        if not isinstance(meta, dict):
+            continue
+        value = meta.get("value")
+        if meta.get("type") == "plain_text" and value not in (None, ""):
+            merged[name] = value
+    return merged
+
+@contextmanager
+def temporary_wrangler_env_overlay(branch):
+    """Preserve Pages runtime vars when deploying from a scrubbed wrangler.toml.
+
+    Wrangler treats wrangler.toml as the source of truth for Pages project
+    settings. If secrets are intentionally absent from the committed file,
+    a deploy can remove them from the deployment snapshot. We read the current
+    Pages env config, write a temporary local overlay for this process only,
+    then restore the checked-in-safe file before returning.
+    """
+    wrangler_path = "wrangler.toml"
+    original = open(wrangler_path, "r", encoding="utf-8").read()
+    try:
+        env_vars = pages_env_vars_for_branch(branch)
+    except Exception as e:
+        print(f"  warn: could not snapshot Pages env vars before deploy: {e}")
+        yield
+        return
+
+    missing = {
+        k: v for k, v in env_vars.items()
+        if f"{k} =" not in original and f"{k}=" not in original
+    }
+    if not missing:
+        yield
+        return
+
+    insertion = "\n# Runtime vars injected only during deploy from Cloudflare Pages settings.\n"
+    insertion += "".join(f"{k} = {_toml_quote(v)}\n" for k, v in sorted(missing.items()))
+    marker = "\n[[d1_databases]]"
+    if marker in original:
+        patched = original.replace(marker, insertion + marker, 1)
+    else:
+        patched = original + insertion
+    try:
+        with open(wrangler_path, "w", encoding="utf-8") as f:
+            f.write(patched)
+        print(f"  using temporary env overlay for {len(missing)} Pages var(s)")
+        yield
+    finally:
+        with open(wrangler_path, "w", encoding="utf-8") as f:
+            f.write(original)
+        print("  restored scrubbed wrangler.toml")
+
 def deploy(branch="main", dry_run=False):
     if not KEY:
         print("ERROR: CLOUDFLARE_API_KEY not in env", file=sys.stderr); sys.exit(1)
@@ -242,7 +316,8 @@ def deploy_wrangler(branch="main", dry_run=False):
     cmd = [npx_bin, "wrangler", "pages", "deploy", os.path.join(DIST, "public"),
            "--project-name", PROJECT, "--branch", branch, "--commit-dirty=true"]
     print(f"$ {npx_bin} wrangler pages deploy dist/public --project-name={PROJECT} --branch={branch}")
-    r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300, shell=(sys.platform == "win32"))
+    with temporary_wrangler_env_overlay(branch):
+        r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300, shell=(sys.platform == "win32"))
     print(r.stdout)
     if r.returncode != 0:
         print(r.stderr, file=sys.stderr)

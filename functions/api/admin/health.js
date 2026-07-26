@@ -14,7 +14,13 @@ export async function onRequestGet({ request, env }) {
   try {
     const dbsize = await env.LEADS_DB.prepare(`SELECT page_count * page_size as size_bytes FROM pragma_page_count(), pragma_page_size()`).first().catch(() => null);
     const tablesCount = await env.LEADS_DB.prepare(`SELECT COUNT(*) as n FROM sqlite_master WHERE type='table'`).first().catch(() => null);
-    const rowsCount = await env.LEADS_DB.prepare(`SELECT SUM((SELECT COUNT(*) FROM opportunities_events)) + (SELECT COUNT(*) FROM prospects) + (SELECT COUNT(*) FROM gov_opportunities) as n`).first().catch(() => null);
+    const rowsCount = await env.LEADS_DB.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM opportunity_events) +
+        (SELECT COUNT(*) FROM prospects) +
+        (SELECT COUNT(*) FROM gov_opportunities) +
+        (SELECT COUNT(*) FROM leads) AS n
+    `).first().catch(() => null);
 
     const errCount = await env.LEADS_DB.prepare(`
       SELECT COUNT(*) as n FROM opportunity_events
@@ -43,7 +49,8 @@ export async function onRequestGet({ request, env }) {
       llm: {
         provider: "cloudflare",
         model: env.LLM_MODEL || "@cf/meta/llama-3.2-3b-instruct",
-        reachable: false, // we don't probe from here; the helper chatJson reports per-call
+        reachable: Boolean(env.CLOUDFLARE_API_KEY || env.CLOUDFLARE_AI_GATEWAY_TOKEN),
+        note: "Reachability is inferred from configured auth; individual LLM endpoints report per-call fallback.",
       },
       errors_24h: errCount?.n || 0,
       requests_24h: reqCount?.n || 0,

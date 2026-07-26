@@ -98,16 +98,17 @@ export async function onRequestPost({ request, env }) {
 
   const question = typeof body?.question === "string" ? body.question.trim().slice(0, 500) : "";
   if (!question) return json({ ok: false, error: "question_required" }, 400, request, env);
+  const sqlCandidate = question.replace(/^\s*sql\s*:\s*/i, "").trim();
 
   // ── Step 1: Try SQL ───────────────────────────────────────────────────────
   let sqlResult = null;
   let sqlError = null;
 
   // Detect a SQL question (starts with SELECT or contains SQL-like keywords)
-  const looksLikeSql = /^\s*SELECT\b/i.test(question) || /\bFROM\b|\bWHERE\b|\bGROUP BY\b|\bORDER BY\b/i.test(question);
+  const looksLikeSql = /^\s*SELECT\b/i.test(sqlCandidate) || /\bFROM\b|\bWHERE\b|\bGROUP BY\b|\bORDER BY\b/i.test(sqlCandidate);
 
   if (looksLikeSql) {
-    const safeQuery = buildSafeQuery(question);
+    const safeQuery = buildSafeQuery(sqlCandidate);
     if (safeQuery) {
       try {
         const rows = await env.LEADS_DB.prepare(safeQuery).all();

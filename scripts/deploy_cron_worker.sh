@@ -9,7 +9,7 @@
 #
 # Pre-reqs (set once in ~/.hermes/.env):
 #   CLOUDFLARE_EMAIL=mrswelim@gmail.com
-#   CLOUDFLARE_API_TOKEN=0dfa3336... (37-char Global Key)
+#   CLOUDFLARE_API_TOKEN=<Cloudflare Global API Key>
 #
 # After deploy:
 #   - Trigger fires at "0 13 * * *" UTC = 8 AM ET winter / 9 AM ET summer

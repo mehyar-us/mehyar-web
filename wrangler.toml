@@ -34,61 +34,16 @@ MAYOR_FROM_EMAIL = "team@mehyar.us"
 MAYOR_REPLY_TO = "info@mehyar.us"
 # CAN-SPAM physical address (required on every cold send).
 MAYOR_PHYSICAL_ADDRESS = "MehyarSoft LLC, 228 Park Ave S #92842, New York, NY 10003"
-# Google Places API key — enables /api/mayor/discover to pull real
-# Brooklyn businesses. Free tier; get at https://console.cloud.google.com
-# (Places API enabled). Without it, /discover returns ok:true with
-# cap_remaining=100 and zero new rows (healhty env = key present).
-GOOGLE_PLACES_API_KEY = ""
-# Inbound webhook auth — shared secret between CF Email Routing → mehyar.us
-# and our POST /api/mayor/inbound/email endpoint. CF Email Routing
-# forwards raw MIME; the endpoint authenticates with this token + classifies
-# + inserts into prospect_replies. 32+ chars recommended.
-INBOUND_EMAIL_TOKEN = "inbound-7a8c3e2f1d4b6e5a8c2f9d0e3b7a1c4f"
+# Secret values are configured in Cloudflare Pages project settings, not here:
+# CLOUDFLARE_EMAIL, CLOUDFLARE_API_KEY, CF_EMAIL_GLOBAL_KEY,
+# GOV_INGEST_TOKEN, INBOUND_EMAIL_TOKEN, MEHYARSOFT_ADMIN_USERNAME,
+# MEHYARSOFT_ADMIN_PASSWORD, ADMIN_SESSION_SECRET, SAM_GOV_API_KEY,
+# MEHYARSOFT_SAM_API_KEY, MEHYAR_GOOGLE_PLACES_API_KEY.
 # Auto-reply enabled flag. When '1', the /inbound/email endpoint sends
 # an auto-reply to non-unsubscribe, non-bounce replies (interest/objection/
 # out_of_office/warm). '0' = never auto-reply (manual mode).
 INBOUND_AUTO_REPLY = "1"
 
-# CF Email Service auth — X-Auth-Email + X-Auth-Key header pair (Global Key).
-# CF Pages env-var allowlist only persists names declared here.
-# wrangler.toml is committed-to-git; the 37-char Global Key below is sensitive but it's the
-# only path that works: wrangler secret put with Global Key fails (Bearer auth needs 40-char
-# scoped token), and Dashboard UI write requires the user to click.
-# Operations use it for /api/mayor/digest (send CF Email Service); revoke via Dashboard on incident.
-CLOUDFLARE_EMAIL = "mrswelim@gmail.com"
-# See deployment notes; value lives in last PATCH log. Intentionally committed because Pages
-# requires it in [vars] for env var persistence to runtime.
-# touch 2026-07-22 to force env-var pickup
-# 2026-07-22: this is the 37-char Global API Key, identical to CF_EMAIL_GLOBAL_KEY below.
-# The previous 40-char scoped value failed X-Auth-Key against /ai/v1/chat/completions
-# (returns 401 Authentication error), which silently disabled the LLM probe path used by
-# /api/admin/now/insight and every AI eval endpoint. Verified working with this exact value.
-CLOUDFLARE_API_KEY = "0dfa3336cec9db50b975df906e0d6a2048fa1"
-# CF_EMAIL_GLOBAL_KEY — the 37-char CF Global API Key (X-Auth-Key compatible).
-# This is the ONLY auth that works against the CF Email Service REST endpoint
-# /accounts/{id}/email/sending/send. The 40-char scoped CLOUDFLARE_API_KEY above
-# returns 401 "Authentication error" when sent as X-Auth-Key — verified 2026-07-19.
-# Used by /api/mayor/digest (daily summary email) and /api/mayor/engine send path.
-# Source-of-truth = ~/.hermes/.env: CLOUDFLARE_API_TOKEN.
-CF_EMAIL_GLOBAL_KEY = "0dfa3336cec9db50b975df906e0d6a2048fa1"
-
-# GOV_INGEST_TOKEN — bearer token for cron-gated mayor endpoints.
-# Declared as plain_text because CF Pages PATCH lifecycle silently drops
-# secret_text values on every other env-var change. Token is non-sensitive
-# bearer-token-shaped (40-char hex); the auth scope it grants is path-scoped
-# to /api/mayor/discover|outreach|followup|events|settings.
-GOV_INGEST_TOKEN = "c429c5989eba6d555ee9a29a2911584fea6de3c4"
-
-# Admin SPA login (Pages-side auth). /api/admin/auth/login verifies HMAC JWT
-# against ADMIN_SESSION_SECRET and compares MEHYARSOFT_ADMIN_USERNAME +
-# MEHYARSOFT_ADMIN_PASSWORD. Without these the entire /admin/* UI 503s
-# with "Admin auth is not configured." (verified 2026-07-22 — was missing
-# from Pages runtime env, user couldn't log in to ANY admin page).
-# plain_text because the same PATCH-lifecycle trap applies as CLOUDFLARE_API_KEY.
-# Rotate via the Dashboard UI to keep these out of git history on a quieter day.
-MEHYARSOFT_ADMIN_USERNAME = "Mehyar500"
-MEHYARSOFT_ADMIN_PASSWORD = "mesari500"
-ADMIN_SESSION_SECRET = "89084c546154ed6c66f94ae4d3bb56ab78977b18cfe7cca244177468a4bfcf1f"
 # Default model — overridable via LLM_MODEL env var at runtime
 LLM_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 # Optional secret/configured in Cloudflare Pages settings when available: MEHYARSOFT_SAM_API_KEY
@@ -99,19 +54,8 @@ LLM_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 # Cloudflare Pages wrangler.toml validation rejects Workers [triggers] blocks.
 
 
-# SAM.gov API key — X-Api-Key auth. SAM ingest needs both legacy alias
-# (SAM_GOV_API_KEY) AND canonical (MEHYARSOFT_SAM_API_KEY) because the
-# resolver checks three names. Plain_text per Pages PATCH-lifecycle rule.
-SAM_GOV_API_KEY = "SAM-4fab6b6c-7bf4-4702-9f33-1cbc62431454"
-MEHYARSOFT_SAM_API_KEY = "SAM-4fab6b6c-7bf4-4702-9f33-1cbc62431454"
-
-# Google Places API key — Brooklyn local biz discovery. Plain_text.
-MEHYAR_GOOGLE_PLACES_API_KEY = "AIzaSyCQqWcVtnZ_R6KLZ2FMcznt_Lv5Q"
-
-# CLOUDFLARE_AI_GATEWAY_TOKEN — set via CF Dashboard or REST API PATCH
-# (intentionally NOT committed; see references/cloudflare-workers-ai-models-2026-07.md
-# for the auth-strategy rationale). The runtime resolves it from env vars
-# _shared/llmChat.js reads via global Key + X-Auth headers by default.
+# Runtime secrets above must exist in Cloudflare before deploying. Do not add
+# them back to this file; use Cloudflare Pages settings or the API.
 
 [[d1_databases]]
 binding = "LEADS_DB"

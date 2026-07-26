@@ -246,7 +246,7 @@ function AdminGate({ children }: { children: (token: string) => React.ReactEleme
   const { token, isLoggedIn, login } = useAdminSession();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [creds, setCreds] = useState({ username: "Mehyar500", password: "" });
+  const [creds, setCreds] = useState({ username: "", password: "" });
 
   if (isLoggedIn && token) return children(token);
 

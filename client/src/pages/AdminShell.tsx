@@ -223,7 +223,7 @@ export function MayorBar({ token, onResult, defaultQuery = "", placeholder = "As
     if (!useQ) return;
     setRunning(true); setResp(null);
     try {
-      const r = await fetch("/api/admin/mayor", {
+      const r = await fetch("/api/admin/jarvis", {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
         body: JSON.stringify({ question: useQ }),
@@ -364,7 +364,7 @@ export function LoginGate({ onLogin }: { onLogin: (t: string) => void }) {
   const submit = async () => {
     setLoading(true); setError(null);
     try {
-      const r = await fetch("/v1/admin/login", {
+      const r = await fetch("/api/admin/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ username: user, password: pw }),
@@ -416,3 +416,5 @@ export function AdminGate({ children }: { children: (token: string) => React.Rea
   if (!isLoggedIn) return <LoginGate onLogin={login} />;
   return <>{children(token!)}</>;
 }
+
+export const JarvisBar = MayorBar;

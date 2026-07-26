@@ -88,7 +88,7 @@ export async function onRequestGet({ request, env }) {
       ps.provider,
       ps.provider_id,
       ps.status,
-      ps.channel,
+      COALESCE(ps.channel, 'email') AS channel,
       ps.subject,
       ps.body_text,
       ps.to_email,
@@ -107,7 +107,7 @@ export async function onRequestGet({ request, env }) {
       os.subject_template            AS step_subject_template,
       pd.status                      AS draft_status,
       pd.body_text                   AS draft_body,
-      pd.from_email                  AS draft_from_email,
+      NULL                           AS draft_from_email,
       (SELECT COUNT(*) FROM prospect_replies pr WHERE pr.send_id = ps.id) AS reply_count,
       (SELECT pr.classification FROM prospect_replies pr WHERE pr.send_id = ps.id ORDER BY pr.received_at DESC LIMIT 1) AS last_reply_class,
       (SELECT pr.received_at FROM prospect_replies pr WHERE pr.send_id = ps.id ORDER BY pr.received_at DESC LIMIT 1) AS last_reply_at
