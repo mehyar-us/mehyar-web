@@ -702,6 +702,12 @@ function RevenueCockpitCard({ token }: { token: string }) {
                       <div className="min-w-0">
                         <div className="text-xs font-semibold truncate">{g.title}</div>
                         <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{g.flags?.length ? g.flags.join(", ") : "clear enough to inspect"}</div>
+                        {g.gate_reason && (
+                          <div className="text-[10px] text-zinc-600 dark:text-zinc-300 line-clamp-2">{g.gate_reason}</div>
+                        )}
+                        {g.set_aside && (
+                          <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">Set-aside: {g.set_aside}</div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -114,13 +114,17 @@ export async function onRequestGet({ request, env }) {
     `),
     all(db, `
       SELECT
-        id, title, agency, set_aside, fit_score, estimated_value, response_deadline, stage, created_at
+        id, title, agency, opportunity_type, set_aside, fit_score, estimated_value, response_deadline, stage, summary, created_at
       FROM gov_opportunities
       WHERE COALESCE(stage, status, 'discovery') NOT IN ('won','lost','archived','no_bid','rejected')
-        AND COALESCE(fit_score, 0) >= 55
-        AND (response_deadline IS NULL OR date(response_deadline) >= date('now', '+7 days'))
-      ORDER BY fit_score DESC, date(response_deadline) ASC
-      LIMIT 20
+        AND COALESCE(fit_score, 0) >= 25
+        AND (response_deadline IS NULL OR date(response_deadline) >= date('now', '-14 days'))
+      ORDER BY
+        CASE WHEN response_deadline IS NOT NULL AND date(response_deadline) < date('now') THEN 0 ELSE 1 END,
+        CASE WHEN response_deadline IS NOT NULL AND date(response_deadline) < date('now', '+7 days') THEN 0 ELSE 1 END,
+        fit_score DESC,
+        date(response_deadline) ASC
+      LIMIT 30
     `),
     all(db, `
       SELECT id, kind, prospect_id, reply_id, title, status, priority, due_at,
@@ -495,11 +499,12 @@ function scoreProspectLead(r) {
 function scoreSamLead(r) {
   const fit = Math.min(100, Math.max(0, Number(r.fit_score || 0)));
   const deadlineDays = daysUntil(r.response_deadline);
-  const urgency = deadlineDays == null ? 45 : deadlineDays < 14 ? 85 : 65;
-  const licenseLike = /\b(renewal|license|subscription|brand name|hardware|rotary table|calibrator)\b/i.test(String(r.title || ""));
-  const value = Number(r.estimated_value || 0) || (licenseLike ? 1500 : 15000);
-  const deliverability = licenseLike ? 35 : 70;
-  const winProbability = licenseLike ? 0.02 : fit >= 75 ? 0.08 : 0.04;
+  const gate = samGate(r);
+  const urgency = deadlineDays == null ? 45 : deadlineDays < 0 ? 0 : deadlineDays < 14 ? 85 : 65;
+  const hardPass = gate.decision === "pass";
+  const value = Number(r.estimated_value || 0) || (hardPass ? 1500 : 15000);
+  const deliverability = hardPass ? 25 : 70;
+  const winProbability = hardPass ? 0.01 : fit >= 75 ? 0.08 : 0.04;
   const expectedValue = Math.round(value * winProbability);
   return {
     id: r.id,
@@ -513,7 +518,7 @@ function scoreSamLead(r) {
     win_probability_pct: Math.round(winProbability * 1000) / 10,
     expected_value_usd: expectedValue,
     revenue_score: Math.round((fit * 0.45) + (urgency * 0.2) + (deliverability * 0.15) + Math.min(30, value / 1000)),
-    next_action: licenseLike ? "Bid/no-bid gate: likely pass unless services angle exists" : "Verify requirements and draft capability response",
+    next_action: hardPass ? "Pass in bid/no-bid unless a services lane or partner is obvious" : "Verify requirements and draft capability response",
     href: `/admin/leads?kind=sam&focus=${encodeURIComponent(r.id)}`,
     score_factors: {
       fit,
@@ -529,24 +534,25 @@ function scoreSamLead(r) {
 function actionFromSam(r) {
   const fit = Number(r.fit_score || 0);
   const title = String(r.title || "");
-  const licenseLike = /\b(renewal|license|subscription|brand name|maintenance)\b/i.test(title);
-  const baseValue = Number(r.estimated_value || 0) || (licenseLike ? 1500 : 15000);
+  const gate = samGate(r);
+  const hardPass = gate.decision === "pass";
+  const baseValue = Number(r.estimated_value || 0) || (hardPass ? 1500 : 15000);
   return {
     id: r.id,
     kind: "sam",
-    action_type: licenseLike ? "bid_no_bid" : "draft_capability_response",
-    title: `${licenseLike ? "Bid/no-bid" : "Draft capability response"}: ${title}`,
+    action_type: hardPass ? "bid_no_bid_pass" : "draft_capability_response",
+    title: `${hardPass ? "Pass/no-bid" : "Draft capability response"}: ${title}`,
     subtitle: `${r.agency || ""}${r.response_deadline ? ` · due ${r.response_deadline}` : ""}`.slice(0, 160),
-    why: licenseLike ? "Looks like license/resale work; only pursue if there is a services angle." : `Fit score ${fit}; enough runway to prepare a serious response.`,
-    next_step: licenseLike ? "Pass unless you can identify a software services path or teaming partner." : "Open the opportunity, verify requirements, evaluate attachments, then draft a capability email.",
+    why: hardPass ? `Gate flags: ${gate.flags.join(", ")}.` : `Fit score ${fit}; enough runway to prepare a serious response.`,
+    next_step: hardPass ? "Mark/pass unless you can identify a software services path or teaming partner." : "Open the opportunity, verify requirements, evaluate attachments, then draft a capability email.",
     href: `/admin/leads?kind=sam&focus=${encodeURIComponent(r.id)}`,
-    priority_score: licenseLike ? 42 : 58 + Math.min(32, Math.round(fit / 3)),
+    priority_score: hardPass ? 38 : 58 + Math.min(32, Math.round(fit / 3)),
     expected_value_usd: baseValue,
-    close_probability: licenseLike ? 0.02 : fit >= 75 ? 0.08 : 0.04,
+    close_probability: hardPass ? 0.01 : fit >= 75 ? 0.08 : 0.04,
     risk: "medium",
     channel: "contract",
     business_name: r.agency || "",
-    meta: { fit_score: fit, deadline: r.response_deadline, stage: r.stage, license_like: licenseLike },
+    meta: { fit_score: fit, deadline: r.response_deadline, stage: r.stage, gate_flags: gate.flags },
   };
 }
 
@@ -601,31 +607,69 @@ function actionFromQuote(q, followup) {
 }
 
 function bidNoBidForSam(r) {
-  const title = String(r.title || "");
-  const deadlineDays = daysUntil(r.response_deadline);
-  const licenseLike = /\b(renewal|license|subscription|brand name|maintenance)\b/i.test(title);
-  const hardwareLike = /\b(hardware|rotary table|calibrator|parts|equipment)\b/i.test(title);
-  const expiredOrTight = deadlineDays != null && deadlineDays < 7;
-  const fit = Number(r.fit_score || 0);
-  const flags = [];
-  if (licenseLike) flags.push("license_or_renewal");
-  if (hardwareLike) flags.push("hardware_or_equipment");
-  if (expiredOrTight) flags.push("deadline_under_7_days");
-  if (fit < 60) flags.push("fit_below_60");
-  const decision = flags.length ? "no_bid_or_team_only" : "bid";
+  const gate = samGate(r);
   return {
     id: r.id,
-    title,
+    title: r.title,
     agency: r.agency,
-    decision,
-    flags,
-    fit_score: fit,
-    deadline_days: deadlineDays,
-    next_step: decision === "bid"
+    set_aside: r.set_aside || "",
+    decision: gate.decision,
+    flags: gate.flags,
+    hard_flags: gate.hard_flags,
+    fit_score: gate.fit,
+    deadline_days: gate.deadline_days,
+    gate_reason: gate.reason,
+    next_step: gate.decision === "bid"
       ? "Evaluate attachments, confirm eligibility, draft capability response."
-      : "Pass unless a clear services lane or teaming partner exists.",
+      : "Pass unless a clear software services lane or qualified teaming partner exists.",
     href: `/admin/leads?kind=sam&focus=${encodeURIComponent(r.id)}`,
   };
+}
+
+function samGate(r) {
+  const title = String(r.title || "");
+  const setAside = String(r.set_aside || "");
+  const text = `${title} ${r.summary || ""} ${r.opportunity_type || ""}`.toLowerCase();
+  const deadlineDays = daysUntil(r.response_deadline);
+  const fit = Number(r.fit_score || 0);
+  const flags = [];
+  const hardFlags = [];
+
+  if (deadlineDays != null && deadlineDays < 0) {
+    flags.push("expired_deadline");
+    hardFlags.push("expired_deadline");
+  } else if (deadlineDays != null && deadlineDays < 7) {
+    flags.push("deadline_under_7_days");
+    hardFlags.push("deadline_under_7_days");
+  }
+
+  if (/\b(renewal|license renewal|subscription renewal|software license|brand name only|exact match)\b/i.test(text)) {
+    flags.push("license_or_renewal");
+    hardFlags.push("license_or_renewal");
+  }
+  if (/\b(hardware|equipment|parts|supplies|rotary table|calibrator|server appliance|printer|laptop|desktop|scanner)\b/i.test(text)) {
+    flags.push("hardware_or_equipment");
+    hardFlags.push("hardware_or_equipment");
+  }
+  if (isRestrictedSetAside(setAside)) {
+    flags.push("restricted_set_aside");
+    hardFlags.push("restricted_set_aside");
+  }
+  if (fit < 60) flags.push("fit_below_60");
+
+  const decision = hardFlags.length || fit < 45 ? "pass" : "bid";
+  const reason = decision === "bid"
+    ? "No hard pass flags; worth deeper review."
+    : `Pass gate: ${hardFlags.length ? hardFlags.join(", ") : "fit_below_45"}.`;
+
+  return { decision, flags, hard_flags: hardFlags, fit, deadline_days: deadlineDays, reason };
+}
+
+function isRestrictedSetAside(setAside) {
+  const s = String(setAside || "").toLowerCase();
+  if (!s || /\bunrestricted\b|\bfull and open\b|\bnot set aside\b/.test(s)) return false;
+  if (/\btotal small business\b|\bsmall business set-aside\b/.test(s)) return false;
+  return /\b(8\(a\)|8a|hubzone|sdvosb|service-disabled|veteran-owned|vosb|wosb|edwosb|woman-owned|women-owned|economically disadvantaged|native american|indian economic|abilityone|alaska native)\b/i.test(s);
 }
 
 function playbookForReply(r) {
