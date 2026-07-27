@@ -120,11 +120,9 @@ export async function onRequestGet({ request, env }) {
         AND COALESCE(fit_score, 0) >= 25
         AND (response_deadline IS NULL OR date(response_deadline) >= date('now', '-14 days'))
       ORDER BY
-        CASE WHEN response_deadline IS NOT NULL AND date(response_deadline) < date('now') THEN 0 ELSE 1 END,
-        CASE WHEN response_deadline IS NOT NULL AND date(response_deadline) < date('now', '+7 days') THEN 0 ELSE 1 END,
         fit_score DESC,
         date(response_deadline) ASC
-      LIMIT 30
+      LIMIT 80
     `),
     all(db, `
       SELECT id, kind, prospect_id, reply_id, title, status, priority, due_at,
