@@ -6,11 +6,8 @@
 //   1. Pages HMAC JWT (issued by /api/admin/auth/login): "payload.signature"
 //      - validated locally with ADMIN_SESSION_SECRET / HMAC_SECRET.
 //   2. Worker opaque token (issued by api.mehyar.us/v1/admin/login): a UUID
-//      - accepted as a valid session because gateway auth verified it at
-//      issue time. We can't independently verify a UUID without a separate
-//      /v1/admin/me call, so we fall back to a permissive format check.
-//      A forged UUID will still fail with 401 on every real admin call, so
-//      the SPA will re-prompt and the user re-logs in.
+//      - accepted only after api.mehyar.us/v1/admin/me verifies it. UUID
+//      shape alone is never accepted in production.
 //
 // Returns: { ok: true, session } | { ok: false, status, message }
 export async function verifyAdminToken(request, env) {
