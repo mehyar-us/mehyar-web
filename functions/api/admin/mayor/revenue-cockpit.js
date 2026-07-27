@@ -157,7 +157,8 @@ export async function onRequestGet({ request, env }) {
         date(COALESCE(attempted_at, created_at)) AS day,
         COUNT(*) AS sends,
         SUM(CASE WHEN status IN ('bounced','failed') THEN 1 ELSE 0 END) AS failed_or_bounced,
-        SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) AS bounced
+        SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) AS bounced,
+        SUM(CASE WHEN status = 'complained' THEN 1 ELSE 0 END) AS complaints
       FROM prospect_sends
       WHERE COALESCE(attempted_at, created_at) >= datetime('now','-14 day')
       GROUP BY date(COALESCE(attempted_at, created_at))
@@ -614,24 +615,31 @@ function buildDeliverabilityPanel(sendRows, replyRows, dueCount) {
   const sends14 = sendRows.reduce((s, r) => s + Number(r.sends || 0), 0);
   const failed14 = sendRows.reduce((s, r) => s + Number(r.failed_or_bounced || 0), 0);
   const bounced14 = sendRows.reduce((s, r) => s + Number(r.bounced || 0), 0);
+  const complaints14 = sendRows.reduce((s, r) => s + Number(r.complaints || 0), 0);
   const replies = Object.fromEntries(replyRows.map((r) => [r.classification || "unclassified", Number(r.n || 0)]));
   const optOuts = Number(replies.unsubscribe || 0) + Number(replies.stop || 0);
   const bounceRate = sends14 ? Math.round((bounced14 / sends14) * 1000) / 10 : 0;
   const failureRate = sends14 ? Math.round((failed14 / sends14) * 1000) / 10 : 0;
+  const complaintRate = sends14 ? Math.round((complaints14 / sends14) * 1000) / 10 : 0;
+  const domainHealth = complaints14 > 0 || bounceRate >= 5 || optOuts >= 3 ? "watch" : "ok";
   return {
     posture: "review_required",
     sends_14d: sends14,
     due_for_review: dueCount,
     bounced_14d: bounced14,
+    complaints_14d: complaints14,
     failed_or_bounced_14d: failed14,
     bounce_rate_pct: bounceRate,
     failure_rate_pct: failureRate,
+    complaint_rate_pct: complaintRate,
     opt_outs_30d: optOuts,
-    domain_health: bounceRate >= 5 || optOuts >= 3 ? "watch" : "ok",
-    recommendation: bounceRate >= 5
+    domain_health: domainHealth,
+    recommendation: complaints14 > 0
+      ? "Pause scaled sending and inspect every approved email; complaints are a domain-health stop sign."
+      : bounceRate >= 5
       ? "Pause scaled sending and validate emails before any approvals."
       : "Keep auto-send off; review 5-15 high-quality emails/day.",
-    daily_safe_send_range: sends14 > 0 && bounceRate < 3 ? "10-25 reviewed emails/day" : "5-10 reviewed emails/day",
+    daily_safe_send_range: complaints14 === 0 && sends14 > 0 && bounceRate < 3 ? "10-25 reviewed emails/day" : "5-10 reviewed emails/day",
     by_day: sendRows,
     replies_30d: replies,
   };

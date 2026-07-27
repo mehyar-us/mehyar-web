@@ -488,6 +488,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <Mini label="14d sends" value={deliverability.sends_14d || 0} />
                   <Mini label="Bounce" value={`${deliverability.bounce_rate_pct || 0}%`} />
+                  <Mini label="Complaints" value={`${deliverability.complaints_14d || 0} · ${deliverability.complaint_rate_pct || 0}%`} />
                   <Mini label="Opt-outs" value={deliverability.opt_outs_30d || 0} />
                   <Mini label="Health" value={deliverability.domain_health || "ok"} />
                 </div>
