@@ -22,11 +22,13 @@ export async function onRequestPost({ request, env, params }) {
   let body = {};
   try { body = await request.json(); } catch {}
   await ensureMayorTasksSchema(env);
+  await ensureQuotePaymentSchema(env);
   const db = env.LEADS_DB;
 
   const quote = await db.prepare(`
     SELECT q.id, q.quote_number, q.client_name, q.client_email, q.total_usd, q.status,
            q.lead_id, q.lead_kind, q.public_slug, q.created_at, q.updated_at,
+           q.payment_url, q.payment_instructions, q.deposit_usd, q.payment_url_updated_at,
            date(q.created_at, '+' || COALESCE(q.due_days, 15) || ' days') AS due_date,
            p.id AS prospect_id, p.business_name, p.email, p.root_domain, p.vertical
     FROM quotes q
@@ -64,6 +66,9 @@ export async function onRequestPost({ request, env, params }) {
       quote_number: quote.quote_number,
       public_slug: quote.public_slug,
       view_url: `/q/${quote.public_slug}`,
+      payment_url: quote.payment_url || null,
+      deposit_usd: quote.deposit_usd == null ? null : Number(quote.deposit_usd || 0),
+      payment_url_updated_at: quote.payment_url_updated_at || null,
       status: quote.status,
       due_date: quote.due_date,
     }).slice(0, 8000);
@@ -88,11 +93,67 @@ export async function onRequestPost({ request, env, params }) {
 
   const taskPayload = safeJson(task.payload_json, {});
   if (taskPayload.followup_draft_id) {
-    const existing = await db.prepare(`SELECT id, status FROM prospect_drafts WHERE id = ? LIMIT 1`)
+    const existing = await db.prepare(`SELECT id, status, payload_json FROM prospect_drafts WHERE id = ? LIMIT 1`)
       .bind(taskPayload.followup_draft_id)
       .first()
       .catch(() => null);
     if (existing) {
+      const forceRefresh = Boolean(body?.force_refresh || body?.refresh);
+      const draftStatus = String(existing.status || "");
+      const existingPayload = safeJson(existing.payload_json, {});
+      const needsPaymentRefresh = Boolean(
+        quote.payment_url &&
+        quote.payment_url_updated_at &&
+        existingPayload.payment_url_updated_at !== quote.payment_url_updated_at
+      );
+      if (forceRefresh && ["draft", "ready", "pending_review"].includes(draftStatus)) {
+        const subject = String(body?.subject || defaultSubject(quote)).slice(0, 500);
+        const bodyText = String(body?.body_text || defaultBody(quote, task)).slice(0, 16000);
+        const payload = draftPayload(quote, task, existing.id);
+        await db.prepare(`
+          UPDATE prospect_drafts
+          SET subject = ?,
+              body_text = ?,
+              body_html = ?,
+              payload_json = ?,
+              generated_by = 'rule_quote_followup_refresh',
+              model = 'template',
+              created_at = COALESCE(created_at, datetime('now'))
+          WHERE id = ?
+        `).bind(
+          subject,
+          bodyText,
+          bodyText.replace(/\n/g, "<br/>"),
+          JSON.stringify(payload).slice(0, 12000),
+          existing.id
+        ).run();
+
+        await db.prepare(`
+          UPDATE mayor_tasks
+          SET cta_text = ?,
+              payload_json = ?,
+              updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(
+          defaultCta(quote),
+          JSON.stringify({ ...taskPayload, ...payload, followup_draft_id: existing.id, followup_draft_refreshed_at: new Date().toISOString() }).slice(0, 48000),
+          task.id
+        ).run();
+
+        return json({
+          ok: true,
+          refreshed: true,
+          quote_id: quote.id,
+          quote_number: quote.quote_number,
+          task_id: task.id,
+          draft_id: existing.id,
+          draft_status: existing.status,
+          needs_payment_refresh: false,
+          review_href: `/admin/money?focus=${encodeURIComponent(existing.id)}`,
+          subject,
+          body_text: bodyText,
+        }, 200, request, env);
+      }
       return json({
         ok: true,
         already_exists: true,
@@ -101,6 +162,7 @@ export async function onRequestPost({ request, env, params }) {
         task_id: task.id,
         draft_id: existing.id,
         draft_status: existing.status,
+        needs_payment_refresh: needsPaymentRefresh,
         review_href: `/admin/money?focus=${encodeURIComponent(existing.id)}`,
       }, 200, request, env);
     }
@@ -109,16 +171,7 @@ export async function onRequestPost({ request, env, params }) {
   const draftId = crypto.randomUUID();
   const subject = String(body?.subject || defaultSubject(quote)).slice(0, 500);
   const bodyText = String(body?.body_text || defaultBody(quote, task)).slice(0, 16000);
-  const payload = {
-    kind: "quote_followup",
-    quote_id: quote.id,
-    quote_number: quote.quote_number,
-    public_slug: quote.public_slug,
-    quote_url: `https://mehyar.us/q/${quote.public_slug}`,
-    task_id: task.id,
-    total_usd: Number(quote.total_usd || 0),
-    status: quote.status,
-  };
+  const payload = draftPayload(quote, task, draftId);
 
   try {
     await db.prepare(`
@@ -263,18 +316,50 @@ function defaultSubject(quote) {
 
 function defaultBody(quote, task) {
   const name = quote.business_name || quote.client_name || "there";
-  const link = `https://mehyar.us/q/${quote.public_slug}`;
+  const quoteLink = `https://mehyar.us/q/${quote.public_slug}`;
+  const paymentLink = String(quote.payment_url || "").startsWith("https://") ? quote.payment_url : "";
   const amount = Number(quote.total_usd || 0).toLocaleString();
+  const deposit = quote.deposit_usd == null ? 0 : Number(quote.deposit_usd || 0);
+  const paymentLine = paymentLink
+    ? `\n\nPayment/start link${deposit > 0 ? ` for the $${deposit.toLocaleString()} deposit` : ""}:\n${paymentLink}`
+    : "";
   if (quote.status === "invoice") {
-    return `Hi ${name},\n\nQuick follow-up on Invoice #${quote.quote_number} for $${amount}:\n${link}\n\nShould I keep this open for this week, or is there anything blocking payment/kickoff?\n\nMehyar`;
+    return `Hi ${name},\n\nQuick follow-up on Invoice #${quote.quote_number} for $${amount}:\n${quoteLink}${paymentLine}\n\nShould I keep this open for this week, or is there anything blocking payment/kickoff?\n\nMehyar`;
   }
-  return `Hi ${name},\n\nQuick follow-up on Quote #${quote.quote_number} for $${amount}:\n${link}\n\nAny questions, or should I convert this to an invoice and get the first sprint scheduled?\n\nMehyar`;
+  return `Hi ${name},\n\nQuick follow-up on Quote #${quote.quote_number} for $${amount}:\n${quoteLink}${paymentLine}\n\nAny questions, or should I convert this to an invoice and get the first sprint scheduled?\n\nMehyar`;
 }
 
 function defaultCta(quote) {
-  const link = `https://mehyar.us/q/${quote.public_slug}`;
+  const link = String(quote.payment_url || "").startsWith("https://")
+    ? quote.payment_url
+    : `https://mehyar.us/q/${quote.public_slug}`;
   if (quote.status === "invoice") return `Quick follow-up on Invoice #${quote.quote_number}: ${link}`;
   return `Quick follow-up on Quote #${quote.quote_number}: ${link}`;
+}
+
+function draftPayload(quote, task, draftId) {
+  return {
+    kind: "quote_followup",
+    quote_id: quote.id,
+    quote_number: quote.quote_number,
+    public_slug: quote.public_slug,
+    quote_url: `https://mehyar.us/q/${quote.public_slug}`,
+    payment_url: quote.payment_url || null,
+    payment_instructions: quote.payment_instructions || null,
+    deposit_usd: quote.deposit_usd == null ? null : Number(quote.deposit_usd || 0),
+    payment_url_updated_at: quote.payment_url_updated_at || null,
+    task_id: task.id,
+    draft_id: draftId,
+    total_usd: Number(quote.total_usd || 0),
+    status: quote.status,
+  };
+}
+
+async function ensureQuotePaymentSchema(env) {
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_instructions TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN deposit_usd REAL`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url_updated_at TEXT`).run().catch(() => null);
 }
 
 function safeJson(s, fallback) {

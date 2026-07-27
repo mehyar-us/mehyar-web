@@ -269,6 +269,13 @@ export async function onRequestGet({ request, env }) {
     const followup = quoteTaskBySource.get(`quote:${q.id}`);
     const followupPayload = safeJson(followup?.payload_json, {});
     const followupDraftId = followupPayload?.followup_draft_id || "";
+    const draftNeedsPaymentRefresh = Boolean(
+      q.payment_url &&
+      q.payment_url_updated_at &&
+      followupDraftId &&
+      followupPayload?.payment_url_updated_at !== q.payment_url_updated_at &&
+      followup?.status !== "draft_queued"
+    );
     return {
       id: q.id,
       quote_number: q.quote_number,
@@ -293,17 +300,20 @@ export async function onRequestGet({ request, env }) {
       followup_due_at: followup?.due_at || "",
       followup_cta: followup?.cta_text || "",
       followup_draft_id: followupDraftId,
+      draft_needs_payment_refresh: draftNeedsPaymentRefresh,
       followup_send_id: followupPayload?.followup_send_id || "",
       followup_send_status: followupPayload?.followup_send_status || "",
       draft_followup_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/draft-follow-up`,
       review_draft_href: followupDraftId ? `/admin/money?focus=${encodeURIComponent(followupDraftId)}` : "",
-      next_action: followup
-        ? followup?.status === "draft_queued"
-          ? (q.payment_url ? "Follow-up email is queued; monitor payment/reply." : "Add a payment link, then monitor payment/reply.")
-          : followupDraftId ? "Follow-up draft is ready for owner review." : "Follow-up task is queued; draft the email for review."
-        : q.payment_url
-          ? (q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.")
-          : "Add a real payment link before the next follow-up.",
+      next_action: !q.payment_url
+        ? "Add a real payment link before reviewing/sending collection."
+        : draftNeedsPaymentRefresh
+          ? "Refresh the follow-up draft so it includes the payment link."
+          : followup
+            ? followup?.status === "draft_queued"
+              ? "Follow-up email is queued; monitor payment/reply."
+              : followupDraftId ? "Follow-up draft is ready for owner review." : "Follow-up task is queued; draft the email for review."
+            : q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.",
     };
   });
   const govBidNoBid = samRows.map(bidNoBidForSam);
