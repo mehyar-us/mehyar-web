@@ -716,7 +716,7 @@ function cleanExcerpt(value, maxLen = 240) {
     .replace(/\s+/g, " ")
     .trim();
   if (text.length <= maxLen) return text;
-  return `${text.slice(0, Math.max(0, maxLen - 1)).trim()}...`;
+  return `${text.slice(0, Math.max(0, maxLen - 3)).trim()}...`;
 }
 
 function buildScorecard(summary, actions) {
