@@ -17,7 +17,7 @@ import {
   Pause, Play, Mail, Send, Reply, AlertTriangle, RefreshCw, CheckCircle2,
   Loader2, ArrowRight, Activity, Clock, ExternalLink, Sparkles,
   Calendar, TrendingUp, MessageSquare, Database, Zap, ChevronDown, ChevronUp,
-  Hourglass, Flame, Brain, Search,
+  Hourglass, Flame, Brain, Search, FileText,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -197,6 +197,7 @@ function PipelineAuditCard({ token }: { token: string }) {
 function RevenueCockpitCard({ token }: { token: string }) {
   const [bookingBusy, setBookingBusy] = useState("");
   const [quoteBusy, setQuoteBusy] = useState("");
+  const [quoteStatusBusy, setQuoteStatusBusy] = useState("");
   const q = useQuery({
     queryKey: ["admin-revenue-cockpit", token],
     queryFn: async () => {
@@ -217,6 +218,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const gov: any[] = q.data?.gov_bid_no_bid || [];
   const deliverability = q.data?.deliverability || {};
   const bookings: any[] = q.data?.booking_tasks || [];
+  const quoteActions: any[] = q.data?.quote_actions || [];
   const cleanup = q.data?.money_cleanup || {};
 
   const createBookingTask = async (replyId: string, meetingCta?: string) => {
@@ -263,6 +265,26 @@ function RevenueCockpitCard({ token }: { token: string }) {
       alert(`Quote failed: ${String((error as Error)?.message || error)}`);
     } finally {
       setQuoteBusy("");
+    }
+  };
+
+  const updateQuoteStatus = async (quote: any, status: string) => {
+    if (!quote?.id) return;
+    if (status === "paid" && !confirm(`Mark Quote #${quote.quote_number} paid for $${Number(quote.total_usd || 0).toLocaleString()}?`)) return;
+    setQuoteStatusBusy(`${quote.id}:${status}`);
+    try {
+      const r = await fetch(`/api/admin/quotes/${encodeURIComponent(quote.id)}/status`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+    } catch (error) {
+      alert(`Quote status failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setQuoteStatusBusy("");
     }
   };
 
@@ -406,7 +428,47 @@ function RevenueCockpitCard({ token }: { token: string }) {
               </Panel>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <Panel title="Quote closeout" href="/admin/money">
+                {quoteActions.slice(0, 5).map((quote) => (
+                  <div key={quote.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold truncate">#{quote.quote_number} {quote.client_name}</div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                          ${Number(quote.total_usd || 0).toLocaleString()} · {quote.status}{quote.stale ? " · stale" : ""}
+                        </div>
+                      </div>
+                      <a href={quote.view_url} target="_blank" rel="noreferrer" className="text-[10px] text-violet-700 dark:text-violet-300 underline shrink-0">view</a>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {quote.status !== "invoice" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={quoteStatusBusy === `${quote.id}:invoice`}
+                          onClick={() => updateQuoteStatus(quote, "invoice")}
+                          className="h-7 px-2 text-[10px]"
+                        >
+                          {quoteStatusBusy === `${quote.id}:invoice` ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileText className="w-3 h-3 mr-1" />}
+                          Invoice
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="cta"
+                        disabled={quoteStatusBusy === `${quote.id}:paid`}
+                        onClick={() => updateQuoteStatus(quote, "paid")}
+                        className="h-7 px-2 text-[10px]"
+                      >
+                        {quoteStatusBusy === `${quote.id}:paid` ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <DollarSign className="w-3 h-3 mr-1" />}
+                        Paid
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {quoteActions.length === 0 && <EmptyLine text="No open quotes to close." />}
+              </Panel>
               <Panel title="Gov bid/no-bid gate" href="/admin/leads?kind=sam">
                 {gov.slice(0, 6).map((g) => (
                   <div key={g.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
@@ -425,7 +487,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
                   <Mini label="EV" value={`$${Number(cleanup.real_expected_value_usd || 0).toLocaleString()}`} />
                   <Mini label="Next actions" value={cleanup.next_action_count || 0} />
                   <Mini label="Stale" value={cleanup.stale_pipeline_count || 0} />
-                  <Mini label="Drafts" value={cleanup.draft_review_count || 0} />
+                  <Mini label="Quotes" value={cleanup.stale_quote_count || 0} />
                 </div>
                 <ul className="space-y-1 text-[10px] text-zinc-600 dark:text-zinc-300 list-disc pl-4">
                   {(cleanup.cleanup_actions || []).slice(0, 4).map((x: string, i: number) => <li key={i}>{x}</li>)}

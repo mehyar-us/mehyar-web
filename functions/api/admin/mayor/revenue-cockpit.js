@@ -33,6 +33,7 @@ export async function onRequestGet({ request, env }) {
     prospectRows,
     samRows,
     taskRows,
+    quoteRows,
     sendHealth,
     replyHealth,
   ] = await Promise.all([
@@ -128,6 +129,18 @@ export async function onRequestGet({ request, env }) {
         AND kind = 'booking'
       ORDER BY priority DESC, COALESCE(due_at, created_at) ASC
       LIMIT 20
+    `),
+    all(db, `
+      SELECT id, quote_number, client_name, client_email, total_usd, status,
+             lead_id, lead_kind, public_slug, created_at, updated_at, paid_at,
+             date(created_at, '+' || COALESCE(due_days, 15) || ' days') AS due_date
+      FROM quotes
+      WHERE status IN ('quote','invoice')
+      ORDER BY
+        CASE WHEN date(created_at, '+' || COALESCE(due_days, 15) || ' days') < date('now') THEN 0 ELSE 1 END,
+        total_usd DESC,
+        created_at ASC
+      LIMIT 10
     `),
     all(db, `
       SELECT
@@ -239,8 +252,22 @@ export async function onRequestGet({ request, env }) {
       create_task_href: `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/book-call`,
     })),
   ].slice(0, limit);
+  const quoteActions = quoteRows.map((q) => ({
+    id: q.id,
+    quote_number: q.quote_number,
+    client_name: q.client_name,
+    client_email: q.client_email,
+    total_usd: Number(q.total_usd || 0),
+    status: q.status,
+    due_date: q.due_date,
+    stale: q.due_date ? new Date(q.due_date).getTime() < Date.now() : false,
+    view_url: `/q/${q.public_slug}`,
+    mark_invoice_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
+    mark_paid_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
+    next_action: q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.",
+  }));
   const govBidNoBid = samRows.map(bidNoBidForSam);
-  const moneyCleanup = buildMoneyCleanup(summary, actions, draftReviewInbox, deliverability);
+  const moneyCleanup = buildMoneyCleanup(summary, actions, draftReviewInbox, deliverability, quoteActions);
 
   return json({
     ok: true,
@@ -252,6 +279,7 @@ export async function onRequestGet({ request, env }) {
     reply_playbook: replyPlaybook,
     gov_bid_no_bid: govBidNoBid,
     money_cleanup: moneyCleanup,
+    quote_actions: quoteActions,
     deliverability,
     booking_tasks: bookingTasks,
     scorecard: buildScorecard(summary, unique),
@@ -528,19 +556,22 @@ function buildDeliverabilityPanel(sendRows, replyRows, dueCount) {
   };
 }
 
-function buildMoneyCleanup(summary, actions, drafts, deliverability) {
+function buildMoneyCleanup(summary, actions, drafts, deliverability, quotes = []) {
   const staleActions = actions.filter((a) => a.priority_score < 55).length;
+  const staleQuotes = quotes.filter((q) => q.stale).length;
   return {
     expected_value_method: "expected_value_usd * close_probability from ranked next actions",
     real_expected_value_usd: summary.weighted_next_actions_usd,
     deal_value_source: "quotes.total_usd + opportunity_decisions.value_usd + estimated contract/prospect values",
     next_action_count: actions.length,
     stale_pipeline_count: staleActions,
+    stale_quote_count: staleQuotes,
     draft_review_count: drafts.length,
     deliverability_state: deliverability.domain_health,
     cleanup_actions: [
       "Mark expired/tight license-renewal SAM opportunities no-bid.",
       "Convert warm replies into booking tasks before scanning more leads.",
+      "Mark paid quotes immediately so booked revenue reflects cash, not optimism.",
       "Review or reject old drafts so the queue reflects real money.",
       "Create quotes for warm prospects so pipeline value stops being placeholder math.",
     ],
