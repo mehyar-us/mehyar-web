@@ -82,7 +82,7 @@ export async function onRequestGet({ request, env }) {
     `),
     all(db, `
       SELECT
-        d.id, d.prospect_id, d.subject, d.created_at,
+        d.id, d.prospect_id, d.subject, d.body_text, d.payload_json, d.created_at,
         p.business_name, p.root_domain, p.email, p.vertical, p.city,
         COALESCE(sig.leak_score, 0) AS leak_score
       FROM prospect_drafts d
@@ -216,19 +216,7 @@ export async function onRequestGet({ request, env }) {
     auto_send_posture: "review_required",
   };
   const deliverability = buildDeliverabilityPanel(sendHealth, replyHealth, dueRows.length);
-  const draftReviewInbox = draftRows.map((r) => ({
-    id: r.id,
-    prospect_id: r.prospect_id,
-    subject: r.subject,
-    business_name: r.business_name,
-    email: r.email,
-    offer: offerForProspect(r),
-    pricing: pricingForOffer(offerForProspect(r)),
-    reason: Number(r.leak_score || 0) >= 60 ? `Leak score ${r.leak_score}: visible operational/website pain.` : "Draft exists and needs owner review before sending.",
-    source: r.root_domain || r.email || "prospect",
-    send_button_href: `/admin/money?focus=${encodeURIComponent(r.id)}`,
-    risk: riskForVertical(r.vertical),
-  }));
+  const draftReviewInbox = draftRows.map((r) => draftReviewItem(r));
   const leadScores = [
     ...prospectRows.map(scoreProspectLead),
     ...samRows.map(scoreSamLead),
@@ -429,6 +417,43 @@ function pricingForOffer(offer) {
     gov_capability: "$1,500 proposal assist or capability response",
   };
   return map[offer] || map.audit;
+}
+
+function draftReviewItem(r) {
+  const payload = safeJson(r.payload_json, {});
+  const tier = payload?.tier || {};
+  const payloadMin = Number(tier.min || 0);
+  const payloadMax = Number(tier.max || 0);
+  const offerId = offerForProspect(r);
+  const payloadPricing = payloadMin || payloadMax
+    ? `$${payloadMin.toLocaleString()}-$${payloadMax.toLocaleString()} one-time`
+    : "";
+  const leakScore = Number(r.leak_score || 0);
+  const source = r.root_domain || r.email || "prospect";
+  const bodyPreview = cleanExcerpt(r.body_text, 360);
+  const payloadService = String(payload?.service || "").trim();
+  const payloadTier = String(tier.name || "").trim();
+  const offer = payloadService
+    ? `${payloadService}${payloadTier ? ` · ${payloadTier}` : ""}`
+    : offerId;
+  return {
+    id: r.id,
+    prospect_id: r.prospect_id,
+    subject: r.subject,
+    body_preview: bodyPreview,
+    body_char_count: String(r.body_text || "").length,
+    business_name: r.business_name,
+    email: r.email,
+    offer,
+    offer_id: offerId,
+    pricing: payloadPricing || pricingForOffer(offerId),
+    reason: leakScore >= 60
+      ? `Leak score ${leakScore}: visible website/intake/ops pain.`
+      : "Draft exists and needs owner review before sending.",
+    source,
+    send_button_href: `/admin/money?focus=${encodeURIComponent(r.id)}`,
+    risk: riskForVertical(r.vertical),
+  };
 }
 
 function scoreProspectLead(r) {
@@ -683,6 +708,15 @@ function daysUntil(iso) {
 function safeJson(value, fallback = {}) {
   if (!value) return fallback;
   try { return JSON.parse(value); } catch { return fallback; }
+}
+
+function cleanExcerpt(value, maxLen = 240) {
+  const text = String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, Math.max(0, maxLen - 1)).trim()}...`;
 }
 
 function buildScorecard(summary, actions) {

@@ -394,10 +394,31 @@ function RevenueCockpitCard({ token }: { token: string }) {
               </Panel>
               <Panel title="Draft review inbox" href="/admin/money#outreach-queue">
                 {drafts.slice(0, 5).map((d) => (
-                  <div key={d.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
-                    <div className="text-xs font-semibold truncate">{d.subject}</div>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{d.business_name} · {d.pricing}</div>
-                    <a href={d.send_button_href} className="text-[10px] text-emerald-700 dark:text-emerald-300 underline">review/send</a>
+                  <div key={d.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2 space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold break-words line-clamp-2">{d.subject}</div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+                          {d.business_name || d.email || "Prospect"} · {d.source}
+                        </div>
+                      </div>
+                      <Badge className={d.risk === "manual_high" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}>
+                        {d.risk === "manual_high" ? "manual" : "low risk"}
+                      </Badge>
+                    </div>
+                    {d.body_preview && (
+                      <div className="rounded bg-zinc-50 dark:bg-zinc-800/50 px-2 py-1.5 text-[10px] text-zinc-700 dark:text-zinc-300 line-clamp-3">
+                        {d.body_preview}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 gap-1 text-[10px] text-zinc-600 dark:text-zinc-300">
+                      <div><span className="text-zinc-500 dark:text-zinc-400">Offer:</span> {d.offer}</div>
+                      <div><span className="text-zinc-500 dark:text-zinc-400">Pricing:</span> {d.pricing}</div>
+                      <div><span className="text-zinc-500 dark:text-zinc-400">Reason:</span> {d.reason}</div>
+                    </div>
+                    <a href={d.send_button_href} className="inline-flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-300 underline">
+                      review/send <ArrowRight className="w-3 h-3" />
+                    </a>
                   </div>
                 ))}
                 {drafts.length === 0 && <EmptyLine text="No reviewable drafts right now." />}

@@ -181,7 +181,7 @@ JSON only: {"subject": "...", "body": "..."}`;
       emailBody,
       // body_html — simple HTML version with same body (no images for cold email)
       emailBody.replace(/\n/g, "<br/>"),
-      llm.used_llm ? "model" : "fallback_template",
+      used_llm ? "model" : "fallback_template",
       llm_model,
       payload
     ).run();
