@@ -5,6 +5,7 @@
 // sends, draft approvals, local-business fixes, and winnable contracts.
 
 import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { ensureMayorTasksSchema } from "../../_shared/mayorTasks.js";
 
 const DEFAULT_TARGET = 100000;
 
@@ -21,6 +22,7 @@ export async function onRequestGet({ request, env }) {
   const target = clampNumber(url.searchParams.get("target"), 10000, 1000000, DEFAULT_TARGET);
   const limit = clampNumber(url.searchParams.get("limit"), 5, 50, 12);
   const db = env.LEADS_DB;
+  await ensureMayorTasksSchema(env);
 
   const [
     quoteSummary,
@@ -30,6 +32,7 @@ export async function onRequestGet({ request, env }) {
     draftRows,
     prospectRows,
     samRows,
+    taskRows,
     sendHealth,
     replyHealth,
   ] = await Promise.all([
@@ -118,6 +121,15 @@ export async function onRequestGet({ request, env }) {
       LIMIT 20
     `),
     all(db, `
+      SELECT id, kind, prospect_id, reply_id, title, status, priority, due_at,
+             cta_text, value_usd, source, created_at, updated_at
+      FROM mayor_tasks
+      WHERE status IN ('open','pending')
+        AND kind = 'booking'
+      ORDER BY priority DESC, COALESCE(due_at, created_at) ASC
+      LIMIT 20
+    `),
+    all(db, `
       SELECT
         date(COALESCE(attempted_at, created_at)) AS day,
         COUNT(*) AS sends,
@@ -195,17 +207,37 @@ export async function onRequestGet({ request, env }) {
     ...samRows.map(scoreSamLead),
   ].sort((a, b) => b.revenue_score - a.revenue_score).slice(0, limit);
   const replyPlaybook = replyRows.map(playbookForReply);
-  const bookingTasks = replyRows
+  const taskReplyIds = new Set(taskRows.map((t) => String(t.reply_id || "")).filter(Boolean));
+  const bookingTasks = [
+    ...taskRows.map((t) => ({
+      task_id: t.id,
+      reply_id: t.reply_id,
+      prospect_id: t.prospect_id,
+      title: t.title,
+      meeting_cta: t.cta_text || "Would tomorrow or the next morning be better for a quick 15-minute call?",
+      href: "/admin/leads?kind=replies",
+      due: t.due_at || "now",
+      status: t.status,
+      value_usd: Number(t.value_usd || 0) || 7500,
+      source: t.source || "task",
+    })),
+    ...replyRows
     .filter((r) => ["interest", "warm"].includes(String(r.classification || "").toLowerCase()))
+    .filter((r) => !taskReplyIds.has(String(r.id)))
     .map((r) => ({
+      task_id: null,
       reply_id: r.id,
       prospect_id: r.prospect_id,
       title: `Book 15-minute call with ${r.business_name || r.email || "warm lead"}`,
       meeting_cta: "Would tomorrow or the next morning be better for a quick 15-minute call?",
       href: "/admin/leads?kind=replies",
       due: "now",
+      status: "needs_task",
       value_usd: 7500,
-    }));
+      source: "warm_reply",
+      create_task_href: `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/book-call`,
+    })),
+  ].slice(0, limit);
   const govBidNoBid = samRows.map(bidNoBidForSam);
   const moneyCleanup = buildMoneyCleanup(summary, actions, draftReviewInbox, deliverability);
 
@@ -453,6 +485,7 @@ function playbookForReply(r) {
       : `Thanks for the reply. What would be most useful: a quick audit, pricing for a fix, or should I close the loop?`,
     meeting_cta: warm ? "Offer one specific 15-minute slot and one fallback." : "",
     mark_won_lost_href: r.prospect_id ? `/admin/leads?kind=prospect&focus=${encodeURIComponent(r.prospect_id)}` : "/admin/leads?kind=replies",
+    book_call_href: warm ? `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/book-call` : "",
     href: "/admin/leads?kind=replies",
   };
 }

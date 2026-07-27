@@ -30,6 +30,7 @@
 // Returns: { ok, matched_prospect_id?, reply_id?, classification, auto_reply? }
 
 import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { createBookingTaskForReply } from "../../_shared/mayorTasks.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -210,7 +211,7 @@ export async function onRequestPost({ request, env }) {
 
   // Update prospect status
   try {
-    if (classification === "interest") {
+    if (classification === "interest" || classification === "warm") {
       await env.LEADS_DB.prepare(`UPDATE prospects SET status = 'replied', updated_at = datetime('now') WHERE id = ?`).bind(prospect.id).run();
     } else if (classification === "unsubscribe" || classification === "stop") {
       await env.LEADS_DB.prepare(`UPDATE prospects SET status = 'unsubscribed', consent_state = 'unsubscribed', updated_at = datetime('now') WHERE id = ?`).bind(prospect.id).run();
@@ -218,6 +219,24 @@ export async function onRequestPost({ request, env }) {
       await env.LEADS_DB.prepare(`UPDATE prospects SET status = 'not_interested', updated_at = datetime('now') WHERE id = ?`).bind(prospect.id).run();
     }
   } catch (_) {}
+
+  let bookingTask = null;
+  if (classification === "interest" || classification === "warm") {
+    bookingTask = await createBookingTaskForReply(env, {
+      id: replyId,
+      prospect_id: prospect.id,
+      classification,
+      subject,
+      body_excerpt: (text || "").slice(0, 4000),
+      business_name: prospect.business_name,
+      email: prospect.email || fromEmail,
+      from_email: fromEmail,
+    }, {
+      source: "inbound_email",
+      meeting_cta: "Would tomorrow or the next morning be better for a quick 15-minute call?",
+      value_usd: 7500,
+    }).catch((e) => ({ ok: false, error: String(e?.message || e) }));
+  }
 
   // Audit event
   try {
@@ -227,7 +246,7 @@ export async function onRequestPost({ request, env }) {
     `).bind(
       crypto.randomUUID(),
       `${classification} reply from ${prospect.business_name} (${fromEmail}): ${subject}`,
-      JSON.stringify({ reply_id: replyId, prospect_id: prospect.id, classification, message_id: messageId })
+      JSON.stringify({ reply_id: replyId, prospect_id: prospect.id, classification, message_id: messageId, booking_task: bookingTask })
     ).run();
   } catch (_) {}
 
@@ -258,6 +277,7 @@ export async function onRequestPost({ request, env }) {
     prospect_business: prospect.business_name,
     reply_id: replyId,
     classification,
+    booking_task: bookingTask,
     from_email: fromEmail,
     subject,
     auto_reply: autoReply,

@@ -195,6 +195,7 @@ function PipelineAuditCard({ token }: { token: string }) {
 }
 
 function RevenueCockpitCard({ token }: { token: string }) {
+  const [bookingBusy, setBookingBusy] = useState("");
   const q = useQuery({
     queryKey: ["admin-revenue-cockpit", token],
     queryFn: async () => {
@@ -216,6 +217,25 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const deliverability = q.data?.deliverability || {};
   const bookings: any[] = q.data?.booking_tasks || [];
   const cleanup = q.data?.money_cleanup || {};
+
+  const createBookingTask = async (replyId: string, meetingCta?: string) => {
+    if (!replyId) return;
+    setBookingBusy(replyId);
+    try {
+      const r = await fetch(`/api/admin/mayor/replies/${encodeURIComponent(replyId)}/book-call`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ meeting_cta: meetingCta, value_usd: 7500 }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+    } catch (error) {
+      alert(`Booking task failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setBookingBusy("");
+    }
+  };
 
   return (
     <Card className="mb-4 border-emerald-200 dark:border-emerald-800">
@@ -267,8 +287,25 @@ function RevenueCockpitCard({ token }: { token: string }) {
               <Panel title="Booking conversion" href="/admin/leads?kind=replies">
                 {bookings.slice(0, 5).map((b) => (
                   <div key={b.reply_id} className="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-2">
-                    <div className="text-xs font-semibold">{b.title}</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="text-xs font-semibold">{b.title}</div>
+                      <Badge className={b.status === "needs_task" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}>
+                        {b.status === "needs_task" ? "needs task" : "task"}
+                      </Badge>
+                    </div>
                     <div className="text-[10px] text-zinc-600 dark:text-zinc-300 mt-0.5">{b.meeting_cta}</div>
+                    {b.status === "needs_task" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={bookingBusy === b.reply_id}
+                        onClick={() => createBookingTask(b.reply_id, b.meeting_cta)}
+                        className="mt-2 h-7 px-2 text-[10px]"
+                      >
+                        {bookingBusy === b.reply_id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Calendar className="w-3 h-3 mr-1" />}
+                        Create booking task
+                      </Button>
+                    )}
                   </div>
                 ))}
                 {bookings.length === 0 && <EmptyLine text="No warm replies waiting for booking." />}
@@ -301,6 +338,18 @@ function RevenueCockpitCard({ token }: { token: string }) {
                   <div key={r.reply_id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
                     <div className="text-xs font-semibold">{r.recommended_action}</div>
                     <div className="text-[10px] text-zinc-600 dark:text-zinc-300 line-clamp-2">{r.next_reply}</div>
+                    {r.book_call_href && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={bookingBusy === r.reply_id}
+                        onClick={() => createBookingTask(r.reply_id, r.next_reply)}
+                        className="mt-2 h-7 px-2 text-[10px]"
+                      >
+                        {bookingBusy === r.reply_id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Calendar className="w-3 h-3 mr-1" />}
+                        Book task
+                      </Button>
+                    )}
                   </div>
                 ))}
                 {replies.length === 0 && <EmptyLine text="No reply playbooks needed." />}

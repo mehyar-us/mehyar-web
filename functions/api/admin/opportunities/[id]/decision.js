@@ -1,6 +1,6 @@
 // POST /api/admin/opportunities/:id/decision
-// Mark a SAM.gov opportunity as won/lost/no_bid.
-// Records to opportunity_decisions + sets stage on gov_opportunities + audit log.
+// Mark a SAM.gov opportunity or local prospect as won/lost/no_bid/on_hold.
+// Records to opportunity_decisions + sets the source row stage/status + audit log.
 //
 // Body: { outcome: 'won'|'lost'|'no_bid', value_usd?: number, reason_code?: string, reason_body?: string }
 
@@ -19,6 +19,8 @@ export async function onRequestPost({ request, env, params }) {
 
   const opportunityId = params?.id;
   if (!opportunityId) return json({ ok: false, error: "missing_id" }, 400, request, env);
+  const url = new URL(request.url);
+  const kind = url.searchParams.get("kind") === "prospect" ? "prospect" : "sam";
 
   let body;
   try { body = await request.json(); } catch { body = {}; }
@@ -32,10 +34,14 @@ export async function onRequestPost({ request, env, params }) {
 
   try {
     await ensureDecisionSchema(env);
-    // Verify opportunity exists
-    const opp = await env.LEADS_DB.prepare(
-      `SELECT id, title, agency, stage, fit_score FROM gov_opportunities WHERE id = ? LIMIT 1`
-    ).bind(opportunityId).first().catch(() => null);
+    const opp = kind === "prospect"
+      ? await env.LEADS_DB.prepare(
+          `SELECT id, business_name AS title, root_domain AS agency, status AS stage, NULL AS fit_score
+           FROM prospects WHERE id = ? LIMIT 1`
+        ).bind(opportunityId).first().catch(() => null)
+      : await env.LEADS_DB.prepare(
+          `SELECT id, title, agency, stage, fit_score FROM gov_opportunities WHERE id = ? LIMIT 1`
+        ).bind(opportunityId).first().catch(() => null);
     if (!opp) return json({ ok: false, error: "not_found" }, 404, request, env);
 
     // Insert decision row (table created in migration 0012)
@@ -44,8 +50,8 @@ export async function onRequestPost({ request, env, params }) {
       INSERT INTO opportunity_decisions (id, opportunity_id, kind, decision, outcome,
                                          value_usd, reason_code, reason_body,
                                          decided_by, decided_at, created_at)
-      VALUES (?, ?, 'sam', ?, ?, ?, ?, ?, 'owner', datetime('now'), datetime('now'))
-    `).bind(decisionId, opportunityId, outcome, outcome, valueUsd, reasonCode, reasonBody).run().catch(async (e) => {
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'owner', datetime('now'), datetime('now'))
+    `).bind(decisionId, opportunityId, kind, outcome, outcome, valueUsd, reasonCode, reasonBody).run().catch(async (e) => {
       // Table might not exist yet — create it on the fly
       await env.LEADS_DB.prepare(`
         CREATE TABLE IF NOT EXISTS opportunity_decisions (
@@ -67,18 +73,23 @@ export async function onRequestPost({ request, env, params }) {
         INSERT INTO opportunity_decisions (id, opportunity_id, kind, decision, outcome,
                                            value_usd, reason_code, reason_body,
                                            decided_by, decided_at, created_at)
-        VALUES (?, ?, 'sam', ?, ?, ?, ?, ?, 'owner', datetime('now'), datetime('now'))
-      `).bind(decisionId, opportunityId, outcome, outcome, valueUsd, reasonCode, reasonBody).run();
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'owner', datetime('now'), datetime('now'))
+      `).bind(decisionId, opportunityId, kind, outcome, outcome, valueUsd, reasonCode, reasonBody).run();
     });
 
-    // Update opportunity stage
-    const newStage = outcome; // won → won, lost → lost, no_bid → no_bid, on_hold → on_hold
-    await env.LEADS_DB.prepare(`
-      UPDATE gov_opportunities SET stage = ?, updated_at = datetime('now') WHERE id = ?
-    `).bind(newStage, opportunityId).run();
+    const newStage = outcome;
+    if (kind === "prospect") {
+      await env.LEADS_DB.prepare(`
+        UPDATE prospects SET status = ?, updated_at = datetime('now') WHERE id = ?
+      `).bind(newStage, opportunityId).run();
+    } else {
+      await env.LEADS_DB.prepare(`
+        UPDATE gov_opportunities SET stage = ?, updated_at = datetime('now') WHERE id = ?
+      `).bind(newStage, opportunityId).run();
+    }
 
     // If won with value_usd, set last_draft_id + last_drafted_at so case-studies can pick it up
-    if (outcome === "won") {
+    if (kind === "sam" && outcome === "won") {
       await env.LEADS_DB.prepare(`
         UPDATE gov_opportunities
         SET last_draft_id = ?, last_drafted_at = datetime('now')
@@ -87,21 +98,35 @@ export async function onRequestPost({ request, env, params }) {
     }
 
     // Audit event
-    await env.LEADS_DB.prepare(`
-      INSERT INTO opportunity_events (id, kind, opportunity_id, sam_id, event_type,
-                                     actor, payload_json, created_at)
-      VALUES (?, 'sam', ?, ?, 'decision', 'owner', ?, datetime('now'))
-    `).bind(crypto.randomUUID(), opportunityId, opportunityId, JSON.stringify({
+    if (kind === "prospect") {
+      await env.LEADS_DB.prepare(`
+        INSERT INTO opportunity_events (id, kind, prospect_id, event_type,
+                                       actor, payload_json, created_at)
+        VALUES (?, 'prospect', ?, 'decision', 'owner', ?, datetime('now'))
+      `).bind(crypto.randomUUID(), opportunityId, JSON.stringify({
+        decision_id: decisionId,
+        outcome, value_usd: valueUsd, reason_code: reasonCode, reason_body: reasonBody,
+        from_stage: opp.stage,
+        to_stage: newStage,
+      }).slice(0, 18000)).run().catch(() => null);
+    } else {
+      await env.LEADS_DB.prepare(`
+        INSERT INTO opportunity_events (id, kind, opportunity_id, sam_id, event_type,
+                                       actor, payload_json, created_at)
+        VALUES (?, 'sam', ?, ?, 'decision', 'owner', ?, datetime('now'))
+      `).bind(crypto.randomUUID(), opportunityId, opportunityId, JSON.stringify({
       decision_id: decisionId,
       outcome, value_usd: valueUsd, reason_code: reasonCode, reason_body: reasonBody,
       from_stage: opp.stage,
       to_stage: newStage,
-    }).slice(0, 18000)).run().catch(() => null);
+      }).slice(0, 18000)).run().catch(() => null);
+    }
 
     return json({
       ok: true,
       decision_id: decisionId,
       opportunity_id: opportunityId,
+      kind,
       outcome,
       value_usd: valueUsd,
       new_stage: newStage,
