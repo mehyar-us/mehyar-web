@@ -115,7 +115,7 @@ const SIGNAL_VERBIAGE = {
   no_email_link:   "your site doesn't expose an email contact",
   no_address:      "your site doesn't show a physical address (a Google ranking + trust killer)",
   platform_generic: "your site looks like an unmoved Wix or Squarespace default",
-  fetch_failed:    "your homepage failed to load when I checked",
+  fetch_failed:    "",
 };
 const SUBJECTS = [
   (s) => `small thing I noticed on ${s}'s site`,
@@ -126,7 +126,14 @@ const SUBJECTS = [
 ];
 
 function draftFallback({ businessName, rootDomain, leak_signals }) {
-  const cited = leak_signals.filter(s => s in SIGNAL_VERBIAGE).map(s => SIGNAL_VERBIAGE[s]);
+  const cited = leak_signals.filter(s => s in SIGNAL_VERBIAGE).map(s => SIGNAL_VERBIAGE[s]).filter(Boolean);
+  if (cited.length === 0) {
+    return {
+      skipped: true,
+      reason: "insufficient_evidence_for_outreach",
+      cited_signals: [],
+    };
+  }
   const top3 = cited.slice(0, 3);
   const leakLine = top3.length
     ? top3.join("; ").replace(/; ([^;]*)$/, ", and $1")
@@ -139,9 +146,9 @@ function draftFallback({ businessName, rootDomain, leak_signals }) {
     `I run MehyarSoft LLC — founder-led consulting that helps local and service businesses stop losing customers to weak websites and slow follow-up. I'm a Senior software engineer in NYC.`,
     "",
     `I checked ${rootDomain} briefly and noticed ${leakLine}.`,
-    `If those sound like the kind of small leaks that quietly cost calls, leads, or bookings, that's the exact kind of audit I do for $150 — a written leak map with the smallest useful next step, no agency theater.`,
+    `If those sound like leaks that quietly cost calls, leads, or bookings, I can do a $150 leak audit: a written map of what is broken, what I would fix first, and whether a $250 diagnosis or fixed-scope quick fix is worth quoting.`,
     "",
-    `Want me to send the report? Happy to share the PDF and a few screenshots.`,
+    `Should I send a short scope note and manual invoice details for the audit?`,
     "",
     `— Mehyar Swelim`,
     `MehyarSoft LLC`,
@@ -179,7 +186,8 @@ for (const s of SEED) {
   else console.log(`  ✓ HTTP ${a.status_code} · ${a.detected_platform} · ${a.page_weight_kb}kB · ${a.load_time_ms}ms · leak_score ${a.leak_score}`);
 
   const draft = draftFallback({ businessName: s.business_name, rootDomain: domain, leak_signals: a.leak_signals });
-  console.log(`  Subject: ${draft.subject}`);
+  if (draft.skipped) console.log(`  Draft : skipped (${draft.reason})`);
+  else console.log(`  Subject: ${draft.subject}`);
   console.log(`  Cited : ${a.leak_signals.join(", ") || "(none — site looks clean)"}`);
 
   output.prospects.push({

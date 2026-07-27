@@ -10,9 +10,18 @@ function pickName(prospect) {
   return raw.split(/\s+/)[0] || FIRST_NAME_FALLBACK;
 }
 
-function verticalHint(vertical) {
-  if (!vertical) return "a Brooklyn service business";
-  return `a ${vertical.toLowerCase()} business in Brooklyn`;
+function segmentHint(prospect) {
+  const vertical = String(prospect?.vertical || "local service").toLowerCase();
+  const city = prospect?.city || "your area";
+  return `${vertical} businesses in ${city}`;
+}
+
+function painHint(prospect) {
+  return prospect?.top_pain || "missed calls, abandoned forms, or manual follow-up";
+}
+
+function optOutFooter() {
+  return "Unsubscribe: https://mehyar.us/unsubscribe";
 }
 
 // ── Step 1 (day 0) — initial cold outreach ───────────────────────────────
@@ -20,22 +29,23 @@ function verticalHint(vertical) {
 export function step1(prospect) {
   const name  = pickName(prospect);
   const biz   = prospect?.business_name || "your business";
-  const hint  = verticalHint(prospect?.vertical);
-  const pain  = prospect?.top_pain || "10 hours a week lost to repetitive admin work";
+  const hint  = segmentHint(prospect);
+  const pain  = painHint(prospect);
 
   return {
-    subject: `Quick question for ${biz}`,
+    subject: `Possible lead leak at ${biz}`,
     body_text:
 `Hi ${name},
 
-I noticed ${biz} — saw ${hint}. Most ${prospect?.vertical || "service"} owners I talk to lose ~${pain} on tasks an AI tool could handle for under $200/mo.
+I noticed ${biz} while reviewing ${hint} and saw a likely revenue leak: ${pain}.
 
-I run a Brooklyn-based dev shop (mehyar.us). I help ${hint}s cut that 10 hrs/week with one small automation. No pitch deck — 15 min, I show you what I'd build and what it'd cost.
+I run MehyarSoft, a founder-led software and automation shop. The smallest useful next step is a $150 leak audit: I map the issue, show the first fix, and only quote a $250 diagnosis, $1.5k-$7.5k quick fix, or retainer if there is a real business case.
 
-Worth a quick chat?
+Should I send the audit scope? If it fits, I confirm scope first and invoice manually by email.
 
 — Mehyar
-mehyar@mehyar.us · mehyar.us`,
+mehyar@mehyar.us · mehyar.us
+${optOutFooter()}`,
     send_after_days: 0,
   };
 }
@@ -47,15 +57,18 @@ export function step2(prospect) {
   const biz  = prospect?.business_name || "your business";
 
   return {
-    subject: `Re: Quick question for ${biz}`,
+    subject: `Re: possible lead leak at ${biz}`,
     body_text:
 `Hi ${name} —
 
-Did my note get buried? Sending one concrete example: a Brooklyn cafe I worked with cut inventory counting from 4h/wk to 30 min with a $200 tool. Took 1 week to ship, paid back in 3 weeks.
+Quick follow-up on my note about ${biz}. I am not selling a big rebuild first; I am trying to confirm whether there is a small paid fix worth scoping.
 
-Worth 15 min to see if it fits ${biz}?
+For most local businesses, the first paid step should be narrow: a $150 audit or $250 written diagnosis, then a fixed-scope quick fix only if the evidence supports it.
 
-— Mehyar`,
+Should I send the audit scope, or is someone else the right person?
+
+— Mehyar
+${optOutFooter()}`,
     send_after_days: 3,
   };
 }
@@ -72,9 +85,12 @@ export function step3(prospect) {
 
 Last note — promise. If timing's off, totally fine.
 
-I've got a one-pager: "10 AI tools Brooklyn service businesses can ship this week" — useful whether or not we ever work together. Want me to send it?
+I will close this out unless a paid leak audit or written diagnosis would be useful. The goal would be simple: identify whether your site, intake, CRM, or follow-up is losing leads before quoting any larger work.
 
-— Mehyar`,
+Worth revisiting, or should I leave it alone?
+
+— Mehyar
+${optOutFooter()}`,
     send_after_days: 8,
   };
 }

@@ -204,10 +204,12 @@ export async function draftOne(env, ctx, { kind = "cold" } = {}) {
 
   const sysPrompt = `You are Mehyar Swelim, founder of MehyarSoft. Write revenue-focused outreach that is truthful, specific, and easy to reply to.
 Plain text only. No emojis, no fake familiarity, no unverifiable case studies, no exaggerated metrics, no "I hope this finds you well".
-First sentence must cite one observed business signal or solicitation fact. Keep the offer concrete:
-- Local business: free 5-minute Loom audit, then fixed-scope options only if useful ($250 diagnostic, $1.5k-$7.5k quick fix/sprint, $500-$3.5k/mo retainer).
-- Government/contract: capability teaser, fit rationale, one clear next step, no unsupported certifications.
-Do not ask for sensitive data. Include a simple opt-out footer: "Unsubscribe: https://mehyar.us/unsubscribe".
+First sentence must cite one observed business signal or solicitation fact. Pick exactly one paid next step and name the price range:
+- Local business: $150 leak audit, $250 written diagnosis, $1,500-$7,500 fixed-scope quick fix, $7,500-$25,000 automation sprint, or $500-$3,500/mo retainer.
+- Government/contract: capability teaser, fit rationale, one clear next step, no unsupported certifications, no invented pricing beyond owner-approved offer ranges.
+No online payment links. If payment is mentioned, say scope is confirmed first and invoiced manually by email for ACH, wire, check, or cash.
+Do not offer free audits, free Looms, discounts, guarantees, or speculative ROI. Do not ask for sensitive data.
+End with one yes/no CTA. Include a simple opt-out footer: "Unsubscribe: https://mehyar.us/unsubscribe".
 Sign as "Mehyar".`;
 
   const userPrompt = `${kind === "proposal" ? "Draft a 4-paragraph capability statement / proposal teaser for:\n" : "Draft a 90-word cold outreach email for:\n"}\n${companySummary}\n\n` +

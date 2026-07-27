@@ -416,7 +416,7 @@ function offerForProspect(r) {
 
 function pricingForOffer(offer) {
   const map = {
-    audit: "$250 diagnostic or free 5-minute Loom first",
+    audit: "$150 leak audit or $250 written diagnosis",
     quick_fix: "$1,500-$7,500 fixed-scope quick fix",
     automation_sprint: "$7,500-$25,000 automation/build sprint",
     retainer: "$500-$3,500/mo retainer",

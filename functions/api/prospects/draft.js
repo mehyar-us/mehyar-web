@@ -18,7 +18,8 @@ const SIGNAL_VERBIAGE = {
   no_email_link:   "your site doesn't expose an email contact",
   no_address:      "your site doesn't show a physical address (a Google ranking + trust killer)",
   platform_generic: "your site looks like an unmoved Wix or Squarespace default",
-  fetch_failed:    "your homepage failed to load when I checked",
+  // Not citable by itself; can be local network noise, bot blocking, or a transient host issue.
+  fetch_failed:    "",
 };
 
 const SUBJECT_OPENERS = [
@@ -71,7 +72,8 @@ function templateFallback({ prospect, signals }) {
   const domain = prospect.root_domain || "";
   const cited = leakList
     .filter(s => s in SIGNAL_VERBIAGE)
-    .map(s => SIGNAL_VERBIAGE[s]);
+    .map(s => SIGNAL_VERBIAGE[s])
+    .filter(Boolean);
   const top3 = cited.slice(0, 3);
   const leakLine = top3.length
     ? top3.join("; ").replace(/; ([^;]*)$/, ", and $1")
@@ -86,9 +88,9 @@ function templateFallback({ prospect, signals }) {
     `I run MehyarSoft LLC — founder-led consulting that helps local and service businesses stop losing customers to weak websites and slow follow-up. I'm a Senior software engineer in NYC.`,
     "",
     `I checked ${domain} briefly and noticed ${leakLine}.`,
-    `If those sound like the kind of small leaks that quietly cost calls, leads, or bookings, that's the exact kind of audit I do for $150 — a written leak map with the smallest useful next step, no agency theater.`,
+    `If those sound like leaks that quietly cost calls, leads, or bookings, I can do a $150 leak audit: a written map of what is broken, what I would fix first, and whether a $250 diagnosis or fixed-scope quick fix is worth quoting.`,
     "",
-    `Want me to send the report? Happy to share the PDF and a few screenshots.`,
+    `Should I send a short scope note and manual invoice details for the audit?`,
     "",
     `— Mehyar Swelim`,
     `MehyarSoft LLC`,
@@ -97,6 +99,13 @@ function templateFallback({ prospect, signals }) {
   ].join("\n");
 
   return { subject, body, cited_signals: leakList.slice(0, 5) };
+}
+
+function hasCitableLeakEvidence(signals) {
+  let leakList = [];
+  try { leakList = JSON.parse(signals?.leak_signals_json || "[]"); } catch {}
+  const cited = leakList.filter(s => s in SIGNAL_VERBIAGE && SIGNAL_VERBIAGE[s]);
+  return cited.length > 0 || Number(signals?.leak_score || 0) >= 20;
 }
 
 async function callLLM(env, systemPrompt, userPrompt) {
@@ -156,6 +165,13 @@ export async function onRequestPost({ request, env }) {
   const loaded = await loadProspectSignals(env, prospectId).catch(() => null);
   if (!loaded?.signals) return json({ ok: false, error: "no_signals_found_run_scan_first" }, 412);
   const { prospect, signals } = loaded;
+  if (!hasCitableLeakEvidence(signals)) {
+    return json({
+      ok: false,
+      error: "insufficient_evidence_for_outreach",
+      message: "No citable leak signals found. Rescan, enrich the prospect, or add a real source reason before drafting.",
+    }, 412, request, env);
+  }
 
   const leakList = JSON.parse(signals.leak_signals_json || "[]");
   const verbiage = leakList.map(s => SIGNAL_VERBIAGE[s]).filter(Boolean);
@@ -170,7 +186,10 @@ export async function onRequestPost({ request, env }) {
     "- Maximum 140 chars subject.",
     "- Maximum 110 words body, plain text, single signature block.",
     "- Reference at most 3 leak signals concretely (caller passes the list).",
-    "- End with one short, low-friction CTA: 'Want me to send the report?' or 'Are you the right person?'",
+    "- Pick one paid next step: $150 leak audit, $250 written diagnosis, $1,500-$7,500 quick fix, $7,500-$25,000 automation sprint, or $500-$3,500/mo retainer.",
+    "- If payment is mentioned, say scope is confirmed first and invoiced manually by email for ACH, wire, check, or cash. No online payment links.",
+    "- Do not offer free audits, free Looms, discounts, guarantees, or speculative ROI.",
+    "- End with one short yes/no CTA, such as 'Should I send the audit scope?' or 'Are you the right person for this?'",
     "- Never claim results or testimonials we don't have.",
     "- Always include the unsub link https://mehyar.us/unsubscribe at the end.",
     "- Output exactly two fields: 'Subject: …' on line 1, then a blank line, then the email body.",
@@ -235,4 +254,4 @@ export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
 }
 
-export const __test = { templateFallback, parseLLMEmail, SIGNAL_VERBIAGE };
+export const __test = { templateFallback, parseLLMEmail, SIGNAL_VERBIAGE, hasCitableLeakEvidence };

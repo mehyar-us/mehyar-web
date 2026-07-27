@@ -72,7 +72,7 @@ function suggestedReply(classification, prospect, env) {
   const biz = prospect?.business_name || "your business";
   switch (classification) {
     case "interest":
-      return `Great — let's set up a 20-minute call. Pick a slot here: https://mehyar.us/booking or reply with 2-3 times that work for you this week. I'll send a 1-page scope doc + audit preview 24h before the call. — Mehyar, MehyarSoft`;
+      return `Great — let's set up a 20-minute call. Pick a slot here: https://mehyar.us/booking or reply with 2-3 times that work for you this week. I'll send a 1-page scope note before the call, then invoice manually if a paid audit or quick fix makes sense. — Mehyar, MehyarSoft`;
     case "objection":
       return `Got it — sounds like the timing isn't right. I'll move you to a 90-day check-in. If something shifts sooner, just hit reply with "now" and I'll reopen the conversation. — Mehyar`;
     case "not_interested":
@@ -83,7 +83,7 @@ function suggestedReply(classification, prospect, env) {
     case "out_of_office":
       return null;
     default:
-      return `Thanks for the reply — happy to answer anything specific. If you want a 5-minute Loom walking through the three fixes I'd make to ${biz}, just hit reply with "send it." — Mehyar`;
+      return `Thanks for the reply — happy to answer anything specific. The clean next step is a short scope call so I can confirm whether ${biz} needs a $150 leak audit, $250 written diagnosis, or a fixed-scope quick fix. Want me to send 2 times? — Mehyar`;
   }
 }
 

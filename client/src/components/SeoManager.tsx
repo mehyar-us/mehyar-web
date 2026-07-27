@@ -225,7 +225,7 @@ const staticMeta: Record<string, SeoMeta> = {
               "Local service businesses, clinics, restaurants, shops, agencies, and owner-led companies that suspect leads are leaking through bad website flow, missed calls, weak follow-up, or disconnected tools, and want a senior technical operator to identify the smallest useful next move before a bigger build.",
           },
           {
-            question: "Why $330 instead of a free audit or a $5,000 proposal?",
+            question: "Why $330 instead of unpaid advice or a $5,000 proposal?",
             answer:
               "$330 is enough to do the diagnosis honestly without pressure. MehyarSoft avoids fake agency pitches and guaranteed revenue claims. If a small fix is enough, the audit tells you. If a larger scope is warranted, the audit explains why and what the next sprint would actually cost.",
           },

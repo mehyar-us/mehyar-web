@@ -28,13 +28,27 @@ const SENDER_NAME = "Mehyar";
 const SENDER_TITLE = "MehyarSoft LLC";
 const SENDER_PHONE = env => env?.MAYOR_PHONE || "";
 const SENDER_EMAIL = env => env?.MAYOR_FROM_EMAIL || "team@mehyar.us";
+const CITABLE_SIGNAL_KEYS = new Set([
+  "no_booking_cta",
+  "no_phone_cta",
+  "no_phone_link",
+  "no_https",
+  "slow_load",
+  "large_page",
+  "heavy_page",
+  "no_form_action",
+  "no_email_link",
+  "no_address",
+  "generic_template",
+  "platform_generic",
+]);
 
 function draftSubject(prospect, stepNo) {
   const biz = prospect.business_name || "your business";
   switch (stepNo) {
     case 1: return `Quick question for ${biz}`;
     case 2: return `Re: what I noticed on ${(prospect.website || "your site").replace(/^https?:\/\//, "").split("/")[0]}`;
-    case 3: return `Following up — and offering a free audit`;
+    case 3: return `Closing the loop on ${biz}`;
     default: return `Quick question for ${biz}`;
   }
 }
@@ -81,9 +95,9 @@ ${proofLine}
 
 For a ${vert} in ${city}, these are the kinds of leaks that can turn ready-to-buy visitors into missed calls or abandoned forms.
 
-I run a free 5-minute Loom audit for ${vert} businesses. If the fixes are worth doing, I can price them plainly: $250 diagnostic, a fixed-scope quick fix/sprint, or a small monthly automation retainer.
+I run a $150 leak audit for ${vert} businesses: a short written map of what is broken, what I would fix first, and whether a $250 diagnosis, $1.5k-$7.5k quick fix, or small monthly retainer is worth quoting.
 
-Want me to send one over for ${domain}?
+Should I send the audit scope for ${domain}? If it fits, I confirm scope first and invoice manually by email.
 
 — ${sender}
 
@@ -97,7 +111,9 @@ You're getting this because MehyarSoft helps ${vert} operators in ${city} tighte
 
 ${proofLine.charAt(0).toUpperCase() + proofLine.slice(1)}
 
-I'm running two free ${vert} audits this week (NYC + Brooklyn only). If you want one before I give the slots away, just hit reply with "send it" and I'll record it over the weekend.
+I am keeping the first step deliberately small: a $150 leak audit or $250 written diagnosis before any larger build or automation sprint.
+
+Should I send the scope note, or is someone else the right person?
 
 — ${sender}
 
@@ -109,9 +125,9 @@ Reply "stop" and I won't write again.
   // step 3 — final nudge, no pressure
   return `Last note from me — I don't want to fill your inbox.
 
-I genuinely think the ${proof[0] || "fixes"} on ${domain} would pay for itself within a month for a ${vert} shop in ${city}, and I'd rather show you in 5 minutes than keep emailing about it.
+I still think the ${proof[0] || "intake fixes"} on ${domain} are worth checking before quoting any larger work.
 
-If now isn't the right time, totally fine. Hit reply with "later" and I'll move you to a 6-month check-in.
+If now is not the right time, totally fine. Hit reply with "later" and I will move you to a 6-month check-in.
 
 — ${sender}
 
@@ -152,16 +168,24 @@ export async function onRequestPost({ request, env, params }) {
   }
   let citedSignals = [];
   try { citedSignals = JSON.parse(latestSignal.leak_signals_json || "[]"); } catch {}
+  const hasCitableEvidence = citedSignals.some((signal) => CITABLE_SIGNAL_KEYS.has(signal)) || Number(latestSignal.leak_score || 0) >= 20;
+  if (!hasCitableEvidence) {
+    return json({
+      ok: false,
+      error: "insufficient_evidence_for_outreach",
+      message: "No citable leak signals found. Rescan, enrich the prospect, or add a real source reason before drafting.",
+    }, 412, request, env);
+  }
   const signalsForDraft = {
     no_booking_cta:  citedSignals.includes("no_booking_cta"),
-    no_phone_cta:    citedSignals.includes("no_phone_cta"),
+    no_phone_cta:    citedSignals.includes("no_phone_cta") || citedSignals.includes("no_phone_link"),
     no_https:        citedSignals.includes("no_https"),
     slow_load:       citedSignals.includes("slow_load"),
-    large_page:      citedSignals.includes("large_page"),
+    large_page:      citedSignals.includes("large_page") || citedSignals.includes("heavy_page"),
     no_form_action:  citedSignals.includes("no_form_action"),
     no_email_link:   citedSignals.includes("no_email_link"),
     no_address:      citedSignals.includes("no_address"),
-    generic_template:citedSignals.includes("generic_template"),
+    generic_template:citedSignals.includes("generic_template") || citedSignals.includes("platform_generic"),
     _load_time_ms:   latestSignal.load_time_ms,
   };
 
