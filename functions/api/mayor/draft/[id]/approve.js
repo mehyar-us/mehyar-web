@@ -63,6 +63,39 @@ export async function onRequestPost({ request, env, params }) {
     LIMIT 1
   `).bind(id).first().catch(() => null);
   if (existingSend) {
+    if (existingSend.status === "queued_for_review") {
+      const promoted = await promoteReviewedSend({
+        env,
+        db,
+        body,
+        draft,
+        prospect,
+        existingSend,
+        reviewerNotes,
+        physicalAddress,
+        sendNow,
+      });
+      if (!promoted.ok) {
+        return json(promoted, promoted.statusCode || 500, request, env);
+      }
+      const inlineResult = sendNow
+        ? await trySendNow(env, db, existingSend.id, draft, prospect)
+        : null;
+      return json({
+        ok: true,
+        draft_id: id,
+        send_id: existingSend.id,
+        prospect_id: prospect.id,
+        prospect_business: prospect.business_name,
+        scheduled_for: promoted.scheduled_for,
+        already_queued: false,
+        promoted_from_review: true,
+        status: "queued",
+        send_now: sendNow,
+        inline_send: inlineResult,
+      }, 200, request, env);
+    }
+
     await markQuoteFollowupTaskQueued(db, draft, existingSend.id, existingSend.scheduled_for, existingSend.status);
     return json({
       ok: true,
@@ -171,6 +204,94 @@ export async function onRequestPost({ request, env, params }) {
     send_now: sendNow,
     inline_send: inlineResult,
   }, 200, request, env);
+}
+
+async function promoteReviewedSend({
+  env,
+  db,
+  body,
+  draft,
+  prospect,
+  existingSend,
+  reviewerNotes,
+  physicalAddress,
+  sendNow,
+}) {
+  const now = new Date();
+  const scheduledFor = sendNow
+    ? now.toISOString()
+    : (body?.scheduled_for || existingSend.scheduled_for || new Date(now.getTime() + 5 * 60_000).toISOString());
+  const fromEmail = env?.MAYOR_FROM_EMAIL || "team@mehyar.us";
+  const replyTo = env?.MAYOR_REPLY_TO || fromEmail;
+  const listUnsubHeader = `<mailto:${fromEmail}?subject=unsubscribe>, <https://mehyar.us/unsubscribe>`;
+
+  try {
+    await ensureSentHistorySchema(env);
+    await db.prepare(`
+      UPDATE prospect_sends
+         SET status = 'queued',
+             scheduled_for = ?,
+             provider = COALESCE(provider, 'resend'),
+             to_email = COALESCE(NULLIF(to_email, ''), ?),
+             from_email = COALESCE(NULLIF(from_email, ''), ?),
+             from_name = COALESCE(NULLIF(from_name, ''), 'MehyarSoft'),
+             reply_to = COALESCE(NULLIF(reply_to, ''), ?),
+             subject = ?,
+             body_text = ?,
+             list_unsub_header = COALESCE(NULLIF(list_unsub_header, ''), ?),
+             physical_address = COALESCE(NULLIF(physical_address, ''), ?),
+             updated_at = datetime('now')
+       WHERE id = ?
+    `).bind(
+      scheduledFor,
+      prospect.email,
+      fromEmail,
+      replyTo,
+      draft.subject,
+      String(draft.body_text || "").slice(0, 32000),
+      listUnsubHeader,
+      physicalAddress,
+      existingSend.id,
+    ).run();
+  } catch (e) {
+    return { ok: false, error: "send_update_failed", message: String(e?.message || e), statusCode: 500 };
+  }
+
+  await db.prepare(`
+    UPDATE prospect_drafts
+       SET status = 'approved',
+           reviewer_notes = COALESCE(?, reviewer_notes)
+     WHERE id = ?
+  `).bind(reviewerNotes, draft.id).run().catch(() => null);
+
+  await db.prepare(`
+    UPDATE prospects
+       SET status = 'queued',
+           last_drafted_at = datetime('now'),
+           last_contact_at = datetime('now'),
+           updated_at = datetime('now')
+     WHERE id = ?
+  `).bind(prospect.id).run().catch(() => null);
+
+  await db.prepare(`
+    INSERT INTO mayor_events (id, kind, loop, summary, details_json, created_at)
+    VALUES (?, 'outreach', 'approval',
+            ?, ?, datetime('now'))
+  `).bind(
+    crypto.randomUUID(),
+    `Approved reviewed draft -> queued send for ${prospect.business_name} (${prospect.email})`,
+    JSON.stringify({
+      draft_id: draft.id,
+      send_id: existingSend.id,
+      prospect_id: prospect.id,
+      scheduled_for: scheduledFor,
+      send_now: sendNow,
+      promoted_from_review: true,
+    })
+  ).run().catch(() => null);
+
+  await markQuoteFollowupTaskQueued(db, draft, existingSend.id, scheduledFor, "queued");
+  return { ok: true, scheduled_for: scheduledFor };
 }
 
 async function markQuoteFollowupTaskQueued(db, draft, sendId, scheduledFor, sendStatus) {
