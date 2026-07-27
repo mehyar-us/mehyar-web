@@ -265,6 +265,8 @@ export async function onRequestGet({ request, env }) {
   const quoteTaskBySource = new Map(quoteTaskRows.map((t) => [String(t.source || ""), t]));
   const quoteActions = quoteRows.map((q) => {
     const followup = quoteTaskBySource.get(`quote:${q.id}`);
+    const followupPayload = safeJson(followup?.payload_json, {});
+    const followupDraftId = followupPayload?.followup_draft_id || "";
     return {
       id: q.id,
       quote_number: q.quote_number,
@@ -281,8 +283,11 @@ export async function onRequestGet({ request, env }) {
       followup_task_id: followup?.id || "",
       followup_due_at: followup?.due_at || "",
       followup_cta: followup?.cta_text || "",
+      followup_draft_id: followupDraftId,
+      draft_followup_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/draft-follow-up`,
+      review_draft_href: followupDraftId ? `/admin/money?focus=${encodeURIComponent(followupDraftId)}` : "",
       next_action: followup
-        ? "Follow-up task is queued; send the CTA or close it after response."
+        ? followupDraftId ? "Follow-up draft is ready for owner review." : "Follow-up task is queued; draft the email for review."
         : q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.",
     };
   });
@@ -609,6 +614,11 @@ function daysUntil(iso) {
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return null;
   return Math.ceil((t - Date.now()) / 86400000);
+}
+
+function safeJson(value, fallback = {}) {
+  if (!value) return fallback;
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 function buildScorecard(summary, actions) {

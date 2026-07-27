@@ -199,6 +199,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const [quoteBusy, setQuoteBusy] = useState("");
   const [quoteStatusBusy, setQuoteStatusBusy] = useState("");
   const [followupBusy, setFollowupBusy] = useState("");
+  const [followupDraftBusy, setFollowupDraftBusy] = useState("");
   const q = useQuery({
     queryKey: ["admin-revenue-cockpit", token],
     queryFn: async () => {
@@ -305,6 +306,26 @@ function RevenueCockpitCard({ token }: { token: string }) {
       alert(`Follow-up task failed: ${String((error as Error)?.message || error)}`);
     } finally {
       setFollowupBusy("");
+    }
+  };
+
+  const draftQuoteFollowup = async (quote: any) => {
+    if (!quote?.id) return;
+    setFollowupDraftBusy(quote.id);
+    try {
+      const r = await fetch(`/api/admin/quotes/${encodeURIComponent(quote.id)}/draft-follow-up`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+      if (j.review_href) window.location.href = j.review_href;
+    } catch (error) {
+      alert(`Follow-up draft failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setFollowupDraftBusy("");
     }
   };
 
@@ -463,7 +484,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
                     </div>
                     {quote.followup_task_id && (
                       <div className="mt-1 text-[10px] text-emerald-700 dark:text-emerald-300">
-                        follow-up queued{quote.followup_due_at ? ` · ${fmtAgo(quote.followup_due_at) === "just now" ? "due now" : quote.followup_due_at.slice(0, 10)}` : ""}
+                        {quote.followup_draft_id ? "follow-up draft ready" : "follow-up queued"}{quote.followup_due_at ? ` · ${fmtAgo(quote.followup_due_at) === "just now" ? "due now" : quote.followup_due_at.slice(0, 10)}` : ""}
                       </div>
                     )}
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -478,6 +499,23 @@ function RevenueCockpitCard({ token }: { token: string }) {
                           {followupBusy === quote.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Reply className="w-3 h-3 mr-1" />}
                           Follow up
                         </Button>
+                      )}
+                      {quote.followup_task_id && !quote.followup_draft_id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={followupDraftBusy === quote.id}
+                          onClick={() => draftQuoteFollowup(quote)}
+                          className="h-7 px-2 text-[10px]"
+                        >
+                          {followupDraftBusy === quote.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Mail className="w-3 h-3 mr-1" />}
+                          Draft email
+                        </Button>
+                      )}
+                      {quote.review_draft_href && (
+                        <a href={quote.review_draft_href} className="inline-flex h-7 items-center rounded-md border border-zinc-200 dark:border-zinc-700 px-2 text-[10px] text-violet-700 dark:text-violet-300">
+                          Review draft
+                        </a>
                       )}
                       {quote.status !== "invoice" && (
                         <Button
