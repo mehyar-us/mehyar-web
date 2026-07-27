@@ -37,22 +37,16 @@ export async function verifyAdminToken(request, env) {
     }
   }
 
-  // SHAPE 2: Worker opaque UUID (no dots)
+  // SHAPE 2: Worker opaque UUID (no dots). In production this must verify
+  // against the upstream Worker; UUID shape alone is not authentication.
   const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidLike.test(token)) {
-    // Try a lightweight verification against the Worker if it has a session
-    // endpoint. If it doesn't (404) or is unreachable, fall back to the
-    // format check below - the SPA's downstream calls will surface a 401 if
-    // the token was bogus.
     const workerBase = env && env.WORKER_BASE_URL ? env.WORKER_BASE_URL : "https://api.mehyar.us";
     try {
       const r = await fetch(workerBase + "/v1/admin/me", {
         headers: { authorization: "Bearer " + token },
         signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined,
       });
-      if (r.status === 401 || r.status === 403) {
-        return { ok: false, status: 401, message: "worker_rejected_token" };
-      }
       if (r.ok) {
         const data = await r.json().catch(() => null);
         if (data && (data.ok || data.sub || data.email || data.role)) {
@@ -65,11 +59,13 @@ export async function verifyAdminToken(request, env) {
           };
         }
       }
-      // 5xx / 404: fall through to permissive format check
+      return { ok: false, status: 401, message: "worker_rejected_token" };
     } catch {
-      // network/timeout: fall through
+      if (env?.ENVIRONMENT !== "production" && env?.ALLOW_UNVERIFIED_WORKER_UUID === "1") {
+        return { ok: true, session: { sub: "owner", role: "owner", source: "worker_uuid_shape_only_dev" } };
+      }
+      return { ok: false, status: 401, message: "worker_token_unverified" };
     }
-    return { ok: true, session: { sub: "owner", role: "owner", source: "worker_uuid_shape_only" } };
   }
 
   return { ok: false, status: 401, message: "bad_token_shape" };
