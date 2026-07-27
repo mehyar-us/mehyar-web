@@ -643,6 +643,9 @@ function playbookForReply(r) {
       : `Thanks for the reply. What would be most useful: a quick audit, pricing for a fix, or should I close the loop?`,
     meeting_cta: warm ? "Offer one specific 15-minute slot and one fallback." : "",
     mark_won_lost_href: r.prospect_id ? `/admin/leads?kind=prospect&focus=${encodeURIComponent(r.prospect_id)}` : "/admin/leads?kind=replies",
+    mark_won_href: `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/outcome`,
+    mark_lost_href: `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/outcome`,
+    mark_handled_href: `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/mark-handled`,
     book_call_href: warm ? `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/book-call` : "",
     href: "/admin/leads?kind=replies",
   };

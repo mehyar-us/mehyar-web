@@ -196,6 +196,8 @@ function PipelineAuditCard({ token }: { token: string }) {
 
 function RevenueCockpitCard({ token }: { token: string }) {
   const [bookingBusy, setBookingBusy] = useState("");
+  const [replyOutcomeBusy, setReplyOutcomeBusy] = useState("");
+  const [replyHandledBusy, setReplyHandledBusy] = useState("");
   const [quoteBusy, setQuoteBusy] = useState("");
   const [quoteStatusBusy, setQuoteStatusBusy] = useState("");
   const [followupBusy, setFollowupBusy] = useState("");
@@ -239,6 +241,66 @@ function RevenueCockpitCard({ token }: { token: string }) {
       alert(`Booking task failed: ${String((error as Error)?.message || error)}`);
     } finally {
       setBookingBusy("");
+    }
+  };
+
+  const markReplyOutcome = async (reply: any, outcome: "won" | "lost" | "on_hold") => {
+    if (!reply?.reply_id) return;
+    let valueUsd = 0;
+    let reason = "";
+    if (outcome === "won") {
+      const valueText = prompt("Won value USD", "7500");
+      if (valueText == null) return;
+      valueUsd = Number(valueText);
+      if (!Number.isFinite(valueUsd) || valueUsd <= 0) {
+        alert("Enter a valid won value.");
+        return;
+      }
+      reason = prompt("Why did this win? (optional)", "Reply converted from warm lead.") || "";
+    } else if (outcome === "lost") {
+      reason = prompt("Why lost? (optional)", "Not a fit / no budget / no response after owner review.") || "";
+    } else {
+      reason = prompt("Why on hold? (optional)", "Needs timing, budget, or decision-maker follow-up.") || "";
+    }
+    const busyKey = `${reply.reply_id}:${outcome}`;
+    setReplyOutcomeBusy(busyKey);
+    try {
+      const r = await fetch(`/api/admin/mayor/replies/${encodeURIComponent(reply.reply_id)}/outcome`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          outcome,
+          value_usd: valueUsd,
+          reason_code: `reply_playbook_${outcome}`,
+          reason_body: reason.trim() || undefined,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+    } catch (error) {
+      alert(`Reply outcome failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setReplyOutcomeBusy("");
+    }
+  };
+
+  const markReplyHandled = async (reply: any) => {
+    if (!reply?.reply_id) return;
+    setReplyHandledBusy(reply.reply_id);
+    try {
+      const r = await fetch(`/api/admin/mayor/replies/${encodeURIComponent(reply.reply_id)}/mark-handled`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+    } catch (error) {
+      alert(`Mark handled failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setReplyHandledBusy("");
     }
   };
 
@@ -486,18 +548,50 @@ function RevenueCockpitCard({ token }: { token: string }) {
                   <div key={r.reply_id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
                     <div className="text-xs font-semibold">{r.recommended_action}</div>
                     <div className="text-[10px] text-zinc-600 dark:text-zinc-300 line-clamp-2">{r.next_reply}</div>
-                    {r.book_call_href && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {r.book_call_href && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={bookingBusy === r.reply_id}
+                          onClick={() => createBookingTask(r.reply_id, r.next_reply)}
+                          className="h-7 px-2 text-[10px]"
+                        >
+                          {bookingBusy === r.reply_id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Calendar className="w-3 h-3 mr-1" />}
+                          Book task
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="cta"
+                        disabled={replyOutcomeBusy === `${r.reply_id}:won`}
+                        onClick={() => markReplyOutcome(r, "won")}
+                        className="h-7 px-2 text-[10px]"
+                      >
+                        {replyOutcomeBusy === `${r.reply_id}:won` ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <DollarSign className="w-3 h-3 mr-1" />}
+                        Won
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={replyOutcomeBusy === `${r.reply_id}:lost`}
+                        onClick={() => markReplyOutcome(r, "lost")}
+                        className="h-7 px-2 text-[10px]"
+                      >
+                        {replyOutcomeBusy === `${r.reply_id}:lost` && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+                        Lost
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
-                        disabled={bookingBusy === r.reply_id}
-                        onClick={() => createBookingTask(r.reply_id, r.next_reply)}
-                        className="mt-2 h-7 px-2 text-[10px]"
+                        disabled={replyHandledBusy === r.reply_id}
+                        onClick={() => markReplyHandled(r)}
+                        className="h-7 px-2 text-[10px]"
                       >
-                        {bookingBusy === r.reply_id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Calendar className="w-3 h-3 mr-1" />}
-                        Book task
+                        {replyHandledBusy === r.reply_id && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+                        Handled
                       </Button>
-                    )}
+                    </div>
                   </div>
                 ))}
                 {replies.length === 0 && <EmptyLine text="No reply playbooks needed." />}
