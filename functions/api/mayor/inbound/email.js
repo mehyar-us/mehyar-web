@@ -23,11 +23,10 @@
 //      - Words: "not interested","no thanks","remove me" → not_interested
 //      - Words: "too expensive","already have","not now","later" → objection
 //      - Default: warm (positive but ambiguous)
-//   3. If INBOUND_AUTO_REPLY=1, send an auto-reply via CF Email Service.
-//      (interest → "great, here's a calendar link"; objection → soft nudge;
-//       unsubscribe → silent confirmation; out_of_office → silent)
+//   3. Create a reviewable reply draft when there is useful copy to send.
+//      Direct auto-send is intentionally disabled; Mayor is review-required.
 //
-// Returns: { ok, matched_prospect_id?, reply_id?, classification, auto_reply? }
+// Returns: { ok, matched_prospect_id?, reply_id?, classification, booking_task?, reply_draft? }
 
 import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
 import { createBookingTaskForReply } from "../../_shared/mayorTasks.js";
@@ -84,42 +83,6 @@ function suggestedReply(classification, prospect, env) {
       return null;
     default:
       return `Thanks for the reply — happy to answer anything specific. If you want a 5-minute Loom walking through the three fixes I'd make to ${biz}, just hit reply with "send it." — Mehyar`;
-  }
-}
-
-async function sendAutoReply(env, from, subject, body, prospect) {
-  const acctId = env?.CF_EMAIL_ACCOUNT_ID || env?.CLOUDFLARE_ACCOUNT_ID;
-  const globalKey = env?.CF_EMAIL_GLOBAL_KEY || env?.CLOUDFLARE_API_TOKEN;
-  if (!acctId || !globalKey) return { ok: false, error: "email_service_offline" };
-
-  const fromEmail = env?.MAYOR_FROM_EMAIL || "team@mehyar.us";
-  const replyTo = env?.MAYOR_REPLY_TO || fromEmail;
-
-  try {
-    const resp = await fetch(`https://api.cloudflare.com/client/v4/accounts/${acctId}/email/sending/send`, {
-      method: "POST",
-      headers: {
-        "X-Auth-Email": env?.CLOUDFLARE_EMAIL || "mrswelim@gmail.com",
-        "X-Auth-Key": globalKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: from }] }],
-        from: { email: fromEmail, name: "MehyarSoft" },
-        reply_to: { email: replyTo },
-        subject: subject.startsWith("Re:") ? subject : `Re: ${subject}`,
-        content: [{ type: "text/plain", value: body }],
-      }),
-    });
-    const text = await resp.text();
-    let parsed = {};
-    try { parsed = JSON.parse(text); } catch {}
-    if (resp.ok && parsed?.success) {
-      return { ok: true, provider_id: parsed?.result?.id || null, delivered: parsed?.result?.delivered || [] };
-    }
-    return { ok: false, error: parsed?.errors?.[0]?.message || text.slice(0, 200) };
-  } catch (e) {
-    return { ok: false, error: String(e?.message || e) };
   }
 }
 
@@ -250,26 +213,20 @@ export async function onRequestPost({ request, env }) {
     ).run();
   } catch (_) {}
 
-  // Optional auto-reply
-  let autoReply = null;
-  if (env?.INBOUND_AUTO_REPLY === "1" || env?.INBOUND_AUTO_REPLY === 1) {
-    const replyText = suggestedReply(classification, prospect, env);
-    if (replyText) {
-      autoReply = await sendAutoReply(env, fromEmail, subject, replyText, prospect);
-      if (autoReply?.ok) {
-        try {
-          await env.LEADS_DB.prepare(`
-            INSERT INTO mayor_events (id, kind, loop, summary, details_json, created_at)
-            VALUES (?, 'followup', 'auto_reply_sent', ?, ?, datetime('now'))
-          `).bind(
-            crypto.randomUUID(),
-            `Auto-reply sent to ${prospect.business_name} (${fromEmail})`,
-            JSON.stringify({ reply_id: replyId, prospect_id: prospect.id, provider_id: autoReply.provider_id })
-          ).run();
-        } catch (_) {}
-      }
-    }
-  }
+  const replyText = suggestedReply(classification, prospect, env);
+  const replyDraft = replyText
+    ? await createInboundReplyDraft(env, prospect, {
+        reply_id: replyId,
+        classification,
+        from_email: fromEmail,
+        inbound_subject: subject,
+        inbound_excerpt: (text || "").slice(0, 4000),
+        message_id: messageId,
+      }, replyText).catch((e) => ({ ok: false, error: String(e?.message || e) }))
+    : null;
+  const autoReply = replyText
+    ? { ok: false, skipped: "review_required", draft_id: replyDraft?.draft_id || null }
+    : null;
 
   return json({
     ok: true,
@@ -278,9 +235,72 @@ export async function onRequestPost({ request, env }) {
     reply_id: replyId,
     classification,
     booking_task: bookingTask,
+    reply_draft: replyDraft,
     from_email: fromEmail,
     subject,
     auto_reply: autoReply,
     message_id: messageId,
   }, 200, request, env);
+}
+
+async function createInboundReplyDraft(env, prospect, reply, replyText) {
+  if (!env?.LEADS_DB || !prospect?.id || !replyText) return { ok: false, error: "missing_context" };
+  const db = env.LEADS_DB;
+  const draftId = crypto.randomUUID();
+  const subject = String(reply.inbound_subject || "").startsWith("Re:")
+    ? String(reply.inbound_subject || "").slice(0, 500)
+    : `Re: ${String(reply.inbound_subject || "(no subject)")}`.slice(0, 500);
+  const payload = {
+    kind: "inbound_reply",
+    reply_id: reply.reply_id,
+    classification: reply.classification,
+    from_email: reply.from_email,
+    inbound_subject: reply.inbound_subject,
+    inbound_excerpt: reply.inbound_excerpt,
+    message_id: reply.message_id,
+    review_required: true,
+    auto_send_disabled: true,
+  };
+
+  await db.prepare(`
+    INSERT INTO prospect_drafts (
+      id, prospect_id, sam_id, subject, body_text, body_html,
+      cited_signals_json, status, generated_by, model, payload_json, created_at, updated_at
+    )
+    VALUES (?, ?, NULL, ?, ?, ?, '[]', 'pending_review', 'rule_inbound_reply', 'template', ?, datetime('now'), datetime('now'))
+  `).bind(
+    draftId,
+    prospect.id,
+    subject,
+    String(replyText).slice(0, 16000),
+    String(replyText).slice(0, 16000).replace(/\n/g, "<br/>"),
+    JSON.stringify(payload).slice(0, 12000)
+  ).run();
+
+  await db.prepare(`
+    UPDATE prospect_replies
+    SET created_action = CASE
+          WHEN created_action IS NULL OR created_action = '' OR created_action = 'note_appended'
+            THEN 'reply_draft_created'
+          ELSE created_action
+        END
+    WHERE id = ?
+  `).bind(reply.reply_id).run().catch(() => null);
+
+  await db.prepare(`
+    INSERT INTO mayor_events (id, kind, loop, summary, details_json, created_at)
+    VALUES (?, 'reply', 'reply_draft_review', ?, ?, datetime('now'))
+  `).bind(
+    crypto.randomUUID(),
+    `Reply draft ready for ${prospect.business_name || prospect.email || prospect.id}`,
+    JSON.stringify({ draft_id: draftId, reply_id: reply.reply_id, prospect_id: prospect.id, classification: reply.classification }).slice(0, 4000)
+  ).run().catch(() => null);
+
+  return {
+    ok: true,
+    draft_id: draftId,
+    review_href: `/admin/money?focus=${encodeURIComponent(draftId)}`,
+    status: "pending_review",
+    auto_send_disabled: true,
+  };
 }

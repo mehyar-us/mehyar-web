@@ -39,10 +39,9 @@ MAYOR_PHYSICAL_ADDRESS = "MehyarSoft LLC, 228 Park Ave S #92842, New York, NY 10
 # GOV_INGEST_TOKEN, INBOUND_EMAIL_TOKEN, MEHYARSOFT_ADMIN_USERNAME,
 # MEHYARSOFT_ADMIN_PASSWORD, ADMIN_SESSION_SECRET, SAM_GOV_API_KEY,
 # MEHYARSOFT_SAM_API_KEY, MEHYAR_GOOGLE_PLACES_API_KEY.
-# Auto-reply enabled flag. When '1', the /inbound/email endpoint sends
-# an auto-reply to non-unsubscribe, non-bounce replies (interest/objection/
-# out_of_office/warm). '0' = never auto-reply (manual mode).
-INBOUND_AUTO_REPLY = "1"
+# Deprecated compatibility flag. Inbound replies now create review-required
+# drafts and booking tasks; the endpoint does not send automatic replies.
+INBOUND_AUTO_REPLY = "0"
 
 # Default model — overridable via LLM_MODEL env var at runtime
 LLM_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
