@@ -194,6 +194,214 @@ function PipelineAuditCard({ token }: { token: string }) {
   );
 }
 
+function RevenueCockpitCard({ token }: { token: string }) {
+  const q = useQuery({
+    queryKey: ["admin-revenue-cockpit", token],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/mayor/revenue-cockpit?target=100000&limit=12", {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.json();
+    },
+    refetchInterval: 60_000,
+  });
+  const s = q.data?.summary || {};
+  const actions: any[] = q.data?.top_actions || [];
+  const drafts: any[] = q.data?.draft_review_inbox || [];
+  const scores: any[] = q.data?.lead_scores || [];
+  const offers: any[] = q.data?.offer_selector || [];
+  const replies: any[] = q.data?.reply_playbook || [];
+  const gov: any[] = q.data?.gov_bid_no_bid || [];
+  const deliverability = q.data?.deliverability || {};
+  const bookings: any[] = q.data?.booking_tasks || [];
+  const cleanup = q.data?.money_cleanup || {};
+
+  return (
+    <Card className="mb-4 border-emerald-200 dark:border-emerald-800">
+      <CardContent className="p-4 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-base font-semibold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+              <DollarSign className="w-4 h-4 text-emerald-600" />
+              Revenue command center
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Built around the $100k/mo target: ranked actions, drafts to review, reply playbooks, offers, bid/no-bid, deliverability, and booking tasks.
+            </p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => q.refetch()} disabled={q.isFetching}>
+            <RefreshCw className={`w-3 h-3 mr-1 ${q.isFetching ? "animate-spin" : ""}`} />Refresh
+          </Button>
+        </div>
+
+        {q.isLoading && <div className="h-40 rounded-lg bg-zinc-100 dark:bg-zinc-800 animate-pulse" />}
+        {q.isError && <div className="text-sm text-red-700 dark:text-red-400">Revenue cockpit failed: {String((q.error as Error)?.message || q.error)}</div>}
+
+        {q.data && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <Metric label="Target" value={`$${(s.target_monthly_usd || 100000).toLocaleString()}`} />
+              <Metric label="Booked 30d" value={`$${(s.booked_30d_usd || 0).toLocaleString()}`} tone="emerald" />
+              <Metric label="Gap" value={`$${(s.gap_to_target_usd || 0).toLocaleString()}`} tone="amber" />
+              <Metric label="Weighted next" value={`$${(s.weighted_next_actions_usd || 0).toLocaleString()}`} tone="violet" />
+              <Metric label="Daily reviews" value={s.recommended_daily_reviewed_emails || 5} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <Panel title="Next money actions" href="/admin/leads">
+                {actions.slice(0, 5).map((a) => (
+                  <ActionLine key={`${a.kind}:${a.id}:${a.action_type}`} item={a} />
+                ))}
+              </Panel>
+              <Panel title="Draft review inbox" href="/admin/money#outreach-queue">
+                {drafts.slice(0, 5).map((d) => (
+                  <div key={d.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
+                    <div className="text-xs font-semibold truncate">{d.subject}</div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{d.business_name} · {d.pricing}</div>
+                    <a href={d.send_button_href} className="text-[10px] text-emerald-700 dark:text-emerald-300 underline">review/send</a>
+                  </div>
+                ))}
+                {drafts.length === 0 && <EmptyLine text="No reviewable drafts right now." />}
+              </Panel>
+              <Panel title="Booking conversion" href="/admin/leads?kind=replies">
+                {bookings.slice(0, 5).map((b) => (
+                  <div key={b.reply_id} className="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-2">
+                    <div className="text-xs font-semibold">{b.title}</div>
+                    <div className="text-[10px] text-zinc-600 dark:text-zinc-300 mt-0.5">{b.meeting_cta}</div>
+                  </div>
+                ))}
+                {bookings.length === 0 && <EmptyLine text="No warm replies waiting for booking." />}
+              </Panel>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+              <Panel title="Revenue scores" href="/admin/leads">
+                {scores.slice(0, 6).map((x) => (
+                  <div key={`${x.kind}:${x.id}`} className="flex items-center gap-2 text-xs border-b border-zinc-100 dark:border-zinc-800 last:border-0 py-1.5">
+                    <span className="font-mono text-emerald-700 dark:text-emerald-300 w-8">{x.revenue_score}</span>
+                    <span className="truncate flex-1">{x.title}</span>
+                    <span className="text-[10px] text-zinc-500">${Number(x.value_usd || 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </Panel>
+              <Panel title="Offer selector">
+                {offers.map((o) => (
+                  <div key={o.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold">{o.label}</span>
+                      <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300">{o.price}</span>
+                    </div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{o.best_for}</div>
+                  </div>
+                ))}
+              </Panel>
+              <Panel title="Reply playbook" href="/admin/leads?kind=replies">
+                {replies.slice(0, 4).map((r) => (
+                  <div key={r.reply_id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
+                    <div className="text-xs font-semibold">{r.recommended_action}</div>
+                    <div className="text-[10px] text-zinc-600 dark:text-zinc-300 line-clamp-2">{r.next_reply}</div>
+                  </div>
+                ))}
+                {replies.length === 0 && <EmptyLine text="No reply playbooks needed." />}
+              </Panel>
+              <Panel title="Deliverability">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <Mini label="14d sends" value={deliverability.sends_14d || 0} />
+                  <Mini label="Bounce" value={`${deliverability.bounce_rate_pct || 0}%`} />
+                  <Mini label="Opt-outs" value={deliverability.opt_outs_30d || 0} />
+                  <Mini label="Health" value={deliverability.domain_health || "ok"} />
+                </div>
+                <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2">{deliverability.recommendation}</div>
+              </Panel>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <Panel title="Gov bid/no-bid gate" href="/admin/leads?kind=sam">
+                {gov.slice(0, 6).map((g) => (
+                  <div key={g.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
+                    <div className="flex items-start gap-2">
+                      <Badge className={g.decision === "bid" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>{g.decision}</Badge>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold truncate">{g.title}</div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{g.flags?.length ? g.flags.join(", ") : "clear enough to inspect"}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </Panel>
+              <Panel title="Money dashboard cleanup" href="/admin/money">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+                  <Mini label="EV" value={`$${Number(cleanup.real_expected_value_usd || 0).toLocaleString()}`} />
+                  <Mini label="Next actions" value={cleanup.next_action_count || 0} />
+                  <Mini label="Stale" value={cleanup.stale_pipeline_count || 0} />
+                  <Mini label="Drafts" value={cleanup.draft_review_count || 0} />
+                </div>
+                <ul className="space-y-1 text-[10px] text-zinc-600 dark:text-zinc-300 list-disc pl-4">
+                  {(cleanup.cleanup_actions || []).slice(0, 4).map((x: string, i: number) => <li key={i}>{x}</li>)}
+                </ul>
+              </Panel>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Metric({ label, value, tone = "zinc" }: any) {
+  const tones: any = {
+    zinc: "text-zinc-900 dark:text-zinc-100",
+    emerald: "text-emerald-700 dark:text-emerald-300",
+    amber: "text-amber-700 dark:text-amber-300",
+    violet: "text-violet-700 dark:text-violet-300",
+  };
+  return (
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+      <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 font-semibold">{label}</div>
+      <div className={`text-lg font-bold tabular-nums ${tones[tone] || tones.zinc}`}>{value}</div>
+    </div>
+  );
+}
+
+function Panel({ title, children, href }: any) {
+  return (
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-100">{title}</h3>
+        {href && <Link href={href} className="text-[10px] text-violet-700 dark:text-violet-300 underline">open</Link>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ActionLine({ item }: any) {
+  return (
+    <a href={item.href} className="block rounded border border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 dark:hover:border-emerald-600 p-2">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300">{item.priority_score}</span>
+        <div className="text-xs font-semibold truncate flex-1">{item.title}</div>
+        <span className="text-[10px] text-zinc-500">${Number(item.expected_value_usd || 0).toLocaleString()}</span>
+      </div>
+      <div className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">{item.next_step}</div>
+    </a>
+  );
+}
+
+function Mini({ label, value }: any) {
+  return (
+    <div className="rounded bg-zinc-50 dark:bg-zinc-800/50 p-2">
+      <div className="text-[9px] uppercase text-zinc-500 dark:text-zinc-400">{label}</div>
+      <div className="text-xs font-bold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function EmptyLine({ text }: { text: string }) {
+  return <div className="text-xs text-zinc-500 dark:text-zinc-400 italic py-2">{text}</div>;
+}
+
 function Rate({ label, value, ok, sub }: any) {
   return (
     <div className={`rounded-lg border px-2 py-2 ${
@@ -573,6 +781,7 @@ function MayorView({ token }: { token: string }) {
 
       {/* ── PIPELINE AUDIT — funnel + suggested fixes ──────────────── */}
       <PipelineAuditCard token={token} />
+      <RevenueCockpitCard token={token} />
 
       {/* ── THREE COLUMNS: HAPPENED · HAPPENING · WILL HAPPEN ──────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">

@@ -24,13 +24,31 @@ export async function onRequestGet({ request, env }) {
     `).all().catch(() => ({ results: [] }));
     // Prospect opportunities (for context)
     const prospects = await env.LEADS_DB.prepare(`
-      SELECT id, business_name as title, status as stage, leak_score, NULL as estimated_value, NULL as fit_score, NULL as set_aside, created_at
-      FROM prospects WHERE status NOT IN ('archived','rejected')
+      SELECT
+        p.id,
+        p.business_name AS title,
+        p.status AS stage,
+        COALESCE(s.leak_score, 0) AS leak_score,
+        NULL AS estimated_value,
+        NULL AS fit_score,
+        NULL AS set_aside,
+        p.created_at
+      FROM prospects p
+      LEFT JOIN prospect_signals s ON s.id = (
+        SELECT id FROM prospect_signals
+        WHERE prospect_id = p.id
+        ORDER BY scanned_at DESC LIMIT 1
+      )
+      WHERE p.status NOT IN ('archived','rejected','unsubscribed')
     `).all().catch(() => ({ results: [] }));
 
     const allDeals = [
       ...(samAll.results || []).map((s) => ({ kind: "sam", ...s })),
-      ...(prospects.results || []).map((p) => ({ kind: "prospect", ...p, estimated_value: 1500 })), // default prospect value
+      ...(prospects.results || []).map((p) => ({
+        kind: "prospect",
+        ...p,
+        estimated_value: prospectEstimatedValue(p),
+      })),
     ];
 
     // KPIs
@@ -39,10 +57,11 @@ export async function onRequestGet({ request, env }) {
     const weighted_forecast = total.reduce((a, d) => a + (Number(d.estimated_value) || 0) * stageWeight(d.stage) * fitWeight(d), 0);
 
     const won = await env.LEADS_DB.prepare(`
-      SELECT decision, reason_code, decided_at FROM opportunity_decisions
+      SELECT decision, reason_code, decided_at, COALESCE(value_usd, 0) AS value_usd
+      FROM opportunity_decisions
       WHERE decision = 'won' AND decided_at >= datetime('now','-30 day')
     `).all().catch(() => ({ results: [] }));
-    const wonValue30d = (won.results || []).length * 1; // placeholder — value not stored on decisions table
+    const wonValue30d = (won.results || []).reduce((sum, r) => sum + Number(r.value_usd || 0), 0);
 
     const closed = await env.LEADS_DB.prepare(`
       SELECT decision FROM opportunity_decisions WHERE decided_at >= datetime('now','-30 day')
@@ -54,15 +73,28 @@ export async function onRequestGet({ request, env }) {
     const allValues = (samAll.results || []).filter((d) => d.estimated_value && d.estimated_value > 0).map((d) => d.estimated_value);
     const avgDeal = allValues.length ? allValues.reduce((a, b) => a + b, 0) / allValues.length : 0;
 
+    const outreachFailures = await env.LEADS_DB.prepare(`
+      SELECT COUNT(*) AS n
+      FROM prospect_sends
+      WHERE status IN ('failed','bounced')
+        AND COALESCE(attempted_at, created_at) >= datetime('now','-24 hour')
+    `).first().catch(() => ({ n: 0 }));
+
+    const aiSuggestions = await env.LEADS_DB.prepare(`
+      SELECT COUNT(*) AS n
+      FROM prospect_replies
+      WHERE COALESCE(needs_action, 1) = 1
+    `).first().catch(() => ({ n: 0 }));
+
     const kpis = {
       pipeline_value,
       weighted_forecast: Math.round(weighted_forecast),
       won_value_30d: wonValue30d,
       win_rate_30d: winRate,
       avg_deal_size: Math.round(avgDeal),
-      activity_to_win: 60,         // placeholder; computed from audit events later
-      ai_suggestions_today: 0,     // placeholder
-      outreach_failures_24h: 0,    // placeholder
+      activity_to_win: Math.min(100, Math.round((winRate || 0) + ((won.results || []).length * 10))),
+      ai_suggestions_today: Number(aiSuggestions?.n || 0),
+      outreach_failures_24h: Number(outreachFailures?.n || 0),
     };
 
     // Funnel — by stage across kinds
@@ -133,4 +165,11 @@ function fitWeight(d) {
   if (d.kind === "sam") return Math.min(1, Math.max(0.1, (Number(d.fit_score) || 50) / 100));
   if (d.kind === "prospect") return Math.min(1, Math.max(0.2, (Number(d.leak_score) || 50) / 100));
   return 0.4;
+}
+
+function prospectEstimatedValue(p) {
+  const leak = Number(p.leak_score || 0);
+  if (leak >= 75) return 7500;
+  if (leak >= 45) return 2500;
+  return 1500;
 }

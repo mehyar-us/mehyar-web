@@ -9,6 +9,7 @@
 // Returns: { ok, draft_id, send_id, status, scheduled_for, sent_at?, provider_id? }
 
 import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
+import { ensureSentHistorySchema } from "../../../_shared/migrateSentSends.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -46,14 +47,32 @@ export async function onRequestPost({ request, env, params }) {
   const { results: drs } = await db.prepare(`SELECT * FROM prospect_drafts WHERE id = ?`).bind(id).all();
   const draft = drs?.[0];
   if (!draft) return json({ ok: false, error: "draft_not_found" }, 404, request, env);
-  if (draft.status === "approved") {
-    return json({ ok: false, error: "draft_already_approved" }, 409, request, env);
-  }
   const { results: prs } = await db.prepare(`SELECT * FROM prospects WHERE id = ?`).bind(draft.prospect_id).all();
   const prospect = prs?.[0];
   if (!prospect) return json({ ok: false, error: "prospect_not_found" }, 404, request, env);
   if (!prospect.email) {
     return json({ ok: false, error: "prospect_no_email", message: "Backfill the prospect's email first via /api/mayor/prospect/[id]/enrich" }, 409, request, env);
+  }
+
+  const existingSend = await db.prepare(`
+    SELECT id, status, scheduled_for
+    FROM prospect_sends
+    WHERE draft_id = ?
+      AND status IN ('queued_for_review','queued','sent','delivered','replied')
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).bind(id).first().catch(() => null);
+  if (existingSend) {
+    return json({
+      ok: true,
+      draft_id: id,
+      send_id: existingSend.id,
+      prospect_id: prospect.id,
+      prospect_business: prospect.business_name,
+      scheduled_for: existingSend.scheduled_for,
+      already_queued: true,
+      status: existingSend.status,
+    }, 200, request, env);
   }
 
   const now = new Date();
@@ -68,12 +87,13 @@ export async function onRequestPost({ request, env, params }) {
   // Create prospect_sends row
   const sendId = crypto.randomUUID();
   try {
+    await ensureSentHistorySchema(env);
     await db.prepare(`
       INSERT INTO prospect_sends
         (id, prospect_id, draft_id, created_at, scheduled_for,
-         provider, to_email, from_email, reply_to, subject,
-         list_unsub_header, physical_address, status, test_only)
-      VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         provider, to_email, from_email, from_name, reply_to, subject, body_text,
+         list_unsub_header, physical_address, status, test_only, channel, updated_at)
+      VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'email', datetime('now'))
     `).bind(
       sendId,
       prospect.id,
@@ -82,8 +102,10 @@ export async function onRequestPost({ request, env, params }) {
       "resend",
       prospect.email,
       fromEmail,
+      "MehyarSoft",
       replyTo,
       draft.subject,
+      String(draft.body_text || "").slice(0, 32000),
       `<mailto:${fromEmail}?subject=unsubscribe>, <https://mehyar.us/unsubscribe>`,
       physicalAddress,
       sendNow ? "queued" : "queued",  // both states are "queued"; outreach loop or /send-now moves them to sent

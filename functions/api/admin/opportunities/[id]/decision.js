@@ -31,6 +31,7 @@ export async function onRequestPost({ request, env, params }) {
   const reasonBody = String(body?.reason_body || "").slice(0, 4000) || null;
 
   try {
+    await ensureDecisionSchema(env);
     // Verify opportunity exists
     const opp = await env.LEADS_DB.prepare(
       `SELECT id, title, agency, stage, fit_score FROM gov_opportunities WHERE id = ? LIMIT 1`
@@ -112,4 +113,24 @@ export async function onRequestPost({ request, env, params }) {
   } catch (e) {
     return json({ ok: false, error: "decision_failed", details: String(e?.message || e) }, 500, request, env);
   }
+}
+
+async function ensureDecisionSchema(env) {
+  await env.LEADS_DB.prepare(`
+    CREATE TABLE IF NOT EXISTS opportunity_decisions (
+      id TEXT PRIMARY KEY,
+      opportunity_id TEXT,
+      kind TEXT NOT NULL DEFAULT 'sam',
+      decision TEXT NOT NULL,
+      outcome TEXT,
+      value_usd REAL DEFAULT 0,
+      reason_code TEXT,
+      reason_body TEXT,
+      decided_by TEXT NOT NULL DEFAULT 'owner',
+      decided_at TEXT NOT NULL DEFAULT (datetime('now')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run();
+  await env.LEADS_DB.prepare(`ALTER TABLE opportunity_decisions ADD COLUMN outcome TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE opportunity_decisions ADD COLUMN value_usd REAL NOT NULL DEFAULT 0`).run().catch(() => null);
 }

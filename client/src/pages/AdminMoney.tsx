@@ -588,22 +588,30 @@ function DraftDetailDrawer({ token, draftId, onClose }: { token: string; draftId
     try {
       // Save any in-progress body edits
       if (editingBody && body !== draft?.body_text) {
-        await fetch(`/api/admin/prospects/drafts/${encodeURIComponent(draftId)}`, {
+        const editRes = await fetch(`/api/admin/prospects/drafts/${encodeURIComponent(draftId)}`, {
           method: "PATCH",
           headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
           body: JSON.stringify({ body_text: body }),
-        }).catch(() => null);
+        });
+        if (!editRes.ok) throw new Error(`Save failed (${editRes.status})`);
       }
-      // Mark approved — there isn't a dedicated approve endpoint, but draft_from_eval creates prospect_sends on contact_email.
-      // For now: update draft status to 'approved' via a simple update.
-      await fetch(`/api/admin/prospects/drafts/${encodeURIComponent(draftId)}`, {
-        method: "PATCH",
+
+      const approveRes = await fetch(`/api/mayor/draft/${encodeURIComponent(draftId)}/approve`, {
+        method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        body: JSON.stringify({ status: "approved" }),
-      }).catch(() => null);
+        body: JSON.stringify({ send_now: false }),
+      });
+      if (!approveRes.ok) {
+        const payload = await approveRes.json().catch(() => ({}));
+        throw new Error(payload?.message || payload?.error || `Approve failed (${approveRes.status})`);
+      }
       qc.invalidateQueries({ queryKey: ["admin-draft-detail", token, draftId] });
       qc.invalidateQueries({ queryKey: ["admin-recent-drafts-v2", token] });
+      qc.invalidateQueries({ queryKey: ["admin-money"] });
+      qc.invalidateQueries({ queryKey: ["admin-sent"] });
       onClose();
+    } catch (error) {
+      alert(String((error as Error)?.message || error));
     } finally { setApproving(false); }
   };
 
