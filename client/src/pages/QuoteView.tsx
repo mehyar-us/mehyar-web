@@ -1,7 +1,7 @@
 // Public quote view — renders a hosted quote at /q/[slug]
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
-import { Loader2, CheckCircle2, FileText, AlertTriangle, CreditCard, ArrowRight } from "lucide-react";
+import { Loader2, CheckCircle2, FileText, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import MainLayout from "@/layouts/MainLayout";
 
@@ -47,9 +47,6 @@ export default function QuoteView() {
 
   const isPaid = data.status === "paid";
   const isInvoice = data.status === "invoice";
-  const hasPaymentLink = !isPaid && typeof data.payment_url === "string" && data.payment_url.startsWith("https://");
-  const depositUsd = Number(data.deposit_usd || 0);
-  const amountToStart = depositUsd > 0 ? depositUsd : Number(data.total_usd || 0);
   const labelMap: Record<string, string> = { quote: "Quote", invoice: "Invoice", paid: "Receipt", void: "Cancelled" };
   const label = labelMap[data.status] || "Quote";
 
@@ -125,42 +122,11 @@ export default function QuoteView() {
               </tfoot>
             </table>
 
-            {hasPaymentLink && (
-              <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 print:hidden">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="flex items-center gap-2 font-semibold text-emerald-950">
-                      <CreditCard className="h-4 w-4" />
-                      Ready to start
-                    </h2>
-                    <p className="mt-1 text-xs leading-5 text-emerald-900">
-                      Pay {depositUsd > 0 ? `the $${amountToStart.toLocaleString()} deposit` : `the $${amountToStart.toLocaleString()} total`} to reserve the sprint and start kickoff scheduling.
-                    </p>
-                  </div>
-                  <a
-                    href={data.payment_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
-                  >
-                    Pay / start project
-                    <ArrowRight className="h-4 w-4" />
-                  </a>
-                </div>
-              </div>
-            )}
-
             {/* Payment info */}
             <div className="border-t border-zinc-200 pt-4 text-xs text-zinc-600">
               <h3 className="font-semibold text-zinc-900 mb-2">💳 How to pay</h3>
-              {hasPaymentLink ? (
-                <p className="mb-1"><strong>Card/online:</strong> Use the secure payment button above.</p>
-              ) : (
-                <p className="mb-1"><strong>Card/online:</strong> Reply to the email this quote came from and we will send a secure payment link.</p>
-              )}
-              <p className="mb-1"><strong>ACH/Wire:</strong> Reach out to mrswelim@gmail.com for routing details.</p>
-              <p className="mb-1"><strong>Check:</strong> Mail to address on file; allow 5 business days.</p>
-              {data.payment_instructions && <p className="mt-2 whitespace-pre-line">{data.payment_instructions}</p>}
+              <p className="mb-1"><strong>ACH/Wire:</strong> Reply to the invoice email or contact mrswelim@gmail.com for routing details.</p>
+              <p className="mb-1"><strong>Check:</strong> Reply before mailing so payee and mailing details can be confirmed.</p>
               <p className="mt-3 italic text-zinc-500">
                 Thanks for the business. Reply to the email this came from with any questions — usually responds in under 4 hours during US business hours.
               </p>
@@ -169,7 +135,7 @@ export default function QuoteView() {
             {!isPaid && (
               <div className="mt-4 p-3 rounded-lg bg-violet-50 border border-violet-200 text-xs text-violet-900">
                 <strong>⏱ Valid for {data.due_days || 15} days.</strong> After that, pricing may shift.
-                To proceed, {hasPaymentLink ? "use the payment button above" : "reply to the email this quote came from"} — or book a 15-min kickoff:{" "}
+                To proceed, reply to the email this quote came from — or book a 15-min kickoff:{" "}
                 <a href="https://mehyar.us/book" className="underline font-semibold">mehyar.us/book</a>
               </div>
             )}

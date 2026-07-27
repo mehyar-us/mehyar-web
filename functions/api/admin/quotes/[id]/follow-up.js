@@ -21,13 +21,11 @@ export async function onRequestPost({ request, env, params }) {
   let body = {};
   try { body = await request.json(); } catch {}
   await ensureMayorTasksSchema(env);
-  await ensureQuotePaymentSchema(env);
   const db = env.LEADS_DB;
 
   const quote = await db.prepare(`
     SELECT id, quote_number, client_name, client_email, total_usd, status,
            lead_id, lead_kind, public_slug, created_at, updated_at,
-           payment_url, deposit_usd, payment_url_updated_at,
            date(created_at, '+' || COALESCE(due_days, 15) || ' days') AS due_date
     FROM quotes
     WHERE id = ? OR public_slug = ?
@@ -71,9 +69,6 @@ export async function onRequestPost({ request, env, params }) {
     quote_number: quote.quote_number,
     public_slug: quote.public_slug,
     view_url: `/q/${quote.public_slug}`,
-    payment_url: quote.payment_url || null,
-    deposit_usd: quote.deposit_usd == null ? null : Number(quote.deposit_usd || 0),
-    payment_url_updated_at: quote.payment_url_updated_at || null,
     status: quote.status,
     due_date: quote.due_date,
     stale,
@@ -134,25 +129,12 @@ export async function onRequestPost({ request, env, params }) {
 }
 
 function defaultCta(quote, stale) {
-  const link = String(quote.payment_url || "").startsWith("https://")
-    ? quote.payment_url
-    : `https://mehyar.us/q/${quote.public_slug}`;
-  const deposit = quote.deposit_usd == null ? 0 : Number(quote.deposit_usd || 0);
-  const paymentPhrase = quote.payment_url
-    ? `The ${deposit > 0 ? `$${deposit.toLocaleString()} deposit ` : ""}payment/start link is here`
-    : "The quote/details are here";
+  const link = `https://mehyar.us/q/${quote.public_slug}`;
   if (quote.status === "invoice") {
-    return `Quick follow-up on Invoice #${quote.quote_number}. ${paymentPhrase}: ${link}. Should I keep this open for this week?`;
+    return `Quick follow-up on Invoice #${quote.quote_number}. Invoice/details are here: ${link}. Ask whether ACH/wire or check is preferred and confirm details manually.`;
   }
   if (stale) {
     return `Quick follow-up on Quote #${quote.quote_number}. Is this still a priority, or should I close it for now? ${link}`;
   }
   return `Quick follow-up on Quote #${quote.quote_number}. Any questions, or should I convert this to an invoice? ${link}`;
-}
-
-async function ensureQuotePaymentSchema(env) {
-  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url TEXT`).run().catch(() => null);
-  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_instructions TEXT`).run().catch(() => null);
-  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN deposit_usd REAL`).run().catch(() => null);
-  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url_updated_at TEXT`).run().catch(() => null);
 }
