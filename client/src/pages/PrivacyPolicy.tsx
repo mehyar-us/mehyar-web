@@ -45,9 +45,10 @@ const sections: Section[] = [
           or reply to one of our emails.
         </p>
         <p className="mt-2">
-          <strong>We do not collect:</strong> payment data (handled directly by Stripe in their checkout
-          iframe — MehyarSoft servers never see your card number), government identifiers, protected
-          health information, biometric data, or anything that should not be sent through a public web form.
+          <strong>We do not collect:</strong> card numbers or live online payment data. Invoices are handled
+          manually by email, with ACH, wire, check, or cash details confirmed only after scope is accepted.
+          Do not send government identifiers, protected health information, biometric data, or anything
+          that should not be sent through a public web form.
         </p>
         <p className="mt-2">
           <strong>Do not submit:</strong> passwords, API keys, private keys, secrets, social security

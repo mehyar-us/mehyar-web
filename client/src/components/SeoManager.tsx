@@ -268,12 +268,12 @@ const staticMeta: Record<string, SeoMeta> = {
     path: "/booking",
   },
   "/billing/checkout": {
-    title: "Stripe Test Checkout | MehyarSoft Sandbox Billing",
+    title: "Manual Invoice Request | MehyarSoft",
     description:
-      "Start a MehyarSoft service checkout in Stripe test mode. Live charges stay blocked unless Boss explicitly enables owner-approved production billing.",
+      "Request a manually reviewed MehyarSoft invoice. Online checkout is disabled; payment details are confirmed by email for ACH, wire, check, or cash.",
     path: "/billing/checkout",
     robots: "noindex,follow",
-    jsonLd: [webPage("/billing/checkout", "Stripe Test Checkout | MehyarSoft Sandbox Billing", "MehyarSoft sandbox billing checkout for approved service deposits and consulting offers.")],
+    jsonLd: [webPage("/billing/checkout", "Manual Invoice Request | MehyarSoft", "Manual invoice request path for approved service deposits and consulting offers.")],
   },
   "/privacy-policy": {
     title: "Privacy Policy | MehyarSoft LLC",

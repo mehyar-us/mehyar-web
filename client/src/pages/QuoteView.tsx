@@ -124,9 +124,11 @@ export default function QuoteView() {
 
             {/* Payment info */}
             <div className="border-t border-zinc-200 pt-4 text-xs text-zinc-600">
-              <h3 className="font-semibold text-zinc-900 mb-2">💳 How to pay</h3>
+              <h3 className="font-semibold text-zinc-900 mb-2">Manual invoice and remittance</h3>
+              <p className="mb-2">There is no online payment link on this quote. Payment details are confirmed manually after scope is accepted.</p>
               <p className="mb-1"><strong>ACH/Wire:</strong> Reply to the invoice email or contact mrswelim@gmail.com for routing details.</p>
               <p className="mb-1"><strong>Check:</strong> Reply before mailing so payee and mailing details can be confirmed.</p>
+              <p className="mb-1"><strong>Cash:</strong> Accepted only by explicit written agreement for local work.</p>
               <p className="mt-3 italic text-zinc-500">
                 Thanks for the business. Reply to the email this came from with any questions — usually responds in under 4 hours during US business hours.
               </p>

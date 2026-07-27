@@ -55,7 +55,7 @@ function installGoogleTag() {
   }
 }
 
-export function trackPublicAnalyticsEvent(eventName: "page_view" | "offer_view" | "cta_click" | "checkout_click" | "checkout_start" | "checkout_success" | "checkout_cancel" | "lead_attempt", parameters: Record<string, string | number | boolean | null | undefined> = {}) {
+export function trackPublicAnalyticsEvent(eventName: "page_view" | "offer_view" | "cta_click" | "invoice_request" | "checkout_click" | "checkout_start" | "checkout_success" | "checkout_cancel" | "lead_attempt", parameters: Record<string, string | number | boolean | null | undefined> = {}) {
   if (typeof window === "undefined" || !canLoadAnalytics() || !window.gtag) return;
 
   const payload = {
@@ -120,7 +120,7 @@ function installCtaTracking() {
     if (!isTrackedCta) return;
     trackPublicAnalyticsEvent("cta_click", { label, href, location: window.location.pathname });
     if (href?.startsWith("/billing/checkout")) {
-      trackPublicAnalyticsEvent("checkout_click", { label, href, location: window.location.pathname });
+      trackPublicAnalyticsEvent("invoice_request", { label, href, location: window.location.pathname });
     }
   };
 
@@ -138,12 +138,12 @@ function trackOfferView(pathname: string) {
 
 function trackCheckoutResult(pathname: string) {
   if (!pathname.startsWith("/billing/success") && !pathname.startsWith("/billing/cancel")) return;
-  const eventName = pathname.startsWith("/billing/success") ? "checkout_success" : "checkout_cancel";
+  const eventName = "invoice_request";
   const eventKey = `${eventName}:${window.location.search}`;
   if (trackedCheckoutEvents.has(eventKey)) return;
   trackedCheckoutEvents.add(eventKey);
   const params = new URLSearchParams(window.location.search);
-  trackPublicAnalyticsEvent(eventName, { session_id_present: Boolean(params.get("session_id")) });
+  trackPublicAnalyticsEvent(eventName, { old_checkout_session_id_present: Boolean(params.get("session_id")), result_route: pathname });
 }
 
 export default function GoogleAnalytics() {

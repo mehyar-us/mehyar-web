@@ -61,7 +61,7 @@ const MicroOffer = () => {
               <a href="#included" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "rounded-full px-7")}>See what is included</a>
             </div>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              No fake agency pitch. No guaranteed revenue claim. Just a senior systems/software/AI automation consultant identifying the smallest practical fix.
+              No fake agency pitch. No guaranteed revenue claim. No online checkout; approved audits are invoiced manually by email.
             </p>
           </div>
 
@@ -73,7 +73,7 @@ const MicroOffer = () => {
                 <span className="pb-2 text-sm text-white/72">audit + setup plan</span>
               </div>
               <p className="mt-4 text-sm leading-6 text-white/78">
-                Best when the problem is visible but the fix is not: website trust, booking friction, missed calls, slow response, or messy handoffs.
+                Best when the problem is visible but the fix is not: website trust, booking friction, missed calls, slow response, or messy handoffs. Payment is by manual invoice after review.
               </p>
             </div>
             <div className="mt-5 space-y-3">

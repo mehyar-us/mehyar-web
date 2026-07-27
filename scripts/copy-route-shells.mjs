@@ -151,21 +151,21 @@ const routeMeta = {
     path: '/booking',
   },
   '/billing/checkout': {
-    title: 'Stripe Test Checkout | MehyarSoft Sandbox Billing',
+    title: 'Manual Invoice Request | MehyarSoft',
     description:
-      'Start a MehyarSoft service checkout in Stripe test mode. Live charges stay blocked unless Boss explicitly enables owner-approved production billing.',
+      'Request a manually reviewed MehyarSoft invoice. Online checkout is disabled; payment details are confirmed by email for ACH, wire, check, or cash.',
     path: '/billing/checkout',
     robots: 'noindex,follow',
   },
   '/billing/success': {
-    title: 'Billing Result | MehyarSoft',
-    description: 'MehyarSoft billing confirmation page shown after a Stripe checkout completes.',
+    title: 'Manual Invoice Path | MehyarSoft',
+    description: 'Manual MehyarSoft invoicing path for old checkout return links. No online payment is processed.',
     path: '/billing/success',
     robots: 'noindex,follow',
   },
   '/billing/cancel': {
-    title: 'Billing Cancelled | MehyarSoft',
-    description: 'MehyarSoft billing cancellation page shown when a Stripe checkout is cancelled.',
+    title: 'Manual Invoice Request | MehyarSoft',
+    description: 'Manual MehyarSoft invoice request fallback for old checkout cancellation links. No online payment is processed.',
     path: '/billing/cancel',
     robots: 'noindex,follow',
   },

@@ -141,8 +141,9 @@ async function analyzeOne({ env, prospectId, force }) {
       {
         role: "system",
         content: [
-          "You are a senior solutions engineer at MehyarSoft LLC (a Brooklyn NY small software agency that builds on Cloudflare, Stripe, Astro, and LLM tech).",
+          "You are a senior solutions engineer at MehyarSoft LLC (a Brooklyn NY small software agency that builds Cloudflare-native TypeScript apps, databases, integrations, and LLM automation).",
           "You are auditing a live client's website. Decide what to improve, what package to propose, and rough pricing.",
+          "Do not recommend online checkout or payment links by default; MehyarSoft uses owner-reviewed quotes and manual invoicing with ACH, wire, check, or cash.",
           "Return STRICT JSON only — no markdown fences — matching this exact shape:",
           JSON.stringify({
             improvements: "Array of {title, priority ('high'|'medium'|'low'), est_cost_usd (int), est_hours (int), rationale, expected_impact}",

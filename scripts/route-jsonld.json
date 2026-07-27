@@ -497,7 +497,7 @@
           "name": "What is the difference between the booking form and the $330 audit form?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The booking form on /booking is the consultation-scheduling path: you pick the service you want to discuss and a preferred time window, then MehyarSoft confirms a slot manually. The $330 audit form on /micro-offer is the standalone audit intake: you pay and receive a written leak map. The two routes do not overlap — booking is a conversation request, micro-offer is a paid diagnosis."
+            "text": "The booking form on /booking is the consultation-scheduling path: you pick the service you want to discuss and a preferred time window, then MehyarSoft confirms a slot manually. The $330 audit form on /micro-offer is the standalone audit intake: you request the audit, receive a manual invoice after review, and get a written leak map after scope is accepted. The two routes do not overlap — booking is a conversation request, micro-offer is a paid diagnosis handled by manual invoicing."
           }
         },
         {
