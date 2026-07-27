@@ -198,6 +198,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const [bookingBusy, setBookingBusy] = useState("");
   const [quoteBusy, setQuoteBusy] = useState("");
   const [quoteStatusBusy, setQuoteStatusBusy] = useState("");
+  const [followupBusy, setFollowupBusy] = useState("");
   const q = useQuery({
     queryKey: ["admin-revenue-cockpit", token],
     queryFn: async () => {
@@ -285,6 +286,25 @@ function RevenueCockpitCard({ token }: { token: string }) {
       alert(`Quote status failed: ${String((error as Error)?.message || error)}`);
     } finally {
       setQuoteStatusBusy("");
+    }
+  };
+
+  const createQuoteFollowup = async (quote: any) => {
+    if (!quote?.id) return;
+    setFollowupBusy(quote.id);
+    try {
+      const r = await fetch(`/api/admin/quotes/${encodeURIComponent(quote.id)}/follow-up`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+    } catch (error) {
+      alert(`Follow-up task failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setFollowupBusy("");
     }
   };
 
@@ -441,7 +461,24 @@ function RevenueCockpitCard({ token }: { token: string }) {
                       </div>
                       <a href={quote.view_url} target="_blank" rel="noreferrer" className="text-[10px] text-violet-700 dark:text-violet-300 underline shrink-0">view</a>
                     </div>
+                    {quote.followup_task_id && (
+                      <div className="mt-1 text-[10px] text-emerald-700 dark:text-emerald-300">
+                        follow-up queued{quote.followup_due_at ? ` · ${fmtAgo(quote.followup_due_at) === "just now" ? "due now" : quote.followup_due_at.slice(0, 10)}` : ""}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-1.5 mt-2">
+                      {!quote.followup_task_id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={followupBusy === quote.id}
+                          onClick={() => createQuoteFollowup(quote)}
+                          className="h-7 px-2 text-[10px]"
+                        >
+                          {followupBusy === quote.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Reply className="w-3 h-3 mr-1" />}
+                          Follow up
+                        </Button>
+                      )}
                       {quote.status !== "invoice" && (
                         <Button
                           size="sm"

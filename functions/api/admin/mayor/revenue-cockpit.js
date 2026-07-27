@@ -34,6 +34,7 @@ export async function onRequestGet({ request, env }) {
     samRows,
     taskRows,
     quoteRows,
+    quoteTaskRows,
     sendHealth,
     replyHealth,
   ] = await Promise.all([
@@ -141,6 +142,15 @@ export async function onRequestGet({ request, env }) {
         total_usd DESC,
         created_at ASC
       LIMIT 10
+    `),
+    all(db, `
+      SELECT id, kind, prospect_id, title, status, priority, due_at,
+             cta_text, value_usd, source, payload_json, created_at, updated_at
+      FROM mayor_tasks
+      WHERE kind = 'quote_followup'
+        AND status IN ('open','pending')
+      ORDER BY priority DESC, COALESCE(due_at, created_at) ASC
+      LIMIT 50
     `),
     all(db, `
       SELECT
@@ -252,20 +262,30 @@ export async function onRequestGet({ request, env }) {
       create_task_href: `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/book-call`,
     })),
   ].slice(0, limit);
-  const quoteActions = quoteRows.map((q) => ({
-    id: q.id,
-    quote_number: q.quote_number,
-    client_name: q.client_name,
-    client_email: q.client_email,
-    total_usd: Number(q.total_usd || 0),
-    status: q.status,
-    due_date: q.due_date,
-    stale: q.due_date ? new Date(q.due_date).getTime() < Date.now() : false,
-    view_url: `/q/${q.public_slug}`,
-    mark_invoice_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
-    mark_paid_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
-    next_action: q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.",
-  }));
+  const quoteTaskBySource = new Map(quoteTaskRows.map((t) => [String(t.source || ""), t]));
+  const quoteActions = quoteRows.map((q) => {
+    const followup = quoteTaskBySource.get(`quote:${q.id}`);
+    return {
+      id: q.id,
+      quote_number: q.quote_number,
+      client_name: q.client_name,
+      client_email: q.client_email,
+      total_usd: Number(q.total_usd || 0),
+      status: q.status,
+      due_date: q.due_date,
+      stale: q.due_date ? new Date(q.due_date).getTime() < Date.now() : false,
+      view_url: `/q/${q.public_slug}`,
+      mark_invoice_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
+      mark_paid_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
+      followup_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/follow-up`,
+      followup_task_id: followup?.id || "",
+      followup_due_at: followup?.due_at || "",
+      followup_cta: followup?.cta_text || "",
+      next_action: followup
+        ? "Follow-up task is queued; send the CTA or close it after response."
+        : q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.",
+    };
+  });
   const govBidNoBid = samRows.map(bidNoBidForSam);
   const moneyCleanup = buildMoneyCleanup(summary, actions, draftReviewInbox, deliverability, quoteActions);
 
