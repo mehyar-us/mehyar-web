@@ -45,7 +45,10 @@ export async function createBookingTaskForReply(env, reply, options = {}) {
     ORDER BY created_at DESC
     LIMIT 1
   `).bind(reply.id).first().catch(() => null);
-  if (existing) return { ok: true, already_exists: true, task_id: existing.id, status: existing.status, due_at: existing.due_at };
+  if (existing) {
+    await markReplyBookingLinked(db, reply, existing.id);
+    return { ok: true, already_exists: true, task_id: existing.id, status: existing.status, due_at: existing.due_at };
+  }
 
   const ctaText = String(options.meeting_cta || options.cta_text || "Would tomorrow or the next morning be better for a quick 15-minute call?")
     .trim()
@@ -80,7 +83,38 @@ export async function createBookingTaskForReply(env, reply, options = {}) {
     payload
   ).run();
 
+  await markReplyBookingLinked(db, reply, taskId);
+
   return { ok: true, task_id: taskId, title, meeting_cta: ctaText, value_usd: valueUsd, status: "open" };
+}
+
+async function markReplyBookingLinked(db, reply, taskId) {
+  await db.prepare(`
+    UPDATE prospect_replies
+    SET created_action = CASE
+          WHEN created_action IS NULL OR created_action = '' OR created_action = 'note_appended'
+            THEN 'booking_task_created'
+          ELSE created_action
+        END
+    WHERE id = ?
+  `).bind(reply.id).run().catch(() => null);
+
+  await db.prepare(`
+    UPDATE prospects
+    SET status = 'replied',
+        last_contact_at = COALESCE(last_contact_at, datetime('now')),
+        updated_at = datetime('now')
+    WHERE id = ?
+  `).bind(reply.prospect_id).run().catch(() => null);
+
+  await db.prepare(`
+    INSERT INTO mayor_events (id, kind, loop, summary, details_json, created_at)
+    VALUES (?, 'reply', 'booking_auto_task', ?, ?, datetime('now'))
+  `).bind(
+    crypto.randomUUID(),
+    `Booking task linked for ${reply.business_name || reply.email || reply.from_email || reply.prospect_id}`,
+    JSON.stringify({ task_id: taskId, reply_id: reply.id, prospect_id: reply.prospect_id }).slice(0, 4000)
+  ).run().catch(() => null);
 }
 
 function clampMoney(value, fallback) {
@@ -88,4 +122,3 @@ function clampMoney(value, fallback) {
   if (!Number.isFinite(n) || n <= 0) return fallback;
   return Math.max(100, Math.min(250000, Math.round(n)));
 }
-

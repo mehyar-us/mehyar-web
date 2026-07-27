@@ -7,6 +7,7 @@
 // classifications: interest|objection|unsubscribe|not_interested|out_of_office|warm|unclassified
 
 import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { createBookingTaskForReply } from "../../_shared/mayorTasks.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -94,8 +95,26 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: "reply_insert_failed", message: String(e?.message || e) }, 500, request, env);
   }
 
+  let bookingTask = null;
+  if (classification === "interest" || classification === "warm") {
+    bookingTask = await createBookingTaskForReply(env, {
+      id: replyId,
+      prospect_id: prospect.id,
+      classification,
+      subject,
+      body_excerpt: bodyText,
+      business_name: prospect.business_name,
+      email: prospect.email,
+      from_email: fromEmail,
+    }, {
+      source: "simulated_reply",
+      meeting_cta: "Would tomorrow or the next morning be better for a quick 15-minute call?",
+      value_usd: 7500,
+    }).catch((e) => ({ ok: false, error: String(e?.message || e) }));
+  }
+
   // Update prospect status if it's an interest reply
-  if (classification === "interest") {
+  if (classification === "interest" && !bookingTask?.ok) {
     try {
       await db.prepare(`UPDATE prospects SET status = 'replied', updated_at = datetime('now') WHERE id = ?`).bind(prospect.id).run();
     } catch (_) {}
@@ -113,9 +132,9 @@ export async function onRequestPost({ request, env }) {
     `).bind(
       crypto.randomUUID(),
       `Simulated reply from ${prospect.business_name} → ${classification}`,
-      JSON.stringify({ reply_id: replyId, prospect_id: prospect.id, classification })
+      JSON.stringify({ reply_id: replyId, prospect_id: prospect.id, classification, booking_task: bookingTask })
     ).run();
   } catch (_) {}
 
-  return json({ ok: true, reply_id: replyId, prospect_id: prospect.id, classification, from_email: fromEmail, subject, body_excerpt: bodyText }, 200, request, env);
+  return json({ ok: true, reply_id: replyId, prospect_id: prospect.id, classification, booking_task: bookingTask, from_email: fromEmail, subject, body_excerpt: bodyText }, 200, request, env);
 }

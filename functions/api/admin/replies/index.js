@@ -3,6 +3,7 @@
 // OPTIONS handled for CORS
 
 import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
+import { createBookingTaskForReply } from "../../_shared/mayorTasks.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -110,6 +111,7 @@ export async function onRequestPost({ request, env }) {
   const classId = crypto.randomUUID();
   const now = new Date().toISOString();
   const resolvedLabel = String(label || "unclassified").toLowerCase().slice(0, 32);
+  let bookingTask = null;
 
   try {
     // Insert reply
@@ -148,9 +150,33 @@ export async function onRequestPost({ request, env }) {
         UPDATE prospects SET stage = 'Replied', last_contact_at = ?, last_touched_at = ?, updated_at = ? WHERE id = ?
       `).bind(now, now, now, prospect_id).run();
     }
+
+    if (resolvedLabel === "interest" || resolvedLabel === "warm") {
+      const prospect = await env.LEADS_DB.prepare(`
+        SELECT id, business_name, email, root_domain
+        FROM prospects
+        WHERE id = ?
+        LIMIT 1
+      `).bind(prospect_id).first().catch(() => null);
+      bookingTask = await createBookingTaskForReply(env, {
+        id: replyId,
+        prospect_id,
+        classification: resolvedLabel,
+        subject: String(subject || "").slice(0, 500),
+        body_excerpt: String(body_excerpt || "").slice(0, 4096),
+        business_name: prospect?.business_name,
+        email: prospect?.email || String(from_email).slice(0, 254),
+        from_email: String(from_email).slice(0, 254),
+        root_domain: prospect?.root_domain,
+      }, {
+        source: "manual_reply",
+        meeting_cta: "Would tomorrow or the next morning be better for a quick 15-minute call?",
+        value_usd: 7500,
+      }).catch((e) => ({ ok: false, error: String(e?.message || e) }));
+    }
   } catch (e) {
     return json({ ok: false, error: "insert_failed", details: String(e?.message || e) }, 500, request, env);
   }
 
-  return json({ ok: true, reply_id: replyId, classification_id: classId, label: resolvedLabel }, 201, request, env);
+  return json({ ok: true, reply_id: replyId, classification_id: classId, label: resolvedLabel, booking_task: bookingTask }, 201, request, env);
 }
