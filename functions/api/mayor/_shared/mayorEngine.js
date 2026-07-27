@@ -5,18 +5,23 @@
 // On success → updates prospect_sequences.status='sent' + inserts prospect_sends
 // On failure → marks status='failed' with reason
 //
-// This is the "no human in the loop" send function — only call after canSendNow().
+// This is the auto-send function — only call after canSendNow() and the
+// production review/auto-send mode gate have passed.
 
 import { canSendNow, bumpDailySendCount } from "./mayorGuardrails.js";
 import { logEvent } from "./mayorDb.js";
 const PHYSICAL_ADDRESS = "MehyarSoft LLC, 3400 Coyle St, Apt 411, Elmhurst, NY 11373";
 
-// Email Service is enabled only for the rochelle.love zone on this CF account.
-// For outbound from other zones, we send as @rochelle.love instead.
 // Defaults resolved per-call from env (env is not in module scope at import time).
 function resolveSendingFrom(env) {
   const domain = env?.MAYOR_SENDING_DOMAIN || "rochelle.love";
   return env?.MAYOR_SENDING_FROM_EMAIL || `team@${domain}`;
+}
+
+function resolveSender(env) {
+  const fromEmail = env?.MAYOR_FROM_EMAIL || env?.MAYOR_SENDING_FROM_EMAIL || resolveSendingFrom(env);
+  const replyTo = env?.MAYOR_REPLY_TO || fromEmail;
+  return { fromEmail, replyTo };
 }
 function htmlFromText(body) {
   const escaped = body.split("\n").map(line =>
@@ -31,6 +36,7 @@ function htmlFromText(body) {
 export async function sendSequenceStep(env, { sequence, prospect }) {
   if (!env?.LEADS_DB) return { ok: false, error: "missing_db" };
   const toEmail = (prospect?.email || "").toLowerCase().trim();
+  const { fromEmail, replyTo } = resolveSender(env);
 
   // Final guard check (may have changed since schedule time)
   const guard = await canSendNow(env, toEmail);
@@ -50,21 +56,27 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
   // Priority: Resend (free tier works with verified domains, no account upgrade needed)
   // → CF Email Service (requires paid account, disabled on free tier)
   // → No-op (log error)
+  let result = null;
   const resendKey = env?.RESEND_API_KEY;
   if (resendKey) {
-    const r = await dispatchViaResend(env, { to, subject, text });
-    console.log(`[mayor/email] resend(${to}) → ${JSON.stringify(r)}`);
-    if (r.ok) return r;
-    // fall through to CF Email Service if Resend fails
-    console.log(`[mayor/email] resend failed, falling back to CF: ${r.error}`);
+    const r = await dispatchViaResend(env, {
+      to: toEmail,
+      subject: sequence.subject,
+      text: sequence.body_text,
+    });
+    console.log(`[mayor/email] resend(${toEmail}) -> ${JSON.stringify(r)}`);
+    if (r.ok) result = r;
+    else console.log(`[mayor/email] resend failed, falling back to CF: ${r.error}`);
   }
 
-  // Dispatch via CF Email service (requires paid account with Email Sending enabled)
-  const result = await dispatchViaCfEmail(env, {
-    to: toEmail,
-    subject: sequence.subject,
-    text: sequence.body_text,
-  });
+  if (!result) {
+    // Dispatch via CF Email service (requires paid account with Email Sending enabled)
+    result = await dispatchViaCfEmail(env, {
+      to: toEmail,
+      subject: sequence.subject,
+      text: sequence.body_text,
+    });
+  }
 
   const finalStatus = result.ok ? "sent" : "failed";
   const now = new Date().toISOString();
@@ -76,11 +88,12 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
       `INSERT INTO prospect_sends (id, prospect_id, draft_id, provider, provider_id, to_email,
          from_email, reply_to, subject, physical_address, list_unsub_header, status,
          test_only, failure_reason, attempted_at, finished_at)
-       VALUES (?, ?, ?, 'cf-email', ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
     ).bind(
       sendId, sequence.prospect_id, sequence.id,
+      result.provider || "cf-email",
       result.provider_id || null,
-      toEmail, FROM_EMAIL, FROM_EMAIL,
+      toEmail, fromEmail, replyTo,
       sequence.subject, PHYSICAL_ADDRESS,
       "<mailto:unsubscribe@mehyar.us>, <https://mehyar.us/api/prospects/unsubscribe>",
       finalStatus,
@@ -96,16 +109,18 @@ export async function sendSequenceStep(env, { sequence, prospect }) {
   ).bind(finalStatus, now, sendId, sequence.id).run();
 
   // Update prospect state
-  try {
-    await env.LEADS_DB.prepare(
-      `UPDATE prospects SET status = 'contacted', last_contact_at = ?
-       WHERE id = ?`
-    ).bind(now, sequence.prospect_id).run();
-  } catch (e) { /* ignore */ }
+  if (result.ok) {
+    try {
+      await env.LEADS_DB.prepare(
+        `UPDATE prospects SET status = 'contacted', last_contact_at = ?
+         WHERE id = ?`
+      ).bind(now, sequence.prospect_id).run();
+    } catch (e) { /* ignore */ }
+  }
 
-  // Bump daily counter + log event
+  // Bump daily counter only for actual sends + log event
   const today = now.slice(0, 10);
-  await bumpDailySendCount(env, today);
+  if (result.ok) await bumpDailySendCount(env, today);
   await logEvent(env, "outreach",
     `${finalStatus === "sent" ? "✉ Sent" : "❌ Failed"} → ${toEmail} (step ${sequence.step_no})`,
     {
@@ -152,7 +167,7 @@ async function dispatchViaResend(env, { to, subject, text, html }) {
     });
     const data = await resp.json().catch(() => ({}));
     if (resp.ok && data?.id) {
-      return { ok: true, provider_id: data.id };
+      return { ok: true, provider: "resend", provider_id: data.id };
     }
     const err = data?.message || data?.name || `HTTP ${resp.status}`;
     return { ok: false, error: `resend_${resp.status}: ${err}` };
@@ -163,11 +178,7 @@ async function dispatchViaResend(env, { to, subject, text, html }) {
 
 async function dispatchViaCfEmail(env, { to, subject, text }) {
   const accountId = env?.CF_EMAIL_ACCOUNT_ID;
-  // Email Service is enabled for the mehyar.us zone as of 2026-07-19
-    // (verified by two consecutive provider_ids with @mehyar.us suffix). The
-    // rochelle.love fallback is kept in case the mehyar.us zone is rolled back.
-    const fromEmail = env?.MAYOR_FROM_EMAIL || env?.MAYOR_SENDING_FROM_EMAIL || "team@mehyar.us";
-    const FROM_EMAIL = fromEmail;
+  const { fromEmail } = resolveSender(env);
   // Auth strategy — X-Auth-Email + X-Auth-Key with the 37-char CF Global Key is the
   // ONLY pattern that authenticates against /accounts/{id}/email/sending/send today.
   // Verified 2026-07-19: the 40-char scoped CLOUDFLARE_API_KEY returns 401 "Authentication
@@ -200,7 +211,7 @@ if (authStrategies.length === 0) {
   // Cloudflare Email Service REST API uses FLAT string fields (not nested objects).
   // See: https://developers.cloudflare.com/email-service/api/send-emails/rest-api/
   const payload = {
-    from: FROM_EMAIL,
+    from: fromEmail,
     to,
     subject,
     text,
@@ -221,7 +232,7 @@ if (authStrategies.length === 0) {
       const data = await resp.json().catch(() => ({}));
       if (resp.ok && data?.success !== false) {
         console.log(`[mayor/email] sent via ${strat.name} to ${to}`);
-        return { ok: true, provider_id: data?.result?.id || null };
+        return { ok: true, provider: "cf-email", provider_id: data?.result?.id || null };
       }
       const err = data?.errors?.[0]?.message || `HTTP ${resp.status}`;
       lastErr = `${strat.name}: ${err}`;

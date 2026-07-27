@@ -15,7 +15,7 @@
 // Env vars (all optional; sensible defaults shown):
 //   LLM_PROVIDER              "cloudflare" (default)
 //   LLM_BASE_URL              override (e.g. https://api.openai.com/v1 or your proxy)
-//   LLM_MODEL                 @cf/meta/llama-3.2-3b-instruct (default)
+//   LLM_MODEL                 @cf/meta/llama-3.3-70b-instruct-fp8-fast (default)
 //   LLM_GATEWAY_BASE_URL      Cloudflare AI Gateway URL, e.g.
 //                             https://gateway.ai.cloudflare.com/v1/<acct>/<slug>/openai
 //   CLOUDFLARE_ACCOUNT_ID     account ID for REST URL
@@ -37,7 +37,7 @@ function buildCloudflareRestUrl(env) {
 
 export function resolveLlmConfig(env = {}) {
   const provider = (env.LLM_PROVIDER || "cloudflare").toLowerCase();
-  const model = env.LLM_MODEL || "@cf/meta/llama-3.2-3b-instruct";
+  const model = env.LLM_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
   // Pick base URL based on provider precedence
   let baseUrl;
@@ -111,12 +111,14 @@ function buildAuthHeaders(cfg) {
 export async function chatJson({
   env,
   messages,
+  model,
   max_tokens = 600,
   temperature = 0.2,
   json_mode = true,
   stream = false,
 }) {
   const cfg = resolveLlmConfig(env);
+  if (model) cfg.model = model;
 
   // Sanity: need auth
   const hasAuth =

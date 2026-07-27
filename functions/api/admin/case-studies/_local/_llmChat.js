@@ -11,7 +11,7 @@
 //   LLM_PROVIDER              "cloudflare" (default) or "openrouter" or anything
 //                             OpenAI-compatible the user chooses
 //   LLM_BASE_URL              override (e.g. openai, openrouter, your proxy)
-//   LLM_MODEL                 default @cf/meta/llama-3-8b-instruct (free tier)
+//   LLM_MODEL                 default @cf/meta/llama-3.3-70b-instruct-fp8-fast
 //   CLOUDFLARE_ACCOUNT_ID     account for the REST URL
 //   CLOUDFLARE_AI_GATEWAY_TOKEN or CLOUDFLARE_API_TOKEN or LLM_API_KEY for auth
 
@@ -32,10 +32,9 @@ export function resolveLlmConfig(env = {}) {
     env.CLOUDFLARE_API_TOKEN ||
     env.MEHYARSOFT_LLM_API_KEY ||
     "";
-  // Cloudflare Workers AI was deprecated for llama-3-8b-instruct on 2026-05-30.
-  // Use llama-3.2-3b-instruct as the new default — same quality, still supported.
+  // Use the stronger default for durable public proof assets.
   // Any other live @cf/... model can be selected via env.LLM_MODEL.
-  const model = env.LLM_MODEL || "@cf/meta/llama-3.2-3b-instruct";
+  const model = env.LLM_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
   return { baseUrl, apiKey, model, provider: env.LLM_PROVIDER || "cloudflare" };
 }
 

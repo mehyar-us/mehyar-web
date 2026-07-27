@@ -45,7 +45,7 @@ MAYOR_PHYSICAL_ADDRESS = "MehyarSoft LLC, 228 Park Ave S #92842, New York, NY 10
 INBOUND_AUTO_REPLY = "1"
 
 # Default model — overridable via LLM_MODEL env var at runtime
-LLM_MODEL = "@cf/meta/llama-3.2-3b-instruct"
+LLM_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 # Optional secret/configured in Cloudflare Pages settings when available: MEHYARSOFT_SAM_API_KEY
 # Backward-compatible alias also supported by code: SAM_API_KEY
 # Optional comma-separated override: GOV_OPPORTUNITY_KEYWORDS

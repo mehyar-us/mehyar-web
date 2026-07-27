@@ -66,6 +66,42 @@ export async function onRequestPost({ request, env }) {
 
   const candidates = await fetchDueSteps(env, Math.min(remaining * 2, 200));
   console.log(`[mayor/outreach] fetched ${(candidates || []).length} candidates`);
+
+  const autoSendEnabled =
+    env?.MAYOR_AUTO_SEND_ENABLED === "1" ||
+    env?.MAYOR_AUTO_SEND_ENABLED === "true" ||
+    settings?.auto_send_enabled?.value === "1" ||
+    settings?.auto_send_enabled?.value === "true";
+  if (!autoSendEnabled) {
+    await logEvent(env, "outreach", `Auto-send disabled — ${candidates.length} due step(s) need review`, {
+      loop: "outreach",
+      details: {
+        mode: "review_required",
+        candidates_count: candidates.length,
+        cap_remaining: remaining,
+        sample: candidates.slice(0, 10).map((s) => ({
+          sequence_id: s.id,
+          prospect_id: s.prospect_id,
+          step_no: s.step_no,
+          business_name: s.business_name,
+          email_domain: String(s.email || "").split("@")[1] || "",
+          scheduled_for: s.scheduled_for,
+        })),
+      },
+    });
+    return json({
+      ok: true,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      due: candidates.length,
+      mode: "review_required",
+      auto_send_enabled: false,
+      cap_remaining: remaining,
+      duration_ms: Date.now() - start,
+    }, 200, request, env);
+  }
+
   let sent = 0, skipped = 0, failed = 0;
   const sentDetails = [];
   const debugLog = [];
@@ -104,10 +140,17 @@ export async function onRequestGet({ request, env }) {
     return json({ ok: false, error: "unauthorized" }, 401, request, env);
   }
   const settings = await getAllSettings(env);
+  const autoSendEnabled =
+    env?.MAYOR_AUTO_SEND_ENABLED === "1" ||
+    env?.MAYOR_AUTO_SEND_ENABLED === "true" ||
+    settings?.auto_send_enabled?.value === "1" ||
+    settings?.auto_send_enabled?.value === "true";
   return json({
     ok: true,
     run_at: settings.outreach_run_at?.value || "",
     paused: isPaused(settings),
     cap_remaining: await capRemaining(env),
+    auto_send_enabled: autoSendEnabled,
+    mode: autoSendEnabled ? "auto_send" : "review_required",
   }, 200, request, env);
 }

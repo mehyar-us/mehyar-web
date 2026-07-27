@@ -26,7 +26,7 @@ async function bearerAccepted(request, env) {
 
 const SENDER_NAME = "Mehyar";
 const SENDER_TITLE = "MehyarSoft LLC";
-const SENDER_PHONE = env => env?.MAYOR_PHONE || "917-555-0100";
+const SENDER_PHONE = env => env?.MAYOR_PHONE || "";
 const SENDER_EMAIL = env => env?.MAYOR_FROM_EMAIL || "team@mehyar.us";
 
 function draftSubject(prospect, stepNo) {
@@ -44,17 +44,18 @@ function draftBody(prospect, signals, stepNo, env) {
   const domain = (prospect.website || "your site").replace(/^https?:\/\//, "").split("/")[0];
   const vert = prospect.vertical || "local business";
   const city = prospect.city || "your area";
-  const sender = `Mehyar\nMehyarSoft LLC · Founder\n${SENDER_EMAIL(env)}\n${SENDER_PHONE(env)}\n\nMehyarSoft LLC · 228 Park Ave S #92842 · New York, NY 10003`;
+  const phoneLine = SENDER_PHONE(env) ? `\n${SENDER_PHONE(env)}` : "";
+  const sender = `Mehyar\nMehyarSoft LLC · Founder\n${SENDER_EMAIL(env)}${phoneLine}\n\nMehyarSoft LLC · 228 Park Ave S #92842 · New York, NY 10003`;
 
   // Lead with the strongest signal (most visible leak)
   const lead = signals.no_booking_cta
-    ? `I was looking at ${domain} tonight — and I noticed there isn't a clear "Book" or "Schedule" button on the homepage.`
+    ? `I reviewed ${domain} and noticed there isn't a clear "Book" or "Schedule" button on the homepage.`
     : signals.no_phone_cta
-    ? `I was on ${domain} tonight and noticed the phone number isn't a tap-to-call link on mobile, which usually costs ${vert} businesses a chunk of inbound calls.`
+    ? `I reviewed ${domain} and noticed the phone number does not appear to be a tap-to-call link on mobile.`
     : signals.no_https
     ? `I noticed ${domain} doesn't have HTTPS — modern browsers flag that as "Not secure" before anyone even lands on the page.`
     : signals.slow_load
-    ? `I ran ${domain} through a quick load check — it's coming in over 2.5 seconds on mobile, which usually bounces about half the visitors before the page paints.`
+    ? `I ran ${domain} through a quick load check and it came back slower than I'd want for a mobile visitor.`
     : signals.large_page
     ? `${domain} is over 200 KB on first paint — that's heavier than it needs to be for a ${vert} site.`
     : `I was on ${domain} tonight and noticed a few things that probably cost you some leads.`;
@@ -78,9 +79,9 @@ function draftBody(prospect, signals, stepNo, env) {
 
 ${proofLine}
 
-For a ${vert} in ${city}, these are usually the leaks that quietly cost you booked jobs — the people who close the tab and call the next result instead.
+For a ${vert} in ${city}, these are the kinds of leaks that can turn ready-to-buy visitors into missed calls or abandoned forms.
 
-I run a 30-minute free audit for ${vert} businesses: I'll record a 5-minute Loom walking through the three fixes I'd make first, with no follow-up unless you ask.
+I run a free 5-minute Loom audit for ${vert} businesses. If the fixes are worth doing, I can price them plainly: $250 diagnostic, a fixed-scope quick fix/sprint, or a small monthly automation retainer.
 
 Want me to send one over for ${domain}?
 

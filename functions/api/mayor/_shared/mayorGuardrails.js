@@ -133,6 +133,16 @@ export function sanitize(text) {
 export async function canSendNow(env, toEmail) {
   const lc = String(toEmail || "").toLowerCase().trim();
   if (!lc || !lc.includes("@") || !lc.includes(".")) return { ok: false, reason: "invalid_email" };
+  const domain = lc.split("@")[1];
+  if (
+    domain === "example.com" ||
+    domain.endsWith(".example.com") ||
+    domain.endsWith(".test") ||
+    domain.endsWith(".invalid") ||
+    domain.endsWith(".localhost")
+  ) {
+    return { ok: false, reason: "test_or_placeholder_domain" };
+  }
   if (await isEmailSuppressed(env, lc)) return { ok: false, reason: "suppressed" };
   if (await isOverCap(env)) return { ok: false, reason: "daily_cap_reached" };
 
@@ -140,7 +150,6 @@ export async function canSendNow(env, toEmail) {
   const threshold = parseFloat(await getSetting(env, "bounce_rate_alert", "0.10"));
   if (bounce > threshold) return { ok: false, reason: "high_bounce_rate" };
 
-  const domain = lc.split("@")[1];
   const today = new Date().toISOString();
   const dayCount = await countSendsToDomain(env, domain, today.slice(0, 10));
   if (dayCount >= 3) return { ok: false, reason: "domain_throttle_day" };

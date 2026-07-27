@@ -185,9 +185,11 @@ def pages_env_vars_for_branch(branch):
     env_name = "production" if branch == "main" else "preview"
     url = f"https://api.cloudflare.com/client/v4/accounts/{ACCT}/pages/projects/{PROJECT}"
     project = cf_get_json(url)["result"]
-    env_vars = project.get("deployment_configs", {}).get(env_name, {}).get("env_vars", {})
+    configs = project.get("deployment_configs", {})
+    env_vars = configs.get(env_name, {}).get("env_vars", {})
+    fallback_vars = configs.get("preview", {}).get("env_vars", {}) if env_name == "production" else {}
     merged = {}
-    for name, meta in env_vars.items():
+    for name, meta in {**fallback_vars, **env_vars}.items():
         if not isinstance(meta, dict):
             continue
         value = meta.get("value")

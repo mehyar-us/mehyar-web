@@ -48,7 +48,7 @@ export async function onRequestGet({ request, env }) {
       },
       llm: {
         provider: "cloudflare",
-        model: env.LLM_MODEL || "@cf/meta/llama-3.2-3b-instruct",
+        model: env.LLM_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
         reachable: Boolean(env.CLOUDFLARE_API_KEY || env.CLOUDFLARE_AI_GATEWAY_TOKEN),
         note: "Reachability is inferred from configured auth; individual LLM endpoints report per-call fallback.",
       },

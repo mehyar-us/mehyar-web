@@ -19,6 +19,13 @@ export async function onRequestPost({ request, env }) {
   const authHeader = request.headers.get("authorization") || "";
   const url = new URL(request.url);
   const job = url.searchParams.get("job") || "all";
+  const requestedJobs = new Set(
+    String(job)
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)
+  );
+  const hasJob = (...names) => job === "all" || names.some((name) => requestedJobs.has(name));
 
   let authorized = false;
   let actor = "anonymous";
@@ -40,7 +47,7 @@ export async function onRequestPost({ request, env }) {
   const results = { started_at: startedAt.toISOString(), actor, job };
 
   // SAM ingest (legacy govOpportunityIngest)
-  if (job === "all" || job === "sam-ingest") {
+  if (hasJob("sam-ingest")) {
     try {
       results.gov = await runGovOpportunityIngest({ env, now: startedAt });
     } catch (e) {
@@ -53,7 +60,7 @@ export async function onRequestPost({ request, env }) {
   // Cloudflare Workers (random 525 SSL handshake failures) and isn't worth
   // the operational pain for daily cron. Admin can still trigger it via
   // the system page with ?include_unreliable=true.
-  if (job === "all" || job === "contracts") {
+  if (hasJob("contracts")) {
     try {
       const sources = [];
       if (env.SAM_GOV_API_KEY || env.MEHYARSOFT_SAM_API_KEY) sources.push("sam");
@@ -87,7 +94,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   // Outreach send-due (read-only)
-  if (job === "all" || job === "outreach") {
+  if (hasJob("outreach", "send-due")) {
     try {
       const rows = await env.LEADS_DB.prepare(`
         SELECT p.id AS prospect_id, p.business_name, s.name AS source_name, os.step_order, p.source AS source_key
@@ -129,7 +136,7 @@ export async function onRequestPost({ request, env }) {
   // Actually fires the LLM by invoking the same handler the UI uses,
   // rather than just logging "candidates". Catches per-prospect failures
   // so a single bad row doesn't kill the rest of the batch.
-  if (job === "all" || job === "deep-evaluate") {
+  if (hasJob("deep-evaluate")) {
     try {
       const top = await env.LEADS_DB.prepare(`
         SELECT p.id, p.business_name, p.root_domain,
@@ -206,7 +213,7 @@ export async function onRequestPost({ request, env }) {
   `).bind(runId, `manual:${job}`, JSON.stringify({ ...results, duration_ms, source: `manual:${actor}` }).slice(0, 18000)).run().catch(() => null);
 
   // ── Mayor engine: delegate to /api/mayor/* endpoints via internal fetch ──
-  if (job === "all" || job === "discover" || job === "mayor_discover") {
+  if (hasJob("discover", "mayor_discover")) {
     try {
       // Discover: SAM.gov + Brooklyn local + AI fit-score (parallel fanout inside).
       const url = new URL(request.url);
@@ -242,7 +249,7 @@ export async function onRequestPost({ request, env }) {
       } catch (e) { results.auto_draft = { ok: false, error: String(e?.message || e) }; }
     } catch (e) { results.mayor_discover = { ok: false, error: String(e?.message || e) }; }
   }
-  if (job === "all" || job === "mayor_outreach") {
+  if (hasJob("outreach", "mayor_outreach")) {
     try {
       const r = await fetch(new URL("/api/mayor/outreach", request.url), {
         method: "POST",
@@ -251,7 +258,7 @@ export async function onRequestPost({ request, env }) {
       results.mayor_outreach = await r.json().catch(() => ({ ok: false, error: "parse_failed" }));
     } catch (e) { results.mayor_outreach = { ok: false, error: String(e?.message || e) }; }
   }
-  if (job === "all" || job === "mayor_followup") {
+  if (hasJob("followup", "mayor_followup")) {
     try {
       const r = await fetch(new URL("/api/mayor/followup", request.url), {
         method: "POST",
@@ -260,7 +267,7 @@ export async function onRequestPost({ request, env }) {
       results.mayor_followup = await r.json().catch(() => ({ ok: false, error: "parse_failed" }));
     } catch (e) { results.mayor_followup = { ok: false, error: String(e?.message || e) }; }
   }
-  if (job === "all" || job === "mayor_digest") {
+  if (hasJob("digest", "mayor_digest")) {
     try {
       const r = await fetch(new URL("/api/mayor/digest", request.url), {
         method: "POST",

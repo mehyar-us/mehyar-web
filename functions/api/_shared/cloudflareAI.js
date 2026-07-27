@@ -22,9 +22,9 @@
 
 import { chatJson, resolveLlmConfig } from "./llmChat.js";
 
-const DEFAULT_MODEL = "@cf/meta/llama-3.2-3b-instruct"; // fast + good JSON
-const FAST_MODEL = "@cf/meta/llama-3.2-1b-instruct"; // for high-volume fit-score
-const REASONING_MODEL = "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b"; // for deep proposals
+const DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"; // stronger writing/reasoning
+const FAST_MODEL = "@cf/meta/llama-3.2-3b-instruct"; // high-volume fit-score
+const REASONING_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"; // deep proposals
 
 // Alias for backward compat — the orchestrator may pass either name.
 const resolveConfig = resolveLlmConfig;
@@ -89,7 +89,7 @@ export async function fitScoreOne(env, item, signal) {
     `Pain points we're good at: lead leaks, manual CRM workflows, disconnected tools, weak websites, ` +
     `missed calls, AI features (RAG, classification), regulated-data systems.`;
 
-  const sysPrompt = `You score business opportunities for fit against a capability statement.
+  const sysPrompt = `You are MehyarSoft's strict revenue operator. Score opportunities for realistic ability to win and collect cash, not keyword similarity.
 Return strict JSON only — no prose, no fences:
 {
   "fit_score": <integer 0-100>,
@@ -100,7 +100,14 @@ Return strict JSON only — no prose, no fences:
   "next_action": "draft_proposal" | "pass" | "ask_user" | "check_referral"
 }
 Score 0-100 based on: (a) NAICS alignment, (b) dollar value in target range, (c) capability overlap, ` +
-    `(d) ability to deliver without sub-contracting, (e) Set-aside fit for total-small / HUBZone.`;
+    `(d) ability to deliver without sub-contracting, (e) Set-aside fit for total-small / HUBZone, ` +
+    `(f) deadline runway, (g) whether this is services/build work vs license resale, and ` +
+    `(h) whether the buyer likely needs a prime contractor, past performance, clearance, or special certification.
+Hard rules:
+- Score license renewals, brand-name-only resale, hardware-only buys, and already-expired deadlines below 35 unless there is a clear services lane.
+- Score due-in-under-7-days below 50 unless the response can be a short capability email.
+- Prefer small custom software, automation, CRM, data, AI workflow, web app, integration, and systems-design work.
+- If the next action is not an obvious revenue-producing move, set next_action to "pass" or "check_referral".`;
 
   const userPrompt = `OPPORTUNITY (JSON):\n${JSON.stringify(item).slice(0, 3500)}\n\n` +
     `CAPABILITY STATEMENT:\n${capabilityStatement}\n\n` +
@@ -195,12 +202,13 @@ export async function draftOne(env, ctx, { kind = "cold" } = {}) {
     `Why fit: ${(ctx.why_fit || []).join("; ")}`,
   ].join("\n");
 
-  const sysPrompt = `You write SHORT, sharp B2B cold emails in MehyarSoft voice.
-Subject line + 3-sentence body + 1-line CTA. NO fluff, NO "I hope this finds you well",
-NO emojis. Reference the prospect's leak specifically in the FIRST sentence.
-You're a founder, not a sales rep. Sign as Mehyar, no last name. Include the
-one-click unsubscribe footer line ("Unsubscribe: https://mehyar.us/unsubscribe")
-as plain text on its own line. Plain text only.`;
+  const sysPrompt = `You are Mehyar Swelim, founder of MehyarSoft. Write revenue-focused outreach that is truthful, specific, and easy to reply to.
+Plain text only. No emojis, no fake familiarity, no unverifiable case studies, no exaggerated metrics, no "I hope this finds you well".
+First sentence must cite one observed business signal or solicitation fact. Keep the offer concrete:
+- Local business: free 5-minute Loom audit, then fixed-scope options only if useful ($250 diagnostic, $1.5k-$7.5k quick fix/sprint, $500-$3.5k/mo retainer).
+- Government/contract: capability teaser, fit rationale, one clear next step, no unsupported certifications.
+Do not ask for sensitive data. Include a simple opt-out footer: "Unsubscribe: https://mehyar.us/unsubscribe".
+Sign as "Mehyar".`;
 
   const userPrompt = `${kind === "proposal" ? "Draft a 4-paragraph capability statement / proposal teaser for:\n" : "Draft a 90-word cold outreach email for:\n"}\n${companySummary}\n\n` +
     `${kind === "proposal" ? "Audience: federal program officer reviewing capability statements." : "Audience: small business owner who has a leaky site and 30 seconds."}`;
