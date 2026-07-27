@@ -212,7 +212,7 @@
         },
         {
           "@type": "Question",
-          "name": "Why $330 instead of a free audit or a $5,000 proposal?",
+          "name": "Why $330 instead of unpaid advice or a $5,000 proposal?",
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "$330 is enough to do the diagnosis honestly without pressure. MehyarSoft avoids fake agency pitches and guaranteed revenue claims. If a small fix is enough, the audit tells you. If a larger scope is warranted, the audit explains why and what the next sprint would actually cost."
