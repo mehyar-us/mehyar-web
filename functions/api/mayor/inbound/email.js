@@ -44,10 +44,11 @@ async function bearerAccepted(request, env, body) {
   const url = new URL(request.url);
   const urlToken = url.searchParams.get("token");
   const expected = env?.INBOUND_EMAIL_TOKEN;
-  if (!expected) return false;
-  if (authHeader === `Bearer ${expected}`) return true;
-  if (urlToken && urlToken === expected) return true;
-  if (body && body.token && body.token === expected) return true;
+  if (expected) {
+    if (authHeader === `Bearer ${expected}`) return true;
+    if (urlToken && urlToken === expected) return true;
+    if (body && body.token && body.token === expected) return true;
+  }
   // Fallback to admin token (so the dashboard can simulate via the same endpoint)
   if (env?.GOV_INGEST_TOKEN) {
     if (authHeader === `Bearer ${env.GOV_INGEST_TOKEN}`) return true;
