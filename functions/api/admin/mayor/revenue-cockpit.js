@@ -148,7 +148,7 @@ export async function onRequestGet({ request, env }) {
              cta_text, value_usd, source, payload_json, created_at, updated_at
       FROM mayor_tasks
       WHERE kind = 'quote_followup'
-        AND status IN ('open','pending')
+        AND status IN ('open','pending','draft_queued')
       ORDER BY priority DESC, COALESCE(due_at, created_at) ASC
       LIMIT 50
     `),
@@ -281,13 +281,18 @@ export async function onRequestGet({ request, env }) {
       mark_paid_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
       followup_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/follow-up`,
       followup_task_id: followup?.id || "",
+      followup_task_status: followup?.status || "",
       followup_due_at: followup?.due_at || "",
       followup_cta: followup?.cta_text || "",
       followup_draft_id: followupDraftId,
+      followup_send_id: followupPayload?.followup_send_id || "",
+      followup_send_status: followupPayload?.followup_send_status || "",
       draft_followup_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/draft-follow-up`,
       review_draft_href: followupDraftId ? `/admin/money?focus=${encodeURIComponent(followupDraftId)}` : "",
       next_action: followup
-        ? followupDraftId ? "Follow-up draft is ready for owner review." : "Follow-up task is queued; draft the email for review."
+        ? followup?.status === "draft_queued"
+          ? "Follow-up email is queued; monitor payment/reply."
+          : followupDraftId ? "Follow-up draft is ready for owner review." : "Follow-up task is queued; draft the email for review."
         : q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.",
     };
   });

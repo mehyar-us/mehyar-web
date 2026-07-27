@@ -484,7 +484,10 @@ function RevenueCockpitCard({ token }: { token: string }) {
                     </div>
                     {quote.followup_task_id && (
                       <div className="mt-1 text-[10px] text-emerald-700 dark:text-emerald-300">
-                        {quote.followup_draft_id ? "follow-up draft ready" : "follow-up queued"}{quote.followup_due_at ? ` · ${fmtAgo(quote.followup_due_at) === "just now" ? "due now" : quote.followup_due_at.slice(0, 10)}` : ""}
+                        {quote.followup_task_status === "draft_queued"
+                          ? "follow-up email queued"
+                          : quote.followup_draft_id ? "follow-up draft ready" : "follow-up queued"}
+                        {quote.followup_due_at ? ` · ${fmtAgo(quote.followup_due_at) === "just now" ? "due now" : quote.followup_due_at.slice(0, 10)}` : ""}
                       </div>
                     )}
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -512,7 +515,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
                           Draft email
                         </Button>
                       )}
-                      {quote.review_draft_href && (
+                      {quote.review_draft_href && quote.followup_task_status !== "draft_queued" && (
                         <a href={quote.review_draft_href} className="inline-flex h-7 items-center rounded-md border border-zinc-200 dark:border-zinc-700 px-2 text-[10px] text-violet-700 dark:text-violet-300">
                           Review draft
                         </a>

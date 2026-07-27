@@ -63,6 +63,7 @@ export async function onRequestPost({ request, env, params }) {
     LIMIT 1
   `).bind(id).first().catch(() => null);
   if (existingSend) {
+    await markQuoteFollowupTaskQueued(db, draft, existingSend.id, existingSend.scheduled_for, existingSend.status);
     return json({
       ok: true,
       draft_id: id,
@@ -152,6 +153,8 @@ export async function onRequestPost({ request, env, params }) {
     ).run();
   } catch (_) {}
 
+  await markQuoteFollowupTaskQueued(db, draft, sendId, scheduledFor, "queued");
+
   // If sendNow=true, fire the send inline (best-effort)
   let inlineResult = null;
   if (sendNow) {
@@ -168,6 +171,40 @@ export async function onRequestPost({ request, env, params }) {
     send_now: sendNow,
     inline_send: inlineResult,
   }, 200, request, env);
+}
+
+async function markQuoteFollowupTaskQueued(db, draft, sendId, scheduledFor, sendStatus) {
+  const payload = safeJson(draft?.payload_json, {});
+  if (payload?.kind !== "quote_followup" || !payload?.task_id) return null;
+  const nextPayload = Object.assign({}, payload, {
+    followup_send_id: sendId,
+    followup_send_status: sendStatus || "queued",
+    followup_send_queued_at: new Date().toISOString(),
+    followup_send_scheduled_for: scheduledFor || null,
+  });
+  await db.prepare(`
+    UPDATE mayor_tasks
+    SET status = 'draft_queued',
+        completed_at = COALESCE(completed_at, datetime('now')),
+        updated_at = datetime('now'),
+        payload_json = ?
+    WHERE id = ?
+  `).bind(JSON.stringify(nextPayload).slice(0, 48000), payload.task_id).run().catch(() => null);
+
+  await db.prepare(`
+    INSERT INTO mayor_events (id, kind, loop, summary, details_json, created_at)
+    VALUES (?, 'revenue', 'quote_followup_queued', ?, ?, datetime('now'))
+  `).bind(
+    crypto.randomUUID(),
+    `Quote follow-up draft queued for send`,
+    JSON.stringify({ task_id: payload.task_id, draft_id: draft.id, send_id: sendId, quote_id: payload.quote_id, quote_number: payload.quote_number }).slice(0, 4000)
+  ).run().catch(() => null);
+  return nextPayload;
+}
+
+function safeJson(value, fallback = {}) {
+  if (!value) return fallback;
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 async function trySendNow(env, db, sendId, draft, prospect) {
