@@ -616,10 +616,15 @@ function RevenueCockpitCard({ token }: { token: string }) {
                       <div className="min-w-0">
                         <div className="text-xs font-semibold truncate">#{quote.quote_number} {quote.client_name}</div>
                         <div className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                          ${Number(quote.total_usd || 0).toLocaleString()} · {quote.status}{quote.stale ? " · stale" : ""}
+                          ${Number(quote.total_usd || 0).toLocaleString()} · {quote.status} · {quote.due_label || (quote.stale ? "stale" : "open")}
                         </div>
                       </div>
-                      <a href={quote.view_url} target="_blank" rel="noreferrer" className="text-[10px] text-violet-700 dark:text-violet-300 underline shrink-0">view</a>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Badge className={quote.collection_blocker ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}>
+                          {collectionStateLabel(quote.collection_state)}
+                        </Badge>
+                        <a href={quote.view_url} target="_blank" rel="noreferrer" className="text-[10px] text-violet-700 dark:text-violet-300 underline">view</a>
+                      </div>
                     </div>
                     {quote.next_action && (
                       <div className="mt-1 text-[10px] text-zinc-600 dark:text-zinc-300">{quote.next_action}</div>
@@ -645,10 +650,10 @@ function RevenueCockpitCard({ token }: { token: string }) {
                           Follow up
                         </Button>
                       )}
-                      {quote.followup_task_id && !quote.followup_draft_id && (
+                      {!quote.followup_draft_id && (
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant={quote.collection_blocker ? "cta" : "outline"}
                           disabled={followupDraftBusy === quote.id}
                           onClick={() => draftQuoteFollowup(quote)}
                           className="h-7 px-2 text-[10px]"
@@ -707,7 +712,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
                   <Mini label="EV" value={`$${Number(cleanup.real_expected_value_usd || 0).toLocaleString()}`} />
                   <Mini label="Next actions" value={cleanup.next_action_count || 0} />
                   <Mini label="Stale" value={cleanup.stale_pipeline_count || 0} />
-                  <Mini label="Quotes" value={cleanup.stale_quote_count || 0} />
+                  <Mini label="Blocked" value={cleanup.blocked_collection_count || 0} />
                 </div>
                 <ul className="space-y-1 text-[10px] text-zinc-600 dark:text-zinc-300 list-disc pl-4">
                   {(cleanup.cleanup_actions || []).slice(0, 4).map((x: string, i: number) => <li key={i}>{x}</li>)}
@@ -795,6 +800,19 @@ function ScoreFactor({ label, value }: { label: string; value: any }) {
       <div className="text-[10px] font-bold tabular-nums text-zinc-800 dark:text-zinc-100 truncate">{value}</div>
     </div>
   );
+}
+
+function collectionStateLabel(state: string | undefined) {
+  const labels: Record<string, string> = {
+    followup_queued: "queued",
+    draft_ready: "draft ready",
+    overdue_invoice_no_draft: "overdue",
+    invoice_no_draft: "invoice",
+    stale_quote_no_draft: "stale",
+    task_waiting_draft: "needs draft",
+    open_quote: "quote",
+  };
+  return labels[String(state || "")] || "open";
 }
 
 function Mini({ label, value }: any) {

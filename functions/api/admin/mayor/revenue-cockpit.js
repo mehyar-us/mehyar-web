@@ -258,6 +258,8 @@ export async function onRequestGet({ request, env }) {
     const followup = quoteTaskBySource.get(`quote:${q.id}`);
     const followupPayload = safeJson(followup?.payload_json, {});
     const followupDraftId = followupPayload?.followup_draft_id || "";
+    const due = dueStatus(q.due_date);
+    const collection = quoteCollectionState(q, followup, followupDraftId, due);
     return {
       id: q.id,
       quote_number: q.quote_number,
@@ -266,7 +268,13 @@ export async function onRequestGet({ request, env }) {
       total_usd: Number(q.total_usd || 0),
       status: q.status,
       due_date: q.due_date,
-      stale: q.due_date ? new Date(q.due_date).getTime() < Date.now() : false,
+      days_overdue: due.days_overdue,
+      days_until_due: due.days_until_due,
+      due_label: due.label,
+      stale: due.days_overdue > 0,
+      collection_state: collection.state,
+      collection_priority: collection.priority,
+      collection_blocker: collection.blocker,
       view_url: `/q/${q.public_slug}`,
       mark_invoice_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
       mark_paid_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
@@ -280,11 +288,7 @@ export async function onRequestGet({ request, env }) {
       followup_send_status: followupPayload?.followup_send_status || "",
       draft_followup_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/draft-follow-up`,
       review_draft_href: followupDraftId ? `/admin/money?focus=${encodeURIComponent(followupDraftId)}` : "",
-      next_action: followup
-        ? followup?.status === "draft_queued"
-          ? "Manual invoice follow-up is queued; monitor replies and cleared funds."
-          : followupDraftId ? "Review the manual invoice follow-up draft." : "Follow-up task is queued; draft the manual invoice email."
-        : q.status === "invoice" ? "Send a manual invoice follow-up; mark paid after ACH/check/wire clears." : "Convert to invoice or send a manual quote follow-up.",
+      next_action: collection.next_action,
     };
   });
   const govBidNoBid = samRows.map(bidNoBidForSam);
@@ -548,7 +552,8 @@ function actionFromSam(r) {
 
 function actionFromQuote(q, followup) {
   const total = Number(q.total_usd || 0);
-  const stale = q.due_date ? new Date(q.due_date).getTime() < Date.now() : false;
+  const due = dueStatus(q.due_date);
+  const stale = due.days_overdue > 0;
   const invoice = q.status === "invoice";
   const followupPayload = safeJson(followup?.payload_json, {});
   const followupDraftId = followupPayload?.followup_draft_id || "";
@@ -575,7 +580,7 @@ function actionFromQuote(q, followup) {
     kind: "quote",
     action_type: actionType,
     title: `${invoice ? "Collect manual invoice" : "Close quote"}: #${q.quote_number} ${q.client_name || ""}`.trim(),
-    subtitle: `$${total.toLocaleString()}${q.due_date ? ` · ${stale ? "overdue" : "due"} ${q.due_date}` : ""}`,
+    subtitle: `$${total.toLocaleString()}${q.due_date ? ` · ${due.label}` : ""}`,
     why: "Open quotes and invoices are the closest money in the system; manual collection beats scanning colder leads.",
     next_step: nextStep,
     href: `/admin/money`,
@@ -698,6 +703,7 @@ function buildDeliverabilityPanel(sendRows, replyRows, dueCount) {
 function buildMoneyCleanup(summary, actions, drafts, deliverability, quotes = []) {
   const staleActions = actions.filter((a) => a.priority_score < 55).length;
   const staleQuotes = quotes.filter((q) => q.stale).length;
+  const blockedCollections = quotes.filter((q) => q.collection_blocker).length;
   return {
     expected_value_method: "expected_value_usd * close_probability from ranked next actions",
     real_expected_value_usd: summary.weighted_next_actions_usd,
@@ -705,6 +711,7 @@ function buildMoneyCleanup(summary, actions, drafts, deliverability, quotes = []
     next_action_count: actions.length,
     stale_pipeline_count: staleActions,
     stale_quote_count: staleQuotes,
+    blocked_collection_count: blockedCollections,
     draft_review_count: drafts.length,
     deliverability_state: deliverability.domain_health,
     cleanup_actions: [
@@ -713,7 +720,67 @@ function buildMoneyCleanup(summary, actions, drafts, deliverability, quotes = []
       "Mark paid quotes immediately so booked revenue reflects cash, not optimism.",
       "Review or reject old drafts so the queue reflects real money.",
       "Create quotes for warm prospects so pipeline value stops being placeholder math.",
+      "Draft a manual invoice follow-up for every open invoice before scanning colder leads.",
     ],
+  };
+}
+
+function dueStatus(dueDate) {
+  if (!dueDate) return { days_overdue: 0, days_until_due: null, label: "no due date" };
+  const dueMs = new Date(`${String(dueDate).slice(0, 10)}T00:00:00Z`).getTime();
+  if (!Number.isFinite(dueMs)) return { days_overdue: 0, days_until_due: null, label: "bad due date" };
+  const now = new Date();
+  const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const days = Math.floor((dueMs - todayMs) / 86400000);
+  if (days < 0) return { days_overdue: Math.abs(days), days_until_due: 0, label: `${Math.abs(days)}d overdue` };
+  if (days === 0) return { days_overdue: 0, days_until_due: 0, label: "due today" };
+  return { days_overdue: 0, days_until_due: days, label: `due in ${days}d` };
+}
+
+function quoteCollectionState(q, followup, followupDraftId, due) {
+  const invoice = q.status === "invoice";
+  const draftQueued = followup?.status === "draft_queued";
+  if (draftQueued) {
+    return {
+      state: "followup_queued",
+      priority: invoice ? 85 : 70,
+      blocker: "",
+      next_action: "Manual follow-up is queued; monitor replies and cleared funds.",
+    };
+  }
+  if (followupDraftId) {
+    return {
+      state: "draft_ready",
+      priority: invoice ? 95 : 82,
+      blocker: "draft_waiting_review",
+      next_action: invoice
+        ? "Review/send the manual invoice follow-up draft, then mark paid only after ACH/check/wire clears."
+        : "Review/send the quote follow-up draft and ask for a yes/no decision.",
+    };
+  }
+  if (invoice) {
+    return {
+      state: due.days_overdue > 0 ? "overdue_invoice_no_draft" : "invoice_no_draft",
+      priority: due.days_overdue > 0 ? 100 : 96,
+      blocker: "manual_invoice_followup_missing",
+      next_action: "Draft a manual invoice follow-up now; ask whether ACH/wire or check is preferred.",
+    };
+  }
+  if (due.days_overdue > 0) {
+    return {
+      state: "stale_quote_no_draft",
+      priority: 90,
+      blocker: "quote_followup_missing",
+      next_action: "Draft a quote follow-up now; ask whether this is still a priority or should be closed.",
+    };
+  }
+  return {
+    state: followup ? "task_waiting_draft" : "open_quote",
+    priority: followup ? 78 : 70,
+    blocker: followup ? "followup_draft_missing" : "",
+    next_action: followup
+      ? "Follow-up task is queued; draft the manual quote email."
+      : "Convert to invoice after acceptance, or draft a manual quote follow-up.",
   };
 }
 
