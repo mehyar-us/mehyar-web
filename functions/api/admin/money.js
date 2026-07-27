@@ -86,9 +86,56 @@ export async function onRequestGet({ request, env }) {
       WHERE COALESCE(needs_action, 1) = 1
     `).first().catch(() => ({ n: 0 }));
 
+    const quoteRows = await env.LEADS_DB.prepare(`
+      SELECT id, quote_number, client_name, client_email, total_usd, status,
+             public_slug, created_at, updated_at,
+             date(created_at, '+' || COALESCE(due_days, 15) || ' days') AS due_date
+      FROM quotes
+      WHERE status IN ('quote','invoice')
+      ORDER BY
+        CASE WHEN status = 'invoice' THEN 0 ELSE 1 END,
+        CASE WHEN date(created_at, '+' || COALESCE(due_days, 15) || ' days') < date('now') THEN 0 ELSE 1 END,
+        total_usd DESC,
+        created_at ASC
+      LIMIT 25
+    `).all().catch(() => ({ results: [] }));
+    const quoteFollowups = await env.LEADS_DB.prepare(`
+      SELECT id, status, due_at, source, payload_json
+      FROM mayor_tasks
+      WHERE kind = 'quote_followup'
+        AND status IN ('open','pending','draft_queued')
+      ORDER BY updated_at DESC
+      LIMIT 100
+    `).all().catch(() => ({ results: [] }));
+    const followupBySource = new Map((quoteFollowups.results || []).map((t) => [String(t.source || ""), t]));
+    const collectionItems = (quoteRows.results || []).map((q) => collectionItem(q, followupBySource.get(`quote:${q.id}`)));
+    const openInvoiceValue = collectionItems
+      .filter((q) => q.status === "invoice")
+      .reduce((sum, q) => sum + Number(q.total_usd || 0), 0);
+    const overdueInvoiceValue = collectionItems
+      .filter((q) => q.status === "invoice" && q.days_overdue > 0)
+      .reduce((sum, q) => sum + Number(q.total_usd || 0), 0);
+    const openQuoteValue = collectionItems
+      .filter((q) => q.status === "quote")
+      .reduce((sum, q) => sum + Number(q.total_usd || 0), 0);
+    const manualCollections = {
+      summary: {
+        open_invoice_value_usd: openInvoiceValue,
+        overdue_invoice_value_usd: overdueInvoiceValue,
+        open_quote_value_usd: openQuoteValue,
+        open_invoice_count: collectionItems.filter((q) => q.status === "invoice").length,
+        overdue_invoice_count: collectionItems.filter((q) => q.status === "invoice" && q.days_overdue > 0).length,
+        open_quote_count: collectionItems.filter((q) => q.status === "quote").length,
+        expected_collection_value_usd: Math.round(
+          collectionItems.reduce((sum, q) => sum + Number(q.total_usd || 0) * (q.status === "invoice" ? 0.65 : 0.50), 0)
+        ),
+      },
+      items: collectionItems.slice(0, 12),
+    };
+
     const kpis = {
-      pipeline_value,
-      weighted_forecast: Math.round(weighted_forecast),
+      pipeline_value: pipeline_value + openInvoiceValue + openQuoteValue,
+      weighted_forecast: Math.round(weighted_forecast + manualCollections.summary.expected_collection_value_usd),
       won_value_30d: wonValue30d,
       win_rate_30d: winRate,
       avg_deal_size: Math.round(avgDeal),
@@ -147,6 +194,7 @@ export async function onRequestGet({ request, env }) {
     return json({
       ok: true,
       kpis, funnel, open,
+      manual_collections: manualCollections,
       recent_won, recent_lost,
       case_studies: cs.results || [],
       updatedAt: new Date().toISOString(),
@@ -172,4 +220,41 @@ function prospectEstimatedValue(p) {
   if (leak >= 75) return 7500;
   if (leak >= 45) return 2500;
   return 1500;
+}
+
+function collectionItem(q, followup) {
+  const dueDate = q.due_date || null;
+  const dueMs = dueDate ? new Date(`${dueDate}T00:00:00Z`).getTime() : NaN;
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const daysOverdue = Number.isFinite(dueMs) ? Math.max(0, Math.floor((todayUtc - dueMs) / 86400000)) : 0;
+  const payload = safeJson(followup?.payload_json, {});
+  const draftId = payload?.followup_draft_id || "";
+  return {
+    id: q.id,
+    quote_number: q.quote_number,
+    client_name: q.client_name,
+    client_email: q.client_email,
+    total_usd: Number(q.total_usd || 0),
+    status: q.status,
+    due_date: dueDate,
+    days_overdue: daysOverdue,
+    public_slug: q.public_slug,
+    view_url: `/q/${q.public_slug}`,
+    followup_task_id: followup?.id || "",
+    followup_task_status: followup?.status || "",
+    followup_due_at: followup?.due_at || "",
+    followup_draft_id: draftId,
+    review_draft_href: draftId ? `/admin/money?focus=${encodeURIComponent(draftId)}` : "",
+    next_action: q.status === "invoice"
+      ? draftId
+        ? "Review/send manual invoice follow-up."
+        : "Draft manual invoice follow-up; ask for ACH/wire or check."
+      : "Convert to invoice after acceptance, or follow up for a yes/no decision.",
+  };
+}
+
+function safeJson(value, fallback = {}) {
+  if (!value) return fallback;
+  try { return JSON.parse(value); } catch { return fallback; }
 }

@@ -65,6 +65,7 @@ function MoneyView({ token }: { token: string }) {
       {q.data && (
         <>
           <ForecastStrip kpis={q.data.kpis || {}} />
+          <ManualCollections collections={q.data.manual_collections || {}} />
           <Funnel data={q.data.funnel || []} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
             <ActiveDealsBoard deals={q.data.open || []} token={token} onUpdate={refresh} />
@@ -113,6 +114,64 @@ function ForecastStrip({ kpis }: any) {
         </Card>
       ))}
     </div>
+  );
+}
+
+// ── Manual invoice collections ─────────────────────────────────────────
+function ManualCollections({ collections }: any) {
+  const summary = collections?.summary || {};
+  const items = Array.isArray(collections?.items) ? collections.items : [];
+  const cells = [
+    { label: "Open invoices", value: summary.open_invoice_value_usd, count: summary.open_invoice_count, tone: "text-emerald-700 dark:text-emerald-400" },
+    { label: "Overdue invoices", value: summary.overdue_invoice_value_usd, count: summary.overdue_invoice_count, tone: "text-red-700 dark:text-red-400" },
+    { label: "Open quotes", value: summary.open_quote_value_usd, count: summary.open_quote_count, tone: "text-violet-700 dark:text-violet-400" },
+    { label: "Expected collection", value: summary.expected_collection_value_usd, count: null, tone: "text-orange-700 dark:text-orange-400" },
+  ];
+  return (
+    <Card className="mt-4 border-emerald-200 dark:border-emerald-800">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2"><DollarSign className="w-4 h-4" /> Manual collections</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Invoices and quotes that can turn into ACH, wire, check, or cash. Mark paid only after funds clear.</p>
+          </div>
+          <a href="/admin/mayor" className="text-xs text-violet-700 dark:text-violet-300 underline">open Mayor actions</a>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+          {cells.map((c) => (
+            <div key={c.label} className="rounded border border-zinc-200 dark:border-zinc-700 p-3">
+              <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{c.label}</div>
+              <div className={`text-lg font-bold ${c.tone}`}>${Number(c.value || 0).toLocaleString()}</div>
+              {c.count !== null && <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{Number(c.count || 0)} item{Number(c.count || 0) === 1 ? "" : "s"}</div>}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 space-y-1.5">
+          {!items.length && (
+            <div className="rounded border border-zinc-200 dark:border-zinc-700 p-3 text-sm text-zinc-500 dark:text-zinc-400">
+              No open manual invoices or quotes need collection right now.
+            </div>
+          )}
+          {items.slice(0, 6).map((it: any) => (
+            <div key={it.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">#{it.quote_number} {it.client_name}</div>
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                    ${Number(it.total_usd || 0).toLocaleString()} · {it.status}{it.days_overdue ? ` · ${it.days_overdue}d overdue` : it.due_date ? ` · due ${it.due_date}` : ""}
+                  </div>
+                  <div className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">{it.next_action}</div>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <a href={it.view_url} target="_blank" rel="noreferrer" className="text-xs text-violet-700 dark:text-violet-300 underline">view</a>
+                  {it.review_draft_href && <a href={it.review_draft_href} className="text-xs text-emerald-700 dark:text-emerald-300 underline">review draft</a>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
