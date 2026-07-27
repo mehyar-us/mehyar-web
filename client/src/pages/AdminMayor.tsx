@@ -272,13 +272,39 @@ function RevenueCockpitCard({ token }: { token: string }) {
 
   const updateQuoteStatus = async (quote: any, status: string) => {
     if (!quote?.id) return;
-    if (status === "paid" && !confirm(`Mark Quote #${quote.quote_number} paid for $${Number(quote.total_usd || 0).toLocaleString()}?`)) return;
+    let remittancePayload: Record<string, string | number | null> = {};
+    if (status === "paid") {
+      const total = Number(quote.total_usd || 0);
+      if (!confirm(`Mark Quote #${quote.quote_number} paid for $${total.toLocaleString()}? Only do this after ACH/wire/check/cash has cleared.`)) return;
+      const method = prompt("Payment method: ach, wire, check, cash, or other", "ach");
+      if (method == null) return;
+      const normalizedMethod = method.trim().toLowerCase();
+      if (!["ach", "wire", "check", "cash", "other"].includes(normalizedMethod)) {
+        alert("Use one of: ach, wire, check, cash, other.");
+        return;
+      }
+      const amountText = prompt("Amount received USD", String(total || ""));
+      if (amountText == null) return;
+      const amount = Number(amountText);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        alert("Enter a valid amount received.");
+        return;
+      }
+      const reference = prompt("Reference/check number/last 4 (optional)", "") || "";
+      const notes = prompt("Payment notes (optional)", "") || "";
+      remittancePayload = {
+        payment_method: normalizedMethod,
+        paid_amount_usd: amount,
+        payment_reference: reference.trim() || null,
+        payment_notes: notes.trim() || null,
+      };
+    }
     setQuoteStatusBusy(`${quote.id}:${status}`);
     try {
       const r = await fetch(`/api/admin/quotes/${encodeURIComponent(quote.id)}/status`, {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...remittancePayload }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);

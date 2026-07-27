@@ -6,6 +6,7 @@
 import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
 
 const VALID = new Set(["quote", "invoice", "paid", "void"]);
+const PAYMENT_METHODS = new Set(["ach", "wire", "check", "cash", "other"]);
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -23,6 +24,8 @@ export async function onRequestPost({ request, env, params }) {
   try { body = await request.json(); } catch {}
   const status = String(body?.status || "").toLowerCase();
   if (!VALID.has(status)) return json({ ok: false, error: "bad_status", accepted: [...VALID] }, 400, request, env);
+  const remittance = status === "paid" ? normalizeRemittance(body) : null;
+  if (remittance?.error) return json({ ok: false, error: remittance.error, accepted_methods: [...PAYMENT_METHODS] }, 400, request, env);
 
   await ensureSchemas(env);
   const db = env.LEADS_DB;
@@ -42,14 +45,21 @@ export async function onRequestPost({ request, env, params }) {
   const previous = quote.status;
   const paidAtSql = status === "paid" ? "paid_at = COALESCE(paid_at, datetime('now'))," : "";
   const voidedAtSql = status === "void" ? "voided_at = COALESCE(voided_at, datetime('now'))," : "";
+  const paidRemittanceSql = status === "paid"
+    ? "paid_method = ?, paid_reference = ?, paid_notes = ?, paid_amount_usd = ?,"
+    : "";
+  const paidRemittanceBind = status === "paid"
+    ? [remittance.method, remittance.reference, remittance.notes, remittance.amount_usd]
+    : [];
   await db.prepare(`
     UPDATE quotes
     SET status = ?,
         ${paidAtSql}
         ${voidedAtSql}
+        ${paidRemittanceSql}
         updated_at = datetime('now')
     WHERE id = ?
-  `).bind(status, quote.id).run();
+  `).bind(status, ...paidRemittanceBind, quote.id).run();
 
   let decision = null;
   if (status === "paid") {
@@ -64,7 +74,7 @@ export async function onRequestPost({ request, env, params }) {
     quote.lead_kind === "sam" ? "sam" : "prospect",
     quote.lead_kind === "prospect" ? quote.lead_id : null,
     quote.lead_kind === "sam" ? quote.lead_id : null,
-    JSON.stringify({ quote_id: quote.id, quote_number: quote.quote_number, from: previous, to: status, decision }).slice(0, 4000)
+    JSON.stringify({ quote_id: quote.id, quote_number: quote.quote_number, from: previous, to: status, decision, remittance }).slice(0, 4000)
   ).run().catch(() => null);
 
   await db.prepare(`
@@ -72,8 +82,10 @@ export async function onRequestPost({ request, env, params }) {
     VALUES (?, 'revenue', 'quote_status', ?, ?, datetime('now'))
   `).bind(
     crypto.randomUUID(),
-    `Quote #${quote.quote_number} marked ${status}: ${quote.client_name} ($${Number(quote.total_usd || 0).toLocaleString()})`,
-    JSON.stringify({ quote_id: quote.id, quote_number: quote.quote_number, status, previous, decision }).slice(0, 4000)
+    status === "paid"
+      ? `Quote #${quote.quote_number} marked paid via ${remittance.method}: ${quote.client_name} ($${Number(remittance.amount_usd || quote.total_usd || 0).toLocaleString()})`
+      : `Quote #${quote.quote_number} marked ${status}: ${quote.client_name} ($${Number(quote.total_usd || 0).toLocaleString()})`,
+    JSON.stringify({ quote_id: quote.id, quote_number: quote.quote_number, status, previous, decision, remittance }).slice(0, 4000)
   ).run().catch(() => null);
 
   return json({
@@ -83,8 +95,24 @@ export async function onRequestPost({ request, env, params }) {
     previous_status: previous,
     status,
     total_usd: Number(quote.total_usd || 0),
+    remittance,
     decision,
   }, 200, request, env);
+}
+
+function normalizeRemittance(body) {
+  const method = String(body?.payment_method || body?.paid_method || "").trim().toLowerCase();
+  if (!PAYMENT_METHODS.has(method)) return { error: "bad_payment_method" };
+  const amount = body?.paid_amount_usd === undefined || body?.paid_amount_usd === null || body?.paid_amount_usd === ""
+    ? null
+    : Number(body.paid_amount_usd);
+  if (amount !== null && (!Number.isFinite(amount) || amount <= 0)) return { error: "bad_paid_amount" };
+  return {
+    method,
+    reference: String(body?.payment_reference || body?.paid_reference || "").trim().slice(0, 200) || null,
+    notes: String(body?.payment_notes || body?.paid_notes || "").trim().slice(0, 1200) || null,
+    amount_usd: amount === null ? null : Math.round(amount * 100) / 100,
+  };
 }
 
 async function markLinkedLeadWon(db, quote) {
@@ -161,4 +189,8 @@ async function ensureSchemas(env) {
   await env.LEADS_DB.prepare(`ALTER TABLE opportunity_decisions ADD COLUMN outcome TEXT`).run().catch(() => null);
   await env.LEADS_DB.prepare(`ALTER TABLE opportunity_decisions ADD COLUMN value_usd REAL NOT NULL DEFAULT 0`).run().catch(() => null);
   await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN voided_at TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN paid_method TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN paid_reference TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN paid_notes TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN paid_amount_usd REAL`).run().catch(() => null);
 }

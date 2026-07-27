@@ -321,7 +321,7 @@ function QuoteGenerator({ token, onCreated }: { token: string; onCreated: (msg: 
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              💡 Quote generates a hosted public URL you can send to the client. Set status=invoice later when payment is received.
+              💡 Quote generates a hosted public URL. Mark invoice when scope is accepted, then mark paid only after ACH/wire/check/cash clears.
             </p>
           </div>
         )}
