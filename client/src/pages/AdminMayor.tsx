@@ -196,6 +196,7 @@ function PipelineAuditCard({ token }: { token: string }) {
 
 function RevenueCockpitCard({ token }: { token: string }) {
   const [bookingBusy, setBookingBusy] = useState("");
+  const [quoteBusy, setQuoteBusy] = useState("");
   const q = useQuery({
     queryKey: ["admin-revenue-cockpit", token],
     queryFn: async () => {
@@ -234,6 +235,34 @@ function RevenueCockpitCard({ token }: { token: string }) {
       alert(`Booking task failed: ${String((error as Error)?.message || error)}`);
     } finally {
       setBookingBusy("");
+    }
+  };
+
+  const quoteBookingTask = async (task: any) => {
+    if (!task?.task_id) return;
+    const defaultValue = Number(task.value_usd || 7500);
+    const priceText = prompt("Quote value USD", String(defaultValue));
+    if (priceText == null) return;
+    const price = Number(priceText);
+    if (!Number.isFinite(price) || price <= 0) {
+      alert("Enter a valid quote value.");
+      return;
+    }
+    setQuoteBusy(task.task_id);
+    try {
+      const r = await fetch(`/api/admin/mayor/tasks/${encodeURIComponent(task.task_id)}/quote`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ price_usd: price, due_days: 15 }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+      if (j.view_url) window.open(j.view_url, "_blank");
+    } catch (error) {
+      alert(`Quote failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setQuoteBusy("");
     }
   };
 
@@ -290,7 +319,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
                     <div className="flex items-start justify-between gap-2">
                       <div className="text-xs font-semibold">{b.title}</div>
                       <Badge className={b.status === "needs_task" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}>
-                        {b.status === "needs_task" ? "needs task" : "task"}
+                        {b.status === "needs_task" ? "needs task" : b.status === "quoted" ? "quoted" : "task"}
                       </Badge>
                     </div>
                     <div className="text-[10px] text-zinc-600 dark:text-zinc-300 mt-0.5">{b.meeting_cta}</div>
@@ -304,6 +333,18 @@ function RevenueCockpitCard({ token }: { token: string }) {
                       >
                         {bookingBusy === b.reply_id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Calendar className="w-3 h-3 mr-1" />}
                         Create booking task
+                      </Button>
+                    )}
+                    {b.task_id && b.status !== "quoted" && (
+                      <Button
+                        size="sm"
+                        variant="cta"
+                        disabled={quoteBusy === b.task_id}
+                        onClick={() => quoteBookingTask(b)}
+                        className="mt-2 h-7 px-2 text-[10px]"
+                      >
+                        {quoteBusy === b.task_id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <DollarSign className="w-3 h-3 mr-1" />}
+                        Generate quote
                       </Button>
                     )}
                   </div>

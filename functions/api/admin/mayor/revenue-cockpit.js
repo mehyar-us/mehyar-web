@@ -124,7 +124,7 @@ export async function onRequestGet({ request, env }) {
       SELECT id, kind, prospect_id, reply_id, title, status, priority, due_at,
              cta_text, value_usd, source, created_at, updated_at
       FROM mayor_tasks
-      WHERE status IN ('open','pending')
+      WHERE status IN ('open','pending','quoted')
         AND kind = 'booking'
       ORDER BY priority DESC, COALESCE(due_at, created_at) ASC
       LIMIT 20
@@ -220,6 +220,7 @@ export async function onRequestGet({ request, env }) {
       status: t.status,
       value_usd: Number(t.value_usd || 0) || 7500,
       source: t.source || "task",
+      quote_button_href: t.status === "quoted" ? "" : `/api/admin/mayor/tasks/${encodeURIComponent(t.id)}/quote`,
     })),
     ...replyRows
     .filter((r) => ["interest", "warm"].includes(String(r.classification || "").toLowerCase()))
