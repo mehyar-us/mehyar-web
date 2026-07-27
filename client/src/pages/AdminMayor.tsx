@@ -466,12 +466,9 @@ function RevenueCockpitCard({ token }: { token: string }) {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
               <Panel title="Revenue scores" href="/admin/leads">
                 {scores.slice(0, 6).map((x) => (
-                  <div key={`${x.kind}:${x.id}`} className="flex items-center gap-2 text-xs border-b border-zinc-100 dark:border-zinc-800 last:border-0 py-1.5">
-                    <span className="font-mono text-emerald-700 dark:text-emerald-300 w-8">{x.revenue_score}</span>
-                    <span className="truncate flex-1">{x.title}</span>
-                    <span className="text-[10px] text-zinc-500">${Number(x.value_usd || 0).toLocaleString()}</span>
-                  </div>
+                  <LeadScoreRow key={`${x.kind}:${x.id}`} score={x} />
                 ))}
+                {scores.length === 0 && <EmptyLine text="No scored leads yet." />}
               </Panel>
               <Panel title="Offer selector">
                 {offers.map((o) => (
@@ -667,6 +664,42 @@ function ActionLine({ item }: any) {
       </div>
       <div className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">{item.next_step}</div>
     </a>
+  );
+}
+
+function LeadScoreRow({ score }: { score: any }) {
+  const winPct = Number.isFinite(Number(score.win_probability_pct))
+    ? Number(score.win_probability_pct)
+    : Math.round(Number(score.win_probability || 0) * 1000) / 10;
+  const expectedValue = Number(score.expected_value_usd || 0);
+  return (
+    <a href={score.href || "/admin/leads"} className="block rounded border border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 dark:hover:border-emerald-600 p-2 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-emerald-700 dark:text-emerald-300 w-8 text-xs">{score.revenue_score}</span>
+        <span className="truncate flex-1 text-xs font-semibold">{score.title}</span>
+        <span className="text-[10px] text-zinc-500 dark:text-zinc-400">{score.kind}</span>
+      </div>
+      <div className="grid grid-cols-3 gap-1">
+        <ScoreFactor label="Fit" value={score.fit ?? 0} />
+        <ScoreFactor label="Urgency" value={score.urgency ?? 0} />
+        <ScoreFactor label="Deliver" value={score.deliverability ?? 0} />
+        <ScoreFactor label="Win" value={`${winPct}%`} />
+        <ScoreFactor label="Value" value={`$${Number(score.value_usd || 0).toLocaleString()}`} />
+        <ScoreFactor label="EV" value={`$${expectedValue.toLocaleString()}`} />
+      </div>
+      {score.next_action && (
+        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-1">{score.next_action}</div>
+      )}
+    </a>
+  );
+}
+
+function ScoreFactor({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="rounded bg-zinc-50 dark:bg-zinc-800/50 px-1.5 py-1">
+      <div className="text-[8px] uppercase text-zinc-500 dark:text-zinc-400 leading-none">{label}</div>
+      <div className="text-[10px] font-bold tabular-nums text-zinc-800 dark:text-zinc-100 truncate">{value}</div>
+    </div>
   );
 }
 

@@ -462,6 +462,7 @@ function scoreProspectLead(r) {
   const deliverability = r.email && !String(r.email).includes("example.com") ? 85 : 0;
   const value = Number(r.leak_score || 0) >= 70 ? 7500 : 2500;
   const winProbability = Math.round(((fit * 0.35 + urgency * 0.2 + deliverability * 0.25 + 60 * 0.2) / 100) * 12) / 100;
+  const expectedValue = Math.round(value * winProbability);
   return {
     id: r.id,
     kind: "prospect",
@@ -471,9 +472,19 @@ function scoreProspectLead(r) {
     value_usd: value,
     deliverability,
     win_probability: winProbability,
+    win_probability_pct: Math.round(winProbability * 1000) / 10,
+    expected_value_usd: expectedValue,
     revenue_score: Math.round((fit * 0.35) + (urgency * 0.2) + (deliverability * 0.2) + (value / 250)),
     next_action: Number(r.leak_score || 0) >= 60 ? "Generate/review offer email" : "Rescan/enrich before outreach",
     href: `/admin/leads?kind=prospect&focus=${encodeURIComponent(r.id)}`,
+    score_factors: {
+      fit,
+      urgency,
+      deliverability,
+      win_probability_pct: Math.round(winProbability * 1000) / 10,
+      value_usd: value,
+      expected_value_usd: expectedValue,
+    },
   };
 }
 
@@ -485,6 +496,7 @@ function scoreSamLead(r) {
   const value = Number(r.estimated_value || 0) || (licenseLike ? 1500 : 15000);
   const deliverability = licenseLike ? 35 : 70;
   const winProbability = licenseLike ? 0.02 : fit >= 75 ? 0.08 : 0.04;
+  const expectedValue = Math.round(value * winProbability);
   return {
     id: r.id,
     kind: "sam",
@@ -494,9 +506,19 @@ function scoreSamLead(r) {
     value_usd: value,
     deliverability,
     win_probability: winProbability,
+    win_probability_pct: Math.round(winProbability * 1000) / 10,
+    expected_value_usd: expectedValue,
     revenue_score: Math.round((fit * 0.45) + (urgency * 0.2) + (deliverability * 0.15) + Math.min(30, value / 1000)),
     next_action: licenseLike ? "Bid/no-bid gate: likely pass unless services angle exists" : "Verify requirements and draft capability response",
     href: `/admin/leads?kind=sam&focus=${encodeURIComponent(r.id)}`,
+    score_factors: {
+      fit,
+      urgency,
+      deliverability,
+      win_probability_pct: Math.round(winProbability * 1000) / 10,
+      value_usd: value,
+      expected_value_usd: expectedValue,
+    },
   };
 }
 
