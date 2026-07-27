@@ -161,4 +161,8 @@ async function ensureSchemas(env) {
   await env.LEADS_DB.prepare(`ALTER TABLE opportunity_decisions ADD COLUMN outcome TEXT`).run().catch(() => null);
   await env.LEADS_DB.prepare(`ALTER TABLE opportunity_decisions ADD COLUMN value_usd REAL NOT NULL DEFAULT 0`).run().catch(() => null);
   await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN voided_at TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_instructions TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN deposit_usd REAL`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url_updated_at TEXT`).run().catch(() => null);
 }

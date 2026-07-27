@@ -23,6 +23,7 @@ export async function onRequestGet({ request, env }) {
   const limit = clampNumber(url.searchParams.get("limit"), 5, 50, 12);
   const db = env.LEADS_DB;
   await ensureMayorTasksSchema(env);
+  await ensureQuotePaymentSchema(env);
 
   const [
     quoteSummary,
@@ -134,6 +135,7 @@ export async function onRequestGet({ request, env }) {
     all(db, `
       SELECT id, quote_number, client_name, client_email, total_usd, status,
              lead_id, lead_kind, public_slug, created_at, updated_at, paid_at,
+             payment_url, payment_instructions, deposit_usd, payment_url_updated_at,
              date(created_at, '+' || COALESCE(due_days, 15) || ' days') AS due_date
       FROM quotes
       WHERE status IN ('quote','invoice')
@@ -277,6 +279,12 @@ export async function onRequestGet({ request, env }) {
       due_date: q.due_date,
       stale: q.due_date ? new Date(q.due_date).getTime() < Date.now() : false,
       view_url: `/q/${q.public_slug}`,
+      has_payment_url: Boolean(q.payment_url),
+      payment_url: q.payment_url || "",
+      payment_instructions: q.payment_instructions || "",
+      deposit_usd: q.deposit_usd == null ? null : Number(q.deposit_usd || 0),
+      payment_url_updated_at: q.payment_url_updated_at || "",
+      set_payment_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/payment`,
       mark_invoice_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
       mark_paid_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/status`,
       followup_href: `/api/admin/quotes/${encodeURIComponent(q.id)}/follow-up`,
@@ -291,9 +299,11 @@ export async function onRequestGet({ request, env }) {
       review_draft_href: followupDraftId ? `/admin/money?focus=${encodeURIComponent(followupDraftId)}` : "",
       next_action: followup
         ? followup?.status === "draft_queued"
-          ? "Follow-up email is queued; monitor payment/reply."
+          ? (q.payment_url ? "Follow-up email is queued; monitor payment/reply." : "Add a payment link, then monitor payment/reply.")
           : followupDraftId ? "Follow-up draft is ready for owner review." : "Follow-up task is queued; draft the email for review."
-        : q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.",
+        : q.payment_url
+          ? (q.status === "invoice" ? "Collect payment or mark paid when received." : "Send quote link, then mark invoice or paid.")
+          : "Add a real payment link before the next follow-up.",
     };
   });
   const govBidNoBid = samRows.map(bidNoBidForSam);
@@ -324,6 +334,13 @@ async function first(db, sql) {
 async function all(db, sql) {
   const r = await db.prepare(sql).all().catch(() => ({ results: [] }));
   return r.results || [];
+}
+
+async function ensureQuotePaymentSchema(env) {
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_instructions TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN deposit_usd REAL`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url_updated_at TEXT`).run().catch(() => null);
 }
 
 function actionFromReply(r) {

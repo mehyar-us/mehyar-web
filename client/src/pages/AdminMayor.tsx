@@ -200,6 +200,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const [quoteStatusBusy, setQuoteStatusBusy] = useState("");
   const [followupBusy, setFollowupBusy] = useState("");
   const [followupDraftBusy, setFollowupDraftBusy] = useState("");
+  const [paymentBusy, setPaymentBusy] = useState("");
   const q = useQuery({
     queryKey: ["admin-revenue-cockpit", token],
     queryFn: async () => {
@@ -287,6 +288,47 @@ function RevenueCockpitCard({ token }: { token: string }) {
       alert(`Quote status failed: ${String((error as Error)?.message || error)}`);
     } finally {
       setQuoteStatusBusy("");
+    }
+  };
+
+  const setQuotePayment = async (quote: any) => {
+    if (!quote?.id) return;
+    const currentUrl = String(quote.payment_url || "");
+    const paymentUrl = prompt("Paste the real HTTPS payment link. Leave blank to clear it.", currentUrl);
+    if (paymentUrl == null) return;
+    const trimmedUrl = paymentUrl.trim();
+    let depositUsd: number | null = quote.deposit_usd == null ? null : Number(quote.deposit_usd || 0);
+    if (trimmedUrl) {
+      const currentDeposit = depositUsd && depositUsd > 0 ? String(depositUsd) : "";
+      const depositText = prompt("Deposit due now USD (optional; blank means full quote total).", currentDeposit);
+      if (depositText == null) return;
+      if (depositText.trim()) {
+        const parsed = Number(depositText);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+          alert("Enter a valid deposit amount.");
+          return;
+        }
+        depositUsd = parsed;
+      } else {
+        depositUsd = null;
+      }
+    } else {
+      depositUsd = null;
+    }
+    setPaymentBusy(quote.id);
+    try {
+      const r = await fetch(`/api/admin/quotes/${encodeURIComponent(quote.id)}/payment`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ payment_url: trimmedUrl, deposit_usd: depositUsd }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+    } catch (error) {
+      alert(`Payment link update failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setPaymentBusy("");
     }
   };
 
@@ -477,10 +519,15 @@ function RevenueCockpitCard({ token }: { token: string }) {
                       <div className="min-w-0">
                         <div className="text-xs font-semibold truncate">#{quote.quote_number} {quote.client_name}</div>
                         <div className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                          ${Number(quote.total_usd || 0).toLocaleString()} · {quote.status}{quote.stale ? " · stale" : ""}
+                          ${Number(quote.total_usd || 0).toLocaleString()} · {quote.status}{quote.stale ? " · stale" : ""}{quote.has_payment_url ? " · pay link" : " · no pay link"}
                         </div>
                       </div>
                       <a href={quote.view_url} target="_blank" rel="noreferrer" className="text-[10px] text-violet-700 dark:text-violet-300 underline shrink-0">view</a>
+                    </div>
+                    <div className={`mt-1 text-[10px] ${quote.has_payment_url ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                      {quote.has_payment_url
+                        ? `payment link ready${quote.deposit_usd ? ` · deposit $${Number(quote.deposit_usd || 0).toLocaleString()}` : ""}`
+                        : "add payment link before pushing collection"}
                     </div>
                     {quote.followup_task_id && (
                       <div className="mt-1 text-[10px] text-emerald-700 dark:text-emerald-300">
@@ -518,6 +565,22 @@ function RevenueCockpitCard({ token }: { token: string }) {
                       {quote.review_draft_href && quote.followup_task_status !== "draft_queued" && (
                         <a href={quote.review_draft_href} className="inline-flex h-7 items-center rounded-md border border-zinc-200 dark:border-zinc-700 px-2 text-[10px] text-violet-700 dark:text-violet-300">
                           Review draft
+                        </a>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={quote.has_payment_url ? "outline" : "cta"}
+                        disabled={paymentBusy === quote.id}
+                        onClick={() => setQuotePayment(quote)}
+                        className="h-7 px-2 text-[10px]"
+                      >
+                        {paymentBusy === quote.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <DollarSign className="w-3 h-3 mr-1" />}
+                        {quote.has_payment_url ? "Edit pay link" : "Set pay link"}
+                      </Button>
+                      {quote.has_payment_url && (
+                        <a href={quote.payment_url} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center rounded-md border border-zinc-200 dark:border-zinc-700 px-2 text-[10px] text-emerald-700 dark:text-emerald-300">
+                          Pay page
+                          <ExternalLink className="ml-1 h-3 w-3" />
                         </a>
                       )}
                       {quote.status !== "invoice" && (

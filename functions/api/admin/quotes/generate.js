@@ -76,6 +76,10 @@ export async function onRequestPost({ request, env }) {
   ]).catch((e) => {
     console.error("quotes table create", e?.message);
   });
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_instructions TEXT`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN deposit_usd REAL`).run().catch(() => null);
+  await env.LEADS_DB.prepare(`ALTER TABLE quotes ADD COLUMN payment_url_updated_at TEXT`).run().catch(() => null);
 
   // Next quote number = max + 1
   const last = await env.LEADS_DB.prepare(`SELECT MAX(quote_number) as n FROM quotes`).first().catch(() => ({ n: 0 }));

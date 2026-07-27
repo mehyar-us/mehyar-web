@@ -19,12 +19,21 @@ export async function onRequestGet({ request, env }) {
   try {
     row = await env.LEADS_DB.prepare(`
       SELECT quote_number, client_name, client_email, client_address, items_json,
-             total_usd, status, due_days, created_at
+             total_usd, status, due_days, created_at,
+             payment_url, payment_instructions, deposit_usd, payment_url_updated_at
       FROM quotes WHERE public_slug = ?
     `).bind(slug).first();
   } catch (e) {
-    // Table may not exist yet (no quotes created)
-    return json({ ok: false, error: "not_found" }, 404, request, env);
+    try {
+      row = await env.LEADS_DB.prepare(`
+        SELECT quote_number, client_name, client_email, client_address, items_json,
+               total_usd, status, due_days, created_at
+        FROM quotes WHERE public_slug = ?
+      `).bind(slug).first();
+    } catch {
+      // Table may not exist yet (no quotes created)
+      return json({ ok: false, error: "not_found" }, 404, request, env);
+    }
   }
   if (!row) return json({ ok: false, error: "not_found" }, 404, request, env);
 
@@ -51,6 +60,10 @@ export async function onRequestGet({ request, env }) {
       status: row.status,
       due_days: row.due_days,
       due_date: dueDate,
+      payment_url: row.payment_url || null,
+      payment_instructions: row.payment_instructions || null,
+      deposit_usd: row.deposit_usd == null ? null : Number(row.deposit_usd || 0),
+      payment_url_updated_at: row.payment_url_updated_at || null,
       created_at: row.created_at,
     },
   }, 200, request, env);
