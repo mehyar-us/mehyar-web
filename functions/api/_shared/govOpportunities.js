@@ -7,16 +7,18 @@ import { verifyAdminToken } from "./adminAuth.js";
 
 const SAFE_ADMIN_FAILURE = "Government opportunity admin unavailable.";
 const DEFAULT_KEYWORDS = [
-  // Direct matches
-  "software", "IT services", "cloud", "data", "API", "SharePoint",
-  "intranet", "database", "SharePoint", "Power Platform",
-  // Common govt phrasing
-  "modernization", "automation", "system integration", "custom software",
-  "application development", "web development", "DevSecOps",
-  "HelpDesk", "case management", "intake", "customer relationship",
-  "CRM", "workflow", "reporting", "dashboard", "analytics",
-  "artificial intelligence", "machine learning", "blockchain",
-  "SharePoint migration", "Office 365", "Azure", "AWS",
+  // Services phrases first. Broad "software" searches often return license
+  // renewals and sole-source buys, which Mayor now no-bids but should not fill
+  // the fresh pursuit pool with.
+  "application development", "web development", "system integration",
+  "IT modernization", "workflow automation", "case management",
+  "records management", "data dashboard", "reporting dashboard",
+  "API integration", "cloud migration", "CRM implementation",
+  // Secondary direct matches
+  "IT services", "cloud services", "data services", "DevSecOps",
+  "HelpDesk", "intranet", "database modernization", "Power Platform",
+  "artificial intelligence", "machine learning",
+  "SharePoint migration", "Azure migration", "AWS migration",
   "electronic records", "records management", "ehr", "EMR",
   "LIMS", "permitting", "licensing", "case tracking",
   "small business set-aside", "8(a)", "HUBZone", "WOSB",
@@ -84,7 +86,14 @@ export async function runGovOpportunityIngest({ env, now = new Date(), fetchImpl
 
   if (samApiKey) {
     try {
-      const sam = await fetchSamOpportunities({ fetchImpl, apiKey: samApiKey, keywords, limit, naics: naicsFilter });
+      const sam = await fetchSamOpportunities({
+        fetchImpl,
+        apiKey: samApiKey,
+        keywords,
+        limit,
+        naics: naicsFilter,
+        includeExpired: env?.GOV_INCLUDE_EXPIRED_SAM === "true",
+      });
       summary.sam = { fetched: sam.length, skipped: false, ok: true };
       normalized = normalized.concat(sam);
     } catch (error) {
@@ -245,7 +254,7 @@ export async function fetchUsaspendingAwards({ fetchImpl = fetch, keywords = DEF
   throw lastErr || new Error("usaspending_unknown_failure");
 }
 
-export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keywords = DEFAULT_KEYWORDS, limit = 40, naics = [] } = {}) {
+export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keywords = DEFAULT_KEYWORDS, limit = 40, naics = [], includeExpired = false } = {}) {
   if (!apiKey) return [];
   // SAM.gov v2 search is keyword-bound. Use a 90-day window so we surface
   // active (still-responding) opportunities that landed earlier in the quarter
@@ -299,6 +308,8 @@ export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keyword
     try { json = await response.json(); } catch { continue; }
     const items = normalizeSamOpportunities(json);
     for (const it of items) {
+      if (!includeExpired && isExpiredOpportunity(it)) continue;
+      if (isSamIngestNoise(it)) continue;
       const key = `${it.source || "sam.gov"}::${it.source_id || it.noticeId || it.title}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -307,6 +318,19 @@ export async function fetchSamOpportunities({ fetchImpl = fetch, apiKey, keyword
     }
   }
   return merged.slice(0, limit);
+}
+
+function isExpiredOpportunity(item, now = new Date()) {
+  const days = daysUntil(item?.response_deadline, now);
+  return days != null && days < 0;
+}
+
+function isSamIngestNoise(item) {
+  const text = `${item?.title || ""} ${item?.summary || ""} ${item?.opportunity_type || ""}`.toLowerCase();
+  const lowFitBuy = /\b(renewal|license renewal|subscription renewal|software license|brand name only|exact match|hardware|equipment|parts|supplies|printer|laptop|desktop|scanner)\b/i.test(text);
+  if (!lowFitBuy) return false;
+  const serviceSignal = /\b(development|modernization|integration|implementation|migration|support services|professional services|workflow|automation|dashboard|case management|records management|api|cloud services|help desk)\b/i.test(text);
+  return !serviceSignal;
 }
 
 export function normalizeUsaspendingAwards(payload = {}) {

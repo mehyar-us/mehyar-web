@@ -5,6 +5,7 @@ import {
   scoreGovOpportunity,
   upsertGovOpportunity,
   runGovOpportunityIngest,
+  fetchSamOpportunities,
   verifyAdminRequest,
   responseHeaders,
 } from "../functions/api/_shared/govOpportunities.js";
@@ -126,7 +127,7 @@ assert.equal(await verifyAdminRequest(new Request("https://api.test"), { ADMIN_S
 const ingestDb = makeStatementRecorder().db;
 const fetchCalls = [];
 const ingest = await runGovOpportunityIngest({
-  env: { LEADS_DB: ingestDb, GOV_INGEST_LIMIT: "10" },
+  env: { LEADS_DB: ingestDb, GOV_INGEST_LIMIT: "10", GOV_INCLUDE_USASPENDING: "true" },
   now: new Date("2026-05-13T00:00:00Z"),
   fetchImpl: async (url) => {
     fetchCalls.push(String(url));
@@ -138,6 +139,29 @@ assert.equal(ingest.sam.skipped, true);
 assert.ok(ingest.usaspending.fetched >= 1);
 assert.equal(fetchCalls.length, 1, "no SAM call without key");
 assert.ok(ingest.inserted >= 1);
+
+const samFiltered = await fetchSamOpportunities({
+  apiKey: "test-key",
+  keywords: ["application development"],
+  limit: 10,
+  fetchImpl: async () => jsonResponse({
+    opportunitiesData: [
+      {
+        noticeId: "expired-license",
+        title: "Software license renewal",
+        responseDeadLine: "05/01/2026 17:00:00",
+        description: "Brand name only license renewal.",
+      },
+      {
+        noticeId: "active-services",
+        title: "Application development and workflow automation services",
+        responseDeadLine: "08/15/2026 17:00:00",
+        description: "Need integration, modernization, API, dashboard, and workflow support services.",
+      },
+    ],
+  }),
+});
+assert.deepEqual(samFiltered.map((item) => item.source_id), ["active-services"]);
 
 function jsonResponse(body) {
   return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
