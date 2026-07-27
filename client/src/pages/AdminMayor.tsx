@@ -202,6 +202,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const [quoteStatusBusy, setQuoteStatusBusy] = useState("");
   const [followupBusy, setFollowupBusy] = useState("");
   const [followupDraftBusy, setFollowupDraftBusy] = useState("");
+  const [bulkFollowupBusy, setBulkFollowupBusy] = useState(false);
   const q = useQuery({
     queryKey: ["admin-revenue-cockpit", token],
     queryFn: async () => {
@@ -224,6 +225,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const bookings: any[] = q.data?.booking_tasks || [];
   const quoteActions: any[] = q.data?.quote_actions || [];
   const cleanup = q.data?.money_cleanup || {};
+  const quoteFollowupDraftBacklog = quoteActions.filter((quote) => !quote.followup_draft_id && quote.collection_blocker).length;
 
   const createBookingTask = async (replyId: string, meetingCta?: string) => {
     if (!replyId) return;
@@ -414,6 +416,27 @@ function RevenueCockpitCard({ token }: { token: string }) {
       alert(`Follow-up draft failed: ${String((error as Error)?.message || error)}`);
     } finally {
       setFollowupDraftBusy("");
+    }
+  };
+
+  const draftDueQuoteFollowups = async () => {
+    setBulkFollowupBusy(true);
+    try {
+      const r = await fetch("/api/admin/mayor/quote-followups/draft-due", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ limit: 10 }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if ((!r.ok && r.status !== 207) || (j.ok === false && !j.created && !j.already_exists)) {
+        throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      }
+      await q.refetch();
+      alert(`Quote follow-up drafts: ${j.created || 0} created, ${j.already_exists || 0} already ready${j.errors ? `, ${j.errors} errors` : ""}.`);
+    } catch (error) {
+      alert(`Batch follow-up drafting failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setBulkFollowupBusy(false);
     }
   };
 
@@ -610,6 +633,25 @@ function RevenueCockpitCard({ token }: { token: string }) {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <Panel title="Quote closeout" href="/admin/money">
+                {quoteFollowupDraftBacklog > 0 && (
+                  <div className="rounded border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[10px] text-amber-900 dark:text-amber-100">
+                        {quoteFollowupDraftBacklog} quote/invoice follow-up{quoteFollowupDraftBacklog === 1 ? "" : "s"} need review drafts.
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="cta"
+                        disabled={bulkFollowupBusy}
+                        onClick={draftDueQuoteFollowups}
+                        className="h-7 px-2 text-[10px] shrink-0"
+                      >
+                        {bulkFollowupBusy ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Mail className="w-3 h-3 mr-1" />}
+                        Draft due
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {quoteActions.slice(0, 5).map((quote) => (
                   <div key={quote.id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
                     <div className="flex items-start justify-between gap-2">
