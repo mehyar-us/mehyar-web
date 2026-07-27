@@ -203,6 +203,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const [followupBusy, setFollowupBusy] = useState("");
   const [followupDraftBusy, setFollowupDraftBusy] = useState("");
   const [bulkFollowupBusy, setBulkFollowupBusy] = useState(false);
+  const [evidenceBusy, setEvidenceBusy] = useState(false);
   const q = useQuery({
     queryKey: ["admin-revenue-cockpit", token],
     queryFn: async () => {
@@ -225,6 +226,7 @@ function RevenueCockpitCard({ token }: { token: string }) {
   const bookings: any[] = q.data?.booking_tasks || [];
   const quoteActions: any[] = q.data?.quote_actions || [];
   const cleanup = q.data?.money_cleanup || {};
+  const evidenceRecovery = q.data?.evidence_recovery || {};
   const quoteFollowupDraftBacklog = quoteActions.filter((quote) => !quote.followup_draft_id && quote.collection_blocker).length;
 
   const createBookingTask = async (replyId: string, meetingCta?: string) => {
@@ -440,6 +442,25 @@ function RevenueCockpitCard({ token }: { token: string }) {
     }
   };
 
+  const runEvidenceRecovery = async () => {
+    setEvidenceBusy(true);
+    try {
+      const r = await fetch("/api/admin/mayor/evidence-recovery/rescan-due", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ limit: evidenceRecovery.recommended_batch_size || 8 }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || j.message || `HTTP ${r.status}`);
+      await q.refetch();
+      alert(`Evidence recovery: ${j.scanned || 0} rescanned, ${j.recovered || 0} now draftable, ${j.still_blocked || 0} still blocked${j.failed ? `, ${j.failed} failed` : ""}.`);
+    } catch (error) {
+      alert(`Evidence recovery failed: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setEvidenceBusy(false);
+    }
+  };
+
   return (
     <Card className="mb-4 border-emerald-200 dark:border-emerald-800">
       <CardContent className="p-4 space-y-4">
@@ -631,7 +652,53 @@ function RevenueCockpitCard({ token }: { token: string }) {
               </Panel>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+              <Panel title="Evidence recovery" href="/admin/leads?kind=prospect">
+                <div className="rounded border border-sky-200 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/20 p-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-semibold">{evidenceRecovery.blocked_count || 0} blocked by weak evidence</div>
+                      <div className="text-[10px] text-zinc-600 dark:text-zinc-300 mt-0.5">
+                        {evidenceRecovery.recommendation || "Recover evidence before drafting."}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="cta"
+                      disabled={evidenceBusy || !(evidenceRecovery.blocked_count > 0)}
+                      onClick={runEvidenceRecovery}
+                      className="h-7 px-2 text-[10px] shrink-0"
+                    >
+                      {evidenceBusy ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
+                      Rescan
+                    </Button>
+                  </div>
+                  {evidenceRecovery.counts && (
+                    <div className="mt-2 grid grid-cols-2 gap-1 text-[10px]">
+                      {Object.entries(evidenceRecovery.counts).slice(0, 4).map(([k, v]) => (
+                        <div key={k} className="rounded bg-white/70 dark:bg-zinc-900/50 px-1.5 py-1">
+                          <span className="text-zinc-500 dark:text-zinc-400">{evidenceQualityLabel(k)}:</span> {String(v)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {(evidenceRecovery.items || []).slice(0, 4).map((item: any) => (
+                  <div key={item.prospect_id} className="rounded border border-zinc-200 dark:border-zinc-700 p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold truncate">{item.business_name || item.root_domain}</div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+                          {item.root_domain || item.email || "prospect"} · {evidenceQualityLabel(item.quality)}
+                        </div>
+                      </div>
+                      <Badge className="bg-sky-100 text-sky-800">recover</Badge>
+                    </div>
+                    <div className="text-[10px] text-zinc-600 dark:text-zinc-300 mt-1">{item.next_action}</div>
+                  </div>
+                ))}
+                {!(evidenceRecovery.blocked_count > 0) && <EmptyLine text="No evidence recovery needed in the current batch." />}
+              </Panel>
               <Panel title="Quote closeout" href="/admin/money">
                 {quoteFollowupDraftBacklog > 0 && (
                   <div className="rounded border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-2">
@@ -861,6 +928,17 @@ function collectionStateLabel(state: string | undefined) {
     open_quote: "quote",
   };
   return labels[String(state || "")] || "open";
+}
+
+function evidenceQualityLabel(quality: string | undefined) {
+  const labels: Record<string, string> = {
+    no_signal: "not scanned",
+    clean_no_signal: "clean scan",
+    fetch_failed_only: "fetch failed",
+    non_citable_score: "weak signal",
+    weak_other: "weak",
+  };
+  return labels[String(quality || "")] || "weak";
 }
 
 function Mini({ label, value }: any) {

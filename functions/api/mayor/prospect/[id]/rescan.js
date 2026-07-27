@@ -77,8 +77,9 @@ export async function onRequestPost({ request, env, params }) {
   const { results: prs } = await db.prepare(`SELECT * FROM prospects WHERE id = ?`).bind(id).all();
   const prospect = prs?.[0];
   if (!prospect) return json({ ok: false, error: "prospect_not_found" }, 404, request, env);
-  if (!prospect.website) {
-    return json({ ok: false, error: "prospect_no_website", message: "Set the prospect.website first." }, 409, request, env);
+  const scanTarget = prospect.website || prospect.root_domain;
+  if (!scanTarget) {
+    return json({ ok: false, error: "prospect_no_website", message: "Set the prospect.website or root_domain first." }, 409, request, env);
   }
 
   const errors = [];
@@ -88,7 +89,7 @@ export async function onRequestPost({ request, env, params }) {
 
   try {
     // Normalize to https for the scan
-    let target = prospect.website;
+    let target = scanTarget;
     if (!/^https?:\/\//i.test(target)) target = "https://" + target;
 
     const resp = await fetch(target, {
@@ -130,7 +131,7 @@ export async function onRequestPost({ request, env, params }) {
     `).bind(
       signalId,
       prospect.id,
-      httpOk, httpsOk ? 1 : 0, statusCode, finalUrl !== prospect.website ? finalUrl : null,
+      httpOk, httpsOk ? 1 : 0, statusCode, finalUrl !== scanTarget ? finalUrl : null,
       (html.match(/<title>([^<]*)<\/title>/i)?.[1] || null),
       !leaked.includes("no_viewport") ? 1 : 0,
       !leaked.includes("no_booking_cta") ? 1 : 0,

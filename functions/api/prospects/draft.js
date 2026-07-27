@@ -105,7 +105,7 @@ function hasCitableLeakEvidence(signals) {
   let leakList = [];
   try { leakList = JSON.parse(signals?.leak_signals_json || "[]"); } catch {}
   const cited = leakList.filter(s => s in SIGNAL_VERBIAGE && SIGNAL_VERBIAGE[s]);
-  return cited.length > 0 || Number(signals?.leak_score || 0) >= 20;
+  return cited.length > 0;
 }
 
 async function callLLM(env, systemPrompt, userPrompt) {

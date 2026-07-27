@@ -35,6 +35,7 @@ export async function onRequestGet({ request, env }) {
     taskRows,
     quoteRows,
     quoteTaskRows,
+    evidenceRows,
     sendHealth,
     replyHealth,
   ] = await Promise.all([
@@ -153,6 +154,42 @@ export async function onRequestGet({ request, env }) {
         AND status IN ('open','pending','draft_queued')
       ORDER BY priority DESC, COALESCE(due_at, created_at) ASC
       LIMIT 50
+    `),
+    all(db, `
+      SELECT
+        p.id, p.business_name, p.root_domain, p.website, p.email, p.vertical, p.city,
+        p.status, p.last_scanned_at,
+        sig.leak_signals_json, COALESCE(sig.leak_score, 0) AS leak_score, sig.scanned_at
+      FROM prospects p
+      LEFT JOIN prospect_signals sig ON sig.id = (
+        SELECT id FROM prospect_signals WHERE prospect_id = p.id ORDER BY scanned_at DESC LIMIT 1
+      )
+      WHERE COALESCE(p.status, '') NOT IN ('archived','won','lost','unsubscribed','rejected')
+        AND COALESCE(p.email, '') != ''
+        AND COALESCE(p.email, '') NOT LIKE '%.example.com'
+        AND COALESCE(p.email, '') NOT LIKE '%.test'
+        AND COALESCE(p.email, '') NOT LIKE '%.invalid'
+        AND COALESCE(p.website, p.root_domain, '') != ''
+        AND NOT (
+          COALESCE(sig.leak_signals_json, '') LIKE '%no_https%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%slow_load%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%heavy_page%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%large_page%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%no_viewport%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%no_booking_cta%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%no_phone_link%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%no_phone_cta%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%no_form_action%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%no_email_link%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%no_address%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%platform_generic%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%generic_template%' OR
+          COALESCE(sig.leak_signals_json, '') LIKE '%iframes_only%'
+        )
+      ORDER BY
+        CASE WHEN sig.id IS NULL THEN 0 ELSE 1 END,
+        COALESCE(p.last_scanned_at, p.created_at) ASC
+      LIMIT 25
     `),
     all(db, `
       SELECT
@@ -294,6 +331,7 @@ export async function onRequestGet({ request, env }) {
     };
   });
   const govBidNoBid = samRows.map(bidNoBidForSam);
+  const evidenceRecovery = buildEvidenceRecovery(evidenceRows);
   const moneyCleanup = buildMoneyCleanup(summary, actions, draftReviewInbox, deliverability, quoteActions);
 
   return json({
@@ -307,6 +345,7 @@ export async function onRequestGet({ request, env }) {
     gov_bid_no_bid: govBidNoBid,
     money_cleanup: moneyCleanup,
     quote_actions: quoteActions,
+    evidence_recovery: evidenceRecovery,
     deliverability,
     booking_tasks: bookingTasks,
     scorecard: buildScorecard(summary, unique),
@@ -682,12 +721,12 @@ function playbookForReply(r) {
     business_name: r.business_name,
     recommended_action: warm ? "book_meeting" : objection ? "handle_objection" : unsubscribe ? "suppress_and_mark_handled" : "classify_manually",
     next_reply: warm
-      ? `Thanks for replying. I can send a quick audit, or we can do 15 minutes and I’ll show you the first fix I’d make. Would tomorrow or the next morning work?`
+      ? `Thanks for replying. The useful next step is 15 minutes to confirm the leak, then I can scope a $150 audit, $250 diagnosis, or fixed quick fix if it makes sense. Would tomorrow or the next morning work?`
       : objection
-      ? `Totally fair. The useful version is small: I can send a 5-minute audit first, then you decide if any fix is worth pricing.`
+      ? `Totally fair. The useful version is small and paid only if worth doing: a $150 audit or $250 written diagnosis before any larger quote.`
       : unsubscribe
       ? `Understood. I won’t contact you again.`
-      : `Thanks for the reply. What would be most useful: a quick audit, pricing for a fix, or should I close the loop?`,
+      : `Thanks for the reply. What would be most useful: a scope call, a paid audit/diagnosis, pricing for a fix, or should I close the loop?`,
     meeting_cta: warm ? "Offer one specific 15-minute slot and one fallback." : "",
     mark_won_lost_href: r.prospect_id ? `/admin/leads?kind=prospect&focus=${encodeURIComponent(r.prospect_id)}` : "/admin/leads?kind=replies",
     mark_won_href: `/api/admin/mayor/replies/${encodeURIComponent(r.id)}/outcome`,
@@ -700,12 +739,60 @@ function playbookForReply(r) {
 
 function buildOfferSelector() {
   return [
-    { id: "audit", label: "Audit", price: "$250", best_for: "cold lead with weak evidence", cta: "Want me to send a 5-minute audit?" },
+    { id: "audit", label: "Audit", price: "$150-$250", best_for: "cold lead with citable leak evidence", cta: "Should I send the audit scope and manual invoice details?" },
     { id: "quick_fix", label: "Quick fix", price: "$1.5k-$7.5k", best_for: "visible website/intake leak", cta: "I can price the first fix as a fixed-scope sprint." },
     { id: "automation_sprint", label: "Automation sprint", price: "$7.5k-$25k", best_for: "manual CRM, intake, ops, AI workflow", cta: "I can map and ship the first automation sprint." },
     { id: "retainer", label: "Retainer", price: "$500-$3.5k/mo", best_for: "ongoing founder/operator support", cta: "I can keep improving the system monthly." },
     { id: "gov_capability", label: "Gov capability response", price: "$1.5k+", best_for: "SAM/RFI/RFQ with services lane", cta: "I can send a concise capability response." },
   ];
+}
+
+function buildEvidenceRecovery(rows) {
+  const items = rows.map((r) => {
+    const quality = classifyEvidenceQuality(r);
+    return {
+      prospect_id: r.id,
+      business_name: r.business_name,
+      root_domain: r.root_domain,
+      website: r.website,
+      email: r.email,
+      vertical: r.vertical,
+      city: r.city,
+      status: r.status,
+      last_scanned_at: r.last_scanned_at,
+      quality,
+      leak_score: Number(r.leak_score || 0),
+      next_action: quality === "no_signal"
+        ? "Run first scan before drafting."
+        : quality === "fetch_failed_only"
+        ? "Rescan before using this as evidence; fetch failures are not outreach copy."
+        : "Rescan or enrich with a real source reason before drafting.",
+      rescan_href: `/api/mayor/prospect/${encodeURIComponent(r.id)}/rescan`,
+      href: `/admin/leads?kind=prospect&focus=${encodeURIComponent(r.id)}`,
+    };
+  });
+  const counts = items.reduce((acc, item) => {
+    acc[item.quality] = (acc[item.quality] || 0) + 1;
+    return acc;
+  }, {});
+  return {
+    blocked_count: items.length,
+    counts,
+    batch_rescan_href: "/api/admin/mayor/evidence-recovery/rescan-due",
+    recommended_batch_size: Math.min(8, Math.max(1, items.length)),
+    recommendation: items.length
+      ? "Recover evidence before generating more emails. No-signal and fetch-failed prospects should be rescanned or enriched, not drafted."
+      : "No evidence-blocked prospects in the current batch.",
+    items,
+  };
+}
+
+function classifyEvidenceQuality(row) {
+  const raw = String(row?.leak_signals_json || "");
+  if (!raw) return "no_signal";
+  if (raw === "[]") return "clean_no_signal";
+  if (raw === "[\"fetch_failed\"]") return "fetch_failed_only";
+  return Number(row?.leak_score || 0) > 0 ? "non_citable_score" : "weak_other";
 }
 
 function buildDeliverabilityPanel(sendRows, replyRows, dueCount) {

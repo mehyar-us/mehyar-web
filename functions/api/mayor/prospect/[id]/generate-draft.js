@@ -168,7 +168,7 @@ export async function onRequestPost({ request, env, params }) {
   }
   let citedSignals = [];
   try { citedSignals = JSON.parse(latestSignal.leak_signals_json || "[]"); } catch {}
-  const hasCitableEvidence = citedSignals.some((signal) => CITABLE_SIGNAL_KEYS.has(signal)) || Number(latestSignal.leak_score || 0) >= 20;
+  const hasCitableEvidence = citedSignals.some((signal) => CITABLE_SIGNAL_KEYS.has(signal));
   if (!hasCitableEvidence) {
     return json({
       ok: false,
