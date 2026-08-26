@@ -21,6 +21,14 @@ Usage:
 import os, sys, json, zipfile, subprocess, urllib.request, urllib.error, argparse, shutil, hashlib
 from contextlib import contextmanager
 
+# Wrangler and Vite use Unicode status symbols. Windows can otherwise default
+# Python's redirected stdout/subprocess decoding to cp1252 and crash after a
+# successful deployment while reading or printing those symbols.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 ACCT  = "621600637337cc1c9ecb7095508bc732"
 EMAIL = "mrswelim@gmail.com"
 KEY   = os.environ.get("CLOUDFLARE_API_KEY") or os.environ.get("CLOUDFLARE_API_TOKEN") or ""
@@ -30,7 +38,15 @@ ZIP_OUT = os.path.join(DIST, "pages_deploy.zip")
 
 def sh(cmd, **kw):
     print(f"  $ {cmd}")
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True, **kw)
+    return subprocess.run(
+        cmd,
+        shell=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        **kw,
+    )
 
 def build():
     print("== npm run build:client ==")
@@ -319,7 +335,16 @@ def deploy_wrangler(branch="main", dry_run=False):
            "--project-name", PROJECT, "--branch", branch, "--commit-dirty=true"]
     print(f"$ {npx_bin} wrangler pages deploy dist/public --project-name={PROJECT} --branch={branch}")
     with temporary_wrangler_env_overlay(branch):
-        r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300, shell=(sys.platform == "win32"))
+        r = subprocess.run(
+            cmd,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=300,
+            shell=(sys.platform == "win32"),
+        )
     print(r.stdout)
     if r.returncode != 0:
         print(r.stderr, file=sys.stderr)
