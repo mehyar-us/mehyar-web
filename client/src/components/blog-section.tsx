@@ -8,9 +8,12 @@ import { formatDate } from "@/lib/utils";
 import { blogPosts } from "@/data/blog-posts";
 
 const BlogSection = () => {
+  const sortedPosts = [...blogPosts].sort(
+    (a, b) => b.date.localeCompare(a.date) || a.id - b.id,
+  );
   // Get featured post and 2 recent posts
-  const featuredPost = blogPosts[0];
-  const recentPosts = blogPosts.slice(1, 3);
+  const featuredPost = sortedPosts[0];
+  const recentPosts = sortedPosts.slice(1, 3);
 
   return (
     <section id="blog" className="bg-background px-4 py-16 md:py-20">
@@ -23,7 +26,9 @@ const BlogSection = () => {
             Where the leaks show up first.
           </h2>
           <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg">
-            Short posts on audits, missed-call follow-up, automation, and when to build custom software. Written from real engagements, not marketing.
+            Industry-specific guides on booking, follow-up, automation, privacy,
+            and when to build custom software. Written for owner-operators,
+            without invented results.
           </p>
         </div>
 
@@ -38,7 +43,10 @@ const BlogSection = () => {
             />
             <CardContent className="p-6">
               <div className="mb-3 flex items-center">
-                <Badge variant="outline" className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                <Badge
+                  variant="outline"
+                  className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                >
                   {featuredPost.category}
                 </Badge>
                 <span className="ml-3 text-xs text-muted-foreground">
@@ -58,13 +66,15 @@ const BlogSection = () => {
                     "inline-flex items-center font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100",
                   )}
                 >
-                  Read the post <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                  Read the post{" "}
+                  <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
                 </Link>
                 <Link
                   href="/micro-offer#intake"
                   className="inline-flex items-center text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100"
                 >
-                  Request the $330 audit <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                  Request the $330 audit{" "}
+                  <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
             </CardContent>
@@ -72,7 +82,10 @@ const BlogSection = () => {
 
           {/* Recent Blog Posts */}
           {recentPosts.map((post) => (
-            <Card key={post.id} className="blog-card h-full border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(8,63,84,0.10)]">
+            <Card
+              key={post.id}
+              className="blog-card h-full border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(8,63,84,0.10)]"
+            >
               <img
                 src={post.image}
                 alt={post.title}
@@ -81,7 +94,14 @@ const BlogSection = () => {
               />
               <CardContent className="p-6">
                 <div className="mb-3 flex items-center">
-                  <Badge variant="outline" className={cn("rounded-full px-3 py-1 text-xs font-medium", post.badgeBgClass, post.badgeColorClass)}>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-medium",
+                      post.badgeBgClass,
+                      post.badgeColorClass,
+                    )}
+                  >
                     {post.category}
                   </Badge>
                   <span className="ml-3 text-xs text-muted-foreground">
@@ -96,9 +116,13 @@ const BlogSection = () => {
                 </p>
                 <Link
                   href={`/blog/${post.slug}`}
-                  className={cn("inline-flex items-center font-semibold hover:opacity-90", post.textColorClass)}
+                  className={cn(
+                    "inline-flex items-center font-semibold hover:opacity-90",
+                    post.textColorClass,
+                  )}
                 >
-                  Read the post <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                  Read the post{" "}
+                  <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
                 </Link>
               </CardContent>
             </Card>
@@ -107,12 +131,19 @@ const BlogSection = () => {
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/blog">
-            <Button variant="outline" className="rounded-full border-border px-6 py-3 text-primary shadow-sm transition-colors hover:bg-secondary">
+            <Button
+              variant="outline"
+              className="rounded-full border-border px-6 py-3 text-primary shadow-sm transition-colors hover:bg-secondary"
+            >
               View all articles
             </Button>
           </Link>
-          <Link href="/micro-offer#intake" className="inline-flex items-center text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100">
-            Or send the leak and request the $330 audit <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+          <Link
+            href="/micro-offer#intake"
+            className="inline-flex items-center text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100"
+          >
+            Or send the leak and request the $330 audit{" "}
+            <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
       </div>

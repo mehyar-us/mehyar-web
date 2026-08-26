@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
 import Services from "@/pages/Services";
+import Pricing from "@/pages/Pricing";
 import Portfolio from "@/pages/Portfolio";
 import PortfolioDetail from "@/pages/PortfolioDetail";
 import Apps from "@/pages/Apps";
@@ -42,10 +43,12 @@ function Redirect({ to, href }: { to: string; href: string }) {
   useEffect(() => {
     const paramNames: string[] = [];
     const re = new RegExp(
-      "^" + href.replace(/:[a-zA-Z_]+/g, (m) => {
-        paramNames.push(m.slice(1));
-        return "([^/]+)";
-      }) + "$"
+      "^" +
+        href.replace(/:[a-zA-Z_]+/g, (m) => {
+          paramNames.push(m.slice(1));
+          return "([^/]+)";
+        }) +
+        "$",
     );
     const m = location.match(re);
     if (m) {
@@ -70,7 +73,9 @@ function ScrollToTop() {
 
     window.requestAnimationFrame(() => {
       if (hash && location === currentPath) {
-        document.querySelector(hash)?.scrollIntoView({ block: "start", behavior: "auto" });
+        document
+          .querySelector(hash)
+          ?.scrollIntoView({ block: "start", behavior: "auto" });
         return;
       }
 
@@ -88,9 +93,11 @@ function App() {
   // and matches the user's saved preference (no flash of wrong theme).
   useEffect(() => {
     const saved = localStorage.getItem("darkMode");
-    const wantsDark = saved !== null
-      ? saved === "true"
-      : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false);
+    const wantsDark =
+      saved !== null
+        ? saved === "true"
+        : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ??
+          false);
     document.documentElement.classList.toggle("dark", wantsDark);
   }, []);
 
@@ -111,6 +118,8 @@ function App() {
             <Route path="/" component={Home} />
             <Route path="/services" component={Services} />
             <Route path="/services/" component={Services} />
+            <Route path="/pricing" component={Pricing} />
+            <Route path="/pricing/" component={Pricing} />
             <Route path="/portfolio" component={Portfolio} />
             <Route path="/portfolio/" component={Portfolio} />
             <Route path="/portfolio/:id" component={PortfolioDetail} />
@@ -139,8 +148,14 @@ function App() {
             <Route path="/contact/" component={Contact} />
             <Route path="/billing/checkout" component={BillingCheckout} />
             <Route path="/billing/checkout/" component={BillingCheckout} />
-            <Route path="/billing/checkout/:serviceId" component={BillingCheckout} />
-            <Route path="/billing/checkout/:serviceId/" component={BillingCheckout} />
+            <Route
+              path="/billing/checkout/:serviceId"
+              component={BillingCheckout}
+            />
+            <Route
+              path="/billing/checkout/:serviceId/"
+              component={BillingCheckout}
+            />
             <Route path="/billing/success" component={BillingSuccess} />
             <Route path="/billing/success/" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
@@ -156,22 +171,28 @@ function App() {
                             /admin/system →  AdminSystem (audit · cron · backups)
                             Each route ships with both the bare and trailing-slash alias
                             because CF Pages auto-trailing-slashes every served path. */}
-                        <Route path="/admin" component={AdminNow} />
-                        <Route path="/admin/" component={AdminNow} />
-                        <Route path="/admin/now" component={AdminNow} />
-                        <Route path="/admin/now/" component={AdminNow} />
-                        <Route path="/admin/mayor" component={AdminMayor} />
-                        <Route path="/admin/mayor/" component={AdminMayor} />
-                        <Route path="/admin/leads" component={AdminCRM} />
-                        <Route path="/admin/leads/" component={AdminCRM} />
-                        <Route path="/admin/leads/:kind/:id" component={AdminOpportunityDetail} />
-                        <Route path="/admin/leads/:kind/:id/" component={AdminOpportunityDetail} />
-                        <Route path="/admin/money" component={AdminMoney} />
-                        <Route path="/admin/money/" component={AdminMoney} />
-                        <Route path="/admin/system" component={AdminSystem} />
-                        <Route path="/admin/system/" component={AdminSystem} />
-                        <Route path="/admin/sent" component={AdminSent} />
-                        <Route path="/admin/sent/" component={AdminSent} />
+            <Route path="/admin" component={AdminNow} />
+            <Route path="/admin/" component={AdminNow} />
+            <Route path="/admin/now" component={AdminNow} />
+            <Route path="/admin/now/" component={AdminNow} />
+            <Route path="/admin/mayor" component={AdminMayor} />
+            <Route path="/admin/mayor/" component={AdminMayor} />
+            <Route path="/admin/leads" component={AdminCRM} />
+            <Route path="/admin/leads/" component={AdminCRM} />
+            <Route
+              path="/admin/leads/:kind/:id"
+              component={AdminOpportunityDetail}
+            />
+            <Route
+              path="/admin/leads/:kind/:id/"
+              component={AdminOpportunityDetail}
+            />
+            <Route path="/admin/money" component={AdminMoney} />
+            <Route path="/admin/money/" component={AdminMoney} />
+            <Route path="/admin/system" component={AdminSystem} />
+            <Route path="/admin/system/" component={AdminSystem} />
+            <Route path="/admin/sent" component={AdminSent} />
+            <Route path="/admin/sent/" component={AdminSent} />
 
             {/* ─── Legal + utility — must come BEFORE the legacy
                  <Redirect> block. The Switch returns the first matching
@@ -184,25 +205,40 @@ function App() {
             <Route path="/terms" component={Terms} />
             <Route path="/terms/" component={Terms} />
             <Route path="/sitemap" component={Sitemap} />
-                        <Route path="/sitemap/" component={Sitemap} />
-                        <Route path="/data-deletion" component={DataDeletion} />
-                        <Route path="/data-deletion/" component={DataDeletion} />
+            <Route path="/sitemap/" component={Sitemap} />
+            <Route path="/data-deletion" component={DataDeletion} />
+            <Route path="/data-deletion/" component={DataDeletion} />
 
             {/* ─── Legacy admin route redirects (both slash forms) ──── */}
             <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects" />
-                        <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects/" />
-                        <Redirect to="/admin/now" href="/admin/today" />
-                        <Redirect to="/admin/now" href="/admin/today/" />
-                        <Redirect to="/admin/money" href="/admin/auto-tender" />
-                        <Redirect to="/admin/money" href="/admin/auto-tender/" />
-                        <Redirect to="/admin/system" href="/admin/audit" />
-                        <Redirect to="/admin/system" href="/admin/audit/" />
+            <Redirect
+              to="/admin/leads?kind=prospect"
+              href="/admin/prospects/"
+            />
+            <Redirect to="/admin/now" href="/admin/today" />
+            <Redirect to="/admin/now" href="/admin/today/" />
+            <Redirect to="/admin/money" href="/admin/auto-tender" />
+            <Redirect to="/admin/money" href="/admin/auto-tender/" />
+            <Redirect to="/admin/system" href="/admin/audit" />
+            <Redirect to="/admin/system" href="/admin/audit/" />
             <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities" />
             <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities/" />
-            <Redirect to="/admin/leads/sam/:id" href="/admin/opportunities/:id" />
-            <Redirect to="/admin/leads/sam/:id/" href="/admin/opportunities/:id/" />
-            <Redirect to="/admin/leads?sources=1" href="/admin/prospect-sources" />
-            <Redirect to="/admin/leads?sources=1" href="/admin/prospect-sources/" />
+            <Redirect
+              to="/admin/leads/sam/:id"
+              href="/admin/opportunities/:id"
+            />
+            <Redirect
+              to="/admin/leads/sam/:id/"
+              href="/admin/opportunities/:id/"
+            />
+            <Redirect
+              to="/admin/leads?sources=1"
+              href="/admin/prospect-sources"
+            />
+            <Redirect
+              to="/admin/leads?sources=1"
+              href="/admin/prospect-sources/"
+            />
             <Redirect to="/admin/money" href="/admin/outreach" />
             <Redirect to="/admin/money" href="/admin/outreach/" />
             <Redirect to="/admin/leads" href="/admin/replies" />
@@ -213,8 +249,14 @@ function App() {
             <Redirect to="/admin/system" href="/admin/newsletter/" />
             <Redirect to="/admin/leads?kind=sam" href="/admin/government" />
             <Redirect to="/admin/leads?kind=sam" href="/admin/government/" />
-            <Redirect to="/admin/leads/sam/:opportunityId" href="/admin/government/:opportunityId" />
-            <Redirect to="/admin/leads/sam/:opportunityId/" href="/admin/government/:opportunityId/" />
+            <Redirect
+              to="/admin/leads/sam/:opportunityId"
+              href="/admin/government/:opportunityId"
+            />
+            <Redirect
+              to="/admin/leads/sam/:opportunityId/"
+              href="/admin/government/:opportunityId/"
+            />
             <Redirect to="/admin/leads" href="/admin/opportunity-scout" />
             <Redirect to="/admin/leads" href="/admin/opportunity-scout/" />
             <Redirect to="/admin/money" href="/admin/billing" />

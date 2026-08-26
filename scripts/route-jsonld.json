@@ -50,10 +50,7 @@
         "@type": "Place",
         "name": "New York City, NY"
       },
-      "sameAs": [
-        "https://mehyar.us",
-        "https://github.com/mehyarsoft"
-      ]
+      "sameAs": ["https://mehyar.us", "https://github.com/mehyarsoft"]
     },
     {
       "@type": "BreadcrumbList",
@@ -104,6 +101,24 @@
       },
       "blogPost": [
         {
+          "@id": "https://mehyar.us/blog/barber-booking-client-list-not-marketplace-dependency#blogposting"
+        },
+        {
+          "@id": "https://mehyar.us/blog/restaurant-website-menu-reservations-private-events#blogposting"
+        },
+        {
+          "@id": "https://mehyar.us/blog/clinic-automation-minimum-data-patient-trust#blogposting"
+        },
+        {
+          "@id": "https://mehyar.us/blog/real-estate-landing-page-follow-up-owner#blogposting"
+        },
+        {
+          "@id": "https://mehyar.us/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead#blogposting"
+        },
+        {
+          "@id": "https://mehyar.us/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners#blogposting"
+        },
+        {
           "@id": "https://mehyar.us/blog/small-business-tech-audit-revenue-leaks#blogposting"
         },
         {
@@ -135,25 +150,61 @@
       "@type": "ItemList",
       "@id": "https://mehyar.us/blog#post-index",
       "name": "MehyarSoft blog posts",
-      "description": "Three practical posts on finding small business tech leaks, missed-call CRM follow-up, and the custom-build decision.",
+      "description": "Practical field notes on local-business growth, safe automation, customer ownership, tech audits, and custom software.",
       "itemListOrder": "https://schema.org/ItemListOrderDescending",
-      "numberOfItems": 3,
+      "numberOfItems": 9,
       "itemListElement": [
         {
           "@type": "ListItem",
           "position": 1,
+          "url": "https://mehyar.us/blog/barber-booking-client-list-not-marketplace-dependency",
+          "name": "The Barber's Booking System Should Build a Client List, Not a Marketplace Dependency"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "url": "https://mehyar.us/blog/restaurant-website-menu-reservations-private-events",
+          "name": "A Restaurant Website Has One Job Before It Has Ten Features"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "url": "https://mehyar.us/blog/clinic-automation-minimum-data-patient-trust",
+          "name": "What a Clinic Can Automate Without Putting Patient Trust at Risk"
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "url": "https://mehyar.us/blog/real-estate-landing-page-follow-up-owner",
+          "name": "Why a Real Estate Landing Page Needs a Follow-Up Owner"
+        },
+        {
+          "@type": "ListItem",
+          "position": 5,
+          "url": "https://mehyar.us/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
+          "name": "Rizza App Is Live: A World-Class AI Wingman in Your Pocket"
+        },
+        {
+          "@type": "ListItem",
+          "position": 6,
+          "url": "https://mehyar.us/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners",
+          "name": "AiMech Is Live: An AI Mechanic for Everyday Car Owners"
+        },
+        {
+          "@type": "ListItem",
+          "position": 7,
           "url": "https://mehyar.us/blog/small-business-tech-audit-revenue-leaks",
           "name": "The Small Business Tech Audit: Find Revenue Leaks Before Buying More Software"
         },
         {
           "@type": "ListItem",
-          "position": 2,
+          "position": 8,
           "url": "https://mehyar.us/blog/missed-calls-crm-follow-up",
           "name": "Missed Calls Are a CRM Problem, Not Just a Phone Problem"
         },
         {
           "@type": "ListItem",
-          "position": 3,
+          "position": 9,
           "url": "https://mehyar.us/blog/when-to-build-custom-software",
           "name": "When to Build Custom Software (and When Not To)"
         }
@@ -282,23 +333,59 @@
       "name": "MehyarSoft field notes",
       "description": "Short, practical posts on tech audits, missed-call follow-up, automation, and when to build custom software.",
       "itemListOrder": "https://schema.org/ItemListOrderDescending",
-      "numberOfItems": 3,
+      "numberOfItems": 9,
       "itemListElement": [
         {
           "@type": "ListItem",
           "position": 1,
+          "url": "https://mehyar.us/blog/barber-booking-client-list-not-marketplace-dependency",
+          "name": "The Barber's Booking System Should Build a Client List, Not a Marketplace Dependency"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "url": "https://mehyar.us/blog/restaurant-website-menu-reservations-private-events",
+          "name": "A Restaurant Website Has One Job Before It Has Ten Features"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "url": "https://mehyar.us/blog/clinic-automation-minimum-data-patient-trust",
+          "name": "What a Clinic Can Automate Without Putting Patient Trust at Risk"
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "url": "https://mehyar.us/blog/real-estate-landing-page-follow-up-owner",
+          "name": "Why a Real Estate Landing Page Needs a Follow-Up Owner"
+        },
+        {
+          "@type": "ListItem",
+          "position": 5,
+          "url": "https://mehyar.us/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
+          "name": "Rizza App Is Live: A World-Class AI Wingman in Your Pocket"
+        },
+        {
+          "@type": "ListItem",
+          "position": 6,
+          "url": "https://mehyar.us/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners",
+          "name": "AiMech Is Live: An AI Mechanic for Everyday Car Owners"
+        },
+        {
+          "@type": "ListItem",
+          "position": 7,
           "url": "https://mehyar.us/blog/small-business-tech-audit-revenue-leaks",
           "name": "The Small Business Tech Audit: Find Revenue Leaks Before Buying More Software"
         },
         {
           "@type": "ListItem",
-          "position": 2,
+          "position": 8,
           "url": "https://mehyar.us/blog/missed-calls-crm-follow-up",
           "name": "Missed Calls Are a CRM Problem, Not Just a Phone Problem"
         },
         {
           "@type": "ListItem",
-          "position": 3,
+          "position": 9,
           "url": "https://mehyar.us/blog/when-to-build-custom-software",
           "name": "When to Build Custom Software (and When Not To)"
         }
@@ -321,7 +408,7 @@
       "publisher": {
         "@id": "https://mehyar.us/#organization"
       },
-      "image": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+      "image": "https://mehyar.us/assets/blog/tech-audit-revenue-leaks.webp",
       "mainEntityOfPage": {
         "@type": "WebPage",
         "@id": "https://mehyar.us/blog/small-business-tech-audit-revenue-leaks"
@@ -372,7 +459,7 @@
       "publisher": {
         "@id": "https://mehyar.us/#organization"
       },
-      "image": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+      "image": "https://mehyar.us/assets/blog/missed-calls-crm-follow-up.webp",
       "mainEntityOfPage": {
         "@type": "WebPage",
         "@id": "https://mehyar.us/blog/missed-calls-crm-follow-up"
@@ -423,7 +510,7 @@
       "publisher": {
         "@id": "https://mehyar.us/#organization"
       },
-      "image": "https://mehyar.us/assets/mehyarsoft-neutral-card.svg",
+      "image": "https://mehyar.us/assets/blog/when-to-build-custom-software.webp",
       "mainEntityOfPage": {
         "@type": "WebPage",
         "@id": "https://mehyar.us/blog/when-to-build-custom-software"
@@ -456,6 +543,140 @@
           "item": "https://mehyar.us/blog/when-to-build-custom-software"
         }
       ]
+    }
+  ],
+  "/blog/barber-booking-client-list-not-marketplace-dependency": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://mehyar.us/blog/barber-booking-client-list-not-marketplace-dependency#blogposting",
+      "headline": "The Barber's Booking System Should Build a Client List, Not a Marketplace Dependency",
+      "description": "A practical way for barbers and beauty pros to use a QR code, direct booking, reminders, and rebooking without treating a marketplace profile as their business.",
+      "datePublished": "2026-08-26",
+      "dateModified": "2026-08-26",
+      "author": {
+        "@id": "https://mehyar.us/about#person",
+        "@type": "Person",
+        "name": "Mehyar Swelim"
+      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
+      "image": "https://mehyar.us/assets/blog/barber-booking-client-ownership.webp",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://mehyar.us/blog/barber-booking-client-list-not-marketplace-dependency"
+      },
+      "articleSection": "Local Growth",
+      "url": "https://mehyar.us/blog/barber-booking-client-list-not-marketplace-dependency"
+    }
+  ],
+  "/blog/restaurant-website-menu-reservations-private-events": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://mehyar.us/blog/restaurant-website-menu-reservations-private-events#blogposting",
+      "headline": "A Restaurant Website Has One Job Before It Has Ten Features",
+      "description": "Make the next action obvious: view the menu, get directions, reserve, order, or ask about a private event—then connect that signal to someone who can respond.",
+      "datePublished": "2026-08-26",
+      "dateModified": "2026-08-26",
+      "author": {
+        "@id": "https://mehyar.us/about#person",
+        "@type": "Person",
+        "name": "Mehyar Swelim"
+      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
+      "image": "https://mehyar.us/assets/blog/restaurant-mobile-intent.webp",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://mehyar.us/blog/restaurant-website-menu-reservations-private-events"
+      },
+      "articleSection": "Hospitality",
+      "url": "https://mehyar.us/blog/restaurant-website-menu-reservations-private-events"
+    }
+  ],
+  "/blog/clinic-automation-minimum-data-patient-trust": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://mehyar.us/blog/clinic-automation-minimum-data-patient-trust#blogposting",
+      "headline": "What a Clinic Can Automate Without Putting Patient Trust at Risk",
+      "description": "A safer clinic automation strategy starts with minimum-data request routing, clear staff handoffs, and vendor review—not a public AI bot collecting patient history.",
+      "datePublished": "2026-08-26",
+      "dateModified": "2026-08-26",
+      "author": {
+        "@id": "https://mehyar.us/about#person",
+        "@type": "Person",
+        "name": "Mehyar Swelim"
+      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
+      "image": "https://mehyar.us/assets/blog/clinic-minimum-data-automation.webp",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://mehyar.us/blog/clinic-automation-minimum-data-patient-trust"
+      },
+      "articleSection": "Trust & Safety",
+      "url": "https://mehyar.us/blog/clinic-automation-minimum-data-patient-trust"
+    }
+  ],
+  "/blog/real-estate-landing-page-follow-up-owner": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://mehyar.us/blog/real-estate-landing-page-follow-up-owner#blogposting",
+      "headline": "Why a Real Estate Landing Page Needs a Follow-Up Owner",
+      "description": "An open-house QR code or listing page is only valuable when every inquiry has an owner, a next action, and a respectful follow-up timeline.",
+      "datePublished": "2026-08-26",
+      "dateModified": "2026-08-26",
+      "author": {
+        "@id": "https://mehyar.us/about#person",
+        "@type": "Person",
+        "name": "Mehyar Swelim"
+      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
+      "image": "https://mehyar.us/assets/blog/real-estate-lead-ownership.webp",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://mehyar.us/blog/real-estate-landing-page-follow-up-owner"
+      },
+      "articleSection": "Sales Operations",
+      "url": "https://mehyar.us/blog/real-estate-landing-page-follow-up-owner"
+    }
+  ],
+  "/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://mehyar.us/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead#blogposting",
+      "headline": "Rizza App Is Live: A World-Class AI Wingman in Your Pocket",
+      "datePublished": "2026-07-17",
+      "author": {
+        "@id": "https://mehyar.us/about#person",
+        "@type": "Person",
+        "name": "Mehyar Swelim"
+      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
+      "image": "https://mehyar.us/assets/rizza-logo.png",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://mehyar.us/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead"
+      },
+      "articleSection": "Apps",
+      "url": "https://mehyar.us/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead"
+    }
+  ],
+  "/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://mehyar.us/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners#blogposting",
+      "headline": "AiMech Is Live: An AI Mechanic for Everyday Car Owners",
+      "datePublished": "2026-07-17",
+      "author": {
+        "@id": "https://mehyar.us/about#person",
+        "@type": "Person",
+        "name": "Mehyar Swelim"
+      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
+      "image": "https://mehyar.us/assets/aimech-logo.png",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://mehyar.us/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners"
+      },
+      "articleSection": "Apps",
+      "url": "https://mehyar.us/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners"
     }
   ],
   "/booking": [
@@ -633,6 +854,38 @@
       ]
     }
   ],
+  "/pricing": [
+    {
+      "@type": "WebPage",
+      "@id": "https://mehyar.us/pricing#webpage",
+      "url": "https://mehyar.us/pricing",
+      "name": "Industry-Specific Pricing | MehyarSoft",
+      "description": "Starting prices and scoped packages for NYC barbers and beauty pros, clinics, real estate teams, restaurants, wellness studios, contractors, and professional services firms.",
+      "isPartOf": { "@id": "https://mehyar.us/#website" },
+      "about": { "@id": "https://mehyar.us/#professional-service" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Are MehyarSoft prices fixed?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Published prices are real starting prices for the stated scope. Messaging usage, vendor fees, regulated-data work, migrations, and custom integrations are scoped before work begins."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What if my business is not listed?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use the guided contact path and describe your customer journey and the leak you need fixed. MehyarSoft will recommend the smallest useful starting engagement or say if there is no fit."
+          }
+        }
+      ]
+    }
+  ],
   "/contact": [
     {
       "@type": "WebPage",
@@ -699,9 +952,7 @@
           "email": "info@mehyar.us",
           "contactType": "consulting intake",
           "areaServed": "US",
-          "availableLanguage": [
-            "English"
-          ],
+          "availableLanguage": ["English"],
           "url": "https://mehyar.us/contact"
         },
         {
@@ -709,9 +960,7 @@
           "telephone": "+1-347-674-0098",
           "contactType": "customer support",
           "areaServed": "US",
-          "availableLanguage": [
-            "English"
-          ]
+          "availableLanguage": ["English"]
         }
       ],
       "address": {
