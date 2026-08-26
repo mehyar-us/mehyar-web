@@ -30,6 +30,12 @@ const routeMeta = {
       'Explore MehyarSoft consulting offers: local business tech audits, website and booking cleanup, missed-call follow-up flows, internal automation sprints, systems integration, retainers, and custom software builds.',
     path: '/services',
   },
+  '/pricing': {
+    title: 'Industry Pricing | MehyarSoft NYC Websites, Booking & Automation',
+    description:
+      'Compare specific starting packages for barbers, clinics, real estate, restaurants, wellness, home services, professional services, auto, pet care, and retail.',
+    path: '/pricing',
+  },
   '/portfolio': {
     title: 'Engagement Patterns | MehyarSoft Consulting Work Examples',
     description:
@@ -95,6 +101,42 @@ const routeMeta = {
     description:
       'A MehyarSoft checklist for when custom software is justified versus when a small SaaS fix or process change is the right answer.',
     path: '/blog/when-to-build-custom-software',
+  },
+  '/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead': {
+    title: 'Rizza App Is Live: A World-Class AI Wingman in Your Pocket | MehyarSoft Blog',
+    description:
+      'We shipped Rizza — an AI wingman that reads the dating-app conversation, gets the vibe, and hands you replies that actually land. Witty, flirty, and always you — just sharper.',
+    path: '/blog/rizza-app-launch-tracking-and-organizing-work-without-the-overhead',
+  },
+  '/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners': {
+    title: 'AiMech Is Live: An AI Mechanic for Everyday Car Owners | MehyarSoft Blog',
+    description:
+      'AiMech.app combines AI-driven technical analysis with workflow automation so everyday car owners can describe a sound, a symptom, or a dashboard light and get a clear next step — without the dealership runaround.',
+    path: '/blog/aimech-app-launch-ai-mechanic-for-everyday-car-owners',
+  },
+  '/blog/barber-booking-client-list-not-marketplace-dependency': {
+    title: "The Barber's Booking System Should Build a Client List, Not a Marketplace Dependency | MehyarSoft Blog",
+    description:
+      'A practical way for barbers and beauty pros to use a QR code, direct booking, reminders, and rebooking without treating a marketplace profile as their business.',
+    path: '/blog/barber-booking-client-list-not-marketplace-dependency',
+  },
+  '/blog/restaurant-website-menu-reservations-private-events': {
+    title: 'A Restaurant Website Has One Job Before It Has Ten Features | MehyarSoft Blog',
+    description:
+      'Make the next action obvious: view the menu, get directions, reserve, order, or ask about a private event—then connect that signal to someone who can respond.',
+    path: '/blog/restaurant-website-menu-reservations-private-events',
+  },
+  '/blog/clinic-automation-minimum-data-patient-trust': {
+    title: 'What a Clinic Can Automate Without Putting Patient Trust at Risk | MehyarSoft Blog',
+    description:
+      'A safer clinic automation strategy starts with minimum-data request routing, clear staff handoffs, and vendor review—not a public AI bot collecting patient history.',
+    path: '/blog/clinic-automation-minimum-data-patient-trust',
+  },
+  '/blog/real-estate-landing-page-follow-up-owner': {
+    title: 'Why a Real Estate Landing Page Needs a Follow-Up Owner | MehyarSoft Blog',
+    description:
+      'An open-house QR code or listing page is only valuable when every inquiry has an owner, a next action, and a respectful follow-up timeline.',
+    path: '/blog/real-estate-landing-page-follow-up-owner',
   },
   '/newsletter': {
     title: 'Free AI Automation Checklist | MehyarSoft',
@@ -277,14 +319,24 @@ function applyRouteMeta(html, route) {
   }
 
 const portfolioRoutes = ['1', '2', '3', '4', '5', '6'].map((id) => `portfolio/${id}`);
-const blogRoutes = [
-  'small-business-tech-audit-revenue-leaks',
-  'missed-calls-crm-follow-up',
-  'when-to-build-custom-software',
-].map((slug) => `blog/${slug}`);
+const blogRoutes = Object.keys(routeMeta)
+  .filter((route) => route.startsWith('/blog/'))
+  .map((route) => route.slice(1));
+
+const blogDataSource = readFileSync('client/src/data/blog-posts.ts', 'utf8');
+const blogDataRoutes = [...blogDataSource.matchAll(/slug:\s*"([^"]+)"/g)].map(
+  ([, slug]) => `/blog/${slug}`,
+);
+const missingBlogShells = blogDataRoutes.filter((route) => !routeMeta[route]);
+if (missingBlogShells.length > 0) {
+  throw new Error(
+    `Missing static route metadata for blog route(s): ${missingBlogShells.join(', ')}`,
+  );
+}
 
 const directRoutes = [
   'services',
+  'pricing',
   'portfolio',
   ...portfolioRoutes,
   'blog',
