@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const proofPoints = [
   { value: "10+", label: "years professional software and systems engineering" },
-  { value: "NYC", label: "founder-led consulting for local and regulated businesses" },
+  { value: "Global", label: "remote delivery for businesses and regulated teams" },
   { value: "B2B", label: "websites, CRM workflows, automation, integrations" },
 ];
 
@@ -41,7 +41,7 @@ const AboutSection = () => {
             <div className="relative flex min-h-[420px] flex-col justify-between">
               <div>
                 <img
-                  src="/assets/mehyarsoft-mark.svg"
+                  src="/assets/mehyarsoft-mark-new-192.png"
                   alt="MehyarSoft brand mark"
                   className="h-20 w-20 rounded-3xl shadow-lg"
                   width="80"

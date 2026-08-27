@@ -20,9 +20,9 @@ const appShell = readFileSync(indexHtml, 'utf8');
 // its own meta.
 const routeMeta = {
   '/': {
-    title: 'MehyarSoft LLC | NYC Software & AI Automation Consultant',
+    title: 'MehyarSoft LLC | Software, Systems & AI Automation',
     description:
-      'Founder-led software, systems, and AI automation consulting for local businesses and regulated teams losing leads to missed calls, weak websites, manual follow-up, and disconnected tools.',
+      'Founder-led software, systems, and AI automation for businesses worldwide that want more customers, faster follow-up, and less manual work.',
   },
   '/services': {
     title: 'Services & Pricing | MehyarSoft Software Automation Consulting',
@@ -31,7 +31,7 @@ const routeMeta = {
     path: '/services',
   },
   '/pricing': {
-    title: 'Industry Pricing | MehyarSoft NYC Websites, Booking & Automation',
+    title: 'Industry Pricing | MehyarSoft Websites, Booking & Automation',
     description:
       'Compare specific starting packages for barbers, clinics, real estate, restaurants, wellness, home services, professional services, auto, pet care, and retail.',
     path: '/pricing',

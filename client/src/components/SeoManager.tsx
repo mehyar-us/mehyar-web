@@ -8,7 +8,7 @@ import { industryOffers } from "@/data/industry-offers";
 const SITE_ORIGIN = "https://mehyar.us";
 const SITE_NAME = "MehyarSoft LLC";
 const SOCIAL_IMAGE = `${SITE_ORIGIN}/assets/mehyarsoft-social-1200x630.png`;
-const SVG_LOGO = `${SITE_ORIGIN}/assets/mehyarsoft-logo.svg`;
+const BRAND_MARK = `${SITE_ORIGIN}/assets/mehyarsoft-mark-new-512.png`;
 
 interface SeoMeta {
   title: string;
@@ -28,7 +28,7 @@ const organization = {
   name: SITE_NAME,
   legalName: SITE_NAME,
   url: `${SITE_ORIGIN}/`,
-  logo: SVG_LOGO,
+  logo: BRAND_MARK,
   email: "info@mehyar.us",
   founder: { "@type": "Person", name: "Mehyar Swelim" },
 };
@@ -41,7 +41,7 @@ const professionalService = {
   url: `${SITE_ORIGIN}/`,
   email: "info@mehyar.us",
   founder: { "@type": "Person", name: "Mehyar Swelim" },
-  areaServed: ["New York City", "New York", "United States", "Remote US"],
+  areaServed: "Worldwide",
   priceRange: "$150-$25,000+",
   knowsAbout: [
     "software consulting",
@@ -111,7 +111,7 @@ const offerCatalog = {
         name: service.title,
         description: service.description,
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
-        areaServed: ["New York City", "New York", "United States", "Remote US"],
+        areaServed: "Worldwide",
       },
       ...(range
         ? {
@@ -145,7 +145,7 @@ const industryOfferCatalog = {
         name: offer.name,
         serviceType: industry.name,
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
-        areaServed: ["New York City", "New York", "United States", "Remote US"],
+        areaServed: "Worldwide",
       },
       url: `${absoluteUrl("/pricing")}#industry-pricing`,
     })),
@@ -154,9 +154,9 @@ const industryOfferCatalog = {
 
 const staticMeta: Record<string, SeoMeta> = {
   "/": {
-    title: "MehyarSoft LLC | NYC Software & AI Automation Consultant",
+    title: "MehyarSoft LLC | Software, Systems & AI Automation",
     description:
-      "Founder-led software, systems, and AI automation consulting for local businesses and regulated teams losing leads to missed calls, weak websites, manual follow-up, and disconnected tools.",
+      "Founder-led software, systems, and AI automation for businesses worldwide that want more customers, faster follow-up, and less manual work.",
     path: "/",
     jsonLd: [
       organization,
@@ -164,8 +164,8 @@ const staticMeta: Record<string, SeoMeta> = {
       website,
       webPage(
         "/",
-        "MehyarSoft LLC | NYC Software & AI Automation Consultant",
-        "Founder-led software, systems, and AI automation consulting for local businesses and regulated teams.",
+        "MehyarSoft LLC | Software, Systems & AI Automation",
+        "Websites, customer apps, booking, AI follow-up, phone care, and automation for businesses worldwide.",
       ),
       offerCatalog,
     ],
@@ -211,15 +211,15 @@ const staticMeta: Record<string, SeoMeta> = {
     ],
   },
   "/pricing": {
-    title: "Industry Pricing | MehyarSoft NYC Websites, Booking & Automation",
+    title: "Industry Pricing | MehyarSoft Websites, Booking & Automation",
     description:
       "Compare specific starting packages for barbers, clinics, real estate, restaurants, wellness, home services, professional services, auto, pet care, and retail.",
     path: "/pricing",
     jsonLd: [
       webPage(
         "/pricing",
-        "Industry Pricing | MehyarSoft NYC Websites, Booking & Automation",
-        "Transparent starting packages by local-business industry.",
+        "Industry Pricing | MehyarSoft Websites, Booking & Automation",
+        "Transparent starting packages by business industry, available worldwide.",
       ),
       breadcrumbs([
         { name: "Home", path: "/" },
@@ -379,7 +379,7 @@ const staticMeta: Record<string, SeoMeta> = {
         description:
           "A focused MehyarSoft audit for local businesses that need a clear diagnosis of website, booking, missed-call, and follow-up leaks.",
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
-        areaServed: ["New York City", "New York", "United States", "Remote US"],
+        areaServed: "Worldwide",
         offers: {
           "@type": "Offer",
           price: "330",
@@ -645,12 +645,7 @@ const resolveMeta = (rawPath: string): SeoMeta => {
           description: project.description,
           provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
           serviceType: project.category,
-          areaServed: [
-            "New York City",
-            "New York",
-            "United States",
-            "Remote US",
-          ],
+          areaServed: "Worldwide",
           url: absoluteUrl(path),
         },
       ],

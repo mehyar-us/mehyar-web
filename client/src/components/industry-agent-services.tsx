@@ -24,7 +24,7 @@ export default function IndustryAgentServices({ industry }: { industry: Industry
               {["Private, isolated business environment", "Approved channels and authorized users only", "Human approval for sending and risky actions", "Monitoring, backups, maintenance, and support"].map((item, index) => { const ItemIcon = trustIcons[index]; return <div key={item} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-foreground"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-800 dark:bg-white/10 dark:text-brand-100"><ItemIcon className="h-4 w-4" aria-hidden="true" /></span><span>{item}</span></div>; })}
             </div>
           </div>
-          <img src="/assets/agent-services/mobile-command-assistant.webp" alt="New York small-business owner directing work from a phone" className="min-h-80 w-full rounded-[1.75rem] border border-border object-cover shadow-[0_22px_60px_rgba(8,63,84,0.15)]" loading="lazy" />
+          <img src="/assets/agent-services/mobile-command-assistant.webp" alt="Business owner directing customer follow-up from a phone" className="min-h-80 w-full rounded-[1.75rem] border border-border object-cover shadow-[0_22px_60px_rgba(8,63,84,0.15)]" loading="lazy" />
         </div>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-2">

@@ -44,8 +44,15 @@ const About = () => {
 
           <div className="rounded-[1.75rem] border border-border bg-card/88 p-4 shadow-[0_24px_80px_rgba(8,63,84,0.12)] dark:bg-card/80 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
             <div className="rounded-[1.35rem] border border-border bg-background/70 p-5 dark:bg-white dark:bg-zinc-900/[0.03]">
-              <img src="/assets/mehyarsoft-logo.svg" alt="MehyarSoft logo" className="mb-6 w-full max-w-sm dark:hidden" />
-              <img src="/assets/mehyarsoft-logo-dark.svg" alt="MehyarSoft logo" className="mb-6 hidden w-full max-w-sm dark:block" />
+              <div className="mb-6 flex items-center gap-4" aria-label="MehyarSoft">
+                <span className="grid h-20 w-20 place-items-center rounded-3xl border border-brand-700/15 bg-white p-2 shadow-lg dark:bg-brand-950">
+                  <img src="/assets/mehyarsoft-mark-new-192.png" alt="" aria-hidden="true" className="h-full w-full object-contain" width="192" height="192" />
+                </span>
+                <span>
+                  <span className="block text-4xl font-semibold tracking-[-0.06em] text-brand-950 dark:text-white">Mehyar<span className="font-light">Soft</span></span>
+                  <span className="mt-2 block text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-brand-800/75 dark:text-brand-100">Software • Systems • AI</span>
+                </span>
+              </div>
               <div className="grid gap-3">
                 {credentials.map((item) => (
                   <div key={item} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-sm font-semibold text-foreground">

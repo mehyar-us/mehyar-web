@@ -10,18 +10,17 @@ const Footer = () => {
       <div className="container mx-auto">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div>
-            <Link href="/" className="inline-flex items-center mb-6" aria-label="MehyarSoft home">
-                <img
-                  src="/assets/mehyarsoft-logo-dark.svg"
-                  alt="MehyarSoft"
-                  className="h-14 w-auto opacity-95"
-                  width="760"
-                  height="180"
-                  decoding="async"
-                />
+            <Link href="/" className="mb-6 inline-flex items-center gap-3" aria-label="MehyarSoft home">
+              <span className="grid h-14 w-14 place-items-center rounded-2xl border border-white/15 bg-white p-1.5">
+                <img src="/assets/mehyarsoft-mark-new-192.png" alt="" aria-hidden="true" className="h-full w-full object-contain" width="192" height="192" decoding="async" />
+              </span>
+              <span>
+                <span className="block text-2xl font-semibold tracking-[-0.055em]">Mehyar<span className="font-light">Soft</span></span>
+                <span className="mt-1 block text-[0.55rem] font-semibold uppercase tracking-[0.28em] text-brand-100">Software • Systems • AI</span>
+              </span>
             </Link>
             <p className="text-neutral-300 mb-6">
-              Founder-led software, systems, and AI automation consulting for local businesses, agencies, and regulated teams.
+              Founder-led software, systems, and AI automation for businesses, agencies, and regulated teams worldwide.
             </p>
             <a href="mailto:info@mehyar.us" className="text-neutral-300 hover:text-white transition-colors">
               info@mehyar.us
@@ -85,7 +84,7 @@ const Footer = () => {
             <Link href="/privacy-policy" className="text-neutral-400 hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="text-neutral-400 hover:text-white transition-colors">Terms of Service</Link>
             <Link href="/data-deletion" className="text-neutral-400 hover:text-white transition-colors">Data Deletion</Link>
-            <Link href="/unsubscribe" className="text-neutral-400 hover:text-white transition-colors">Unsubscribe</Link>
+            <Link href="/unsubscribe" className="text-neutral-400 hover:text-white transition-colors">Email settings & unsubscribe</Link>
             <Link href="/sitemap" className="text-neutral-400 hover:text-white transition-colors">Sitemap</Link>
           </div>
         </div>

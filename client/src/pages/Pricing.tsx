@@ -10,7 +10,7 @@ export default function Pricing() {
         <div className="mx-auto max-w-7xl">
           <div className="max-w-4xl">
             <p className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
-              <Sparkles className="h-4 w-4" /> NYC small-business systems
+              <Sparkles className="h-4 w-4" /> Business systems for teams worldwide
             </p>
             <h1 className="text-4xl font-semibold tracking-[-0.05em] text-ink dark:text-white md:text-6xl md:leading-[0.96]">
               Choose your business. See exactly what you get.
