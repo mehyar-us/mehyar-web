@@ -3,6 +3,7 @@ import { onRequestGet as health } from "../functions/api/health.js";
 import { onRequestGet as clientConfig } from "../functions/api/client-config.js";
 import { onRequestGet as publicConfig } from "../functions/api/public-config.js";
 import { onRequestPost as intake } from "../functions/api/intake.js";
+import { onRequestPost as unsubscribe } from "../functions/api/suppressions/unsubscribe.js";
 
 class MockKV {
   constructor() {
@@ -72,8 +73,14 @@ class MockD1 {
           utm_campaign,
         ] = statement.values;
         db.leads.push({ id, created_at, updated_at, source: "website", form_type, request_type, selected_offer, offer_code, value_estimate, calendar_intent, status: "new", name, email, phone, company, website, service_interest, budget_range, timeline, message, consent_contact, consent_marketing, ip_hash, user_agent_hash, referrer, utm_source, utm_medium, utm_campaign, turnstile_passed: 1, notification_status: "pending" });
+      } else if (sql.includes("INSERT OR IGNORE INTO suppression_list")) {
+        const [id, value_hash, reason, source] = statement.values;
+        if (!db.suppression.some((row) => row.value_hash === value_hash)) db.suppression.push({ id, type: "email", value_hash, reason, source });
       } else if (sql.includes("INSERT INTO lead_events")) {
-        const [id, lead_id, event_type, metadata_json] = statement.values;
+        const [id, second, third, fourth] = statement.values;
+        const [lead_id, event_type, metadata_json] = sql.includes("VALUES (?, NULL")
+          ? [null, second, third]
+          : [second, third, fourth];
         db.events.push({ id, lead_id, event_type, actor: "system", metadata_json });
       } else if (sql.includes("UPDATE leads SET notification_status")) {
         const [notification_status, notification_error, id] = statement.values;
@@ -249,9 +256,33 @@ assert.equal(requestTypeAliasResponse.status, 200);
 assert.equal(requestTypeAliasEnv.__db.leads[0].form_type, "micro_offer");
 assert.equal(requestTypeAliasEnv.__db.leads[0].request_type, "micro_offer");
 
+for (const [formType, email, extra] of [
+  ["audit", "audit@test.example", { selected_offer: "tech_audit", service_interest: "Tech Audit" }],
+  ["booking", "booking@test.example", { calendar_intent: "manual_booking_request_or_calendar_fallback", service_interest: "Website and booking help" }],
+  ["phone_help", "phone@test.example", { service_interest: "Phone help request" }],
+]) {
+  const formEnv = env();
+  const response = await intake({ request: request("/api/intake", { ...validPayload, form_type: formType, request_type: formType, email, ...extra }), env: formEnv });
+  assert.equal(response.status, 200, `${formType} submission should succeed`);
+  assert.equal((await response.json()).ok, true);
+  assert.equal(formEnv.__db.leads[0].form_type, formType);
+  assert.equal(formEnv.__db.leads[0].notification_status, "sent");
+}
+
+const unsubscribeEnv = env();
+const unsubscribeResponse = await unsubscribe({
+  request: request("/api/suppressions/unsubscribe", { email: "Stop@Test.Example", reason: "No longer needed", source: "unit_test" }),
+  env: unsubscribeEnv,
+});
+assert.equal(unsubscribeResponse.status, 200);
+assert.equal((await unsubscribeResponse.json()).status, "suppressed");
+assert.equal(unsubscribeEnv.__db.suppression.length, 1);
+assert.equal(unsubscribeEnv.__db.suppression[0].reason, "No longer needed");
+assert.equal(unsubscribeEnv.__db.events.some((event) => event.event_type === "suppression_created"), true);
+
 console.log(JSON.stringify({
   ok: true,
-  tests: ["health", "public client config", "valid submission", "invalid turnstile rejection", "D1/audit row", "notification path", "consent rejection", "newsletter checklist submission", "newsletter consent rejection", "micro-offer fields", "request_type alias"],
+  tests: ["health", "public client config", "contact submission", "invalid turnstile rejection", "D1/audit row", "notification path", "consent rejection", "newsletter checklist submission", "newsletter duplicate handling", "newsletter consent rejection", "micro-offer fields", "request_type alias", "audit submission", "booking submission", "phone-help submission", "unsubscribe suppression"],
   leads_created: validEnv.__db.leads.length,
   audit_events: validEnv.__db.events.map((event) => event.event_type),
   notifications_sent: validEnv.__email.sent.length,

@@ -134,7 +134,7 @@ const industryOfferCatalog = {
     industry.packages.map((offer) => ({
       "@type": "Offer",
       name: `${industry.name}: ${offer.name}`,
-      description: `${offer.bestFor} Includes ${offer.includes.join(", ")}.`,
+      description: `${offer.bestFor} Customers can ${offer.customerCan.join(", ")}. The owner gets ${offer.ownerGets.join(", ")}.`,
       priceSpecification: {
         "@type": "PriceSpecification",
         priceCurrency: "USD",
@@ -589,6 +589,38 @@ const resolveMeta = (rawPath: string): SeoMeta => {
   const path = rawPath.split("?")[0].replace(/\/$/, "") || "/";
   if (path.startsWith("/admin")) return adminMeta(path);
   if (staticMeta[path]) return staticMeta[path];
+
+  if (path.startsWith("/industries/")) {
+    const slug = path.replace("/industries/", "");
+    const industry = industryOffers.find((item) => item.id === slug);
+    if (!industry) return notFoundMeta(path);
+    const title = `${industry.shortName} Website & Automation Pricing | MehyarSoft`;
+    const description = `${industry.description} Compare three plain-language packages, exact starting prices, customer features, owner tools, and a visual demo.`;
+    return {
+      title,
+      description,
+      path,
+      jsonLd: [
+        webPage(path, title, description),
+        breadcrumbs([
+          { name: "Home", path: "/" },
+          { name: "Industry Pricing", path: "/pricing" },
+          { name: industry.shortName, path },
+        ]),
+        {
+          "@type": "OfferCatalog",
+          name: `${industry.shortName} packages`,
+          itemListElement: industry.packages.map((pkg) => ({
+            "@type": "Offer",
+            name: pkg.name,
+            description: pkg.plainSummary,
+            priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", description: `${pkg.price}; ${pkg.cadence}` },
+            url: absoluteUrl(path),
+          })),
+        },
+      ],
+    };
+  }
 
   if (path.startsWith("/portfolio/")) {
     const id = Number(path.replace("/portfolio/", ""));

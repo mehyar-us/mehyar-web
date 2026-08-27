@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
 import Services from "@/pages/Services";
 import Pricing from "@/pages/Pricing";
+import IndustryDetail from "@/pages/IndustryDetail";
 import Portfolio from "@/pages/Portfolio";
 import PortfolioDetail from "@/pages/PortfolioDetail";
 import Apps from "@/pages/Apps";
@@ -120,6 +121,8 @@ function App() {
             <Route path="/services/" component={Services} />
             <Route path="/pricing" component={Pricing} />
             <Route path="/pricing/" component={Pricing} />
+            <Route path="/industries/:slug" component={IndustryDetail} />
+            <Route path="/industries/:slug/" component={IndustryDetail} />
             <Route path="/portfolio" component={Portfolio} />
             <Route path="/portfolio/" component={Portfolio} />
             <Route path="/portfolio/:id" component={PortfolioDetail} />

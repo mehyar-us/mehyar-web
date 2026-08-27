@@ -14,20 +14,20 @@ export default function Pricing() {
               <Sparkles className="h-4 w-4" /> NYC small-business systems
             </p>
             <h1 className="text-4xl font-semibold tracking-[-0.05em] text-ink dark:text-white md:text-6xl md:leading-[0.96]">
-              The right price starts with the business you actually run.
+              Choose your business. See exactly what you get.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
-              Website, booking, CRM, AI, social, SMS, and custom software can
-              mean very different things for a solo barber, a medical practice,
-              and a contractor. Start with your industry; choose the narrowest
-              package that solves the problem.
+              No agency jargon. Start with your business type, then compare a
+              clear website, a website with follow-up, and a full automation
+              system. Every card explains what your customers can do, what you
+              receive, the setup price, and the monthly price.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#industry-pricing"
                 className={buttonVariants({ variant: "cta", size: "lg" })}
               >
-                Explore my industry <ArrowRight className="ml-2 h-4 w-4" />
+                Find my business <ArrowRight className="ml-2 h-4 w-4" />
               </a>
               <Link
                 href="/micro-offer#intake"

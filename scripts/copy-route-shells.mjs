@@ -255,6 +255,28 @@ const routeMeta = {
   },
 };
 
+const industryShells = [
+  ['barbershops-salons', 'Barbershops & Salons'],
+  ['clinics-dentists', 'Clinics & Dentists'],
+  ['real-estate', 'Real Estate'],
+  ['restaurants-cafes', 'Restaurants & Cafés'],
+  ['spas-fitness', 'Spas & Fitness'],
+  ['home-services', 'Home Services'],
+  ['professional-services', 'Professional Services'],
+  ['auto-services', 'Auto Services'],
+  ['pet-care', 'Pet Care'],
+  ['retail', 'Retail Stores'],
+];
+
+for (const [slug, label] of industryShells) {
+  const path = `/industries/${slug}`;
+  routeMeta[path] = {
+    title: `${label} Website & Automation Pricing | MehyarSoft`,
+    description: `Compare three plain-language MehyarSoft packages for ${label.toLowerCase()}, including exact starting prices, customer features, owner tools, and a visual demo.`,
+    path,
+  };
+}
+
 const SITE_ORIGIN = 'https://mehyar.us';
 
 function escapeAttr(value) {
@@ -337,6 +359,16 @@ if (missingBlogShells.length > 0) {
 const directRoutes = [
   'services',
   'pricing',
+  'industries/barbershops-salons',
+  'industries/clinics-dentists',
+  'industries/real-estate',
+  'industries/restaurants-cafes',
+  'industries/spas-fitness',
+  'industries/home-services',
+  'industries/professional-services',
+  'industries/auto-services',
+  'industries/pet-care',
+  'industries/retail',
   'portfolio',
   ...portfolioRoutes,
   'blog',

@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { blogPosts } from "@/data/blog-posts";
 import { projects } from "@/data/portfolio-projects";
+import { industryOffers } from "@/data/industry-offers";
 
 const coreRoutes = [
   { label: "Home", href: "/", description: "The revenue-leak diagnostic journey and fastest path to contact." },
@@ -20,6 +21,7 @@ const coreRoutes = [
   ];
 
 const detailRoutes = [
+  ...industryOffers.map((industry) => ({ label: `${industry.shortName} pricing and demo`, href: `/industries/${industry.id}`, description: industry.description })),
   ...projects.map((project) => ({ label: project.title, href: `/portfolio/${project.id}`, description: project.description })),
   ...blogPosts.map((post) => ({ label: post.title, href: `/blog/${post.slug}`, description: post.excerpt })),
 ];
