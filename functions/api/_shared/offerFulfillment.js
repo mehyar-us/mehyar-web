@@ -149,7 +149,7 @@ function normalizeLead(lead = {}) {
 
 function scoreServiceFit(lead, combined) {
   let score = 0;
-  if (["audit", "booking", "phone_help", "contact"].includes(lead.form_type)) score += 20;
+  if (["audit", "booking", "phone_help", "contact", "support"].includes(lead.form_type)) score += 20;
   if (lead.company) score += 10;
   if (lead.website) score += 10;
   if (lead.service_interest) score += 15;

@@ -260,6 +260,7 @@ for (const [formType, email, extra] of [
   ["audit", "audit@test.example", { selected_offer: "tech_audit", service_interest: "Tech Audit" }],
   ["booking", "booking@test.example", { calendar_intent: "manual_booking_request_or_calendar_fallback", service_interest: "Website and booking help" }],
   ["phone_help", "phone@test.example", { service_interest: "Phone help request" }],
+  ["support", "support@test.example", { company: "Support Test Co", website: "https://support.example.test", service_interest: "Support ticket", message: "Existing client: Yes\nSupport area: Booking or form issue\nAffected service: Booking form\nHelp needed: Urgent repair\n\nAppointments are not reaching the front desk." }],
 ]) {
   const formEnv = env();
   const response = await intake({ request: request("/api/intake", { ...validPayload, form_type: formType, request_type: formType, email, ...extra }), env: formEnv });
@@ -282,7 +283,7 @@ assert.equal(unsubscribeEnv.__db.events.some((event) => event.event_type === "su
 
 console.log(JSON.stringify({
   ok: true,
-  tests: ["health", "public client config", "contact submission", "invalid turnstile rejection", "D1/audit row", "notification path", "consent rejection", "newsletter checklist submission", "newsletter duplicate handling", "newsletter consent rejection", "micro-offer fields", "request_type alias", "audit submission", "booking submission", "phone-help submission", "unsubscribe suppression"],
+  tests: ["health", "public client config", "contact submission", "invalid turnstile rejection", "D1/audit row", "notification path", "consent rejection", "newsletter checklist submission", "newsletter duplicate handling", "newsletter consent rejection", "micro-offer fields", "request_type alias", "audit submission", "booking submission", "phone-help submission", "support submission", "unsubscribe suppression"],
   leads_created: validEnv.__db.leads.length,
   audit_events: validEnv.__db.events.map((event) => event.event_type),
   notifications_sent: validEnv.__email.sent.length,

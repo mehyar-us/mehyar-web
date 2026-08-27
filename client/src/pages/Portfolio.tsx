@@ -27,19 +27,18 @@ const Portfolio = () => {
             Engagement patterns
           </p>
           <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
-            Engagement patterns, not fake case studies.
+            Practical ways we improve customer flow and daily operations.
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
-            No invented logos or testimonials. These are concrete MehyarSoft
-            work patterns for audits, missed-call follow-up, automations,
-            integrations, website cleanup, and retainers.
+            Explore focused work for audits, missed-call follow-up, automations,
+            integrations, website improvements, and ongoing support.
           </p>
         </div>
       </section>
 
       <QuickAnswer
         question="Are these MehyarSoft client case studies?"
-        answer="No. These are reference engagement patterns showing the types of problems MehyarSoft is built to solve. MehyarSoft avoids fake testimonials, fake client logos, and fake metrics."
+        answer="These examples show the kinds of problems, deliverables, and working relationships MehyarSoft supports. Results and scope are confirmed for each business before work begins."
         ctaHref="/contact"
         ctaLabel="Discuss your real workflow"
       />

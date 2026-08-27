@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import SupportTicketModal from "@/components/SupportTicketModal";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -16,6 +17,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       <Navbar />
       <main className="flex-grow">{children}</main>
       {isAdmin ? null : <Footer />}
+      {isAdmin ? null : <SupportTicketModal />}
     </div>
   );
 };

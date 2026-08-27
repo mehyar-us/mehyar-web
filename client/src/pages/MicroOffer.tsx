@@ -95,7 +95,7 @@ const MicroOffer = () => {
               </a>
             </div>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              No fake agency pitch. No guaranteed revenue claim. No online checkout; approved audits are invoiced manually by email.
+              The audit has a fixed scope and does not promise a specific revenue result. Approved audits are invoiced manually by email.
             </p>
           </div>
 

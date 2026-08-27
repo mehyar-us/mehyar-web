@@ -7,6 +7,9 @@ import CTASection from "@/components/cta-section";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
 import QuickAnswer from "@/components/QuickAnswer";
+import MaintenanceSupportSection from "@/components/maintenance-support-section";
+import { managedAgentOffers } from "@/data/agent-services";
+import { Bot, BrainCircuit } from "lucide-react";
 
 const steps = ["Find the leak", "Ship the smallest useful fix", "Measure and document the handoff"];
 
@@ -91,6 +94,25 @@ const Services = () => {
       </section>
 
       <PricingSection />
+
+      <section className="border-y border-border bg-muted/35 px-4 py-14 md:py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <img src="/assets/agent-services/learning-operations-assistant.webp" alt="Business owner reviewing an AI-prepared operations brief" className="min-h-80 w-full rounded-[1.75rem] border border-border object-cover shadow-[0_22px_60px_rgba(8,63,84,0.13)]" loading="lazy" />
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Managed AI business operators</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">OpenClaw and Hermes, installed and maintained for your business.</h2>
+              <p className="mt-4 text-base leading-7 text-muted-foreground">Use a private mobile command channel for approved actions, or add a learning assistant for recurring research, summaries, follow-up, and reports. Every setup includes permissions, human approval rules, monitoring, backups, and support.</p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {managedAgentOffers.slice(0, 2).map((offer, index) => <div key={offer.name} className="rounded-2xl border border-border bg-card p-4"><div className="flex items-center gap-2 font-semibold text-foreground">{index === 0 ? <Bot className="h-5 w-5 text-brand-700 dark:text-brand-100" /> : <BrainCircuit className="h-5 w-5 text-brand-700 dark:text-brand-100" />}{offer.name}</div><p className="mt-2 text-sm leading-6 text-muted-foreground">{offer.bestFor}</p><p className="mt-3 text-sm font-semibold text-foreground">{offer.managed}</p></div>)}
+              </div>
+              <Link href="/pricing#industry-pricing" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-6" })}>See uses for my business<ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <MaintenanceSupportSection />
 
       <section className="bg-background px-4 py-12 md:py-18">
         <div className="mx-auto max-w-5xl rounded-[2rem] border border-border bg-card p-6 text-center shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:p-10">

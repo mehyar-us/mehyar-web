@@ -1,6 +1,6 @@
 const SAFE_SUCCESS = "Thanks — your request was received.";
 const SAFE_FAILURE = "We could not receive the request. Please email info@mehyar.us.";
-const FORM_TYPES = new Set(["contact", "audit", "booking", "micro_offer", "newsletter", "phone_help"]);
+const FORM_TYPES = new Set(["contact", "audit", "booking", "micro_offer", "newsletter", "phone_help", "support"]);
 const FIELD_LIMITS = {
   request_type: 40,
   selected_offer: 120,

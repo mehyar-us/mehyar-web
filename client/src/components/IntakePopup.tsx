@@ -39,7 +39,7 @@ const IntakePopup = ({
   open,
   onOpenChange,
   title = "Send the leak.",
-  description = "Short brief in, short answer out. No drip campaign, no fake availability — an honest scoped answer or a direct no-fit.",
+  description = "Send a short brief and receive a practical, scoped next step.",
   source = "home_cta_popup",
   campaign = "contact_general",
   serviceCategory,

@@ -6,6 +6,8 @@ export type IndustryPackage = {
   bestFor: string;
   customerCan: string[];
   ownerGets: string[];
+  technicalDetails: string[];
+  support: string;
   featured?: boolean;
 };
 
@@ -24,7 +26,7 @@ export type IndustryOffer = {
 };
 
 type OfferConfig = Omit<IndustryOffer, "heroImage" | "packages"> & {
-  levelOne: Omit<IndustryPackage, "featured">;
+  levelOne: Omit<IndustryPackage, "featured" | "technicalDetails" | "support">;
   levelTwoPrice: string;
   levelTwoCadence: string;
   levelTwoBestFor: string;
@@ -35,19 +37,50 @@ type OfferConfig = Omit<IndustryOffer, "heroImage" | "packages"> & {
   levelThreeBestFor: string;
 };
 
+const unique = (items: string[]) => [...new Set(items)];
+
 const buildOffer = (config: OfferConfig): IndustryOffer => ({
   ...config,
   heroImage: `/assets/industries/${config.id}.webp`,
   packages: [
-    config.levelOne,
+    {
+      ...config.levelOne,
+      plainSummary: `${config.levelOne.plainSummary} Customers can create an account, save their details, and return without starting over.`,
+      customerCan: unique([
+        ...config.levelOne.customerCan,
+        "Create a secure account and sign in on any phone",
+        "Save contact details and return without filling everything out again",
+        "Install your branded customer app from the browser—no app store needed",
+      ]),
+      ownerGets: unique([
+        ...config.levelOne.ownerGets,
+        "A photo-rich branded website and installable customer app",
+        "A private customer and subscriber list you control",
+        "Customer accounts, consent records, and an owner dashboard",
+      ]),
+      technicalDetails: [
+        "Progressive Web App (PWA): opens as a website and installs like an app",
+        "Secure customer login and account area",
+        "Private customer database with contact and marketing-consent records",
+        "Managed hosting, backups, security updates, and performance checks",
+      ],
+      support: "Standard maintenance, hosting, backups, and support-ticket access are included while the monthly plan is active.",
+    },
     {
       name: "AI Texting + Follow-Up",
-      plainSummary: `Everything in ${config.levelOne.name}, plus text messages and an AI helper that answers common questions and keeps follow-up moving.`,
+      plainSummary: `Everything in ${config.levelOne.name}, plus two-way text messages and an AI helper that answers approved questions, collects useful details, and keeps follow-up moving.`,
       price: config.levelTwoPrice,
       cadence: config.levelTwoCadence,
       bestFor: config.levelTwoBestFor,
-      customerCan: config.levelTwoCustomer,
-      ownerGets: config.levelTwoOwner,
+      customerCan: unique([...config.levelTwoCustomer, "Continue a conversation by text without calling again"]),
+      ownerGets: unique([...config.levelTwoOwner, "Consent-aware texting, email follow-up, and customer activity history", "Monthly maintenance and workflow checks"]),
+      technicalDetails: [
+        "AI website assistant trained on your approved services, prices, policies, and hours",
+        "Two-way SMS and email automation with opt-out handling",
+        "Booking, request, reminder, and win-back rules connected to the customer record",
+        "Owner dashboard showing conversations, follow-up, and customers needing attention",
+      ],
+      support: "Everything in Level 1 support, plus monthly automation checks and faster handling of support tickets.",
       featured: true,
     },
     {
@@ -66,7 +99,16 @@ const buildOffer = (config: OfferConfig): IndustryOffer => ({
         "Scheduling, text-message, and email follow-up in one system",
         "Instagram and TikTok auto-posting with AI-assisted videos and reels",
         "A review option before social posts are published",
+        "Priority maintenance, monitoring, and a monthly improvement request",
       ],
+      technicalDetails: [
+        "AI phone assistant with approved scripts, call routing, and human handoff",
+        "Shared scheduling, text, email, and call history",
+        "Instagram and TikTok publishing workflow with account-permission checks",
+        "AI-assisted short video and reel production with approval controls",
+        "Priority monitoring for the customer app and automations",
+      ],
+      support: "Priority support, monitoring, monthly maintenance, and one scoped improvement request each month are included.",
     },
   ],
 });

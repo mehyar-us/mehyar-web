@@ -17,7 +17,7 @@ const timeline = [
   { year: "Now", title: "MehyarSoft LLC", description: "A consulting brand focused on software, systems engineering, AI automation, and practical tech support for local and regulated businesses." },
 ];
 
-const credentials = ["Syrian founder in NYC", "10+ years professional software engineering", "Current regulated systems-engineering work", "Founder-led LLC: no fake agency theater"];
+const credentials = ["Syrian founder in NYC", "10+ years professional software engineering", "Current regulated systems-engineering work", "Founder-led LLC with direct technical accountability"];
 
 const About = () => {
   return (

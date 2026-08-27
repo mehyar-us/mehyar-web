@@ -257,7 +257,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "Are these MehyarSoft client case studies?",
           answer:
-            "No. These are reference engagement patterns showing the types of problems MehyarSoft is built to solve. MehyarSoft avoids fake testimonials and fake metrics.",
+            "These are reference engagement patterns showing the types of problems, deliverables, and working relationships MehyarSoft supports.",
         },
       ]),
     ],
@@ -415,7 +415,7 @@ const staticMeta: Record<string, SeoMeta> = {
           {
             question: "Why $330 instead of unpaid advice or a $5,000 proposal?",
             answer:
-              "$330 is enough to do the diagnosis honestly without pressure. MehyarSoft avoids fake agency pitches and guaranteed revenue claims. If a small fix is enough, the audit tells you. If a larger scope is warranted, the audit explains why and what the next sprint would actually cost.",
+              "$330 covers a focused diagnosis and prioritized next step. If a small fix is enough, the audit explains it. If a larger scope is warranted, the audit explains why and what the next sprint would cost.",
           },
           {
             question: "Do I have to commit to a build after the audit?",
@@ -595,7 +595,7 @@ const resolveMeta = (rawPath: string): SeoMeta => {
     const industry = industryOffers.find((item) => item.id === slug);
     if (!industry) return notFoundMeta(path);
     const title = `${industry.shortName} Website & Automation Pricing | MehyarSoft`;
-    const description = `${industry.description} Compare three plain-language packages, exact starting prices, customer features, owner tools, and a visual demo.`;
+    const description = `${industry.description} Compare detailed services, maintenance options, exact starting prices, customer features, and owner tools.`;
     return {
       title,
       description,

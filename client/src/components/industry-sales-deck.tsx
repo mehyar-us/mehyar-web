@@ -47,11 +47,26 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
                   <p className={cn("mt-1 text-sm", pkg.featured ? "text-white/70" : "text-muted-foreground")}>{pkg.cadence}</p>
                 </div>
                 <p className={cn("mt-5 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}><strong className={pkg.featured ? "text-white" : "text-foreground"}>Best for:</strong> {pkg.bestFor}</p>
-                <div className="mt-5 border-t border-current/10 pt-5">
-                  <p className="text-sm font-semibold">What this includes</p>
-                  <ul className={cn("mt-3 space-y-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>
-                    {[...pkg.customerCan, ...pkg.ownerGets].map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0" />{item}</li>)}
-                  </ul>
+                <div className="mt-5 space-y-5 border-t border-current/10 pt-5">
+                  <div>
+                    <p className="text-sm font-semibold">Your customers can</p>
+                    <ul className={cn("mt-3 space-y-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>
+                      {pkg.customerCan.map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0" />{item}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Your business gets</p>
+                    <ul className={cn("mt-3 space-y-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>
+                      {pkg.ownerGets.map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0" />{item}</li>)}
+                    </ul>
+                  </div>
+                  <details className={cn("rounded-xl border p-3", pkg.featured ? "border-white/15 bg-white/[0.04]" : "border-border bg-background")}>
+                    <summary className="cursor-pointer text-sm font-semibold">Technical details</summary>
+                    <ul className={cn("mt-3 space-y-2 text-xs leading-5", pkg.featured ? "text-white/70" : "text-muted-foreground")}>
+                      {pkg.technicalDetails.map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />{item}</li>)}
+                    </ul>
+                  </details>
+                  <div className={cn("rounded-xl p-3 text-sm leading-6", pkg.featured ? "bg-brand-100/10 text-brand-100" : "bg-brand-100/60 text-brand-950 dark:bg-white/[0.06] dark:text-brand-100")}><strong>Maintenance and support:</strong> {pkg.support}</div>
                 </div>
                 <Link href={href} className={buttonVariants({ variant: pkg.featured ? "secondary" : "outline", className: "mt-6 w-full" })}>Ask about Level {index + 1}<ArrowRight className="ml-2 h-4 w-4" /></Link>
               </article>
@@ -68,7 +83,7 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
             <div className="relative min-h-72 overflow-hidden lg:min-h-full">
               <img src={industry.heroImage} alt={`${industry.shortName} customer experience example`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
               <div className="absolute inset-0 bg-gradient-to-t from-brand-950/75 to-transparent lg:bg-gradient-to-r" />
-              <p className="absolute bottom-5 left-5 right-5 text-sm font-medium leading-6 text-white">Concept example—not an invented client result.</p>
+              <p className="absolute bottom-5 left-5 right-5 text-sm font-medium leading-6 text-white">{industry.outcomes.join(" · ")}</p>
             </div>
             <div className="p-6 md:p-9">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">See how it works</p>

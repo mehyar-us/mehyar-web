@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X } from "lucide-react";
+import { LifeBuoy, Menu, X } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
+import { openSupportTicket } from "@/components/SupportTicketModal";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -20,14 +21,11 @@ const Navbar = () => {
   }, []);
 
   const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/services", label: "Services" },
-    { href: "/pricing", label: "Pricing" },
-    { href: "/portfolio", label: "Portfolio" },
-    { href: "/apps", label: "Apps" },
+    { href: "/pricing", label: "Business pricing" },
+    { href: "/services", label: "What we build" },
+    { href: "/portfolio", label: "Work" },
+    { href: "/blog", label: "Insights" },
     { href: "/about", label: "About" },
-    { href: "/blog", label: "Blog" },
-    { href: "/contact", label: "Contact" },
   ];
 
   return (
@@ -66,7 +64,7 @@ const Navbar = () => {
             </span>
           </Link>
 
-          <div className="hidden items-center gap-2 rounded-full border border-border/80 bg-white/62 p-1.5 shadow-[0_1px_2px_rgba(10,20,24,0.04)] backdrop-blur xl:flex dark:bg-white dark:bg-zinc-900/[0.04]">
+          <div className="hidden items-center gap-1 rounded-full border border-border/80 bg-white/62 p-1.5 shadow-[0_1px_2px_rgba(10,20,24,0.04)] backdrop-blur min-[1150px]:flex dark:bg-white dark:bg-zinc-900/[0.04]">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -81,19 +79,12 @@ const Navbar = () => {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/micro-offer#intake"
-              className={cn(
-                buttonVariants({ variant: "cta", size: "sm" }),
-                "hidden rounded-full px-4 lg:inline-flex",
-              )}
-            >
-              Book a Tech Audit
-            </Link>
+            <button type="button" onClick={openSupportTicket} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "rounded-full px-3")}><LifeBuoy className="mr-1.5 h-4 w-4" />Support</button>
+            <Link href="/contact" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "rounded-full px-4")}>Start a project</Link>
             <ThemeToggle />
           </div>
 
-          <div className="flex items-center gap-2 xl:hidden">
+          <div className="flex items-center gap-2 min-[1150px]:hidden">
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -112,7 +103,7 @@ const Navbar = () => {
         </div>
 
         {isMobileMenuOpen && (
-          <div className="xl:hidden border-t border-border py-4">
+          <div className="border-t border-border py-4 min-[1150px]:hidden">
             <div className="flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link
@@ -129,16 +120,8 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              <Link
-                href="/micro-offer#intake"
-                className={cn(
-                  buttonVariants({ variant: "cta" }),
-                  "mt-2 w-full",
-                )}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Book a Tech Audit
-              </Link>
+              <button type="button" className={cn(buttonVariants({ variant: "outline" }), "mt-2 w-full")} onClick={() => { setIsMobileMenuOpen(false); openSupportTicket(); }}><LifeBuoy className="mr-2 h-4 w-4" />Create support ticket</button>
+              <Link href="/contact" className={cn(buttonVariants({ variant: "cta" }), "w-full")} onClick={() => setIsMobileMenuOpen(false)}>Start a project</Link>
             </div>
           </div>
         )}

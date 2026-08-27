@@ -30,7 +30,7 @@ const Newsletter = () => {
           </div>
 
           <div id="signup" className="scroll-mt-24">
-            <NewsletterSignup source="newsletter_landing" title="Send me the checklist." description="One focused email path for the checklist and occasional practical updates. No spam, no fake urgency." />
+            <NewsletterSignup source="newsletter_landing" title="Send me the checklist." description="Receive the checklist and occasional practical updates, with an easy unsubscribe link." />
           </div>
         </div>
       </section>

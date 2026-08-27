@@ -22,12 +22,9 @@ const HomeCtaSection = () => {
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-brand-700 dark:text-brand-100">
             Two ways to start
           </p>
-          <h2 className="text-2xl font-semibold tracking-[-0.025em] text-ink dark:text-white sm:text-3xl">
-            Send the leak, or grab the free checklist.
-          </h2>
+          <h2 className="text-2xl font-semibold tracking-[-0.025em] text-ink dark:text-white sm:text-3xl">Tell us what you need, or get the free checklist.</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-            One short step either way. No drip campaign, no fake availability — an
-            honest scoped answer or a direct no-fit.
+            Share the business problem in a short form. We will review it and recommend a practical next step.
           </p>
         </div>
 
@@ -41,9 +38,9 @@ const HomeCtaSection = () => {
               <Mail className="h-5 w-5 text-white sm:h-6 sm:w-6" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-base font-semibold leading-tight sm:text-lg">Send the leak</p>
+              <p className="text-base font-semibold leading-tight sm:text-lg">Tell us what you need</p>
               <p className="mt-1 text-xs text-white/85 sm:text-sm">
-                Open the intake form. Founder-reviewed, one practical next step back.
+                Send a short request and receive a scoped response.
               </p>
             </div>
             <ArrowRight className="h-5 w-5 flex-shrink-0 text-white/80 transition group-hover:translate-x-1" aria-hidden="true" />
@@ -60,7 +57,7 @@ const HomeCtaSection = () => {
             <div className="min-w-0 flex-1">
               <p className="text-base font-semibold leading-tight sm:text-lg">Get the free AI checklist</p>
               <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                Open the signup. Practical leakage fixes, short and unsubscribe-anytime.
+                Get practical ways to improve customer follow-up and operations.
               </p>
             </div>
             <ArrowRight className="h-5 w-5 flex-shrink-0 text-brand-700 transition group-hover:translate-x-1 dark:text-brand-100" aria-hidden="true" />

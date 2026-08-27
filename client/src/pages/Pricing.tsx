@@ -16,9 +16,9 @@ export default function Pricing() {
               Choose your business. See exactly what you get.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
-              No agency jargon and no separate demo room. Choose your business
-              to see the website, AI texting, full AI front desk, exact starting
-              prices, and a realistic customer example together on one page.
+              Choose your business to compare a branded customer app, AI
+              texting, phone support, social content, maintenance, and exact
+              starting prices.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a

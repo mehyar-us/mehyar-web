@@ -1,13 +1,14 @@
 import { Link } from "wouter";
 import { useState } from "react";
 import ChecklistPopup from "@/components/ChecklistPopup";
+import { openSupportTicket } from "@/components/SupportTicketModal";
 
 const Footer = () => {
   const [checklistOpen, setChecklistOpen] = useState(false);
   return (
     <footer className="bg-neutral-900 text-white py-16 px-4">
       <div className="container mx-auto">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <Link href="/" className="inline-flex items-center mb-6" aria-label="MehyarSoft home">
                 <img
@@ -28,19 +29,30 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="text-lg font-semibold mb-6">Offers</h4>
+            <h4 className="text-lg font-semibold mb-6">Start here</h4>
             <ul className="space-y-3">
               {[
-                ["Tech Audit", "/micro-offer#intake"],
-                ["Website / Booking Cleanup", "/services"],
-                ["AI Follow-Up Flow", "/services"],
-                ["Internal Automation Sprint", "/services"],
-                ["Systems Consulting", "/services"],
+                ["Find my business", "/pricing"],
+                ["Services and pricing", "/services"],
+                ["Start a project", "/contact"],
+                ["Book a Tech Audit", "/micro-offer#intake"],
+                ["OpenClaw and Hermes", "/pricing#industry-pricing"],
               ].map(([item, href]) => (
                 <li key={item}>
                   <Link href={href} className="text-neutral-300 hover:text-white transition-colors">{item}</Link>
                 </li>
               ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-lg font-semibold mb-6">Support</h4>
+            <p className="mb-4 text-sm leading-6 text-neutral-300">Need a fix, content update, maintenance, login help, or automation support?</p>
+            <button type="button" onClick={openSupportTicket} className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-brand-100">Create support ticket</button>
+            <ul className="mt-5 space-y-3 text-sm text-neutral-300">
+              <li>Website and customer app maintenance</li>
+              <li>Booking, SMS, email, voice, and AI help</li>
+              <li>Support available on every active plan</li>
             </ul>
           </div>
 

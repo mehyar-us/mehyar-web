@@ -37,12 +37,12 @@ const ServicesSection = () => {
     <section id="services" className="bg-background px-4 py-14 md:py-18">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 max-w-3xl">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Consulting offers</p>
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Ways we can help</p>
           <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">
-            Pick the entry point by the leak, not by a generic service menu.
+            Start with the problem you want fixed.
           </h2>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
-            Each engagement maps pain → solution → outcome → next step, so the work stays commercially useful and easy to approve.
+            Choose a focused review, a customer-facing improvement, an automation, or ongoing support. We confirm the scope and price before work starts.
           </p>
         </div>
 
@@ -63,9 +63,9 @@ const ServicesSection = () => {
                   </div>
 
                   <h3 className="text-xl font-bold tracking-[-0.02em] text-foreground">{service.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground"><span className="font-semibold text-foreground">Pain:</span> {mapped.pain}</p>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground"><span className="font-semibold text-foreground">Solution:</span> {service.description}</p>
-                  <p className="mt-3 flex-grow text-sm leading-6 text-muted-foreground"><span className="font-semibold text-foreground">Outcome:</span> {service.features[3]}</p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground"><span className="font-semibold text-foreground">Good fit when:</span> {mapped.pain}</p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground"><span className="font-semibold text-foreground">What we do:</span> {service.description}</p>
+                  <p className="mt-3 flex-grow text-sm leading-6 text-muted-foreground"><span className="font-semibold text-foreground">What you receive:</span> {service.features[3]}</p>
 
                   <Link href={`/services#${service.id}`} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-800 transition-colors hover:text-brand-700 dark:text-brand-100 dark:hover:text-action">
                     {mapped.next} <ArrowRight aria-hidden="true" className="h-4 w-4" />

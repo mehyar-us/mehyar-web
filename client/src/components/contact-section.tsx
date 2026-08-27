@@ -30,7 +30,7 @@ const nextSteps = [
 
 const trustPoints = [
   "Founder-led review by a senior software, systems, and AI automation consultant.",
-  "Built for local businesses and regulated teams that need clean handoffs, not agency theater.",
+  "Built for local businesses and regulated teams that need clear scope, clean handoffs, and accountable support.",
   "No spam: service follow-up requires consent, and marketing updates stay optional.",
 ];
 
@@ -64,14 +64,14 @@ const ContactSection = ({
             </p>
             <h2 className="mb-4 text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-5xl">
               {isBooking
-                ? "Request a consulting call without fake availability."
+                ? "Request a consulting call."
                 : isOffer
                   ? "Start the $330 missed-lead rescue path."
                   : "Request a tech audit or consulting call."}
             </h2>
             <p className="mx-auto max-w-2xl text-lg leading-8 text-muted-foreground">
               {isBooking
-                ? "Choose the closest service and preferred window. If calendar auth is unavailable, MehyarSoft captures a manual scheduling request instead of pretending a slot exists."
+                ? "Choose the closest service and preferred window. MehyarSoft checks availability and confirms the time with you."
                 : "Describe the leak: bad website flow, missed calls, manual follow-up, disconnected systems, or work your team keeps doing by hand."}
             </p>
           </div>

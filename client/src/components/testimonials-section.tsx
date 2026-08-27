@@ -24,10 +24,10 @@ const TestimonialsSection = () => {
         <div className="mx-auto mb-8 max-w-3xl text-center">
           <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Proof and trust</p>
           <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">
-            Credibility without fake testimonials or borrowed logos.
+            Senior technical ownership from first review through ongoing support.
           </h2>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
-            The promise is grounded in founder experience, regulated-systems discipline, and practical business outcomes — not invented social proof.
+            Senior technical ownership, careful systems work, and practical business outcomes from first review through ongoing support.
           </p>
         </div>
 

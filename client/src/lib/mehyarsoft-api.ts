@@ -18,7 +18,7 @@ type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue | unde
 type ApiPayload = Record<string, JsonValue | undefined>;
 type UnknownRecord = Record<string, unknown>;
 
-export type IntakeFormType = "contact" | "audit" | "booking" | "micro_offer" | "newsletter" | "phone_help";
+export type IntakeFormType = "contact" | "audit" | "booking" | "micro_offer" | "newsletter" | "phone_help" | "support";
 
 export interface IntakePayload extends ApiPayload {
   form_type: IntakeFormType;

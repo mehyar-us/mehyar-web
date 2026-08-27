@@ -39,6 +39,7 @@ export type ConversionFlowMode =
   | "newsletter_signup"
   | "offer_330_missed_lead_rescue"
   | "booking_call"
+  | "support_ticket"
   | "unsubscribe"
   | "subscription_preferences"
   | "payment_test_hidden";
@@ -90,6 +91,10 @@ type ConversionFormState = {
   topics: string[];
   frequency: string;
   unsubscribe_reason: string;
+  support_area: string;
+  affected_service: string;
+  maintenance_need: string;
+  existing_client: string;
   hp_field: string;
 };
 
@@ -135,7 +140,7 @@ const modeCopy: Record<
     eyebrow: "Free checklist",
     title: "Get the free AI automation checklist.",
     description:
-      "One focused email path for practical updates. No spam, no fake urgency, unsubscribe anytime.",
+      "One focused email path for practical updates, with easy unsubscribe controls.",
     success:
       "Checklist request received. You can update preferences or unsubscribe anytime.",
     submit: "Send me the checklist",
@@ -157,6 +162,14 @@ const modeCopy: Record<
     success:
       "Booking request received. If a confirmed slot is not available, we’ll send available times manually.",
     submit: "Request booking time",
+  },
+  support_ticket: {
+    eyebrow: "MehyarSoft support",
+    title: "Create a support ticket.",
+    description:
+      "Tell us who you are, which business and system need attention, what changed, and how urgent it is. Do not include passwords or private customer data.",
+    success: "Support ticket received. We’ll review the affected system and reply with the next step.",
+    submit: "Create support ticket",
   },
   unsubscribe: {
     eyebrow: "Suppression request",
@@ -185,6 +198,12 @@ const modeCopy: Record<
 };
 
 const serviceOptions = [
+  {
+    value: "support_request",
+    label: "Support / maintenance request",
+    publicLabel: "Fix or maintain an existing system",
+    formType: "support" as IntakeFormType,
+  },
   {
     value: "industry_package",
     label: "Industry-specific starting package",
@@ -250,6 +269,8 @@ const serviceAliases: Record<string, string> = {
   "systems-integration": "systems_consulting",
   "custom-software": "systems_consulting",
   "crm-support-retainer": "retainer",
+  support: "support_request",
+  maintenance: "support_request",
   // VISION.md 6-tier leak ladder aliases (turn-032)
   "audit-150": "tech_audit",
   "website-diagnosis-250": "website_booking_cleanup",
@@ -303,6 +324,10 @@ const defaultFormState: ConversionFormState = {
   topics: ["ai_automation"],
   frequency: "weekly",
   unsubscribe_reason: "",
+  support_area: "website_app",
+  affected_service: "",
+  maintenance_need: "one_time_fix",
+  existing_client: "existing_client",
   hp_field: "",
 };
 
@@ -364,7 +389,11 @@ function getUrlDefaults(
     : requestedOffer
       ? "industry_package"
       : serviceMatch?.value ||
-        (mode === "booking_call" ? "tech_audit" : "general");
+        (mode === "booking_call"
+          ? "tech_audit"
+          : mode === "support_ticket"
+            ? "support_request"
+            : "general");
 
   return {
     form: {
@@ -402,6 +431,7 @@ function mapModeToFormType(
     return "newsletter";
   if (mode === "offer_330_missed_lead_rescue") return "micro_offer";
   if (mode === "booking_call") return "booking";
+  if (mode === "support_ticket") return "support";
   const serviceOption = serviceOptions.find(
     (option) => option.value === service,
   );
@@ -670,7 +700,7 @@ export function ConversionFlow({
   const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [showDetails, setShowDetails] = useState(
-    mode === "offer_330_missed_lead_rescue",
+    mode === "offer_330_missed_lead_rescue" || mode === "support_ticket",
   );
 
   const copy = modeCopy[mode];
@@ -679,6 +709,7 @@ export function ConversionFlow({
     mode === "newsletter_signup" || mode === "subscription_preferences";
   const isUnsubscribe = mode === "unsubscribe";
   const isBooking = mode === "booking_call";
+  const isSupport = mode === "support_ticket";
   const isOffer330 = mode === "offer_330_missed_lead_rescue";
   const isPaymentTest = mode === "payment_test_hidden";
   const serviceOption =
@@ -702,13 +733,16 @@ export function ConversionFlow({
     );
   const needsServiceConsent =
     !isUnsubscribe && mode !== "subscription_preferences" && !isPaymentTest;
-  const hasContactMethod = Boolean(form.email.trim() || form.phone.trim());
+  const hasContactMethod = Boolean(form.email.trim());
   const needsIdentity = !isNewsletter && !isUnsubscribe && !isPaymentTest;
   const identityReady =
     !needsIdentity ||
     (Boolean(form.name.trim()) &&
       hasContactMethod &&
-      Boolean(form.message.trim()));
+      Boolean(form.message.trim()) &&
+      (!isSupport ||
+        (Boolean(form.business_name.trim()) &&
+          Boolean(form.affected_service.trim()))));
   const consentReady = !needsServiceConsent || consentContact || isNewsletter;
   const turnstileEnabled =
     !isUnsubscribe &&
@@ -869,6 +903,9 @@ export function ConversionFlow({
               : "",
             isOffer330
               ? `Missed-lead channel: ${form.missed_lead_channel}; current tools: ${form.current_tools}; estimated missed leads: ${form.estimated_missed_leads}; desired outcome: ${form.desired_outcome}.`
+              : "",
+            isSupport
+              ? `Support details: client status: ${form.existing_client}; affected area: ${form.support_area}; affected service or URL: ${form.affected_service}; maintenance needed: ${form.maintenance_need}; preferred contact: ${form.preferred_contact_method}.`
               : "",
             isNewsletter
               ? `First name: ${form.first_name || ""}; last name: ${form.last_name || ""}; ZIP: ${form.zip_code || ""}; topics: ${form.topics.join(", ")}; frequency: ${form.frequency}.`
@@ -1163,9 +1200,7 @@ export function ConversionFlow({
               </div>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor={`${formId}-email`}>
-                Email{!isUnsubscribe ? " or phone required" : ""}
-              </Label>
+              <Label htmlFor={`${formId}-email`}>Email <span className="text-red-600 dark:text-red-300">required</span></Label>
               <Input
                 id={`${formId}-email`}
                 type="email"
@@ -1174,7 +1209,7 @@ export function ConversionFlow({
                 className={inputClassName}
                 placeholder="you@company.com"
                 autoComplete="email"
-                required={isUnsubscribe}
+                required
               />
             </div>
             {!isUnsubscribe ? (
@@ -1199,7 +1234,7 @@ export function ConversionFlow({
               <div className="space-y-2">
                 <Label htmlFor={`${formId}-business`}>
                   Business / company{" "}
-                  <span className="font-normal text-neutral-500">optional</span>
+                  {isSupport ? <span className="text-red-600 dark:text-red-300">required</span> : <span className="font-normal text-neutral-500">optional</span>}
                 </Label>
                 <Input
                   id={`${formId}-business`}
@@ -1219,7 +1254,7 @@ export function ConversionFlow({
         {!isNewsletter && !isUnsubscribe ? (
           <div className="space-y-2">
             <Label htmlFor={`${formId}-message`}>
-              What is happening now, and what would a win look like?
+              {isSupport ? "Describe the problem, when it started, and what you expected to happen" : "What is happening now, and what would a win look like?"}
             </Label>
             <Textarea
               id={`${formId}-message`}
@@ -1227,17 +1262,59 @@ export function ConversionFlow({
               onChange={(event) => setField("message", event.target.value)}
               rows={5}
               className={textareaClassName}
-              placeholder="Example: We miss after-hours calls, leads do not get followed up, booking is manual, and nobody trusts the CRM data."
+              placeholder={isSupport ? "Example: Customers cannot finish booking since this morning. The confirmation button keeps loading on phones." : "Example: We miss after-hours calls, leads do not get followed up, booking is manual, and nobody trusts the CRM data."}
               required={!isPaymentTest}
             />
             <p className="text-xs leading-5 text-muted-foreground">
-              A few sentences are enough. Do not paste passwords, API keys, PHI,
+              A few sentences are enough. Do not paste passwords, API keys, health information,
               payment data, private customer lists, or confidential files.
             </p>
           </div>
         ) : null}
 
-        {!isNewsletter && !isUnsubscribe && !isPaymentTest ? (
+        {isSupport ? (
+          <div className="grid gap-4 rounded-2xl border border-brand-700/15 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04] md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor={`${formId}-existing-client`}>Your relationship with MehyarSoft</Label>
+              <select id={`${formId}-existing-client`} value={form.existing_client} onChange={(event) => setField("existing_client", event.target.value)} className={inputClassName}>
+                <option value="existing_client">Existing customer</option>
+                <option value="maintenance_plan">I have a maintenance plan</option>
+                <option value="new_support_request">New support request</option>
+                <option value="not_sure">Not sure</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${formId}-support-area`}>What needs attention?</Label>
+              <select id={`${formId}-support-area`} value={form.support_area} onChange={(event) => setField("support_area", event.target.value)} className={inputClassName}>
+                <option value="website_app">Website or customer app</option>
+                <option value="booking_scheduling">Booking or scheduling</option>
+                <option value="account_access">Login or account access</option>
+                <option value="sms_email_voice">Text, email, or phone automation</option>
+                <option value="ai_assistant">AI assistant or workflow</option>
+                <option value="social_content">Social content or publishing</option>
+                <option value="billing_plan">Billing or service plan</option>
+                <option value="other">Something else</option>
+              </select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor={`${formId}-affected-service`}>Affected site, app, service, or page</Label>
+              <Input id={`${formId}-affected-service`} value={form.affected_service} onChange={(event) => setField("affected_service", event.target.value)} className={inputClassName} placeholder="Example: mysite.com booking page, customer login, SMS reminders" aria-required="true" required />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor={`${formId}-maintenance-need`}>What kind of help do you need?</Label>
+              <select id={`${formId}-maintenance-need`} value={form.maintenance_need} onChange={(event) => setField("maintenance_need", event.target.value)} className={inputClassName}>
+                <option value="one_time_fix">One-time fix</option>
+                <option value="content_update">Content or photo update</option>
+                <option value="ongoing_maintenance">Ongoing maintenance</option>
+                <option value="urgent_problem">Urgent business problem</option>
+                <option value="improvement_request">Improvement request</option>
+                <option value="not_sure">Not sure</option>
+              </select>
+            </div>
+          </div>
+        ) : null}
+
+        {!isNewsletter && !isUnsubscribe && !isPaymentTest && !isSupport ? (
           <button
             type="button"
             onClick={() => setShowDetails((current) => !current)}
@@ -1416,8 +1493,7 @@ export function ConversionFlow({
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
               Calendar rule: availability is shown only when authenticated. If
               OAuth is unavailable, this form creates a manual scheduling
-              request. It never fakes slots or creates an event without explicit
-              confirmation.
+              request. A time is confirmed only after availability is checked.
             </div>
           </div>
         ) : null}

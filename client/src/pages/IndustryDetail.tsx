@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link, useRoute } from "wouter";
 import IndustrySalesDeck from "@/components/industry-sales-deck";
+import IndustryAgentServices from "@/components/industry-agent-services";
 import { industryOffers } from "@/data/industry-offers";
 import { buttonVariants } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
@@ -23,17 +24,18 @@ export default function IndustryDetail() {
               <div className="mt-6 flex flex-wrap gap-2">
                 {industry.outcomes.map((outcome) => <span key={outcome} className="inline-flex items-center gap-2 rounded-full border border-brand-700/20 bg-card px-3 py-2 text-sm font-medium text-foreground"><CheckCircle2 className="h-4 w-4 text-brand-700 dark:text-brand-100" />{outcome}</span>)}
               </div>
-              <a href="#services-pricing-demo" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-7" })}>See services, prices, and example<ArrowRight className="ml-2 h-4 w-4" /></a>
+              <a href="#services-pricing-demo" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-7" })}>See services and prices<ArrowRight className="ml-2 h-4 w-4" /></a>
             </div>
             <div className="relative min-h-80 overflow-hidden rounded-[1.75rem] border border-border bg-brand-950 shadow-[0_22px_60px_rgba(8,63,84,0.18)]">
               <img src={industry.heroImage} alt={`${industry.shortName} business owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" loading="eager" />
               <div className="absolute inset-0 bg-gradient-to-t from-brand-950/80 via-transparent to-transparent" />
-              <p className="absolute bottom-5 left-5 right-5 text-sm font-medium leading-6 text-white">One clear page. Three service levels. One realistic customer example.</p>
+              <p className="absolute bottom-5 left-5 right-5 text-sm font-medium leading-6 text-white">{industry.outcomes.join(" · ")}</p>
             </div>
           </div>
         </div>
       </section>
       <div id="services-pricing-demo" className="scroll-mt-24"><IndustrySalesDeck industry={industry} /></div>
+      <IndustryAgentServices industry={industry} />
     </>
   );
 }

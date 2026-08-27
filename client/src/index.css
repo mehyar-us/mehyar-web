@@ -8,7 +8,7 @@
 
 @layer base {
   :root {
-    --background: 43 33% 96%;
+    --background: 180 24% 97%;
     --foreground: 195 41% 7%;
 
     --card: 0 0% 100%;
@@ -21,29 +21,29 @@
     --primary-light: 194 81% 23%;
     --primary-dark: 197 81% 14%;
 
-    --secondary: 195 35% 93%;
+    --secondary: 184 34% 92%;
     --secondary-foreground: 195 81% 15%;
 
-    --muted: 195 24% 93%;
+    --muted: 186 22% 93%;
     --muted-foreground: 195 12% 37%;
 
-    --accent: 186 62% 40%;
+    --accent: 178 66% 34%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 194 30% 89%;
-    --input: 194 30% 89%;
+    --border: 185 26% 86%;
+    --input: 185 26% 86%;
     --ring: 195 81% 15%;
 
     --brand-950: 197 81% 14%;
     --brand-900: 195 81% 16%;
     --brand-800: 195 82% 18%;
     --brand-700: 194 81% 23%;
-    --brand-100: 195 35% 93%;
+    --brand-100: 182 40% 91%;
 
-    --action: 194 81% 23%;
+    --action: 178 72% 29%;
     --action-strong: 195 82% 18%;
     --ink: 195 41% 7%;
 

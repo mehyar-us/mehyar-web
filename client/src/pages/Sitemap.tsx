@@ -21,7 +21,7 @@ const coreRoutes = [
   ];
 
 const detailRoutes = [
-  ...industryOffers.map((industry) => ({ label: `${industry.shortName} pricing and demo`, href: `/industries/${industry.id}`, description: industry.description })),
+  ...industryOffers.map((industry) => ({ label: `${industry.shortName} services and pricing`, href: `/industries/${industry.id}`, description: industry.description })),
   ...projects.map((project) => ({ label: project.title, href: `/portfolio/${project.id}`, description: project.description })),
   ...blogPosts.map((post) => ({ label: post.title, href: `/blog/${post.slug}`, description: post.excerpt })),
 ];
