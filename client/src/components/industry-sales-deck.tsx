@@ -27,6 +27,8 @@ import { cn } from "@/lib/utils";
 const levelIcons = [Smartphone, MessageSquareText, PhoneCall];
 const customerItemIcons = [CalendarCheck2, UserCheck, Bell, LogIn, Bookmark, Download];
 const ownerItemIcons = [Store, QrCode, Database, LayoutDashboard, Users, Wrench];
+const technicalItemIcons = [ShieldCheck, Database, Smartphone, Wrench];
+const journeyIcons = [QrCode, CalendarCheck2, Bell, UserCheck];
 
 export default function IndustrySalesDeck({ industry }: { industry: IndustryOffer }) {
   return (
@@ -83,7 +85,10 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
                   <details className={cn("rounded-xl border p-3", pkg.featured ? "border-white/15 bg-white/[0.04]" : "border-border bg-background")}>
                     <summary className="cursor-pointer text-sm font-semibold">Technical details</summary>
                     <ul className={cn("mt-3 space-y-2 text-xs leading-5", pkg.featured ? "text-white/70" : "text-muted-foreground")}>
-                      {pkg.technicalDetails.map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />{item}</li>)}
+                      {pkg.technicalDetails.map((item, itemIndex) => {
+                        const ItemIcon = technicalItemIcons[itemIndex % technicalItemIcons.length];
+                        return <li key={item} className="flex items-start gap-2"><ItemIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{item}</span></li>;
+                      })}
                     </ul>
                   </details>
                   <div className={cn("rounded-xl p-3 text-sm leading-6", pkg.featured ? "bg-brand-100/10 text-brand-100" : "bg-brand-100/60 text-brand-950 dark:bg-white/[0.06] dark:text-brand-100")}><strong>Maintenance and support:</strong> {pkg.support}</div>
@@ -109,12 +114,13 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">See how it works</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white">One simple customer journey.</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {industry.demoSteps.map((step, index) => (
-                  <div key={step} className="rounded-2xl border border-border bg-background p-4">
-                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-100">Step {index + 1}</span>
-                    <p className="mt-2 font-semibold text-foreground">{step}</p>
-                  </div>
-                ))}
+                {industry.demoSteps.map((step, index) => {
+                  const StepIcon = journeyIcons[index % journeyIcons.length];
+                  return <div key={step} className="rounded-2xl border border-border bg-background p-4">
+                    <div className="flex items-center justify-between gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-100 text-brand-800 dark:bg-white/10 dark:text-brand-100"><StepIcon className="h-4 w-4" aria-hidden="true" /></span><span className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-100">Step {index + 1}</span></div>
+                    <p className="mt-3 font-semibold text-foreground">{step}</p>
+                  </div>;
+                })}
               </div>
               <div className="mt-5 flex gap-3 rounded-2xl bg-brand-100/60 p-4 dark:bg-white/[0.05]">
                 <MailCheck className="mt-1 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-100" />

@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, CircleHelp, CheckCircle2, Route, Tags } from "lucide-react";
 import { Link, useRoute } from "wouter";
 import IndustrySalesDeck from "@/components/industry-sales-deck";
 import IndustryAgentServices from "@/components/industry-agent-services";
@@ -36,10 +36,10 @@ export default function IndustryDetail() {
       </section>
       <nav aria-label={`${industry.shortName} page sections`} className="sticky top-[4.5rem] z-30 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto">
-          <a href="#services-pricing" className="shrink-0 rounded-full bg-brand-950 px-4 py-2 text-sm font-semibold text-white">Services &amp; pricing</a>
-          <a href="#how-it-works" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40">How it works</a>
-          <a href="#ai-business-assistant" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40">AI business assistant</a>
-          <Link href={`/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}`} className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40">Ask a question</Link>
+          <a href="#services-pricing" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-950 px-4 py-2 text-sm font-semibold text-white"><Tags className="h-4 w-4" aria-hidden="true" />Services &amp; pricing</a>
+          <a href="#how-it-works" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Route className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />How it works</a>
+          <a href="#ai-business-assistant" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Bot className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />AI business assistant</a>
+          <Link href={`/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}`} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><CircleHelp className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />Ask a question</Link>
         </div>
       </nav>
       <IndustrySalesDeck industry={industry} />
