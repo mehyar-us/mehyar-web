@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import {
   AppWindow,
@@ -151,8 +152,8 @@ const Navbar = () => {
         </div>
       </div>
 
-      {isMobileMenuOpen && (
-        <div id="mobile-site-menu" className="fixed inset-x-0 bottom-0 top-[4.5rem] overflow-y-auto border-t border-border bg-background/98 px-4 pb-28 pt-4 backdrop-blur-xl min-[1180px]:hidden">
+      {isMobileMenuOpen && typeof document !== "undefined" && createPortal(
+        <div id="mobile-site-menu" className="fixed inset-x-0 bottom-0 top-[4.5rem] z-[60] overflow-y-auto border-t border-border bg-background/98 px-4 pb-28 pt-4 backdrop-blur-xl min-[1180px]:hidden">
           <div className="mx-auto max-w-xl space-y-5">
             <div className="grid grid-cols-2 gap-2">
               {primaryLinks.map((link) => {
@@ -212,7 +213,8 @@ const Navbar = () => {
               <Home className="h-4 w-4" />Back to home
             </Link>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </nav>
   );
