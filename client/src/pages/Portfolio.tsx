@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { projects } from "@/data/portfolio-projects";
 import CTASection from "@/components/cta-section";
 import QuickAnswer from "@/components/QuickAnswer";
-import IndustryDemoRoom from "@/components/industry-demo-room";
 
 const Portfolio = () => {
   const [filter, setFilter] = useState("all");
@@ -44,8 +43,6 @@ const Portfolio = () => {
         ctaHref="/contact"
         ctaLabel="Discuss your real workflow"
       />
-
-      <IndustryDemoRoom />
 
       <section className="bg-background px-4 py-16 md:py-20">
         <div className="mx-auto max-w-7xl">

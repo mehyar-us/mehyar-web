@@ -1,70 +1,98 @@
-import { ArrowRight, CheckCircle2, CircleDollarSign, MailCheck, Smartphone, UserRoundCheck } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  MailCheck,
+  MessageSquareText,
+  PhoneCall,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 import { Link } from "wouter";
 import type { IndustryOffer } from "@/data/industry-offers";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const SlideNumber = ({ value }: { value: number }) => <span className="absolute right-5 top-5 rounded-full border border-white/20 bg-black/20 px-3 py-1 text-xs font-semibold text-white backdrop-blur">{String(value).padStart(2, "0")} / 07</span>;
+const levelIcons = [Smartphone, MessageSquareText, PhoneCall];
 
 export default function IndustrySalesDeck({ industry }: { industry: IndustryOffer }) {
   return (
-    <section className="bg-muted/35 px-4 py-12 md:py-20" aria-label={`${industry.shortName} visual sales presentation`}>
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="overflow-hidden rounded-[2rem] border border-border bg-brand-950 text-white shadow-[0_26px_90px_rgba(8,63,84,0.2)]">
-          <div className="relative min-h-[520px] md:min-h-[620px]">
-            <img src={industry.heroImage} alt={`${industry.shortName} owner helping a customer`} className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
-            <div className="absolute inset-0 bg-gradient-to-r from-brand-950 via-brand-950/88 to-brand-950/10" />
-            <SlideNumber value={1} />
-            <div className="relative flex min-h-[520px] max-w-2xl flex-col justify-end p-7 md:min-h-[620px] md:p-14">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-100">A MehyarSoft concept presentation</p>
-              <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] md:text-6xl">Own the customer journey.</h2>
-              <p className="mt-5 max-w-xl text-lg leading-8 text-white/80">A simple website and follow-up system designed around how {industry.shortName.toLowerCase()} actually work.</p>
+    <section className="bg-muted/35 px-4 py-12 md:py-20" aria-label={`${industry.shortName} services, pricing, and example`}>
+      <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Services and starting prices</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Choose how much help you want.</h2>
+          <p className="mt-4 text-base leading-7 text-muted-foreground">Start with the website. Add AI texting when you are busy. Choose the full system when you want phone coverage and social content too.</p>
+        </div>
+
+        {industry.complianceNote ? (
+          <div className="mx-auto mt-7 flex max-w-4xl gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />{industry.complianceNote}
+          </div>
+        ) : null}
+
+        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+          {industry.packages.map((pkg, index) => {
+            const Icon = levelIcons[index];
+            const href = `/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}&offer=${encodeURIComponent(pkg.name)}`;
+            return (
+              <article key={pkg.name} className={cn("flex h-full flex-col rounded-[1.5rem] border p-5 shadow-sm md:p-6", pkg.featured ? "border-brand-700 bg-brand-950 text-white shadow-[0_18px_45px_rgba(8,63,84,0.18)]" : "border-border bg-card")}>
+                <div className="flex items-start justify-between gap-4">
+                  <span className={cn("flex h-11 w-11 items-center justify-center rounded-2xl", pkg.featured ? "bg-white/10 text-brand-100" : "bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100")}><Icon className="h-5 w-5" /></span>
+                  <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", pkg.featured ? "bg-brand-100 text-brand-950" : "bg-muted text-muted-foreground")}>Level {index + 1}{pkg.featured ? " · Most popular" : ""}</span>
+                </div>
+                <h3 className={cn("mt-5 text-2xl font-semibold tracking-[-0.03em]", pkg.featured ? "text-white" : "text-ink dark:text-white")}>{pkg.name}</h3>
+                <p className={cn("mt-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>{pkg.plainSummary}</p>
+                <div className={cn("mt-5 rounded-2xl border p-4", pkg.featured ? "border-white/15 bg-white/[0.06]" : "border-border bg-background")}>
+                  <p className="text-2xl font-semibold tracking-[-0.03em]">{pkg.price}</p>
+                  <p className={cn("mt-1 text-sm", pkg.featured ? "text-white/70" : "text-muted-foreground")}>{pkg.cadence}</p>
+                </div>
+                <p className={cn("mt-5 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}><strong className={pkg.featured ? "text-white" : "text-foreground"}>Best for:</strong> {pkg.bestFor}</p>
+                <div className="mt-5 border-t border-current/10 pt-5">
+                  <p className="text-sm font-semibold">What this includes</p>
+                  <ul className={cn("mt-3 space-y-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>
+                    {[...pkg.customerCan, ...pkg.ownerGets].map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0" />{item}</li>)}
+                  </ul>
+                </div>
+                <Link href={href} className={buttonVariants({ variant: pkg.featured ? "secondary" : "outline", className: "mt-6 w-full" })}>Ask about Level {index + 1}<ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-muted-foreground">
+          <strong className="text-foreground">What the prices mean:</strong> setup is the one-time build price. The monthly price covers the listed ongoing service. Text messages, call minutes, AI generation, ad spend, third-party subscriptions, large data moves, and custom connections are confirmed in writing before work starts. Instagram and TikTok publishing depends on account access and platform approval.
+        </div>
+
+        <div className="mt-12 overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-sm">
+          <div className="grid lg:grid-cols-[0.8fr_1.2fr]">
+            <div className="relative min-h-72 overflow-hidden lg:min-h-full">
+              <img src={industry.heroImage} alt={`${industry.shortName} customer experience example`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+              <div className="absolute inset-0 bg-gradient-to-t from-brand-950/75 to-transparent lg:bg-gradient-to-r" />
+              <p className="absolute bottom-5 left-5 right-5 text-sm font-medium leading-6 text-white">Concept example—not an invented client result.</p>
+            </div>
+            <div className="p-6 md:p-9">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">See how it works</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white">One simple customer journey.</h2>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {industry.demoSteps.map((step, index) => (
+                  <div key={step} className="rounded-2xl border border-border bg-background p-4">
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-100">Step {index + 1}</span>
+                    <p className="mt-2 font-semibold text-foreground">{step}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 flex gap-3 rounded-2xl bg-brand-100/60 p-4 dark:bg-white/[0.05]">
+                <MailCheck className="mt-1 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-100" />
+                <p className="text-sm leading-6 text-foreground">{industry.example}</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-7 shadow-sm md:p-14">
-          <span className="absolute right-5 top-5 rounded-full bg-brand-950 px-3 py-1 text-xs font-semibold text-white">02 / 07</span>
-          <div className="grid gap-10 md:grid-cols-[0.8fr_1.2fr] md:items-center">
-            <div><p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">The everyday problem</p><h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Customers should not have to chase you.</h2></div>
-            <div className="space-y-3">{industry.outcomes.map((outcome) => <div key={outcome} className="rounded-2xl border border-border bg-background p-5"><p className="text-lg font-semibold text-foreground">{outcome}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Without a clear system, this can depend on a call, an inbox, or somebody remembering.</p></div>)}</div>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden rounded-[2rem] border border-border bg-brand-100/70 p-7 dark:bg-white/[0.05] md:p-14">
-          <span className="absolute right-5 top-5 rounded-full bg-brand-950 px-3 py-1 text-xs font-semibold text-white">03 / 07</span>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">The simple customer journey</p>
-          <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Find you. Take action. Get a clear answer.</h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-4">
-            {[{ icon: Smartphone, title: "1. Find", text: "Open your direct link or scan your QR code." }, { icon: UserRoundCheck, title: "2. Choose", text: "Pick the right service, time, or request." }, { icon: MailCheck, title: "3. Confirm", text: "Receive an email or text with the next step." }, { icon: CircleDollarSign, title: "4. Return", text: "Rebook, reply, or come back without starting over." }].map(({ icon: Icon, title, text }) => <div key={title} className="rounded-2xl border border-border bg-card p-5"><Icon className="h-6 w-6 text-brand-700 dark:text-brand-100" /><h3 className="mt-4 font-semibold text-foreground">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p></div>)}
-          </div>
-          <div className="mt-6 rounded-2xl border border-brand-700/20 bg-card p-5"><p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-100">Realistic example</p><p className="mt-2 text-base leading-7 text-foreground">{industry.example}</p></div>
-        </div>
-
-        {industry.packages.map((pkg, index) => (
-          <div key={pkg.name} className={cn("relative overflow-hidden rounded-[2rem] border p-7 shadow-sm md:p-14", pkg.featured ? "border-brand-700 bg-brand-950 text-white" : "border-border bg-card")}>
-            <span className={cn("absolute right-5 top-5 rounded-full px-3 py-1 text-xs font-semibold", pkg.featured ? "border border-white/20 bg-white/10 text-white" : "bg-brand-950 text-white")}>{String(index + 4).padStart(2, "0")} / 07</span>
-            <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
-              <div>
-                <p className={cn("text-sm font-semibold uppercase tracking-[0.2em]", pkg.featured ? "text-brand-100" : "text-brand-700 dark:text-brand-100")}>Level {index + 1}</p>
-                <h2 className={cn("mt-3 text-3xl font-semibold tracking-[-0.04em] md:text-5xl", pkg.featured ? "text-white" : "text-ink dark:text-white")}>{pkg.name}</h2>
-                <p className={cn("mt-4 text-base leading-7", pkg.featured ? "text-white/75" : "text-muted-foreground")}>{pkg.plainSummary}</p>
-                <div className={cn("mt-6 rounded-2xl border p-5", pkg.featured ? "border-white/15 bg-white/[0.06]" : "border-border bg-background")}><p className="text-3xl font-semibold">{pkg.price}</p><p className={cn("mt-1 text-sm", pkg.featured ? "text-white/70" : "text-muted-foreground")}>{pkg.cadence}</p></div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className={cn("rounded-2xl border p-5", pkg.featured ? "border-white/15 bg-white/[0.05]" : "border-border bg-background")}><p className="font-semibold">Your customers can:</p><ul className={cn("mt-3 space-y-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>{pkg.customerCan.map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0" />{item}</li>)}</ul></div>
-                <div className={cn("rounded-2xl border p-5", pkg.featured ? "border-white/15 bg-white/[0.05]" : "border-border bg-background")}><p className="font-semibold">You get:</p><ul className={cn("mt-3 space-y-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>{pkg.ownerGets.map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0" />{item}</li>)}</ul></div>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        <div className="relative overflow-hidden rounded-[2rem] border border-brand-700/25 bg-[radial-gradient(circle_at_top_right,rgba(143,211,221,0.22),transparent_34%),hsl(var(--card))] p-7 text-center shadow-sm md:p-16">
-          <span className="absolute right-5 top-5 rounded-full bg-brand-950 px-3 py-1 text-xs font-semibold text-white">07 / 07</span>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">The next step</p>
-          <h2 className="mx-auto mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Tell us what customers need to do. We will recommend the smallest useful level.</h2>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground">No pressure and no surprise scope. We confirm the one-time setup price, monthly price, outside software costs, and launch plan before work begins.</p>
-          <Link href={`/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}`} className={buttonVariants({ variant: "cta", size: "lg", className: "mt-7" })}>Talk through my business <ArrowRight className="ml-2 h-4 w-4" /></Link>
+        <div className="mt-8 rounded-[1.75rem] bg-brand-950 p-7 text-center text-white md:p-12">
+          <h2 className="mx-auto max-w-3xl text-3xl font-semibold tracking-[-0.04em] md:text-4xl">Not sure which level fits?</h2>
+          <p className="mx-auto mt-4 max-w-2xl leading-7 text-white/75">Tell us how customers reach you today. We will recommend the smallest useful level and confirm every cost before work begins.</p>
+          <Link href={`/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}`} className={buttonVariants({ variant: "secondary", size: "lg", className: "mt-6" })}>Help me choose<ArrowRight className="ml-2 h-4 w-4" /></Link>
         </div>
       </div>
     </section>

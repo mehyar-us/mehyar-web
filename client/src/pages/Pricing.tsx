@@ -1,7 +1,6 @@
 import { Link } from "wouter";
 import { ArrowRight, Sparkles } from "lucide-react";
 import IndustryPricingExplorer from "@/components/industry-pricing-explorer";
-import IndustryDemoRoom from "@/components/industry-demo-room";
 import { buttonVariants } from "@/components/ui/button";
 
 export default function Pricing() {
@@ -17,10 +16,9 @@ export default function Pricing() {
               Choose your business. See exactly what you get.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
-              No agency jargon. Start with your business type, then compare a
-              clear website, a website with follow-up, and a full automation
-              system. Every card explains what your customers can do, what you
-              receive, the setup price, and the monthly price.
+              No agency jargon and no separate demo room. Choose your business
+              to see the website, AI texting, full AI front desk, exact starting
+              prices, and a realistic customer example together on one page.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
@@ -40,7 +38,6 @@ export default function Pricing() {
         </div>
       </section>
       <IndustryPricingExplorer />
-      <IndustryDemoRoom />
     </>
   );
 }
