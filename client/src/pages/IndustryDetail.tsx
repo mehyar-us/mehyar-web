@@ -26,7 +26,7 @@ export default function IndustryDetail() {
               <a href="#services-pricing-demo" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-7" })}>See services, prices, and example<ArrowRight className="ml-2 h-4 w-4" /></a>
             </div>
             <div className="relative min-h-80 overflow-hidden rounded-[1.75rem] border border-border bg-brand-950 shadow-[0_22px_60px_rgba(8,63,84,0.18)]">
-              <img src={industry.heroImage} alt={`${industry.shortName} business owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
+              <img src={industry.heroImage} alt={`${industry.shortName} business owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" loading="eager" />
               <div className="absolute inset-0 bg-gradient-to-t from-brand-950/80 via-transparent to-transparent" />
               <p className="absolute bottom-5 left-5 right-5 text-sm font-medium leading-6 text-white">One clear page. Three service levels. One realistic customer example.</p>
             </div>
