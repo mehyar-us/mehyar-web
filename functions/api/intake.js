@@ -1,5 +1,7 @@
 const SAFE_SUCCESS = "Thanks — your request was received.";
 const SAFE_FAILURE = "We could not receive the request. Please email info@mehyar.us.";
+import { sendCloudflareEmail } from "./_shared/cloudflareEmail.js";
+
 const FORM_TYPES = new Set(["contact", "audit", "booking", "micro_offer", "newsletter", "phone_help", "support"]);
 const FIELD_LIMITS = {
   request_type: 40,
@@ -308,6 +310,18 @@ async function sendNotification(env, leadId, data, referrer) {
     } catch (error) {
       return { ok: false, status: "failed", error: cap(error?.message || "send_email_failed", 500) };
     }
+  }
+
+  if ((env?.CLOUDFLARE_API_KEY || env?.CF_EMAIL_GLOBAL_KEY) && (env?.CLOUDFLARE_EMAIL || env?.CF_EMAIL)) {
+    const result = await sendCloudflareEmail(env, {
+      from: env.CONTACT_FROM_EMAIL || "leads@mehyar.us",
+      fromName: "MehyarSoft Intake",
+      to: env.CONTACT_TO_EMAIL || "info@mehyar.us",
+      replyTo: data.email,
+      subject,
+      text,
+    });
+    if (result.ok) return { ok: true, status: "sent", provider_id: result.messageId || null };
   }
 
   if (env?.RESEND_API_KEY) {

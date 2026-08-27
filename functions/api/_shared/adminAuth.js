@@ -71,7 +71,7 @@ export async function verifyAdminToken(request, env) {
 export function isAllowedOrigin(request, env) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
-  const allowed = (env?.ALLOWED_ORIGINS || "https://mehyar.us,https://www.mehyar.us,http://localhost:5173,http://127.0.0.1:5173")
+  const allowed = (env?.ALLOWED_ORIGINS || "https://mehyar.us,https://www.mehyar.us,https://dashboard.mehyar.us,http://localhost:5173,http://127.0.0.1:5173")
     .split(",")
     .map((e) => e.trim())
     .filter(Boolean);
@@ -86,7 +86,7 @@ export function isAllowedOrigin(request, env) {
 
 export function corsHeaders(request, env) {
   const origin = request.headers.get("origin") || "https://mehyar.us";
-  const allowed = (env?.ALLOWED_ORIGINS || "https://mehyar.us,https://www.mehyar.us")
+  const allowed = (env?.ALLOWED_ORIGINS || "https://mehyar.us,https://www.mehyar.us,https://dashboard.mehyar.us")
     .split(",")
     .map((e) => e.trim());
   const allowedOrigin = allowed.includes(origin) ? origin : "https://mehyar.us";

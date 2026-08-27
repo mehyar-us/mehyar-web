@@ -11,7 +11,7 @@ VITE_TURNSTILE_SITE_KEY = "0x4AAAAAADQCOtotqrJrS80U"
 ENVIRONMENT = "production"
 CONTACT_TO_EMAIL = "info@mehyar.us"
 CONTACT_FROM_EMAIL = "leads@mehyar.us"
-ALLOWED_ORIGINS = "https://mehyar.us,https://www.mehyar.us"
+ALLOWED_ORIGINS = "https://mehyar.us,https://www.mehyar.us,https://dashboard.mehyar.us"
 GOV_INGEST_LIMIT = "40"
 # CF account ID — needed by /api/_shared/llmChat.js to build the Workers AI REST URL
 CLOUDFLARE_ACCOUNT_ID = "621600637337cc1c9ecb7095508bc732"

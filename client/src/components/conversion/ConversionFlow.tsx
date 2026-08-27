@@ -438,7 +438,7 @@ function mapModeToFormType(
   return serviceOption?.formType || "contact";
 }
 
-function ConversionTurnstile({
+export function ConversionTurnstile({
   isFooter,
   enabled,
   resetSignal,

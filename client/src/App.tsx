@@ -24,6 +24,7 @@ import AdminMayor from "@/pages/AdminMayor";
 import AdminMoney from "@/pages/AdminMoney";
 import AdminSystem from "@/pages/AdminSystem";
 import AdminSent from "@/pages/AdminSent";
+import AdminClients from "@/pages/AdminClients";
 import AdminOpportunityDetail from "@/pages/_deprecated/AdminOpportunityDetail";
 import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -87,6 +88,17 @@ function ScrollToTop() {
   return null;
 }
 
+function DashboardHostRedirect() {
+  const [location, setLocation] = useLocation();
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hostname === "dashboard.mehyar.us" && !location.startsWith("/admin")) {
+      setLocation("/admin/clients", { replace: true });
+    }
+  }, [location, setLocation]);
+  return null;
+}
+
 function App() {
   // Initialize theme from localStorage.
   // The useTheme hook (used by ThemeToggle component) also manages the .dark
@@ -106,6 +118,7 @@ function App() {
     <>
       <Router>
         <ScrollToTop />
+        <DashboardHostRedirect />
         <SeoManager />
         <GoogleAnalytics />
         <MainLayout>
@@ -176,6 +189,8 @@ function App() {
                             because CF Pages auto-trailing-slashes every served path. */}
             <Route path="/admin" component={AdminNow} />
             <Route path="/admin/" component={AdminNow} />
+            <Route path="/admin/clients" component={AdminClients} />
+            <Route path="/admin/clients/" component={AdminClients} />
             <Route path="/admin/now" component={AdminNow} />
             <Route path="/admin/now/" component={AdminNow} />
             <Route path="/admin/mayor" component={AdminMayor} />

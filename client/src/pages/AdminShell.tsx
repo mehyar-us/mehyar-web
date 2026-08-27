@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2, Sparkles, LogOut, Search, Activity, Briefcase, DollarSign, Settings,
   RefreshCw, Bell, ChevronRight, X, Command, Send, Mail, Brain, ArrowRight,
-  Home,
+  Home, UsersRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,6 +97,7 @@ export const STAGE_BADGE: Record<string, string> = {
 
 // ── Tab definitions ───────────────────────────────────────────────────────
 const TABS = [
+  { key: "clients", label: "Clients",    href: "/admin/clients",          icon: UsersRound,  tagline: "Forms, booked calls, and direct replies" },
   { key: "now",   label: "🏛 Mayor",    href: "/admin/mayor",             icon: Activity,    tagline: "AI operator running the site — observe, don't push" },
   { key: "crm",   label: "🧲 CRM",      href: "/admin/leads",            icon: Briefcase,   tagline: "Every lead, every deal — one table" },
   { key: "sent",  label: "📤 Sent",     href: "/admin/sent",             icon: Send,        tagline: "Outbound history — to/from/subject/body/replies" },
@@ -104,7 +105,7 @@ const TABS = [
   { key: "system", label: "⚙ System",   href: "/admin/system",           icon: Settings,    tagline: "Audit · Cron · Backups" },
 ];
 
-export function AdminNav({ active, onLogout, onRefresh }: { active: "now"|"mayor"|"crm"|"sent"|"money"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
+export function AdminNav({ active, onLogout, onRefresh }: { active: "clients"|"now"|"mayor"|"crm"|"sent"|"money"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
   const [, setLocation] = useLocation();
   return (
     <>
@@ -389,7 +390,7 @@ export function LoginGate({ onLogin }: { onLogin: (t: string) => void }) {
                 <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg">M</div>
                 <div>
                   <div className="font-bold text-base text-zinc-900 dark:text-zinc-100">MehyarSoft Admin</div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400">Built for 2026</div>
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400">Owner access</div>
                 </div>
               </div>
               <div className="space-y-2">

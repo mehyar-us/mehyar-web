@@ -14,8 +14,8 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   const isAdmin = location.startsWith("/admin");
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-[calc(4rem+env(safe-area-inset-bottom,0px))] text-foreground antialiased transition-colors duration-300 min-[1180px]:pb-0">
-      <Navbar />
+    <div className={`flex min-h-screen flex-col bg-background text-foreground antialiased transition-colors duration-300 ${isAdmin ? "pb-0" : "pb-[calc(4rem+env(safe-area-inset-bottom,0px))] min-[1180px]:pb-0"}`}>
+      {isAdmin ? null : <Navbar />}
       <main className="flex-grow">{children}</main>
       {isAdmin ? null : <Footer />}
       {isAdmin ? null : <SupportTicketModal />}

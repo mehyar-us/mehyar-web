@@ -387,6 +387,7 @@ const directRoutes = [
   'billing/cancel',
   'admin',
     'admin/now',
+    'admin/clients',
     'admin/mayor',
     'admin/leads',
     'admin/leads/prospect',
@@ -410,6 +411,7 @@ const directRoutes = [
   ];
 
 const adminTitles = {
+  'admin/clients': 'Client Desk | MehyarSoft Admin',
   'admin/now': 'Now | MehyarSoft Admin',
   'admin/mayor': 'Mayor Mission Control | MehyarSoft Admin',
   'admin/leads': 'Leads & Replies | MehyarSoft Admin',

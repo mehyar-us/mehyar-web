@@ -87,7 +87,7 @@ function sanitize(value, max) {
 function isAllowedOrigin(request, env) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
-  const allowed = (env?.ALLOWED_ORIGINS || "https://mehyar.us,https://www.mehyar.us,http://localhost:5173,http://127.0.0.1:5173")
+  const allowed = (env?.ALLOWED_ORIGINS || "https://mehyar.us,https://www.mehyar.us,https://dashboard.mehyar.us,http://localhost:5173,http://127.0.0.1:5173")
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
