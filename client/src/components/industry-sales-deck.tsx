@@ -1,11 +1,23 @@
 import {
   ArrowRight,
+  Bell,
+  Bookmark,
+  CalendarCheck2,
   CheckCircle2,
+  Database,
+  Download,
+  LayoutDashboard,
+  LogIn,
   MailCheck,
   MessageSquareText,
   PhoneCall,
+  QrCode,
   ShieldCheck,
   Smartphone,
+  Store,
+  UserCheck,
+  Users,
+  Wrench,
 } from "lucide-react";
 import { Link } from "wouter";
 import type { IndustryOffer } from "@/data/industry-offers";
@@ -13,14 +25,16 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const levelIcons = [Smartphone, MessageSquareText, PhoneCall];
+const customerItemIcons = [CalendarCheck2, UserCheck, Bell, LogIn, Bookmark, Download];
+const ownerItemIcons = [Store, QrCode, Database, LayoutDashboard, Users, Wrench];
 
 export default function IndustrySalesDeck({ industry }: { industry: IndustryOffer }) {
   return (
-    <section className="bg-muted/35 px-4 py-12 md:py-20" aria-label={`${industry.shortName} services, pricing, and example`}>
+    <section id="services-pricing" className="scroll-mt-24 bg-muted/35 px-4 py-12 md:py-20" aria-label={`${industry.shortName} services and pricing`}>
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Services and starting prices</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Choose how much help you want.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Services and pricing for {industry.shortName.toLowerCase()}.</h2>
           <p className="mt-4 text-base leading-7 text-muted-foreground">Start with the website. Add AI texting when you are busy. Choose the full system when you want phone coverage and social content too.</p>
         </div>
 
@@ -51,13 +65,19 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
                   <div>
                     <p className="text-sm font-semibold">Your customers can</p>
                     <ul className={cn("mt-3 space-y-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>
-                      {pkg.customerCan.map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0" />{item}</li>)}
+                      {pkg.customerCan.map((item, itemIndex) => {
+                        const ItemIcon = customerItemIcons[itemIndex % customerItemIcons.length];
+                        return <li key={item} className="flex items-start gap-3"><span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", pkg.featured ? "bg-white/10 text-brand-100" : "bg-brand-100 text-brand-800 dark:bg-white/10 dark:text-brand-100")}><ItemIcon className="h-3.5 w-3.5" aria-hidden="true" /></span><span>{item}</span></li>;
+                      })}
                     </ul>
                   </div>
                   <div>
                     <p className="text-sm font-semibold">Your business gets</p>
                     <ul className={cn("mt-3 space-y-3 text-sm leading-6", pkg.featured ? "text-white/75" : "text-muted-foreground")}>
-                      {pkg.ownerGets.map((item) => <li key={item} className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0" />{item}</li>)}
+                      {pkg.ownerGets.map((item, itemIndex) => {
+                        const ItemIcon = ownerItemIcons[itemIndex % ownerItemIcons.length];
+                        return <li key={item} className="flex items-start gap-3"><span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", pkg.featured ? "bg-brand-100/15 text-brand-100" : "bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100")}><ItemIcon className="h-3.5 w-3.5" aria-hidden="true" /></span><span>{item}</span></li>;
+                      })}
                     </ul>
                   </div>
                   <details className={cn("rounded-xl border p-3", pkg.featured ? "border-white/15 bg-white/[0.04]" : "border-border bg-background")}>
@@ -78,7 +98,7 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
           <strong className="text-foreground">What the prices mean:</strong> setup is the one-time build price. The monthly price covers the listed ongoing service. Text messages, call minutes, AI generation, ad spend, third-party subscriptions, large data moves, and custom connections are confirmed in writing before work starts. Instagram and TikTok publishing depends on account access and platform approval.
         </div>
 
-        <div className="mt-12 overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-sm">
+        <div id="how-it-works" className="mt-12 scroll-mt-24 overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-sm">
           <div className="grid lg:grid-cols-[0.8fr_1.2fr]">
             <div className="relative min-h-72 overflow-hidden lg:min-h-full">
               <img src={industry.heroImage} alt={`${industry.shortName} customer experience example`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />

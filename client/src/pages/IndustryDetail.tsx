@@ -24,7 +24,7 @@ export default function IndustryDetail() {
               <div className="mt-6 flex flex-wrap gap-2">
                 {industry.outcomes.map((outcome) => <span key={outcome} className="inline-flex items-center gap-2 rounded-full border border-brand-700/20 bg-card px-3 py-2 text-sm font-medium text-foreground"><CheckCircle2 className="h-4 w-4 text-brand-700 dark:text-brand-100" />{outcome}</span>)}
               </div>
-              <a href="#services-pricing-demo" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-7" })}>See services and prices<ArrowRight className="ml-2 h-4 w-4" /></a>
+              <a href="#services-pricing" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-7" })}>View services &amp; pricing<ArrowRight className="ml-2 h-4 w-4" /></a>
             </div>
             <div className="relative min-h-80 overflow-hidden rounded-[1.75rem] border border-border bg-brand-950 shadow-[0_22px_60px_rgba(8,63,84,0.18)]">
               <img src={industry.heroImage} alt={`${industry.shortName} business owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" loading="eager" />
@@ -34,7 +34,15 @@ export default function IndustryDetail() {
           </div>
         </div>
       </section>
-      <div id="services-pricing-demo" className="scroll-mt-24"><IndustrySalesDeck industry={industry} /></div>
+      <nav aria-label={`${industry.shortName} page sections`} className="sticky top-[4.5rem] z-30 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto">
+          <a href="#services-pricing" className="shrink-0 rounded-full bg-brand-950 px-4 py-2 text-sm font-semibold text-white">Services &amp; pricing</a>
+          <a href="#how-it-works" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40">How it works</a>
+          <a href="#ai-business-assistant" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40">AI business assistant</a>
+          <Link href={`/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}`} className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40">Ask a question</Link>
+        </div>
+      </nav>
+      <IndustrySalesDeck industry={industry} />
       <IndustryAgentServices industry={industry} />
     </>
   );
