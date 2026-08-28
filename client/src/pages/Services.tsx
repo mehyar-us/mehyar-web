@@ -2,7 +2,6 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { services } from "@/data/services";
-import PricingSection from "@/components/pricing-section";
 import CTASection from "@/components/cta-section";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
@@ -30,8 +29,8 @@ const Services = () => {
               <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg" })}>
                 Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
-              <Link href="#pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>
-                See pricing ranges
+              <Link href="/pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>
+                View industry pricing
               </Link>
             </div>
           </div>
@@ -92,8 +91,6 @@ const Services = () => {
           </div>
         </div>
       </section>
-
-      <PricingSection />
 
       <section className="border-y border-border bg-muted/35 px-4 py-14 md:py-20">
         <div className="mx-auto max-w-7xl">

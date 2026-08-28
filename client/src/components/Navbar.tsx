@@ -16,7 +16,6 @@ import {
   Menu,
   Settings2,
   ShieldCheck,
-  Tags,
   Trash2,
   X,
 } from "lucide-react";
@@ -26,9 +25,8 @@ import { cn } from "@/lib/utils";
 import { openSupportTicket } from "@/components/SupportTicketModal";
 
 const primaryLinks = [
-  { href: "/pricing#industry-pricing", label: "Businesses", icon: Building2 },
-  { href: "/services", label: "Services", icon: AppWindow },
-  { href: "/pricing", label: "Pricing", icon: Tags },
+  { href: "/services", label: "Solutions", icon: AppWindow },
+  { href: "/pricing", label: "Industries & pricing", icon: Building2 },
   { href: "/portfolio", label: "Work", icon: BriefcaseBusiness },
   { href: "/blog", label: "Insights", icon: BookOpen },
   { href: "/about", label: "About", icon: Info },
@@ -97,7 +95,7 @@ const Navbar = () => {
                 decoding="async"
               />
             </span>
-            <span className="flex min-w-0 flex-col leading-none">
+            <span className="flex min-w-0 flex-col leading-none max-[360px]:hidden">
               <span className="text-[1.55rem] font-semibold tracking-[-0.065em] text-brand-950 dark:text-white sm:text-[1.8rem]">
                 Mehyar<span className="font-light">Soft</span>
               </span>
@@ -114,7 +112,7 @@ const Navbar = () => {
                 href={link.href}
                 className={cn(
                   "rounded-full px-2.5 py-2 text-sm font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  location === link.href.split("#")[0]
+                  (location === link.href.split("#")[0] || (link.href === "/pricing" && location.startsWith("/industries/")))
                     ? "bg-brand-100 text-brand-900 dark:bg-white/10 dark:text-white"
                     : "text-ink/75 hover:text-brand-800 dark:text-white/72 dark:hover:text-white",
                 )}
@@ -158,7 +156,7 @@ const Navbar = () => {
             <div className="grid grid-cols-2 gap-2">
               {primaryLinks.map((link) => {
                 const Icon = link.icon;
-                const active = location === link.href.split("#")[0];
+                const active = location === link.href.split("#")[0] || (link.href === "/pricing" && location.startsWith("/industries/"));
                 return (
                   <Link
                     key={link.href}
