@@ -39,15 +39,28 @@ export async function onRequestPost({ request, env }) {
 
   const leadId = crypto.randomUUID();
   const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const requestMetadata = JSON.stringify({
+    submitted_at: new Date().toISOString(),
+    selected_label: clean(body.selected_label, 160) || null,
+    client_timezone: clean(body.client_timezone, 80) || null,
+    page_url: clean(body.page_url, 500) || null,
+    referrer: clean(request.headers.get("referer"), 500) || null,
+    user_agent: clean(request.headers.get("user-agent"), 500) || null,
+    country: clean(request.cf?.country, 8) || null,
+    region: clean(request.cf?.region, 100) || null,
+    city: clean(request.cf?.city, 100) || null,
+    consent_contact: true,
+    consent_marketing: body.consent_marketing === true,
+  });
   await env.LEADS_DB.batch([
     env.LEADS_DB.prepare(`INSERT OR IGNORE INTO leads
-      (id, source, form_type, status, name, email, phone, company, service_interest, timeline, message, consent_contact, consent_marketing, turnstile_passed, notification_status, calendar_intent)
-      VALUES (?, 'booking_page', 'booking', 'new', ?, ?, ?, ?, ?, 'confirmed_slot_requested', ?, 1, ?, 1, 'pending', 'zoho_calendar_booking')`)
-      .bind(leadId, name, email, phone || null, company || null, service, notes || null, body.consent_marketing === true ? 1 : 0),
+      (id, source, form_type, status, name, email, phone, company, service_interest, timeline, message, consent_contact, consent_marketing, turnstile_passed, notification_status, calendar_intent, metadata_json)
+      VALUES (?, 'booking_page', 'booking', 'new', ?, ?, ?, ?, ?, 'confirmed_slot_requested', ?, 1, ?, 1, 'pending', 'zoho_calendar_booking', ?)`)
+      .bind(leadId, name, email, phone || null, company || null, service, notes || null, body.consent_marketing === true ? 1 : 0, requestMetadata),
     env.LEADS_DB.prepare(`INSERT OR IGNORE INTO appointments
-      (id, lead_id, status, starts_at, ends_at, name, email, phone, company, service_interest, notes, provider_status)
-      VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'creating')`)
-      .bind(bookingId, leadId, start.toISOString(), end.toISOString(), name, email, phone || null, company || null, service, notes || null),
+      (id, lead_id, status, starts_at, ends_at, name, email, phone, company, service_interest, notes, provider_status, request_metadata_json)
+      VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'creating', ?)`)
+      .bind(bookingId, leadId, start.toISOString(), end.toISOString(), name, email, phone || null, company || null, service, notes || null, requestMetadata),
   ]);
 
   let upstreamPayload;
@@ -69,8 +82,8 @@ export async function onRequestPost({ request, env }) {
   }
 
   const event = upstreamPayload.event || {};
-  await env.LEADS_DB.prepare(`UPDATE appointments SET status = 'confirmed', provider_status = 'created', zoho_event_id = ?, zoho_calendar_uid = ?, zoho_view_url = ?, zoho_meeting_url = ?, updated_at = datetime('now') WHERE id = ?`)
-    .bind(event.event_id || null, event.calendar_uid || null, event.view_url || null, event.meeting_url || null, bookingId).run();
+  await env.LEADS_DB.prepare(`UPDATE appointments SET status = 'confirmed', provider_status = 'created', zoho_event_id = ?, zoho_calendar_uid = ?, zoho_view_url = ?, zoho_meeting_url = ?, provider_metadata_json = ?, updated_at = datetime('now') WHERE id = ?`)
+    .bind(event.event_id || null, event.calendar_uid || null, event.view_url || null, event.meeting_url || null, JSON.stringify({ booking_id: upstreamPayload.booking_id || bookingId, idempotent: upstreamPayload.idempotent === true, event }), bookingId).run();
 
   const when = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(start);
   const ownerMail = await sendCloudflareEmail(env, {

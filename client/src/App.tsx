@@ -18,6 +18,8 @@ import Booking from "@/pages/Booking";
 import BillingCheckout from "@/pages/BillingCheckout";
 import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
 import QuoteView from "@/pages/QuoteView";
+import ProposalPublic from "@/pages/ProposalPublic";
+import ProposalsDirectory from "@/pages/ProposalsDirectory";
 import AdminNow from "@/pages/AdminNow";
 import AdminCRM from "@/pages/AdminCRM";
 import AdminMayor from "@/pages/AdminMayor";
@@ -178,6 +180,10 @@ function App() {
             <Route path="/billing/cancel/" component={BillingCancel} />
             <Route path="/q/:slug" component={QuoteView} />
             <Route path="/q/:slug/" component={QuoteView} />
+            <Route path="/proposals" component={ProposalsDirectory} />
+            <Route path="/proposals/" component={ProposalsDirectory} />
+            <Route path="/proposals/:slug" component={ProposalPublic} />
+            <Route path="/proposals/:slug/" component={ProposalPublic} />
 
             {/* ─── Admin ────────────────────────────────────────────────────
                             /admin  →  AdminNow (the calm landing)

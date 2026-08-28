@@ -45,6 +45,7 @@ INBOUND_AUTO_REPLY = "0"
 
 # Default model — overridable via LLM_MODEL env var at runtime
 LLM_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+PROPOSAL_STUDIO_API_BASE_URL = "https://studio-api.mehyar.us"
 # Optional secret/configured in Cloudflare Pages settings when available: MEHYARSOFT_SAM_API_KEY
 # Backward-compatible alias also supported by code: SAM_API_KEY
 # Optional comma-separated override: GOV_OPPORTUNITY_KEYWORDS
@@ -64,6 +65,10 @@ database_id = "e4f22065-e3e8-4772-87a8-51d4976be042"
 [[kv_namespaces]]
 binding = "INTAKE_KV"
 id = "cd017aca74a64cd48625450432db204e"
+
+[[r2_buckets]]
+binding = "PROPOSAL_ASSETS"
+bucket_name = "mehyarsoft-reports"
 
 # Send Email binding NOTIFY_EMAIL is configured at the Cloudflare Pages project level via API/Dashboard.
 # Pages wrangler.toml validation rejects [[send_email]], so keep the binding out of this file.

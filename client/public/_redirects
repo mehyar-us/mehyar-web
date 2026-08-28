@@ -18,12 +18,15 @@
 #     at functions/api/v1-proxy/[[path]].js forwards to the real Worker.
 /v1/*               /api/v1-proxy/:splat      200
 
-# 2) Cloudflare Pages SPA fallback: preserve clean direct routes for Wouter client routing.
+# 2) Dynamic client pages must be listed before the general fallback.
+#    Hosted quote pages (/q/<slug>) are rendered by Wouter.
+#     the dynamic slug. The explicit rule avoids static 404 resolution.
+/q/*    /index.html   200
+
+# Public AI-generated client proposal pages use dynamic slugs.
+/proposals/*    /index.html   200
+
+# 3) Cloudflare Pages SPA fallback: preserve clean direct routes for Wouter client routing.
 #    The Router hook (useStrippedLocation) handles trailing slashes before matching.
 #    DO NOT remove this line — without it direct loads of /portfolio/:id etc fail.
 /*    /index.html   200
-
-# 2b) Hosted quote pages (/q/<slug>) — must be served as SPA so wouter can render
-#     the dynamic slug. The catch-all above is processed but the static
-#     middleware can still short-circuit on dynamic paths. Explicit mirror rule.
-/q/*    /index.html   200

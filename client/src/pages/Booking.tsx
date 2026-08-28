@@ -92,7 +92,7 @@ export default function Booking() {
       const response = await fetch("/api/calendar/book", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ booking_id: bookingId, start: selectedSlot.start, name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), company: form.company.trim(), service_interest: form.service, message: form.notes.trim(), consent_contact: consent, consent_marketing: marketing, turnstile_token: turnstileToken, hp_field: form.hp_field }),
+        body: JSON.stringify({ booking_id: bookingId, start: selectedSlot.start, selected_label: selectedSlot.label, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, page_url: window.location.href, name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), company: form.company.trim(), service_interest: form.service, message: form.notes.trim(), consent_contact: consent, consent_marketing: marketing, turnstile_token: turnstileToken, hp_field: form.hp_field }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "That time could not be booked. Please choose another slot.");
