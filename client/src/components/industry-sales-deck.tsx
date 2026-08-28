@@ -33,6 +33,7 @@ const journeyIcons = [QrCode, CalendarCheck2, Bell, UserCheck];
 export default function IndustrySalesDeck({ industry }: { industry: IndustryOffer }) {
   return (
     <section id="services-pricing" className="scroll-mt-24 bg-muted/35 px-4 py-12 md:py-20" aria-label={`${industry.shortName} services and pricing`}>
+      <span id="services-pricing-demo" className="block scroll-mt-24" aria-hidden="true" />
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Services and starting prices</p>

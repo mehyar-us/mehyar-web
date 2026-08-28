@@ -57,7 +57,7 @@ const fitSignals = [
 const MicroOffer = () => {
   return (
     <>
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_34%),linear-gradient(180deg,#fff_0%,hsl(var(--background))_100%)] px-4 pb-16 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(102,210,235,0.12),transparent_34%),linear-gradient(180deg,hsl(var(--brand-950))_0%,hsl(var(--background))_100%)] sm:pb-20 lg:pt-32">
+      <section className="site-hero relative overflow-hidden">
         <div className="container mx-auto grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:items-center">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand-700/15 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-800 shadow-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-100">

@@ -111,7 +111,7 @@ export default function Booking() {
 
   if (confirmed) {
     return (
-      <main className="min-h-[75vh] bg-brand-50 px-4 pb-20 pt-28 dark:bg-brand-950">
+      <section className="min-h-[75vh] bg-brand-50 px-4 pb-20 pt-28 dark:bg-brand-950">
         <Card className="mx-auto max-w-xl overflow-hidden border-emerald-200 shadow-2xl dark:border-emerald-900">
           <CardContent className="p-7 text-center sm:p-10">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"><CheckCircle2 className="h-8 w-8" /></div>
@@ -122,14 +122,14 @@ export default function Booking() {
             <Button className="mt-7" onClick={() => window.location.assign("/")}>Back to MehyarSoft</Button>
           </CardContent>
         </Card>
-      </main>
+      </section>
     );
   }
 
   return (
-    <main className="bg-brand-50 pb-20 pt-24 dark:bg-brand-950 sm:pt-28">
-      <section className="px-4"><div className="container mx-auto max-w-6xl">
-        <div className="mb-8 max-w-3xl"><p className="text-sm font-bold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Book a phone call</p><h1 className="mt-3 text-4xl font-bold tracking-tight text-ink dark:text-white sm:text-5xl">Choose a real open time.</h1><p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">Pick a time directly from Mehyar&apos;s live availability. Calls are 30 minutes, Monday through Friday, with at least 24 hours&apos; notice.</p></div>
+    <div className="bg-background pb-20 pt-24 sm:pt-28">
+      <section className="px-4"><div className="site-shell max-w-6xl">
+        <div className="mb-8 max-w-3xl"><p className="site-eyebrow">Book a phone call</p><h1 className="site-display mt-3">Choose a real open time.</h1><p className="site-lede mt-4 max-w-2xl">Pick a time directly from Mehyar&apos;s live availability. Calls are 30 minutes, Monday through Friday, with at least 24 hours&apos; notice.</p></div>
         {loading ? (
           <Card><CardContent className="flex min-h-80 items-center justify-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> Checking live availability…</CardContent></Card>
         ) : loadError ? (
@@ -163,6 +163,6 @@ export default function Booking() {
           </form>
         )}
       </div></section>
-    </main>
+    </div>
   );
 }

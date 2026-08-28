@@ -26,6 +26,18 @@ export default defineConfig({
     },
   },
   root: path.resolve(__dirname, "client"),
+  server: {
+    // The Pages Function is not available inside Vite. Proxy only the
+    // read-only calendar lookup so the local Booking page can render real
+    // availability without allowing local forms to write to production.
+    proxy: {
+      "/api/calendar/availability": {
+        target: "https://mehyar.us",
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,

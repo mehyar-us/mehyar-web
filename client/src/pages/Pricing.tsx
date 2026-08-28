@@ -6,16 +6,16 @@ import { buttonVariants } from "@/components/ui/button";
 export default function Pricing() {
   return (
     <>
-      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.16),transparent_34%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_60%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.12),transparent_34%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_60%,hsl(var(--brand-950))_100%)] md:pt-32">
-        <div className="mx-auto max-w-7xl">
+      <section className="site-hero">
+        <div className="site-shell">
           <div className="max-w-4xl">
-            <p className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
+            <p className="site-eyebrow mb-3 flex items-center gap-2">
               <Sparkles className="h-4 w-4" /> Business systems for teams worldwide
             </p>
-            <h1 className="text-4xl font-semibold tracking-[-0.05em] text-ink dark:text-white md:text-6xl md:leading-[0.96]">
+            <h1 className="site-display">
               Choose your business. See exactly what you get.
             </h1>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
+            <p className="site-lede mt-6 max-w-3xl">
               Choose your business to compare a branded customer app, AI
               texting, phone support, social content, maintenance, and exact
               starting prices.

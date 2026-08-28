@@ -7,8 +7,8 @@ export function BillingSuccess() {
   const sessionId = new URLSearchParams(window.location.search).get("session_id") || "";
 
   return (
-    <section className="min-h-screen px-4 pb-16 pt-28 md:pt-32">
-      <Card className="mx-auto max-w-2xl border-border bg-card shadow-[0_24px_80px_rgba(8,63,84,0.10)]"><CardContent className="p-8 text-center">
+    <section className="site-hero min-h-screen">
+      <Card className="site-panel mx-auto max-w-2xl"><CardContent className="p-8 text-center">
         <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-emerald-600" />
         <h1 className="text-4xl font-semibold tracking-[-0.04em] text-foreground">Manual invoice path active.</h1>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">Online checkout is disabled. MehyarSoft confirms scope first, then sends manual ACH, wire, check, or cash instructions through a reviewed invoice.</p>
@@ -24,8 +24,8 @@ export function BillingSuccess() {
 
 export function BillingCancel() {
   return (
-    <section className="min-h-screen px-4 pb-16 pt-28 md:pt-32">
-      <Card className="mx-auto max-w-2xl border-border bg-card shadow-[0_24px_80px_rgba(8,63,84,0.10)]"><CardContent className="p-8 text-center">
+    <section className="site-hero min-h-screen">
+      <Card className="site-panel mx-auto max-w-2xl"><CardContent className="p-8 text-center">
         <XCircle className="mx-auto mb-4 h-12 w-12 text-amber-600" />
         <h1 className="text-4xl font-semibold tracking-[-0.04em] text-foreground">Online checkout is off.</h1>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">No payment was completed. Request a manual invoice or book a scope review before any ACH, wire, check, or cash payment.</p>

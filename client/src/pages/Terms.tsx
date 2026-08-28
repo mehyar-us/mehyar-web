@@ -244,16 +244,16 @@ const sections: Section[] = [
 
 const Terms = () => {
   return (
-    <section className="bg-background px-4 pb-16 pt-28 md:pb-20 md:pt-32">
-      <div className="mx-auto max-w-4xl">
+    <section className="site-hero">
+      <div className="site-shell max-w-4xl">
         <div className="mb-8">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
+          <p className="site-eyebrow mb-3">
             {company}
           </p>
-          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">
+          <h1 className="site-display">
             Terms of Service
           </h1>
-          <p className="mt-4 text-base leading-7 text-muted-foreground">
+          <p className="site-lede mt-4">
             Last updated July 18, 2026. These terms keep website browsing and paid consulting
             engagement boundaries separate. Reading this website is not a client relationship.
           </p>

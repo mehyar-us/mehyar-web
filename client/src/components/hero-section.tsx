@@ -1,6 +1,6 @@
-import { Link } from "wouter";
-import { ArrowRight, BrainCircuit, CloudCog, Globe2, PanelsTopLeft } from "lucide-react";
+import { ArrowRight, BrainCircuit, CloudCog, PanelsTopLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import HomeProductPreview from "@/components/HomeProductPreview";
 
 const outcomes = [
   { label: "Customer systems", icon: PanelsTopLeft },
@@ -10,26 +10,34 @@ const outcomes = [
 
 export default function HeroSection() {
   return (
-    <section className="relative overflow-hidden border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.18),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_58%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.13),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_58%,hsl(var(--brand-950))_100%)] md:pt-32">
-      <div className="mx-auto grid max-w-7xl items-center gap-9 lg:grid-cols-[1.02fr_0.98fr] lg:gap-12">
+    <section className="site-hero relative overflow-hidden pb-0">
+      <div className="site-shell grid items-center gap-9 py-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-12 lg:py-14">
         <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-700/15 bg-card/80 px-3 py-1.5 text-sm font-semibold text-brand-800 shadow-sm dark:text-brand-100"><Globe2 className="h-4 w-4" />Built for ambitious businesses worldwide</div>
-          <h1 className="max-w-4xl text-4xl font-semibold leading-[1] tracking-[-0.05em] text-ink dark:text-white sm:text-5xl lg:text-[4rem]">Software and AI systems that help your organization grow.</h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">From websites, customer apps, booking, CRM, and AI follow-up to secure internal platforms, cloud backends, data systems, and DevOps—we design, build, and maintain the technology behind the work.</p>
+          <p className="site-eyebrow mb-4 flex items-center gap-3"><span className="h-px w-8 bg-brand-700" aria-hidden="true" />Software · systems · AI</p>
+          <h1 className="site-display max-w-3xl">Software that makes the work move.</h1>
+          <p className="site-lede mt-5 max-w-xl">We design and operate customer apps, internal systems, cloud platforms, and AI workflows—without making you manage the technology.</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <a href="#ai-command-center" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>Meet your AI command center<ArrowRight className="ml-2 h-4 w-4" /></a>
-            <a href="#solutions" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12 px-7 text-base" })}>Explore all solutions</a>
+            <a href="#how-it-works" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>See how it works<ArrowRight className="ml-2 h-4 w-4" /></a>
+            <a href="#solutions" className="inline-flex h-12 items-center justify-center gap-2 border-b border-brand-800 px-2 text-base font-semibold text-brand-800 transition hover:text-brand-700 dark:border-brand-100 dark:text-brand-100">Explore services<ArrowRight className="h-4 w-4" /></a>
           </div>
-          <div className="mt-6 grid max-w-3xl gap-2 sm:grid-cols-3">
-            {outcomes.map(({ label, icon: Icon }) => <div key={label} className="flex items-center gap-2 rounded-2xl border border-border bg-card/75 p-3 text-sm font-medium leading-6 text-foreground shadow-sm"><Icon className="h-4 w-4 shrink-0 text-brand-700 dark:text-brand-100" aria-hidden="true" />{label}</div>)}
+          <div className="mt-8 grid max-w-xl grid-cols-3 divide-x divide-border border-y border-border py-4">
+            {outcomes.map(({ label, icon: Icon }) => <div key={label} className="flex flex-col gap-2 px-3 first:pl-0 last:pr-0 sm:flex-row sm:items-center"><Icon className="h-4 w-4 shrink-0 text-brand-700 dark:text-brand-100" aria-hidden="true" /><span className="text-[0.7rem] font-semibold leading-4 text-foreground sm:text-xs">{label}</span></div>)}
           </div>
         </div>
-        <div className="relative">
-          <div className="absolute -inset-5 rounded-[2.5rem] bg-brand-700/12 blur-3xl" aria-hidden="true" />
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-2 shadow-[0_28px_90px_rgba(8,63,84,0.18)]">
-            <img src="/assets/agent-services/mobile-command-assistant.webp" alt="Business owner using a phone and laptop to manage customer operations" className="h-[310px] w-full rounded-[1.55rem] object-cover sm:h-[390px]" loading="eager" />
-            <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/15 bg-brand-950/88 p-4 text-white backdrop-blur"><p className="font-semibold">One technical partner from idea to operation.</p><p className="mt-1 text-sm leading-6 text-white/75">Launch customer experiences, modernize internal work, and keep every system supported.</p></div>
-          </div>
+        <HomeProductPreview />
+      </div>
+
+      <div id="how-it-works" className="scroll-mt-24 border-t border-border">
+        <div className="site-shell grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+          {[
+            ["01", "Website or app", "Give customers and staff one clear place to act."],
+            ["02", "Connected workflow", "Move information through the right tools and approvals."],
+            ["03", "A visible result", "See requests, follow-up, and operations in one reliable view."],
+          ].map(([number, title, text]) => (
+            <div key={number} className="grid grid-cols-[2rem_1fr] gap-3 px-4 py-5 sm:px-6 lg:px-8">
+              <span className="text-xs font-bold text-brand-700">{number}</span><div><h2 className="text-sm font-semibold text-foreground">{title}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p></div>
+            </div>
+          ))}
         </div>
       </div>
     </section>

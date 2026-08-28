@@ -13,7 +13,7 @@ const checklistItems = [
 const Newsletter = () => {
   return (
     <>
-      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_58%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.12),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_58%,hsl(var(--brand-950))_100%)] md:pb-20 md:pt-32">
+      <section className="site-hero">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start">
           <div className="max-w-4xl">
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-brand-700 dark:text-brand-100">Free AI automation checklist</p>

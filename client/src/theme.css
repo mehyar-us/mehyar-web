@@ -2,12 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tailwind `darkMode: ["class"]` is set in tailwind.config.ts, so the `.dark`
-   class on <html> toggles all `dark:*` variants. Each admin/marketing page
-   declares its own dark variants — no global overrides needed. */
+/*
+ * MehyarSoft design system
+ * ------------------------
+ * This is the single visual source of truth for both the public site and the
+ * shared primitives used by the owner dashboard. Public composition rules are
+ * scoped under .marketing-site so the admin product can evolve independently.
+ */
 
 @layer base {
   :root {
+    color-scheme: light;
+
     --background: 180 24% 97%;
     --foreground: 195 41% 7%;
 
@@ -23,16 +29,13 @@
 
     --secondary: 184 34% 92%;
     --secondary-foreground: 195 81% 15%;
-
     --muted: 186 22% 93%;
     --muted-foreground: 195 12% 37%;
-
     --accent: 178 66% 34%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-
     --border: 185 26% 86%;
     --input: 185 26% 86%;
     --ring: 195 81% 15%;
@@ -42,7 +45,6 @@
     --brand-800: 195 82% 18%;
     --brand-700: 194 81% 23%;
     --brand-100: 182 40% 91%;
-
     --action: 178 72% 29%;
     --action-strong: 195 82% 18%;
     --ink: 195 41% 7%;
@@ -62,55 +64,52 @@
     --sidebar-border: 194 30% 89%;
     --sidebar-ring: 195 81% 15%;
 
-    --radius: 0.875rem;
+    --radius: 0.5rem;
+    --site-shell: 80rem;
+    --site-reading: 48rem;
+    --site-section-y: clamp(3.5rem, 6vw, 5rem);
+    --site-hero-top: clamp(6rem, 10vw, 7rem);
+    --site-display: clamp(2.65rem, 5.5vw, 4.2rem);
+    --site-heading: clamp(2rem, 4vw, 3.25rem);
+    --site-shadow: 0 22px 65px rgb(6 47 66 / 0.11);
   }
 
   .dark {
+    color-scheme: dark;
     --background: 197 52% 6%;
     --foreground: 0 0% 98%;
-
     --card: 195 51% 9%;
     --card-foreground: 0 0% 98%;
     --popover: 195 51% 9%;
     --popover-foreground: 0 0% 98%;
-
     --primary: 0 0% 100%;
     --primary-foreground: 195 82% 18%;
     --primary-light: 193 48% 78%;
     --primary-dark: 195 42% 16%;
-
     --secondary: 195 42% 16%;
     --secondary-foreground: 193 48% 78%;
-
     --muted: 195 31% 13%;
     --muted-foreground: 194 13% 70%;
-
     --accent: 193 48% 78%;
     --accent-foreground: 197 52% 6%;
-
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-
     --border: 195 41% 16%;
     --input: 195 41% 16%;
     --ring: 193 48% 78%;
-
     --brand-950: 197 52% 6%;
     --brand-900: 195 51% 9%;
     --brand-800: 195 42% 16%;
     --brand-700: 194 81% 23%;
     --brand-100: 193 48% 78%;
-
     --action: 193 48% 78%;
     --action-strong: 186 62% 69%;
     --ink: 0 0% 98%;
-
     --chart-1: 193 48% 78%;
     --chart-2: 186 62% 69%;
     --chart-3: 162 47% 55%;
     --chart-4: 36 84% 62%;
     --chart-5: 0 72% 67%;
-
     --sidebar-background: 195 51% 9%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 193 48% 78%;
@@ -119,6 +118,7 @@
     --sidebar-accent-foreground: 193 48% 78%;
     --sidebar-border: 195 41% 16%;
     --sidebar-ring: 193 48% 78%;
+    --site-shadow: 0 22px 65px rgb(0 0 0 / 0.28);
   }
 
   * {
@@ -126,32 +126,150 @@
   }
 
   body {
-    @apply overflow-x-hidden font-sans antialiased bg-background text-foreground;
+    @apply bg-background font-sans text-foreground antialiased;
+    overflow-x: clip;
   }
 
   #root {
-    @apply min-h-screen overflow-x-hidden;
+    @apply min-h-screen;
+    overflow-x: clip;
   }
 }
 
-/* ── Admin shell animations ─────────────────────────────────────────── */
+@layer components {
+  .marketing-site {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .site-shell {
+    width: min(100%, var(--site-shell));
+    margin-inline: auto;
+  }
+
+  .site-reading {
+    width: min(100%, var(--site-reading));
+  }
+
+  .site-hero {
+    @apply border-b border-border bg-background px-4 pb-14 pt-24 md:pt-28;
+    background-image: none;
+  }
+
+  .site-section {
+    @apply bg-background px-4;
+    padding-block: var(--site-section-y);
+  }
+
+  .site-section-muted {
+    @apply border-y border-border bg-muted/25 px-4;
+    padding-block: var(--site-section-y);
+  }
+
+  .site-eyebrow {
+    @apply text-xs font-bold uppercase text-brand-700 dark:text-brand-100;
+    letter-spacing: 0.2em;
+  }
+
+  .site-display {
+    color: hsl(var(--ink));
+    font-size: var(--site-display);
+    font-weight: 600;
+    letter-spacing: -0.055em;
+    line-height: 0.98;
+    text-wrap: balance;
+  }
+
+  .site-heading {
+    color: hsl(var(--ink));
+    font-size: var(--site-heading);
+    font-weight: 600;
+    letter-spacing: -0.042em;
+    line-height: 1.04;
+    text-wrap: balance;
+  }
+
+  .site-lede {
+    @apply text-base leading-7 text-muted-foreground md:text-lg md:leading-8;
+  }
+
+  .site-panel {
+    @apply border border-border bg-card;
+    border-radius: 0;
+    box-shadow: var(--site-shadow);
+  }
+
+  .site-panel-flat {
+    @apply border border-border bg-card shadow-none;
+    border-radius: 0;
+  }
+
+  .site-media {
+    @apply border border-border object-cover;
+    border-radius: 0;
+  }
+
+  .site-rule-list {
+    @apply divide-y divide-border border-y border-border;
+  }
+
+  .site-sticky-tabs {
+    @apply sticky top-16 z-30 border-b border-border bg-background/95 px-4 py-3 backdrop-blur;
+  }
+
+  .site-focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .site-header {
+    @apply fixed inset-x-0 top-0 z-50 border-b bg-background/95 backdrop-blur-xl transition-[background,border-color,box-shadow] duration-200;
+  }
+
+  .site-header[data-scrolled="true"] {
+    @apply border-border;
+    box-shadow: 0 8px 30px rgb(6 47 66 / 0.05);
+  }
+
+  .site-header[data-scrolled="false"] {
+    @apply border-transparent;
+  }
+
+  .site-mobile-tabs {
+    @apply fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-xl;
+    box-shadow: 0 -8px 30px rgb(6 47 66 / 0.08);
+  }
+
+  .marketing-site :is(h1, h2, h3) {
+    text-rendering: optimizeLegibility;
+  }
+
+  .marketing-site :is(p, li) {
+    text-wrap: pretty;
+  }
+}
+
 @layer utilities {
   .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
   .animate-fade-in {
     animation: fadeIn 0.18s ease-out;
   }
+
   .animate-slide-in {
     animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
   .animate-slide-up {
     animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
   .animate-pulse-soft {
     animation: pulseSoft 1.5s ease-in-out infinite;
   }
@@ -159,17 +277,20 @@
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(0); }
 }
+
 @keyframes slideIn {
   from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
+  to { transform: translateX(0); }
 }
+
 @keyframes slideUp {
   from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  to { transform: translateY(0); }
 }
+
 @keyframes pulseSoft {
   0%, 100% { opacity: 1; }
-  50%      { opacity: 0.6; }
+  50% { opacity: 0.6; }
 }

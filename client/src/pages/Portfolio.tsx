@@ -21,15 +21,15 @@ const Portfolio = () => {
 
   return (
     <>
-      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.12),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_56%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_56%,hsl(var(--brand-950))_100%)] md:pt-32">
-        <div className="mx-auto max-w-7xl">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
+      <section className="site-hero">
+        <div className="site-shell">
+          <p className="site-eyebrow mb-3">
             Engagement patterns
           </p>
-          <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
+          <h1 className="site-display max-w-4xl">
             Practical ways we improve customer flow and daily operations.
           </h1>
-          <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+          <p className="site-lede mt-5 max-w-3xl">
             Explore focused work for audits, missed-call follow-up, automations,
             integrations, website improvements, and ongoing support.
           </p>

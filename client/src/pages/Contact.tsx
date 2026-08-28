@@ -59,15 +59,15 @@ const Contact = () => {
 
   return (
     <>
-      <section className="px-4 pb-16 pt-28 sm:pb-20 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="container mx-auto text-center">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-primary">
+      <section className="site-hero">
+        <div className="site-shell text-center">
+          <p className="site-eyebrow mb-3">
             Send the leak
           </p>
-          <h1 className="mx-auto mb-6 max-w-4xl text-4xl font-bold tracking-tight text-neutral-900 dark:text-white md:text-6xl">
+          <h1 className="site-display mx-auto mb-6 max-w-4xl">
             Tell me where the business is leaking.
           </h1>
-          <p className="mx-auto max-w-3xl text-lg leading-8 text-neutral-700 dark:text-neutral-300 md:text-xl">
+          <p className="site-lede mx-auto max-w-3xl">
             Pick an industry package first if you can; the selected package
             carries into this one guided request. If you are unsure, send the
             current problem, tools involved, and what a win looks

@@ -32,6 +32,10 @@ dist/
 out/
 server/public/
 
+# Local visual QA evidence
+qa-*.png
+design-qa.md
+
 # TypeScript / tool caches
 *.tsbuildinfo
 .npm

@@ -39,7 +39,7 @@ export default function MaintenanceSupportSection({ compact = false }: { compact
           </div>
           <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
             <button type="button" onClick={openSupportTicket} className={buttonVariants({ variant: "secondary", size: "lg" })}><LifeBuoy className="mr-2 h-4 w-4" />Create support ticket</button>
-            <Link href="/contact?service=maintenance" className={buttonVariants({ variant: "outline", size: "lg", className: "border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" })}>Ask about maintenance<ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Link href="/contact?service=maintenance" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/30 bg-transparent px-8 text-sm font-medium text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-950">Ask about maintenance<ArrowRight className="ml-2 h-4 w-4" /></Link>
           </div>
         </div>
 
@@ -56,7 +56,7 @@ export default function MaintenanceSupportSection({ compact = false }: { compact
             ))}
           </div>
         ) : (
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">{["Hosting, backups, and security", "Forms, booking, and automations checked", "Clear support tickets and accountable follow-through"].map((item) => <div key={item} className="flex gap-2 rounded-2xl border border-white/15 bg-white/[0.06] p-4 text-sm leading-6 text-white/80"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-brand-100" />{item}</div>)}</div>
+          <div className="mt-8 grid divide-y divide-white/15 border-y border-white/15 sm:grid-cols-3 sm:divide-x sm:divide-y-0">{["Hosting, backups, and security", "Forms, booking, and automations checked", "Clear support tickets and accountable follow-through"].map((item) => <div key={item} className="flex gap-2 px-2 py-4 text-sm leading-6 text-white/80 sm:px-5"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-brand-100" />{item}</div>)}</div>
         )}
         <p className="mt-6 text-xs leading-5 text-white/55">One-time repair work starts at $250 after review. Response times, included hours, third-party fees, and emergency coverage are confirmed in the written scope.</p>
       </div>

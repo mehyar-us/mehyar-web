@@ -14,20 +14,20 @@ export default function IndustryDetail() {
 
   return (
     <>
-      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.16),transparent_34%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_65%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.12),transparent_34%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_65%)] md:pt-32">
-        <div className="mx-auto max-w-7xl">
+      <section className="site-hero">
+        <div className="site-shell">
           <Link href="/pricing" className="mb-7 inline-flex items-center text-sm font-semibold text-brand-800 hover:underline dark:text-brand-100"><ArrowLeft className="mr-2 h-4 w-4" />All business pricing</Link>
           <div className="grid gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-center">
             <div>
-              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Website and automation for {industry.shortName.toLowerCase()}</p>
-              <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.05em] text-ink dark:text-white md:text-6xl md:leading-[0.96]">Website, AI follow-up, and customer care for {industry.shortName.toLowerCase()}.</h1>
-              <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">{industry.description}</p>
+              <p className="site-eyebrow mb-3">Website and automation for {industry.shortName.toLowerCase()}</p>
+              <h1 className="site-display max-w-4xl">Website, AI follow-up, and customer care for {industry.shortName.toLowerCase()}.</h1>
+              <p className="site-lede mt-6 max-w-3xl">{industry.description}</p>
               <div className="mt-6 flex flex-wrap gap-2">
                 {industry.outcomes.map((outcome) => <span key={outcome} className="inline-flex items-center gap-2 rounded-full border border-brand-700/20 bg-card px-3 py-2 text-sm font-medium text-foreground"><CheckCircle2 className="h-4 w-4 text-brand-700 dark:text-brand-100" />{outcome}</span>)}
               </div>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row"><a href="#ai-command-center" className={buttonVariants({ variant: "cta", size: "lg" })}><Bot className="mr-2 h-4 w-4" />See your AI command center</a><a href="#services-pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>View services &amp; pricing<ArrowRight className="ml-2 h-4 w-4" /></a></div>
             </div>
-            <div className="relative min-h-80 overflow-hidden rounded-[1.75rem] border border-border bg-brand-950 shadow-[0_22px_60px_rgba(8,63,84,0.18)]">
+            <div className="site-panel relative min-h-80 overflow-hidden bg-brand-950">
               <img src={industry.heroImage} alt={`${industry.shortName} business owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" loading="eager" />
               <div className="absolute inset-0 bg-gradient-to-t from-brand-950/80 via-transparent to-transparent" />
               <p className="absolute bottom-5 left-5 right-5 text-sm font-medium leading-6 text-white">{industry.outcomes.join(" · ")}</p>
@@ -35,7 +35,7 @@ export default function IndustryDetail() {
           </div>
         </div>
       </section>
-      <nav aria-label={`${industry.shortName} page sections`} className="sticky top-[4.5rem] z-30 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+      <nav aria-label={`${industry.shortName} page sections`} className="site-sticky-tabs">
         <div className="scrollbar-none mx-auto flex max-w-7xl gap-2 overflow-x-auto">
           <a href="#ai-command-center" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-950 px-4 py-2 text-sm font-semibold text-white"><Bot className="h-4 w-4" aria-hidden="true" />AI command center</a>
           <a href="#services-pricing" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Tags className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />Services &amp; pricing</a>

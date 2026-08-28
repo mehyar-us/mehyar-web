@@ -108,11 +108,7 @@ function App() {
   // and matches the user's saved preference (no flash of wrong theme).
   useEffect(() => {
     const saved = localStorage.getItem("darkMode");
-    const wantsDark =
-      saved !== null
-        ? saved === "true"
-        : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ??
-          false);
+    const wantsDark = saved === "true";
     document.documentElement.classList.toggle("dark", wantsDark);
   }, []);
 

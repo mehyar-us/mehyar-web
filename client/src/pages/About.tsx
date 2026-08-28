@@ -22,7 +22,7 @@ const credentials = ["Syrian founder in NYC", "10+ years professional software e
 const About = () => {
   return (
     <>
-      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.14),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_54%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_54%,hsl(var(--brand-950))_100%)] md:pb-16 md:pt-32">
+      <section className="site-hero">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center">
           <div>
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Founder-led consulting</p>

@@ -5,15 +5,15 @@ import { buttonVariants } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <section className="flex min-h-screen items-center justify-center bg-background px-4 py-28">
-      <Card className="w-full max-w-xl border-border bg-card shadow-[0_24px_80px_rgba(8,63,84,0.10)]">
+    <section className="site-hero flex min-h-screen items-center justify-center">
+      <Card className="site-panel w-full max-w-xl">
         <CardContent className="p-8 text-center md:p-10">
           <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
             <AlertCircle className="h-7 w-7" aria-hidden="true" />
           </div>
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Page not found</p>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">This MehyarSoft route does not exist.</h1>
-          <p className="mx-auto mt-4 max-w-md leading-7 text-muted-foreground">Wrong address. If you meant to book the $330 audit, the button below drops you on the intake form. Otherwise, the sitemap lists every public route.</p>
+          <p className="site-eyebrow mb-3">Page not found</p>
+          <h1 className="site-heading">This MehyarSoft route does not exist.</h1>
+          <p className="site-lede mx-auto mt-4 max-w-md">Wrong address. If you meant to book the $330 audit, the button below drops you on the intake form. Otherwise, the sitemap lists every public route.</p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta" })}>
               Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />

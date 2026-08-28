@@ -1,60 +1,57 @@
-import { ArrowRight, Bot, BrainCircuit, CalendarCheck2, MessagesSquare, Mic2, Search, ShieldCheck, Smartphone, Workflow } from "lucide-react";
+import { ArrowRight, Bot, BrainCircuit, Check, MessageSquareText, Mic2, ShieldCheck, Smartphone, Workflow } from "lucide-react";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
-import { industryOffers } from "@/data/industry-offers";
 
-const capabilities = [
-  { icon: Mic2, title: "Send a voice note", text: "Ask for today’s priorities, a lead update, or a follow-up draft while you are away from a desk." },
-  { icon: MessagesSquare, title: "Triage every inbox", text: "Summarize calls, forms, email, texts, and social messages so valuable requests are not buried." },
-  { icon: CalendarCheck2, title: "Coordinate the schedule", text: "Check approved availability, prepare confirmations, and keep changes from becoming phone tag." },
-  { icon: Workflow, title: "Run approved workflows", text: "Update records, prepare reports, trigger reminders, and route work with clear permission rules." },
-  { icon: Search, title: "Research and remember", text: "Build recurring briefs, monitor useful information, and retain approved operating knowledge." },
-  { icon: ShieldCheck, title: "Keep people in control", text: "External messages, publishing, payments, and sensitive actions wait for the approvals you define." },
-];
+const jobs = [
+  [MessageSquareText, "Bring the inbox together", "Summarize calls, forms, email, texts, and social messages."],
+  [Workflow, "Prepare the next action", "Draft follow-ups, update records, route work, and assemble reports."],
+  [Mic2, "Work from your phone", "Send a text or voice note from Telegram or another approved channel."],
+  [ShieldCheck, "Keep approval in your hands", "Sensitive messages, publishing, and payments wait for permission."],
+] as const;
 
 export default function HomeAgentCommandCenter() {
   return (
-    <section id="ai-command-center" className="scroll-mt-24 border-b border-white/10 bg-brand-950 px-4 py-12 text-white md:py-20">
-      <div className="mx-auto max-w-7xl">
-        <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-          <div>
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold text-brand-100"><Bot className="h-4 w-4" aria-hidden="true" />OpenClaw</span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-3 py-1.5 text-sm font-semibold text-brand-950"><BrainCircuit className="h-4 w-4" aria-hidden="true" />Hermes Agent</span>
+    <section id="ai-command-center" className="site-section scroll-mt-24 border-b border-border py-14 md:py-20">
+      <div className="site-shell">
+        <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+          <div className="order-2 border border-border bg-white shadow-[0_20px_65px_rgba(6,47,66,0.12)] dark:bg-brand-950 lg:order-1">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center gap-2 text-sm font-semibold"><span className="grid h-8 w-8 place-items-center bg-brand-950 text-white dark:bg-white dark:text-brand-950"><Bot className="h-4 w-4" /></span>Business command center</div>
+              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-500" />Ready</span>
             </div>
-            <p className="mt-5 text-sm font-bold uppercase tracking-[0.2em] text-brand-100">Your private AI business command center</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl md:text-5xl">Message your business. Get the work moving.</h2>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-white/75 md:text-lg">We install and maintain a private assistant you can direct from Telegram or another approved channel. OpenClaw connects your commands to business tools. Hermes adds memory, recurring research, scheduled briefings, and specialist routines.</p>
+            <div className="grid gap-0 md:grid-cols-[1fr_0.72fr]">
+              <div className="border-b border-border p-4 sm:p-6 md:border-b-0 md:border-r">
+                <div className="ml-auto max-w-[88%] bg-brand-950 p-3 text-sm leading-6 text-white">Show me today’s bookings, unanswered leads, and the three follow-ups I should approve first.</div>
+                <div className="mt-4 max-w-[92%] border border-brand-700/20 bg-secondary/55 p-4">
+                  <p className="flex items-center gap-2 text-xs font-semibold text-brand-800 dark:text-brand-100"><BrainCircuit className="h-4 w-4" />Prepared for your review</p>
+                  <p className="mt-3 text-sm leading-6 text-foreground">You have 6 bookings, 2 unanswered leads, and 3 follow-ups ready. The highest-priority lead asked about availability tomorrow.</p>
+                  <div className="mt-4 divide-y divide-border border-y border-border">
+                    {["Reply to the tomorrow request", "Confirm the 2:00 appointment", "Send two return-client reminders"].map((item) => <div key={item} className="flex items-center gap-2 py-2.5 text-xs text-foreground"><span className="grid h-5 w-5 place-items-center border border-brand-700/25 bg-white text-brand-700 dark:bg-white/10"><Check className="h-3 w-3" /></span>{item}</div>)}
+                  </div>
+                  <div className="mt-4 flex gap-2"><button type="button" className="bg-brand-950 px-3 py-2 text-xs font-semibold text-white dark:bg-white dark:text-brand-950">Approve selected</button><button type="button" className="border border-border px-3 py-2 text-xs font-semibold text-foreground">Edit first</button></div>
+                </div>
+              </div>
+              <div className="bg-muted/20 p-4 sm:p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Connected, with permission</p>
+                <div className="mt-4 divide-y divide-border border-y border-border">
+                  {["Calendar", "Customer inbox", "CRM or spreadsheet", "Email and SMS"].map((item) => <div key={item} className="flex items-center justify-between py-3 text-xs font-medium text-foreground"><span>{item}</span><span className="text-emerald-700 dark:text-emerald-300">Connected</span></div>)}
+                </div>
+                <p className="mt-5 flex items-start gap-2 text-xs leading-5 text-muted-foreground"><Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />Use it from mobile without opening another complicated dashboard.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="order-1 lg:order-2">
+            <p className="site-eyebrow">Managed AI command center</p>
+            <h2 className="site-heading mt-3">Ask in plain language. Stay in control.</h2>
+            <p className="site-lede mt-5">We install and maintain a private assistant around your real tools and rules. OpenClaw handles approved actions. Hermes adds deeper memory, research, and recurring specialist routines.</p>
+            <div className="mt-7 divide-y divide-border border-y border-border">
+              {jobs.map(([Icon, title, text]) => <div key={title} className="grid grid-cols-[2rem_1fr] gap-3 py-4"><Icon className="mt-0.5 h-5 w-5 text-brand-700 dark:text-brand-100" /><div><h3 className="text-sm font-semibold text-foreground">{title}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{text}</p></div></div>)}
+            </div>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Link href="/services#ai-business-operators" className={buttonVariants({ variant: "secondary", size: "lg" })}>Compare the two assistants<ArrowRight className="ml-2 h-4 w-4" /></Link>
-              <Link href="/booking?service=OpenClaw%20or%20Hermes%20business%20agent" className={buttonVariants({ variant: "outline", size: "lg", className: "border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white" })}>Talk through my setup</Link>
+              <Link href="/services#ai-business-operators" className={buttonVariants({ variant: "cta", size: "lg" })}>Compare OpenClaw and Hermes<ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Link href="/booking?service=AI%20business%20command%20center" className={buttonVariants({ variant: "outline", size: "lg" })}>Talk through my setup</Link>
             </div>
-          </div>
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-white/[0.05] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-            <img src="/assets/agent-services/mobile-command-assistant.webp" alt="Business owner directing an AI business assistant from a phone" className="h-[300px] w-full rounded-[1.35rem] object-cover sm:h-[390px]" loading="eager" />
-            <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/15 bg-brand-950/90 p-4 backdrop-blur">
-              <p className="flex items-center gap-2 font-semibold"><Smartphone className="h-4 w-4 text-brand-100" aria-hidden="true" />A practical example</p>
-              <p className="mt-1 text-sm leading-6 text-white/70">“Show me today’s bookings, unanswered leads, and the three follow-ups I should approve first.”</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {capabilities.map(({ icon: Icon, title, text }) => (
-            <article key={title} className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
-              <div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-brand-100"><Icon className="h-4 w-4" aria-hidden="true" /></span><h3 className="font-semibold">{title}</h3></div>
-              <p className="mt-3 text-sm leading-6 text-white/70">{text}</p>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-9 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div><p className="text-sm font-bold uppercase tracking-[0.18em] text-brand-100">See what it can do for you</p><h3 className="mt-2 text-2xl font-semibold">Choose your type of business.</h3></div>
-            <Link href="/pricing" className="inline-flex items-center text-sm font-semibold text-brand-100 hover:underline">View all industries<ArrowRight className="ml-2 h-4 w-4" /></Link>
-          </div>
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {industryOffers.map((industry) => <Link key={industry.id} href={`/industries/${industry.id}#ai-command-center`} className="rounded-xl border border-white/10 bg-brand-950/55 px-3 py-3 text-sm font-semibold text-white transition hover:border-brand-100/50 hover:bg-white/10">{industry.shortName}<ArrowRight className="ml-1 inline h-3.5 w-3.5 text-brand-100" aria-hidden="true" /></Link>)}
           </div>
         </div>
       </div>

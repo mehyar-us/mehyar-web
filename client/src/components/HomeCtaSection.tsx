@@ -15,7 +15,7 @@ const HomeCtaSection = () => {
   return (
     <section
       id="contact"
-      className="scroll-mt-24 border-t border-border/40 bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--muted))_100%)] px-4 py-12 dark:bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--background))_100%)] sm:py-14"
+      className="scroll-mt-24 border-t border-border bg-background px-4 py-12 sm:py-14"
     >
       <div className="container mx-auto max-w-4xl">
         <div className="mb-6 text-center">
@@ -32,9 +32,9 @@ const HomeCtaSection = () => {
           <button
             type="button"
             onClick={() => setIntakeOpen(true)}
-            className="group flex items-center gap-4 rounded-2xl border border-action/30 bg-action px-5 py-5 text-left text-white shadow-lg shadow-brand-900/20 transition hover:bg-action-strong sm:px-6 sm:py-6"
+            className="group flex items-center gap-4 border border-action/30 bg-action px-5 py-5 text-left text-white shadow-lg shadow-brand-900/20 transition hover:bg-action-strong sm:px-6 sm:py-6"
           >
-            <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white/15 transition group-hover:bg-white/25 sm:h-14 sm:w-14">
+            <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center bg-white/15 transition group-hover:bg-white/25 sm:h-14 sm:w-14">
               <Mail className="h-5 w-5 text-white sm:h-6 sm:w-6" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
@@ -49,9 +49,9 @@ const HomeCtaSection = () => {
           <button
             type="button"
             onClick={() => setChecklistOpen(true)}
-            className="group flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-5 text-left text-ink shadow-sm transition hover:border-brand-700/40 hover:bg-brand-50 dark:text-white dark:hover:bg-white/[0.06] sm:px-6 sm:py-6"
+            className="group flex items-center gap-4 border border-border bg-card px-5 py-5 text-left text-ink shadow-sm transition hover:border-brand-700/40 hover:bg-brand-100/40 dark:text-white dark:hover:bg-white/[0.06] sm:px-6 sm:py-6"
           >
-            <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-brand-100 dark:bg-white/10 sm:h-14 sm:w-14">
+            <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center bg-brand-100 dark:bg-white/10 sm:h-14 sm:w-14">
               <Sparkles className="h-5 w-5 text-brand-700 dark:text-brand-100 sm:h-6 sm:w-6" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">

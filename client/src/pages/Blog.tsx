@@ -32,22 +32,22 @@ const Blog = () => {
 
   return (
     <>
-      <section className="border-b border-border bg-[radial-gradient(circle_at_top_left,rgba(11,82,104,0.12),transparent_32%),linear-gradient(135deg,hsl(var(--brand-100))_0%,hsl(var(--background))_56%,#fff_100%)] px-4 pb-14 pt-28 dark:bg-[radial-gradient(circle_at_top_left,rgba(143,211,221,0.10),transparent_32%),linear-gradient(135deg,hsl(var(--brand-900))_0%,hsl(var(--background))_56%,hsl(var(--brand-950))_100%)] md:pt-32">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.75fr] lg:items-end">
+      <section className="site-hero">
+        <div className="site-shell grid gap-8 lg:grid-cols-[1fr_0.75fr] lg:items-end">
           <div>
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
+            <p className="site-eyebrow mb-3">
               Blog and insights
             </p>
-            <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
+            <h1 className="site-display max-w-4xl">
               Practical notes for owners who need fewer leaks.
             </h1>
-            <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+            <p className="site-lede mt-5 max-w-3xl">
               Local business tech audits, CRM follow-up, automation, and when
               custom software is worth it — written to move readers toward a
               practical next step.
             </p>
           </div>
-          <div className="rounded-[1.5rem] border border-border bg-card/88 p-4 shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+          <div className="site-panel-flat p-4">
             <label
               htmlFor="blog-search"
               className="mb-2 block text-sm font-semibold text-foreground"

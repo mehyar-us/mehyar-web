@@ -55,15 +55,15 @@ const BlogPost = () => {
   return (
     <>
       {/* Blog Post Hero */}
-      <section className="pt-28 pb-12 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="container mx-auto">
+      <section className="site-hero">
+        <div className="site-shell">
           <Link href="/blog">
             <Button variant="ghost" className="mb-6 text-neutral-600 dark:text-neutral-400">
               <ChevronLeft className="mr-2 h-4 w-4" /> Back to blog
             </Button>
           </Link>
           
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
+          <h1 className="site-display mb-6">
             {post.title}
           </h1>
           
@@ -93,7 +93,7 @@ const BlogPost = () => {
             alt={post.title}
             width="1200"
             height="630"
-            className="w-full h-auto rounded-xl shadow-lg"
+            className="site-media h-auto w-full shadow-lg"
           />
         </div>
       </section>

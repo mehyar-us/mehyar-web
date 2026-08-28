@@ -3,7 +3,9 @@ import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import {
   AppWindow,
+  ArrowRight,
   BookOpen,
+  Boxes,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
@@ -25,11 +27,11 @@ import { cn } from "@/lib/utils";
 import { openSupportTicket } from "@/components/SupportTicketModal";
 
 const primaryLinks = [
-  { href: "/services", label: "Solutions", icon: AppWindow },
-  { href: "/pricing", label: "Industries & pricing", icon: Building2 },
   { href: "/portfolio", label: "Work", icon: BriefcaseBusiness },
+  { href: "/apps", label: "Apps we manage", icon: Boxes },
+  { href: "/services", label: "Services", icon: AppWindow },
+  { href: "/pricing", label: "Industries", icon: Building2 },
   { href: "/blog", label: "Insights", icon: BookOpen },
-  { href: "/about", label: "About", icon: Info },
 ];
 
 const actionLinks = [
@@ -69,22 +71,18 @@ const Navbar = () => {
 
   return (
     <nav
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 border-b border-border/80 backdrop-blur-xl transition-[background,border-color] duration-200",
-        isScrolled
-          ? "bg-white/[0.96] dark:bg-brand-950/[0.96]"
-          : "bg-white/[0.9] dark:bg-brand-950/[0.9]",
-      )}
+      className="site-header"
+      data-scrolled={isScrolled}
       aria-label="Main navigation"
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-[4.5rem] items-center justify-between gap-5">
+      <div className="site-shell px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-5">
           <Link
             href="/"
-            className="group flex min-h-12 min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:gap-3"
+            className="group flex min-h-11 min-w-0 items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:gap-3"
             aria-label="MehyarSoft home"
           >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-brand-700/15 bg-white p-1.5 shadow-[0_10px_26px_rgba(8,63,84,0.16)] dark:bg-brand-950 sm:h-12 sm:w-12">
+            <span className="grid h-9 w-9 shrink-0 place-items-center p-0.5 sm:h-10 sm:w-10">
               <img
                 src="/assets/mehyarsoft-mark-new-192.png"
                 alt=""
@@ -96,34 +94,32 @@ const Navbar = () => {
               />
             </span>
             <span className="flex min-w-0 flex-col leading-none max-[360px]:hidden">
-              <span className="text-[1.55rem] font-semibold tracking-[-0.065em] text-brand-950 dark:text-white sm:text-[1.8rem]">
+              <span className="text-[1.35rem] font-semibold tracking-[-0.06em] text-brand-950 dark:text-white sm:text-[1.55rem]">
                 Mehyar<span className="font-light">Soft</span>
               </span>
-              <span className="mt-1 hidden text-[0.55rem] font-semibold uppercase tracking-[0.29em] text-brand-800/72 dark:text-brand-100/78 sm:block">
-                Software • Systems • AI
-              </span>
+              <span className="sr-only">Software, systems, and AI</span>
             </span>
           </Link>
 
-          <div className="hidden items-center gap-1 rounded-full border border-border/80 bg-white/72 p-1.5 shadow-sm backdrop-blur min-[1180px]:flex dark:bg-zinc-900/72">
+          <div className="hidden items-center gap-5 min-[1180px]:flex">
             {primaryLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "rounded-full px-2.5 py-2 text-sm font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "relative px-0 py-2 text-sm font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   (location === link.href.split("#")[0] || (link.href === "/pricing" && location.startsWith("/industries/")))
-                    ? "bg-brand-100 text-brand-900 dark:bg-white/10 dark:text-white"
+                    ? "text-brand-900 after:absolute after:inset-x-0 after:-bottom-[0.72rem] after:h-0.5 after:bg-brand-700 dark:text-white"
                     : "text-ink/75 hover:text-brand-800 dark:text-white/72 dark:hover:text-white",
                 )}
               >
                 {link.label}
               </Link>
             ))}
-            <button type="button" onClick={openSupportTicket} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "rounded-full px-3")}>
+            <button type="button" onClick={openSupportTicket} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "px-2")}>
               <LifeBuoy className="mr-1.5 h-4 w-4" />Support
             </button>
-            <Link href="/contact" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "rounded-full px-4")}>Start</Link>
+            <Link href="/contact" className={cn(buttonVariants({ variant: "cta", size: "sm" }), "px-4")}>Start a project<ArrowRight className="ml-1.5 h-4 w-4" /></Link>
             <ThemeToggle />
           </div>
 
@@ -151,9 +147,9 @@ const Navbar = () => {
       </div>
 
       {isMobileMenuOpen && typeof document !== "undefined" && createPortal(
-        <div id="mobile-site-menu" className="fixed inset-x-0 bottom-0 top-[4.5rem] z-[60] overflow-y-auto border-t border-border bg-background/98 px-4 pb-28 pt-4 backdrop-blur-xl min-[1180px]:hidden">
+        <div id="mobile-site-menu" className="fixed inset-x-0 bottom-0 top-16 z-[60] overflow-y-auto border-t border-border bg-background px-4 pb-28 pt-4 min-[1180px]:hidden">
           <div className="mx-auto max-w-xl space-y-5">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="divide-y divide-border border-y border-border">
               {primaryLinks.map((link) => {
                 const Icon = link.icon;
                 const active = location === link.href.split("#")[0] || (link.href === "/pricing" && location.startsWith("/industries/"));
@@ -162,19 +158,20 @@ const Navbar = () => {
                     key={link.href}
                     href={link.href}
                     className={cn(
-                      "flex min-h-14 items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition-colors",
+                      "flex min-h-14 items-center gap-3 px-1 py-3 text-sm font-semibold transition-colors",
                       active
-                        ? "border-brand-700/25 bg-brand-100 text-brand-950 dark:bg-brand-800 dark:text-white"
-                        : "border-border bg-card text-foreground hover:border-brand-700/25 hover:bg-brand-100/70 dark:hover:bg-brand-900",
+                        ? "text-brand-950 dark:text-white"
+                        : "text-foreground hover:text-brand-800 dark:hover:text-white",
                     )}
                     onClick={closeMenu}
                   >
-                    <Icon className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-100" />
-                    {link.label}
+                    <Icon className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-100" />{link.label}<ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
                   </Link>
                 );
               })}
             </div>
+
+            <Link href="/about" onClick={closeMenu} className="flex min-h-12 items-center gap-3 border-b border-border px-1 py-3 text-sm font-semibold text-foreground"><Info className="h-5 w-5 text-brand-700 dark:text-brand-100" />About<ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" /></Link>
 
             <section aria-labelledby="mobile-start-heading">
               <h2 id="mobile-start-heading" className="mb-2 px-1 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Start or get help</h2>

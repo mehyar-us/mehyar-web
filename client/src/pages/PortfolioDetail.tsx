@@ -45,8 +45,8 @@ const PortfolioDetail = () => {
   return (
     <>
       {/* Project Hero */}
-      <section className="pt-28 pb-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="container mx-auto">
+      <section className="site-hero">
+        <div className="site-shell">
           <Link href="/portfolio">
             <a className="inline-flex items-center text-neutral-600 dark:text-neutral-400 hover:text-primary dark:hover:text-primary mb-8 transition-colors">
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Portfolio
@@ -61,10 +61,10 @@ const PortfolioDetail = () => {
               >
                 {project.category}
               </Badge>
-              <h1 className="text-3xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6">
+              <h1 className="site-display mb-6">
                 {project.title}
               </h1>
-              <p className="text-xl text-neutral-700 dark:text-neutral-300 mb-8">
+              <p className="site-lede mb-8">
                 {project.description}
               </p>
               <div className="grid grid-cols-2 gap-4">
@@ -87,7 +87,7 @@ const PortfolioDetail = () => {
               </div>
             </div>
             <div className="md:w-2/5">
-              <div className="aspect-video overflow-hidden rounded-xl shadow-lg">
+              <div className="site-panel aspect-video overflow-hidden">
                 <img
                   src={project.detailImage || project.image}
                   alt={project.title}
