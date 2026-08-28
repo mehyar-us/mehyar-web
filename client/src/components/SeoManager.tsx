@@ -228,6 +228,24 @@ const staticMeta: Record<string, SeoMeta> = {
       industryOfferCatalog,
     ],
   },
+  "/proposals": {
+    title: "Client Growth Plans | MehyarSoft",
+    description:
+      "Explore selected MehyarSoft growth plans created around real business customer journeys, operational needs, and practical service opportunities.",
+    path: "/proposals",
+    jsonLd: [
+      webPage(
+        "/proposals",
+        "Client Growth Plans | MehyarSoft",
+        "Selected business growth plans created around customer journeys, operational needs, and practical service opportunities.",
+        "CollectionPage",
+      ),
+      breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Client Growth Plans", path: "/proposals" },
+      ]),
+    ],
+  },
   "/portfolio": {
     title: "Engagement Patterns | MehyarSoft Consulting Work Examples",
     description:

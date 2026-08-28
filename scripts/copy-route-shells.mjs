@@ -36,6 +36,12 @@ const routeMeta = {
       'Compare specific starting packages for barbers, clinics, real estate, restaurants, wellness, home services, professional services, auto, pet care, and retail.',
     path: '/pricing',
   },
+  '/proposals': {
+    title: 'Client Growth Plans | MehyarSoft',
+    description:
+      'Explore selected MehyarSoft growth plans created around real business customer journeys, operational needs, and practical service opportunities.',
+    path: '/proposals',
+  },
   '/portfolio': {
     title: 'Engagement Patterns | MehyarSoft Consulting Work Examples',
     description:
@@ -359,6 +365,7 @@ if (missingBlogShells.length > 0) {
 const directRoutes = [
   'services',
   'pricing',
+  'proposals',
   'industries/barbershops-salons',
   'industries/clinics-dentists',
   'industries/real-estate',
