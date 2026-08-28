@@ -73,12 +73,15 @@ export async function onRequestPost({ request, env }) {
     if (!upstream.ok || !upstreamPayload?.ok) {
       await env.LEADS_DB.prepare("UPDATE appointments SET status = 'failed', provider_status = ?, provider_error = ?, updated_at = datetime('now') WHERE id = ?")
         .bind(`zoho_${upstream.status}`, clean(upstreamPayload?.error || upstreamPayload?.message, 500), bookingId).run();
-      return Response.json({ ok: false, error: upstreamPayload?.error || "booking_failed", message: upstreamPayload?.message || "That time could not be booked. Refresh the calendar and choose another time." }, { status: upstream.status === 409 ? 409 : 502 });
+      return Response.json(
+        { ok: false, error: upstream.status === 409 ? "slot_unavailable" : "booking_failed", message: upstream.status === 409 ? "That time is no longer available. Please choose another open time." : "Your appointment could not be confirmed. Please try again or email info@mehyar.us." },
+        { status: upstream.status === 409 ? 409 : 502 },
+      );
     }
   } catch (error) {
     await env.LEADS_DB.prepare("UPDATE appointments SET status = 'failed', provider_status = 'upstream_error', provider_error = ?, updated_at = datetime('now') WHERE id = ?")
       .bind(clean(error?.message, 500), bookingId).run();
-    return Response.json({ ok: false, error: "calendar_unavailable" }, { status: 503 });
+    return Response.json({ ok: false, error: "calendar_unavailable", message: "The booking calendar is temporarily unavailable. Please try again or email info@mehyar.us." }, { status: 503 });
   }
 
   const event = upstreamPayload.event || {};

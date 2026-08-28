@@ -56,9 +56,9 @@ export default function Booking() {
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Live calendar is temporarily unavailable.");
       setAvailability(payload);
       if (payload.slots[0]) setSelectedDate(dateFromKey(payload.slots[0].date));
-    } catch (error) {
+    } catch {
       setAvailability(null);
-      setLoadError(error instanceof Error ? error.message : "Live calendar is temporarily unavailable.");
+      setLoadError("Live availability is temporarily unavailable. Please try again shortly or email info@mehyar.us.");
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ export default function Booking() {
       setConfirmed({ label: payload.appointment.label, id: payload.appointment.id });
       setTurnstileToken("");
       setTurnstileReset((value) => value + 1);
-      toast({ title: "Call booked", description: "The Zoho Calendar event and confirmation emails were created." });
+      toast({ title: "Call booked", description: "Your appointment is confirmed and confirmation emails are on the way." });
     } catch (error) {
       toast({ title: "Booking not completed", description: error instanceof Error ? error.message : "Refresh the available times and try again.", variant: "destructive" });
       await loadAvailability();
@@ -117,7 +117,7 @@ export default function Booking() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"><CheckCircle2 className="h-8 w-8" /></div>
             <h1 className="mt-6 text-3xl font-bold tracking-tight">Your call is booked.</h1>
             <p className="mt-3 text-lg font-semibold text-brand-800 dark:text-brand-100">{confirmed.label}</p>
-            <p className="mt-4 leading-7 text-muted-foreground">The appointment is on MehyarSoft&apos;s Zoho Calendar. We sent confirmation to you and info@mehyar.us.</p>
+            <p className="mt-4 leading-7 text-muted-foreground">Your appointment is confirmed. We sent the details to you and info@mehyar.us.</p>
             <div className="mt-6 rounded-2xl bg-muted/70 p-4 text-left text-sm"><strong>What happens next:</strong> Mehyar will call the phone number you provided. Reply to the confirmation email if anything changes.</div>
             <Button className="mt-7" onClick={() => window.location.assign("/")}>Back to MehyarSoft</Button>
           </CardContent>
@@ -129,9 +129,9 @@ export default function Booking() {
   return (
     <main className="bg-brand-50 pb-20 pt-24 dark:bg-brand-950 sm:pt-28">
       <section className="px-4"><div className="container mx-auto max-w-6xl">
-        <div className="mb-8 max-w-3xl"><p className="text-sm font-bold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Book a phone call</p><h1 className="mt-3 text-4xl font-bold tracking-tight text-ink dark:text-white sm:text-5xl">Choose a real open time.</h1><p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">Pick a time from Mehyar&apos;s live Zoho Calendar. Calls are 30 minutes, Monday through Friday, with at least 24 hours&apos; notice.</p></div>
+        <div className="mb-8 max-w-3xl"><p className="text-sm font-bold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Book a phone call</p><h1 className="mt-3 text-4xl font-bold tracking-tight text-ink dark:text-white sm:text-5xl">Choose a real open time.</h1><p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">Pick a time directly from Mehyar&apos;s live availability. Calls are 30 minutes, Monday through Friday, with at least 24 hours&apos; notice.</p></div>
         {loading ? (
-          <Card><CardContent className="flex min-h-80 items-center justify-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> Checking Zoho Calendar availability…</CardContent></Card>
+          <Card><CardContent className="flex min-h-80 items-center justify-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> Checking live availability…</CardContent></Card>
         ) : loadError ? (
           <Card className="border-amber-200 dark:border-amber-900"><CardContent className="p-7"><h2 className="text-xl font-semibold">Live times are temporarily unavailable.</h2><p className="mt-2 leading-7 text-muted-foreground">{loadError}</p><div className="mt-5 flex flex-wrap gap-3"><Button onClick={loadAvailability}><RefreshCw className="mr-2 h-4 w-4" />Try again</Button><Button variant="outline" asChild><a href="mailto:info@mehyar.us?subject=Call%20request">Email info@mehyar.us</a></Button></div></CardContent></Card>
         ) : (
@@ -156,7 +156,7 @@ export default function Booking() {
               </div>
               <div className="mt-5 space-y-3 rounded-2xl border bg-muted/30 p-4 text-sm leading-6"><label className="flex cursor-pointer items-start gap-3"><input type="checkbox" className="mt-1 h-4 w-4 accent-brand-800" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span><strong>Required:</strong> MehyarSoft may email or call me about this appointment.</span></label><label className="flex cursor-pointer items-start gap-3"><input type="checkbox" className="mt-1 h-4 w-4 accent-brand-800" checked={marketing} onChange={(event) => setMarketing(event.target.checked)} /><span><strong>Optional:</strong> Send occasional practical updates. Unsubscribe anytime.</span></label></div>
               <div className="mt-5"><ConversionTurnstile isFooter={false} enabled={detailsReady} resetSignal={turnstileReset} onToken={handleTurnstileToken} onError={handleTurnstileError} /></div>
-              <Button type="submit" size="lg" className="mt-5 min-h-14 w-full rounded-2xl text-base" disabled={!detailsReady || !turnstileToken || submitting}>{submitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Booking on Zoho Calendar…</> : <><Phone className="mr-2 h-5 w-5" />Book this phone call</>}</Button>
+              <Button type="submit" size="lg" className="mt-5 min-h-14 w-full rounded-2xl text-base" disabled={!detailsReady || !turnstileToken || submitting}>{submitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Confirming your appointment…</> : <><Phone className="mr-2 h-5 w-5" />Book this phone call</>}</Button>
               <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />We recheck the slot before booking, create the event only once, and email both you and info@mehyar.us.</div>
               <a href="mailto:info@mehyar.us" className="mt-4 flex min-h-11 items-center justify-center gap-2 text-sm font-semibold text-brand-800 dark:text-brand-100"><Mail className="h-4 w-4" />Prefer email? info@mehyar.us</a>
             </CardContent></Card>

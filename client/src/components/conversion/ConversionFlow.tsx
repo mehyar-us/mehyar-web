@@ -1427,7 +1427,7 @@ export function ConversionFlow({
                 className={inputClassName}
               >
                 <option value="none">None</option>
-                <option value="gmail_zoho">Gmail / Zoho</option>
+                <option value="gmail_zoho">Business email</option>
                 <option value="google_calendar">Google Calendar</option>
                 <option value="website_form">Website form</option>
                 <option value="crm">CRM</option>
