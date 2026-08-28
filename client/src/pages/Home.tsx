@@ -1,4 +1,5 @@
 import HeroSection from "@/components/hero-section";
+import HomeAgentCommandCenter from "@/components/HomeAgentCommandCenter";
 import HomeSolutionsOverview from "@/components/HomeSolutionsOverview";
 import HomeIndustryFinder from "@/components/HomeIndustryFinder";
 import MaintenanceSupportSection from "@/components/maintenance-support-section";
@@ -8,6 +9,7 @@ const Home = () => {
   return (
     <>
       <HeroSection />
+      <HomeAgentCommandCenter />
       <HomeSolutionsOverview />
       <HomeIndustryFinder />
       <MaintenanceSupportSection compact />

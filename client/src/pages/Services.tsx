@@ -92,7 +92,7 @@ const Services = () => {
         </div>
       </section>
 
-      <section className="border-y border-border bg-muted/35 px-4 py-14 md:py-20">
+      <section id="ai-business-operators" className="scroll-mt-24 border-y border-border bg-muted/35 px-4 py-14 md:py-20">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <img src="/assets/agent-services/learning-operations-assistant.webp" alt="Business owner reviewing an AI-prepared operations brief" className="min-h-80 w-full rounded-[1.75rem] border border-border object-cover shadow-[0_22px_60px_rgba(8,63,84,0.13)]" loading="lazy" />

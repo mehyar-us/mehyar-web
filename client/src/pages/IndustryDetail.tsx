@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Bot, CircleHelp, CheckCircle2, Route, Tags } fro
 import { Link, useRoute } from "wouter";
 import IndustrySalesDeck from "@/components/industry-sales-deck";
 import IndustryAgentServices from "@/components/industry-agent-services";
+import IndustryAgentSpotlight from "@/components/IndustryAgentSpotlight";
 import { industryOffers } from "@/data/industry-offers";
 import { buttonVariants } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
@@ -24,7 +25,7 @@ export default function IndustryDetail() {
               <div className="mt-6 flex flex-wrap gap-2">
                 {industry.outcomes.map((outcome) => <span key={outcome} className="inline-flex items-center gap-2 rounded-full border border-brand-700/20 bg-card px-3 py-2 text-sm font-medium text-foreground"><CheckCircle2 className="h-4 w-4 text-brand-700 dark:text-brand-100" />{outcome}</span>)}
               </div>
-              <a href="#services-pricing" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-7" })}>View services &amp; pricing<ArrowRight className="ml-2 h-4 w-4" /></a>
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row"><a href="#ai-command-center" className={buttonVariants({ variant: "cta", size: "lg" })}><Bot className="mr-2 h-4 w-4" />See your AI command center</a><a href="#services-pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>View services &amp; pricing<ArrowRight className="ml-2 h-4 w-4" /></a></div>
             </div>
             <div className="relative min-h-80 overflow-hidden rounded-[1.75rem] border border-border bg-brand-950 shadow-[0_22px_60px_rgba(8,63,84,0.18)]">
               <img src={industry.heroImage} alt={`${industry.shortName} business owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" loading="eager" />
@@ -35,13 +36,15 @@ export default function IndustryDetail() {
         </div>
       </section>
       <nav aria-label={`${industry.shortName} page sections`} className="sticky top-[4.5rem] z-30 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto">
-          <a href="#services-pricing" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-950 px-4 py-2 text-sm font-semibold text-white"><Tags className="h-4 w-4" aria-hidden="true" />Services &amp; pricing</a>
+        <div className="scrollbar-none mx-auto flex max-w-7xl gap-2 overflow-x-auto">
+          <a href="#ai-command-center" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-950 px-4 py-2 text-sm font-semibold text-white"><Bot className="h-4 w-4" aria-hidden="true" />AI command center</a>
+          <a href="#services-pricing" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Tags className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />Services &amp; pricing</a>
           <a href="#how-it-works" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Route className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />How it works</a>
-          <a href="#ai-business-assistant" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Bot className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />AI business assistant</a>
+          <a href="#ai-business-assistant-details" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Bot className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />10 AI uses &amp; pricing</a>
           <Link href={`/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}`} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><CircleHelp className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />Ask a question</Link>
         </div>
       </nav>
+      <IndustryAgentSpotlight industry={industry} />
       <IndustrySalesDeck industry={industry} />
       <IndustryAgentServices industry={industry} />
     </>

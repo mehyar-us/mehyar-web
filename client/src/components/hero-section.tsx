@@ -17,8 +17,8 @@ export default function HeroSection() {
           <h1 className="max-w-4xl text-4xl font-semibold leading-[1] tracking-[-0.05em] text-ink dark:text-white sm:text-5xl lg:text-[4rem]">Software and AI systems that help your organization grow.</h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">From websites, customer apps, booking, CRM, and AI follow-up to secure internal platforms, cloud backends, data systems, and DevOps—we design, build, and maintain the technology behind the work.</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <a href="#solutions" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>Explore what we build<ArrowRight className="ml-2 h-4 w-4" /></a>
-            <Link href="/booking" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12 px-7 text-base" })}>Book a strategy call</Link>
+            <a href="#ai-command-center" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>Meet your AI command center<ArrowRight className="ml-2 h-4 w-4" /></a>
+            <a href="#solutions" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12 px-7 text-base" })}>Explore all solutions</a>
           </div>
           <div className="mt-6 grid max-w-3xl gap-2 sm:grid-cols-3">
             {outcomes.map(({ label, icon: Icon }) => <div key={label} className="flex items-center gap-2 rounded-2xl border border-border bg-card/75 p-3 text-sm font-medium leading-6 text-foreground shadow-sm"><Icon className="h-4 w-4 shrink-0 text-brand-700 dark:text-brand-100" aria-hidden="true" />{label}</div>)}

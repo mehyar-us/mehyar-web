@@ -13,7 +13,7 @@ const managedIncludeIcons = [Server, Smartphone, ShieldCheck, Wrench];
 export default function IndustryAgentServices({ industry }: { industry: IndustryOffer }) {
   const useCases = getAgentUseCases(industry);
   return (
-    <section id="ai-business-assistant" className="scroll-mt-24 border-t border-border bg-background px-4 py-14 md:py-20" aria-labelledby="agent-services-title">
+    <section id="ai-business-assistant-details" className="scroll-mt-24 border-t border-border bg-background px-4 py-14 md:py-20" aria-labelledby="agent-services-title">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center">
           <div>
