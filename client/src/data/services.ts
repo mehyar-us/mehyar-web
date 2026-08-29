@@ -29,7 +29,7 @@ export const services: Service[] = [
       "Best fit for restaurants, clinics, salons, stores, and service businesses",
       "Typical range: $150-$500"
     ],
-    image: "/assets/mehyarsoft-neutral-card.svg",
+    image: "/assets/sales-system/operations-system.webp",
     icon: Lightbulb,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",
@@ -50,7 +50,7 @@ export const services: Service[] = [
       "Local trust signals: service area, founder story, proof, FAQs",
       "Typical range: $750-$2,500"
     ],
-    image: "/assets/mehyarsoft-neutral-card.svg",
+    image: "/assets/sales-system/growth-system.webp",
     icon: CalendarCheck,
     bgColorClass: "bg-secondary/10",
     textColorClass: "text-secondary",
@@ -71,7 +71,7 @@ export const services: Service[] = [
       "Best fit for clinics, restaurants, contractors, agencies, and appointment businesses",
       "Typical range: $1,500-$5,000"
     ],
-    image: "/assets/mehyarsoft-neutral-card.svg",
+    image: "/assets/sales-system/ai-system.webp",
     icon: PhoneCall,
     bgColorClass: "bg-accent/10",
     textColorClass: "text-accent",
@@ -92,7 +92,7 @@ export const services: Service[] = [
       "Best fit for small and mid-sized companies with recurring admin work",
       "Typical range: $3,000-$12,000"
     ],
-    image: "/assets/mehyarsoft-neutral-card.svg",
+    image: "/assets/sales-system/operations-system.webp",
     icon: Bot,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",
@@ -113,7 +113,7 @@ export const services: Service[] = [
       "Best fit for pharma, healthcare, SaaS, agencies, and regulated teams",
       "Typical range: $100-$175/hr or $5k-$25k/project"
     ],
-    image: "/assets/mehyarsoft-neutral-card.svg",
+    image: "/assets/sales-system/software-system.webp",
     icon: CloudCog,
     bgColorClass: "bg-secondary/10",
     textColorClass: "text-secondary",
@@ -134,7 +134,7 @@ export const services: Service[] = [
       "Best fit after an audit, cleanup, or automation sprint",
       "Typical range: $500-$3,500/mo"
     ],
-    image: "/assets/mehyarsoft-neutral-card.svg",
+    image: "/assets/sales-system/operations-system.webp",
     icon: Users,
     bgColorClass: "bg-accent/10",
     textColorClass: "text-accent",
@@ -155,7 +155,7 @@ export const services: Service[] = [
       "Best fit when the workflow is proven and needs a reliable system",
       "Scoped after discovery or architecture review"
     ],
-    image: "/assets/mehyarsoft-neutral-card.svg",
+    image: "/assets/sales-system/software-system.webp",
     icon: Code,
     bgColorClass: "bg-primary/10",
     textColorClass: "text-primary",

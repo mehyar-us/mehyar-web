@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Bot, CircleHelp, CheckCircle2, Route, Tags } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, CircleHelp, CheckCircle2, Route, Sparkles, Tags } from "lucide-react";
 import { Link, useRoute } from "wouter";
 import IndustrySalesDeck from "@/components/industry-sales-deck";
 import IndustryAgentServices from "@/components/industry-agent-services";
@@ -16,29 +16,39 @@ export default function IndustryDetail() {
     <>
       <section className="site-hero">
         <div className="site-shell">
-          <Link href="/pricing" className="mb-7 inline-flex items-center text-sm font-semibold text-brand-800 hover:underline dark:text-brand-100"><ArrowLeft className="mr-2 h-4 w-4" />All business pricing</Link>
-          <div className="grid gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-center">
+          <Link href="/pricing" className="mb-7 inline-flex items-center text-sm font-semibold text-brand-800 hover:underline dark:text-brand-100"><ArrowLeft className="mr-2 h-4 w-4" />Browse business types</Link>
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
-              <p className="site-eyebrow mb-3">Website and automation for {industry.shortName.toLowerCase()}</p>
-              <h1 className="site-display max-w-4xl">Website, AI follow-up, and customer care for {industry.shortName.toLowerCase()}.</h1>
-              <p className="site-lede mt-6 max-w-3xl">{industry.description}</p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {industry.outcomes.map((outcome) => <span key={outcome} className="inline-flex items-center gap-2 rounded-full border border-brand-700/20 bg-card px-3 py-2 text-sm font-medium text-foreground"><CheckCircle2 className="h-4 w-4 text-brand-700 dark:text-brand-100" />{outcome}</span>)}
+              <p className="site-eyebrow mb-3">A connected growth system for {industry.shortName.toLowerCase()}</p>
+              <div className="relative mb-6 aspect-[16/8.5] overflow-hidden rounded-2xl border border-border bg-brand-950 shadow-sm lg:hidden">
+                <img src={industry.heroImage} alt={`${industry.shortName} owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" loading="eager" />
               </div>
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row"><a href="#ai-command-center" className={buttonVariants({ variant: "cta", size: "lg" })}><Bot className="mr-2 h-4 w-4" />See your AI command center</a><a href="#services-pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>View services &amp; pricing<ArrowRight className="ml-2 h-4 w-4" /></a></div>
+              <h1 className="site-display max-w-4xl">Make it easier to choose you, reach you, and come back.</h1>
+              <p className="site-lede mt-6 max-w-3xl">{industry.description}</p>
+              <div className="mt-6 grid gap-2 sm:grid-cols-3">
+                {industry.outcomes.map((outcome) => <span key={outcome} className="inline-flex items-center gap-2 rounded-xl border border-brand-700/20 bg-card px-3 py-3 text-sm font-medium text-foreground"><CheckCircle2 className="h-4 w-4 shrink-0 text-brand-700 dark:text-brand-100" />{outcome}</span>)}
+              </div>
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row"><a href="#services-pricing" className={buttonVariants({ variant: "cta", size: "lg" })}>See services &amp; pricing<ArrowRight className="ml-2 h-4 w-4" /></a><a href="#ai-command-center" className={buttonVariants({ variant: "outline", size: "lg" })}><Sparkles className="mr-2 h-4 w-4" />See the AI assistant</a></div>
+              <div className="mt-6 flex items-end gap-3 border-t border-border pt-5">
+                <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Practical starting point</p><p className="mt-1 text-xl font-semibold text-foreground">{industry.packages[0].price}</p></div>
+                <p className="pb-0.5 text-sm text-muted-foreground">{industry.packages[0].cadence}</p>
+              </div>
             </div>
-            <div className="site-panel relative min-h-80 overflow-hidden bg-brand-950">
-              <img src={industry.heroImage} alt={`${industry.shortName} business owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" loading="eager" />
+            <div className="relative hidden min-h-[22rem] overflow-hidden rounded-[1.75rem] border border-border bg-brand-950 shadow-[0_20px_60px_rgba(6,47,66,0.14)] sm:min-h-[28rem] lg:block">
+              <img src={industry.heroImage} alt={`${industry.shortName} owner serving a customer`} className="absolute inset-0 h-full w-full object-cover" loading="eager" />
               <div className="absolute inset-0 bg-gradient-to-t from-brand-950/80 via-transparent to-transparent" />
-              <p className="absolute bottom-5 left-5 right-5 text-sm font-medium leading-6 text-white">{industry.outcomes.join(" · ")}</p>
+              <div className="absolute bottom-0 left-0 right-0 p-5 text-white sm:p-6">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-100">What your customers feel</p>
+                <p className="mt-2 max-w-lg text-lg font-semibold leading-7">A faster, clearer path from first question to booked service—and an easier reason to return.</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
       <nav aria-label={`${industry.shortName} page sections`} className="site-sticky-tabs">
         <div className="scrollbar-none mx-auto flex max-w-7xl gap-2 overflow-x-auto">
-          <a href="#ai-command-center" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-950 px-4 py-2 text-sm font-semibold text-white"><Bot className="h-4 w-4" aria-hidden="true" />AI command center</a>
-          <a href="#services-pricing" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Tags className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />Services &amp; pricing</a>
+          <a href="#services-pricing" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-950 px-4 py-2 text-sm font-semibold text-white"><Tags className="h-4 w-4" aria-hidden="true" />Services &amp; pricing</a>
+          <a href="#ai-command-center" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Bot className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />AI assistant</a>
           <a href="#how-it-works" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Route className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />How it works</a>
           <a href="#ai-business-assistant-details" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><Bot className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />10 AI uses &amp; pricing</a>
           <Link href={`/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}`} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-brand-700/40"><CircleHelp className="h-4 w-4 text-brand-700 dark:text-brand-100" aria-hidden="true" />Ask a question</Link>

@@ -37,8 +37,8 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Services and starting prices</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Services and pricing for {industry.shortName.toLowerCase()}.</h2>
-          <p className="mt-4 text-base leading-7 text-muted-foreground">Start with the website. Add AI texting when you are busy. Choose the full system when you want phone coverage and social content too.</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Choose how much help you want.</h2>
+          <p className="mt-4 text-base leading-7 text-muted-foreground">Level 1 gives customers a polished place to act. Level 2 adds text follow-up and an AI helper. Level 3 adds phone coverage, scheduling, email, and social content.</p>
         </div>
 
         {industry.complianceNote ? (
@@ -47,12 +47,13 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
           </div>
         ) : null}
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+        <p className="mt-7 text-center text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:hidden">Swipe to compare all three levels</p>
+        <div className="scrollbar-none -mx-4 mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 lg:mx-0 lg:mt-8 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0 lg:pb-0">
           {industry.packages.map((pkg, index) => {
             const Icon = levelIcons[index];
             const href = `/contact?service=industry_package&industry=${encodeURIComponent(industry.shortName)}&offer=${encodeURIComponent(pkg.name)}`;
             return (
-              <article key={pkg.name} className={cn("flex h-full flex-col rounded-[1.5rem] border p-5 shadow-sm md:p-6", pkg.featured ? "border-brand-700 bg-brand-950 text-white shadow-[0_18px_45px_rgba(8,63,84,0.18)]" : "border-border bg-card")}>
+              <article key={pkg.name} className={cn("flex h-full min-w-[88vw] snap-center flex-col rounded-[1.5rem] border p-5 shadow-sm sm:min-w-[26rem] md:p-6 lg:min-w-0", pkg.featured ? "border-brand-700 bg-brand-950 text-white shadow-[0_18px_45px_rgba(8,63,84,0.18)]" : "border-border bg-card")}>
                 <div className="flex items-start justify-between gap-4">
                   <span className={cn("flex h-11 w-11 items-center justify-center rounded-2xl", pkg.featured ? "bg-white/10 text-brand-100" : "bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100")}><Icon className="h-5 w-5" /></span>
                   <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", pkg.featured ? "bg-brand-100 text-brand-950" : "bg-muted text-muted-foreground")}>Level {index + 1}{pkg.featured ? " · Most popular" : ""}</span>
@@ -113,7 +114,7 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
             </div>
             <div className="p-6 md:p-9">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">See how it works</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white">One simple customer journey.</h2>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white">What the customer experiences.</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {industry.demoSteps.map((step, index) => {
                   const StepIcon = journeyIcons[index % journeyIcons.length];

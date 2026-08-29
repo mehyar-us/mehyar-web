@@ -55,7 +55,8 @@ const Services = () => {
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {services.map((service) => (
-              <Card key={service.id} id={service.id} className="scroll-mt-28 rounded-none border-border bg-card shadow-none">
+              <Card key={service.id} id={service.id} className="scroll-mt-28 overflow-hidden rounded-[1.5rem] border-border bg-card shadow-sm">
+                <img src={service.image} alt="" className="aspect-[16/8] w-full bg-muted/25 object-cover" loading="lazy" />
                 <CardContent className="flex h-full flex-col p-5">
                   <div className="mb-5 flex items-center justify-between gap-4">
                     <div className="flex h-12 w-12 items-center justify-center bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
@@ -88,11 +89,11 @@ const Services = () => {
       <section id="ai-business-operators" className="scroll-mt-24 border-y border-border bg-muted/35 px-4 py-14 md:py-20">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-            <img src="/assets/agent-services/learning-operations-assistant.webp" alt="Business owner reviewing an AI-prepared operations brief" className="min-h-80 w-full border border-border object-cover shadow-[0_22px_60px_rgba(8,63,84,0.13)]" loading="lazy" />
+            <img src="/assets/sales-system/ai-system.webp" alt="" className="min-h-80 w-full rounded-[1.75rem] border border-border bg-white object-cover shadow-[0_22px_60px_rgba(8,63,84,0.13)]" loading="lazy" />
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">Managed AI business operators</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">OpenClaw and Hermes, installed and maintained for your business.</h2>
-              <p className="mt-4 text-base leading-7 text-muted-foreground">Use a private mobile command channel for approved actions, or add a learning assistant for recurring research, summaries, follow-up, and reports. Every setup includes permissions, human approval rules, monitoring, backups, and support.</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">Your own AI command center, installed and managed.</h2>
+              <p className="mt-4 text-base leading-7 text-muted-foreground">Use a private mobile assistant for calls, scheduling, approved actions, research, summaries, follow-up, and reports. We choose and configure the right OpenClaw or Hermes setup behind the scenes. Every plan includes permissions, human approval rules, monitoring, backups, and support.</p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {managedAgentOffers.slice(0, 2).map((offer, index) => <div key={offer.name} className="border border-border bg-card p-4"><div className="flex items-center gap-2 font-semibold text-foreground">{index === 0 ? <Bot className="h-5 w-5 text-brand-700 dark:text-brand-100" /> : <BrainCircuit className="h-5 w-5 text-brand-700 dark:text-brand-100" />}{offer.name}</div><p className="mt-2 text-sm leading-6 text-muted-foreground">{offer.bestFor}</p><p className="mt-3 text-sm font-semibold text-foreground">{offer.managed}</p></div>)}
               </div>

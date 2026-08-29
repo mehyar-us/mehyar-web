@@ -41,7 +41,7 @@ const unique = (items: string[]) => [...new Set(items)];
 
 const buildOffer = (config: OfferConfig): IndustryOffer => ({
   ...config,
-  heroImage: `/assets/industries/${config.id}.webp`,
+  heroImage: `/assets/industries-v2/${config.id}.webp`,
   packages: [
     {
       ...config.levelOne,

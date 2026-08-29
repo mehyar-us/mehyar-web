@@ -10,8 +10,8 @@ const Home = () => {
     <>
       <HeroSection />
       <ServiceDecisionGuide compact />
-      <HomeIndustryFinder />
       <HomeAgentCommandCenter />
+      <HomeIndustryFinder />
       <MaintenanceSupportSection compact />
       <HomeCtaSection />
     </>

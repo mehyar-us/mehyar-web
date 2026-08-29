@@ -2,14 +2,11 @@ import { useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight,
-  Bot,
+  CalendarClock,
   Check,
-  CloudCog,
   Code2,
-  Globe2,
-  Inbox,
-  MessageSquareText,
-  PhoneCall,
+  Gauge,
+  ShieldCheck,
   Sparkles,
   UsersRound,
   Workflow,
@@ -20,91 +17,77 @@ import { cn } from "@/lib/utils";
 const paths = [
   {
     id: "customers",
-    tab: "Win customers",
-    icon: Globe2,
-    eyebrow: "Customer experience",
-    title: "Make it easy to discover, trust, and book you.",
-    summary: "A clear website and installable customer app that turns interest into an organized relationship—not another missed message.",
-    details: [
-      ["Good fit when", "People call, DM, or visit your site but do not consistently book."],
-      ["What we build", "Branded website or PWA, customer login, booking, payments, forms, email, and your customer list."],
-      ["What changes", "Customers get one simple place to act, while your team sees every request."],
-      ["Starting point", "Website and booking projects typically start at $750; complete customer systems are scoped to the workflow."],
-    ],
-    flow: [
-      [Globe2, "Visit", "A focused website"],
-      [UsersRound, "Choose", "Service or appointment"],
-      [Check, "Book", "Confirmation and account"],
-    ],
+    tab: "Get more customers",
+    icon: UsersRound,
+    kicker: "Recommended starting point",
+    title: "Turn more interest into booked, paying customers.",
+    summary: "Give people one clear place to discover you, choose, book, pay, and come back—while every request lands in a list you own.",
+    outcome: "More qualified requests and fewer missed bookings.",
+    includes: "Branded website or PWA, booking, forms, email, customer list, and reporting.",
+    price: "$650 setup",
+    cadence: "+ $39/month",
+    engagement: "Launch in 1–3 weeks, then improve month to month.",
+    image: "/assets/sales-system/growth-system.webp",
     href: "/pricing",
-    cta: "See my industry",
+    cta: "Find my industry plan",
   },
   {
     id: "operations",
-    tab: "Run the work",
+    tab: "Run operations better",
     icon: Workflow,
-    eyebrow: "Automation and operations",
-    title: "Replace follow-up chaos with one reliable workflow.",
-    summary: "Connect forms, calls, inboxes, spreadsheets, and staff handoffs so routine work happens on time and exceptions stay visible.",
-    details: [
-      ["Good fit when", "Your team copies information, chases updates, or relies on one person’s memory."],
-      ["What we build", "CRM workflows, reminders, intake routing, dashboards, document steps, reporting, and system integrations."],
-      ["What changes", "Less retyping and fewer dropped handoffs, with a clear place to see what happened."],
-      ["Starting point", "Focused automations start around $1,500; operational sprints typically range from $3,000 to $12,000."],
-    ],
-    flow: [
-      [Inbox, "Capture", "Calls, forms, email"],
-      [Workflow, "Route", "Rules and approvals"],
-      [MessageSquareText, "Follow up", "Right person, right time"],
-    ],
+    kicker: "Recommended operations sprint",
+    title: "Replace handoff chaos with one reliable workflow.",
+    summary: "Connect forms, inboxes, spreadsheets, approvals, and reminders so routine work moves automatically and exceptions stay visible.",
+    outcome: "Less retyping, faster response, and fewer dropped tasks.",
+    includes: "Workflow map, automation, routing, reminders, dashboard, and team handoff guide.",
+    price: "$1,500 setup",
+    cadence: "Focused flows",
+    engagement: "A 2–6 week sprint with a clear before-and-after process.",
+    image: "/assets/sales-system/operations-system.webp",
     href: "/services#automation-sprint",
     cta: "Explore automation",
   },
   {
     id: "software",
-    tab: "Build a system",
+    tab: "Build custom software",
     icon: Code2,
-    eyebrow: "Custom software and cloud",
+    kicker: "Recommended custom build",
     title: "Build the system your operation cannot buy off the shelf.",
-    summary: "Senior product and engineering work for portals, internal tools, APIs, data platforms, secure backends, and cloud operations.",
-    details: [
-      ["Good fit when", "Existing tools force workarounds, cannot integrate safely, or do not match a proven workflow."],
-      ["What we build", "CRMs, portals, dashboards, APIs, databases, AI systems, AWS, Azure, Google Cloud, Cloudflare, and DevOps."],
-      ["What changes", "Teams work in a system shaped around the real process, with permissions, documentation, and support."],
-      ["Starting point", "Architecture and scoped builds are estimated after discovery; advisory is available from $150 per hour."],
-    ],
-    flow: [
-      [UsersRound, "Understand", "People and workflow"],
-      [Code2, "Build", "Product and integrations"],
-      [CloudCog, "Operate", "Cloud, data, support"],
-    ],
+    summary: "Design a focused CRM, portal, internal app, API, data platform, or secure cloud backend around the way your team actually works.",
+    outcome: "One dependable product instead of disconnected workarounds.",
+    includes: "Product design, engineering, APIs, databases, permissions, cloud, DevOps, and support.",
+    price: "From $5,000",
+    cadence: "After discovery",
+    engagement: "Milestone-based delivery with demos, testing, and documentation.",
+    image: "/assets/sales-system/software-system.webp",
     href: "/services#software-builds",
     cta: "Explore engineering",
   },
   {
     id: "ai",
-    tab: "Add an AI assistant",
-    icon: Bot,
-    eyebrow: "Managed AI command center",
+    tab: "Put AI to work",
+    icon: Sparkles,
+    kicker: "Recommended managed AI setup",
     title: "Give your team an assistant that can actually help do the work.",
-    summary: "We install and maintain OpenClaw or Hermes with your approved tools, knowledge, permissions, channels, and human approval rules.",
-    details: [
-      ["Good fit when", "You need faster research, inbox summaries, scheduling help, drafts, reporting, or repeatable specialist routines."],
-      ["What we build", "A private assistant reachable from mobile, Telegram, or approved channels, connected only to the tools you choose."],
-      ["What changes", "Ask in plain language, review sensitive actions, and keep recurring work moving while you are away from a desk."],
-      ["Starting point", "Choose a managed monthly plan or a fixed setup with your own infrastructure and 12 months of support."],
-    ],
-    flow: [
-      [PhoneCall, "Ask", "Text or voice command"],
-      [Sparkles, "Prepare", "Research and action"],
-      [Check, "Approve", "You stay in control"],
-    ],
+    summary: "Use a private assistant from your phone to summarize, research, schedule, prepare follow-up, and run approved routines across the tools you choose.",
+    outcome: "Faster routine work while sensitive actions stay under approval.",
+    includes: "Private gateway, mobile commands, three workflows, approvals, monitoring, and maintenance.",
+    price: "$1,500 setup",
+    cadence: "+ $349/month",
+    engagement: "Managed for you, with monthly maintenance and safe improvements.",
+    image: "/assets/sales-system/ai-system.webp",
     href: "/services#ai-business-operators",
-    cta: "Compare AI assistants",
+    cta: "See managed AI",
   },
 ] as const;
 
 type PathId = (typeof paths)[number]["id"];
+
+const facts = [
+  [Gauge, "Outcome first", "Start with the business problem, not a technology shopping list."],
+  [ShieldCheck, "Clear scope", "See what is included, what it costs, and what needs approval."],
+  [CalendarClock, "Managed after launch", "Maintenance and support stay available when the system is live."],
+] as const;
 
 export default function ServiceDecisionGuide({ compact = false }: { compact?: boolean }) {
   const [activeId, setActiveId] = useState<PathId>("customers");
@@ -112,55 +95,82 @@ export default function ServiceDecisionGuide({ compact = false }: { compact?: bo
   const ActiveIcon = active.icon;
 
   return (
-    <section id="solutions" className={cn("scroll-mt-24 border-b border-border bg-background px-4", compact ? "py-12 md:py-16" : "py-14 md:py-20")}>
+    <section id="solutions" className={cn("scroll-mt-24 border-b border-border bg-background px-4", compact ? "pb-12 pt-5 md:pb-16" : "py-14 md:py-20")}>
       <div className="mx-auto max-w-7xl">
         <div className="max-w-3xl">
-          <p className="site-eyebrow">Find the right starting point</p>
-          <h2 className="site-heading mt-3">What do you need to make easier?</h2>
-          <p className="site-lede mt-4 max-w-2xl">Choose an outcome. You will see what it solves, what we build, how it works, and the likely starting point—without decoding technical language.</p>
+          <p className="site-eyebrow">What do you need to improve?</p>
+          <h2 className="site-heading mt-3">Pick the result. See a practical starting point.</h2>
         </div>
 
-        <div className="scrollbar-none -mx-4 mt-8 flex overflow-x-auto border-y border-border px-4 md:mx-0 md:grid md:grid-cols-4 md:px-0" role="tablist" aria-label="Service paths">
+        <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4" role="tablist" aria-label="Choose a business result">
           {paths.map((path) => {
             const Icon = path.icon;
             const selected = path.id === activeId;
             return (
-              <button key={path.id} type="button" role="tab" aria-selected={selected} onClick={() => setActiveId(path.id)} className={cn("relative flex min-h-16 min-w-[10.5rem] items-center gap-2 border-r border-border px-4 py-3 text-left text-sm font-semibold transition last:border-r-0 md:min-w-0", selected ? "bg-brand-950 text-white dark:bg-white dark:text-brand-950" : "bg-background text-muted-foreground hover:bg-muted/45 hover:text-foreground")}>
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />{path.tab}
-                {selected ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-action" aria-hidden="true" /> : null}
+              <button
+                key={path.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls="service-recommendation"
+                onClick={() => setActiveId(path.id)}
+                className={cn(
+                  "relative min-h-32 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-36 sm:p-5",
+                  selected
+                    ? "border-brand-700 bg-brand-100/55 text-brand-950 shadow-[0_12px_35px_rgba(6,47,66,0.1)] dark:bg-white/10 dark:text-white"
+                    : "border-border bg-card text-foreground hover:-translate-y-0.5 hover:border-brand-700/35 hover:shadow-sm",
+                )}
+              >
+                <span className={cn("grid h-10 w-10 place-items-center rounded-xl", selected ? "bg-brand-700 text-white" : "bg-muted text-brand-800 dark:bg-white/10 dark:text-brand-100")}>
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="mt-4 block text-sm font-semibold leading-5 sm:text-base">{path.tab}</span>
+                {selected ? <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-brand-700 text-white"><Check className="h-3.5 w-3.5" /></span> : null}
               </button>
             );
           })}
         </div>
 
-        <div className="grid border-x border-b border-border lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="border-b border-border p-5 sm:p-7 lg:border-b-0 lg:border-r lg:p-9">
-            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100"><ActiveIcon className="h-4 w-4" />{active.eyebrow}</p>
-            <h3 className="mt-4 text-2xl font-semibold tracking-[-0.035em] text-foreground sm:text-3xl">{active.title}</h3>
-            <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">{active.summary}</p>
-            <Link href={active.href} className={buttonVariants({ variant: "cta", size: "lg", className: "mt-6 w-full sm:w-auto" })}>{active.cta}<ArrowRight className="ml-2 h-4 w-4" /></Link>
+        <article id="service-recommendation" role="tabpanel" className="mt-5 overflow-hidden rounded-[1.75rem] border border-brand-700/20 bg-card shadow-[0_18px_60px_rgba(6,47,66,0.1)]">
+          <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="p-5 sm:p-7 lg:p-9">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-100"><ActiveIcon className="h-4 w-4" />{active.kicker}</p>
+              <h3 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-foreground sm:text-3xl">{active.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">{active.summary}</p>
+              <img src={active.image} alt="" className="mt-5 aspect-[16/10] w-full rounded-2xl bg-muted/25 object-cover lg:hidden" loading="eager" />
+            </div>
+            <div className="hidden min-h-72 bg-muted/25 lg:block">
+              <img src={active.image} alt="" className="h-full w-full object-cover" loading="eager" />
+            </div>
           </div>
 
-          <div className="min-w-0">
-            <div className="grid grid-cols-3 divide-x divide-border border-b border-border bg-muted/20">
-              {active.flow.map(([Icon, title, detail], index) => (
-                <div key={title} className="relative px-3 py-5 text-center sm:px-5">
-                  <span className="mx-auto grid h-9 w-9 place-items-center border border-brand-700/20 bg-white text-brand-800 shadow-sm dark:bg-white/10 dark:text-brand-100"><Icon className="h-4 w-4" aria-hidden="true" /></span>
-                  <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">{title}</p>
-                  <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{detail}</p>
-                  {index < 2 ? <ArrowRight className="absolute -right-2.5 top-8 z-10 h-4 w-4 bg-background text-brand-700" aria-hidden="true" /> : null}
-                </div>
-              ))}
-            </div>
-            <dl className="divide-y divide-border">
-              {active.details.map(([term, detail]) => (
-                <div key={term} className="grid gap-1 px-5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5 sm:px-7">
-                  <dt className="text-xs font-bold uppercase tracking-[0.12em] text-foreground">{term}</dt>
-                  <dd className="text-sm leading-6 text-muted-foreground">{detail}</dd>
-                </div>
-              ))}
-            </dl>
+          <div className="grid border-t border-border sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Outcome", active.outcome],
+              ["What is included", active.includes],
+              ["Starting price", active.price + " " + active.cadence],
+              ["How we work", active.engagement],
+            ].map(([label, value]) => (
+              <div key={label} className="border-b border-border p-4 last:border-b-0 sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(n+3)]:border-b-0 lg:border-b-0 lg:border-r lg:last:border-r-0 lg:p-5">
+                <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-100">{label}</p>
+                <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value}</p>
+              </div>
+            ))}
           </div>
+
+          <div className="border-t border-border bg-brand-100/45 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-5 dark:bg-white/[0.04]">
+            <p className="text-sm leading-6 text-muted-foreground">No mystery proposal: we confirm scope, running costs, ownership, and support before work begins.</p>
+            <Link href={active.href} className={buttonVariants({ variant: "cta", size: "lg", className: "mt-4 w-full shrink-0 sm:mt-0 sm:w-auto" })}>{active.cta}<ArrowRight className="ml-2 h-4 w-4" /></Link>
+          </div>
+        </article>
+
+        <div className="mt-5 grid overflow-hidden rounded-2xl border border-border bg-card sm:grid-cols-3">
+          {facts.map(([Icon, title, text]) => (
+            <div key={title} className="flex gap-3 border-b border-border p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+              <Icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-100" />
+              <div><p className="text-sm font-semibold text-foreground">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p></div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
