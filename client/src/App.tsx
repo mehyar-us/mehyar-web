@@ -2,6 +2,7 @@ import { Router, Switch, Route, useLocation } from "wouter";
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
+import Audit from "@/pages/Audit";
 import Services from "@/pages/Services";
 import Pricing from "@/pages/Pricing";
 import IndustryDetail from "@/pages/IndustryDetail";
@@ -161,6 +162,8 @@ function App() {
             <Route path="/book/" component={Booking} />
             <Route path="/contact" component={Contact} />
             <Route path="/contact/" component={Contact} />
+            <Route path="/audit" component={Audit} />
+            <Route path="/audit/" component={Audit} />
             <Route path="/billing/checkout" component={BillingCheckout} />
             <Route path="/billing/checkout/" component={BillingCheckout} />
             <Route

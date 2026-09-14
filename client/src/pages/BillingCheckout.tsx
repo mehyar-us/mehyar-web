@@ -21,6 +21,16 @@ type ManualInvoiceService = {
 
 const MANUAL_INVOICE_SERVICES: ManualInvoiceService[] = [
   {
+    id: "deep-audit-199",
+    name: "$199 Deep AI Audit",
+    category: "audit",
+    description: "Full AI crawl of your homepage + key pages: every money leak priced in dollars, competitor benchmark, and a 30-day fix plan ordered by revenue impact.",
+    unit_amount_cents: 19900,
+    delivery_window: "3-5 business days",
+    features: ["Multi-page AI crawl", "Leaks priced in $/month with math", "Competitor benchmark", "30-day ROI-ordered fix plan"],
+    requires_scope_review: false,
+  },
+  {
     id: "tech-audit-330",
     name: "$330 Website + Booking Leak Audit",
     category: "audit",
@@ -65,6 +75,14 @@ export default function BillingCheckout() {
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiSuccess, setApiSuccess] = useState(false);
+  const [apiError, setApiError] = useState("");
+
+  // Audit tiers are fulfilled by the server (recorded + owner notified).
+  const AUDIT_TIER_MAP: Record<string, string> = {
+    "deep-audit-199": "deep-199",
+    "tech-audit-330": "tech-330",
+  };
 
   useEffect(() => {
     if (!MANUAL_INVOICE_SERVICES.some((service) => service.id === serviceParam)) {
@@ -82,6 +100,33 @@ export default function BillingCheckout() {
     event.preventDefault();
     if (!selected) return;
     setIsSubmitting(true);
+    setApiError("");
+    setApiSuccess(false);
+    trackPublicAnalyticsEvent("invoice_request", { service_id: selected.id, step: "manual_invoice_submit" });
+
+    // Audit tiers: record server-side (lead linked, owner notified, buyer confirmed).
+    const auditTier = AUDIT_TIER_MAP[selected.id];
+    if (auditTier) {
+      try {
+        const r = await fetch("/api/audit/deep-request", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email, name, business: businessName, tier: auditTier }),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          setApiSuccess(true);
+          trackPublicAnalyticsEvent("invoice_request", { service_id: selected.id, step: "manual_invoice_recorded" });
+          setIsSubmitting(false);
+          return;
+        }
+        throw new Error(data.error || "request_failed");
+      } catch (err) {
+        // Fall through to mailto so the buyer is never stranded.
+        setApiError("Online request hit a snag — opening email instead.");
+      }
+    }
+
     trackPublicAnalyticsEvent("invoice_request", { service_id: selected.id, step: "manual_invoice_mailto" });
     const subject = encodeURIComponent(`Manual invoice request: ${selected.name}`);
     const lines = [
@@ -135,6 +180,13 @@ export default function BillingCheckout() {
                 <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
               </div>
               <div className="space-y-2"><Label htmlFor="business">Business name</Label><Input id="business" value={businessName} onChange={(event) => setBusinessName(event.target.value)} /></div>
+              {apiSuccess && (
+                <div className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <p className="font-semibold">Request received ✓</p>
+                  <p className="mt-1">We'll email your manual invoice (ACH/wire/check) shortly. Your audit is reserved.</p>
+                </div>
+              )}
+              {apiError && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{apiError}</p>}
               <Button type="submit" variant="cta" className="w-full" disabled={isSubmitting || !selected}>{isSubmitting ? "Opening email..." : "Request manual invoice"} <Mail className="h-4 w-4" /></Button>
               <Link href="/booking" className={buttonVariants({ variant: "outline", size: "lg", className: "w-full" })}>Book before invoicing <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/services" className={buttonVariants({ variant: "outline", size: "lg", className: "w-full" })}>Back to services</Link>

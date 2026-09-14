@@ -33,6 +33,12 @@ export default function Pricing() {
               >
                 Start with a $330 tech audit
               </Link>
+              <Link
+                href="/audit"
+                className={buttonVariants({ variant: "outline", size: "lg" })}
+              >
+                Or run the free AI audit first
+              </Link>
             </div>
           </div>
         </div>

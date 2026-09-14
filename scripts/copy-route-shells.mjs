@@ -19,6 +19,12 @@ const appShell = readFileSync(indexHtml, 'utf8');
 // shells emitted to dist/public/<route>/index.html so each deep link ships
 // its own meta.
 const routeMeta = {
+  '/audit': {
+    title: 'Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft',
+    description:
+      'Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.',
+    path: '/audit',
+  },
   '/': {
     title: 'MehyarSoft LLC | Software, Systems & AI Automation',
     description:
@@ -363,6 +369,7 @@ if (missingBlogShells.length > 0) {
 }
 
 const directRoutes = [
+  'audit',
   'services',
   'pricing',
   'proposals',
