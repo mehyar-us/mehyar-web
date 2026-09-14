@@ -400,7 +400,7 @@ export async function buildFullReport(env, reportId) {
       const topFix = FIX_PRIORITY.map((k) => g.checks.includes(k) ? ISSUE_FIX[k] : null).find(Boolean) || "Keep what's working — re-crawl after changes to measure improvement.";
       const label = pageLabel(p.finalUrl || p.url, p.isHome);
       return {
-        label, url: p.finalUrl || p.url, grade: g.grade, score: g.score,
+        page: label, label, url: p.finalUrl || p.url, grade: g.grade, score: g.score,
         title: sig.title, h1: sig.h1, wordCount: sig.wordCount,
         contactPath: g.contactPath, loadMs: p.loadMs,
         issues: issues.slice(0, 4), fix: topFix,
