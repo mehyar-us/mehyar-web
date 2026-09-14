@@ -13,7 +13,8 @@ interface ManagedApp {
   description: string;
   audience: string;
   highlights: string[];
-  logo: string;
+  logo?: string;
+  launchNoteSlug?: string;
   accentClass: string;
 }
 
@@ -33,6 +34,7 @@ const managedApps: ManagedApp[] = [
       "Designed for the moment of \"what do I say next,\" not enterprise workflows",
     ],
     logo: "/assets/rizza-logo.png",
+    launchNoteSlug: "rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
     accentClass: "from-brand-100 to-white dark:from-brand-900 dark:to-brand-950",
   },
   {
@@ -50,7 +52,88 @@ const managedApps: ManagedApp[] = [
       "Helpful before, during, and after the shop visit",
     ],
     logo: "/assets/aimech-logo.png",
+    launchNoteSlug: "aimech-app-launch-ai-mechanic-for-everyday-car-owners",
     accentClass: "from-zinc-900 to-zinc-700 dark:from-zinc-800 dark:to-zinc-900",
+  },
+  {
+    id: "crayonkid",
+    name: "Crayon Kid",
+    url: "https://crayonkid.mehyar.us",
+    tagline: "A coloring book with your kid's name on every page.",
+    description:
+      "A personalized AI coloring book for kids. Pick a theme, enter the child's first name, and get a free page in twenty seconds — then unlock a twelve-page printable PDF for a one-time $6.",
+    audience: "Parents of kids ages 3–8 who want a gift that feels made for their child.",
+    highlights: [
+      "Free personalized first page in twenty seconds, no account needed",
+      "Twelve personalized pages as a printable US Letter PDF",
+      "$6 one-time — pay once, print forever, no subscription",
+      "Eight themes: dinosaurs, space, ocean, jungle, unicorns, vehicles, farm, princess",
+    ],
+    accentClass: "from-amber-100 to-white dark:from-amber-900 dark:to-amber-950",
+  },
+  {
+    id: "roastme",
+    name: "RoastMe",
+    url: "https://roast.mehyar.us",
+    tagline: "Upload a photo, get a savage-but-funny AI roast.",
+    description:
+      "AI roasts your photo into a shareable image card. A free blurred teaser shows what the roast looks like; a $5 one-time unlock reveals the full roast as an HD share card plus PNG download.",
+    audience: "Anyone with thick skin and a sense of humor who lives for group-chat fuel.",
+    highlights: [
+      "Savage-but-funny AI roasts generated from your photo",
+      "Free blurred teaser before you pay anything",
+      "$5 one-time unlocks the full HD share card",
+      "PNG download built for stories, group chats, and comebacks",
+    ],
+    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
+  },
+  {
+    id: "babypeek",
+    name: "BabyPeek",
+    url: "https://baby.mehyar.us",
+    tagline: "Peek at your future baby.",
+    description:
+      "Upload two parent photos and AI generates a future-baby portrait. A faceless teaser (tiny hand) is free to share; a $5 one-time unlock reveals the full portrait plus download.",
+    audience: "Couples, expecting parents, and the hopelessly curious.",
+    highlights: [
+      "AI future-baby portrait from two parent photos",
+      "Free faceless teaser to share with friends and family",
+      "$5 one-time unlocks the full portrait",
+      "High-resolution download yours to keep",
+    ],
+    accentClass: "from-sky-100 to-white dark:from-sky-900 dark:to-sky-950",
+  },
+  {
+    id: "stuffprettygood",
+    name: "StuffPrettyGood",
+    url: "https://stuffprettygood.com",
+    tagline: "AI-assisted shopping guides worth your money.",
+    description:
+      "Our own-domain shopping guide: AI researches and recommends products worth buying, monetized through Amazon Associates — plus digital playbooks (a home-office guide and a gift-proof playbook) sold through our central checkout.",
+    audience: "Deal-seekers and gift buyers who want a researched answer, not a sponsored list.",
+    highlights: [
+      "AI-researched product guides on our own domain",
+      "Amazon Associates deals, vetted before they're listed",
+      "Digital playbooks from $7 with instant download",
+      "Checkout through MehyarSoft's central Stripe flow",
+    ],
+    accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+  },
+  {
+    id: "mehyarjobs",
+    name: "Mehyar Jobs",
+    url: "https://jobs.mehyar.us",
+    tagline: "Your personal jobs dashboard.",
+    description:
+      "A personal jobs dashboard that auto-scrapes job postings, scores them against your resume, and surfaces the best fits — the job hunt watched for you, daily.",
+    audience: "Job seekers who want the market scanned for them instead of doing it manually.",
+    highlights: [
+      "Automatic job-posting scans across the market",
+      "Resume-match scoring on every posting",
+      "Daily shortlists of the best fits",
+      "Email engine keeps you posted on new matches",
+    ],
+    accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
   },
 ];
 
@@ -106,7 +189,7 @@ const Apps = () => {
 
       <QuickAnswer
         question="What apps does MehyarSoft operate?"
-        answer="MehyarSoft builds, ships, and operates its own apps — including Rizza (an AI wingman for dating-app replies) and AiMech (AI diagnostics for everyday car owners). The same playbook is offered to clients as a custom-app build engagement."
+        answer="MehyarSoft builds, ships, and operates its own apps — including Rizza (an AI wingman for dating-app replies), AiMech (AI diagnostics for everyday car owners), Crayon Kid (personalized AI coloring books), RoastMe (AI photo roasts), BabyPeek (AI future-baby portraits), StuffPrettyGood (AI-assisted shopping guides), and Mehyar Jobs (an automated jobs dashboard). The same playbook is offered to clients as a custom-app build engagement."
         ctaHref="/contact"
         ctaLabel="Talk about your app"
       />
@@ -124,7 +207,7 @@ const Apps = () => {
             </div>
             <p className="max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
               Each app is a working site with real users, real data, and real follow-up. Click through to see what we
-              shipped — both are good examples of how small a marketing-grade launch can be when the stack is
+              shipped — they're all good examples of how small a marketing-grade launch can be when the stack is
               standardized.
             </p>
           </div>
@@ -138,15 +221,24 @@ const Apps = () => {
                 <div className={`bg-gradient-to-br ${app.accentClass} px-6 py-8`}>
                   <div className="flex items-center gap-4">
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 p-2 shadow-[0_8px_22px_rgba(8,63,84,0.18)] ring-1 ring-black/5 dark:bg-white/95">
-                      <img
-                        src={app.logo}
-                        alt={`${app.name} logo`}
-                        className="h-full w-full object-contain"
-                        width="64"
-                        height="64"
-                        loading="lazy"
-                        decoding="async"
-                      />
+                      {app.logo ? (
+                        <img
+                          src={app.logo}
+                          alt={`${app.name} logo`}
+                          className="h-full w-full object-contain"
+                          width="64"
+                          height="64"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className="text-2xl font-bold text-brand-700 dark:text-brand-100"
+                        >
+                          {app.name.charAt(0)}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-brand-700/80 dark:text-brand-100/80">
@@ -194,12 +286,14 @@ const Apps = () => {
                     >
                       Visit {app.name} <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
                     </a>
-                    <Link
-                      href={`/blog/${app.id === "rizza" ? "rizza-app-launch-tracking-and-organizing-work-without-the-overhead" : "aimech-app-launch-ai-mechanic-for-everyday-car-owners"}`}
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      Read the launch note
-                    </Link>
+                    {app.launchNoteSlug && (
+                      <Link
+                        href={`/blog/${app.launchNoteSlug}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Read the launch note
+                      </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -293,7 +387,8 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, app-by-app details (Rizza, AiMech), and the request form.
+            for the full process, app-by-app details (Rizza, AiMech, Crayon Kid, RoastMe, BabyPeek, StuffPrettyGood,
+            Mehyar Jobs), and the request form.
           </p>
         </div>
       </section>
