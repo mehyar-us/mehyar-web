@@ -224,7 +224,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               </div>
             </div>
             <div>
-              <Label htmlFor="aw-email">Work email <span className="text-muted-foreground">(your free report lands here)</span></Label>
+              <Label htmlFor="aw-email">Email <span className="text-muted-foreground">(your free report lands here)</span></Label>
               <Input id="aw-email" name="email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
             </div>
             <div className="grid grid-cols-2 gap-3">
