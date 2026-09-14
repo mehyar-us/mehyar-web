@@ -272,6 +272,7 @@ export async function onRequestPost({ request, env }) {
 
     // Email the teaser report to the lead.
     const lead = { email, name, business };
+    let emailed = false;
     if (env?.NOTIFY_EMAIL?.send) {
       try {
         await env.NOTIFY_EMAIL.send({
@@ -281,6 +282,7 @@ export async function onRequestPost({ request, env }) {
           text: reportEmailText(lead, report),
           html: reportEmailHtml(lead, report),
         });
+        emailed = true;
       } catch (e) { console.error("audit report email failed", e?.message); }
       // Owner notification.
       try {
@@ -291,9 +293,11 @@ export async function onRequestPost({ request, env }) {
           text: `New free audit scan\nEmail: ${email}\nName: ${name || "-"}\nBusiness: ${business || "-"}\nURL: ${finalUrl}\nScore: ${report.score}/100\nLead ID: ${leadId}`,
         });
       } catch (e) { console.error("audit owner notify failed", e?.message); }
+    } else {
+      console.error("audit report email skipped: NOTIFY_EMAIL binding missing");
     }
 
-    return json({ ok: true, lead_id: leadId, report: { ...report, _fallback: undefined }, emailed: true });
+    return json({ ok: true, lead_id: leadId, report: { ...report, _fallback: undefined }, emailed });
   } catch (e) {
     console.error("audit scan error", e?.message);
     return json({ ok: false, error: "scan_failed" }, 500);
