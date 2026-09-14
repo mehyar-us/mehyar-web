@@ -62,6 +62,8 @@ jobs.mehyar.us is unreachable.
 | `GET  /api/jobs-relay/admin/email/gate` | `GET  /api/admin/email/gate`                     |
 | `POST /api/jobs-relay/admin/email/wire-up` | `POST /api/admin/email/wire-up`               |
 | `GET  /api/jobs-relay/admin/email/campaign-report?date=YYYY-MM-DD` | `GET /api/admin/email/campaign-report?...` |
+| `GET  /api/jobs-relay/admin/email/product-stats` | `GET  /api/admin/email/product-stats`         |
+| `GET  /api/jobs-relay/admin/email/brain-plan?date=YYYY-MM-DD` | `GET  /api/admin/email/brain-plan?...` |
 
 ## Deployment note
 
