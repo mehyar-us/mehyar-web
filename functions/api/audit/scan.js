@@ -218,6 +218,9 @@ export async function onRequestPost({ request, env }) {
       && env.AUDIT_CRON_SECRET
       && authz === "Bearer " + env.AUDIT_CRON_SECRET;
 
+    // Client IP — declared once, used by Turnstile verification and rate limiting.
+    const clientIp = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+
     if (!internal) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, error: "invalid_email" }, 400);
       // Server-side Turnstile verification (public scans only).
@@ -228,7 +231,7 @@ export async function onRequestPost({ request, env }) {
           const verifyResp = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
             method: "POST",
             headers: { "content-type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: ip }),
+            body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: clientIp }),
             signal: AbortSignal.timeout(8000),
           });
           const verifyData = await verifyResp.json().catch(() => ({}));
@@ -243,8 +246,7 @@ export async function onRequestPost({ request, env }) {
     if (!url) return json({ ok: false, error: "invalid_url" }, 400);
 
     // Rate limit: 3 scans/hour per IP (KV best-effort). Skipped for internal.
-    const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const ipHash = await sha256hex("audit-scan|" + ip);
+    const ipHash = await sha256hex("audit-scan|" + clientIp);
     if (env?.INTAKE_KV && !internal) {
       const k = `audit:scan:ip:${ipHash}`;
       const n = Number((await env.INTAKE_KV.get(k)) || "0");

@@ -43,23 +43,36 @@ export async function onRequestPost({ request, env }) {
       "ORDER BY id DESC LIMIT 1"
     ).bind(email, url).first();
     if (existing && existing.status === "ready") {
-      return json({ ok: true, already_ready: true, report_id: existing.id });
+      const tokRow = await env.LEADS_DB.prepare(
+        "SELECT access_token FROM audit_full_reports WHERE id = ?"
+      ).bind(existing.id).first();
+      return json({ ok: true, already_ready: true, token: tokRow && tokRow.access_token });
     }
 
     let reportId = existing && existing.id ? existing.id : null;
+    let accessToken = null;
     if (!reportId) {
+      // Random 64-hex access token — the ONLY way to fetch this report.
+      const tokBytes = new Uint8Array(32);
+      crypto.getRandomValues(tokBytes);
+      accessToken = [...tokBytes].map(b => b.toString(16).padStart(2, "0")).join("");
       const ins = await env.LEADS_DB.prepare(
-        "INSERT INTO audit_full_reports (lead_id, email, url, business, amount_cents, currency, status) " +
-        "VALUES (?, ?, ?, ?, 500, 'usd', 'pending')"
-      ).bind(leadId, email, url, business || null).run();
+        "INSERT INTO audit_full_reports (lead_id, email, url, business, amount_cents, currency, status, access_token) " +
+        "VALUES (?, ?, ?, ?, 500, 'usd', 'pending', ?)"
+      ).bind(leadId, email, url, business || null, accessToken).run();
       reportId = (ins && ins.meta && ins.meta.last_row_id) || null;
+    } else {
+      const tokRow = await env.LEADS_DB.prepare(
+        "SELECT access_token FROM audit_full_reports WHERE id = ?"
+      ).bind(reportId).first();
+      accessToken = tokRow && tokRow.access_token;
     }
 
     // Create Stripe Checkout Session via REST (no SDK needed in Workers).
     const params = new URLSearchParams();
     params.set("payment_method_types[]", "card");
     params.set("mode", "payment");
-    params.set("success_url", "https://mehyar.us/audit/report?report_id=" + reportId + "&paid=1");
+    params.set("success_url", "https://mehyar.us/audit/report?token=" + accessToken + "&paid=1");
     params.set("cancel_url", "https://mehyar.us/audit");
     params.set("customer_email", email);
     params.set("line_items[0][price_data][currency]", "usd");
@@ -90,7 +103,7 @@ export async function onRequestPost({ request, env }) {
       "UPDATE audit_full_reports SET stripe_session_id = ? WHERE id = ?"
     ).bind(sessData.id, reportId).run();
 
-    return json({ ok: true, report_id: reportId, checkout_url: sessData.url });
+    return json({ ok: true, token: accessToken, checkout_url: sessData.url });
   } catch (e) {
     console.error("full-report checkout error", e && e.message);
     return json({ ok: false, error: "checkout_failed" }, 500);

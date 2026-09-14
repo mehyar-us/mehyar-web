@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, CheckCircle2, Loader2, Lock, Search, TrendingDown, Zap, Bot, Star } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2, Lock, Search, TrendingDown, Zap, Bot } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -129,8 +129,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
         {/* ── $5 UPSELL ── */}
         <div className="mt-12 rounded-3xl bg-slate-950 p-6 text-white md:p-10 dark:bg-card dark:text-foreground dark:border dark:border-border">
           <div className="flex items-center gap-2">
-            {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />)}
-            <span className="text-xs text-slate-300 dark:text-muted-foreground">2,300+ reports delivered</span>
+            <span className="text-xs text-slate-300 dark:text-muted-foreground">The free audit is the trailer — this is the movie</span>
           </div>
           <h2 className="mt-3 text-2xl font-semibold md:text-3xl">Get the full 25-page evaluation — just $5</h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 dark:text-muted-foreground">

@@ -18,6 +18,28 @@ function json(data, status = 200) {
   });
 }
 
+function sanitize(v, max) {
+  return String(v || "")
+    .replace(/[^ -~\u00A0-\uFFFF]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max || 300);
+}
+
+// Block private/internal targets — this fetch runs server-side (SSRF guard).
+function normalizeUrl(raw) {
+  let u = sanitize(raw, 300);
+  if (!u) return null;
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  let parsed;
+  try { parsed = new URL(u); } catch { return null; }
+  if (!/^https?:$/.test(parsed.protocol)) return null;
+  const host = parsed.hostname.toLowerCase();
+  if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/.test(host)) return null;
+  if (host.endsWith(".local") || host === "localhost") return null;
+  return parsed.toString();
+}
+
 function escapeHtml(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -132,9 +154,13 @@ export async function onRequestPost({ request, env }) {
 
     await env.LEADS_DB.prepare("UPDATE audit_full_reports SET status='generating' WHERE id = ?").bind(reportId).run();
 
-    // Re-fetch the site for fresh signals.
-    let url = row.url;
-    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+    // Re-fetch the site for fresh signals (SSRF-guarded).
+    const safeUrl = normalizeUrl(row.url);
+    if (!safeUrl) {
+      await env.LEADS_DB.prepare("UPDATE audit_full_reports SET status='failed' WHERE id = ?").bind(reportId).run();
+      return json({ ok: false, error: "invalid_url" }, 400);
+    }
+    let url = safeUrl;
     const t0 = Date.now();
     let html = "", status = 0, finalUrl = url;
     try {
@@ -190,7 +216,7 @@ export async function onRequestPost({ request, env }) {
       to: row.email,
       subject: "Your full 25-page website evaluation is ready (score: " + report.score + "/100)",
       text: "Your full AI website evaluation is ready.\n\nScore: " + report.score + "/100\n\n" +
-        (report.executive_summary || "") + "\n\nView it here: https://mehyar.us/audit/report?report_id=" + reportId + "\n\n" +
+        (report.executive_summary || "") + "\n\nView it here: https://mehyar.us/audit/report?token=" + row.access_token + "\n\n" +
         "Unsubscribe: " + UNSUB_URL + "\n" + PHYSICAL,
       html: htmlDoc,
     });

@@ -1,7 +1,7 @@
 import AuditWidget from "@/components/AuditWidget";
 import AIPipelinesSection from "@/components/AIPipelinesSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
-import { ArrowRight, FileText, ScanSearch, Sparkles, Star, CheckCircle2 } from "lucide-react";
+import { ArrowRight, FileText, ScanSearch, Sparkles, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
 import HomeCtaSection from "@/components/HomeCtaSection";
@@ -25,10 +25,7 @@ export default function Home() {
             <AuditWidget compact />
           </div>
           <div className="mx-auto mt-6 flex max-w-xl items-center justify-center gap-2 text-xs text-muted-foreground">
-            <div className="flex gap-0.5">
-              {[...Array(5)].map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}
-            </div>
-            <span>4.9/5 from 2,300+ business owners</span>
+            <span>Free 60-second scan · No signup · No credit card</span>
           </div>
         </div>
       </section>

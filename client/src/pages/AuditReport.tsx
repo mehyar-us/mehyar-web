@@ -26,7 +26,7 @@ function useQuery() {
 
 export default function AuditReport() {
   const q = useQuery();
-  const reportId = q.get("report_id");
+  const token = q.get("token");
   const justPaid = q.get("paid") === "1";
 
   const [email, setEmail] = useState(q.get("email") || "");
@@ -37,14 +37,17 @@ export default function AuditReport() {
   const [report, setReport] = useState<FullReport | null>(null);
   const [loadError, setLoadError] = useState("");
 
-  // Poll for the report when we have an id.
+  // Poll for the report when we have a token.
   useEffect(() => {
-    if (!reportId) return;
+    if (!token || !/^[0-9a-f]{64}$/.test(token)) {
+      if (q.get("token")) setLoadError("Invalid report link.");
+      return;
+    }
     let alive = true;
     let tries = 0;
     const poll = async () => {
       try {
-        const r = await fetch(`/api/audit/full-report/get?report_id=${encodeURIComponent(reportId)}`);
+        const r = await fetch(`/api/audit/full-report/get?token=${encodeURIComponent(token)}`);
         const data = await r.json();
         if (!alive) return;
         if (data.ok) {
@@ -61,7 +64,7 @@ export default function AuditReport() {
     };
     poll();
     return () => { alive = false; };
-  }, [reportId]);
+  }, [token]);
 
   const buy = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,8 +77,8 @@ export default function AuditReport() {
         body: JSON.stringify({ email, url }),
       });
       const data = await r.json();
-      if (data.already_ready && data.report_id) {
-        window.location.href = `/audit/report?report_id=${data.report_id}`;
+      if (data.already_ready && data.token) {
+        window.location.href = `/audit/report?token=${data.token}`;
         return;
       }
       if (!data.ok) {
@@ -220,8 +223,7 @@ export default function AuditReport() {
         </p>
         <div className="mx-auto mt-6 flex items-baseline justify-center gap-2">
           <span className="text-5xl font-bold">$5</span>
-          <span className="text-muted-foreground line-through">$199</span>
-          <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Launch price</span>
+          <span className="text-sm text-muted-foreground">one-time</span>
         </div>
 
         <Card className="mx-auto mt-8 max-w-xl border-border bg-card text-left">

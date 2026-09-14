@@ -1,5 +1,5 @@
 -- 0024_audit_full_reports.sql — $5 full 25-page AI evaluation product.
-// The tripwire digital product: free teaser -> $5 full report (Stripe) -> $330 founder audit.
+-- The tripwire digital product: free teaser -> $5 full report (Stripe) -> $330 founder audit.
 
 CREATE TABLE IF NOT EXISTS audit_full_reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS audit_full_reports (
   paid_at TEXT,
   -- Report
   status TEXT NOT NULL DEFAULT 'pending', -- pending | generating | ready | failed
+  access_token TEXT NOT NULL,              -- random 64-hex token; required to fetch the report
   report_json TEXT,                        -- FULL_REPORT_SYSTEM output
   report_html TEXT,                        -- rendered deliverable
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -25,3 +26,4 @@ CREATE TABLE IF NOT EXISTS audit_full_reports (
 CREATE INDEX IF NOT EXISTS idx_full_reports_email ON audit_full_reports(email);
 CREATE INDEX IF NOT EXISTS idx_full_reports_session ON audit_full_reports(stripe_session_id);
 CREATE INDEX IF NOT EXISTS idx_full_reports_status ON audit_full_reports(status);
+CREATE INDEX IF NOT EXISTS idx_full_reports_token ON audit_full_reports(access_token);
