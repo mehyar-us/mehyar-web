@@ -11,6 +11,7 @@
 //   GET  /admin/email/gate
 //   GET  /admin/email/product-stats
 //   GET  /admin/email/brain-plan?date=YYYY-MM-DD
+//   GET  /admin/email/landing-stats?date=YYYY-MM-DD
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -97,8 +98,21 @@ function JobsView({ token }: { token: string }) {
   const brainData: any = brainQ.data || {};
   const brain: any = brainData.plan || null;
 
+  // ── Landing pages stats (email link destinations for the day) ──────────
+  const landingQ = useQuery({
+    queryKey: ["admin-jobs-landing", token, date],
+    queryFn: () => fetchJobs(token, `/admin/email/landing-stats?date=${date}`),
+    retry: 1,
+  });
+  const landingRaw: any[] = Array.isArray(landingQ.data?.pages)
+    ? landingQ.data.pages
+    : [];
+  const landingPages = [...landingRaw].sort(
+    (a, b) => (Number(b?.clicks) || 0) - (Number(a?.clicks) || 0),
+  );
+
   const refreshAll = () => {
-    reportQ.refetch(); gateQ.refetch(); productsQ.refetch(); brainQ.refetch();
+    reportQ.refetch(); gateQ.refetch(); productsQ.refetch(); brainQ.refetch(); landingQ.refetch();
   };
 
   // ── Wire-up (readiness check + arm) ────────────────────────────────────
@@ -553,6 +567,8 @@ function JobsView({ token }: { token: string }) {
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                 Every affiliate product in the catalog, sorted by clicks. The
                 30-day per-product cooldown keeps each product to one rotation.
+                Product names link to their live page (jobs.mehyar.us/gear/slug) —
+                unapproved ones show "not available yet" upstream.
               </p>
             </div>
             <Button variant="ghost" size="sm" onClick={() => productsQ.refetch()} disabled={productsQ.isFetching}>
@@ -597,7 +613,21 @@ function JobsView({ token }: { token: string }) {
                     const st = productStatusInfo(p, date);
                     return (
                       <tr key={p?.slug || i} className="border-t border-zinc-100 dark:border-zinc-800 odd:bg-zinc-50/60 dark:odd:bg-zinc-800/30">
-                        <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-100 max-w-[220px] truncate" title={p?.name}>{p?.name || p?.slug || "—"}</td>
+                        <td className="px-3 py-2 font-medium max-w-[220px] truncate" title={p?.name}>
+                          {p?.slug ? (
+                            <a
+                              href={`https://jobs.mehyar.us/gear/${encodeURIComponent(p.slug)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-600 dark:text-blue-400 hover:underline"
+                              title={`Open live page: /gear/${p.slug}`}
+                            >
+                              {p?.name || p?.slug}
+                            </a>
+                          ) : (
+                            <span className="text-zinc-900 dark:text-zinc-100">{p?.name || "—"}</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <Badge className={st.cls}>{st.label}</Badge>
                           {st.note && <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">{st.note}</div>}
@@ -625,7 +655,80 @@ function JobsView({ token }: { token: string }) {
         </CardContent>
       </Card>
 
-      {/* (f) Note card */}
+      {/* (f) Landing pages — email link destinations for the day */}
+      <Card className="mb-4">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                <MousePointerClick className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                Landing pages — {date} ({landingPages.length})
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                Every preference / gear / dated-campaign page clicked from email
+                that day, sorted by clicks. Uses the same date picker as the
+                daily report above.
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => landingQ.refetch()} disabled={landingQ.isFetching}>
+              <RefreshCw className={`w-4 h-4 ${landingQ.isFetching ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+
+          {landingQ.isLoading && (
+            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-8 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading landing pages for {date}…
+            </div>
+          )}
+
+          {landingQ.isError && (
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+              ⚠ Couldn't load landing pages: {String((landingQ.error as any)?.message || "unknown")}.
+            </div>
+          )}
+
+          {landingQ.isSuccess && landingPages.length === 0 && (
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 italic">
+              No landing-page clicks recorded for {date} yet.
+            </div>
+          )}
+
+          {landingPages.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+              <table className="text-xs min-w-full">
+                <thead className="bg-zinc-50 dark:bg-zinc-800">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Page</th>
+                    <th className="px-3 py-2 text-left font-medium">Product</th>
+                    <th className="px-3 py-2 text-right font-medium">Clicks</th>
+                    <th className="px-3 py-2 text-right font-medium">Unique clicks</th>
+                    <th className="px-3 py-2 text-left font-medium">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {landingPages.map((p: any, i: number) => {
+                    const t = landingTypeInfo(p?.page_type);
+                    return (
+                      <tr key={p?.slug || i} className="border-t border-zinc-100 dark:border-zinc-800 odd:bg-zinc-50/60 dark:odd:bg-zinc-800/30">
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className="font-mono text-zinc-900 dark:text-zinc-100" title={p?.slug}>{p?.slug || "—"}</span>
+                          <Badge className={`ml-2 ${t.cls}`}>{t.label}</Badge>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-zinc-600 dark:text-zinc-300">{p?.product_slug || "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold">{p?.clicks ?? 0}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{p?.unique_clicks ?? 0}</td>
+                        <td className="px-3 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{fmtDateTime(p?.created_at)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* (g) Note card */}
       <Card>
         <CardContent className="p-4 flex items-start gap-3">
           <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
@@ -691,6 +794,13 @@ function fmtPct(v: any): string {
   const n = Number(v);
   if (Number.isNaN(n)) return String(v);
   return `${n}%`;
+}
+
+// Defensive date-time formatting: raw value falls back through untouched.
+function fmtDateTime(v: any): string {
+  if (v == null || v === "") return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString();
 }
 
 // Parse a total contact count out of the cohort check's free-text detail,
@@ -764,6 +874,32 @@ function productStatusInfo(p: any, today: string): { label: string; cls: string;
     };
   }
   return { label: "Unknown", cls: zinc };
+}
+
+// ── Landing pages helpers ─────────────────────────────────────────────────
+// Upstream page_type: 'preference' | 'gear' | 'go'. The dashboard labels the
+// dated-campaign 'go' pages as such.
+function landingTypeInfo(t: any): { label: string; cls: string } {
+  const s = String(t || "").toLowerCase();
+  if (s === "preference")
+    return {
+      label: "preference",
+      cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+    };
+  if (s === "gear")
+    return {
+      label: "gear",
+      cls: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    };
+  if (s === "go")
+    return {
+      label: "dated-campaign",
+      cls: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+    };
+  return {
+    label: s || "unknown",
+    cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+  };
 }
 
 // ── Campaign Brain helpers ─────────────────────────────────────────────────
