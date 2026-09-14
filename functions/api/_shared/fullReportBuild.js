@@ -245,7 +245,7 @@ async function setStatus(env, id, status, failureReason) {
   ).bind(status, failureReason || null, id).run();
 }
 
-async function llmSection(env, system, context, maxTokens, attempts) {
+async function llmSection(env, system, context, maxTokens, attempts, timeoutMs) {
   let lastErr = "";
   for (let i = 0; i < (attempts || 2); i++) {
     const ai = await chatJson({
@@ -256,6 +256,7 @@ async function llmSection(env, system, context, maxTokens, attempts) {
       ],
       max_tokens: maxTokens,
       temperature: 0.4,
+      timeout_ms: timeoutMs || 150000,
     });
     if (ai.used_llm && ai.content) {
       const parsed = safeJsonParse(ai.content, null);
@@ -371,7 +372,7 @@ export async function buildFullReport(env, reportId) {
   // This makes webhook re-fires, manual generate, and retry idempotent.
   const claimed = await env.LEADS_DB.prepare(
     "UPDATE audit_full_reports SET status='generating', failure_reason=NULL, status_changed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') " +
-    "WHERE id=? AND (status IN ('pending','paid','failed') OR (status='generating' AND (status_changed_at IS NULL OR status_changed_at < datetime('now','-" + STUCK_MINUTES + " minutes'))))"
+    "WHERE id=? AND (status IN ('pending','paid','failed') OR (status='generating' AND (status_changed_at IS NULL OR status_changed_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-" + STUCK_MINUTES + " minutes'))))"
   ).bind(reportId).run();
   if (!claimed?.meta?.changes) {
     return { ok: false, error: "already_running" };
@@ -425,7 +426,7 @@ export async function buildFullReport(env, reportId) {
     // 4. Focused LLM calls: leaks first, then trust/SEO + blueprint in parallel.
     const a = await llmSection(env, FULL_REPORT_LEAKS_SYSTEM, context, 3000, 2);
     if (!a.ok || !Array.isArray(a.data.leak_map) || !a.data.leak_map.length || !a.data.conversion_teardown) {
-      return await fail("generation_failed_leaks");
+      return await fail("generation_failed_leaks:" + String(a.error || "bad_schema").slice(0, 60));
     }
     const [b, c] = await Promise.all([
       llmSection(env, FULL_REPORT_TRUST_SEO_SYSTEM, context, 2500, 2),
@@ -433,10 +434,10 @@ export async function buildFullReport(env, reportId) {
         context + "\n\nLeak summary for blueprint context: " + a.data.leak_map.slice(0, 6).map((l) => l.area + " (" + l.severity + ")").join("; "), 3500, 2),
     ]);
     if (!b.ok || !b.data.trust_credibility || !b.data.seo_visibility || !b.data.how_you_compare) {
-      return await fail("generation_failed_trust_seo");
+      return await fail("generation_failed_trust_seo:" + String(b.error || "bad_schema").slice(0, 60));
     }
     if (!c.ok || !Array.isArray(c.data.ai_blueprint) || !c.data.five_hundred_percent_math || !Array.isArray(c.data.five_hundred_percent_math.honest_caveats) || !c.data.five_hundred_percent_math.honest_caveats.length) {
-      return await fail("generation_failed_blueprint");
+      return await fail("generation_failed_blueprint:" + String(c.error || "bad_schema").slice(0, 60));
     }
 
     const crawledAt = nowIso().slice(0, 10);
@@ -496,3 +497,4 @@ export async function buildFullReport(env, reportId) {
     return await fail("generation_failed");
   }
 }
+

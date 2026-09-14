@@ -76,6 +76,7 @@ jobs:
               "MEHYARSOFT_API_ADMIN_USERNAME": os.environ["SECRET_API_ADMIN_USERNAME"],
               "MEHYARSOFT_ADMIN_PASSWORD": os.environ["SECRET_ADMIN_PASSWORD"],
               "CLOUDFLARE_EMAIL": os.environ["SECRET_CF_EMAIL"],
+              "CLOUDFLARE_API_KEY": os.environ["SECRET_CF_API_KEY"],
               "AUDIT_CRON_SECRET": os.environ["SECRET_AUDIT_CRON"],
               "TURNSTILE_SECRET_KEY": os.environ["SECRET_TURNSTILE"],
               "CRM_ACCESS_CLIENT_ID": os.environ["SECRET_CRM_ID"],
@@ -123,6 +124,7 @@ jobs:
           SECRET_API_ADMIN_USERNAME: ${{ secrets.MEHYARSOFT_API_ADMIN_USERNAME }}
           SECRET_ADMIN_PASSWORD: ${{ secrets.MEHYARSOFT_ADMIN_PASSWORD }}
           SECRET_CF_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          SECRET_CF_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
           SECRET_AUDIT_CRON: ${{ secrets.AUDIT_CRON_SECRET }}
           SECRET_TURNSTILE: ${{ secrets.TURNSTILE_SECRET_KEY }}
           SECRET_CRM_ID: ${{ secrets.CRM_ACCESS_CLIENT_ID }}
