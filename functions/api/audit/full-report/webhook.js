@@ -33,7 +33,15 @@ export async function onRequestPost({ request, env, waitUntil }) {
     if (!env?.LEADS_DB) return json({ ok: false }, 503);
     const rawBody = await request.text();
     const sig = request.headers.get("stripe-signature") || "";
-    if (!env.STRIPE_WEBHOOK_SECRET || !(await verifyStripeSignature(rawBody, sig, env.STRIPE_WEBHOOK_SECRET))) {
+    // Live secret first, test secret as fallback. The test secret lets us
+    // run real end-to-end test charges (Stripe test mode) through this same
+    // endpoint without touching production keys.
+    const secrets = [env.STRIPE_WEBHOOK_SECRET, env.STRIPE_WEBHOOK_SECRET_TEST].filter(Boolean);
+    let verified = false;
+    for (const s of secrets) {
+      if (await verifyStripeSignature(rawBody, sig, s)) { verified = true; break; }
+    }
+    if (!verified) {
       return json({ ok: false, error: "bad_signature" }, 400);
     }
     const event = JSON.parse(rawBody);

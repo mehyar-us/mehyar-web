@@ -33,6 +33,18 @@ const SCAN_STEPS = [
   "Pricing your leaks + mapping your AI upside…",
 ];
 
+// The scan runs server-side; the client only holds the scan_id. Stored in
+// sessionStorage so a reload — or coming back after switching apps —
+// resumes polling the same scan instead of starting over.
+const SCAN_CTX_KEY = "audit_scan_ctx";
+const POLL_MS = 2500;
+const MAX_POLL_MISSES = 8;
+
+type ScanCtx = { scan_id: string; email: string; url: string };
+
+const progressToStep = (p: string | null): number =>
+  p === "fetching" ? 0 : p === "analyzing" ? 2 : p === "finalizing" ? 3 : 0;
+
 export default function AuditWidget({ compact = false }: { compact?: boolean }) {
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
@@ -43,8 +55,12 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [reconnecting, setReconnecting] = useState(false);
   const turnstileBoxRef = useRef<HTMLDivElement | null>(null);
   const turnstileWidgetId = useRef<string | null>(null);
+  const pollTimer = useRef<number | null>(null);
+  const stepTimer = useRef<number | null>(null);
+  const misses = useRef(0);
 
   // Explicit Turnstile render — implicit auto-render (.cf-turnstile) never fires
   // in a React SPA because the widget mounts after the script's initial scan.
@@ -88,29 +104,120 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
     }
   };
 
+  const stopPolling = () => {
+    if (pollTimer.current) window.clearInterval(pollTimer.current);
+    if (stepTimer.current) window.clearInterval(stepTimer.current);
+    pollTimer.current = null;
+    stepTimer.current = null;
+  };
+
+  const clearScanCtx = () => {
+    try { sessionStorage.removeItem(SCAN_CTX_KEY); } catch { /* private mode */ }
+  };
+
+  const failScan = (message: string) => {
+    stopPolling();
+    clearScanCtx();
+    setError(message);
+    setPhase("error");
+    setReconnecting(false);
+    resetTurnstile();
+  };
+
+  const finishScan = (rep: Report) => {
+    stopPolling();
+    clearScanCtx();
+    setReport(rep);
+    setPhase("done");
+    setReconnecting(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Poll the background scan. Network blips while the app is backgrounded
+  // just increment the miss counter — the server keeps working and we pick
+  // the result up when connectivity returns.
+  const pollScan = (ctx: ScanCtx) => {
+    stopPolling();
+    misses.current = 0;
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/audit/scan/status?scan_id=${encodeURIComponent(ctx.scan_id)}`);
+        const data = await r.json();
+        if (!data.ok) throw new Error(data.error || "status_failed");
+        misses.current = 0;
+        setReconnecting(false);
+        if (typeof data.progress === "string") setStepIdx(progressToStep(data.progress));
+        if (data.status === "ready" && data.report) {
+          setEmail(ctx.email);
+          setUrl(ctx.url);
+          finishScan(data.report as Report);
+        } else if (data.status === "failed") {
+          failScan(data.error || "The scan hit a snag — please try again in a minute.");
+        }
+        // queued/working: keep polling
+      } catch {
+        misses.current += 1;
+        if (misses.current >= 2) setReconnecting(true);
+        if (misses.current >= MAX_POLL_MISSES) {
+          stopPolling();
+          setError("Lost connection while your scan runs in the background. Your scan is still going — come back and tap below to pick up the result.");
+          setPhase("error");
+          setReconnecting(false);
+        }
+      }
+    };
+    void tick();
+    pollTimer.current = window.setInterval(tick, POLL_MS);
+    // Cosmetic step advancement as a fallback if server progress lags.
+    stepTimer.current = window.setInterval(() => setStepIdx((i) => Math.min(i + 1, SCAN_STEPS.length - 1)), 6000);
+  };
+
+  const startScanSession = (ctx: ScanCtx) => {
+    try { sessionStorage.setItem(SCAN_CTX_KEY, JSON.stringify(ctx)); } catch { /* private mode */ }
+    setError("");
+    setReconnecting(false);
+    setPhase("scanning");
+    setStepIdx(0);
+    pollScan(ctx);
+  };
+
+  // Resume a scan that was in flight across a reload or app switch.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SCAN_CTX_KEY);
+      if (!raw) return;
+      const ctx = JSON.parse(raw) as ScanCtx;
+      if (!ctx?.scan_id) return;
+      setUrl(ctx.url || "");
+      setEmail(ctx.email || "");
+      setPhase("scanning");
+      setStepIdx(0);
+      pollScan(ctx);
+    } catch { /* corrupted entry — start fresh */ }
+    return () => stopPolling();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const runScan = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setPhase("scanning");
     setStepIdx(0);
-    const timer = window.setInterval(() => setStepIdx((i) => Math.min(i + 1, SCAN_STEPS.length - 1)), 4500);
     try {
+      // Fast enqueue (<1s) — the heavy work runs server-side so the request
+      // survives the user backgrounding the app mid-scan.
       const r = await fetch("/api/audit/scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url, email, phone, zip, turnstileToken }),
       });
       const data = await r.json();
-      if (!data.ok) throw new Error(data.message || data.error || "Scan failed. Check the URL and try again.");
-      setReport(data.report);
-      setPhase("done");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (!data.ok || !data.scan_id) throw new Error(data.message || data.error || "Scan failed. Check the URL and try again.");
+      startScanSession({ scan_id: data.scan_id, email, url });
     } catch (err: any) {
       setError(err?.message || "Something went wrong.");
       setPhase("error");
       resetTurnstile();
-    } finally {
-      window.clearInterval(timer);
     }
   };
 
@@ -203,7 +310,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
         </div>
 
         <div className="mt-8 text-center">
-          <button onClick={() => { setPhase("form"); setReport(null); }} className="text-sm text-muted-foreground underline underline-offset-4">Scan another site</button>
+          <button onClick={() => { clearScanCtx(); setPhase("form"); setReport(null); }} className="text-sm text-muted-foreground underline underline-offset-4">Scan another site</button>
         </div>
       </div>
     );
@@ -217,6 +324,11 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
             <Loader2 className="mx-auto h-10 w-10 animate-spin text-brand-700" />
             <p className="mt-4 text-lg font-semibold text-foreground">{SCAN_STEPS[stepIdx]}</p>
             <p className="mt-2 text-sm text-muted-foreground">Analyzing {url || "your site"}…</p>
+            {reconnecting ? (
+              <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">Reconnecting — your scan keeps running in the background…</p>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">Feel free to switch apps — your scan keeps running and the result will be here when you're back.</p>
+            )}
           </div>
         ) : (
           <form onSubmit={runScan} className="space-y-4">
@@ -241,7 +353,23 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
                 <Input id="aw-zip" name="postal-code" type="text" inputMode="numeric" autoComplete="postal-code" placeholder="11209" value={zip} onChange={(e) => setZip(e.target.value)} className="mt-2 h-12 text-base" />
               </div>
             </div>
-            {phase === "error" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+            {phase === "error" && (
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                <p>{error}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      const raw = sessionStorage.getItem(SCAN_CTX_KEY);
+                      if (raw) { const ctx = JSON.parse(raw) as ScanCtx; if (ctx?.scan_id) startScanSession(ctx); }
+                    } catch { /* ignore */ }
+                  }}
+                  className="mt-2 font-semibold underline underline-offset-4"
+                >
+                  Pick up my result
+                </button>
+              </div>
+            )}
             <div ref={turnstileBoxRef} className="flex justify-center" />
             <Button type="submit" variant="cta" size="lg" className="h-13 w-full py-4 text-base">
               Run my free audit <ArrowRight className="ml-2 h-4 w-4" />

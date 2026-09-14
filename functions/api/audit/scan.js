@@ -183,7 +183,7 @@ function reportEmailHtml(lead, report) {
     ${pipelines ? `<h2 style="font-size:18px;margin-top:24px;">Your AI upside — up to 5x capacity</h2>${pipelines}` : ""}
     <div style="background:#0f172a;color:#fff;border-radius:12px;padding:20px;margin-top:24px;">
       <p style="margin:0 0 8px;font-weight:700;font-size:18px;">Get the complete professional evaluation — just $5</p>
-      <p style="margin:0 0 12px;color:#cbd5e1;">Every page graded. Competitor gaps. The 500% AI automation blueprint with the math shown step by step. 90-day plan.</p>
+      <p style="margin:0 0 12px;color:#cbd5e1;">Every page graded. How you compare. The 500% AI automation blueprint with the math shown step by step. 90-day plan.</p>
       <a href="https://mehyar.us/audit/report" style="display:inline-block;background:#22c55e;color:#052e16;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;">Get my full report — $5</a>
     </div>
     <p style="color:#94a3b8;font-size:12px;margin-top:24px;">You received this because you requested a free website audit at mehyar.us.<br>
@@ -201,7 +201,151 @@ function escapeHtml(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export async function onRequestPost({ request, env }) {
+// ---------------------------------------------------------------------------
+// Async scan engine — the public POST returns a scan_id in <1s and the work
+// runs in the background via waitUntil. The client polls
+// GET /api/audit/scan/status?scan_id=... so the scan survives iOS Safari
+// backgrounding, page reloads, and network blips.
+// ---------------------------------------------------------------------------
+
+function randomScanId() {
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+async function updateScan(env, scanId, patch) {
+  const sets = [];
+  const vals = [];
+  for (const [k, v] of Object.entries(patch)) {
+    sets.push(`${k} = ?`);
+    vals.push(v);
+  }
+  sets.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')");
+  vals.push(scanId);
+  await env.LEADS_DB.prepare(`UPDATE audit_scans SET ${sets.join(", ")} WHERE scan_id = ?`).bind(...vals).run();
+}
+
+class ScanFetchError extends Error {
+  constructor(message) {
+    super(message);
+    this.code = "fetch_failed";
+  }
+}
+
+async function fetchSignals(url) {
+  const t0 = Date.now();
+  let html = "", status = 0, finalUrl = url;
+  try {
+    const resp = await fetch(url, {
+      redirect: "follow",
+      headers: { "user-agent": "MehyarSoft-AuditBot/1.0 (+https://mehyar.us/audit)", accept: "text/html" },
+      signal: AbortSignal.timeout(10000),
+    });
+    status = resp.status;
+    finalUrl = resp.url || url;
+    const ct = resp.headers.get("content-type") || "";
+    if (ct.includes("html") || ct.includes("text")) {
+      const buf = await resp.arrayBuffer();
+      html = new TextDecoder("utf-8", { fatal: false }).decode(buf.slice(0, 500_000));
+    }
+  } catch {
+    throw new ScanFetchError("We couldn't load that site. Check the URL and try again.");
+  }
+  if (!html || status >= 400) {
+    throw new ScanFetchError("That page didn't return readable content. Try the homepage URL.");
+  }
+  return extractSignals(html, { requestedUrl: url, finalUrl, status, loadMs: Date.now() - t0 });
+}
+
+async function analyzeSignals(env, signals) {
+  // AI analysis — GPT-OSS 120B, strongest model on Workers AI.
+  let report;
+  const ai = await chatJson({
+    env,
+    messages: [
+      { role: "system", content: TEASER_SYSTEM },
+      { role: "user", content: buildTeaserUserMessage(signals) },
+    ],
+    max_tokens: 2500,
+    temperature: 0.3,
+  });
+  if (ai.used_llm && ai.content) {
+    const parsed = safeJsonParse(ai.content, null);
+    if (parsed && typeof parsed.score === "number" && Array.isArray(parsed.leaks) && parsed.leaks.length >= 3) {
+      // Backfill new v2 fields if the model omitted them.
+      if (!Array.isArray(parsed.ai_pipelines)) parsed.ai_pipelines = heuristicFallback(signals).ai_pipelines;
+      if (!Array.isArray(parsed.full_report_hooks)) parsed.full_report_hooks = heuristicFallback(signals).full_report_hooks;
+      if (!parsed.business_type) parsed.business_type = "other";
+      if (!parsed.business_type_label) parsed.business_type_label = "Business";
+      report = parsed;
+    }
+  }
+  if (!report) report = heuristicFallback(signals);
+  report.score = Math.max(0, Math.min(100, Math.round(report.score)));
+  return report;
+}
+
+async function storeLeadAndEmail(env, { email, name, business, phone, zip, signals, report, ipHash }) {
+  const leadRes = await env.LEADS_DB.prepare(
+    `INSERT INTO audit_leads (email, name, business, phone, zip, url, teaser_score, teaser_json, ip_hash, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'site')`
+  ).bind(email, name || null, business || null, phone || null, zip || null, signals.finalUrl, report.score, JSON.stringify(report).slice(0, 20000), ipHash).run();
+  const leadId = leadRes?.meta?.last_row_id || null;
+
+  // Email the teaser report to the lead via Cloudflare Email Sending
+  // (verified path — see _shared/cfEmail.js). NOTIFY_EMAIL binding was
+  // never attached in production; the API path needs no binding.
+  const lead = { email, name, business };
+  let emailed = false;
+  const r = await sendCfEmail(env, {
+    from: `MehyarSoft Audit <${FROM_EMAIL}>`,
+    to: email,
+    subject: `Your website scored ${report.score}/100 — 3 money leaks inside`,
+    text: reportEmailText(lead, report),
+    html: reportEmailHtml(lead, report),
+    replyTo: OWNER_EMAIL,
+  });
+  emailed = r.ok;
+  if (!r.ok) console.error("audit report email failed", r.error);
+  // Owner notification.
+  const n = await sendCfEmail(env, {
+    from: `MehyarSoft Audit <${FROM_EMAIL}>`,
+    to: OWNER_EMAIL,
+    subject: `🔍 New audit lead: ${business || email} scored ${report.score}`,
+    text: `New free audit scan\nEmail: ${email}\nName: ${name || "-"}\nBusiness: ${business || "-"}\nURL: ${signals.finalUrl}\nScore: ${report.score}/100\nLead ID: ${leadId}`,
+  });
+  if (!n.ok) console.error("audit owner notify failed", n.error);
+  return { leadId, emailed };
+}
+
+async function doScan(env, job) {
+  const { scanId } = job;
+  try {
+    await updateScan(env, scanId, { status: "working", progress: "fetching" });
+    const signals = await fetchSignals(job.url);
+    await updateScan(env, scanId, { progress: "analyzing" });
+    const report = await analyzeSignals(env, signals);
+    await updateScan(env, scanId, { progress: "finalizing" });
+    const { leadId, emailed } = await storeLeadAndEmail(env, { ...job, signals, report });
+    const clean = { ...report };
+    delete clean._fallback;
+    await updateScan(env, scanId, {
+      status: "ready",
+      report_json: JSON.stringify(clean).slice(0, 30000),
+      lead_id: leadId,
+      emailed: emailed ? 1 : 0,
+    });
+  } catch (e) {
+    const msg = e instanceof ScanFetchError ? e.message : "The scan hit a snag — please try again in a minute.";
+    console.error("audit scan background error", e?.message);
+    try {
+      await updateScan(env, scanId, { status: "failed", error: msg });
+    } catch { /* row may be gone; nothing to do */ }
+  }
+}
+
+export async function onRequestPost({ request, env, waitUntil }) {
   try {
     if (!env?.LEADS_DB) return json({ ok: false, error: "service_unavailable" }, 503);
     const body = await request.json().catch(() => ({}));
@@ -212,9 +356,10 @@ export async function onRequestPost({ request, env }) {
     const phone = sanitize(body.phone, 40);
     const zip = sanitize(body.zip, 16);
 
-    // Internal mode: prospect auto-scan. Bearer AUDIT_CRON_SECRET, no lead
+    // Internal mode: prospect auto-scan. Bearer <redacted>, no lead
     // capture, no emails — returns the AI report only. Powers the Mayor
-    // outreach engine's personalized cold emails.
+    // outreach engine's personalized cold emails. Stays synchronous:
+    // server-to-server, no browser backgrounding involved.
     const authz = request.headers.get("authorization") || "";
     const internal = body.internal === true
       && env.AUDIT_CRON_SECRET
@@ -256,94 +401,34 @@ export async function onRequestPost({ request, env }) {
       await env.INTAKE_KV.put(k, String(n + 1), { expirationTtl: 3600 });
     }
 
-    // Fetch the site.
-    const t0 = Date.now();
-    let html = "", status = 0, finalUrl = url;
-    try {
-      const resp = await fetch(url, {
-        redirect: "follow",
-        headers: { "user-agent": "MehyarSoft-AuditBot/1.0 (+https://mehyar.us/audit)", accept: "text/html" },
-        signal: AbortSignal.timeout(7000),
-      });
-      status = resp.status;
-      finalUrl = resp.url || url;
-      const ct = resp.headers.get("content-type") || "";
-      if (ct.includes("html") || ct.includes("text")) {
-        const buf = await resp.arrayBuffer();
-        html = new TextDecoder("utf-8", { fatal: false }).decode(buf.slice(0, 500_000));
-      }
-    } catch (e) {
-      return json({ ok: false, error: "fetch_failed", message: "We couldn't load that site. Check the URL and try again." }, 422);
-    }
-    if (!html || status >= 400) {
-      return json({ ok: false, error: "fetch_failed", message: "That page didn't return readable content. Try the homepage URL." }, 422);
-    }
-    const signals = extractSignals(html, { requestedUrl: url, finalUrl, status, loadMs: Date.now() - t0 });
-
-    // AI analysis — GPT-OSS 120B, strongest model on Workers AI.
-    let report;
-    const ai = await chatJson({
-      env,
-      messages: [
-        { role: "system", content: TEASER_SYSTEM },
-        { role: "user", content: buildTeaserUserMessage(signals) },
-      ],
-      max_tokens: 2500,
-      temperature: 0.3,
-    });
-    if (ai.used_llm && ai.content) {
-      const parsed = safeJsonParse(ai.content, null);
-      if (parsed && typeof parsed.score === "number" && Array.isArray(parsed.leaks) && parsed.leaks.length >= 3) {
-        // Backfill new v2 fields if the model omitted them.
-        if (!Array.isArray(parsed.ai_pipelines)) parsed.ai_pipelines = heuristicFallback(signals).ai_pipelines;
-        if (!Array.isArray(parsed.full_report_hooks)) parsed.full_report_hooks = heuristicFallback(signals).full_report_hooks;
-        if (!parsed.business_type) parsed.business_type = "other";
-        if (!parsed.business_type_label) parsed.business_type_label = "Business";
-        report = parsed;
-      }
-    }
-    if (!report) report = heuristicFallback(signals);
-    report.score = Math.max(0, Math.min(100, Math.round(report.score)));
-
-    // Internal mode: return the report only — no lead capture, no emails.
     if (internal) {
-      return json({ ok: true, internal: true, report: { ...report, _fallback: undefined } });
+      try {
+        const signals = await fetchSignals(url);
+        const report = await analyzeSignals(env, signals);
+        const clean = { ...report };
+        delete clean._fallback;
+        return json({ ok: true, internal: true, report: clean });
+      } catch (e) {
+        if (e instanceof ScanFetchError) return json({ ok: false, error: "fetch_failed", message: e.message }, 422);
+        throw e;
+      }
     }
 
-    // Store lead.
-    const leadRes = await env.LEADS_DB.prepare(
-      `INSERT INTO audit_leads (email, name, business, phone, zip, url, teaser_score, teaser_json, ip_hash, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'site')`
-    ).bind(email, name || null, business || null, phone || null, zip || null, finalUrl, report.score, JSON.stringify(report).slice(0, 20000), ipHash).run();
-    const leadId = leadRes?.meta?.last_row_id || null;
+    // Public mode: enqueue and return immediately (<1s). The scan runs in
+    // the background; the client polls for completion with the scan_id.
+    // Deliberately NOT bound to the request IP: the user may switch from
+    // Wi-Fi to cellular while away, and the scan_id is unguessable.
+    const scanId = randomScanId();
+    await env.LEADS_DB.prepare(
+      `INSERT INTO audit_scans (scan_id, url, email, name, business, phone, zip, ip_hash, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued')`
+    ).bind(scanId, url, email, name || null, business || null, phone || null, zip || null, ipHash).run();
 
-    // Email the teaser report to the lead via Cloudflare Email Sending
-    // (verified path — see _shared/cfEmail.js). NOTIFY_EMAIL binding was
-    // never attached in production; the API path needs no binding.
-    const lead = { email, name, business };
-    let emailed = false;
-    {
-      const r = await sendCfEmail(env, {
-        from: `MehyarSoft Audit <${FROM_EMAIL}>`,
-        to: email,
-        subject: `Your website scored ${report.score}/100 — 3 money leaks inside`,
-        text: reportEmailText(lead, report),
-        html: reportEmailHtml(lead, report),
-        replyTo: OWNER_EMAIL,
-      });
-      emailed = r.ok;
-      if (!r.ok) console.error("audit report email failed", r.error);
-      // Owner notification.
-      const n = await sendCfEmail(env, {
-        from: `MehyarSoft Audit <${FROM_EMAIL}>`,
-        to: OWNER_EMAIL,
-        subject: `🔍 New audit lead: ${business || email} scored ${report.score}`,
-        text: `New free audit scan\nEmail: ${email}\nName: ${name || "-"}\nBusiness: ${business || "-"}\nURL: ${finalUrl}\nScore: ${report.score}/100\nLead ID: ${leadId}`,
-      });
-      if (!n.ok) console.error("audit owner notify failed", n.error);
-    }
+    const job = { scanId, url, email, name, business, phone, zip, ipHash };
+    if (typeof waitUntil === "function") waitUntil(doScan(env, job));
+    else await doScan(env, job); // local dev fallback (no waitUntil)
 
-    return json({ ok: true, lead_id: leadId, report: { ...report, _fallback: undefined }, emailed });
+    return json({ ok: true, scan_id: scanId });
   } catch (e) {
     console.error("audit scan error", e?.message);
     return json({ ok: false, error: "scan_failed" }, 500);
