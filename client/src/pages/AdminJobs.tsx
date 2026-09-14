@@ -9,13 +9,16 @@
 //   GET  /admin/email/campaign-report?date=YYYY-MM-DD
 //   POST /admin/email/wire-up
 //   GET  /admin/email/gate
+//   GET  /admin/email/product-stats
+//   GET  /admin/email/brain-plan?date=YYYY-MM-DD
+//   GET  /admin/email/landing-stats?date=YYYY-MM-DD
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase, CheckCircle2, XCircle, Loader2, ShieldCheck, Mail, Eye,
   MousePointerClick, TrendingUp, Package, Link2, AlertTriangle, Info,
-  CalendarDays, Rocket, Lock, RefreshCw, Users, Zap, CircleDot,
+  CalendarDays, Rocket, Lock, RefreshCw, Users, Zap, CircleDot, Brain,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,8 +36,15 @@ async function fetchJobs(token: string, path: string) {
   return data;
 }
 
+// Business day in America/New_York (the campaign runs on ET days; UTC
+// toISOString drifts a day ahead between 8pm–midnight local).
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 export default function AdminJobs() {
@@ -66,7 +76,44 @@ function JobsView({ token }: { token: string }) {
   const gate: any = report.fib_gate || gateData.gate || {};
   const gateLevels: any[] = gateData.levels || [];
 
-  const refreshAll = () => { reportQ.refetch(); gateQ.refetch(); };
+  // ── Product catalog stats (affiliate products performance) ──────────────
+  const productsQ = useQuery({
+    queryKey: ["admin-jobs-products", token],
+    queryFn: () => fetchJobs(token, "/admin/email/product-stats"),
+    retry: 1,
+  });
+  const productsRaw: any[] = Array.isArray(productsQ.data?.products)
+    ? productsQ.data.products
+    : [];
+  const products = [...productsRaw].sort(
+    (a, b) => (Number(b?.clicks) || 0) - (Number(a?.clicks) || 0),
+  );
+
+  // ── Campaign Brain plan (today's template mix + product of the day) ──────
+  const brainQ = useQuery({
+    queryKey: ["admin-jobs-brain", token, date],
+    queryFn: () => fetchJobs(token, `/admin/email/brain-plan?date=${date}`),
+    retry: 1,
+  });
+  const brainData: any = brainQ.data || {};
+  const brain: any = brainData.plan || null;
+
+  // ── Landing pages stats (email link destinations for the day) ──────────
+  const landingQ = useQuery({
+    queryKey: ["admin-jobs-landing", token, date],
+    queryFn: () => fetchJobs(token, `/admin/email/landing-stats?date=${date}`),
+    retry: 1,
+  });
+  const landingRaw: any[] = Array.isArray(landingQ.data?.pages)
+    ? landingQ.data.pages
+    : [];
+  const landingPages = [...landingRaw].sort(
+    (a, b) => (Number(b?.clicks) || 0) - (Number(a?.clicks) || 0),
+  );
+
+  const refreshAll = () => {
+    reportQ.refetch(); gateQ.refetch(); productsQ.refetch(); brainQ.refetch(); landingQ.refetch();
+  };
 
   // ── Wire-up (readiness check + arm) ────────────────────────────────────
   const runWireUp = async () => {
@@ -423,7 +470,265 @@ function JobsView({ token }: { token: string }) {
         </CardContent>
       </Card>
 
-      {/* (d) Note card */}
+      {/* (d) Campaign Brain — today's plan */}
+      <Card className="mb-4">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                <Brain className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                Campaign Brain — {date}
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                The LLM's daily plan for the Genius Flow. Uses the same date picker as
+                the daily report above.
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => brainQ.refetch()} disabled={brainQ.isFetching}>
+              <RefreshCw className={`w-4 h-4 ${brainQ.isFetching ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+
+          {brainQ.isLoading && (
+            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-8 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading brain plan for {date}…
+            </div>
+          )}
+
+          {brainQ.isError && (
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+              ⚠ Couldn't load the brain plan: {String((brainQ.error as any)?.message || "unknown")}.
+            </div>
+          )}
+
+          {brainQ.isSuccess && !brain && (
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 italic">
+              No brain plan stored for {date} — the daily sender's brain hasn't written one yet.
+            </div>
+          )}
+
+          {brain && (
+            <div className="space-y-5">
+              {/* template mix */}
+              {renderTemplateMix(brain.template_mix)}
+
+              {/* product of the day + segment focus */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3">
+                  <div className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 mb-1">Product of the day</div>
+                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    {brain.product_of_day || "—"}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3">
+                  <div className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 mb-1">Segment focus</div>
+                  <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {brain.segment_focus || "—"}
+                  </div>
+                </div>
+              </div>
+
+              {/* subject tweaks */}
+              {renderSubjectTweaks(brain.subject_tweaks)}
+
+              {/* LLM reasoning */}
+              {brain.reasoning_text ? (
+                <div>
+                  <h3 className="text-xs uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 mb-2">Why this plan</h3>
+                  <div className="rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/30 px-4 py-3 text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
+                    {brain.reasoning_text}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 italic">No reasoning text recorded.</div>
+              )}
+
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                model: <code className="font-mono">{brainData.model || brain.model || "—"}</code>
+                {(brainData.created_at || brain.created_at) && (
+                  <> · planned {new Date(brainData.created_at || brain.created_at).toLocaleString()}</>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* (e) Products — full catalog with performance */}
+      <Card className="mb-4">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                <Package className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                Products ({products.length})
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                Every affiliate product in the catalog, sorted by clicks. The
+                30-day per-product cooldown keeps each product to one rotation.
+                Product names link to their live page (jobs.mehyar.us/gear/slug) —
+                unapproved ones show "not available yet" upstream.
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => productsQ.refetch()} disabled={productsQ.isFetching}>
+              <RefreshCw className={`w-4 h-4 ${productsQ.isFetching ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+
+          {productsQ.isLoading && (
+            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-8 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading product stats…
+            </div>
+          )}
+
+          {productsQ.isError && (
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+              ⚠ Couldn't load product stats: {String((productsQ.error as any)?.message || "unknown")}.
+            </div>
+          )}
+
+          {productsQ.isSuccess && products.length === 0 && (
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 italic">
+              No products in the catalog yet — the product_catalog seed writes them on the jobs side.
+            </div>
+          )}
+
+          {products.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+              <table className="text-xs min-w-full">
+                <thead className="bg-zinc-50 dark:bg-zinc-800">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Product</th>
+                    <th className="px-3 py-2 text-left font-medium">Status</th>
+                    <th className="px-3 py-2 text-left font-medium">Category</th>
+                    <th className="px-3 py-2 text-left font-medium">Affiliate link</th>
+                    <th className="px-3 py-2 text-right font-medium">Featured</th>
+                    <th className="px-3 py-2 text-right font-medium">Clicks</th>
+                    <th className="px-3 py-2 text-right font-medium">CTR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((p: any, i: number) => {
+                    const st = productStatusInfo(p, date);
+                    return (
+                      <tr key={p?.slug || i} className="border-t border-zinc-100 dark:border-zinc-800 odd:bg-zinc-50/60 dark:odd:bg-zinc-800/30">
+                        <td className="px-3 py-2 font-medium max-w-[220px] truncate" title={p?.name}>
+                          {p?.slug ? (
+                            <a
+                              href={`https://jobs.mehyar.us/gear/${encodeURIComponent(p.slug)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-600 dark:text-blue-400 hover:underline"
+                              title={`Open live page: /gear/${p.slug}`}
+                            >
+                              {p?.name || p?.slug}
+                            </a>
+                          ) : (
+                            <span className="text-zinc-900 dark:text-zinc-100">{p?.name || "—"}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <Badge className={st.cls}>{st.label}</Badge>
+                          {st.note && <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">{st.note}</div>}
+                        </td>
+                        <td className="px-3 py-2 text-zinc-600 dark:text-zinc-300">{p?.category || "—"}</td>
+                        <td className="px-3 py-2">
+                          {p?.url ? (
+                            <a href={p.url} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1" title={p.url}>
+                              <Link2 className="w-3.5 h-3.5" /> link
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400 dark:text-zinc-500">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">{p?.times_featured ?? 0}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold">{p?.clicks ?? 0}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtPct(p?.ctr)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* (f) Landing pages — email link destinations for the day */}
+      <Card className="mb-4">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                <MousePointerClick className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                Landing pages — {date} ({landingPages.length})
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                Every preference / gear / dated-campaign page clicked from email
+                that day, sorted by clicks. Uses the same date picker as the
+                daily report above.
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => landingQ.refetch()} disabled={landingQ.isFetching}>
+              <RefreshCw className={`w-4 h-4 ${landingQ.isFetching ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+
+          {landingQ.isLoading && (
+            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-8 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading landing pages for {date}…
+            </div>
+          )}
+
+          {landingQ.isError && (
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+              ⚠ Couldn't load landing pages: {String((landingQ.error as any)?.message || "unknown")}.
+            </div>
+          )}
+
+          {landingQ.isSuccess && landingPages.length === 0 && (
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 italic">
+              No landing-page clicks recorded for {date} yet.
+            </div>
+          )}
+
+          {landingPages.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+              <table className="text-xs min-w-full">
+                <thead className="bg-zinc-50 dark:bg-zinc-800">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Page</th>
+                    <th className="px-3 py-2 text-left font-medium">Product</th>
+                    <th className="px-3 py-2 text-right font-medium">Clicks</th>
+                    <th className="px-3 py-2 text-right font-medium">Unique clicks</th>
+                    <th className="px-3 py-2 text-left font-medium">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {landingPages.map((p: any, i: number) => {
+                    const t = landingTypeInfo(p?.page_type);
+                    return (
+                      <tr key={p?.slug || i} className="border-t border-zinc-100 dark:border-zinc-800 odd:bg-zinc-50/60 dark:odd:bg-zinc-800/30">
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className="font-mono text-zinc-900 dark:text-zinc-100" title={p?.slug}>{p?.slug || "—"}</span>
+                          <Badge className={`ml-2 ${t.cls}`}>{t.label}</Badge>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-zinc-600 dark:text-zinc-300">{p?.product_slug || "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold">{p?.clicks ?? 0}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{p?.unique_clicks ?? 0}</td>
+                        <td className="px-3 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{fmtDateTime(p?.created_at)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* (g) Note card */}
       <Card>
         <CardContent className="p-4 flex items-start gap-3">
           <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
@@ -491,6 +796,13 @@ function fmtPct(v: any): string {
   return `${n}%`;
 }
 
+// Defensive date-time formatting: raw value falls back through untouched.
+function fmtDateTime(v: any): string {
+  if (v == null || v === "") return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString();
+}
+
 // Parse a total contact count out of the cohort check's free-text detail,
 // e.g. "3 alerts, 1,248 contacts ready" or "contacts: 1248".
 function parseListSize(detail: string): string | null {
@@ -522,4 +834,123 @@ function deriveDecision(gate: any): { label: string; cls: string; note: string }
     cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
     note: "no gate data yet",
   };
+}
+
+// ── Product catalog helpers ────────────────────────────────────────────────
+// Status badge derived defensively from { active, approved, last_featured_on }.
+// Priority: Unapproved > Inactive > In campaign (featured today) > Cooldown
+// (featured within the 30-day rotation window) > Active.
+function productStatusInfo(p: any, today: string): { label: string; cls: string; note?: string } {
+  const zinc = "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300";
+  if (p?.approved === false) return { label: "Unapproved", cls: zinc };
+  if (p?.active === false) return { label: "Inactive", cls: zinc };
+  const feat = String(p?.last_featured_on || "").slice(0, 10);
+  if (feat) {
+    if (feat === today) {
+      return {
+        label: "In campaign",
+        cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+        note: "featured today",
+      };
+    }
+    const dayMs = 86400000;
+    const dFeat = Date.parse(`${feat}T00:00:00Z`);
+    const dToday = Date.parse(`${today}T00:00:00Z`);
+    if (!Number.isNaN(dFeat) && !Number.isNaN(dToday)) {
+      const days = (dToday - dFeat) / dayMs;
+      if (days > 0 && days <= 30) {
+        return {
+          label: "Cooldown",
+          cls: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+          note: `${Math.round(days)}d ago`,
+        };
+      }
+    }
+  }
+  if (p?.active) {
+    return {
+      label: "Active",
+      cls: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    };
+  }
+  return { label: "Unknown", cls: zinc };
+}
+
+// ── Landing pages helpers ─────────────────────────────────────────────────
+// Upstream page_type: 'preference' | 'gear' | 'go'. The dashboard labels the
+// dated-campaign 'go' pages as such.
+function landingTypeInfo(t: any): { label: string; cls: string } {
+  const s = String(t || "").toLowerCase();
+  if (s === "preference")
+    return {
+      label: "preference",
+      cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+    };
+  if (s === "gear")
+    return {
+      label: "gear",
+      cls: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    };
+  if (s === "go")
+    return {
+      label: "dated-campaign",
+      cls: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+    };
+  return {
+    label: s || "unknown",
+    cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+  };
+}
+
+// ── Campaign Brain helpers ─────────────────────────────────────────────────
+function renderTemplateMix(mix: any) {
+  if (!mix) return null;
+  const entries: Array<[string, number]> = Array.isArray(mix)
+    ? mix.map((m: any, i: number) => [String(m?.skeleton_id ?? m?.id ?? `skeleton-${i}`), Number(m?.weight) || 0])
+    : Object.entries(mix).map(([k, v]: any) => [String(k), Number(v) || 0]);
+  if (entries.length === 0) return null;
+  const sorted = entries.sort((a, b) => b[1] - a[1]);
+  const max = Math.max(...sorted.map(([, w]) => w), 0);
+  return (
+    <div>
+      <h3 className="text-xs uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 mb-2">Template mix</h3>
+      <div className="space-y-2">
+        {sorted.map(([id, w]) => (
+          <div key={id} className="flex items-center gap-3">
+            <div className="w-40 shrink-0 truncate font-mono text-xs text-zinc-700 dark:text-zinc-300" title={id}>{id}</div>
+            <div className="flex-1 h-2.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-violet-500 dark:bg-violet-400"
+                style={{ width: `${max > 0 ? Math.round((w / max) * 100) : 0}%` }}
+              />
+            </div>
+            <div className="w-14 shrink-0 text-right text-xs tabular-nums text-zinc-600 dark:text-zinc-300">
+              {Number.isFinite(w) ? (Number.isInteger(w) ? w : w.toFixed(2)) : "—"}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function renderSubjectTweaks(tweaks: any) {
+  if (tweaks == null || tweaks === "") return null;
+  let items: string[] = [];
+  if (Array.isArray(tweaks)) {
+    items = tweaks.map((t: any) => (typeof t === "string" ? t : JSON.stringify(t)));
+  } else if (typeof tweaks === "string") {
+    items = [tweaks];
+  } else if (typeof tweaks === "object") {
+    items = Object.entries(tweaks).map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
+  }
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <h3 className="text-xs uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 mb-2">Subject tweaks</h3>
+      <ul className="list-disc pl-5 space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+        {items.map((t, i) => <li key={i}>{t}</li>)}
+      </ul>
+    </div>
+  );
 }
