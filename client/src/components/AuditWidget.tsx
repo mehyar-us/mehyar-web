@@ -1,10 +1,23 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, CheckCircle2, Loader2, Lock, Search, TrendingDown, Zap, Bot } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+const TURNSTILE_SITE_KEY = "0x4AAAAAAE0BuD-W_-t-zuK8";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, opts: Record<string, unknown>) => string;
+      reset: (id: string) => void;
+      getResponse: (id: string) => string;
+    };
+  }
+}
 
 type Leak = { title: string; what: string; money: string };
 type Pipeline = { name: string; what: string; upside: string };
@@ -36,6 +49,51 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
   const [stepIdx, setStepIdx] = useState(0);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileBoxRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
+
+  // Explicit Turnstile render — implicit auto-render (.cf-turnstile) never fires
+  // in a React SPA because the widget mounts after the script's initial scan.
+  useEffect(() => {
+    let cancelled = false;
+    const doRender = () => {
+      if (cancelled || !window.turnstile?.render || !turnstileBoxRef.current || turnstileWidgetId.current) return;
+      turnstileWidgetId.current = window.turnstile.render(turnstileBoxRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        theme: "auto",
+        callback: (token: string) => setTurnstileToken(token),
+        "expired-callback": () => setTurnstileToken(""),
+        "error-callback": () => setTurnstileToken(""),
+      });
+    };
+    if (window.turnstile?.render) {
+      doRender();
+    } else {
+      const existing = document.querySelector<HTMLScriptElement>(`script[src="${TURNSTILE_SCRIPT_SRC}"]`);
+      const script = existing ?? document.createElement("script");
+      const onLoad = () => doRender();
+      script.addEventListener("load", onLoad);
+      if (!existing) {
+        script.src = TURNSTILE_SCRIPT_SRC;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
+      return () => {
+        cancelled = true;
+        script.removeEventListener("load", onLoad);
+      };
+    }
+    return () => { cancelled = true; };
+  }, []);
+
+  const resetTurnstile = () => {
+    setTurnstileToken("");
+    if (turnstileWidgetId.current && window.turnstile?.reset) {
+      window.turnstile.reset(turnstileWidgetId.current);
+    }
+  };
 
   const runScan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,11 +102,10 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
     setStepIdx(0);
     const timer = window.setInterval(() => setStepIdx((i) => Math.min(i + 1, SCAN_STEPS.length - 1)), 4500);
     try {
-      const tokenEl = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]');
       const r = await fetch("/api/audit/scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url, email, turnstileToken: tokenEl?.value || "" }),
+        body: JSON.stringify({ url, email, turnstileToken }),
       });
       const data = await r.json();
       if (!data.ok) throw new Error(data.message || data.error || "Scan failed. Check the URL and try again.");
@@ -58,6 +115,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
     } catch (err: any) {
       setError(err?.message || "Something went wrong.");
       setPhase("error");
+      resetTurnstile();
     } finally {
       window.clearInterval(timer);
     }
@@ -178,7 +236,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               <Input id="aw-email" type="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
             </div>
             {phase === "error" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
-            <div className="cf-turnstile" data-sitekey="0x4AAAAAAE0BuD-W_-t-zuK8" />
+            <div ref={turnstileBoxRef} className="flex justify-center" />
             <Button type="submit" variant="cta" size="lg" className="h-13 w-full py-4 text-base">
               Run my free audit <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
