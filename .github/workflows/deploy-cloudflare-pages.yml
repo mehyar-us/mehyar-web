@@ -72,6 +72,7 @@ jobs:
           echo "${{ secrets.CLOUDFLARE_EMAIL }}" | npx wrangler pages secret put CLOUDFLARE_EMAIL --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.TURNSTILE_SECRET_KEY }}" | npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.MEHYARSOFT_ADMIN_EMAIL }}" | npx wrangler pages secret put MEHYARSOFT_ADMIN_EMAIL --project-name=mehyar-web || echo "skip secret set"
+          echo "${{ secrets.MEHYARSOFT_ADMIN_PASSWORD }}" | npx wrangler pages secret put MEHYARSOFT_ADMIN_PASSWORD --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.MEHYARSOFT_ADMIN_USERNAME }}" | npx wrangler pages secret put MEHYARSOFT_ADMIN_USERNAME --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.MEHYARSOFT_API_ADMIN_USERNAME }}" | npx wrangler pages secret put MEHYARSOFT_API_ADMIN_USERNAME --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.CRM_ACCESS_CLIENT_ID }}" | npx wrangler pages secret put CRM_ACCESS_CLIENT_ID --project-name=mehyar-web || echo "skip secret set"
