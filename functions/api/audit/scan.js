@@ -94,6 +94,7 @@ function extractSignals(html, meta) {
 
   const text = stripTags(html);
   const wordCount = text ? text.split(/\s+/).length : 0;
+  const textSample = text.slice(0, 3000);
   const hasAddress = /\d{1,5}\s+[A-Za-z0-9.' ]+\s+(street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|way|court|ct|plaza)/i.test(text)
     || /\b[A-Z]{2}\s+\d{5}(-\d{4})?\b/.test(text);
 
@@ -117,6 +118,7 @@ function extractSignals(html, meta) {
     hasViewport: /<meta[^>]+name=["']viewport["']/i.test(html),
     socials,
     hasAddress,
+    textSample,
     trust,
     imagesMissingAlt: imgsMissingAlt,
     imageCount: imgs.length,
@@ -132,6 +134,8 @@ function heuristicFallback(signals) {
   if (!signals.metaDescription) leaks.push({ title: "Missing meta description", what: "Your page has no meta description, so Google writes your search snippet for you — usually badly.", money: "Estimated: weak snippets cut click-through from search, compounding monthly." });
   while (leaks.length < 3) leaks.push({ title: "Thin trust signals", what: "We found few reviews, testimonials, or credentials on the homepage. Buyers choose the business they trust fastest.", money: "Estimated: trust gaps quietly hand sales to competitors every week." });
   return {
+    business_type: "other",
+    business_type_label: "Business",
     score: Math.max(25, 70 - leaks.length * 8 - (signals.https ? 0 : 10)),
     verdict: "Your site has the basics but leaves money on the table at every step.",
     leaks: leaks.slice(0, 3),
@@ -140,34 +144,47 @@ function heuristicFallback(signals) {
       "Put one clear booking or quote button above the fold — 30 minutes, stops dead-end visits.",
       "Add 3 short customer reviews to the homepage — 1 hour, lifts trust instantly.",
     ],
-    deep_audit_hooks: [
-      "The deep audit crawls your service, about, and booking pages — not just the homepage — and prices every leak.",
-      "It benchmarks you against the competitor currently outranking you and hands you a 30-day fix plan.",
+    ai_pipelines: [
+      { name: "AI Voice Assistant", what: "Answers calls, books appointments, and qualifies leads 24/7 — never misses an opportunity.", upside: "Estimated: handle 3-5x the call volume without hiring — assumes current missed-call rate." },
+      { name: "Automated Follow-Up Engine", what: "Every lead, quote, and customer gets timely, personalized follow-up without you lifting a finger.", upside: "Estimated: recovers 10-20% of quotes that currently go cold." },
+      { name: "Document Scanner", what: "Snap a photo of any document — AI extracts the data and flags what needs attention.", upside: "Estimated: cuts admin hours by half on paperwork-heavy weeks." },
+    ],
+    full_report_hooks: [
+      "The $5 full report grades every page of your site and shows the 500% AI upside math step by step.",
+      "It includes a 90-day AI automation blueprint tailored to your business type.",
     ],
     _fallback: true,
   };
 }
 
 function reportEmailHtml(lead, report) {
-  const leakRows = report.leaks.map((l, i) => `
+  const leakRows = (report.leaks || []).map((l, i) => `
     <div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:12px 0;">
       <div style="font-weight:700;color:#0f172a;">${i + 1}. ${escapeHtml(l.title)}</div>
       <p style="color:#334155;margin:8px 0;">${escapeHtml(l.what)}</p>
       <p style="color:#b45309;margin:0;"><strong>💸 ${escapeHtml(l.money)}</strong></p>
     </div>`).join("");
-  const wins = report.quick_wins.map((w) => `<li style="margin:6px 0;color:#334155;">${escapeHtml(w)}</li>`).join("");
+  const wins = (report.quick_wins || []).map((w) => `<li style="margin:6px 0;color:#334155;">${escapeHtml(w)}</li>`).join("");
+  const pipelines = (report.ai_pipelines || []).map((p, i) => `
+    <div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:12px 0;">
+      <div style="font-weight:700;color:#0f172a;">🤖 ${escapeHtml(p.name)}</div>
+      <p style="color:#334155;margin:8px 0;">${escapeHtml(p.what)}</p>
+      <p style="color:#047857;margin:0;"><strong>📈 ${escapeHtml(p.upside)}</strong></p>
+    </div>`).join("");
+  const bizLabel = report.business_type_label ? ` · ${escapeHtml(report.business_type_label)}` : "";
   return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#0f172a;">
-    <p style="color:#64748b;font-size:13px;">MEHYARSOFT · AI WEBSITE AUDIT</p>
+    <p style="color:#64748b;font-size:13px;">MEHYARSOFT · AI WEBSITE AUDIT${bizLabel}</p>
     <h1 style="font-size:26px;">Your site scored ${report.score}/100${lead.business ? `, ${escapeHtml(lead.business)}` : ""}</h1>
     <p style="font-size:16px;color:#334155;"><em>"${escapeHtml(report.verdict)}"</em></p>
     <h2 style="font-size:18px;margin-top:24px;">Where you're leaking money</h2>
     ${leakRows}
     <h2 style="font-size:18px;margin-top:24px;">3 quick wins</h2>
     <ol style="padding-left:20px;">${wins}</ol>
+    ${pipelines ? `<h2 style="font-size:18px;margin-top:24px;">Your AI upside — up to 5x capacity</h2>${pipelines}` : ""}
     <div style="background:#0f172a;color:#fff;border-radius:12px;padding:20px;margin-top:24px;">
-      <p style="margin:0 0 8px;font-weight:700;">Want every leak priced, page by page?</p>
-      <p style="margin:0 0 12px;color:#cbd5e1;">The $199 Deep AI Audit crawls your whole site, benchmarks your top competitor, and gives you a 30-day fix plan ordered by revenue impact.</p>
-      <a href="https://mehyar.us/audit" style="display:inline-block;background:#fff;color:#0f172a;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;">Get the deep audit — $199</a>
+      <p style="margin:0 0 8px;font-weight:700;font-size:18px;">Get the full 25-page evaluation — just $5</p>
+      <p style="margin:0 0 12px;color:#cbd5e1;">Every page graded. Competitor gaps. The 500% AI automation blueprint with the math shown step by step. 90-day plan.</p>
+      <a href="https://mehyar.us/audit/report" style="display:inline-block;background:#22c55e;color:#052e16;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;">Get my full report — $5</a>
     </div>
     <p style="color:#94a3b8;font-size:12px;margin-top:24px;">You received this because you requested a free website audit at mehyar.us.<br>
     <a href="${UNSUB_URL}" style="color:#94a3b8;">Unsubscribe</a> · ${PHYSICAL}</p>
@@ -175,8 +192,9 @@ function reportEmailHtml(lead, report) {
 }
 
 function reportEmailText(lead, report) {
-  const leaks = report.leaks.map((l, i) => `${i + 1}. ${l.title}\n   ${l.what}\n   Money: ${l.money}`).join("\n\n");
-  return `MEHYARSOFT · AI WEBSITE AUDIT\n\nYour site scored ${report.score}/100\n"${report.verdict}"\n\nWHERE YOU'RE LEAKING MONEY\n${leaks}\n\n3 QUICK WINS\n${report.quick_wins.map((w, i) => `${i + 1}. ${w}`).join("\n")}\n\nWant every leak priced page by page? The $199 Deep AI Audit: https://mehyar.us/audit\n\nUnsubscribe: ${UNSUB_URL}\n${PHYSICAL}`;
+  const leaks = (report.leaks || []).map((l, i) => `${i + 1}. ${l.title}\n   ${l.what}\n   Money: ${l.money}`).join("\n\n");
+  const pipes = (report.ai_pipelines || []).map((p, i) => `${i + 1}. ${p.name}\n   ${p.what}\n   Upside: ${p.upside}`).join("\n\n");
+  return `MEHYARSOFT · AI WEBSITE AUDIT${report.business_type_label ? " · " + report.business_type_label : ""}\n\nYour site scored ${report.score}/100\n"${report.verdict}"\n\nWHERE YOU'RE LEAKING MONEY\n${leaks}\n\n3 QUICK WINS\n${(report.quick_wins || []).map((w, i) => `${i + 1}. ${w}`).join("\n")}\n\nYOUR AI UPSIDE\n${pipes}\n\nGet the full 25-page evaluation for just $5: https://mehyar.us/audit/report\n\nUnsubscribe: ${UNSUB_URL}\n${PHYSICAL}`;
 }
 
 function escapeHtml(s) {
@@ -202,6 +220,25 @@ export async function onRequestPost({ request, env }) {
 
     if (!internal) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, error: "invalid_email" }, 400);
+      // Server-side Turnstile verification (public scans only).
+      const token = sanitize(body.turnstileToken || body.turnstile_token, 2048);
+      if (env.TURNSTILE_SECRET_KEY) {
+        if (!token) return json({ ok: false, error: "captcha_required", message: "Please complete the verification and try again." }, 400);
+        try {
+          const verifyResp = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: ip }),
+            signal: AbortSignal.timeout(8000),
+          });
+          const verifyData = await verifyResp.json().catch(() => ({}));
+          if (!verifyData.success) {
+            return json({ ok: false, error: "captcha_failed", message: "Verification failed — please try again." }, 400);
+          }
+        } catch {
+          return json({ ok: false, error: "captcha_failed", message: "Verification failed — please try again." }, 400);
+        }
+      }
     }
     if (!url) return json({ ok: false, error: "invalid_url" }, 400);
 
@@ -253,6 +290,11 @@ export async function onRequestPost({ request, env }) {
     if (ai.used_llm && ai.content) {
       const parsed = safeJsonParse(ai.content, null);
       if (parsed && typeof parsed.score === "number" && Array.isArray(parsed.leaks) && parsed.leaks.length >= 3) {
+        // Backfill new v2 fields if the model omitted them.
+        if (!Array.isArray(parsed.ai_pipelines)) parsed.ai_pipelines = heuristicFallback(signals).ai_pipelines;
+        if (!Array.isArray(parsed.full_report_hooks)) parsed.full_report_hooks = heuristicFallback(signals).full_report_hooks;
+        if (!parsed.business_type) parsed.business_type = "other";
+        if (!parsed.business_type_label) parsed.business_type_label = "Business";
         report = parsed;
       }
     }
