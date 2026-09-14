@@ -4,10 +4,10 @@ pages_build_output_dir = "dist/public"
 
 # Keep secret values in Cloudflare Pages settings or `wrangler secret put`.
 # Frontend-safe public build variable only:
-# VITE_TURNSTILE_SITE_KEY = "<public-turnstile-site-key>"
+# VITE_TURNSTILE_SITE_KEY = "0x4AAAAAAE0BuD-W_-t-zuK8"
 
 [vars]
-VITE_TURNSTILE_SITE_KEY = "0x4AAAAAADQCOtotqrJrS80U"
+VITE_TURNSTILE_SITE_KEY = "0x4AAAAAAE0BuD-W_-t-zuK8"
 ENVIRONMENT = "production"
 CONTACT_TO_EMAIL = "info@mehyar.us"
 CONTACT_FROM_EMAIL = "leads@mehyar.us"
