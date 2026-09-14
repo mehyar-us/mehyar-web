@@ -19,11 +19,7 @@ export async function onRequestPost({ request, env }) {
     const secret = env?.ADMIN_SESSION_SECRET || env?.HMAC_SECRET || "";
 
     if (!expectedIdentifier || !expectedPassword || !secret) {
-      const missing = [];
-      if (!expectedIdentifier) missing.push("identifier");
-      if (!expectedPassword) missing.push("password");
-      if (!secret) missing.push("secret");
-      return json({ ok: false, message: "Admin auth is not configured. Missing: " + missing.join(",") }, 503, request, env);
+      return json({ ok: false, message: "Admin auth is not configured." }, 503, request, env);
     }
 
     const rate = await checkRateLimit(env, secret, request, identifier || "unknown");
