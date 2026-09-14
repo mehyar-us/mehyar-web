@@ -68,18 +68,15 @@ const STEPS = {
     subject: "Last call: your $5 full website evaluation",
     headline: "Last call — $5 launch pricing",
     body: (name) =>
-      "Hi " + name + ",\n\nLast note on this — the free audit will always be free, but the FULL 25-PAGE EVALUATION is $5 at launch pricing.\n\n" +
-      "That's every page of your site graded A–F. Competitor gaps exposed. The 500% AI automation blueprint with the math shown. Your 90-day revenue plan.\n\n" +
-      "One owner told us: \"Best five dollars I've spent on the business.\"\n\n" +
+      "Hi " + name + ",\n\nLast note on this — the free audit will always be free, but the complete professional evaluation is $5 at launch pricing.\n\n" +
+      "That's every page of your site graded A–F. Every leak priced. The 500% AI automation blueprint with the math shown. Your 90-day revenue plan.\n\n" +
       "Get it here: https://mehyar.us/audit/report\n\n" +
-      "After launch pricing ends, it goes to $199. Just being straight with you.\n\n— Mehyar\nMehyarSoft",
+      "— Mehyar\nMehyarSoft",
     html: (name) =>
       "<p>Hi " + escapeHtml(name) + ",</p>" +
       "<p>Last note — the free audit is free forever, but the <strong>complete professional evaluation</strong> is $5 at launch pricing.</p>" +
-      "<p>Every page graded A–F. Competitor gaps exposed. The 500% AI blueprint with the math shown. Your 90-day revenue plan.</p>" +
-      "<p><em>\"Best five dollars I've spent on the business.\"</em></p>" +
+      "<p>Every page graded A–F. Every leak priced. The 500% AI blueprint with the math shown. Your 90-day revenue plan.</p>" +
       "<p><a href='https://mehyar.us/audit/report' style='display:inline-block;background:#22c55e;color:#052e16;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none'>Get the full report — $5</a></p>" +
-      "<p>After launch pricing ends, it goes to $199. Just being straight with you.</p>" +
       "<p>— Mehyar<br>MehyarSoft</p>",
   },
 };

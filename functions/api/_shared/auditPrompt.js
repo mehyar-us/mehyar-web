@@ -1,7 +1,7 @@
 // functions/api/_shared/auditPrompt.js
 // ─────────────────────────────────────────────────────────────────────────────
 // MAYOR AUDIT ENGINE v2 — the digital product at the center of mehyar.us.
-// Free teaser → $5 full 25-page report → $330 founder tech audit.
+// Free teaser → $5 complete professional evaluation → $330 founder tech audit.
 //
 // Doctrine (non-negotiable):
 //  1. NEVER invent facts. No measured traffic, revenue, or rankings. Every
@@ -116,7 +116,7 @@ OUTPUT — strict JSON only, no markdown fences, no commentary:
   "ai_pipelines": [
     { "name": "<pipeline name>", "what": "<2 sentences: what it does for THEIR business>", "upside": "<1 sentence: honest estimated capacity/revenue upside + assumption>" }
   ],
-  "full_report_hooks": ["<2 items, 1 sentence each: what the $5 full 25-page report covers that this teaser didn't — be concrete>"]
+  "full_report_hooks": ["<2 items, 1 sentence each: what the $5 complete professional evaluation covers that this teaser didn't — be concrete>"]
 }
 Exactly 3 leaks, 3 quick_wins, 3 ai_pipelines, 2 full_report_hooks.`;
 

@@ -67,7 +67,7 @@ export default function Home() {
               The free audit is the trailer. The $5 full report is the movie — written for your site, your industry, your numbers.
             </p>
             <ul className="mx-auto mt-6 grid max-w-2xl gap-2 text-left text-sm text-slate-200 dark:text-muted-foreground sm:grid-cols-2">
-              {["Page-by-page grades (A–F)", "Competitor gap analysis", "500% AI upside math", "90-day revenue plan"].map((f) => (
+              {["Page-by-page grades (A–F)", "How you compare", "500% AI upside math", "90-day revenue plan"].map((f) => (
                 <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{f}</li>
               ))}
             </ul>

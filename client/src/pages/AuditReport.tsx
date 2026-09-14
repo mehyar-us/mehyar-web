@@ -16,7 +16,7 @@ type FullReport = {
   executive_summary?: string;
   leak_map?: Array<{ area: string; severity: string; finding: string; estimated_monthly_impact: string; fix: string; effort: string }>;
   page_by_page?: Array<{ page: string; grade: string; issues: string[]; fix: string }>;
-  competitor_gaps?: string[];
+  how_you_compare?: { note?: string; points?: string[] };
   ai_blueprint?: Array<{ phase: string; pipeline: string; what_it_does: string; replaces: string; estimated_cost_to_build: string; estimated_monthly_upside: string }>;
   five_hundred_percent_math?: { current_capacity?: string; ai_capacity?: string; multiplier?: string; math?: string[]; honest_caveats?: string[] };
   ninety_day_plan?: Array<{ month: string; actions: string[]; expected_outcome: string }>;
@@ -106,7 +106,7 @@ function gradeColor(g?: string) {
 const WHATS_INSIDE = [
   "Leak map — every leak priced in dollars",
   "Page-by-page grades (A–F)",
-  "Competitor gap analysis",
+  "How you stack up vs typical sites in your industry",
   "AI automation blueprint for your business type",
   "The 500% capacity math, shown step by step",
   "Your 90-day action plan",
@@ -229,7 +229,8 @@ export default function AuditReport() {
     const dateStr = formatDate(reportDate);
     const hasLeaks = (report.leak_map || []).length > 0;
     const hasPages = (report.page_by_page || []).length > 0;
-    const hasGaps = (report.competitor_gaps || []).length > 0;
+    const hyc = report.how_you_compare || {};
+    const hasGaps = !!((hyc.note || "") || (hyc.points || []).length);
     const hasBlueprint = (report.ai_blueprint || []).length > 0;
     const hasPlan = (report.ninety_day_plan || []).length > 0;
     const hasMath = !!(m500.current_capacity || m500.ai_capacity || (m500.math || []).length > 0);
@@ -332,18 +333,19 @@ export default function AuditReport() {
               </div>
             )}
 
-            {/* ── COMPETITOR GAPS ── */}
+            {/* ── HOW YOU COMPARE ── */}
             {hasGaps && (
               <div className="report-print-section mt-10">
                 <h2 className="flex items-center gap-2 text-2xl font-semibold text-[#0B1B33] dark:text-foreground">
                   <Scale className="h-6 w-6 text-[#F59E0B]" /> How you compare
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Gaps our AI identified from your site's public signals — directionally useful, not a live crawl of competitor sites.
+                  Typical patterns for your business type — not a crawl of your actual competitors.
                 </p>
                 <Card className="mt-4"><CardContent className="p-5 md:p-6">
-                  <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
-                    {report.competitor_gaps!.map((g, i) => <li key={i}>{g}</li>)}
+                  {hyc.note && <p className="text-sm leading-6 text-foreground">{hyc.note}</p>}
+                  <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
+                    {(hyc.points || []).map((g, i) => <li key={i}>{g}</li>)}
                   </ul>
                 </CardContent></Card>
               </div>
@@ -471,7 +473,7 @@ export default function AuditReport() {
         <p className="site-eyebrow mb-4 text-center">The full evaluation</p>
         <h1 className="site-display mx-auto max-w-2xl text-balance text-center">The free audit is the trailer — this is the movie.</h1>
         <p className="site-lede mx-auto mt-4 max-w-xl text-balance text-center">
-          The complete professional evaluation of <em>your</em> site — every leak priced, page-by-page grades, competitor gaps, the 500% AI blueprint with the math shown step by step, and your 90-day plan.
+          The complete professional evaluation of <em>your</em> site — every leak priced, page-by-page grades, how you compare, the 500% AI blueprint with the math shown step by step, and your 90-day plan.
         </p>
 
         <div className="mx-auto mt-10 grid max-w-3xl items-start gap-8 md:grid-cols-2">

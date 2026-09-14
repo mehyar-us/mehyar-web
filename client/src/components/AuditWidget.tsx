@@ -185,7 +185,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               <span className="text-xs text-sky-300">The free audit is the trailer — this is the movie</span>
               <h2 className="mt-3 text-2xl font-semibold md:text-3xl">Get the complete professional evaluation — just $5</h2>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-                Every page graded. Competitor gaps exposed. The 500% AI automation blueprint with the math shown step by step. Your 90-day plan. Written for YOUR site, delivered as a beautiful PDF.
+                Every page graded. How you compare. The 500% AI automation blueprint with the math shown step by step. Your 90-day plan. Written for YOUR site, delivered as a beautiful PDF.
               </p>
               <ul className="mt-4 space-y-2 text-sm text-slate-200">
                 {["The complete evaluation, written for YOUR site", "The 500% upside math — capacity before vs after AI", "AI automation blueprint tailored to your business type", "90-day action plan ordered by revenue impact"].map((f) => (
