@@ -97,7 +97,7 @@ export default function AuditReport() {
   const scoreColor = (s: number) => (s >= 70 ? "text-emerald-500" : s >= 45 ? "text-amber-500" : "text-red-500");
 
   /* ── REPORT VIEW ── */
-  if (reportId) {
+  if (token) {
     if (loadError) {
       return (
         <section className="site-hero px-4"><div className="site-shell max-w-2xl text-center">
