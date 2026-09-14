@@ -182,7 +182,7 @@ function reportEmailHtml(lead, report) {
     <ol style="padding-left:20px;">${wins}</ol>
     ${pipelines ? `<h2 style="font-size:18px;margin-top:24px;">Your AI upside — up to 5x capacity</h2>${pipelines}` : ""}
     <div style="background:#0f172a;color:#fff;border-radius:12px;padding:20px;margin-top:24px;">
-      <p style="margin:0 0 8px;font-weight:700;font-size:18px;">Get the full 25-page evaluation — just $5</p>
+      <p style="margin:0 0 8px;font-weight:700;font-size:18px;">Get the complete professional evaluation — just $5</p>
       <p style="margin:0 0 12px;color:#cbd5e1;">Every page graded. Competitor gaps. The 500% AI automation blueprint with the math shown step by step. 90-day plan.</p>
       <a href="https://mehyar.us/audit/report" style="display:inline-block;background:#22c55e;color:#052e16;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;">Get my full report — $5</a>
     </div>
@@ -194,7 +194,7 @@ function reportEmailHtml(lead, report) {
 function reportEmailText(lead, report) {
   const leaks = (report.leaks || []).map((l, i) => `${i + 1}. ${l.title}\n   ${l.what}\n   Money: ${l.money}`).join("\n\n");
   const pipes = (report.ai_pipelines || []).map((p, i) => `${i + 1}. ${p.name}\n   ${p.what}\n   Upside: ${p.upside}`).join("\n\n");
-  return `MEHYARSOFT · AI WEBSITE AUDIT${report.business_type_label ? " · " + report.business_type_label : ""}\n\nYour site scored ${report.score}/100\n"${report.verdict}"\n\nWHERE YOU'RE LEAKING MONEY\n${leaks}\n\n3 QUICK WINS\n${(report.quick_wins || []).map((w, i) => `${i + 1}. ${w}`).join("\n")}\n\nYOUR AI UPSIDE\n${pipes}\n\nGet the full 25-page evaluation for just $5: https://mehyar.us/audit/report\n\nUnsubscribe: ${UNSUB_URL}\n${PHYSICAL}`;
+  return `MEHYARSOFT · AI WEBSITE AUDIT${report.business_type_label ? " · " + report.business_type_label : ""}\n\nYour site scored ${report.score}/100\n"${report.verdict}"\n\nWHERE YOU'RE LEAKING MONEY\n${leaks}\n\n3 QUICK WINS\n${(report.quick_wins || []).map((w, i) => `${i + 1}. ${w}`).join("\n")}\n\nYOUR AI UPSIDE\n${pipes}\n\nGet the complete professional evaluation for just $5: https://mehyar.us/audit/report\n\nUnsubscribe: ${UNSUB_URL}\n${PHYSICAL}`;
 }
 
 function escapeHtml(s) {

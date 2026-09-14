@@ -31,7 +31,7 @@ const STEPS = {
       "No account. No card. Your report lands in your inbox.\n\nRun it here: https://mehyar.us\n\n" +
       "It detects your business type automatically — local shop, clinic, or enterprise — and shows the exact AI pipelines (voice agents, smart scheduling, document scanning) built for businesses like yours.\n\n" +
       "Try it and tell me your score.\n\n— Mehyar\nMehyarSoft\n\n" +
-      "P.S. The full 25-page teardown with competitor gaps and a 90-day plan is $5. Less than a coffee: https://mehyar.us/audit/report",
+      "P.S. The complete professional evaluation — every page graded, every leak priced, 90-day plan — is $5. Less than a coffee: https://mehyar.us/audit/report",
     html: (name) =>
       "<p>Hi " + escapeHtml(name) + ",</p>" +
       "<p>You reached out to MehyarSoft a while back, and I wanted you to be first to try something I just built:</p>" +
@@ -41,7 +41,7 @@ const STEPS = {
       "<p><a href='https://mehyar.us' style='display:inline-block;background:#0f172a;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none'>Run my free audit</a></p>" +
       "<p>It detects your business type automatically and shows the exact AI pipelines (voice agents, smart scheduling, document scanning) built for businesses like yours.</p>" +
       "<p>— Mehyar<br>MehyarSoft</p>" +
-      "<p><em>P.S. The full 25-page teardown is $5: <a href='https://mehyar.us/audit/report'>get it here</a>.</em></p>",
+      "<p><em>P.S. The complete professional evaluation is $5: <a href='https://mehyar.us/audit/report'>get it here</a>.</em></p>",
   },
   2: {
     subject: "Your competitors are using AI to do 5x the work",
@@ -75,7 +75,7 @@ const STEPS = {
       "After launch pricing ends, it goes to $199. Just being straight with you.\n\n— Mehyar\nMehyarSoft",
     html: (name) =>
       "<p>Hi " + escapeHtml(name) + ",</p>" +
-      "<p>Last note — the free audit is free forever, but the <strong>full 25-page evaluation</strong> is $5 at launch pricing.</p>" +
+      "<p>Last note — the free audit is free forever, but the <strong>complete professional evaluation</strong> is $5 at launch pricing.</p>" +
       "<p>Every page graded A–F. Competitor gaps exposed. The 500% AI blueprint with the math shown. Your 90-day revenue plan.</p>" +
       "<p><em>\"Best five dollars I've spent on the business.\"</em></p>" +
       "<p><a href='https://mehyar.us/audit/report' style='display:inline-block;background:#22c55e;color:#052e16;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none'>Get the full report — $5</a></p>" +

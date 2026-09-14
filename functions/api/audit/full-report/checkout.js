@@ -1,6 +1,6 @@
 // functions/api/audit/full-report/checkout.js
 // POST /api/audit/full-report/checkout — create a $5 Stripe Checkout session
-// for the full 25-page AI evaluation.
+// for the complete professional AI evaluation.
 // Body: { email, url, business?, lead_id? }
 
 function json(data, status = 200) {
@@ -76,8 +76,8 @@ export async function onRequestPost({ request, env }) {
     params.set("cancel_url", "https://mehyar.us/audit");
     params.set("customer_email", email);
     params.set("line_items[0][price_data][currency]", "usd");
-    params.set("line_items[0][price_data][product_data][name]", "Full AI Website Evaluation — 25-page report");
-    params.set("line_items[0][price_data][product_data][description]", "Page-by-page grades, competitor gaps, 500% AI automation blueprint, 90-day plan.");
+    params.set("line_items[0][price_data][product_data][name]", "Full AI Website Evaluation");
+    params.set("line_items[0][price_data][product_data][description]", "Multi-page grades, conversion teardown, honest AI automation blueprint, 90-day plan.");
     params.set("line_items[0][price_data][unit_amount]", "500");
     params.set("line_items[0][quantity]", "1");
     params.set("metadata[report_id]", String(reportId));

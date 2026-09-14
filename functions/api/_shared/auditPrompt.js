@@ -207,3 +207,75 @@ export function buildFullReportUserMessage(signals, teaser) {
 
 // Legacy export kept for any old importers.
 export const DEEP_SYSTEM = FULL_REPORT_SYSTEM;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FULL REPORT v2 — multi-call generation (backend-only, 2026-09-14).
+// The paid report is built from an actual bounded crawl (homepage + up to 6
+// internal pages). Each LLM call below receives ONLY the crawled pages and
+// must never reference pages, competitors, traffic, or revenue it wasn't given.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Shared context builder for the v2 full-report calls.
+// pages: [{ label, url, grade, score, title, h1, wordCount, issues[], contactPath, loadMs }]
+export function buildFullReportContext({ pages, score, teaser, url }) {
+  const t = teaser || {};
+  const pageLines = (pages || []).map((p, i) =>
+    `PAGE ${i + 1} — ${p.label} (${p.url})\n` +
+    `  Deterministic grade: ${p.grade} (${p.score}/100) — from measured signals, not opinion.\n` +
+    `  Title: ${p.title || "(missing)"} | H1: ${p.h1 || "(missing)"} | Words: ${p.wordCount}\n` +
+    `  Contact path (phone/email/booking link/form): ${p.contactPath ? "yes" : "NO"}\n` +
+    `  Load: ${p.loadMs}ms | Measured issues: ${(p.issues || []).join(" | ") || "none"}`
+  ).join("\n");
+  return (
+    `PAID FULL WEBSITE EVALUATION — write from the crawl data below ONLY.\n\n` +
+    `Site: ${url}\n` +
+    `Pages actually crawled: ${(pages || []).length} (homepage + internal pages we could fetch).\n` +
+    `Deterministic overall score from measured signals: ${score}/100\n` +
+    (t.business_type ? `Business type (from free teaser): ${t.business_type} (${t.business_type_label || ""})\n` : "") +
+    (t.verdict ? `Teaser verdict: ${t.verdict}\n` : "") +
+    `\n${pageLines}\n\n` +
+    `HARD HONESTY RULES (violating these fails the report):\n` +
+    `- Reference ONLY the pages listed above. Never name, describe, or grade a page you were not given.\n` +
+    `- Never claim measured traffic, rankings, conversions, or revenue. Every dollar figure is an ESTIMATE: range + one-clause assumption + brief arithmetic.\n` +
+    `- Never name or describe a real competitor. Industry comparisons must be framed as typical patterns, explicitly labeled as such.\n` +
+    `- Quote their actual headlines/content where you criticize. No generic advice.\n` +
+    `- The 500%/multiplier framing is CAPACITY arithmetic (AI doing the work of multiple hires, 24/7) with stated assumptions — never a guaranteed revenue number.\n` +
+    `- Write for a non-technical owner reading on a phone. Short sentences. Plain words.`
+  );
+}
+
+export const FULL_REPORT_LEAKS_SYSTEM = `You are the Mayor Audit Engine writing the leak-map section of a PAID website evaluation. You are given crawl data for the pages actually fetched — nothing else.
+
+Write:
+- "business_type_label": human label, e.g. "Dental Clinic".
+- "leak_map": 10-14 items, ordered by impact descending. Each: { "area": "<e.g. 'Booking friction'>", "severity": "<critical|high|medium>", "finding": "<specific, quoting their actual content>", "estimated_monthly_impact": "<dollar range + assumption + 1-line arithmetic>", "fix": "<concrete fix>", "effort": "<e.g. '1 afternoon'>" }.
+- "conversion_teardown": { "cta_analysis": "<3-4 sentences on their ACTUAL calls-to-action and friction, quoting button/link text seen>", "friction_points": ["<3-5 specific friction items a buyer hits>"], "quick_fixes": ["<3 concrete fixes, each 1 sentence>"] }
+
+OUTPUT — strict JSON only, no markdown fences:
+{ "business_type_label": "...", "leak_map": [...], "conversion_teardown": { "cta_analysis": "...", "friction_points": [...], "quick_fixes": [...] } }`;
+
+export const FULL_REPORT_TRUST_SEO_SYSTEM = `You are the Mayor Audit Engine writing the trust, SEO, and comparison sections of a PAID website evaluation. You are given crawl data for the pages actually fetched — nothing else.
+
+Write:
+- "trust_credibility": { "summary": "<2 sentences: what trust signals exist vs what's missing>", "findings": ["<4-6 specific findings tied to measured signals>"], "fixes": ["<3 concrete fixes>"] }.
+- "seo_visibility": { "basics": ["<5-7 checks from REAL signals: title, meta description, viewport, schema.org, image alt text, word count, HTTPS>"], "fixes": ["<3 concrete fixes>"] }.
+- "how_you_compare": { "frame": "Typical patterns for this business type — NOT your actual competitors. We did not research any specific competitor.", "business_type_label": "<same label>", "patterns": ["<4-6 items: what the strongest sites in this business type typically do, and where THIS site stands against that pattern>"], "honest_note": "<1-2 sentences: this is a pattern benchmark, not competitor research; a real competitor teardown is available in the founder audit>" }
+
+OUTPUT — strict JSON only, no markdown fences:
+{ "trust_credibility": {...}, "seo_visibility": {...}, "how_you_compare": {...} }`;
+
+export const FULL_REPORT_BLUEPRINT_SYSTEM = `You are the Mayor Audit Engine writing the AI blueprint, 500% math, and 90-day plan of a PAID website evaluation. You are given crawl data + the leak summary + business type.
+
+Relevant AI pipelines to choose from (adapt names to THEIR business):
+${Object.entries(AI_PIPELINES).map(([k, v]) => `${k}: ${v.map((p) => p.name).join(", ")}`).join("\n")}
+
+Write:
+- "ai_blueprint": 3 phases, each { "phase": "Phase 1 (weeks 1-2)", "pipeline": "<name>", "what_it_does": "<2-3 sentences tailored to THEIR business>", "replaces": "<e.g. '1.5 receptionist salaries'>", "estimated_cost_to_build": "<range>", "estimated_monthly_upside": "<range + assumption>" }.
+- "five_hundred_percent_math": { "current_capacity": "<1-2 sentences: what the business handles today>", "ai_capacity": "<1-2 sentences: what AI-augmented operations handle>", "multiplier": "<e.g. '4.2x'>", "math": ["<3-5 lines of step-by-step arithmetic>"], "honest_caveats": ["<3 honest caveats: what must be true for this to hold>"] }.
+- "ninety_day_plan": [ { "month": "Month 1", "actions": ["<3 actions>"], "expected_outcome": "<1 sentence>" }, x3 ].
+- "executive_summary": "<6 sentences: score, biggest leak, biggest AI opportunity, the multiplier math in one line, first action>".
+- "one_thing": "<the single highest-ROI action, 1 sentence>".
+- "upsell_note": "<1-2 sentences: what the $330 founder tech audit adds — implementation oversight, custom build>".
+
+OUTPUT — strict JSON only, no markdown fences:
+{ "ai_blueprint": [...], "five_hundred_percent_math": {...}, "ninety_day_plan": [...], "executive_summary": "...", "one_thing": "...", "upsell_note": "..." }`;

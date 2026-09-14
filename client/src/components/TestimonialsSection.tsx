@@ -17,7 +17,7 @@ const ILLUSTRATIVE_EXAMPLES = [
   },
   {
     role: "Example: ecommerce founder",
-    quote: "A 25-page teardown with competitor gaps I'd never noticed — priced per leak, with the math shown.",
+    quote: "The $5 report was brutal — and exactly right. Every page graded, every leak priced, with the math shown.",
   },
 ];
 

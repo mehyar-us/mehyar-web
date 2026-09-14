@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, CheckCircle2, Loader2, Lock, Search, TrendingDown, Zap, Bot } from "lucide-react";
+import ReportPreview from "@/components/ReportPreview";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -177,24 +178,27 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
         )}
 
         {/* ── $5 UPSELL ── */}
-        <div className="mt-12 rounded-3xl bg-slate-950 p-6 text-white md:p-10 dark:bg-card dark:text-foreground dark:border dark:border-border">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-300 dark:text-muted-foreground">The free audit is the trailer — this is the movie</span>
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold md:text-3xl">Get the full 25-page evaluation — just $5</h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 dark:text-muted-foreground">
-            Every page graded. Competitor gaps exposed. The 500% AI automation blueprint with the math shown step by step. Your 90-day plan. Everything you need to know, with numbers.
-          </p>
-          <ul className="mt-4 space-y-2 text-sm text-slate-200 dark:text-muted-foreground">
-            {["25-page deep evaluation, written for YOUR site", "The 500% upside math — capacity before vs after AI", "AI automation blueprint tailored to your business type", "90-day action plan ordered by revenue impact"].map((f) => (
-              <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{f}</li>
-            ))}
-          </ul>
-          <div className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-            <Link href={`/audit/report?email=${encodeURIComponent(email)}&url=${encodeURIComponent(url)}`} className={buttonVariants({ variant: "cta", size: "lg", className: "bg-emerald-500 text-emerald-950 hover:bg-emerald-400" })}>
-              Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-            <span className="text-xs text-slate-400 dark:text-muted-foreground">One-time · Instant delivery · Less than a coffee</span>
+        <div className="mt-12 overflow-hidden rounded-3xl bg-[#0B1B33] p-6 text-white md:p-10 dark:border dark:border-border">
+          <div className="flex flex-col gap-8 md:flex-row md:items-center">
+            <ReportPreview className="mx-auto w-full max-w-[240px] shrink-0 rotate-[-2deg] md:mx-0" />
+            <div className="min-w-0">
+              <span className="text-xs text-sky-300">The free audit is the trailer — this is the movie</span>
+              <h2 className="mt-3 text-2xl font-semibold md:text-3xl">Get the complete professional evaluation — just $5</h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
+                Every page graded. Competitor gaps exposed. The 500% AI automation blueprint with the math shown step by step. Your 90-day plan. Written for YOUR site, delivered as a beautiful PDF.
+              </p>
+              <ul className="mt-4 space-y-2 text-sm text-slate-200">
+                {["The complete evaluation, written for YOUR site", "The 500% upside math — capacity before vs after AI", "AI automation blueprint tailored to your business type", "90-day action plan ordered by revenue impact"].map((f) => (
+                  <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{f}</li>
+                ))}
+              </ul>
+              <div className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+                <Link href={`/audit/report?email=${encodeURIComponent(email)}&url=${encodeURIComponent(url)}`} className={buttonVariants({ variant: "cta", size: "lg", className: "bg-[#F59E0B] text-[#0B1B33] hover:bg-amber-400" })}>
+                  Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+                <span className="text-xs text-slate-400">One-time · Instant delivery · Less than a coffee</span>
+              </div>
+            </div>
           </div>
         </div>
 

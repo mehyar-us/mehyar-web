@@ -37,7 +37,7 @@ export default function Home() {
             {[
               { icon: ScanSearch, title: "1. Free 60-second audit", desc: "Enter your URL. AI scores your site, finds your 3 biggest money leaks, and detects your business type." },
               { icon: Sparkles, title: "2. See your AI upside", desc: "Get the AI pipelines built for your industry — voice agents, scheduling, document scanning — with honest 5x math." },
-              { icon: FileText, title: "3. Go deep for $5", desc: "The full 25-page evaluation: every page graded, competitor gaps, 90-day plan. Less than a coffee." },
+              { icon: FileText, title: "3. Go deep for $5", desc: "The complete professional evaluation: every page graded, every leak priced, your AI blueprint, 90-day plan. Less than a coffee." },
             ].map((s) => (
               <div key={s.title} className="rounded-2xl border border-border bg-card p-6">
                 <s.icon className="h-7 w-7 text-brand-700" />
@@ -61,7 +61,7 @@ export default function Home() {
           <div className="mx-auto max-w-4xl rounded-3xl bg-slate-950 p-8 text-center text-white md:p-12 dark:bg-card dark:text-foreground dark:border dark:border-border">
             <p className="site-eyebrow !text-slate-300 dark:!text-muted-foreground">The full evaluation</p>
             <h2 className="mx-auto mt-3 max-w-2xl text-3xl font-bold tracking-tight md:text-4xl text-balance">
-              25 pages. Every leak priced. Your 5x AI blueprint.
+              The complete evaluation. Every leak priced. Your 5x AI blueprint.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-slate-300 dark:text-muted-foreground">
               The free audit is the trailer. The $5 full report is the movie — written for your site, your industry, your numbers.
