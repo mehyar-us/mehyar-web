@@ -189,6 +189,26 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">AI mechanic for everyday car owners.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">BabyPeek — <a className="text-brand-700 underline dark:text-brand-100" href="https://baby.mehyar.us" target="_blank" rel="noreferrer">baby.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI future-baby portraits.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">RoastMe — <a className="text-brand-700 underline dark:text-brand-100" href="https://roast.mehyar.us" target="_blank" rel="noreferrer">roast.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI roast cards from your photo.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Crayon Kid — <a className="text-brand-700 underline dark:text-brand-100" href="https://crayonkid.mehyar.us" target="_blank" rel="noreferrer">crayonkid.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Personalized coloring books.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">mehyar.jobs — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Fit-scored career listings.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Stuff Pretty Good — <a className="text-brand-700 underline dark:text-brand-100" href="https://stuffprettygood.com" target="_blank" rel="noreferrer">stuffprettygood.com <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Curated gifts, kits, and digital guides.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>
@@ -314,3 +334,4 @@ const PrivacyPolicy = () => {
 };
 
 export default PrivacyPolicy;
+

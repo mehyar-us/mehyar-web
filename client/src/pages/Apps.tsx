@@ -52,6 +52,91 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/aimech-logo.png",
     accentClass: "from-zinc-900 to-zinc-700 dark:from-zinc-800 dark:to-zinc-900",
   },
+  {
+    id: "babypeek",
+    name: "BabyPeek",
+    url: "https://baby.mehyar.us",
+    tagline: "Peek at your future baby.",
+    description:
+      "Upload two photos and let AI dream up your future baby. Get a free sneak peek — unlock the full portrait for $5.",
+    audience: "Expecting couples and curious parents who want a fun, shareable glimpse of what's coming.",
+    highlights: [
+      "AI-generated future-baby portrait from two parent photos",
+      "Free teaser with a $5 unlock for the full portrait",
+      "Shareable reveal cards built for virality",
+      "Private by design — your photos stay yours",
+    ],
+    logo: "/assets/babypeek-logo.png",
+    accentClass: "from-sky-100 to-white dark:from-sky-900 dark:to-sky-950",
+  },
+  {
+    id: "roastme",
+    name: "RoastMe",
+    url: "https://roast.mehyar.us",
+    tagline: "Upload a photo. Get destroyed. (Lovingly.)",
+    description:
+      "RoastMe turns your photo into a savage-but-playful AI roast card you can share. See samples, read the reviews, then take the heat.",
+    audience: "Anyone with thick skin and a group chat that needs new material.",
+    highlights: [
+      "AI roast cards from a single photo upload",
+      "Savage but playful — built to share, not to wound",
+      "Sample roasts and reviews before you commit",
+      "One-tap share cards for social",
+    ],
+    logo: "/assets/roastme-logo.png",
+    accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
+  },
+  {
+    id: "crayonkid",
+    name: "Crayon Kid",
+    url: "https://crayonkid.mehyar.us",
+    tagline: "A coloring book with YOUR kid's name on every page.",
+    description:
+      "Type your kid's name and get a personalized coloring book with their name on every page. AI-generated line art, printable at home.",
+    audience: "Parents and gift-givers who want something personal, not another plastic toy.",
+    highlights: [
+      "Personalized with your child's name on every page",
+      "AI-generated coloring pages, printable at home",
+      "Makes a great gift — personal without the price tag",
+      "New pages generated on demand",
+    ],
+    logo: "/assets/crayonkid-logo.png",
+    accentClass: "from-amber-100 to-white dark:from-amber-900 dark:to-amber-950",
+  },
+  {
+    id: "mehyarjobs",
+    name: "mehyar.jobs",
+    url: "https://jobs.mehyar.us",
+    tagline: "7,000+ careers, fit-scored.",
+    description:
+      "Daily scan of Fortune 500, Forbes Global 2000, Inc 5000, and S&P 500 career pages — ranked by fit to your profile, not by who paid to promote.",
+    audience: "Job seekers who are tired of scrolling the same 50 listings on every board.",
+    highlights: [
+      "7,000+ careers scanned daily from top employer career pages",
+      "Fit-scored against your profile, not keyword-matched",
+      "Covers Fortune 500, Forbes Global 2000, Inc 5000, and S&P 500",
+      "Fresh every morning — no stale reposts",
+    ],
+    logo: "/assets/jobs-logo.png",
+    accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+  },
+  {
+    id: "stuffprettygood",
+    name: "Stuff Pretty Good",
+    url: "https://stuffprettygood.com",
+    tagline: "Useful gifts, starter kits & budget finds.",
+    description:
+      "Stuff Pretty Good helps you find useful gifts, starter kits, travel gear, kitchen helpers, and budget finds — curated, honestly reviewed, no markup games.",
+    audience: "Shoppers who want the good stuff without the affiliate-site fluff.",
+    highlights: [
+      "Curated gifts, starter kits, and budget finds",
+      "Digital guides: home-office setup and gift-proof playbooks",
+      "Honest picks — useful first, commission second",
+      "New finds added regularly",
+    ],
+    logo: "/assets/spg-logo.png",
+    accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
+  },
 ];
 
 const buildPillars = [
@@ -302,3 +387,4 @@ const Apps = () => {
 };
 
 export default Apps;
+
