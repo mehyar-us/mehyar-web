@@ -61,6 +61,11 @@ function draftBody(prospect, signals, stepNo, env) {
   const phoneLine = SENDER_PHONE(env) ? `\n${SENDER_PHONE(env)}` : "";
   const sender = `Mehyar\nMehyarSoft LLC · Founder\n${SENDER_EMAIL(env)}${phoneLine}\n\nMehyarSoft LLC · 228 Park Ave S #92842 · New York, NY 10003`;
 
+  // AI audit personalization (from the free teaser engine, when available).
+  let audit = null;
+  try { audit = JSON.parse(prospect.meta_json || "{}")?.audit || null; } catch {}
+  const hasAudit = audit && typeof audit.score === "number";
+
   // Lead with the strongest signal (most visible leak)
   const lead = signals.no_booking_cta
     ? `I reviewed ${domain} and noticed there isn't a clear "Book" or "Schedule" button on the homepage.`
@@ -89,13 +94,18 @@ function draftBody(prospect, signals, stepNo, env) {
     : `A few smaller things I'd tighten up.`;
 
   if (stepNo === 1) {
-    return `${lead}
+    // AI-audit-led opener when we have a real score; heuristic fallback otherwise.
+    const opener = hasAudit
+      ? `I ran ${domain} through our AI website audit this morning — it scored ${audit.score}/100.\n\nThe biggest leak: ${audit.top_leak || "several conversion gaps"}${audit.top_leak_money ? ` — ${audit.top_leak_money}` : ""}.\n\nYou can see the full breakdown free (60 seconds, no signup): https://mehyar.us/audit`
+      : `${lead}\n\n${proofLine}`;
 
-${proofLine}
+    return `${opener}
 
-For a ${vert} in ${city}, these are the kinds of leaks that can turn ready-to-buy visitors into missed calls or abandoned forms.
+For a ${vert} in ${city}, these are the kinds of leaks that turn ready-to-buy visitors into missed calls or abandoned forms.
 
-I run a $150 leak audit for ${vert} businesses: a short written map of what is broken, what I would fix first, and whether a $250 diagnosis, $1.5k-$7.5k quick fix, or small monthly retainer is worth quoting.
+${hasAudit
+  ? `If you want every leak priced page-by-page — plus how you stack up against your top competitor and a 30-day fix plan — that's our $199 Deep AI Audit: https://mehyar.us/audit`
+  : `I run a $150 leak audit for ${vert} businesses: a short written map of what is broken, what I would fix first, and whether a $250 diagnosis, $1.5k-$7.5k quick fix, or small monthly retainer is worth quoting.`}
 
 Should I send the audit scope for ${domain}? If it fits, I confirm scope first and invoice manually by email.
 
@@ -163,12 +173,17 @@ export async function onRequestPost({ request, env, params }) {
     FROM prospect_signals WHERE prospect_id = ? ORDER BY scanned_at DESC LIMIT 1
   `).bind(id).all();
   const latestSignal = sigs?.[0];
-  if (!latestSignal) {
+  let auditForDraft = null;
+  try { auditForDraft = JSON.parse(prospect.meta_json || "{}")?.audit || null; } catch {}
+  const hasAuditScore = auditForDraft && typeof auditForDraft.score === "number";
+  if (!latestSignal && !hasAuditScore) {
     return json({ ok: false, error: "no_signals_yet", message: "Run /rescan first." }, 409, request, env);
   }
   let citedSignals = [];
-  try { citedSignals = JSON.parse(latestSignal.leak_signals_json || "[]"); } catch {}
-  const hasCitableEvidence = citedSignals.some((signal) => CITABLE_SIGNAL_KEYS.has(signal));
+  try { citedSignals = JSON.parse(latestSignal?.leak_signals_json || "[]"); } catch {}
+  // AI-audit fallback: the teaser engine's score counts as citable evidence.
+  if (!citedSignals.length && hasAuditScore) citedSignals = ["ai_audit_score"];
+  const hasCitableEvidence = citedSignals.some((signal) => CITABLE_SIGNAL_KEYS.has(signal)) || citedSignals.includes("ai_audit_score");
   if (!hasCitableEvidence) {
     return json({
       ok: false,
@@ -186,7 +201,7 @@ export async function onRequestPost({ request, env, params }) {
     no_email_link:   citedSignals.includes("no_email_link"),
     no_address:      citedSignals.includes("no_address"),
     generic_template:citedSignals.includes("generic_template") || citedSignals.includes("platform_generic"),
-    _load_time_ms:   latestSignal.load_time_ms,
+    _load_time_ms:   latestSignal?.load_time_ms,
   };
 
   const subject = draftSubject(prospect, stepNo);
@@ -244,8 +259,8 @@ export async function onRequestPost({ request, env, params }) {
     subject,
     body_text: bodyText,
     cited_signals: citedSignals,
-    leak_score: latestSignal.leak_score,
-    platform: latestSignal.detected_platform,
+    leak_score: latestSignal?.leak_score ?? auditForDraft?.score ?? null,
+    platform: latestSignal?.detected_platform || null,
     step_no: stepNo,
     model,
     tone,
