@@ -1,5 +1,10 @@
 // AdminJobs.tsx — "💼 Jobs" tab: the mehyar.jobs email growth engine console.
 //
+// REPORTING ONLY. Campaign control (arm, send, pause) lives in the chat
+// control plane (POST /api/agent/email/control on mehyar-jobs), driven from
+// conversation with Mayor. This tab shows status and reports; it never
+// triggers sends.
+//
 // All data comes through the same-origin relay /api/jobs-relay/*
 // (functions/api/jobs-relay/[[path]].js) → jobs.mehyar.us. The browser NEVER
 // talks to jobs.mehyar.us or api.smtp2go.com directly — the dashboard Bearer
@@ -7,7 +12,6 @@
 //
 // Endpoints (built on mehyar-jobs; code defensively — all fields optional):
 //   GET  /admin/email/campaign-report?date=YYYY-MM-DD
-//   POST /admin/email/wire-up
 //   GET  /admin/email/gate
 //   GET  /admin/email/product-stats
 //   GET  /admin/email/brain-plan?date=YYYY-MM-DD
@@ -54,9 +58,6 @@ export default function AdminJobs() {
 function JobsView({ token }: { token: string }) {
   const { logout } = useAdminSession();
   const [date, setDate] = useState(todayStr());
-  const [wireRunning, setWireRunning] = useState(false);
-  const [wireResult, setWireResult] = useState<any>(null);
-  const [wireError, setWireError] = useState<string | null>(null);
 
   // ── Daily campaign report ──────────────────────────────────────────────
   const reportQ = useQuery({
@@ -115,29 +116,12 @@ function JobsView({ token }: { token: string }) {
     reportQ.refetch(); gateQ.refetch(); productsQ.refetch(); brainQ.refetch(); landingQ.refetch();
   };
 
-  // ── Wire-up (readiness check + arm) ────────────────────────────────────
-  const runWireUp = async () => {
-    setWireRunning(true); setWireError(null); setWireResult(null);
-    try {
-      const r = await fetch(`${RELAY}/admin/email/wire-up`, {
-        method: "POST",
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data?.error || data?.message || `HTTP ${r.status}`);
-      setWireResult(data);
-      refreshAll();
-    } catch (e) {
-      setWireError(String((e as any)?.message || e));
-    }
-    setWireRunning(false);
-  };
-
-  const checks: any[] = wireResult?.checks || [];
-  const cohortDetail: string = checks.find((c) => c.key === "cohort")?.detail || "";
-  const listSize = parseListSize(cohortDetail);
-  const armed: boolean = !!(wireResult?.armed || report.sender_armed);
-  const armedTs: string | null = report.sender_armed || null;
+  // ── Derived display values (reporting only — no controls) ──────────────
+  const cohort: any = report.cohort || {};
+  const cohortTotal: number | null = typeof cohort.total === "number" ? cohort.total : null;
+  const listSize = cohortTotal;
+  const armed: boolean = !!(report.sender_armed || report.sender_armed_at);
+  const armedTs: string | null = report.sender_armed_at || report.sender_armed || null;
 
   // Today's decision — derived from the gate status
   const decision = deriveDecision(gate);
@@ -156,14 +140,15 @@ function JobsView({ token }: { token: string }) {
                 Mayor Jobs
               </h1>
               <p className="text-sm text-zinc-600 dark:text-zinc-300 mt-1">
-                The mehyar.jobs email growth engine — readiness, daily sender, and the
-                full daily campaign report. Same data the 07:00 ET review writes to the repo brief.
+                The mehyar.jobs email growth engine — live status and the full
+                daily campaign report. Campaign control (arm, send, pause) runs
+                from chat; this tab is reporting only.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <Tile label="Sender" value={armed ? "ARMED" : "NOT ARMED"} sub={armedTs ? new Date(armedTs).toLocaleString() : "wire-up to arm"} tone={armed ? "emerald" : "amber"} icon={Rocket} />
+              <Tile label="Sender" value={armed ? "ARMED" : "NOT ARMED"} sub={armedTs ? new Date(armedTs).toLocaleString() : "arm from chat"} tone={armed ? "emerald" : "amber"} icon={Rocket} />
               <Tile label="Fib level" value={gate.level ?? "—"} sub={gate.daily_cap ? `${gate.daily_cap}/day cap` : gate.status || "gate"} tone="neutral" icon={ShieldCheck} />
-              <Tile label="Contacts" value={listSize ?? "—"} sub={listSize ? "cohort check" : "run readiness"} tone="neutral" icon={Users} />
+              <Tile label="Contacts" value={listSize ?? "—"} sub={listSize ? "cohort total" : "no cohort data"} tone="neutral" icon={Users} />
             </div>
           </div>
         </CardContent>
@@ -178,7 +163,7 @@ function JobsView({ token }: { token: string }) {
               ? <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">ARMED</Badge>
               : <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">NOT ARMED</Badge>}
           </div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{armedTs ? `Armed ${new Date(armedTs).toLocaleString()}` : "Daily sender not armed"}</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{armedTs ? `Armed ${new Date(armedTs).toLocaleString()}` : "Arm the sender from chat"}</div>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <div className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><ShieldCheck className="w-3 h-3" />Fib gate</div>
@@ -190,7 +175,7 @@ function JobsView({ token }: { token: string }) {
         <Card><CardContent className="p-4">
           <div className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Users className="w-3 h-3" />List size</div>
           <div className="mt-2 text-xl font-bold text-zinc-900 dark:text-zinc-100">{listSize ?? "—"}</div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate" title={cohortDetail}>{cohortDetail ? cohortDetail.slice(0, 60) : "from cohort readiness check"}</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate">{cohort.by_status ? Object.entries(cohort.by_status).map(([k, v]) => `${k}=${v}`).join(", ").slice(0, 60) : "cohort breakdown"}</div>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <div className="text-[10px] uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Zap className="w-3 h-3" />Today's decision</div>
@@ -201,68 +186,22 @@ function JobsView({ token }: { token: string }) {
         </CardContent></Card>
       </div>
 
-      {/* (b) Readiness checklist + ARM */}
+      {/* (b) Control plane — chat only */}
       <Card className="mb-4">
         <CardContent className="p-5">
-          <div className="flex items-start justify-between flex-wrap gap-3 mb-3">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-sky-600 dark:text-sky-400 mt-0.5 shrink-0" />
             <div>
-              <h2 className="text-lg font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                Readiness checklist
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                Controlled from chat
               </h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                Verifies every dependency, then arms the daily sender. This check does
-                <strong> not send any email</strong> — it only arms. The final live flip
-                (EMAIL_LIVE) is always Mayor's manual action.
+                Arming, sending, and pausing the campaign happen in conversation —
+                this tab is reporting only. Daily check-ins land in chat at 07:00,
+                12:30, and 18:00 ET with status, results, and the send call.
               </p>
             </div>
-            <Button onClick={runWireUp} disabled={wireRunning}>
-              {wireRunning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />}
-              {wireRunning ? "Checking…" : "Run readiness check (arms sender)"}
-            </Button>
           </div>
-
-          {wireError && (
-            <div className="mb-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" /> ⚠ {wireError}
-            </div>
-          )}
-
-          {wireResult?.armed && (
-            <div className="mb-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
-              <div>
-                <strong>Daily sender ARMED.</strong> All checks green — the final live
-                flip (EMAIL_LIVE) remains Mayor's manual action.
-              </div>
-            </div>
-          )}
-
-          {checks.length > 0 ? (
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
-              {checks.map((c, i) => (
-                <div key={c.key || i} className="flex items-start gap-3 px-4 py-2.5 bg-white dark:bg-zinc-900">
-                  {c.ok
-                    ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-                    : <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />}
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {c.label || c.key}
-                      <span className={`ml-2 text-[10px] uppercase font-semibold ${c.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-                        {c.ok ? "pass" : "fail"}
-                      </span>
-                    </div>
-                    {c.detail && <div className="text-xs text-zinc-500 dark:text-zinc-400 break-words">{c.detail}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs text-zinc-500 dark:text-zinc-400 italic">
-              No check run yet — press the button to verify the pipeline end to end.
-              Expected checks: smtp2go_api · brevo_api · fib_gate · seed_test · suppression · product_catalog · cohort · env_live.
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -801,14 +740,6 @@ function fmtDateTime(v: any): string {
   if (v == null || v === "") return "—";
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString();
-}
-
-// Parse a total contact count out of the cohort check's free-text detail,
-// e.g. "3 alerts, 1,248 contacts ready" or "contacts: 1248".
-function parseListSize(detail: string): string | null {
-  if (!detail) return null;
-  const m = detail.match(/([\d,]+)\s*contacts?/i) || detail.match(/contacts?\s*[:=]\s*([\d,]+)/i);
-  return m ? m[1].replace(/,/g, "") : null;
 }
 
 function deriveDecision(gate: any): { label: string; cls: string; note: string } {
