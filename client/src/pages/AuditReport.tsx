@@ -174,10 +174,10 @@ export default function AuditReport() {
     setBuyError("");
     setBuying(true);
     try {
-      const r = await fetch("/api/audit/full-report/checkout", {
+      const r = await fetch("/api/pay/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, url }),
+        body: JSON.stringify({ product_id: "audit-full-report", email, params: { url } }),
       });
       const data = await r.json();
       if (data.already_ready && data.token) {
