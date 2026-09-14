@@ -9,7 +9,7 @@ import { TEASER_SYSTEM, buildTeaserUserMessage } from "../_shared/auditPrompt.js
 import { sendCfEmail } from "../_shared/cfEmail.js";
 
 const FROM_EMAIL = "audit@mehyar.us";
-const OWNER_EMAIL = "info@mehyar.us";
+const OWNER_EMAIL = "mrswelim@gmail.com"; // direct — info@mehyar.us forward is down (Email Routing disabled, Zoho MX conflict)
 const UNSUB_URL = "https://mehyar.us/unsubscribe";
 const PHYSICAL = "MehyarSoft LLC, 228 Park Ave S #92842, New York, NY 10003";
 

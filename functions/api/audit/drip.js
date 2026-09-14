@@ -107,7 +107,7 @@ export async function onRequestPost({ request, env }) {
             subject: d.subject(ctx),
             text: d.text(ctx),
             html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#0f172a;">${d.html(ctx)}</body></html>`,
-            replyTo: "info@mehyar.us",
+            replyTo: "mrswelim@gmail.com",
           });
           if (!r.ok) throw new Error(r.error || "send_failed");
           await env.LEADS_DB.prepare("INSERT OR IGNORE INTO audit_drip_sends (lead_id, day, status) VALUES (?, ?, 'sent')").bind(lead.id, d.day).run();

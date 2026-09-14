@@ -14,7 +14,7 @@ const TIERS = {
 };
 
 const FROM_EMAIL = "audit@mehyar.us";
-const OWNER_EMAIL = "info@mehyar.us";
+const OWNER_EMAIL = "mrswelim@gmail.com"; // direct — info@mehyar.us forward is down (Email Routing disabled, Zoho MX conflict)
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
