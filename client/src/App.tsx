@@ -26,6 +26,7 @@ import AdminMayor from "@/pages/AdminMayor";
 import AdminMoney from "@/pages/AdminMoney";
 import AdminSystem from "@/pages/AdminSystem";
 import AdminSent from "@/pages/AdminSent";
+import AdminJobs from "@/pages/AdminJobs";
 import AdminClients from "@/pages/AdminClients";
 import AdminOpportunityDetail from "@/pages/_deprecated/AdminOpportunityDetail";
 import Unsubscribe from "@/pages/Unsubscribe";
@@ -213,6 +214,8 @@ function App() {
             <Route path="/admin/system/" component={AdminSystem} />
             <Route path="/admin/sent" component={AdminSent} />
             <Route path="/admin/sent/" component={AdminSent} />
+            <Route path="/admin/jobs" component={AdminJobs} />
+            <Route path="/admin/jobs/" component={AdminJobs} />
 
             {/* ─── Legal + utility — must come BEFORE the legacy
                  <Redirect> block. The Switch returns the first matching

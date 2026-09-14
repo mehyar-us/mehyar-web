@@ -102,10 +102,11 @@ const TABS = [
   { key: "crm",   label: "🧲 CRM",      href: "/admin/leads",            icon: Briefcase,   tagline: "Every lead, every deal — one table" },
   { key: "sent",  label: "📤 Sent",     href: "/admin/sent",             icon: Send,        tagline: "Outbound history — to/from/subject/body/replies" },
   { key: "money", label: "💰 Money",    href: "/admin/money",            icon: DollarSign,  tagline: "Forecast · Win · Case studies" },
+  { key: "jobs",  label: "💼 Jobs",     href: "/admin/jobs",             icon: Briefcase,   tagline: "Email growth engine — mehyar.jobs" },
   { key: "system", label: "⚙ System",   href: "/admin/system",           icon: Settings,    tagline: "Audit · Cron · Backups" },
 ];
 
-export function AdminNav({ active, onLogout, onRefresh }: { active: "clients"|"now"|"mayor"|"crm"|"sent"|"money"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
+export function AdminNav({ active, onLogout, onRefresh }: { active: "clients"|"now"|"mayor"|"crm"|"sent"|"money"|"jobs"|"system"; onLogout: () => void; onRefresh?: () => void; }) {
   const [, setLocation] = useLocation();
   return (
     <>
@@ -198,8 +199,9 @@ export function AdminNav({ active, onLogout, onRefresh }: { active: "clients"|"n
                   }`}
                   aria-label={t.label}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? "scale-110" : ""} transition`} />
-                  <span className="text-[10px] font-medium">{t.label.replace(/^\S+\s/, "")}</span>
+                  <Icon className={`w-4 h-4 ${isActive ? "scale-110" : ""} transition`} />
+                  {/* 7 tabs now — keep labels tiny so all slots fit without cramping */}
+                  <span className="text-[9px] font-medium tracking-tight">{t.label.replace(/^\S+\s/, "")}</span>
                 </button>
               );
             })}
