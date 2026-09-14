@@ -4,6 +4,8 @@
 // Skips: unsubscribed leads, converted leads (deep_status != 'none'),
 // suppression_list entries, already-sent days. Batch cap 200/run.
 
+import { sendCfEmail } from "../_shared/cfEmail.js";
+
 const FROM_EMAIL = "audit@mehyar.us";
 const UNSUB_URL = "https://mehyar.us/unsubscribe";
 const AUDIT_URL = "https://mehyar.us/audit";
@@ -66,7 +68,8 @@ export async function onRequestPost({ request, env }) {
     const secret = env?.AUDIT_CRON_SECRET || "";
     if (!secret || auth !== `Bearer ${secret}`) return json({ ok: false, error: "unauthorized" }, 401);
     if (!env?.LEADS_DB) return json({ ok: false, error: "no_db" }, 503);
-    if (!env?.NOTIFY_EMAIL?.send) return json({ ok: false, error: "no_email" }, 503);
+    // Email goes through the verified Cloudflare Email Sending API path
+    // (_shared/cfEmail.js) — no send_email binding required.
 
     const sent = [];
     const skipped = { unsubscribed: 0, converted: 0, suppressed: 0, failed: 0 };
@@ -98,13 +101,15 @@ export async function onRequestPost({ request, env }) {
         } catch {}
         const ctx = { name: lead.name || "", business: lead.business || "", score: lead.teaser_score ?? "–", leak1 };
         try {
-          await env.NOTIFY_EMAIL.send({
-            from: FROM_EMAIL,
+          const r = await sendCfEmail(env, {
+            from: `MehyarSoft Audit <${FROM_EMAIL}>`,
             to: lead.email,
             subject: d.subject(ctx),
             text: d.text(ctx),
             html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#0f172a;">${d.html(ctx)}</body></html>`,
+            replyTo: "info@mehyar.us",
           });
+          if (!r.ok) throw new Error(r.error || "send_failed");
           await env.LEADS_DB.prepare("INSERT OR IGNORE INTO audit_drip_sends (lead_id, day, status) VALUES (?, ?, 'sent')").bind(lead.id, d.day).run();
           sent.push({ lead_id: lead.id, day: d.day, email: lead.email });
         } catch (e) {

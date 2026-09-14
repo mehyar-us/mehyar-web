@@ -6,6 +6,7 @@
 
 import { chatJson, safeJsonParse } from "../_shared/llmChat.js";
 import { TEASER_SYSTEM, buildTeaserUserMessage } from "../_shared/auditPrompt.js";
+import { sendCfEmail } from "../_shared/cfEmail.js";
 
 const FROM_EMAIL = "audit@mehyar.us";
 const OWNER_EMAIL = "info@mehyar.us";
@@ -270,31 +271,30 @@ export async function onRequestPost({ request, env }) {
     ).bind(email, name || null, business || null, finalUrl, report.score, JSON.stringify(report).slice(0, 20000), ipHash).run();
     const leadId = leadRes?.meta?.last_row_id || null;
 
-    // Email the teaser report to the lead.
+    // Email the teaser report to the lead via Cloudflare Email Sending
+    // (verified path — see _shared/cfEmail.js). NOTIFY_EMAIL binding was
+    // never attached in production; the API path needs no binding.
     const lead = { email, name, business };
     let emailed = false;
-    if (env?.NOTIFY_EMAIL?.send) {
-      try {
-        await env.NOTIFY_EMAIL.send({
-          from: FROM_EMAIL,
-          to: email,
-          subject: `Your website scored ${report.score}/100 — 3 money leaks inside`,
-          text: reportEmailText(lead, report),
-          html: reportEmailHtml(lead, report),
-        });
-        emailed = true;
-      } catch (e) { console.error("audit report email failed", e?.message); }
+    {
+      const r = await sendCfEmail(env, {
+        from: `MehyarSoft Audit <${FROM_EMAIL}>`,
+        to: email,
+        subject: `Your website scored ${report.score}/100 — 3 money leaks inside`,
+        text: reportEmailText(lead, report),
+        html: reportEmailHtml(lead, report),
+        replyTo: OWNER_EMAIL,
+      });
+      emailed = r.ok;
+      if (!r.ok) console.error("audit report email failed", r.error);
       // Owner notification.
-      try {
-        await env.NOTIFY_EMAIL.send({
-          from: FROM_EMAIL,
-          to: OWNER_EMAIL,
-          subject: `🔍 New audit lead: ${business || email} scored ${report.score}`,
-          text: `New free audit scan\nEmail: ${email}\nName: ${name || "-"}\nBusiness: ${business || "-"}\nURL: ${finalUrl}\nScore: ${report.score}/100\nLead ID: ${leadId}`,
-        });
-      } catch (e) { console.error("audit owner notify failed", e?.message); }
-    } else {
-      console.error("audit report email skipped: NOTIFY_EMAIL binding missing");
+      const n = await sendCfEmail(env, {
+        from: `MehyarSoft Audit <${FROM_EMAIL}>`,
+        to: OWNER_EMAIL,
+        subject: `🔍 New audit lead: ${business || email} scored ${report.score}`,
+        text: `New free audit scan\nEmail: ${email}\nName: ${name || "-"}\nBusiness: ${business || "-"}\nURL: ${finalUrl}\nScore: ${report.score}/100\nLead ID: ${leadId}`,
+      });
+      if (!n.ok) console.error("audit owner notify failed", n.error);
     }
 
     return json({ ok: true, lead_id: leadId, report: { ...report, _fallback: undefined }, emailed });

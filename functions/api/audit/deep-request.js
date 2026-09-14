@@ -5,6 +5,8 @@
 // Records the request, notifies the owner, confirms to the buyer.
 // Payment is by manual invoice (ACH/wire/check) — no card form on this site.
 
+import { sendCfEmail } from "../_shared/cfEmail.js";
+
 const TIERS = {
   "deep-199": { name: "$199 Deep AI Audit", price: "$199 one-time", delivery: "3–5 business days" },
   "tech-330": { name: "$330 Tech Audit", price: "$330 one-time", delivery: "3–5 business days" },
@@ -50,23 +52,24 @@ export async function onRequestPost({ request, env }) {
     // Stop the sales drip — they're converting.
     await env.LEADS_DB.prepare("UPDATE audit_leads SET unsubscribed = 0 WHERE email = ?").bind(email).run();
 
-    if (env?.NOTIFY_EMAIL?.send) {
-      try {
-        await env.NOTIFY_EMAIL.send({
-          from: FROM_EMAIL,
-          to: OWNER_EMAIL,
-          subject: `💰 ${t.name} requested — ${business || email}`,
-          text: `PAID AUDIT REQUEST\nTier: ${t.name} (${t.price})\nEmail: ${email}\nName: ${name || "-"}\nBusiness: ${business || "-"}\nURL: ${url || "-"}\n\nNext: send a manual invoice (ACH/wire/check) and confirm scope.`,
-        });
-      } catch (e) { console.error("deep-request owner notify failed", e?.message); }
-      try {
-        await env.NOTIFY_EMAIL.send({
-          from: FROM_EMAIL,
-          to: email,
-          subject: `Your ${t.name} is reserved — next step`,
-          text: `Thanks${name ? " " + name : ""} — your ${t.name} (${t.price}) is reserved.\n\nDelivery: ${t.delivery}.\n\nNext step: we'll send a manual invoice with ACH/wire/check instructions. Once it's settled, the audit starts — no card form, no surprises.\n\nQuestions? Just reply to this email.\n\n— MehyarSoft`,
-        });
-      } catch (e) { console.error("deep-request buyer confirm failed", e?.message); }
+    // Owner + buyer notifications via the verified Cloudflare Email Sending
+    // API path (_shared/cfEmail.js) — no send_email binding required.
+    {
+      const n = await sendCfEmail(env, {
+        from: `MehyarSoft Audit <${FROM_EMAIL}>`,
+        to: OWNER_EMAIL,
+        subject: `💰 ${t.name} requested — ${business || email}`,
+        text: `PAID AUDIT REQUEST\nTier: ${t.name} (${t.price})\nEmail: ${email}\nName: ${name || "-"}\nBusiness: ${business || "-"}\nURL: ${url || "-"}\n\nNext: send a manual invoice (ACH/wire/check) and confirm scope.`,
+      });
+      if (!n.ok) console.error("deep-request owner notify failed", n.error);
+      const c = await sendCfEmail(env, {
+        from: `MehyarSoft Audit <${FROM_EMAIL}>`,
+        to: email,
+        subject: `Your ${t.name} is reserved — next step`,
+        text: `Thanks${name ? " " + name : ""} — your ${t.name} (${t.price}) is reserved.\n\nDelivery: ${t.delivery}.\n\nNext step: we'll send a manual invoice with ACH/wire/check instructions. Once it's settled, the audit starts — no card form, no surprises.\n\nQuestions? Just reply to this email.\n\n— MehyarSoft`,
+        replyTo: OWNER_EMAIL,
+      });
+      if (!c.ok) console.error("deep-request buyer confirm failed", c.error);
     }
     return json({ ok: true, tier, message: "Request received. We'll send your invoice shortly." });
   } catch (e) {
