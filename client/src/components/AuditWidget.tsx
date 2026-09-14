@@ -34,13 +34,29 @@ const SCAN_STEPS = [
 ];
 
 // The scan runs server-side; the client only holds the scan_id. Stored in
-// sessionStorage so a reload — or coming back after switching apps —
-// resumes polling the same scan instead of starting over.
+// localStorage (not sessionStorage) so the scan survives the OS killing the
+// background tab entirely. Auto-resume only within 30 minutes — older
+// entries are ignored.
 const SCAN_CTX_KEY = "audit_scan_ctx";
+const SCAN_CTX_TTL_MS = 30 * 60 * 1000;
 const POLL_MS = 2500;
 const MAX_POLL_MISSES = 8;
 
-type ScanCtx = { scan_id: string; email: string; url: string };
+type ScanCtx = { scan_id: string; email: string; url: string; started_at?: number };
+
+const readScanCtx = (): ScanCtx | null => {
+  try {
+    const raw = localStorage.getItem(SCAN_CTX_KEY);
+    if (!raw) return null;
+    const ctx = JSON.parse(raw) as ScanCtx;
+    if (!ctx?.scan_id || !/^[0-9a-f]{32}$/.test(ctx.scan_id)) return null;
+    if (!ctx.started_at || Date.now() - ctx.started_at > SCAN_CTX_TTL_MS) {
+      localStorage.removeItem(SCAN_CTX_KEY);
+      return null;
+    }
+    return ctx;
+  } catch { return null; }
+};
 
 const progressToStep = (p: string | null): number =>
   p === "fetching" ? 0 : p === "analyzing" ? 2 : p === "finalizing" ? 3 : 0;
@@ -112,7 +128,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
   };
 
   const clearScanCtx = () => {
-    try { sessionStorage.removeItem(SCAN_CTX_KEY); } catch { /* private mode */ }
+    try { localStorage.removeItem(SCAN_CTX_KEY); } catch { /* private mode */ }
   };
 
   const failScan = (message: string) => {
@@ -173,7 +189,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
   };
 
   const startScanSession = (ctx: ScanCtx) => {
-    try { sessionStorage.setItem(SCAN_CTX_KEY, JSON.stringify(ctx)); } catch { /* private mode */ }
+    try { localStorage.setItem(SCAN_CTX_KEY, JSON.stringify({ ...ctx, started_at: Date.now() })); } catch { /* private mode */ }
     setError("");
     setReconnecting(false);
     setPhase("scanning");
@@ -184,10 +200,8 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
   // Resume a scan that was in flight across a reload or app switch.
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(SCAN_CTX_KEY);
-      if (!raw) return;
-      const ctx = JSON.parse(raw) as ScanCtx;
-      if (!ctx?.scan_id) return;
+      const ctx = readScanCtx();
+      if (!ctx) return;
       setUrl(ctx.url || "");
       setEmail(ctx.email || "");
       setPhase("scanning");
@@ -360,8 +374,8 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
                   type="button"
                   onClick={() => {
                     try {
-                      const raw = sessionStorage.getItem(SCAN_CTX_KEY);
-                      if (raw) { const ctx = JSON.parse(raw) as ScanCtx; if (ctx?.scan_id) startScanSession(ctx); }
+                      const rctx = readScanCtx();
+                      if (rctx) startScanSession(rctx);
                     } catch { /* ignore */ }
                   }}
                   className="mt-2 font-semibold underline underline-offset-4"
