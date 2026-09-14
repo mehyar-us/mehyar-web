@@ -67,6 +67,11 @@ jobs:
           ! grep -R "TURNSTILE_SECRET_KEY" dist/public/assets/*.js >/dev/null || { echo "Secret env name leaked into client bundle"; exit 1; }
       - name: Deploy Pages site and Functions
         run: |
+          echo "Setting secrets via wrangler..."
+          # Test if secrets are non-empty (without printing values)
+          test -n "${{ secrets.MEHYARSOFT_ADMIN_USERNAME }}" || echo "WARNING: MEHYARSOFT_ADMIN_USERNAME is empty in GitHub!"
+          test -n "${{ secrets.MEHYARSOFT_ADMIN_PASSWORD }}" || echo "WARNING: MEHYARSOFT_ADMIN_PASSWORD is empty in GitHub!"
+          test -n "${{ secrets.TURNSTILE_SECRET_KEY }}" || echo "WARNING: TURNSTILE_SECRET_KEY is empty in GitHub!"
           echo "${{ secrets.CLOUDFLARE_AI_GATEWAY_TOKEN }}" | npx wrangler pages secret put CLOUDFLARE_AI_GATEWAY_TOKEN --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.CLOUDFLARE_AI_GATEWAY_TOKEN }}" | npx wrangler pages secret put LLM_API_KEY --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.CLOUDFLARE_EMAIL }}" | npx wrangler pages secret put CLOUDFLARE_EMAIL --project-name=mehyar-web || echo "skip secret set"
