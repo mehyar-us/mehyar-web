@@ -76,6 +76,7 @@ jobs:
           echo "${{ secrets.MEHYARSOFT_API_ADMIN_USERNAME }}" | npx wrangler pages secret put MEHYARSOFT_API_ADMIN_USERNAME --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.CRM_ACCESS_CLIENT_ID }}" | npx wrangler pages secret put CRM_ACCESS_CLIENT_ID --project-name=mehyar-web || echo "skip secret set"
           echo "${{ secrets.CLOUDFLARE_API_KEY }}" | npx wrangler pages secret put CF_EMAIL_GLOBAL_KEY --project-name=mehyar-web || echo "skip secret set"
+          echo "${{ secrets.AUDIT_CRON_SECRET }}" | npx wrangler pages secret put AUDIT_CRON_SECRET --project-name=mehyar-web || echo "skip secret set"
           npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
       - name: Verify production runtime client config
         run: |
