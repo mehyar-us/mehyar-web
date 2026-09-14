@@ -67,53 +67,59 @@ jobs:
           ! grep -R "TURNSTILE_SECRET_KEY" dist/public/assets/*.js >/dev/null || { echo "Secret env name leaked into client bundle"; exit 1; }
       - name: Deploy Pages site and Functions
         run: |
-          echo "Deploying (secrets restored via API after deploy)..."
-          npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
-      - name: Restore secrets via Cloudflare API
-        run: |
-          echo "Restoring secrets (wrangler deploy wipes API-set vars)..."
+          echo "Injecting secrets into wrangler.toml [vars] (not committed)..."
           python3 << 'PYEOF'
-          import json, urllib.request, os
-          account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
-          email = os.environ["CLOUDFLARE_EMAIL"]
-          api_key = os.environ["CLOUDFLARE_API_KEY"]
+          import os
           secrets = {
-              "MEHYARSOFT_ADMIN_EMAIL": os.environ.get("SECRET_ADMIN_EMAIL", ""),
-              "MEHYARSOFT_ADMIN_USERNAME": os.environ.get("SECRET_ADMIN_USERNAME", ""),
-              "MEHYARSOFT_API_ADMIN_USERNAME": os.environ.get("SECRET_API_ADMIN_USERNAME", ""),
-              "MEHYARSOFT_ADMIN_PASSWORD": os.environ.get("SECRET_ADMIN_PASSWORD", ""),
-              "CLOUDFLARE_EMAIL": email,
-              "AUDIT_CRON_SECRET": os.environ.get("SECRET_AUDIT_CRON", ""),
-              "TURNSTILE_SECRET_KEY": os.environ.get("SECRET_TURNSTILE", ""),
-              "CRM_ACCESS_CLIENT_ID": os.environ.get("SECRET_CRM_ID", ""),
-              "ADMIN_SESSION_SECRET": os.environ.get("SECRET_SESSION", ""),
+              "MEHYARSOFT_ADMIN_EMAIL": os.environ["SECRET_ADMIN_EMAIL"],
+              "MEHYARSOFT_ADMIN_USERNAME": os.environ["SECRET_ADMIN_USERNAME"],
+              "MEHYARSOFT_API_ADMIN_USERNAME": os.environ["SECRET_API_ADMIN_USERNAME"],
+              "MEHYARSOFT_ADMIN_PASSWORD": os.environ["SECRET_ADMIN_PASSWORD"],
+              "CLOUDFLARE_EMAIL": os.environ["SECRET_CF_EMAIL"],
+              "AUDIT_CRON_SECRET": os.environ["SECRET_AUDIT_CRON"],
+              "TURNSTILE_SECRET_KEY": os.environ["SECRET_TURNSTILE"],
+              "CRM_ACCESS_CLIENT_ID": os.environ["SECRET_CRM_ID"],
+              "ADMIN_SESSION_SECRET": os.environ["SECRET_SESSION"],
           }
-          # Filter out empty
-          secrets = {k: v for k, v in secrets.items() if v}
-          env_vars = {k: {"type": "plain_text", "value": v} for k, v in secrets.items()}
-          data = json.dumps({
-              "deployment_configs": {
-                  "production": {"env_vars": env_vars},
-                  "preview": {"env_vars": env_vars}
-              }
-          }).encode()
-          req = urllib.request.Request(
-              f"https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/mehyar-web",
-              data=data, method="PATCH",
-              headers={"Content-Type": "application/json", "X-Auth-Email": email, "X-Auth-Key": api_key}
-          )
-          with urllib.request.urlopen(req, timeout=30) as r:
-              result = json.loads(r.read())
-              print(f"Secrets restore: {'OK' if result.get('success') else 'FAILED'}")
+          with open("wrangler.toml", "r") as f:
+              lines = f.readlines()
+          # Find [vars] section and insert after its last var (before next section)
+          out = []
+          in_vars = False
+          inserted = False
+          for line in lines:
+              stripped = line.strip()
+              if stripped == "[vars]":
+                  in_vars = True
+                  out.append(line)
+                  continue
+              if in_vars and stripped.startswith("["):
+                  # Next section, insert our vars before it
+                  for k, v in secrets.items():
+                      if v:  # Only non-empty
+                          out.append(f'{k} = "{v}"\n')
+                  inserted = True
+                  in_vars = False
+                  out.append(line)
+                  continue
+              out.append(line)
+          if in_vars and not inserted:
+              # [vars] was last section, append at end
+              for k, v in secrets.items():
+                  if v:
+                      out.append(f'{k} = "{v}"\n')
+          with open("wrangler.toml", "w") as f:
+              f.writelines(out)
+          print("Secrets injected into wrangler.toml")
           PYEOF
+          echo "Deploying..."
+          npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
-          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
           SECRET_ADMIN_EMAIL: ${{ secrets.MEHYARSOFT_ADMIN_EMAIL }}
           SECRET_ADMIN_USERNAME: ${{ secrets.MEHYARSOFT_ADMIN_USERNAME }}
           SECRET_API_ADMIN_USERNAME: ${{ secrets.MEHYARSOFT_API_ADMIN_USERNAME }}
           SECRET_ADMIN_PASSWORD: ${{ secrets.MEHYARSOFT_ADMIN_PASSWORD }}
+          SECRET_CF_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           SECRET_AUDIT_CRON: ${{ secrets.AUDIT_CRON_SECRET }}
           SECRET_TURNSTILE: ${{ secrets.TURNSTILE_SECRET_KEY }}
           SECRET_CRM_ID: ${{ secrets.CRM_ACCESS_CLIENT_ID }}
