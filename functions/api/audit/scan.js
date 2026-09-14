@@ -276,7 +276,7 @@ export async function onRequestPost({ request, env }) {
     }
     const signals = extractSignals(html, { requestedUrl: url, finalUrl, status, loadMs: Date.now() - t0 });
 
-    // AI analysis — Llama 3.3 70B, strongest model on Workers AI.
+    // AI analysis — GPT-OSS 120B, strongest model on Workers AI.
     let report;
     const ai = await chatJson({
       env,
@@ -284,7 +284,7 @@ export async function onRequestPost({ request, env }) {
         { role: "system", content: TEASER_SYSTEM },
         { role: "user", content: buildTeaserUserMessage(signals) },
       ],
-      max_tokens: 1400,
+      max_tokens: 2500,
       temperature: 0.3,
     });
     if (ai.used_llm && ai.content) {
