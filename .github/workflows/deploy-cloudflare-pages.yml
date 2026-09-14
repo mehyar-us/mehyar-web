@@ -67,22 +67,7 @@ jobs:
           ! grep -R "TURNSTILE_SECRET_KEY" dist/public/assets/*.js >/dev/null || { echo "Secret env name leaked into client bundle"; exit 1; }
       - name: Deploy Pages site and Functions
         run: |
-          echo "Setting secrets via wrangler..."
-          # Test if secrets are non-empty (without printing values)
-          test -n "${{ secrets.MEHYARSOFT_ADMIN_USERNAME }}" || echo "WARNING: MEHYARSOFT_ADMIN_USERNAME is empty in GitHub!"
-          test -n "${{ secrets.MEHYARSOFT_ADMIN_PASSWORD }}" || echo "WARNING: MEHYARSOFT_ADMIN_PASSWORD is empty in GitHub!"
-          test -n "${{ secrets.TURNSTILE_SECRET_KEY }}" || echo "WARNING: TURNSTILE_SECRET_KEY is empty in GitHub!"
-          echo "${{ secrets.CLOUDFLARE_AI_GATEWAY_TOKEN }}" | npx wrangler pages secret put CLOUDFLARE_AI_GATEWAY_TOKEN --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.CLOUDFLARE_AI_GATEWAY_TOKEN }}" | npx wrangler pages secret put LLM_API_KEY --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.CLOUDFLARE_EMAIL }}" | npx wrangler pages secret put CLOUDFLARE_EMAIL --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.TURNSTILE_SECRET_KEY }}" | npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.MEHYARSOFT_ADMIN_EMAIL }}" | npx wrangler pages secret put MEHYARSOFT_ADMIN_EMAIL --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.MEHYARSOFT_ADMIN_PASSWORD }}" | npx wrangler pages secret put MEHYARSOFT_ADMIN_PASSWORD --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.MEHYARSOFT_ADMIN_USERNAME }}" | npx wrangler pages secret put MEHYARSOFT_ADMIN_USERNAME --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.MEHYARSOFT_API_ADMIN_USERNAME }}" | npx wrangler pages secret put MEHYARSOFT_API_ADMIN_USERNAME --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.CRM_ACCESS_CLIENT_ID }}" | npx wrangler pages secret put CRM_ACCESS_CLIENT_ID --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.CLOUDFLARE_API_KEY }}" | npx wrangler pages secret put CF_EMAIL_GLOBAL_KEY --project-name=mehyar-web || echo "skip secret set"
-          echo "${{ secrets.AUDIT_CRON_SECRET }}" | npx wrangler pages secret put AUDIT_CRON_SECRET --project-name=mehyar-web || echo "skip secret set"
+          echo "Deploying (secrets managed via Cloudflare API, not wrangler)..."
           npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
       - name: Verify production runtime client config
         run: |
