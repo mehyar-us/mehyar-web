@@ -11,6 +11,8 @@ function json(data, status = 200) {
   });
 }
 
+import { mirrorPaymentToLedger } from "../../_shared/payFulfillment.js";
+
 async function verifyStripeSignature(rawBody, sigHeader, secret) {
   // Stripe-Signature: t=...,v1=...
   const parts = Object.fromEntries(
@@ -95,6 +97,15 @@ export async function onRequestPost({ request, env, waitUntil }) {
         }
       }
     }
+    // Centralized-ledger mirror: sessions created by the shared
+    // /api/pay/checkout carry metadata.payment_id. This endpoint's Stripe
+    // destination is the one with proven delivery, so mirror the paid
+    // marking (and digital fulfillment) into billing_payments here. The
+    // dedicated /api/pay/webhook has duplicate guards, so if it ever does
+    // receive the event too, double-processing is harmless.
+    // mirrorPaymentToLedger never throws; the audit path above is unaffected.
+    const sess = (event.data && event.data.object) ? event.data.object : {};
+    await mirrorPaymentToLedger({ db: env.LEADS_DB, env }, sess);
     return json({ ok: true });
   } catch (e) {
     console.error("stripe webhook error", e && e.message);
