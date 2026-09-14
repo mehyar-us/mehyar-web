@@ -139,7 +139,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
     const db = env.LEADS_DB;
     const rawBody = await request.text();
     const sig = request.headers.get("stripe-signature") || "";
-    const secrets = [env.STRIPE_WEBHOOK_SECRET, env.STRIPE_WEBHOOK_SECRET_TEST].filter(Boolean);
+    // Live secret, then the test secrets for each registered test endpoint:
+    // STRIPE_WEBHOOK_SECRET_TEST  = legacy we_1UFfQw8y1yiOc3KfrNdr3Y4n (legacy webhook URL)
+    // STRIPE_WEBHOOK_SECRET_TEST2 = we_1UFibf4NaXpNyV6yLNtqmBuY (/api/pay/webhook)
+    const secrets = [env.STRIPE_WEBHOOK_SECRET, env.STRIPE_WEBHOOK_SECRET_TEST, env.STRIPE_WEBHOOK_SECRET_TEST2].filter(Boolean);
     let verified = false;
     for (const s of secrets) {
       if (await verifyStripeSignature(rawBody, sig, s)) { verified = true; break; }

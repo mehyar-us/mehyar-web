@@ -80,6 +80,9 @@ jobs:
               "TURNSTILE_SECRET_KEY": os.environ["SECRET_TURNSTILE"],
               "CRM_ACCESS_CLIENT_ID": os.environ["SECRET_CRM_ID"],
               "ADMIN_SESSION_SECRET": os.environ["SECRET_SESSION"],
+              # 2026-09-14: signing secret for the NEW test-mode webhook endpoint
+              # we_1UFibf4NaXpNyV6yLNtqmBuY -> https://mehyar.us/api/pay/webhook
+              "STRIPE_WEBHOOK_SECRET_TEST2": os.environ["SECRET_STRIPE_WH_TEST2"],
           }
           with open("wrangler.toml", "r") as f:
               lines = f.readlines()
@@ -124,6 +127,7 @@ jobs:
           SECRET_TURNSTILE: ${{ secrets.TURNSTILE_SECRET_KEY }}
           SECRET_CRM_ID: ${{ secrets.CRM_ACCESS_CLIENT_ID }}
           SECRET_SESSION: ${{ secrets.ADMIN_SESSION_SECRET }}
+          SECRET_STRIPE_WH_TEST2: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST2 }}
       - name: Verify production runtime client config
         run: |
           CONFIG_JSON="$(curl -fsS https://mehyar.us/api/client-config)"
