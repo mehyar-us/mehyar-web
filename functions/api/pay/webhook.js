@@ -11,6 +11,8 @@
 // NOTE: the legacy /api/audit/full-report/webhook is left untouched —
 // sessions it created in flight keep working on their registered URLs.
 
+import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -91,6 +93,44 @@ const fulfillHooks = {
 
   // Default: payment is recorded as paid; nothing else to do.
   async none() { /* no-op */ },
+
+  // Digital download product. Emails the buyer a token-gated download link.
+  // The token is the payment's access_token (unguessable, per-purchase).
+  async digital({ db, env }, payment) {
+    const product = await db.prepare(
+      "SELECT id, name, brand FROM billing_products WHERE id = ?"
+    ).bind(payment.product_id).first();
+    if (!product) return;
+    const downloadUrl = "https://mehyar.us/api/pay/download?token=" + payment.access_token;
+    const isSPG = product.brand === "stuffprettygood";
+    const brandName = isSPG ? "Stuff Pretty Good" : "MehyarSoft";
+    const fromEmail = isSPG ? "hello@stuffprettygood.com" : "team@mehyar.us";
+    const subject = `Your ${product.name} is ready`;
+    const text =
+      `Thanks for your purchase!\n\n` +
+      `Your download for "${product.name}" is ready:\n${downloadUrl}\n\n` +
+      `This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.\n\n` +
+      `-- ${brandName}`;
+    const html =
+      `<p>Thanks for your purchase!</p>` +
+      `<p>Your download for <strong>${product.name}</strong> is ready:</p>` +
+      `<p><a href="${downloadUrl}" style="display:inline-block;background:#111827;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Download your guide</a></p>` +
+      `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${downloadUrl}">${downloadUrl}</a></p>` +
+      `<p style="color:#6b7280;font-size:13px;">This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.</p>` +
+      `<p>-- ${brandName}</p>`;
+    const result = await sendCloudflareEmail(env, {
+      from: fromEmail,
+      fromName: brandName,
+      to: payment.email,
+      replyTo: "info@mehyar.us",
+      subject,
+      text,
+      html,
+    });
+    if (!result.ok) {
+      console.error("pay/webhook digital email failed", payment.product_id, result.error);
+    }
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
