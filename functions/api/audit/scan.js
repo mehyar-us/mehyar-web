@@ -209,6 +209,8 @@ export async function onRequestPost({ request, env }) {
     const url = normalizeUrl(body.url);
     const name = sanitize(body.name, 120);
     const business = sanitize(body.business, 160);
+    const phone = sanitize(body.phone, 40);
+    const zip = sanitize(body.zip, 16);
 
     // Internal mode: prospect auto-scan. Bearer AUDIT_CRON_SECRET, no lead
     // capture, no emails — returns the AI report only. Powers the Mayor
@@ -310,9 +312,9 @@ export async function onRequestPost({ request, env }) {
 
     // Store lead.
     const leadRes = await env.LEADS_DB.prepare(
-      `INSERT INTO audit_leads (email, name, business, url, teaser_score, teaser_json, ip_hash, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'site')`
-    ).bind(email, name || null, business || null, finalUrl, report.score, JSON.stringify(report).slice(0, 20000), ipHash).run();
+      `INSERT INTO audit_leads (email, name, business, phone, zip, url, teaser_score, teaser_json, ip_hash, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'site')`
+    ).bind(email, name || null, business || null, phone || null, zip || null, finalUrl, report.score, JSON.stringify(report).slice(0, 20000), ipHash).run();
     const leadId = leadRes?.meta?.last_row_id || null;
 
     // Email the teaser report to the lead via Cloudflare Email Sending

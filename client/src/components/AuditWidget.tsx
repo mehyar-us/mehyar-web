@@ -9,16 +9,6 @@ import { Label } from "@/components/ui/label";
 const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
 const TURNSTILE_SITE_KEY = "0x4AAAAAAE0BuD-W_-t-zuK8";
 
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (el: HTMLElement, opts: Record<string, unknown>) => string;
-      reset: (id: string) => void;
-      getResponse: (id: string) => string;
-    };
-  }
-}
-
 type Leak = { title: string; what: string; money: string };
 type Pipeline = { name: string; what: string; upside: string };
 type Report = {
@@ -45,6 +35,8 @@ const SCAN_STEPS = [
 export default function AuditWidget({ compact = false }: { compact?: boolean }) {
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [zip, setZip] = useState("");
   const [phase, setPhase] = useState<Phase>("form");
   const [stepIdx, setStepIdx] = useState(0);
   const [report, setReport] = useState<Report | null>(null);
@@ -105,7 +97,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
       const r = await fetch("/api/audit/scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url, email, turnstileToken }),
+        body: JSON.stringify({ url, email, phone, zip, turnstileToken }),
       });
       const data = await r.json();
       if (!data.ok) throw new Error(data.message || data.error || "Scan failed. Check the URL and try again.");
@@ -228,12 +220,22 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               <Label htmlFor="aw-url">Your website</Label>
               <div className="relative mt-2">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input id="aw-url" type="text" inputMode="url" required placeholder="yourbusiness.com" value={url} onChange={(e) => setUrl(e.target.value)} className="pl-10 h-12 text-base" />
+                <Input id="aw-url" name="website" type="text" inputMode="url" autoComplete="url" required placeholder="yourbusiness.com" value={url} onChange={(e) => setUrl(e.target.value)} className="pl-10 h-12 text-base" />
               </div>
             </div>
             <div>
               <Label htmlFor="aw-email">Work email <span className="text-muted-foreground">(your free report lands here)</span></Label>
-              <Input id="aw-email" type="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
+              <Input id="aw-email" name="email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="aw-phone">Phone <span className="text-muted-foreground">(optional)</span></Label>
+                <Input id="aw-phone" name="tel" type="tel" inputMode="tel" autoComplete="tel" placeholder="(555) 123-4567" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-2 h-12 text-base" />
+              </div>
+              <div>
+                <Label htmlFor="aw-zip">ZIP <span className="text-muted-foreground">(optional)</span></Label>
+                <Input id="aw-zip" name="postal-code" type="text" inputMode="numeric" autoComplete="postal-code" placeholder="11209" value={zip} onChange={(e) => setZip(e.target.value)} className="mt-2 h-12 text-base" />
+              </div>
             </div>
             {phase === "error" && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
             <div ref={turnstileBoxRef} className="flex justify-center" />
