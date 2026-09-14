@@ -74,6 +74,7 @@ export default function BillingCheckout() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [website, setWebsite] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiSuccess, setApiSuccess] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -91,6 +92,7 @@ export default function BillingCheckout() {
   }, [serviceParam]);
 
   const selected = useMemo(() => MANUAL_INVOICE_SERVICES.find((service) => service.id === selectedServiceId) || MANUAL_INVOICE_SERVICES[0], [selectedServiceId]);
+  const auditTier = AUDIT_TIER_MAP[selected.id];
 
   useEffect(() => {
     trackPublicAnalyticsEvent("invoice_request", { service_id: selectedServiceId, step: "manual_invoice_view" });
@@ -105,18 +107,23 @@ export default function BillingCheckout() {
     trackPublicAnalyticsEvent("invoice_request", { service_id: selected.id, step: "manual_invoice_submit" });
 
     // Audit tiers: record server-side (lead linked, owner notified, buyer confirmed).
-    const auditTier = AUDIT_TIER_MAP[selected.id];
-    if (auditTier) {
+    const tier = auditTier;
+    if (tier) {
       try {
         const r = await fetch("/api/audit/deep-request", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email, name, business: businessName, tier: auditTier }),
+          body: JSON.stringify({ email, name, business: businessName, url: website, tier }),
         });
         const data = await r.json();
         if (data.ok) {
           setApiSuccess(true);
           trackPublicAnalyticsEvent("invoice_request", { service_id: selected.id, step: "manual_invoice_recorded" });
+          setIsSubmitting(false);
+          return;
+        }
+        if (data.error === "invalid_url") {
+          setApiError("Please enter your website URL — the audit needs a site to scan.");
           setIsSubmitting(false);
           return;
         }
@@ -180,6 +187,9 @@ export default function BillingCheckout() {
                 <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
               </div>
               <div className="space-y-2"><Label htmlFor="business">Business name</Label><Input id="business" value={businessName} onChange={(event) => setBusinessName(event.target.value)} /></div>
+              {auditTier ? (
+                <div className="space-y-2"><Label htmlFor="website">Website to audit</Label><Input id="website" type="url" placeholder="https://yoursite.com" value={website} onChange={(event) => setWebsite(event.target.value)} required /></div>
+              ) : null}
               {apiSuccess && (
                 <div className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
                   <p className="font-semibold">Request received ✓</p>

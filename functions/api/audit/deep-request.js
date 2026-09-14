@@ -41,9 +41,11 @@ export async function onRequestPost({ request, env }) {
         "UPDATE audit_leads SET name = COALESCE(NULLIF(?, ''), name), business = COALESCE(NULLIF(?, ''), business), url = COALESCE(NULLIF(?, ''), url), deep_status = 'requested', deep_requested_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?"
       ).bind(name, business, url, existing.id).run();
     } else {
+      // New buyer: the website URL is required — it's a website audit.
+      if (!url) return json({ ok: false, error: "invalid_url", message: "Your website URL is required for the audit." }, 400);
       await env.LEADS_DB.prepare(
         "INSERT INTO audit_leads (email, name, business, url, deep_status, deep_requested_at, source) VALUES (?, ?, ?, ?, 'requested', strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'site')"
-      ).bind(email, name || null, business || null, url || null).run();
+      ).bind(email, name || null, business || null, url).run();
     }
     // Stop the sales drip — they're converting.
     await env.LEADS_DB.prepare("UPDATE audit_leads SET unsubscribed = 0 WHERE email = ?").bind(email).run();

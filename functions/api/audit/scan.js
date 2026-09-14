@@ -191,13 +191,23 @@ export async function onRequestPost({ request, env }) {
     const name = sanitize(body.name, 120);
     const business = sanitize(body.business, 160);
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, error: "invalid_email" }, 400);
+    // Internal mode: prospect auto-scan. Bearer AUDIT_CRON_SECRET, no lead
+    // capture, no emails — returns the AI report only. Powers the Mayor
+    // outreach engine's personalized cold emails.
+    const authz = request.headers.get("authorization") || "";
+    const internal = body.internal === true
+      && env.AUDIT_CRON_SECRET
+      && authz === "Bearer " + env.AUDIT_CRON_SECRET;
+
+    if (!internal) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, error: "invalid_email" }, 400);
+    }
     if (!url) return json({ ok: false, error: "invalid_url" }, 400);
 
-    // Rate limit: 3 scans/hour per IP (KV best-effort).
+    // Rate limit: 3 scans/hour per IP (KV best-effort). Skipped for internal.
     const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const ipHash = await sha256hex("audit-scan|" + ip);
-    if (env?.INTAKE_KV) {
+    if (env?.INTAKE_KV && !internal) {
       const k = `audit:scan:ip:${ipHash}`;
       const n = Number((await env.INTAKE_KV.get(k)) || "0");
       if (n >= 3) return json({ ok: false, error: "rate_limited", message: "Too many scans — try again in an hour." }, 429);
@@ -247,6 +257,11 @@ export async function onRequestPost({ request, env }) {
     }
     if (!report) report = heuristicFallback(signals);
     report.score = Math.max(0, Math.min(100, Math.round(report.score)));
+
+    // Internal mode: return the report only — no lead capture, no emails.
+    if (internal) {
+      return json({ ok: true, internal: true, report: { ...report, _fallback: undefined } });
+    }
 
     // Store lead.
     const leadRes = await env.LEADS_DB.prepare(
