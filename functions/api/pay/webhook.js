@@ -131,6 +131,16 @@ const fulfillHooks = {
       console.error("pay/webhook digital email failed", payment.product_id, result.error);
     }
   },
+
+  // Designful AI design deliverables. Creates the designful_orders row
+  // (idempotent on payment_id via idx_designful_orders_payment), unifies the
+  // access token onto the billing_payments row, then hands off to the
+  // standalone module for background generation + buyer email.
+  async designful({ db, env, waitUntil }, payment) {
+    const { fulfillDesignful } = await import("../_shared/fulfillDesignful.js");
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillDesignful({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
