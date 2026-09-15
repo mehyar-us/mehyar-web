@@ -121,6 +121,10 @@ jobs:
           # Copy functions/ to dist/public/functions/ so the webhook and API routes deploy.
           rm -rf dist/public/functions
           cp -r functions dist/public/functions
+          echo "=== functions copied ==="
+          ls dist/public/functions/api/pay/
+          grep -c "fulfillDesignful" dist/public/functions/api/pay/webhook.js
+          grep -c "webhook_debug" dist/public/functions/api/pay/webhook.js
           npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
         env:
           SECRET_ADMIN_EMAIL: ${{ secrets.MEHYARSOFT_ADMIN_EMAIL }}
