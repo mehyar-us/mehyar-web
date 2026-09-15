@@ -15,6 +15,7 @@
 //   5. BabyPeek — https://baby.mehyar.us (AI future-baby portraits)
 //   6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
 //   7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
+//   8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
 // Plus any future apps MehyarSoft ships.
 //
 // Two paths are offered:
@@ -25,7 +26,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette } from "lucide-react";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -125,6 +126,18 @@ const apps: AppInfo[] = [
       "Email address (if you provide one for match alerts), your resume / profile data used for scoring, and your match history.",
     whatWeDelete:
       "Email address, resume / profile data, and match history tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "designful",
+    name: "Designful",
+    url: "https://designful.mehyar.us",
+    tagline: "AI design studio: fixed-price design products.",
+    icon: Palette,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    whatWeCollect:
+      "Email address (to deliver your purchase and send download links), the business name / website URL / logo you submit for each design job, the generated design deliverables, and checkout records.",
+    whatWeDelete:
+      "Email address, submitted business assets, generated deliverables, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

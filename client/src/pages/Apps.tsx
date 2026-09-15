@@ -137,6 +137,22 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/spg-logo.png",
     accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
   },
+  {
+    id: "designful",
+    name: "Designful",
+    url: "https://designful.mehyar.us",
+    tagline: "Agency-grade design jobs at $49, delivered in minutes.",
+    description:
+      "An AI design studio that ships real design work at fixed prices: homepage teardowns, logo refreshes, ad creative packs, social launch kits, and hero rewrites — each a one-time $49 with a free watermarked preview before you pay.",
+    audience: "Founders and small businesses that need real design output today, not an agency retainer.",
+    highlights: [
+      "Five fixed-price products at $49 each — teardown, logo, ad creative, social kit, hero rewrite",
+      "Free preview before you pay anything — a watermarked sample of your real output",
+      "Delivered in about 15 minutes with a 7-day redo-or-refund guarantee",
+      "Token-gated download links — no account needed",
+    ],
+    accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
+  },
 ];
 
 const buildPillars = [
@@ -378,7 +394,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, app-by-app details (Rizza, AiMech), and the request form.
+            for the full process, app-by-app details (Rizza, AiMech, Designful), and the request form.
           </p>
         </div>
       </section>

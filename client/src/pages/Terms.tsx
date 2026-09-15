@@ -80,6 +80,10 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Curated gifts, kits, and digital guides.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Designful — <a className="text-brand-700 underline dark:text-brand-100" href="https://designful.mehyar.us" target="_blank" rel="noreferrer">designful.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI design studio — fixed-price design jobs.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and white-label hosted PWAs under <code>connectree-*</code> / <code>blue-apple-space-*</code>.</div>
           </li>
