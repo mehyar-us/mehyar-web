@@ -117,6 +117,10 @@ jobs:
           print("Secrets injected into wrangler.toml")
           PYEOF
           echo "Deploying..."
+          # Pages Functions must be inside the uploaded directory for Direct Upload.
+          # Copy functions/ to dist/public/functions/ so the webhook and API routes deploy.
+          rm -rf dist/public/functions
+          cp -r functions dist/public/functions
           npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
         env:
           SECRET_ADMIN_EMAIL: ${{ secrets.MEHYARSOFT_ADMIN_EMAIL }}
