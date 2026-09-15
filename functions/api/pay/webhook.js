@@ -182,6 +182,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
             const product = await db.prepare(
               "SELECT * FROM billing_products WHERE id = ?"
             ).bind(payment.product_id).first();
+            try {
+              await db.prepare(
+                "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'product_lookup', ?)"
+              ).bind(payment.id, JSON.stringify({pid: payment.product_id, found: !!product, fulfillment: product && product.fulfillment}).slice(0,300)).run();
+            } catch {}
             const hook = fulfillHooks[(product && product.fulfillment) || "none"] || fulfillHooks.none;
             try {
               await hook({ db, request, env, waitUntil }, payment, sess);
