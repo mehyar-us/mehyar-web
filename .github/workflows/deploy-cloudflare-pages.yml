@@ -117,15 +117,15 @@ jobs:
           print("Secrets injected into wrangler.toml")
           PYEOF
           echo "Deploying..."
-          # Pages Functions must be inside the uploaded directory for Direct Upload.
-          # Copy functions/ to dist/public/functions/ so the webhook and API routes deploy.
-          rm -rf dist/public/functions
-          cp -r functions dist/public/functions
-          echo "=== functions copied ==="
-          ls dist/public/functions/api/pay/
-          grep -c "fulfillDesignful" dist/public/functions/api/pay/webhook.js
-          grep -c "webhook_debug" dist/public/functions/api/pay/webhook.js
-          npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
+          # Stage a clean deploy dir (Designful-style): static files + functions/
+          # at the root, so wrangler picks up Pages Functions reliably.
+          rm -rf /tmp/pages-stage
+          mkdir -p /tmp/pages-stage
+          cp -r dist/public/. /tmp/pages-stage/
+          cp -r functions /tmp/pages-stage/functions
+          echo "=== staging ==="
+          ls /tmp/pages-stage/functions/api/pay/
+          npx wrangler pages deploy /tmp/pages-stage --project-name=mehyar-web --branch=main
         env:
           SECRET_ADMIN_EMAIL: ${{ secrets.MEHYARSOFT_ADMIN_EMAIL }}
           SECRET_ADMIN_USERNAME: ${{ secrets.MEHYARSOFT_ADMIN_USERNAME }}
