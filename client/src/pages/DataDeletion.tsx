@@ -10,6 +10,11 @@
 // set (see /privacy-policy, /terms). It applies to:
 //   1. Rizza — https://rizza.app (conversational AI for dating-app replies)
 //   2. AiMech — https://aimech.app (AI car diagnostics for everyday drivers)
+//   3. Crayon Kid — https://crayonkid.mehyar.us (personalized AI coloring books)
+//   4. RoastMe — https://roast.mehyar.us (AI photo roasts)
+//   5. BabyPeek — https://baby.mehyar.us (AI future-baby portraits)
+//   6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
+//   7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
 // Plus any future apps MehyarSoft ships.
 //
 // Two paths are offered:
@@ -18,9 +23,9 @@
 //   - Email fallback: anyone can write to info@mehyar.us and we'll action
 //     within 14 days. The 14-day window matches the Privacy Policy.
 //
-// Last updated: 2026-07-19.
+// Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase } from "lucide-react";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -60,6 +65,66 @@ const apps: AppInfo[] = [
       "Email address (if you sign in), the vehicle make / model / year you set up, the symptom descriptions and diagnostic answers you submit, and your saved history of past diagnoses.",
     whatWeDelete:
       "Account record, vehicle profile, full diagnostic history, symptom logs, and any rows tied to your account id in our logs. The diagnostic model itself does not retain your individual inputs after the session — only the rows we explicitly stored.",
+  },
+  {
+    id: "crayonkid",
+    name: "Crayon Kid",
+    url: "https://crayonkid.mehyar.us",
+    tagline: "Personalized AI coloring books for kids.",
+    icon: Pencil,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    whatWeCollect:
+      "Parent's email address (to save your setup and deliver the purchase), the child's first name (to personalize the pages), chosen theme, generated page images, and checkout records.",
+    whatWeDelete:
+      "Email address, child's first name and theme choice, generated pages, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "roastme",
+    name: "RoastMe",
+    url: "https://roast.mehyar.us",
+    tagline: "AI photo roasts as shareable image cards.",
+    icon: Flame,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    whatWeCollect:
+      "Photos you upload for roasting, email address (if you provide one for the teaser or unlock), generated roast text and share cards, and checkout records.",
+    whatWeDelete:
+      "Uploaded photos, generated roasts and share cards, email address, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "babypeek",
+    name: "BabyPeek",
+    url: "https://baby.mehyar.us",
+    tagline: "AI future-baby portraits.",
+    icon: Baby,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    whatWeCollect:
+      "The two parent photos you upload, email address (if you provide one for capture or unlock), generated portrait images, and checkout records.",
+    whatWeDelete:
+      "Uploaded photos, generated portraits, email address, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "stuffprettygood",
+    name: "StuffPrettyGood",
+    url: "https://stuffprettygood.com",
+    tagline: "AI-assisted shopping guides and digital playbooks.",
+    icon: ShoppingBag,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    whatWeCollect:
+      "Email address (if you provide one at checkout), digital-product purchase records, and the download links issued to you.",
+    whatWeDelete:
+      "Email address, purchase records, and download tokens tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "mehyarjobs",
+    name: "Mehyar Jobs",
+    url: "https://jobs.mehyar.us",
+    tagline: "Automated personal jobs dashboard.",
+    icon: Briefcase,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    whatWeCollect:
+      "Email address (if you provide one for match alerts), your resume / profile data used for scoring, and your match history.",
+    whatWeDelete:
+      "Email address, resume / profile data, and match history tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 
