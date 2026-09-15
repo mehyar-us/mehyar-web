@@ -147,6 +147,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
   try {
     if (!env?.LEADS_DB) return json({ ok: false }, 503);
     const db = env.LEADS_DB;
+    try {
+      await db.prepare(
+        "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), 0, 'webhook_hit', 'v20250915')"
+      ).run();
+    } catch {}
     const rawBody = await request.text();
     const sig = request.headers.get("stripe-signature") || "";
     // Live secret, then the test secrets for each registered test endpoint:
@@ -182,11 +187,6 @@ export async function onRequestPost({ request, env, waitUntil }) {
             const product = await db.prepare(
               "SELECT * FROM billing_products WHERE id = ?"
             ).bind(payment.product_id).first();
-            try {
-              await db.prepare(
-                "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'product_lookup', ?)"
-              ).bind(payment.id, JSON.stringify({pid: payment.product_id, found: !!product, fulfillment: product && product.fulfillment}).slice(0,300)).run();
-            } catch {}
             const hook = fulfillHooks[(product && product.fulfillment) || "none"] || fulfillHooks.none;
             try {
               await hook({ db, request, env, waitUntil }, payment, sess);
