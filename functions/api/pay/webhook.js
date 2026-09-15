@@ -12,6 +12,7 @@
 // sessions it created in flight keep working on their registered URLs.
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
+import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -137,7 +138,6 @@ const fulfillHooks = {
   // access token onto the billing_payments row, then hands off to the
   // standalone module for background generation + buyer email.
   async designful({ db, env, waitUntil }, payment) {
-    const { fulfillDesignful } = await import("../_shared/fulfillDesignful.js");
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillDesignful({ db, env, waitUntil, sendEmail }, payment);
   },
@@ -187,6 +187,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
               await hook({ db, request, env, waitUntil }, payment, sess);
             } catch (e) {
               console.error("pay/webhook fulfillment failed", payment.product_id, e && e.message);
+              try {
+                await db.prepare(
+                  "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'fulfill_hook', ?)"
+                ).bind(payment.id, String((e && e.message) || e).slice(0, 500)).run();
+              } catch {}
             }
           }
         }
