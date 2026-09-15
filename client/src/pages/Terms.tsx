@@ -42,7 +42,7 @@ const sections: Section[] = [
           focused on software, systems, automation, and practical tech support for local and
           regulated businesses.
         </p>
-        <p className="mt-2">{company} also operates or directly manages these sites and apps. The
+        <p className="mt-2">{company} also operates or directly manages these sites and products. The
           same baseline terms apply to all of them; each tenant or product may publish its own
           end-user terms linked from its own footer or sign-up flow.
         </p>

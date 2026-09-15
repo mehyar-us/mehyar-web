@@ -25,8 +25,8 @@ const sections: Section[] = [
           for local and regulated businesses.
         </p>
         <p className="mt-2">
-          MehyarSoft also runs and helps manage a small portfolio of internal sites and apps —
-          see the <a className="text-brand-700 underline dark:text-brand-100" href="/apps">Apps</a>{" "}
+          MehyarSoft also runs and helps manage a small portfolio of internal sites and products —
+          see the <a className="text-brand-700 underline dark:text-brand-100" href="/apps">Products</a>{" "}
           and <a className="text-brand-700 underline dark:text-brand-100" href="/services">Services</a>{" "}
           pages. This notice covers all of them under one consistent policy.
         </p>
@@ -168,11 +168,11 @@ const sections: Section[] = [
   },
   {
     icon: ServerCog,
-    title: "Apps and sites we operate",
+    title: "Products and sites we operate",
     body: (
       <>
         <p>
-          {company} operates or directly manages the following sites and apps. The same data-handling
+          {company} operates or directly manages the following sites and products. The same data-handling
           rules apply to all of them; each may have its own end-user terms linked from its footer.
         </p>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">

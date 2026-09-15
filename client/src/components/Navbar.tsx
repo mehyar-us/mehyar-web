@@ -28,7 +28,7 @@ import { openSupportTicket } from "@/components/SupportTicketModal";
 
 const primaryLinks = [
   { href: "/portfolio", label: "Work", icon: BriefcaseBusiness },
-  { href: "/apps", label: "Apps we manage", icon: Boxes },
+  { href: "/apps", label: "Products we own", icon: Boxes },
   { href: "/services", label: "Services", icon: AppWindow },
   { href: "/pricing", label: "Industries", icon: Building2 },
   { href: "/blog", label: "Insights", icon: BookOpen },

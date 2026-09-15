@@ -160,7 +160,7 @@ const buildPillars = [
   {
     icon: Zap,
     title: "Idea → live link in days, not quarters",
-    body: "Marketing site, auth, data model, and dashboard assembled from a working playbook — so the cost of testing a new app is a weekend, not a raise.",
+    body: "Marketing site, auth, data model, and dashboard assembled from a working playbook — so the cost of testing a new product is a weekend, not a raise.",
   },
   {
     icon: Smartphone,
@@ -170,12 +170,12 @@ const buildPillars = [
   {
     icon: Layers,
     title: "One stack, real data, real users",
-    body: "Cloudflare Workers for the edge, D1 for storage, Pages for the front-end. The same stack powers mehyar.us and every app we ship — boring on purpose, fast in practice.",
+    body: "Cloudflare Workers for the edge, D1 for storage, Pages for the front-end. The same stack powers mehyar.us and every product we ship — boring on purpose, fast in practice.",
   },
   {
     icon: Rocket,
     title: "Marketing-grade from day one",
-    body: "SEO shell, structured data, OG cards, RSS, sitemap, and analytics wired before launch — so the app shows up where real people search, not just in a founder's Discord.",
+    body: "SEO shell, structured data, OG cards, RSS, sitemap, and analytics wired before launch — so the product shows up where real people search, not just in a founder's Discord.",
   },
 ];
 
@@ -188,16 +188,16 @@ const Apps = () => {
             Live products
           </p>
           <h1 className="site-display max-w-4xl">
-            Apps we build, ship, and operate.
+            Products we build, ship, and operate.
           </h1>
           <p className="site-lede mt-5 max-w-3xl">
             MehyarSoft doesn't only consult. We ship real products that real users open every day — and we use the same
             playbook to launch yours. Browse the live portfolio below, then read on for what makes the MehyarSoft
-            app-launch process fast, boring, and marketing-grade from day one.
+            product-launch process fast, boring, and marketing-grade from day one.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href="/contact" className={buttonVariants({ variant: "cta" })}>
-              Brief us on your app idea <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              Brief us on your product idea <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
             </Link>
             <Link href="/services" className={buttonVariants({ variant: "outline" })}>
               See consulting offers
@@ -207,10 +207,10 @@ const Apps = () => {
       </section>
 
       <QuickAnswer
-        question="What apps does MehyarSoft operate?"
-        answer="MehyarSoft builds, ships, and operates its own apps — including Rizza (an AI wingman for dating-app replies) and AiMech (AI diagnostics for everyday car owners). The same playbook is offered to clients as a custom-app build engagement."
+        question="What products does MehyarSoft operate?"
+        answer="MehyarSoft builds, ships, and operates its own products — including Rizza (an AI wingman for dating-app replies) and AiMech (AI diagnostics for everyday car owners). The same playbook is offered to clients as a custom-product build engagement."
         ctaHref="/contact"
-        ctaLabel="Talk about your app"
+        ctaLabel="Talk about your product"
       />
 
       <section className="bg-background px-4 py-16 md:py-20">
@@ -218,15 +218,15 @@ const Apps = () => {
           <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
-                Managed apps
+                Products we own
               </p>
               <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-4xl">
                 Products we run today.
               </h2>
             </div>
             <p className="max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
-              Each app is a working site with real users, real data, and real follow-up. Click through to see what we
-              shipped — both are good examples of how small a marketing-grade launch can be when the stack is
+              Each product is a working site with real users, real data, and real follow-up. Click through to see what we
+              shipped — each is a good example of how small a marketing-grade launch can be when the stack is
               standardized.
             </p>
           </div>
@@ -316,10 +316,10 @@ const Apps = () => {
             How we ship fast
           </p>
           <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-4xl md:leading-[1.05]">
-            Apps and PWAs in a marketing manner — quickly, without theater.
+            Products and PWAs in a marketing manner — quickly, without theater.
           </h2>
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
-            The same process that produced Rizza and AiMech is what MehyarSoft offers clients as a custom-app
+            The same process that produced Rizza and AiMech is what MehyarSoft offers clients as a custom-product
             engagement. No agency drama. No "design phase" before the data model exists. Just a working stack, a tight
             feedback loop, and a launch that shows up in search from day one.
           </p>
@@ -343,14 +343,14 @@ const Apps = () => {
 
           <div className="mt-10 rounded-[1.5rem] border border-border bg-card p-6 shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
-              The MehyarSoft app playbook
+              The MehyarSoft product playbook
             </p>
             <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground md:text-2xl">
               From napkin sketch to public launch URL in under three weeks.
             </h3>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
               We don't pitch "a discovery phase followed by a build phase." We ship a thin slice on a real domain, see
-              if anyone opens it, and iterate. That means your app gets real users, real analytics, and real SEO
+              if anyone opens it, and iterate. That means your product gets real users, real analytics, and real SEO
               credit while it's still small — not six months later when the marketing window has closed.
             </p>
             <ul className="mt-5 grid grid-cols-1 gap-3 text-sm leading-6 text-foreground md:grid-cols-2">
@@ -373,7 +373,7 @@ const Apps = () => {
             </ul>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/contact" className={buttonVariants({ variant: "cta" })}>
-                Brief us on your app <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                Brief us on your product <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </Link>
               <Link href="/services" className={buttonVariants({ variant: "outline" })}>
                 See how engagements work
@@ -389,13 +389,13 @@ const Apps = () => {
         <div className="mx-auto max-w-5xl rounded-2xl border border-border bg-card/50 p-6 text-sm leading-6 text-muted-foreground md:p-8">
           <p className="font-semibold text-foreground">Your data, your call</p>
           <p className="mt-2">
-            Every MehyarSoft-built app exposes an in-app account deletion path plus an email
+            Every MehyarSoft-built product exposes an in-product account deletion path plus an email
             fallback. We action deletion requests within 14 days and confirm in writing.
             {" "}
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, app-by-app details (Rizza, AiMech, Designful), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful), and the request form.
           </p>
         </div>
       </section>

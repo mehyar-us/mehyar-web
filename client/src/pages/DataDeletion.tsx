@@ -6,7 +6,7 @@
 // reviewing Rizza (iOS PWA) and AiMech (Android/iOS PWAs), and Google Play's
 // Data safety form requires a public-facing deletion link.
 //
-// This page is part of the Mehyar.us "Apps that access user data" compliance
+// This page is part of the Mehyar.us "Products that access user data" compliance
 // set (see /privacy-policy, /terms). It applies to:
 //   1. Rizza — https://rizza.app (conversational AI for dating-app replies)
 //   2. AiMech — https://aimech.app (AI car diagnostics for everyday drivers)
@@ -16,10 +16,10 @@
 //   6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
 //   7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
 //   8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
-// Plus any future apps MehyarSoft ships.
+// Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
-//   - In-app: every app exposes an in-product "Delete my account & data"
+//   - In-product: every product exposes an in-product "Delete my account & data"
 //     action that purges the account and all associated rows in one tap.
 //   - Email fallback: anyone can write to info@mehyar.us and we'll action
 //     within 14 days. The 14-day window matches the Privacy Policy.
@@ -73,7 +73,7 @@ const apps: AppInfo[] = [
     url: "https://crayonkid.mehyar.us",
     tagline: "Personalized AI coloring books for kids.",
     icon: Pencil,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
       "Parent's email address (to save your setup and deliver the purchase), the child's first name (to personalize the pages), chosen theme, generated page images, and checkout records.",
     whatWeDelete:
@@ -85,7 +85,7 @@ const apps: AppInfo[] = [
     url: "https://roast.mehyar.us",
     tagline: "AI photo roasts as shareable image cards.",
     icon: Flame,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
       "Photos you upload for roasting, email address (if you provide one for the teaser or unlock), generated roast text and share cards, and checkout records.",
     whatWeDelete:
@@ -97,7 +97,7 @@ const apps: AppInfo[] = [
     url: "https://baby.mehyar.us",
     tagline: "AI future-baby portraits.",
     icon: Baby,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
       "The two parent photos you upload, email address (if you provide one for capture or unlock), generated portrait images, and checkout records.",
     whatWeDelete:
@@ -109,7 +109,7 @@ const apps: AppInfo[] = [
     url: "https://stuffprettygood.com",
     tagline: "AI-assisted shopping guides and digital playbooks.",
     icon: ShoppingBag,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
       "Email address (if you provide one at checkout), digital-product purchase records, and the download links issued to you.",
     whatWeDelete:
@@ -121,7 +121,7 @@ const apps: AppInfo[] = [
     url: "https://jobs.mehyar.us",
     tagline: "Automated personal jobs dashboard.",
     icon: Briefcase,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
       "Email address (if you provide one for match alerts), your resume / profile data used for scoring, and your match history.",
     whatWeDelete:
@@ -133,7 +133,7 @@ const apps: AppInfo[] = [
     url: "https://designful.mehyar.us",
     tagline: "AI design studio: fixed-price design products.",
     icon: Palette,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this app",
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
       "Email address (to deliver your purchase and send download links), the business name / website URL / logo you submit for each design job, the generated design deliverables, and checkout records.",
     whatWeDelete:
@@ -154,9 +154,9 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          MehyarSoft runs a small set of apps (<a className="text-brand-700 underline dark:text-brand-100" href="/apps">see the Apps page</a>).
-          Any app that stores user data exposes a deletion path. This page is the public, plain-English
-          summary of those paths and a fallback email channel for users who can&apos;t reach the in-app
+          MehyarSoft runs a small set of products (<a className="text-brand-700 underline dark:text-brand-100" href="/apps">see the Products page</a>).
+          Any product that stores user data exposes a deletion path. This page is the public, plain-English
+          summary of those paths and a fallback email channel for users who can&apos;t reach the in-product
           controls.
         </p>
         <p className="mt-2">
@@ -170,11 +170,11 @@ const sections: Section[] = [
   },
   {
     icon: Trash2,
-    title: "How to delete your data from each app",
+    title: "How to delete your data from each product",
     body: (
       <>
         <p>
-          Every MehyarSoft app exposes the same in-app control, plus this email fallback. Either path
+          Every MehyarSoft product exposes the same in-product control, plus this email fallback. Either path
           results in the same outcome: your account and all data tied to it are purged, and you get a
           confirmation email.
         </p>
@@ -198,26 +198,26 @@ const sections: Section[] = [
                 </div>
                 <dl className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
                   <div>
-                    <dt className="font-semibold text-foreground">In-app control</dt>
+                    <dt className="font-semibold text-foreground">In-product control</dt>
                     <dd className="mt-1">
-                      Open the app and go to <code className="rounded bg-muted px-1 py-0.5 text-xs">{app.inAppPath}</code>.
+                      Open the product and go to <code className="rounded bg-muted px-1 py-0.5 text-xs">{app.inAppPath}</code>.
                       Confirm the deletion. The account and all data tied to it are purged immediately
                       and you get an on-screen success message plus a confirmation email.
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-foreground">Email fallback (if you can&apos;t reach the in-app control)</dt>
+                    <dt className="font-semibold text-foreground">Email fallback (if you can&apos;t reach the in-product control)</dt>
                     <dd className="mt-1">
                       Send the request from the email address you signed up with to{" "}
                       <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}?subject=${encodeURIComponent(`${app.name} data deletion request`)}`}>
                         {contactEmail}
                       </a>
-                      . Include the app name in the subject line. We verify ownership, action the
+                      . Include the product name in the subject line. We verify ownership, action the
                       deletion within 14 days, and reply to confirm.
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-foreground">What we collect from this app</dt>
+                    <dt className="font-semibold text-foreground">What we collect from this product</dt>
                     <dd className="mt-1">{app.whatWeCollect}</dd>
                   </div>
                   <div>
@@ -303,7 +303,7 @@ const sections: Section[] = [
           <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}`}>
             {contactEmail}
           </a>
-          . Include the app name and the email address you signed up with.
+          . Include the product name and the email address you signed up with.
         </p>
         <p className="mt-2">
           If you have already requested deletion and feel it has been more than 14 days without
@@ -330,8 +330,8 @@ const DataDeletion = () => {
             Data Deletion
           </h1>
           <p className="site-lede mt-4 max-w-3xl">
-            Request deletion of your data from any MehyarSoft app — Rizza, AiMech, or anything
-            else we ship. Use the in-app control or email us. Either way, your account and every
+            Request deletion of your data from any MehyarSoft product — Rizza, AiMech, or anything
+            else we ship. Use the in-product control or email us. Either way, your account and every
             row tied to it are purged, and we confirm in writing.
           </p>
         </div>
@@ -359,7 +359,7 @@ const DataDeletion = () => {
             <strong>Related pages:</strong>{" "}
             <a className="text-brand-700 underline dark:text-brand-100" href="/privacy-policy">Privacy Policy</a>,{" "}
             <a className="text-brand-700 underline dark:text-brand-100" href="/terms">Terms</a>,{" "}
-            <a className="text-brand-700 underline dark:text-brand-100" href="/apps">Apps</a>.
+            <a className="text-brand-700 underline dark:text-brand-100" href="/apps">Products</a>.
           </p>
         </div>
       </div>
