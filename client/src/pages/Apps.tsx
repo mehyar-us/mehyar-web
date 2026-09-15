@@ -151,6 +151,7 @@ const managedApps: ManagedApp[] = [
       "Delivered in about 15 minutes with a 7-day redo-or-refund guarantee",
       "Token-gated download links — no account needed",
     ],
+    logo: "/assets/designful-logo.png",
     accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
   },
 ];
