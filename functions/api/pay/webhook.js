@@ -158,7 +158,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       if (await verifyStripeSignature(rawBody, sig, s)) { verified = true; break; }
     }
     if (!verified) {
-      return json({ ok: false, error: "bad_signature" }, 400);
+      return json({ ok: false, error: "bad_signature", v: "20250915-fulfill" }, 400);
     }
 
     const event = JSON.parse(rawBody);
