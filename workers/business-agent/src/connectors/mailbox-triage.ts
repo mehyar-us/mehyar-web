@@ -3,6 +3,7 @@ import {digest,HttpError} from '../http';
 import {requireTenant} from '../permissions';
 import {textAccess} from '../billing/text-access';
 import {TextUsage} from '../billing/text-usage';
+import {estimateStandardText} from '../billing/text-meter';
 import {MailboxSync} from './mailbox-sync';
 import {requireMailboxAccess} from './mailbox-runner';
 import {mailTriageRequest,parseMailTriage,type MailTriageResult} from './mail-triage';
@@ -163,9 +164,11 @@ export class MailboxTriage {
         throw new HttpError(409,'usage_period_changed','The analysis allowance changed. Retry the analysis.');
       await guard();await ledger.readText(streamId,messageId,receipt);await agentGuard();
       checkContext();
-      usage.startAttempt(reservation.token,current);
+      const estimate=aggregation?.tokenEstimate??estimateStandardText(request);
+      const attemptId=usage.startAttempt(reservation.token,current);
       const response=await env.AI!.run('@cf/openai/gpt-oss-120b',request,
         {gateway:{id:env.AI_GATEWAY_ID!,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent',workload:aggregate?'mailbox_triage_aggregation':section?'mailbox_triage_section':'mailbox_triage'}},signal:AbortSignal.timeout(60_000)});
+      usage.recordReceipt(attemptId,response,estimate);
       const raw=typeof response==='object'&&response&&'choices' in response?response.choices?.[0]?.message?.content:null;
       let result:MailTriageResult;
       try{

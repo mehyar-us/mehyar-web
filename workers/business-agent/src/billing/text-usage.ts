@@ -1,4 +1,6 @@
 import {HttpError} from '../http';
+import {parseTextUsageReceipt} from './text-receipt';
+import type {estimateStandardText} from './text-meter';
 
 type Access={period:string;limit:number;attemptLimit:number};
 type Reservation={id:string;user_id:string;payload_hash:string;period:string;status:string;token:string;units:number};
@@ -15,6 +17,7 @@ export class TextUsage {
     this.storage.sql.exec('CREATE INDEX IF NOT EXISTS background_text_period ON background_text_usage(period,status)');
     if(!this.storage.sql.exec<{name:string}>('PRAGMA table_info(background_text_usage)').toArray().some(column=>column.name==='units'))
       this.storage.sql.exec('ALTER TABLE background_text_usage ADD COLUMN units INTEGER NOT NULL DEFAULT 1 CHECK(units>=1 AND units<=32)');
+    this.storage.sql.exec('CREATE TABLE IF NOT EXISTS text_provider_receipts(attempt_id TEXT PRIMARY KEY,value TEXT NOT NULL)');
   }
   interrupt(){this.storage.sql.exec("UPDATE background_text_usage SET status='failed' WHERE status='running'");}
   usage(period:string){
@@ -57,6 +60,21 @@ export class TextUsage {
       this.storage.sql.exec("INSERT INTO provider_attempts(id,user_id,request_key,period,status,started_at) VALUES (?,?,?,?,'started',?)",id,row.user_id,key,row.period,new Date().toISOString());
       return id;
     });
+  }
+  /** Supplier evidence survives result failures. This does not settle customer
+   * credits or certify local token estimates against the live provider. */
+  recordReceipt(attemptId:string,response:unknown,estimate:ReturnType<typeof estimateStandardText>){
+    const receipt=parseTextUsageReceipt(response);
+    const value=JSON.stringify({version:1,model:estimate.model,tokenizer:estimate.tokenizer,
+      estimatedInputTokens:estimate.inputTokens,outputTokenLimit:estimate.outputTokenLimit,receipt,
+      ...(receipt.state==='reported'?{inputTokenDifference:receipt.inputTokens-estimate.inputTokens,outputLimitExceeded:receipt.outputTokens>estimate.outputTokenLimit}:{})});
+    this.storage.transactionSync(()=>{
+      if(!this.storage.sql.exec('SELECT id FROM provider_attempts WHERE id=?',attemptId).toArray().length)throw unavailable();
+      const prior=this.storage.sql.exec<{value:string}>('SELECT value FROM text_provider_receipts WHERE attempt_id=?',attemptId).toArray()[0];
+      if(prior&&prior.value!==value)throw new HttpError(409,'text_receipt_conflict','Provider usage requires reconciliation.');
+      if(!prior)this.storage.sql.exec('INSERT INTO text_provider_receipts(attempt_id,value) VALUES (?,?)',attemptId,value);
+    });
+    return receipt;
   }
   /** Completion belongs in the caller's transaction that persists the result.
    * Failed/interrupted provider attempts remain counted, including uncertain ones. */

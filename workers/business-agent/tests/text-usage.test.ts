@@ -4,12 +4,27 @@ import {getAgentByName} from 'agents';
 import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {TextUsage} from '../src/billing/text-usage';
+import {estimateStandardText} from '../src/billing/text-meter';
 const access={period:'trial',limit:2,attemptLimit:3},hash='a'.repeat(64);
 async function fixture(work:(usage:TextUsage,storage:DurableObjectStorage)=>void){
   const stub=await getAgentByName((env as unknown as Env).BUSINESS_AGENTS,crypto.randomUUID());
   await runInDurableObject(stub,(_instance,ctx)=>{const usage=new TextUsage(ctx.storage);usage.initialize();work(usage,ctx.storage);});
 }
 describe('shared chat and background text accounting',()=>{
+  it('retains immutable supplier usage across failed results without changing customer credits',async()=>fixture((usage,storage)=>{
+    const estimate=estimateStandardText({messages:[{role:'user',content:'Hello, world!'}],max_tokens:2000});
+    const response={usage:{prompt_tokens:12,completion_tokens:2001,total_tokens:2013},choices:[{message:{content:'private'}}]};
+    expect(()=>usage.recordReceipt('unknown',response,estimate)).toThrow();
+    const job=usage.reserve('job','owner',hash,access),attempt=usage.startAttempt(job.token,access);
+    usage.recordReceipt(attempt,response,estimate);usage.recordReceipt(attempt,response,estimate);
+    usage.finish(job.token,false);
+    expect(usage.usage('trial')).toEqual({used:0,reserved:0});
+    const rows=storage.sql.exec<{value:string}>('SELECT value FROM text_provider_receipts').toArray();expect(rows).toHaveLength(1);
+    expect(JSON.parse(rows[0].value)).toMatchObject({inputTokenDifference:2,outputLimitExceeded:true,receipt:{state:'reported',inputTokens:12,outputTokens:2001}});
+    expect(rows[0].value).not.toContain('private');
+    expect(()=>usage.recordReceipt(attempt,{usage:{prompt_tokens:1,completion_tokens:1,total_tokens:2}},estimate)).toThrow();
+    expect(storage.sql.exec('SELECT id FROM provider_attempts').toArray()).toHaveLength(1);
+  }));
   it('reserves multiple credits atomically and charges the same units on completion',async()=>fixture((usage,storage)=>{
     const allowance={...access,limit:5};
     storage.sql.exec("INSERT INTO turns(request_key,user_id,content,message_id,status,period,created_at) VALUES ('chat','owner','hello','m','complete','trial','now')");
