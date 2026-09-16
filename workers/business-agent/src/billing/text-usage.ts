@@ -1,7 +1,7 @@
 import {HttpError} from '../http';
 
 type Access={period:string;limit:number;attemptLimit:number};
-type Reservation={id:string;user_id:string;payload_hash:string;period:string;status:string;token:string};
+type Reservation={id:string;user_id:string;payload_hash:string;period:string;status:string;token:string;units:number};
 const unavailable=()=>new HttpError(409,'text_reservation_unavailable','This analysis reservation is no longer available.');
 /** Private per-business Agent accounting. Callers must independently enforce
  * authorization, paid access, readiness and model bounds. All methods are
@@ -13,29 +13,32 @@ export class TextUsage {
       id TEXT PRIMARY KEY,user_id TEXT NOT NULL,payload_hash TEXT NOT NULL,period TEXT NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('running','complete','failed')),token TEXT NOT NULL UNIQUE)`);
     this.storage.sql.exec('CREATE INDEX IF NOT EXISTS background_text_period ON background_text_usage(period,status)');
+    if(!this.storage.sql.exec<{name:string}>('PRAGMA table_info(background_text_usage)').toArray().some(column=>column.name==='units'))
+      this.storage.sql.exec('ALTER TABLE background_text_usage ADD COLUMN units INTEGER NOT NULL DEFAULT 1 CHECK(units>=1 AND units<=32)');
   }
   interrupt(){this.storage.sql.exec("UPDATE background_text_usage SET status='failed' WHERE status='running'");}
   usage(period:string){
-    return this.storage.sql.exec<{used:number;reserved:number}>(`SELECT COALESCE(SUM(status='complete'),0) AS used,
-      COALESCE(SUM(status='running'),0) AS reserved FROM
-      (SELECT status FROM turns WHERE period=? UNION ALL SELECT status FROM background_text_usage WHERE period=?)`,period,period).toArray()[0];
+    return this.storage.sql.exec<{used:number;reserved:number}>(`SELECT COALESCE(SUM(CASE WHEN status='complete' THEN units ELSE 0 END),0) AS used,
+      COALESCE(SUM(CASE WHEN status='running' THEN units ELSE 0 END),0) AS reserved FROM
+      (SELECT status,1 AS units FROM turns WHERE period=? UNION ALL SELECT status,units FROM background_text_usage WHERE period=?)`,period,period).toArray()[0];
   }
   private access(access:Access){
     if(!access.period||access.period.length>256||![access.limit,access.attemptLimit].every(n=>Number.isSafeInteger(n)&&n>=0))throw unavailable();
   }
-  reserve(id:string,userId:string,payloadHash:string,access:Access){
+  reserve(id:string,userId:string,payloadHash:string,access:Access,units=1){
     this.access(access);
     if(!id||id.length>256||!userId||userId.length>256||!/^([a-f0-9]{64})$/.test(payloadHash))throw unavailable();
+    if(!Number.isSafeInteger(units)||units<1||units>32)throw unavailable();
     return this.storage.transactionSync(()=>{
       const prior=this.storage.sql.exec<Reservation>('SELECT * FROM background_text_usage WHERE id=?',id).toArray()[0];
-      if(prior&&(prior.user_id!==userId||prior.payload_hash!==payloadHash))throw unavailable();
+      if(prior&&(prior.user_id!==userId||prior.payload_hash!==payloadHash||prior.units!==units))throw unavailable();
       if(prior?.status==='complete')return {state:'complete' as const,token:prior.token,period:prior.period};
       if(prior?.status==='running')throw new HttpError(409,'analysis_running','This analysis is still running.');
       const counts=this.usage(access.period);
-      if(counts.used+counts.reserved>=access.limit)throw new HttpError(429,'usage_limit','Your included text allowance for this period has been reached.');
+      if(units>access.limit-counts.used-counts.reserved)throw new HttpError(429,'usage_limit','Your included text allowance cannot cover this analysis.');
       const token=crypto.randomUUID();
-      this.storage.sql.exec(`INSERT INTO background_text_usage(id,user_id,payload_hash,period,status,token) VALUES (?,?,?,?,'running',?)
-        ON CONFLICT(id) DO UPDATE SET period=excluded.period,status='running',token=excluded.token`,id,userId,payloadHash,access.period,token);
+      this.storage.sql.exec(`INSERT INTO background_text_usage(id,user_id,payload_hash,period,status,token,units) VALUES (?,?,?,?,'running',?,?)
+        ON CONFLICT(id) DO UPDATE SET period=excluded.period,status='running',token=excluded.token`,id,userId,payloadHash,access.period,token,units);
       return {state:'reserved' as const,token,period:access.period};
     });
   }

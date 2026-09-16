@@ -10,6 +10,40 @@ async function fixture(work:(usage:TextUsage,storage:DurableObjectStorage)=>void
   await runInDurableObject(stub,(_instance,ctx)=>{const usage=new TextUsage(ctx.storage);usage.initialize();work(usage,ctx.storage);});
 }
 describe('shared chat and background text accounting',()=>{
+  it('reserves multiple credits atomically and charges the same units on completion',async()=>fixture((usage,storage)=>{
+    const allowance={...access,limit:5};
+    storage.sql.exec("INSERT INTO turns(request_key,user_id,content,message_id,status,period,created_at) VALUES ('chat','owner','hello','m','complete','trial','now')");
+    const job=usage.reserve('large','owner',hash,allowance,3);
+    expect(usage.usage('trial')).toEqual({used:1,reserved:3});
+    expect(()=>usage.reserve('too-large','owner',hash,allowance,2)).toThrow();
+    expect(storage.sql.exec("SELECT id FROM background_text_usage WHERE id='too-large'").toArray()).toEqual([]);
+    expect(()=>usage.startAttempt(job.token,{...allowance,limit:3})).toThrow();
+    usage.startAttempt(job.token,allowance);usage.finish(job.token,true);
+    expect(usage.usage('trial')).toEqual({used:4,reserved:0});
+    expect(usage.reserve('large','owner',hash,allowance,3).state).toBe('complete');
+    expect(()=>usage.reserve('large','owner',hash,allowance,1)).toThrow();
+  }));
+  it('releases all failed units but retains supplier attempts and immutable retry size',async()=>fixture((usage,storage)=>{
+    const allowance={...access,limit:5},job=usage.reserve('large','owner',hash,allowance,4);
+    usage.startAttempt(job.token,allowance);usage.finish(job.token,false);
+    expect(usage.usage('trial')).toEqual({used:0,reserved:0});
+    expect(storage.sql.exec('SELECT id FROM provider_attempts').toArray()).toHaveLength(1);
+    expect(()=>usage.reserve('large','owner',hash,allowance,3)).toThrow();
+    usage.reserve('large','owner',hash,allowance,4);expect(usage.usage('trial')).toEqual({used:0,reserved:4});
+    usage.interrupt();expect(usage.usage('trial')).toEqual({used:0,reserved:0});
+  }));
+  it('rejects invalid unit counts without writing reservations',async()=>fixture((usage,storage)=>{
+    for(const units of [0,-1,1.5,33,NaN,Infinity])expect(()=>usage.reserve('invalid','owner',hash,access,units)).toThrow();
+    expect(storage.sql.exec('SELECT id FROM background_text_usage').toArray()).toEqual([]);
+  }));
+  it('upgrades existing single-credit rows idempotently',async()=>fixture((usage,storage)=>{
+    storage.sql.exec('DROP TABLE background_text_usage');
+    storage.sql.exec('CREATE TABLE background_text_usage(id TEXT PRIMARY KEY,user_id TEXT,payload_hash TEXT,period TEXT,status TEXT,token TEXT)');
+    storage.sql.exec("INSERT INTO background_text_usage VALUES ('old','owner',?,'trial','complete','old-token')",hash);
+    usage.initialize();usage.initialize();
+    expect(usage.usage('trial')).toEqual({used:1,reserved:0});
+    expect(usage.reserve('old','owner',hash,access)).toEqual({state:'complete',token:'old-token',period:'trial'});
+  }));
   it('counts existing chat work and background reservations against one allowance',async()=>fixture((usage,storage)=>{
     storage.sql.exec("INSERT INTO turns(request_key,user_id,content,message_id,status,period,created_at) VALUES ('chat','owner','hello','m','complete','trial','now')");
     const job=usage.reserve('job','owner',hash,access);
