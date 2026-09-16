@@ -106,7 +106,7 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
   // order token now so the backfill lookup (by access_token) keeps working.
   if (!payment.access_token) {
     await db
-      .prepare("UPDATE billing_payments SET access_token=<redacted>")
+      .prepare("UPDATE billing_payments SET access_token=? WHERE id=?")")
       .bind(accessToken, payment.id)
       .run();
   }
