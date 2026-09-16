@@ -19,12 +19,13 @@ async function mailboxStatus(env:Env,actor:Actor,grantId:string,paused:()=>boole
   };
   const grant=await readGrant(),authorization=await credentialAuthorizationStamp(grant);
   const summary=await env.AGENT_DB.prepare(`SELECT COUNT(*) AS configuredFolders,
+    CASE WHEN COUNT(*)=COUNT(s.last_completed_at) THEN MIN(s.last_completed_at) ELSE NULL END AS lastCheckedAt,
     COALESCE(SUM(CASE WHEN s.state!='ready' OR w.state='review_required' THEN 1 ELSE 0 END),0) AS attention,
     COALESCE(SUM(CASE WHEN s.sync_mode='bootstrap' OR (s.provider='microsoft' AND s.checkpoint IS NULL) THEN 1 ELSE 0 END),0) AS initializing
     FROM agent_mailbox_sync s
     LEFT JOIN agent_mailbox_consumers w ON w.stream_id=s.id
     WHERE s.tenant_id=? AND s.grant_id=? AND s.authorization=? AND s.provider=? AND (?='microsoft' OR s.resource='mailbox')`)
-    .bind(actor.tenantId,grantId,authorization,provider,provider).first<{configuredFolders:number;attention:number;initializing:number}>();
+    .bind(actor.tenantId,grantId,authorization,provider,provider).first<{configuredFolders:number;attention:number;initializing:number;lastCheckedAt:string|null}>();
   const counts=await env.AGENT_DB.prepare(`WITH streams AS (SELECT id FROM agent_mailbox_sync
     WHERE tenant_id=? AND grant_id=? AND authorization=? AND provider=? AND (?='microsoft' OR resource='mailbox')) SELECT
     (SELECT COUNT(*) FROM agent_mailbox_changes WHERE stream_id IN (SELECT id FROM streams) AND state='pending') AS pending,
@@ -46,6 +47,7 @@ async function mailboxStatus(env:Env,actor:Actor,grantId:string,paused:()=>boole
     :!summary?.configuredFolders?'not_started':summary.attention>0?'needs_attention'
     :!available?'disabled':summary.initializing>0?'initializing':'monitoring';
   return {state,setupEnabled:provider==='google'&&state==='not_started'&&available,pending:counts?.pending??0,lastObservedAt:counts?.lastObservedAt??null,
+    lastCheckedAt:summary?.lastCheckedAt??null,
     ...(state==='stopped'?{controlRevision:grant.mailbox_control_revision,resumeEnabled:available&&readable&&grant.status==='authorized'}:{}),
     ...(provider==='microsoft'?{configuredFolders:summary?.configuredFolders??0}:{})};
 }

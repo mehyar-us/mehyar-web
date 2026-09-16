@@ -21,6 +21,20 @@ async function fixture(provider:'google'|'microsoft'='google') {
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
+  it('records only completed scans, including empty scans, and clears freshness on restart',async()=>{
+    const f=await fixture();
+    const read=()=>e.AGENT_DB.prepare('SELECT last_completed_at FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first();
+    const first=(await f.ledger.claim(f.streamId))!;
+    await f.ledger.commit(first,{changes:[],nextCursor:'partial'});expect(await read()).toEqual({last_completed_at:null});
+    f.advance(1);const final=(await f.ledger.claim(f.streamId))!;
+    await f.ledger.commit(final,{changes:[],syncCursor:'300'});
+    const completed=new Date(f.clock()).toISOString();expect(await read()).toEqual({last_completed_at:completed});
+    f.advance(301);await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[],nextCursor:'later-partial'});
+    expect(await read()).toEqual({last_completed_at:completed});
+    const round=(await e.AGENT_DB.prepare('SELECT round_id FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{round_id:string}>())!.round_id;
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    await f.ledger.restart(f.streamId,crypto.randomUUID(),round,'500');expect(await read()).toEqual({last_completed_at:null});
+  });
   it('restarts a failed Gmail round atomically and does not reset newer progress on retry',async()=>{
     const f=await fixture(),key=crypto.randomUUID();
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'cached',kind:'upsert'},{messageId:'pending',kind:'upsert'}],nextCursor:'old-page'});

@@ -822,6 +822,22 @@ test('exhausted research checks show needs attention without claiming continued 
   await expect(panel.getByRole('button',{name:'Cancel research'})).toBeEnabled();
 });
 
+test('shows completed scan freshness separately from message observations',async({page})=>{
+  await fixture(page);
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:'11111111-1111-4111-8111-111111111111',provider:'google',tenantId:tenant.id,status:'authorized',grantedCapabilities:['gmail_read'],grantedScopes:[],selectedCapabilities:['gmail_read']}]}}));
+  let checked=new Date(Date.now()-7200000).toISOString();
+  await page.route('**/connections/*/mailbox',route=>route.fulfill({json:{state:'monitoring',setupEnabled:false,pending:0,lastObservedAt:null,lastCheckedAt:checked}}));
+  await page.goto('/?connected=google');const panel=page.locator('[aria-label="Mailbox monitoring"]');
+  await expect(panel.getByText('No message observation recorded yet.')).toBeVisible();
+  await expect(panel.getByRole('status')).toContainText('Monitoring may be delayed');
+  checked=new Date().toISOString();await panel.getByRole('button',{name:'Refresh mailbox status'}).click();
+  await expect(panel.getByText('Monitoring may be delayed',{exact:false})).toHaveCount(0);
+  await expect(panel.getByText('Last completed scan:',{exact:false})).toBeVisible();
+  checked='invalid';await panel.getByRole('button',{name:'Refresh mailbox status'}).click();
+  await expect(panel.getByRole('alert')).toContainText('Mailbox status could not be verified');
+  await expect(panel.getByText('Last completed scan:',{exact:false})).toHaveCount(0);
+});
+
 test('reviews mailbox recovery and retries the same offer after an uncertain response',async({page})=>{
   await fixture(page);let restarted=false;const requests:unknown[]=[];
   const recoveryId='33333333-3333-4333-8333-333333333333';

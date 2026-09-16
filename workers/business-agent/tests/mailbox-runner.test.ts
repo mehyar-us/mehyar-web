@@ -39,6 +39,15 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('reports the oldest completed current-consent folder scan and withholds freshness until every folder completes',async()=>{
+    const f=await fixture('microsoft');const second=await f.ledger.open(f.grantId,'microsoft','other-folder');
+    await e.AGENT_DB.prepare('UPDATE agent_mailbox_sync SET last_completed_at=? WHERE id=?').bind('2026-09-16T10:00:00.000Z',f.streamId).run();
+    expect(await microsoftMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({lastCheckedAt:null});
+    await e.AGENT_DB.prepare('UPDATE agent_mailbox_sync SET last_completed_at=? WHERE id=?').bind('2026-09-16T11:00:00.000Z',second).run();
+    expect(await microsoftMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({lastCheckedAt:'2026-09-16T10:00:00.000Z'});
+    await storeProviderGrant(e,f.binding,f.credential,[]);
+    expect(await microsoftMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({lastCheckedAt:null});
+  });
   it('prepares private recovery reviews and repeats the same confirmed request safely',async()=>{
     const f=await fixture('microsoft'),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'private-message',kind:'upsert'}],nextCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$skiptoken=private'});
@@ -122,11 +131,11 @@ describe('one-page mailbox provider runner',()=>{
   it('summarizes current Outlook folders, bootstrap, pending work and recovery without private identifiers',async()=>{
     const f=await fixture('microsoft'),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
     const second=await f.ledger.open(f.grantId,'microsoft','private-folder');
-    expect(await microsoftMailboxStatus(ready,f.actor,f.grantId,()=>false)).toEqual({state:'initializing',setupEnabled:false,pending:0,lastObservedAt:null,configuredFolders:2});
+    expect(await microsoftMailboxStatus(ready,f.actor,f.grantId,()=>false)).toEqual({state:'initializing',setupEnabled:false,pending:0,lastObservedAt:null,configuredFolders:2,lastCheckedAt:null});
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'private-message',kind:'upsert'}],syncCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=secret'});
     await f.ledger.commit((await f.ledger.claim(second))!,{changes:[],syncCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/private-folder/messages/delta?$deltatoken=secret'});
     const status=await microsoftMailboxStatus(ready,f.actor,f.grantId,()=>false);
-    expect(status).toEqual({state:'monitoring',setupEnabled:false,pending:1,lastObservedAt:null,configuredFolders:2});
+    expect(status).toEqual({state:'monitoring',setupEnabled:false,pending:1,lastObservedAt:null,configuredFolders:2,lastCheckedAt:expect.any(String)});
     expect(JSON.stringify(status)).not.toContain('private');expect(JSON.stringify(status)).not.toContain('secret');
     await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(second).run();
     expect(await microsoftMailboxStatus(ready,f.actor,f.grantId,()=>false)).toMatchObject({state:'needs_attention'});
@@ -237,15 +246,15 @@ describe('one-page mailbox provider runner',()=>{
   });
   it('reports setup eligibility only after activation and all mailbox gates',async()=>{
     const f=await fixture('google',false);
-    expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>false)).toEqual({state:'not_started',setupEnabled:false,pending:0,lastObservedAt:null});
+    expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>false)).toEqual({state:'not_started',setupEnabled:false,pending:0,lastObservedAt:null,lastCheckedAt:null});
     expect(await googleMailboxStatus({...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.grantId,()=>false))
-      .toEqual({state:'not_started',setupEnabled:true,pending:0,lastObservedAt:null});
+      .toEqual({state:'not_started',setupEnabled:true,pending:0,lastObservedAt:null,lastCheckedAt:null});
     expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>true)).toMatchObject({state:'paused',setupEnabled:false});
   });
   it('reports pending work without exposing cursors, message content or provider identifiers',async()=>{
     const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'private-message',kind:'upsert'}],nextCursor:'private-cursor'});
     const status=await googleMailboxStatus(e,f.actor,f.grantId,()=>false);
-    expect(status).toEqual({state:'disabled',setupEnabled:false,pending:1,lastObservedAt:null});
+    expect(status).toEqual({state:'disabled',setupEnabled:false,pending:1,lastObservedAt:null,lastCheckedAt:null});
     expect(JSON.stringify(status)).not.toContain('private');expect(JSON.stringify(status)).not.toContain(f.streamId);
     await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
     expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({state:'needs_attention'});

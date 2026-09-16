@@ -144,7 +144,7 @@ export class MailboxSync {
     const savedArgs=[streamId,requestKey,newRound];
     const results=await this.env.AGENT_DB.batch([receipt,
       this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET checkpoint=?,page_cursor=NULL,round_id=?,page_number=0,state='ready',
-        lease_token=NULL,lease_until=NULL,next_poll_at=?,consecutive_attempts=0,sync_mode=?,updated_at=? WHERE id=? AND ${saved}`)
+        lease_token=NULL,lease_until=NULL,next_poll_at=?,consecutive_attempts=0,sync_mode=?,updated_at=?,last_completed_at=NULL WHERE id=? AND ${saved}`)
         .bind(gmailBaseline??null,newRound,now,row.provider==='google'?'bootstrap':'incremental',now,streamId,...savedArgs),
       this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_changes SET state='discarded' WHERE stream_id=? AND state='pending' AND ${saved}`).bind(streamId,...savedArgs),
       this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_consumers SET page_token=NULL,ordinal=NULL,lease_token=NULL,lease_until=NULL,
@@ -217,9 +217,9 @@ export class MailboxSync {
       SELECT ?,?,CAST(j.key AS INTEGER),json_extract(j.value,'$.messageId'),json_extract(j.value,'$.kind'),? FROM json_each(?) j
       WHERE EXISTS(SELECT 1 FROM agent_mailbox_sync_pages WHERE stream_id=? AND token=? AND payload_hash=?)`)
       .bind(row.id,claim.token,now,JSON.stringify(page.changes),row.id,claim.token,hash);
-    const advance=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET checkpoint=?,page_cursor=?,round_id=?,page_number=?,state=?,lease_token=NULL,lease_until=NULL,updated_at=?,consecutive_attempts=0,next_poll_at=?,sync_mode=?
+    const advance=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET checkpoint=?,page_cursor=?,round_id=?,page_number=?,state=?,lease_token=NULL,lease_until=NULL,updated_at=?,consecutive_attempts=0,next_poll_at=?,sync_mode=?,last_completed_at=COALESCE(?,last_completed_at)
       WHERE id=? AND tenant_id=? AND lease_token=? AND EXISTS(SELECT 1 FROM agent_mailbox_sync_pages WHERE stream_id=? AND token=? AND payload_hash=?)`)
-      .bind(page.syncCursor??row.checkpoint,page.nextCursor??null,page.syncCursor?crypto.randomUUID():row.round_id,page.syncCursor?0:row.page_number+1,page.nextCursor&&row.page_number>=499?'resync_required':'ready',now,new Date(this.clock()+(page.syncCursor&&row.sync_mode!=='bootstrap'?300000:0)).toISOString(),page.syncCursor?'incremental':row.sync_mode,row.id,this.actor.tenantId,claim.token,row.id,claim.token,hash);
+      .bind(page.syncCursor??row.checkpoint,page.nextCursor??null,page.syncCursor?crypto.randomUUID():row.round_id,page.syncCursor?0:row.page_number+1,page.nextCursor&&row.page_number>=499?'resync_required':'ready',now,new Date(this.clock()+(page.syncCursor&&row.sync_mode!=='bootstrap'?300000:0)).toISOString(),page.syncCursor?'incremental':row.sync_mode,page.syncCursor?now:null,row.id,this.actor.tenantId,claim.token,row.id,claim.token,hash);
     const result=await this.env.AGENT_DB.batch([receipt,changes,advance]);
     return result[2].meta.changes===1;
   }
