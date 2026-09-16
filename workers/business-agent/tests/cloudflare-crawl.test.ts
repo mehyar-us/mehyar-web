@@ -66,4 +66,12 @@ describe('bounded Cloudflare crawl adapter',()=>{
     const client=new CloudflareCrawl(account,'fixture',async()=>envelope({id,status:'completed',records:[{url:source,status:'completed',html:'page',metadata:{status:200.5}}]}));
     await expect(client.results(id,source)).rejects.toMatchObject({code:'invalid_crawl_record'});
   });
+  it.each(['https://external.example.com/','http://127.0.0.1/admin'])('omits excluded discovered URL %s without failing terminal traversal',async url=>{
+    const client=new CloudflareCrawl(account,'fixture',async()=>envelope({id,status:'completed',records:[{url,status:'skipped',html:'not evidence',metadata:{status:200,url}}],cursor:2}));
+    expect(await client.results(id,source)).toMatchObject({status:'completed',records:[],cursor:2});
+  });
+  it('still rejects unsafe redirects on error responses rather than treating them as excluded links',async()=>{
+    const client=new CloudflareCrawl(account,'fixture',async()=>envelope({id,status:'completed',records:[{url:source,status:'errored',html:'not evidence',metadata:{status:403,url:'http://127.0.0.1/private'}}]}));
+    await expect(client.results(id,source)).rejects.toMatchObject({code:'invalid_crawl_record'});
+  });
 });

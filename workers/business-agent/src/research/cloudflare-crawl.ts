@@ -60,7 +60,18 @@ export class CloudflareCrawl {
     const records:CrawlRecord[]=[];
     for(const record of raw.records) {
       if(!object(record)||typeof record.url!=='string'||!['queued','completed','disallowed','skipped','errored','cancelled'].includes(String(record.status)))throw fail('invalid_crawl_record','A crawl record could not be verified.');
-      const recordUrl=providerUrl(record.url);
+      let recordUrl:string;
+      try{recordUrl=providerUrl(record.url);}catch(error){if(record.status!=='skipped')throw error;continue;}
+      // The provider reports individually evaluated excluded URLs as skipped.
+      // They are not fetched evidence and may be outside the approved origin.
+      if(record.status==='skipped'){
+        if(new URL(recordUrl).origin===new URL(source).origin){
+          const metadata=object(record.metadata)?record.metadata:{};
+          records.push({url:recordUrl,status:record.status as RecordStatus,
+            httpStatus:typeof metadata.status==='number'&&Number.isInteger(metadata.status)?metadata.status:undefined,finalUrl:recordUrl});
+        }
+        continue;
+      }
       if(new URL(recordUrl).origin!==new URL(source).origin)throw fail('crawl_origin_changed','The crawl returned a page outside the approved website.');
       const metadata=object(record.metadata)?record.metadata:{};
       const finalUrl=typeof metadata.url==='string'?providerUrl(metadata.url):recordUrl;
