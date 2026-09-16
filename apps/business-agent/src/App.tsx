@@ -1816,7 +1816,6 @@ export default function App() {
                   tenantId={tenantId}
                   role={snapshot.membership.role}
                   catalog={catalog}
-                  usage={snapshot.usage}
                   online={online}
                   onUnauthorized={fail}
                 />

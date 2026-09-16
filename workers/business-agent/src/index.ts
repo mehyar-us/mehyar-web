@@ -52,6 +52,7 @@ async function route(request:Request,env:Env) {
     return json(unwrap(await agent.connectionCalendars(actor,calendarConnection[1],provider)));
   }
   if(section==='action-policies'&&request.method==='GET') return json({policies:unwrap(await agent.actionPolicies(actor))});
+  if(section==='usage'&&request.method==='GET') return json({usage:unwrap(await agent.usage(actor))});
   if(section==='action-policies'&&request.method==='POST') return json({policy:unwrap(await agent.saveActionPolicy(actor,await readJson(request)))});
   if(section==='actions'&&request.method==='GET') return json({actions:unwrap(await agent.actionReviews(actor))});
   if(section==='actions'&&request.method==='POST') return json({action:unwrap(await agent.proposeAction(actor,await readJson(request),requestKey(request)))},201);

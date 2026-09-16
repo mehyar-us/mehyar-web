@@ -137,6 +137,7 @@ async function fixture(page: Page, options: Fixtures = {}) {
     }
     if (path.endsWith("/messages"))
       return reply({ messages: path.includes("business-b") ? [] : messages });
+    if(path.endsWith('/usage'))return route.fulfill({json:{usage:{period:'trial',textCredits:{used:0,reserved:0,limit:50}}}});
     if (path.startsWith("/api/tenants/"))
       return reply({
         tenant: {

@@ -8,7 +8,8 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import { api, ApiError, displayValue, post, type Catalog } from "./api";
+import { api, ApiError, post, type Catalog } from "./api";
+import TextUsagePanel from './TextUsagePanel';
 
 type PlanId = "business" | "growth" | "operations";
 type Interval = "monthly" | "annual";
@@ -153,14 +154,12 @@ export default function BillingPanel({
   tenantId,
   role,
   catalog,
-  usage,
   online,
   onUnauthorized,
 }: {
   tenantId: string;
   role: string;
   catalog: Catalog | null;
-  usage?: Record<string, unknown>;
   online: boolean;
   onUnauthorized: (error: unknown) => void;
 }) {
@@ -736,28 +735,7 @@ export default function BillingPanel({
           )}
         </>
       )}
-      <section className="panel usage-panel">
-        <div className="panel-heading">
-          <h2>Reported usage</h2>
-        </div>
-        {usage && Object.keys(usage).length ? (
-          <dl className="usage-list">
-            {Object.entries(usage).map(([key, value]) => (
-              <div key={key}>
-                <dt>{label(key.replace(/([A-Z])/g, " $1").toLowerCase())}</dt>
-                <dd>{displayValue(value)}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : (
-          <div className="inline-empty">
-            <p>
-              Usage hasn't been reported yet. Only measured usage will appear
-              here.
-            </p>
-          </div>
-        )}
-      </section>
+      <TextUsagePanel key={tenantId} tenantId={tenantId} online={online} onUnauthorized={onUnauthorized}/>
       {catalog && (
         <p className="small muted">
           Catalog version {catalog.version}. Existing product purchases are

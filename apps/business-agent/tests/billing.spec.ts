@@ -130,6 +130,7 @@ async function fixture(
       });
     if (path === "/api/tenants") return reply({ tenants });
     if (path.endsWith("/messages")) return reply({ messages: [] });
+    if(path.endsWith('/usage'))return reply({usage:{period:'trial',textCredits:{used:0,reserved:0,limit:50}}});
     if (path.startsWith("/api/tenants/"))
       return reply({
         tenant: tenants.find((tenant) => path.endsWith(tenant.id)),
@@ -158,6 +159,41 @@ async function fixture(
   });
   return { calls, status };
 }
+
+test('paid usage displays remaining credits and refreshes without exposing subscription identifiers',async({page})=>{
+  await fixture(page);let used=120;
+  await page.route('**/api/tenants/business-a/usage',route=>route.fulfill({json:{usage:{period:'subscription:sub_private_identifier:2026-09-16',resetsAt:'2026-10-16T12:00:00.000Z',textCredits:{used,reserved:3,limit:2000}}}}));
+  await page.goto('/billing?tenantId=business-a');
+  const panel=page.getByRole('region',{name:'Text credit usage'});
+  await expect(panel).toContainText('2,000 credits');await expect(panel).toContainText('1,877');
+  await expect(panel).toContainText('Next allowance reset');await expect(panel).toContainText('including on annual plans');
+  await expect(panel).not.toContainText('sub_private_identifier');
+  used=130;await panel.getByRole('button',{name:'Refresh usage',exact:true}).click();
+  await expect(panel).toContainText('1,867');await expect(panel).not.toContainText('1,877');
+});
+
+test('usage failures remove stale totals and malformed accounting is never displayed',async({page})=>{
+  await fixture(page);let state='valid';
+  await page.route('**/api/tenants/business-a/usage',route=>state==='failure'?route.fulfill({status:503,json:{error:{message:'Usage service unavailable'}}})
+    :route.fulfill({json:{usage:{period:'trial',textCredits:{used:state==='valid'?5:-1,reserved:0,limit:50}}}}));
+  await page.goto('/billing?tenantId=business-a');
+  const panel=page.getByRole('region',{name:'Text credit usage'});
+  await expect(panel).toContainText('Trial allowance');await expect(panel).toContainText('45');
+  state='failure';await panel.getByRole('button',{name:'Refresh usage',exact:true}).click();
+  await expect(panel.getByRole('alert')).toContainText('Usage service unavailable');await expect(panel).not.toContainText('Available credits');
+  state='invalid';await panel.getByRole('button',{name:'Refresh usage',exact:true}).click();
+  await expect(panel.getByRole('alert')).toContainText('not available yet');await expect(panel).not.toContainText('-1');
+});
+
+test('unverified paid allowances and offline usage do not pretend to have zero consumption',async({page,context})=>{
+  await fixture(page);
+  await page.route('**/api/tenants/business-a/usage',route=>route.fulfill({json:{usage:{period:'unavailable',textCredits:{used:0,reserved:0,limit:0}}}}));
+  await page.goto('/billing?tenantId=business-a');
+  const panel=page.getByRole('region',{name:'Text credit usage'});
+  await expect(panel).toContainText('Your text allowance is unavailable');await expect(panel).not.toContainText('Completed responses');
+  await context.setOffline(true);await expect(panel).toContainText('Reconnect to load current usage');
+  await expect(panel.getByRole('button',{name:'Refresh usage',exact:true})).toBeDisabled();
+});
 
 test("billing returns select only verified workspaces and never infer payment from the URL", async ({
   page,

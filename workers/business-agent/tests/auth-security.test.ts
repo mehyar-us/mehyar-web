@@ -196,6 +196,10 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     const snapshot = await worker.fetch(request(tenantPath, undefined, sessionCookie), workerEnv);
     expect(snapshot.status).toBe(200);
     expect(await snapshot.json()).toMatchObject({ membership: { role: "owner" }, memory: [] });
+    const usageResponse=await worker.fetch(request(tenantPath+'/usage',undefined,sessionCookie),workerEnv);
+    expect(usageResponse.status).toBe(200);expect(usageResponse.headers.get('cache-control')).toContain('no-store');
+    expect(await usageResponse.json()).toMatchObject({usage:{period:'trial',textCredits:{used:0,reserved:0,limit:50}}});
+    expect((await worker.fetch(request('/api/tenants/another-business/usage',undefined,sessionCookie),workerEnv)).status).toBe(404);
     const memory = await worker.fetch(request(tenantPath + "/memory", { key: "Hours", value: "Monday through Friday" }, sessionCookie), workerEnv);
     expect(memory.status).toBe(201);
     const actionGrant = await storeProviderGrant(env,{userId:session!.user.id,tenantId:created.tenant.id,provider:'google',accountId:'review-fixture'},
