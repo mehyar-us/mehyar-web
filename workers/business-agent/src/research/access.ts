@@ -11,8 +11,9 @@ export async function researchJobAccess(env:Env,tenantId:string,jobs:ResearchJob
   const actor=jobs.requester(id);
   if(!actor)throw new HttpError(409,'research_requester_missing','Research needs review because its original requester is unavailable.');
   if(actor.tenantId!==tenantId)throw new HttpError(404,'research_job_missing','Research job not found.');
+  const access=await researchAccess(env,actor,paused);
   await requireResearchReady(env);
-  return researchAccess(env,actor,paused);
+  return access;
 }
 
 export const RESEARCH_GATES=['network_safety','crawl_permissions','supplier_cost_controls','provider_acceptance','scheduler_recovery'] as const;

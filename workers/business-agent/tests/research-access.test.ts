@@ -21,6 +21,34 @@ async function paid(actor:{tenantId:string},plan:string,interval:string){
       .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
 }
 describe('server-derived research allowances',()=>{
+  it('stops running work after requester revocation but preserves it during readiness failures',async()=>{
+    const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId),account='c'.repeat(32);
+    await runInDurableObject(stub,async(_instance,ctx)=>{
+      const jobs=new ResearchJobs(ctx.storage);jobs.initialize();
+      const job=jobs.reserveFor(actor,{key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
+      jobs.bindProviderAccount(job.id,account);jobs.begin(job.id);jobs.submitted(job.id,'33333333-3333-4333-8333-333333333333');
+      const configured={...e,RESEARCH_ENABLED:'true',RESEARCH_ACCOUNT_ID:account,RESEARCH_API_TOKEN:'fixture-token'};
+      let calls=0;const transport=(async()=>{calls++;throw new Error('unexpected provider call');}) as typeof fetch;
+      expect(await runResearchWork(configured,actor.tenantId,jobs,()=>false,transport)).toMatchObject([{ok:false,code:'research_not_ready'}]);
+      expect(jobs.get(job.id).status).toBe('running');
+      await e.AGENT_DB.prepare('DELETE FROM agent_memberships WHERE tenant_id=? AND user_id=?').bind(actor.tenantId,actor.userId).run();
+      expect(await runResearchWork(configured,actor.tenantId,jobs,()=>false,transport)).toMatchObject([{ok:false,code:'workspace_not_found'}]);
+      expect(jobs.get(job.id)).toMatchObject({status:'cancel_requested',reserved:20});expect(calls).toBe(0);
+    });
+  });
+  it('turning execution off stops local work even when provider recovery is disabled',async()=>{
+    const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId);
+    await runInDurableObject(stub,async(_instance,ctx)=>{
+      const jobs=new ResearchJobs(ctx.storage);jobs.initialize();
+      const input={key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:5,depth:2,deadline:Date.now()+60_000};
+      const queued=jobs.reserveFor(actor,input),running=jobs.reserveFor(actor,{...input,key:crypto.randomUUID()}),uncertain=jobs.reserveFor(actor,{...input,key:crypto.randomUUID()});
+      jobs.begin(running.id);jobs.submitted(running.id,'44444444-4444-4444-8444-444444444444');jobs.begin(uncertain.id);
+      expect(await runResearchWork(e,actor.tenantId,jobs,()=>false)).toEqual([]);
+      expect(jobs.get(queued.id)).toMatchObject({status:'cancelled',reserved:0});
+      expect(jobs.get(running.id)).toMatchObject({status:'cancel_requested',reserved:5});
+      expect(jobs.get(uncertain.id)).toMatchObject({status:'uncertain',reserved:5});
+    });
+  });
   it('recovers paused provider work through the actual maintenance callback and removes its idle schedule',async()=>{
     const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId),account='b'.repeat(32),scope=`research:recovery:${account}`;
     unwrap(await stub.provision(actor));

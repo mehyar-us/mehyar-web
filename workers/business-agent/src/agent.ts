@@ -44,7 +44,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   /** Persisted maintenance; provider operations require independent release gates. */
   async maintainResearch(){
     const jobs=new ResearchJobs(this.ctx.storage);jobs.expire();
-    if(this.state.paused)jobs.stopForPause();
+    if(this.state.paused)jobs.stopActive();
     if(this.state.tenantId===this.name){
       try{await runResearchWork(this.env,this.name,jobs,()=>this.state.paused);}
       catch(error){console.warn('research_scheduler_unavailable',{code:error instanceof HttpError?error.code:'research_work_failed'});}
@@ -166,7 +166,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       await requireMembership(this.env,actor,OPERATORS);
       this.setState({...this.state,paused});
       if(paused){
-        const jobs=new ResearchJobs(this.ctx.storage);jobs.stopForPause();
+        const jobs=new ResearchJobs(this.ctx.storage);jobs.stopActive();
         if(this.env.RESEARCH_RECOVERY_ENABLED==='true'&&jobs.hasRecoveryWork())await this.scheduleEvery(60,'maintainResearch');
       }
       await appendActivity(this.env,actor,paused?'agent.paused':'agent.resumed',paused?'New agent actions paused.':'Agent pause removed. Existing permissions still apply.');

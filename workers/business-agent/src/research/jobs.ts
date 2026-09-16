@@ -54,7 +54,7 @@ export class ResearchJobs {
     });
   }
   hasDeadlines(){return this.storage.sql.exec<{count:number}>("SELECT COUNT(*) AS count FROM research_jobs WHERE status IN ('reserved','submitting','running')").one().count>0;}
-  stopForPause(){
+  stopActive(){
     this.storage.transactionSync(()=>{
       this.storage.sql.exec("UPDATE research_jobs SET status='cancelled',reserved=0 WHERE status='reserved'");
       this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
