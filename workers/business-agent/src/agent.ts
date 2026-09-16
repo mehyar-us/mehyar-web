@@ -162,6 +162,9 @@ export class BusinessAgent extends Agent<Env,AgentState> {
         const answer=typeof response==='object'&&response&&'choices' in response
           ? response.choices?.[0]?.message?.content : null;
         if(typeof answer!=='string'||!answer.trim()) throw new Error('Invalid model response');
+        // Provider work may outlive billing access. Do not deliver or charge a
+        // new response after entitlement revocation; retain the provider attempt.
+        await textAccess(this.env,actor,await requireTenant(this.env,actor));
         await requireMembership(this.env,actor,CHAT_ROLES);
         if(this.state.paused) throw new HttpError(409,'agent_paused','Your agent was paused before this response completed.');
         const reply:Message={id:crypto.randomUUID(),role:'assistant',content:answer,createdAt:new Date().toISOString()};
