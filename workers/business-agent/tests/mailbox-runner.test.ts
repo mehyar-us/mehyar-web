@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:workers';
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
 import {storeProviderGrant} from '../src/auth/vault';
@@ -19,6 +19,7 @@ import {restartMailbox} from '../src/connectors/mailbox-restart';
 import {MailboxRecoveryOffers} from '../src/connectors/mailbox-recovery-offers';
 import {BusinessAgent,unwrap} from '../src/agent';
 import {runMailboxTriageDispatch} from '../src/connectors/mailbox-triage-dispatch';
+import {calibratedTextReservation} from '../src/billing/text-calibration';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -41,6 +42,45 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it.each(['missing','mismatch'] as const)('releases multi-credit aggregation on %s usage and settles a verified retry once',async(failure)=>{
+    vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-09-17T00:00:00Z'));
+    try{
+      const f=await fixture(),text='Please book Friday. '.repeat(1000);
+      await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'metered',kind:'upsert'}],syncCursor:'300'});
+      const claim=(await f.ledger.claimChange(f.streamId))!;
+      await f.ledger.saveChange(claim,{provider:'google',id:'metered',content:{id:'metered',threadId:'t',payload:{mimeType:'text/plain',body:{size:text.length,data:btoa(text).replace(/=+$/,'')}}}});
+      const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+      await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+        const original=(instance as any).env;let calls=0,valid=false,requiredCredits=0;
+        (instance as any).env={...e,MAILBOX_PROCESSING_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_EXTENDED_TRIAGE_ENABLED:'true',AI_ENABLED:'true',AI_GATEWAY_ID:'mehyar-business-agent-dev',AI:{run:async(_model:string,input:any)=>{
+          calls++;const data=JSON.parse(input.messages[1].content);
+          if(data.sections){
+            const meter=calibratedTextReservation(input,'mehyar-business-agent-dev');requiredCredits=meter.credits;expect(requiredCredits).toBeGreaterThan(1);
+            expect(ctx.storage.sql.exec<{units:number}>("SELECT units FROM background_text_usage WHERE status='running'").toArray()).toEqual([{units:requiredCredits}]);
+            const prompt=meter.inputTokens+(valid?0:-1);
+            return {...(!valid&&failure==='missing'?{}:{usage:{prompt_tokens:prompt,completion_tokens:100,total_tokens:prompt+100}}),
+              choices:[{message:{content:JSON.stringify({category:'appointment',priority:'routine',summary:'Review the booking inquiry.',evidenceIds:[0]})}}]};
+          }
+          return {choices:[{message:{content:JSON.stringify({category:'appointment',priority:'routine',summary:'\u0800'.repeat(1500),evidence:[{excerpt:data.emailText.slice(0,20)}]})}}]};
+        }}};
+        try{
+          const initial=unwrap(await instance.mailboxSectionProgress(f.actor,f.streamId,'metered',claim.token));
+          for(const index of initial.missingSections)unwrap(await instance.analyzeMailboxSection(f.actor,f.streamId,'metered',claim.token,index));
+          const sectionCredits=initial.analysisCredits;expect(sectionCredits).toBe(4);
+          expect(await instance.aggregateMailboxSections(f.actor,f.streamId,'metered',claim.token)).toMatchObject({ok:false,error:{code:'text_calibration_mismatch'}});
+          expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:sectionCredits,reserved:0});
+          expect(ctx.storage.sql.exec('SELECT id FROM mailbox_triage_aggregations').toArray()).toEqual([]);
+          expect(ctx.storage.sql.exec("SELECT id FROM provider_attempts WHERE status='failed'").toArray()).toHaveLength(1);
+          valid=true;const result=unwrap(await instance.aggregateMailboxSections(f.actor,f.streamId,'metered',claim.token));
+          expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:sectionCredits+requiredCredits,reserved:0});
+          expect(unwrap(await instance.aggregateMailboxSections(f.actor,f.streamId,'metered',claim.token))).toEqual(result);
+          expect(calls).toBe(sectionCredits+2);
+          expect(ctx.storage.sql.exec('SELECT attempt_id FROM text_provider_receipts').toArray()).toHaveLength(sectionCredits+2);
+          expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId)).items).toHaveLength(1);
+        }finally{(instance as any).env=original;}
+      });
+    }finally{vi.useRealTimers();}
+  });
   it('aggregates complete sections with durable credits, replay and source fencing',async()=>{
     const f=await fixture(),text='Please book Friday. '.repeat(500);
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'aggregate',kind:'upsert'}],syncCursor:'300'});
