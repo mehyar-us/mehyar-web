@@ -136,6 +136,39 @@ test('concurrent policy edits require refresh and never silently overwrite a new
   await expect(page.getByRole('button',{name:'Edit Owner revision',exact:true})).toBeVisible();
   await expect(page.getByRole('form',{name:'Edit policy'})).toHaveCount(0);
 });
+
+test('saved recipient, expiry and review-mode edits retain exact scope and retry payload',async({page})=>{
+  await fixture(page);const bodies:any[]=[];
+  await page.route('**/action-policies',async route=>{
+    if(route.request().method()==='GET')return route.fulfill({json:{policies:[savedPolicy()]}});
+    const body=route.request().postDataJSON();bodies.push(body);
+    return bodies.length===1?route.abort():route.fulfill({json:{policy:{...body,version:5}}});
+  });
+  await page.getByRole('button',{name:'Manage saved policies',exact:true}).click();
+  await page.getByRole('button',{name:'Edit Appointments',exact:true}).click();
+  await page.getByRole('textbox',{name:'Allowed recipient emails',exact:true}).fill('New@example.com;new@example.com');
+  await page.getByLabel('Permission expiry (UTC)',{exact:true}).fill('2027-02-01T09:30');
+  await page.getByRole('combobox',{name:'Review mode',exact:true}).selectOption('preview');
+  await page.getByRole('button',{name:'Save policy changes',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText("couldn't reach");
+  await page.getByRole('button',{name:'Save policy changes',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Saved policies'})).toContainText('Version 5');
+  expect(bodies).toHaveLength(2);expect(bodies[1]).toEqual(bodies[0]);
+  expect(bodies[0]).toMatchObject({expectedVersion:4,recipients:['new@example.com'],expiresAt:'2027-02-01T09:30:00.000Z',mode:'preview',resources:['work-calendar'],grantId:savedPolicy().grantId});
+});
+
+test('invalid recipient permissions do not reach the policy API',async({page})=>{
+  await fixture(page);let posts=0;
+  await page.route('**/action-policies',route=>{
+    if(route.request().method()==='POST')posts++;
+    return route.fulfill({json:{policies:[savedPolicy()]}});
+  });
+  await page.getByRole('button',{name:'Manage saved policies',exact:true}).click();
+  await page.getByRole('button',{name:'Edit Appointments',exact:true}).click();
+  await page.getByRole('textbox',{name:'Allowed recipient emails',exact:true}).fill('anyone');
+  await page.getByRole('button',{name:'Save policy changes',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText('valid recipient email');expect(posts).toBe(0);
+});
 test('reviews exact content and immutable hash, then shows permission without a delivery claim',async({page})=>{
   const calls=await fixture(page);
   await expect(page.getByText('customer@example.com',{exact:true})).toBeVisible();
