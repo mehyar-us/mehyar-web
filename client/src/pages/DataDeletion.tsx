@@ -16,14 +16,15 @@
 //   6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
 //   7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
 //   8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
-//   9. FreelancerOS — https://freelanceros.mehyar.us (freelancer OS: clients, invoices, content, templates)
-//   9. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
-//  10. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
-//  11. CreditFix Kit — https://creditfixkit.mehyar.us (DIY credit repair kit: dispute letters + rebuild plan)
-//  12. HustleKit — https://hustlekit.mehyar.us (AI side-hustle starter kits: personalized playbook PDFs)
-//  13. TikTok Growth System — https://tiktokgrowth.mehyar.us (AI-generated organic short-form growth playbook)
-//  14. PLR Vault — https://plrvault.mehyar.us (private-label-rights digital product vault)
-//  15. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
+//  9. FreelancerOS — https://freelanceros.mehyar.us (freelancer OS: clients, invoices, content, templates)
+//  10. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
+//  11. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
+//  12. CreditFix Kit — https://creditfixkit.mehyar.us (DIY credit repair kit: dispute letters + rebuild plan)
+//  13. HustleKit — https://hustlekit.mehyar.us (AI side-hustle starter kits: personalized playbook PDFs)
+//  14. TikTok Growth System — https://tiktokgrowth.mehyar.us (AI-generated organic short-form growth playbook)
+//  15. PLR Vault — https://plrvault.mehyar.us (private-label-rights digital product vault)
+//  16. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
+//  17. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -35,7 +36,6 @@
 // Last updated: 2026-09-14.
 
 import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles, LayoutDashboard} from "lucide-react";
-
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -148,7 +148,7 @@ const apps: AppInfo[] = [
       "Email address, submitted business assets, generated deliverables, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
-    id: "hustlekit",
+id: "hustlekit",
     name: "HustleKit",
     url: "https://hustlekit.mehyar.us",
     tagline: "AI side-hustle starter kit: personalized playbook PDFs.",
@@ -243,8 +243,17 @@ const apps: AppInfo[] = [
     whatWeDelete:
       "Email address, dashboard data, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
-
-];
+id: "promptpack",
+    name: "PromptPack Pro",
+    url: "https://promptpack.mehyar.us",
+    tagline: "Niche AI prompt packs + swipe files.",
+    icon: FileText,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase and send your pack link), the profession you pick at checkout, the generated prompt pack, and checkout records.",
+    whatWeDelete:
+      "Email address, profession choice, generated prompt pack, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },];
 
 interface Section {
   icon?: any;

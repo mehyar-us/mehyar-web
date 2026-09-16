@@ -290,7 +290,22 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/freelanceros-logo.png",
     accentClass: "from-slate-100 to-white dark:from-slate-900 dark:to-slate-950",
   },
-
+id: "promptpack",
+    name: "PromptPack Pro",
+    url: "https://promptpack.mehyar.us",
+    tagline: "50 AI prompts + 10 swipe files, written for your trade.",
+    description:
+      "Pick your profession \u2014 contractor, realtor, coach, or freelancer \u2014 and get 50 outcome-driven AI prompts plus 10 copy-paste swipe files, generated for exactly what you sell. One-time $19, with a free 5-prompt teaser before you pay.",
+    audience: "Contractors, realtors, coaches, and freelancers who want AI output that sounds like their trade, not generic filler.",
+    highlights: [
+      "50 outcome-driven prompts per profession \u2014 quotes, follow-ups, review replies, content",
+      "10 copy-paste swipe files for the messages that close deals",
+      "Try 5 free prompts first \u2014 no email, no signup",
+      "Token-gated private link + PDF download \u2014 no account needed",
+    ],
+    logo: "/assets/promptpack-logo.png",
+    accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
+  },
 ];
 
 const buildPillars = [
@@ -532,7 +547,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro), and the request form.
           </p>
         </div>
       </section>

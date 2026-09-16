@@ -213,7 +213,7 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">AI design studio — fixed-price design jobs.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">HustleKit — <a className="text-brand-700 underline dark:text-brand-100" href="https://hustlekit.mehyar.us" target="_blank" rel="noreferrer">hustlekit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+<div className="font-semibold">HustleKit — <a className="text-brand-700 underline dark:text-brand-100" href="https://hustlekit.mehyar.us" target="_blank" rel="noreferrer">hustlekit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">AI side-hustle starter kit — personalized playbook PDFs.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
@@ -243,7 +243,8 @@ const sections: Section[] = [
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">FreelancerOS — <a className="text-brand-700 underline dark:text-brand-100" href="https://freelanceros.mehyar.us" target="_blank" rel="noreferrer">freelanceros.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Freelancer operating system — clients, invoices, content pipeline, templates.</div>
-          </li>
+<div className="font-semibold">PromptPack Pro — <a className="text-brand-700 underline dark:text-brand-100" href="https://promptpack.mehyar.us" target="_blank" rel="noreferrer">promptpack.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Niche AI prompt packs + swipe files — 50 prompts, 10 swipes, $19 one-time.</div>          </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
