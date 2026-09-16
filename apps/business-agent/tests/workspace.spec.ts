@@ -495,6 +495,29 @@ test("workspace creation retries keep the same idempotency key", async ({
   expect(keys[2]).not.toBe(keys[1]);
 });
 
+test('owner conversation wording becomes a reviewed brief edit without an automatic write',async({page})=>{
+  await fixture(page);let data=briefFixture();data.brief.fields.services='Existing services';const writes:any[]=[];
+  await page.route('**/api/tenants/business-a/business-brief',route=>{
+    if(route.request().method()==='POST'){const body=route.request().postDataJSON();writes.push(body);data={...data,brief:{revision:1,fields:body.fields}};return route.fulfill({json:{brief:data.brief}});}
+    return route.fulfill({json:data});
+  });
+  await page.route('**/api/tenants/business-a/messages',route=>route.fulfill({json:{messages:[{id:'mine',role:'user',content:'Haircuts and beard trims',createdAt:'2026-09-16T12:00:00Z'},{id:'model',role:'assistant',content:'Unconfirmed model suggestion',createdAt:'2026-09-16T12:01:00Z'}]}}));
+  await page.goto('/');await expect(page.getByRole('button',{name:'Use in business brief'})).toHaveCount(1);
+  await page.getByRole('button',{name:'Use in business brief'}).click();
+  const panel=page.getByRole('region',{name:'Business brief'}),candidate=page.getByRole('region',{name:'Conversation brief draft'});
+  await expect(candidate.getByText('Current draft value: Existing services')).toBeVisible();
+  expect((await new AxeBuilder({page}).include('[aria-label="Conversation brief draft"]').analyze()).violations).toEqual([]);
+  await candidate.getByLabel('Proposed wording').fill('Haircuts, beard trims and styling');expect(writes).toHaveLength(0);
+  await candidate.getByRole('button',{name:'Replace this draft value'}).click();
+  await expect(panel.getByLabel('Services and products')).toHaveValue('Haircuts, beard trims and styling');expect(writes).toHaveLength(0);
+  await expect(panel.getByRole('button',{name:'Save reviewed brief'})).toBeDisabled();
+  await panel.getByLabel('I reviewed these business details.').check();await panel.getByRole('button',{name:'Save reviewed brief'}).click();
+  await expect(panel.getByRole('status')).toContainText('Business brief saved');expect(writes).toHaveLength(1);expect(writes[0].fields.services).toBe('Haircuts, beard trims and styling');
+  await page.getByRole('button',{name:'Conversation',exact:true}).click();await page.getByRole('button',{name:'Use in business brief'}).click();
+  await expect(candidate).toBeVisible();await page.getByLabel('YOUR WORKSPACE').selectOption('business-b');
+  await expect(candidate).toHaveCount(0);await page.getByLabel('YOUR WORKSPACE').selectOption('business-a');await expect(candidate).toHaveCount(0);
+});
+
 test('industry setup saves reviewed gaps and moves answered questions out of the remaining list',async({page})=>{
   await fixture(page);let answered=false;const requests:any[]=[];
   await page.route('**/api/tenants/business-a/business-brief',route=>{

@@ -379,6 +379,8 @@ export default function App() {
   const [tenantId, setTenantId] = useState("");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationBriefDraft,setConversationBriefDraft]=useState<{tenantId:string;id:string;text:string}|null>(null);
+  useEffect(()=>setConversationBriefDraft(null),[tenantId,user?.id]);
   const [tab, setTab] = useState<Tab>(() =>
     window.location.pathname === "/billing"
       ? "billing"
@@ -1267,6 +1269,7 @@ export default function App() {
                                 <time>{safeDate(message.createdAt)}</time>
                               </div>
                               <p>{message.content}</p>
+                              {message.role==="user"&&snapshot.membership.role==="owner"&&<button className="button secondary" disabled={!online} onClick={()=>{setConversationBriefDraft({tenantId,id:message.id,text:message.content});go("knowledge");}}>Use in business brief</button>}
                             </div>
                           </article>
                         ))}
@@ -1586,7 +1589,7 @@ export default function App() {
                       )}
                     </section>
                   </div>
-                  {['owner','manager'].includes(snapshot.membership.role) && <BusinessBriefPanel key={`brief:${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} online={online} canEdit={snapshot.membership.role==='owner'} onUnauthorized={fail}/>}
+                  {['owner','manager'].includes(snapshot.membership.role) && <BusinessBriefPanel key={`brief:${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} online={online} canEdit={snapshot.membership.role==='owner'} onUnauthorized={fail} conversationDraft={conversationBriefDraft?.tenantId===tenantId?conversationBriefDraft:undefined} onDismissConversationDraft={()=>setConversationBriefDraft(null)}/>}
                   {['owner','manager'].includes(snapshot.membership.role) && <ResearchPanel key={`${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} online={online} canConfirm={snapshot.membership.role==='owner'} onSaved={()=>refreshWorkspace(tenantId)} onUnauthorized={fail}/>}
                 </div>
               )}
