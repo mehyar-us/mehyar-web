@@ -21,6 +21,46 @@ async function fixture(provider:'google'|'microsoft'='google') {
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
+  it('restarts a failed Gmail round atomically and does not reset newer progress on retry',async()=>{
+    const f=await fixture(),key=crypto.randomUUID();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'cached',kind:'upsert'},{messageId:'pending',kind:'upsert'}],nextCursor:'old-page'});
+    await f.ledger.saveChange((await f.ledger.claimChange(f.streamId))!,{provider:'google',id:'cached',content:{id:'cached',threadId:'t',payload:{}}});
+    const consumer=(await f.ledger.claimChange(f.streamId))!;
+    const oldRound=(await e.AGENT_DB.prepare('SELECT round_id FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{round_id:string}>())!.round_id;
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    expect(await f.ledger.restart(f.streamId,key,oldRound,'500')).toEqual({state:'restarted'});
+    expect(await e.AGENT_DB.prepare('SELECT checkpoint,page_cursor,sync_mode,state FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first())
+      .toEqual({checkpoint:'500',page_cursor:null,sync_mode:'bootstrap',state:'ready'});
+    expect(await e.AGENT_DB.prepare('SELECT needs_reconciliation FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({needs_reconciliation:1});
+    await expect(f.ledger.saveChange(consumer,null)).rejects.toBeDefined();
+    const next=(await f.ledger.claim(f.streamId))!;
+    await f.ledger.commit(next,{changes:[{messageId:'cached',kind:'upsert'}],nextCursor:'new-page'});
+    await f.ledger.saveChange((await f.ledger.claimChange(f.streamId))!,{provider:'google',id:'cached',content:{id:'cached',threadId:'t',payload:{}}});
+    expect(await e.AGENT_DB.prepare('SELECT needs_reconciliation FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({needs_reconciliation:0});
+    expect(await f.ledger.restart(f.streamId,key,oldRound,'500')).toEqual({state:'restarted'});
+    expect(await e.AGENT_DB.prepare('SELECT page_cursor FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({page_cursor:'new-page'});
+    await expect(f.ledger.restart(f.streamId,key,oldRound,'501')).rejects.toBeDefined();
+  });
+  it('rejects healthy or stale recovery rounds and restarts Graph without an old delta link',async()=>{
+    const f=await fixture('microsoft');
+    const round=(await e.AGENT_DB.prepare('SELECT round_id FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{round_id:string}>())!.round_id;
+    await expect(f.ledger.restart(f.streamId,crypto.randomUUID(),round)).rejects.toBeDefined();
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    await expect(f.ledger.restart(f.streamId,crypto.randomUUID(),crypto.randomUUID())).rejects.toBeDefined();
+    expect(await f.ledger.restart(f.streamId,crypto.randomUUID(),round)).toEqual({state:'restarted'});
+    expect(await f.ledger.claim(f.streamId)).toMatchObject({checkpoint:null,pageCursor:null});
+  });
+  it('rolls back a restart receipt and checkpoint when retiring pending work fails',async()=>{
+    const f=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'old'});
+    const round=(await e.AGENT_DB.prepare('SELECT round_id FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{round_id:string}>())!.round_id;
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    await e.AGENT_DB.prepare("CREATE TRIGGER fail_resync BEFORE UPDATE OF state ON agent_mailbox_changes WHEN NEW.state='discarded' BEGIN SELECT RAISE(ABORT,'fixture reset failure'); END").run();
+    try{await expect(f.ledger.restart(f.streamId,crypto.randomUUID(),round,'500')).rejects.toBeDefined();}
+    finally{await e.AGENT_DB.prepare('DROP TRIGGER fail_resync').run();}
+    expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_resync_receipts WHERE stream_id=?').bind(f.streamId).first()).toEqual({n:0});
+    expect(await e.AGENT_DB.prepare('SELECT checkpoint,page_cursor,state FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({checkpoint:'200',page_cursor:'old',state:'resync_required'});
+  });
   it('stops one account without losing queued work, grants or checkpoints and fences active callbacks',async()=>{
     const f=await fixture(),other=await fixture();
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'next'});

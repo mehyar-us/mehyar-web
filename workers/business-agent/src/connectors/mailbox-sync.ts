@@ -98,6 +98,42 @@ export class MailboxSync {
     for(const row of rows)await this.stream(row.id);
     return {configuredFolders:rows.length};
   }
+  /** Internal recovery primitive. The service must verify readiness and, for
+   * Gmail, capture a fresh profile baseline before calling with a stable key.
+   * Cached messages remain unverified until individually observed again. */
+  async restart(streamId:string,requestKey:string,expectedRound:string,gmailBaseline?:string) {
+    if(!z.string().uuid().safeParse(requestKey).success||!z.string().uuid().safeParse(expectedRound).success)throw unavailable();
+    const {row,grant}=await this.stream(streamId),now=this.now();
+    if(row.provider==='google')this.cursor('google',row.resource,gmailBaseline??'',true);
+    else if(gmailBaseline!==undefined)throw unavailable();
+    const payloadHash=await digest(JSON.stringify([expectedRound,gmailBaseline??null]));
+    const prior=await this.env.AGENT_DB.prepare('SELECT payload_hash FROM agent_mailbox_resync_receipts WHERE stream_id=? AND request_key=?')
+      .bind(streamId,requestKey).first<{payload_hash:string}>();
+    if(prior){if(prior.payload_hash!==payloadHash)throw unavailable();return {state:'restarted' as const};}
+    const newRound=crypto.randomUUID();
+    const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_resync_receipts(stream_id,request_key,payload_hash,new_round,created_at)
+      SELECT ?,?,?,?,? FROM agent_mailbox_sync WHERE id=? AND round_id=? AND
+      (state='resync_required' OR EXISTS(SELECT 1 FROM agent_mailbox_consumers WHERE stream_id=? AND state='review_required'))
+      AND ${this.fence} ON CONFLICT(stream_id,request_key) DO NOTHING`)
+      .bind(streamId,requestKey,payloadHash,newRound,now,streamId,expectedRound,streamId,...this.args(row.grant_id,grant));
+    const saved=`EXISTS(SELECT 1 FROM agent_mailbox_resync_receipts WHERE stream_id=? AND request_key=? AND new_round=?)`;
+    const savedArgs=[streamId,requestKey,newRound];
+    const results=await this.env.AGENT_DB.batch([receipt,
+      this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET checkpoint=?,page_cursor=NULL,round_id=?,page_number=0,state='ready',
+        lease_token=NULL,lease_until=NULL,next_poll_at=?,consecutive_attempts=0,sync_mode=?,updated_at=? WHERE id=? AND ${saved}`)
+        .bind(gmailBaseline??null,newRound,now,row.provider==='google'?'bootstrap':'incremental',now,streamId,...savedArgs),
+      this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_changes SET state='discarded' WHERE stream_id=? AND state='pending' AND ${saved}`).bind(streamId,...savedArgs),
+      this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_consumers SET page_token=NULL,ordinal=NULL,lease_token=NULL,lease_until=NULL,
+        attempts=0,state='ready',next_attempt_at=? WHERE stream_id=? AND ${saved}`).bind(now,streamId,...savedArgs),
+      this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=? AND ${saved}`).bind(streamId,...savedArgs),
+    ]);
+    if(results[0].meta.changes!==1) {
+      const replay=await this.env.AGENT_DB.prepare('SELECT payload_hash FROM agent_mailbox_resync_receipts WHERE stream_id=? AND request_key=?')
+        .bind(streamId,requestKey).first<{payload_hash:string}>();
+      if(replay?.payload_hash!==payloadHash)throw unavailable();
+    }
+    return {state:'restarted' as const};
+  }
   async claim(streamId:string):Promise<MailboxClaim|null> {
     const {row,grant}=await this.stream(streamId),token=crypto.randomUUID(),now=this.now();
     // Crashes also consume attempts. A dead worker cannot cause endless provider reads.
@@ -208,7 +244,7 @@ export class MailboxSync {
       AND (SELECT COALESCE(SUM(m.content_bytes),0) FROM agent_mailbox_messages m JOIN agent_mailbox_sync s ON s.id=m.stream_id WHERE s.tenant_id=? AND NOT(m.stream_id=? AND m.message_id=?))+?<=10000000
       AND (SELECT COUNT(*) FROM agent_mailbox_messages m JOIN agent_mailbox_sync s ON s.id=m.stream_id WHERE s.tenant_id=? AND NOT(m.stream_id=? AND m.message_id=?))<10000
       ON CONFLICT(stream_id,message_id) DO UPDATE SET state=excluded.state,content_json=excluded.content_json,content_bytes=excluded.content_bytes,
-        source_mode=excluded.source_mode,observed_at=excluded.observed_at,receipt_token=excluded.receipt_token`)
+        source_mode=excluded.source_mode,observed_at=excluded.observed_at,receipt_token=excluded.receipt_token,needs_reconciliation=0`)
       .bind(row.id,context.message_id,snapshot?'present':'missing',content,bytes,context.source_mode,now,claim.token,row.id,claim.token,now,...this.args(row.grant_id,grant),this.actor.tenantId,row.id,context.message_id,bytes,this.actor.tenantId,row.id,context.message_id);
     const acknowledge=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_changes SET state='applied' WHERE stream_id=? AND page_token=? AND ordinal=? AND state='pending'
       AND EXISTS(SELECT 1 FROM agent_mailbox_messages WHERE stream_id=? AND message_id=? AND receipt_token=?)`)

@@ -28,7 +28,7 @@ async function mailboxStatus(env:Env,actor:Actor,grantId:string,paused:()=>boole
   const counts=await env.AGENT_DB.prepare(`WITH streams AS (SELECT id FROM agent_mailbox_sync
     WHERE tenant_id=? AND grant_id=? AND authorization=? AND provider=? AND (?='microsoft' OR resource='mailbox')) SELECT
     (SELECT COUNT(*) FROM agent_mailbox_changes WHERE stream_id IN (SELECT id FROM streams) AND state='pending') AS pending,
-    (SELECT MAX(observed_at) FROM agent_mailbox_messages WHERE stream_id IN (SELECT id FROM streams)) AS lastObservedAt`)
+    (SELECT MAX(observed_at) FROM agent_mailbox_messages WHERE stream_id IN (SELECT id FROM streams) AND needs_reconciliation=0) AS lastObservedAt`)
     .bind(actor.tenantId,grantId,authorization,provider,provider).first<{pending:number;lastObservedAt:string|null}>();
   let available=false;
   if(env.MAILBOX_RECOVERY_ENABLED==='true'&&env.MAILBOX_PROCESSING_ENABLED==='true'&&!paused()) {
