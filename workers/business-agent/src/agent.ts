@@ -7,7 +7,7 @@ import { ActionControls } from './actions';
 import { connectedCalendars } from './connectors/calendar-access';
 import {CalendarSessions} from './connectors/calendar-sessions';
 import {FolderSessions} from './connectors/folder-sessions';
-import {connectedMailboxFolders} from './connectors/folder-access';
+import {connectedMailboxFolders,initializeMicrosoftFolders} from './connectors/folder-access';
 import {runMailboxPage} from './connectors/mailbox-runner';
 import {initializeGoogleMailbox} from './connectors/mailbox-bootstrap';
 import {consumeMailboxChange} from './connectors/mailbox-consumer';
@@ -129,6 +129,16 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       };
       await guard();
       return connectedMailboxFolders(this.env,actor,grantId,new FolderSessions(this.ctx.storage),guard,continuation);
+    });
+  }
+  async configureMailboxFolders(actor:Actor,grantId:string,inventoryId:string,folderIds:string[]) {
+    return this.result(async()=>{
+      const guard=async()=>{
+        await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused)throw new HttpError(409,'agent_paused','Mailbox monitoring is paused.');
+      };
+      await guard();
+      return initializeMicrosoftFolders(this.env,actor,grantId,new FolderSessions(this.ctx.storage),guard,inventoryId,folderIds);
     });
   }
   async consumeMailbox(actor:Actor,streamId:string) {

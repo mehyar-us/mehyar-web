@@ -84,6 +84,20 @@ export class MailboxSync {
     await this.stream(streamId);
     return streamId;
   }
+  /** Atomically add a verified Outlook selection. Exact repeats preserve all existing cursors and recovery state. */
+  async openMicrosoftFolders(grantId:string,resources:string[],expectedAuthorization:string) {
+    if(!resources.length||resources.length>100||new Set(resources).size!==resources.length||resources.some(resource=>!id.safeParse(resource).success))throw unavailable();
+    const {authorization,grant}=await this.authority(grantId,'microsoft');
+    if(authorization!==expectedAuthorization)throw unavailable();
+    const rows=await Promise.all(resources.map(async resource=>({resource,
+      id:await digest(JSON.stringify(['mailbox-sync-v1',this.actor.tenantId,grantId,'microsoft',resource,authorization])),round:crypto.randomUUID()})));
+    await this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_sync(id,tenant_id,grant_id,provider,resource,authorization,checkpoint,round_id,updated_at,sync_mode)
+      SELECT json_extract(value,'$.id'),?,?,'microsoft',json_extract(value,'$.resource'),?,NULL,json_extract(value,'$.round'),?,'incremental'
+      FROM json_each(?) WHERE ${this.fence} ON CONFLICT(id) DO NOTHING`)
+      .bind(this.actor.tenantId,grantId,authorization,this.now(),JSON.stringify(rows),...this.args(grantId,grant)).run();
+    for(const row of rows)await this.stream(row.id);
+    return {configuredFolders:rows.length};
+  }
   async claim(streamId:string):Promise<MailboxClaim|null> {
     const {row,grant}=await this.stream(streamId),token=crypto.randomUUID(),now=this.now();
     // Crashes also consume attempts. A dead worker cannot cause endless provider reads.

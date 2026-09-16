@@ -826,6 +826,12 @@ test('discovers Outlook folders across batches and clears them offline',async({p
   const grantId='11111111-1111-4111-8111-111111111111',handle='22222222-2222-4222-8222-222222222222';
   await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:grantId,provider:'microsoft',tenantId:tenant.id,status:'authorized',grantedCapabilities:['mail_read'],grantedScopes:[],selectedCapabilities:['mail_read']}]}}));
   const parent={id:'a',displayName:'Clients',parentFolderId:'root',childFolderCount:1,isHidden:false};let calls=0;
+  const setupPayloads:unknown[]=[];
+  await page.route('**/connections/*/mailbox/setup',route=>{
+    setupPayloads.push(route.request().postDataJSON());
+    if(setupPayloads.length===1)return route.abort('failed');
+    return route.fulfill({json:{state:'configured',configuredFolders:1}});
+  });
   await page.route('**/connections/*/mailbox/folders',route=>{
     expect(new URL(route.request().url()).pathname).toBe(`/api/tenants/${tenant.id}/connections/${grantId}/mailbox/folders`);
     expect(route.request().method()).toBe('POST');calls++;
@@ -839,6 +845,14 @@ test('discovers Outlook folders across batches and clears them offline',async({p
   await expect(panel.getByText('Archive — in Clients (hidden)',{exact:true})).toBeVisible();
   await expect(panel.getByRole('status')).toContainText('Folder discovery complete');
   await expect(panel.getByRole('button',{name:'Load more folders'})).toHaveCount(0);
+  await expect(panel.getByRole('button',{name:'Set up selected folders'})).toBeDisabled();
+  await panel.getByRole('checkbox',{name:'Archive — in Clients (hidden)',exact:true}).check();
+  await panel.getByRole('button',{name:'Set up selected folders'}).click();
+  await expect(panel.getByRole('alert')).toContainText('Retry the same selection');
+  await expect(panel.getByRole('checkbox',{name:'Clients',exact:true})).toBeDisabled();
+  await panel.getByRole('button',{name:'Retry same folder setup'}).click();
+  expect(setupPayloads).toEqual([{inventoryId:handle,folderIds:['b']},{inventoryId:handle,folderIds:['b']}]);
+  await expect(panel.getByText('1 folders configured.',{exact:false})).toBeVisible();
   expect((await new AxeBuilder({page}).include('[aria-label="Outlook mailbox folders"]').analyze()).violations).toEqual([]);
   await page.context().setOffline(true);
   await expect(panel.getByRole('status')).toContainText('Reconnect');

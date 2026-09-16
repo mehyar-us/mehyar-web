@@ -13,7 +13,7 @@ import {googleMailboxStatus} from '../src/connectors/mailbox-status';
 import {runInDurableObject} from 'cloudflare:test';
 import {getAgentByName} from 'agents';
 import {FolderSessions} from '../src/connectors/folder-sessions';
-import {connectedMailboxFolders} from '../src/connectors/folder-access';
+import {connectedMailboxFolders,initializeMicrosoftFolders} from '../src/connectors/folder-access';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -36,6 +36,48 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('configures only verified Outlook folders and preserves existing progress on repeated setup',async()=>{
+    const f=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    const ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const sessions=new FolderSessions(ctx.storage);sessions.initialize();
+      const inventory=await connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,undefined,async()=>Response.json({value:
+        ['inbox','clients'].map(id=>({id,displayName:id,parentFolderId:'root',childFolderCount:0,isHidden:false}))}));
+      const configure=(ids:string[])=>initializeMicrosoftFolders(ready,f.actor,f.grantId,sessions,guard,inventory.inventoryId!,ids);
+      await expect(configure(['invented'])).rejects.toMatchObject({code:'unknown_mailbox_folder'});
+      expect(await configure(['inbox','clients'])).toEqual({state:'configured',configuredFolders:2});
+      await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required',page_cursor='private-progress' WHERE grant_id=? AND resource='inbox'").bind(f.grantId).run();
+      expect(await configure(['inbox','clients'])).toEqual({state:'configured',configuredFolders:2});
+      expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_sync WHERE grant_id=?').bind(f.grantId).first()).toEqual({n:2});
+      expect(await e.AGENT_DB.prepare("SELECT state,page_cursor FROM agent_mailbox_sync WHERE grant_id=? AND resource='inbox'").bind(f.grantId).first())
+        .toEqual({state:'resync_required',page_cursor:'private-progress'});
+    });
+  });
+  it('rolls back the whole Outlook selection when one folder insert fails',async()=>{
+    const f=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const sessions=new FolderSessions(ctx.storage);sessions.initialize();
+      const inventory=await connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,undefined,async()=>Response.json({value:
+        ['first','fail-selection'].map(id=>({id,displayName:id,parentFolderId:'root',childFolderCount:0,isHidden:false}))}));
+      await e.AGENT_DB.prepare("CREATE TRIGGER folder_setup_failure BEFORE INSERT ON agent_mailbox_sync WHEN NEW.resource='fail-selection' BEGIN SELECT RAISE(ABORT,'fixture insert failure'); END").run();
+      try {
+        await expect(initializeMicrosoftFolders({...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.grantId,sessions,guard,inventory.inventoryId!,['first','fail-selection'])).rejects.toBeDefined();
+      } finally {await e.AGENT_DB.prepare('DROP TRIGGER folder_setup_failure').run();}
+      expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_sync WHERE grant_id=?').bind(f.grantId).first()).toEqual({n:0});
+    });
+  });
+  it('refuses Outlook setup while processing is disabled or discovery consent has changed',async()=>{
+    const f=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const sessions=new FolderSessions(ctx.storage);sessions.initialize();
+      const inventory=await connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,undefined,async()=>Response.json({value:
+        [{id:'inbox',displayName:'Inbox',parentFolderId:'root',childFolderCount:0,isHidden:false}]}));
+      await expect(initializeMicrosoftFolders(e,f.actor,f.grantId,sessions,guard,inventory.inventoryId!,['inbox'])).rejects.toMatchObject({code:'mailbox_setup_unavailable'});
+      await storeProviderGrant(e,f.binding,f.credential,[]);
+      await expect(initializeMicrosoftFolders({...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.grantId,sessions,guard,inventory.inventoryId!,['inbox'])).rejects.toMatchObject({code:'folder_inventory_expired'});
+      expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_sync WHERE grant_id=?').bind(f.grantId).first()).toEqual({n:0});
+    });
+  });
   it('discovers current-account Outlook folders through real tenant storage without exposing provider cursors',async()=>{
     const f=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
     await runInDurableObject(stub,async(_agent,ctx)=>{
