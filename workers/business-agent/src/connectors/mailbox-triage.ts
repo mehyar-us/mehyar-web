@@ -5,6 +5,7 @@ import {textAccess} from '../billing/text-access';
 import {TextUsage} from '../billing/text-usage';
 import {estimateStandardText} from '../billing/text-meter';
 import {verifyCalibratedTextReceipt} from '../billing/text-calibration';
+import type {AggregationTerms} from './mailbox-aggregation-offers';
 import {MailboxSync} from './mailbox-sync';
 import {requireMailboxAccess} from './mailbox-runner';
 import {mailTriageRequest,parseMailTriage,type MailTriageResult} from './mail-triage';
@@ -122,7 +123,22 @@ export class MailboxTriage {
     return {sectionCount:plan.chunks.length,analysisCredits:plan.analysisCredits,aggregationCreditsIncluded:false as const,
       completedSections:completed,missingSections:missing,coverage};
   }
-  async run(env:Env,actor:Actor,streamId:string,messageId:string,receipt:string,agentGuard:()=>Promise<void>,sectionIndex?:number,aggregate=false):Promise<MailTriageResult> {
+  async quoteAggregation(env:Env,actor:Actor,streamId:string,messageId:string,receipt:string,agentGuard:()=>Promise<void>):Promise<AggregationTerms>{
+    const progress=await this.sections(env,actor,streamId,messageId,receipt,agentGuard);
+    if(!progress.coverage)throw new HttpError(409,'triage_coverage_incomplete','Complete every message section before reviewing aggregation cost.');
+    const ledger=new MailboxSync(env,actor),observed=await ledger.readText(streamId,messageId,receipt),businessContext=this.businessContext();
+    const source={...observed,businessContext},values=progress.coverage.sections.map(value=>({...value,sectionCount:progress.sectionCount}));
+    const aggregation=mailTriageAggregationRequest(source,values),credits=aggregationTextCredits(aggregation,env.AI_GATEWAY_ID);
+    const access=await textAccess(env,actor,await requireTenant(env,actor));
+    const payloadHash=await digest(JSON.stringify({source,request:aggregation.request}));
+    const id=await digest(JSON.stringify(['mailbox-triage-aggregation-v1',actor.userId,streamId,messageId,receipt,businessContext]));
+    if(this.storage.sql.exec("SELECT id FROM background_text_usage WHERE id=? AND status='complete'",id).toArray().length)
+      throw new HttpError(409,'triage_already_complete','This aggregation is already available in mailbox analyses.');
+    await requireMailboxAccess(env,actor,agentGuard,source.provider);await ledger.readText(streamId,messageId,receipt);
+    if(JSON.stringify(this.businessContext())!==JSON.stringify(businessContext))throw new HttpError(409,'triage_context_changed','The business brief changed. Review the cost again.');
+    return {streamId,messageId,receipt,payloadHash,credits,period:access.period,sectionCount:progress.sectionCount};
+  }
+  async run(env:Env,actor:Actor,streamId:string,messageId:string,receipt:string,agentGuard:()=>Promise<void>,sectionIndex?:number,aggregate=false,approved?:AggregationTerms):Promise<MailTriageResult> {
     if(aggregate&&sectionIndex!==undefined)throw new HttpError(400,'invalid_triage_section','Aggregation cannot select a single section.');
     if(sectionIndex!==undefined&&!z.number().int().min(0).max(31).safeParse(sectionIndex).success)throw new HttpError(400,'invalid_triage_section','Select a valid message section.');
     const enabled=()=>{
@@ -151,7 +167,10 @@ export class MailboxTriage {
     const request=aggregation?.request??mailTriageRequest(source),access=await textAccess(env,actor,await requireTenant(env,actor));
     const id=section?await mailTriageSectionId(actor.userId,section):await digest(JSON.stringify([aggregate?'mailbox-triage-aggregation-v1':'mailbox-triage-v2',actor.userId,streamId,messageId,receipt,businessContext]));
     const payloadHash=await digest(JSON.stringify(aggregation?{source,request}:source));
-    const usage=new TextUsage(this.storage),reservation=usage.reserve(id,actor.userId,payloadHash,access,aggregation?aggregationTextCredits(aggregation,env.AI_GATEWAY_ID):1);
+    const credits=aggregation?aggregationTextCredits(aggregation,env.AI_GATEWAY_ID):1;
+    if(approved&&(!aggregate||approved.streamId!==streamId||approved.messageId!==messageId||approved.receipt!==receipt||approved.payloadHash!==payloadHash||approved.credits!==credits||approved.period!==access.period))
+      throw new HttpError(409,'aggregation_offer_changed','The reviewed analysis or cost changed. Review the cost again.');
+    const usage=new TextUsage(this.storage),reservation=usage.reserve(id,actor.userId,payloadHash,access,credits);
     if(reservation.state==='complete'){
       await guard();await ledger.readText(streamId,messageId,receipt);
       checkContext();

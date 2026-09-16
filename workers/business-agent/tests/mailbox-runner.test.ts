@@ -67,16 +67,28 @@ describe('one-page mailbox provider runner',()=>{
           const initial=unwrap(await instance.mailboxSectionProgress(f.actor,f.streamId,'metered',claim.token));
           for(const index of initial.missingSections)unwrap(await instance.analyzeMailboxSection(f.actor,f.streamId,'metered',claim.token,index));
           const sectionCredits=initial.analysisCredits;expect(sectionCredits).toBe(4);
-          expect(await instance.aggregateMailboxSections(f.actor,f.streamId,'metered',claim.token)).toMatchObject({ok:false,error:{code:'text_calibration_mismatch'}});
+          const offer=unwrap(await instance.reviewMailboxAggregation(f.actor,f.streamId,'metered',claim.token));
+          expect(offer).toMatchObject({scope:'combine_completed_sections',includesSectionAnalysis:false,authorizesExternalActions:false,sectionCount:4});expect(offer.textCredits).toBeGreaterThan(1);
+          expect(unwrap(await instance.reviewMailboxAggregation(f.actor,f.streamId,'metered',claim.token))).toEqual(offer);expect(calls).toBe(sectionCredits);
+          expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:sectionCredits,reserved:0});
+          expect((await instance.confirmMailboxAggregation({...f.actor,userId:crypto.randomUUID()},offer.offerId)).ok).toBe(false);expect(calls).toBe(sectionCredits);
+          const saved=ctx.storage.sql.exec<{terms:string}>('SELECT terms FROM mailbox_aggregation_offers WHERE id=?',offer.offerId).one();
+          ctx.storage.sql.exec('UPDATE mailbox_aggregation_offers SET terms=? WHERE id=?',JSON.stringify({...JSON.parse(saved.terms),credits:offer.textCredits+1}),offer.offerId);
+          expect(await instance.confirmMailboxAggregation(f.actor,offer.offerId)).toMatchObject({ok:false,error:{code:'aggregation_offer_changed'}});expect(calls).toBe(sectionCredits);
+          ctx.storage.sql.exec('UPDATE mailbox_aggregation_offers SET terms=? WHERE id=?',saved.terms,offer.offerId);
+          expect(await instance.confirmMailboxAggregation(f.actor,offer.offerId)).toMatchObject({ok:false,error:{code:'text_calibration_mismatch'}});
           expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:sectionCredits,reserved:0});
           expect(ctx.storage.sql.exec('SELECT id FROM mailbox_triage_aggregations').toArray()).toEqual([]);
           expect(ctx.storage.sql.exec("SELECT id FROM provider_attempts WHERE status='failed'").toArray()).toHaveLength(1);
-          valid=true;const result=unwrap(await instance.aggregateMailboxSections(f.actor,f.streamId,'metered',claim.token));
+          valid=true;const result=unwrap(await instance.confirmMailboxAggregation(f.actor,offer.offerId));
           expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:sectionCredits+requiredCredits,reserved:0});
-          expect(unwrap(await instance.aggregateMailboxSections(f.actor,f.streamId,'metered',claim.token))).toEqual(result);
+          expect(unwrap(await instance.confirmMailboxAggregation(f.actor,offer.offerId))).toEqual(result);
           expect(calls).toBe(sectionCredits+2);
           expect(ctx.storage.sql.exec('SELECT attempt_id FROM text_provider_receipts').toArray()).toHaveLength(sectionCredits+2);
           expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId)).items).toHaveLength(1);
+          expect(await instance.reviewMailboxAggregation(f.actor,f.streamId,'metered',claim.token)).toMatchObject({ok:false,error:{code:'triage_already_complete'}});
+          vi.setSystemTime(new Date(Date.now()+600001));
+          expect(await instance.confirmMailboxAggregation(f.actor,offer.offerId)).toMatchObject({ok:false,error:{code:'aggregation_offer_expired'}});expect(calls).toBe(sectionCredits+2);
         }finally{(instance as any).env=original;}
       });
     }finally{vi.useRealTimers();}
