@@ -19,7 +19,7 @@ const providerUrl=(value:string)=>{
  * before start(). No retries are made here, especially after ambiguous starts. */
 export class CloudflareCrawl {
   private readonly base:string;
-  constructor(accountId:string,private token:string,private transport:typeof fetch=fetch) {
+  constructor(readonly accountId:string,private token:string,private transport:typeof fetch=fetch) {
     if(!/^[a-f0-9]{32}$/.test(accountId)||!token)throw fail('crawl_not_configured','Website research is not configured.',503);
     this.base=`https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering/crawl`;
   }

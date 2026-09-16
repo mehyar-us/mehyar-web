@@ -40,6 +40,7 @@ export class ResearchJobs {
       job_id TEXT PRIMARY KEY,attempts INTEGER NOT NULL DEFAULT 0,next_at INTEGER NOT NULL DEFAULT 0,
       lease_id TEXT,lease_until INTEGER NOT NULL DEFAULT 0,acknowledged_at TEXT)`);
     this.storage.sql.exec('CREATE TABLE IF NOT EXISTS research_scheduler_cursor (id INTEGER PRIMARY KEY CHECK(id=1),last_row INTEGER NOT NULL)');
+    this.storage.sql.exec('CREATE TABLE IF NOT EXISTS research_provider_accounts (job_id TEXT PRIMARY KEY,account_id TEXT NOT NULL)');
     // An interrupted POST may have created a billable provider job. Keep its reservation.
     this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
     this.expire();
@@ -53,6 +54,16 @@ export class ResearchJobs {
     });
   }
   hasDeadlines(){return this.storage.sql.exec<{count:number}>("SELECT COUNT(*) AS count FROM research_jobs WHERE status IN ('reserved','submitting','running')").one().count>0;}
+  providerAccount(id:string){this.get(id);return this.storage.sql.exec<{account_id:string}>('SELECT account_id FROM research_provider_accounts WHERE job_id=?',id).toArray()[0]?.account_id??null;}
+  bindProviderAccount(id:string,accountId:string){
+    if(!/^[a-f0-9]{32}$/.test(accountId))throw conflict('A valid research provider account is required.');
+    return this.storage.transactionSync(()=>{
+      const job=this.get(id),prior=this.providerAccount(id);
+      if(prior){if(prior!==accountId)throw conflict('Research cannot change provider accounts.');return;}
+      if(job.status!=='reserved'||job.provider_id)throw conflict('Dispatched research cannot acquire an unverified provider account.');
+      this.storage.sql.exec('INSERT INTO research_provider_accounts(job_id,account_id) VALUES(?,?)',id,accountId);
+    });
+  }
   dueWork(limit=5,now=Date.now()){
     if(!Number.isSafeInteger(limit)||limit<1||limit>5)throw conflict('Research scheduling batches must contain one to five jobs.');
     this.expire(now);

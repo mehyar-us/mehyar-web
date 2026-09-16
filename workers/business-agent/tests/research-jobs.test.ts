@@ -9,6 +9,7 @@ import {ResearchSpend} from '../src/research/spend';
 import {ResearchCancellation} from '../src/research/cancellation';
 import {ResearchScheduler} from '../src/research/scheduler';
 import {ResearchReconciliation} from '../src/research/reconciliation';
+import {routedResearchScheduler} from '../src/research/routing';
 const input=()=>({key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
 const provider='11111111-1111-4111-8111-111111111111';
 async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:DurableObjectStorage)=>void|Promise<void>){
@@ -16,6 +17,29 @@ async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:Durabl
   await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs,new ResearchSpend(ctx.storage),ctx.storage);});
 }
 describe('durable research reservations',()=>{
+  it('pins provider routing before submission and rejects account changes during recovery',async()=>ledger(async jobs=>{
+    const actor={tenantId:'business',userId:'owner'},job=jobs.reserveFor(actor,input());jobs.reserveSpend(job.id,100,100,'fixture');
+    let starts=0,stops=0,reads=0;
+    const api={accountId:'a'.repeat(32),start:async()=>{expect(jobs.providerAccount(job.id)).toBe('a'.repeat(32));starts++;return {id:provider};},cancel:async()=>{stops++;return {requested:true};},results:async()=>{reads++;return {id:provider,status:'cancelled_by_user' as const,records:[]};}};
+    const original=routedResearchScheduler(jobs,actor.tenantId,api,async()=>{},async()=>{});
+    expect(await original.tick()).toMatchObject([{operation:'submit',ok:true}]);jobs.cancel(job.id);jobs.initialize();
+    const changed=routedResearchScheduler(jobs,actor.tenantId,{...api,accountId:'b'.repeat(32)},async()=>{},async()=>{});
+    expect(await changed.tick()).toMatchObject([{operation:'stop',ok:false,code:'research_routing_unverified'}]);
+    expect({starts,stops,reads}).toEqual({starts:1,stops:0,reads:0});
+    expect(await original.tick()).toMatchObject([{operation:'stop',ok:true}]);
+    expect(await original.tick()).toMatchObject([{operation:'poll',ok:true}]);
+    expect(jobs.get(job.id).status).toBe('cancelled');expect(stops).toBe(1);expect(reads).toBe(1);
+  }));
+  it('refuses foreign ownership, denied execution and adopting already dispatched jobs',async()=>ledger(async jobs=>{
+    const actor={tenantId:'business',userId:'owner'},job=jobs.reserveFor(actor,input());jobs.reserveSpend(job.id,100,100,'fixture');
+    let calls=0;const api={accountId:'a'.repeat(32),start:async()=>{calls++;return {id:provider};},cancel:async()=>{calls++;return {requested:true};},results:async()=>{calls++;return {id:provider,status:'running' as const,records:[]};}};
+    expect(await routedResearchScheduler(jobs,'foreign',api,async()=>{},async()=>{}).tick()).toMatchObject([{ok:false,code:'research_routing_unverified'}]);
+    expect(await routedResearchScheduler(jobs,actor.tenantId,api,async()=>{throw new Error('revoked');},async()=>{}).tick()).toMatchObject([{ok:false}]);
+    expect(jobs.providerAccount(job.id)).toBeNull();jobs.beginFunded(job.id);jobs.submitted(job.id,provider);jobs.cancel(job.id);
+    expect(()=>jobs.bindProviderAccount(job.id,api.accountId)).toThrow('unverified provider account');
+    expect(await routedResearchScheduler(jobs,actor.tenantId,api,async()=>{},async()=>{}).tick()).toMatchObject([{ok:false,code:'research_routing_unverified'}]);
+    expect(calls).toBe(0);
+  }));
   it('selects only due funded work and rotates past denied jobs across restart',async()=>ledger(async jobs=>{
     const actor={tenantId:'business',userId:'owner'},ids:string[]=[];
     for(let i=0;i<7;i++){
