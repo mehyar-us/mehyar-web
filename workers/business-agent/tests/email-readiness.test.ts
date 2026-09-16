@@ -4,7 +4,8 @@ import type {Env} from '../src/env';
 import {platformSenderConfiguration,requirePlatformSender,PLATFORM_EMAIL_GATES} from '../src/email/readiness';
 import {VerifiedInvitationOutbox} from '../src/email/verified-outbox';
 import {createTenant} from '../src/tenants';
-import {inviteMember} from '../src/team';
+import {inviteMember,revokeInvitation} from '../src/team';
+import {PlatformEmailSupplierBudget} from '../src/email/supplier-budget';
 import {platformEmailAccess} from '../src/email/access';
 import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
@@ -18,8 +19,45 @@ async function activate(e:Env,tenantId:string){
 }
 async function invitation(e:Env){const userId=crypto.randomUUID(),tenant=await createTenant(e,userId,{name:'Oak Studio',website:'https://oakstudio.com',goal:'Help with scheduling'},crypto.randomUUID()),actor={userId,tenantId:tenant.id};const value=await inviteMember(e,actor,{email:`${crypto.randomUUID()}@example.test`,role:'staff'},crypto.randomUUID());await activate(e,tenant.id);return {actor,id:value.invitation.id};}
 function fixture():Env{return {...env,ENVIRONMENT:'staging',APP_ORIGIN:'https://app.mehyar.us',AGENT_PLATFORM_EMAIL_ENABLED:'true',AGENT_PLATFORM_EMAIL_FROM:'notices@example.test',AGENT_PLATFORM_EMAIL_ROUTE:`resend:${crypto.randomUUID()}`,AGENT_PLATFORM_RESEND_API_KEY:'re_synthetic_fixture'} as unknown as Env;}
-async function evidence(e:Env){const config=await platformSenderConfiguration(e),now=Date.now();await e.AGENT_DB.batch(PLATFORM_EMAIL_GATES.map(gate=>e.AGENT_DB.prepare("INSERT INTO agent_platform_email_readiness(route_ref,gate,configuration_hash,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture-only','test-operator',?,?)").bind(config.routeRef,gate,config.configurationHash,new Date(now-1000).toISOString(),new Date(now+86400000).toISOString())));return config;}
+async function evidence(e:Env){
+  const config=await platformSenderConfiguration(e),now=Date.now(),start=new Date(now-1000).toISOString(),end=new Date(now+86400000).toISOString();
+  await e.AGENT_DB.batch(PLATFORM_EMAIL_GATES.map(gate=>e.AGENT_DB.prepare("INSERT INTO agent_platform_email_readiness(route_ref,gate,configuration_hash,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture-only','test-operator',?,?)").bind(config.routeRef,gate,config.configurationHash,start,end)));
+  // Synthetic account/cost evidence, never a quote or production approval.
+  await e.AGENT_DB.prepare("INSERT OR IGNORE INTO agent_email_supplier_budgets(account_ref,window_start,window_end,limit_microusd,job_microusd,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,10000,100,'verified','fixture-only','test-operator',?,?)").bind(config.routeRef,start,end,start,end).run();
+  await e.AGENT_DB.prepare('INSERT INTO agent_email_supplier_routes(configuration_hash,account_ref) VALUES (?,?)').bind(config.configurationHash,config.routeRef).run();
+  return config;
+}
 describe('dedicated platform sender readiness',()=>{
+  it('enforces one supplier budget across simultaneous claims from separate tenants',async()=>{
+    const e=fixture(),first=await invitation(e),second=await invitation(e),config=await evidence(e),box=new VerifiedInvitationOutbox(e);
+    await e.AGENT_DB.prepare('UPDATE agent_email_supplier_budgets SET limit_microusd=100 WHERE account_ref=?').bind(config.routeRef).run();
+    const jobs=await Promise.all([box.prepare(first.actor,first.id),box.prepare(second.actor,second.id)]);
+    const outcomes=await Promise.allSettled([box.claim(first.actor.tenantId,jobs[0].id),box.claim(second.actor.tenantId,jobs[1].id)]);
+    expect(outcomes.filter(v=>v.status==='fulfilled'&&v.value)).toHaveLength(1);
+    expect(outcomes.filter(v=>v.status==='rejected')).toHaveLength(1);
+    expect((outcomes.find(v=>v.status==='rejected') as PromiseRejectedResult).reason).toMatchObject({code:'email_supplier_budget_unavailable'});
+    expect(await e.AGENT_DB.prepare("SELECT sum(amount_microusd) AS amount FROM agent_email_supplier_commitments WHERE account_ref=? AND status='held'").bind(config.routeRef).first()).toEqual({amount:100});
+  });
+  it('rechecks supplier revocation and preserves possible cost after provider acceptance',async()=>{
+    const e=fixture(),invite=await invitation(e),config=await evidence(e),box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id),claim=(await box.claim(invite.actor.tenantId,job.id))!;
+    await e.AGENT_DB.prepare("UPDATE agent_email_supplier_budgets SET status='revoked' WHERE account_ref=?").bind(config.routeRef).run();
+    expect(await box.mayDispatch(claim)).toBe(false);
+    await box.settle(claim,{state:'accepted',providerId:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});
+    expect(await e.AGENT_DB.prepare('SELECT status,amount_microusd FROM agent_email_supplier_commitments WHERE job_id=?').bind(job.id).first()).toEqual({status:'held',amount_microusd:100});
+  });
+  it('fails closed on missing routes, cost increases and expired evidence, releasing only unattempted cancellation',async()=>{
+    const e=fixture(),invite=await invitation(e),config=await evidence(e),box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id),supplier=new PlatformEmailSupplierBudget(e);
+    expect(await supplier.reserve(invite.actor.tenantId,job.id,'missing')).toBe(false);
+    expect(await supplier.reserve(invite.actor.tenantId,job.id,config.configurationHash)).toBe(true);
+    expect(await supplier.reserve(invite.actor.tenantId,job.id,config.configurationHash)).toBe(true);
+    expect(await supplier.permits(crypto.randomUUID(),job.id,config.configurationHash)).toBe(false);
+    await e.AGENT_DB.prepare('UPDATE agent_email_supplier_budgets SET job_microusd=101 WHERE account_ref=?').bind(config.routeRef).run();
+    expect(await supplier.permits(invite.actor.tenantId,job.id,config.configurationHash)).toBe(false);
+    await e.AGENT_DB.prepare("UPDATE agent_email_supplier_budgets SET job_microusd=100,valid_until='2000-01-01T00:00:00Z' WHERE account_ref=?").bind(config.routeRef).run();
+    expect(await supplier.permits(invite.actor.tenantId,job.id,config.configurationHash)).toBe(false);
+    await revokeInvitation(e,invite.actor,invite.id);await box.reconcileAuthority(invite.actor.tenantId,job.id);
+    expect(await e.AGENT_DB.prepare('SELECT status FROM agent_email_supplier_commitments WHERE job_id=?').bind(job.id).first()).toEqual({status:'released'});
+  });
   it('resolves catalog email allowances in monthly anniversary windows even with annual billing',async()=>{
     const e=fixture(),invite=await invitation(e),tenant=invite.actor.tenantId,anchor=new Date(Date.now()-1000).toISOString();
     await e.AGENT_DB.prepare("UPDATE agent_billing_subscriptions SET billing_interval='annual',usage_anchor=? WHERE tenant_id=?").bind(anchor,tenant).run();
