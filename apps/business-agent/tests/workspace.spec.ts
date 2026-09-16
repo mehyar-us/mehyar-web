@@ -495,6 +495,21 @@ test("workspace creation retries keep the same idempotency key", async ({
   expect(keys[2]).not.toBe(keys[1]);
 });
 
+test('industry setup saves reviewed gaps and moves answered questions out of the remaining list',async({page})=>{
+  await fixture(page);let answered=false;const requests:any[]=[];
+  await page.route('**/api/tenants/business-a/business-brief',route=>{
+    const data={...briefFixture(),brief:{revision:answered?1:0,fields:{...briefFixture().brief.fields,industryPack:'barbershops-salons'},industryAnswers:answered?{deposits:'No deposit required'}:{}},industryQuestions:[{field:'deposits',question:'What deposit rules should be explained?',answer:answered?'No deposit required':'',answered,fromBrief:false}]};
+    if(route.request().method()==='POST'){requests.push(route.request().postDataJSON());answered=true;return route.fulfill({json:{brief:{...data.brief,revision:1,industryAnswers:{deposits:'No deposit required'}}}});}
+    return route.fulfill({json:data});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();const panel=page.getByRole('region',{name:'Business brief'});
+  await expect(panel.getByRole('heading',{name:'Remaining industry setup'})).toBeVisible();
+  await panel.getByLabel('What deposit rules should be explained?').fill('No deposit required');await panel.getByLabel('I reviewed these business details.').check();await panel.getByRole('button',{name:'Save reviewed brief'}).click();
+  await expect(panel.getByRole('heading',{name:'Remaining industry setup'})).toHaveCount(0);
+  await panel.getByText('Saved industry answers',{exact:true}).click();await expect(panel.getByLabel('What deposit rules should be explained?')).toHaveValue('No deposit required');
+  expect(requests[0].industryAnswers).toEqual({deposits:'No deposit required'});
+});
+
 test('saved brief sources survive refresh and manual edits stop claiming that source',async({page})=>{
   await fixture(page);const source={id:'saved-source',field:'businessName',value:'Sourced name',sourceUrl:'https://salon.example.com/',retrievedAt:'2026-09-16T12:00:00Z',confirmedAt:'2026-09-16T13:00:00Z',confidence:'high'};
   let data={...briefFixture(),sources:[source],brief:{...briefFixture().brief,sources:{} as Record<string,typeof source>}};const bodies:any[]=[];

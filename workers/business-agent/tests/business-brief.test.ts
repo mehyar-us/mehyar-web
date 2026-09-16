@@ -10,6 +10,18 @@ import {briefRecommendations} from '../src/brief-recommendations';
 const e=env as unknown as Env;
 async function fixture(){const userId=crypto.randomUUID(),tenant=await createTenant(e,userId,{name:'Brief business'},crypto.randomUUID()),actor={userId,tenantId:tenant.id};const stub=await getAgentByName(e.BUSINESS_AGENTS,tenant.id);unwrap(await stub.provision(actor));return {actor,stub};}
 describe('owner-reviewed business brief',()=>{
+  it('asks industry gaps only when neither shared brief details nor reviewed answers resolve them',async()=>{
+    const {actor,stub}=await fixture(),fields={industryPack:'barbershops-salons',services:'Haircuts',serviceDuration:'30 minutes',staffResources:'Sam owns chair one'};
+    unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields,industryAnswers:{deposits:'No deposit required'}},crypto.randomUUID()));
+    const result=unwrap(await stub.businessBrief(actor));expect(result.industryQuestions.filter(q=>!q.answered).map(q=>q.field)).toEqual(['no_show_rules']);
+    expect(result.industryQuestions.find(q=>q.field==='services')).toMatchObject({answer:'Haircuts',fromBrief:true});
+    expect(result.brief.industryAnswers).toEqual({deposits:'No deposit required'});
+    expect(await stub.saveBusinessBrief(actor,{expectedRevision:1,reviewed:true,fields,industryAnswers:{clinical_advice:'invented'}},crypto.randomUUID())).toMatchObject({ok:false,error:{code:'invalid_industry_answers'}});
+    unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:1,reviewed:true,fields:{industryPack:'clinics-dentists'}},crypto.randomUUID()));
+    const clinic=unwrap(await stub.businessBrief(actor));expect(clinic.brief.industryAnswers).toEqual({});
+    expect(clinic.unresolvedQuestions.map(q=>q.field)).toEqual(['requestOwner','escalationDestination','tone','permittedAutonomy']);
+    expect(clinic.industryQuestions.map(q=>q.field)).toEqual(['approved_public_information','staff_handoff','urgent_care_boundary']);
+  });
   it.each(INDUSTRY_PACKS.map(pack=>[pack.id]))('uses the explicit %s pack without enabling its workflows',id=>{
     const result=briefRecommendations({industryPack:id,bookingSystem:'',serviceDuration:''});
     expect(result.industry?.id).toBe(id);expect(result.recommendations).toHaveLength(3);
