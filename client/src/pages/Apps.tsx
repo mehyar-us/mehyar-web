@@ -223,6 +223,23 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
   },
   {
+    id: "truesketch",
+    name: "TrueSketch",
+    url: "https://truesketch.mehyar.us",
+    tagline: "Your AI portrait sketch + a 2-page reading about you — for $37.",
+    description:
+      "Tell TrueSketch your name, birthdate, and a few lines about your personality and goals, and get a personalized AI portrait sketch plus a fun, warm 2-page reading about who you are and where you're headed — delivered to a private gallery link. Free sample sketch + reading excerpt before you pay; one-time $37, no subscription. For entertainment purposes only.",
+    audience: "Anyone curious about themselves — a personal keepsake, a gift, or a little mystical fun.",
+    highlights: [
+      "Personalized AI portrait sketch painted from your intake (style reference selfie optional)",
+      "Fun, warm 2-page personalized reading about your personality and path",
+      "Free sample sketch + reading excerpt before you pay anything",
+      "One-time $37 with a token-gated private gallery — no account needed",
+    ],
+    logo: "/assets/truesketch-logo.png",
+    accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
+  },
+  {
     id: "tiktokgrowth",
     name: "TikTok Growth System",
     url: "https://tiktokgrowth.mehyar.us",

@@ -22,6 +22,7 @@
 //  12. HustleKit — https://hustlekit.mehyar.us (AI side-hustle starter kits: personalized playbook PDFs)
 //  13. TikTok Growth System — https://tiktokgrowth.mehyar.us (AI-generated organic short-form growth playbook)
 //  14. PLR Vault — https://plrvault.mehyar.us (private-label-rights digital product vault)
+//  15. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -32,7 +33,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles } from "lucide-react";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -216,6 +217,18 @@ const apps: AppInfo[] = [
       "Email address (to deliver your purchase and send the download link), checkout records, and optional teaser email if you join the list.",
     whatWeDelete:
       "Email address, teaser subscription, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "truesketch",
+    name: "TrueSketch",
+    url: "https://truesketch.mehyar.us",
+    tagline: "Personalized AI portrait sketch + 2-page reading.",
+    icon: Sparkles,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase), the name / birthdate / personality-and-goals answers you submit, an optional selfie used only as a style reference for the sketch, the generated sketch and reading, and checkout records.",
+    whatWeDelete:
+      "Email address, intake answers, optional selfie, generated sketch and reading, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

@@ -17,6 +17,7 @@ import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
 import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
+import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
 
 function json(data, status = 200) {
@@ -182,6 +183,15 @@ const fulfillHooks = {
   async creditfixkit({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillCreditfixkit({ db, env, waitUntil, sendEmail }, payment);
+  },
+
+  // TrueSketch AI portrait sketch + reading ($37 one-time). Hands off to the
+  // standalone module: POSTs the paid trigger to the TrueSketch backend
+  // (idempotent on payment_id via the PWA's /api/generate, which owns the
+  // order row), then emails the buyer the token-gated gallery link.
+  async truesketch({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillTruesketch({ db, env, waitUntil, sendEmail }, payment);
   },
 
   // TikTok Growth System playbook. Creates the tiktokgrowth_orders row

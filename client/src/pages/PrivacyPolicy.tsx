@@ -237,6 +237,10 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Private-label-rights digital product vault — planner pack, content calendar, email swipes, course outlines.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">TrueSketch — <a className="text-brand-700 underline dark:text-brand-100" href="https://truesketch.mehyar.us" target="_blank" rel="noreferrer">truesketch.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Personalized AI portrait sketch + 2-page reading — entertainment only.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>
