@@ -7,6 +7,7 @@ import {BusinessAgent,unwrap} from '../src/agent';
 import {createTenant} from '../src/tenants';
 import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
+import {conversationContext} from '../src/conversation-context';
 
 const e=env as unknown as Env;
 async function fixture() {
@@ -28,6 +29,35 @@ async function activatePaid(actor:{tenantId:string;userId:string},interval="mont
 }
 
 describe('durable generation accounting',()=>{
+  it('passes reviewed context to operators without exposing it to staff or another tenant',async()=>{
+    const {actor,stub}=await fixture(),other=await fixture();
+    unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields:{businessName:'Reviewed private salon',industryPack:'barbershops-salons',services:'Haircuts'},industryAnswers:{deposits:'Ten dollars'}},crypto.randomUUID()));
+    unwrap(await other.stub.saveBusinessBrief(other.actor,{expectedRevision:0,reviewed:true,fields:{businessName:'Foreign secret'}},crypto.randomUUID()));
+    const staff={...actor,userId:crypto.randomUUID()};
+    await e.AGENT_DB.prepare("INSERT INTO agent_memberships(tenant_id,user_id,role,created_at) VALUES (?,?,'staff',?)").bind(actor.tenantId,staff.userId,new Date().toISOString()).run();
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;const contexts:any[]=[];
+      (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any)=>{
+        const system=input.messages[0].content;expect(system).toContain('NO external tools');
+        expect(system).not.toContain('Foreign secret');contexts.push(JSON.parse(system.split('\nBusiness data: ')[1]));
+        return {choices:[{message:{content:'Setup suggestion only.'}}]};
+      }}};
+      try{
+        unwrap(await instance.chat(actor,'Help me finish setup',crypto.randomUUID()));
+        unwrap(await instance.chat(staff,'Draft a greeting',crypto.randomUUID()));
+        expect(contexts[0]).toMatchObject({briefRevision:1,details:{businessName:'Reviewed private salon',services:'Haircuts'},industryAnswers:{deposits:'Ten dollars'}});
+        expect(contexts[0].questions).not.toContain('Which services should the agent describe?');
+        expect(contexts[1]).toMatchObject({briefRevision:null,details:{},industryAnswers:{},questions:[]});
+        expect(unwrap(await instance.businessBrief(actor)).brief.revision).toBe(1);
+      }finally{(instance as any).env=original;}
+    });
+  });
+  it('keeps multilingual business context complete JSON within its byte allowance',()=>{
+    const context=conversationContext('Goal',Array.from({length:20},(_,i)=>({key:`fact-${i}`,value:'😀日本語'.repeat(500)})));
+    expect(new TextEncoder().encode(context).length).toBeLessThanOrEqual(3000);
+    const parsed=JSON.parse(context);expect(parsed.truncated).toBe(true);expect(parsed.facts.length).toBeGreaterThan(0);
+    expect(context).not.toContain('�');expect(parsed.facts[0].key).toBe('fact-0');
+  });
   it.each(['expired','disputed','paused'])('withholds a paid response when access becomes %s during inference',async reason=>{
     const {actor,stub}=await fixture();await activatePaid(actor);
     await runInDurableObject(stub,async(instance:BusinessAgent)=>{
