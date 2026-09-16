@@ -236,6 +236,14 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     expect(await decryptCredential(workGrant!.ciphertext, { userId: session!.user.id, provider: "google", accountId: "google-work-fixture", tenantId: null }, key))
       .toMatchObject({ accountEmail: "work@example.test", refreshToken: "provider-work-refresh-private" });
     expect(workGrant!.ciphertext).not.toContain("work@example.test");
+    await env.AGENT_DB.prepare("UPDATE auth_provider_grants SET status='reconnect_required' WHERE user_id=? AND account_id=?")
+      .bind(session!.user.id,'google-work-fixture').run();
+    refreshToken=undefined;
+    await authorize(sessionCookie,['gmail_read','gmail_send'],{email:'work@example.test',subject:'google-work-fixture'});
+    const reconnectGrant=await env.AGENT_DB.prepare("SELECT ciphertext,status FROM auth_provider_grants WHERE user_id=? AND account_id=? AND tenant_scope=''")
+      .bind(session!.user.id,'google-work-fixture').first<{ciphertext:string;status:string}>();
+    expect(reconnectGrant!.status).toBe('reconnect_required');
+    expect((await decryptCredential(reconnectGrant!.ciphertext,{userId:session!.user.id,provider:'google',accountId:'google-work-fixture',tenantId:null},key)).refreshToken).toBeUndefined();
     expect((await getSession(request("/api/session", undefined, sessionCookie), env))?.user.email).toBe("owner@example.test");
     wrongNonce = true;
     const mismatched = await authorize(sessionCookie);

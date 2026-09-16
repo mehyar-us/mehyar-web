@@ -46,6 +46,11 @@ async function route(request:Request,env:Env) {
   const section=match[2]||'';
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
+  const calendarConnection=section.match(/^connections\/([a-f0-9-]{36})\/calendars$/);
+  if(calendarConnection&&request.method==='GET') {
+    const provider=z.enum(['google','microsoft']).parse(url.searchParams.get('provider'));
+    return json(unwrap(await agent.connectionCalendars(actor,calendarConnection[1],provider)));
+  }
   if(section==='action-policies'&&request.method==='GET') return json({policies:unwrap(await agent.actionPolicies(actor))});
   if(section==='action-policies'&&request.method==='POST') return json({policy:unwrap(await agent.saveActionPolicy(actor,await readJson(request)))});
   if(section==='actions'&&request.method==='GET') return json({actions:unwrap(await agent.actionReviews(actor))});

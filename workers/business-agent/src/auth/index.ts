@@ -102,7 +102,11 @@ export function createAuth(env: AuthEnv, startFlow?: Flow) {
     if (!tokens.accessToken) throw new Error("provider_access_token_missing");
     // Incremental consent may omit a refresh token already issued at identity signup.
     // Recover it only from this verified account, entirely on the server.
-    const refreshToken = tokens.refreshToken ?? (account.refreshToken && context
+    const needsReconnect = await env.AGENT_DB.prepare("SELECT id FROM auth_provider_grants WHERE user_id=? AND provider=? AND account_id=? AND status='reconnect_required' LIMIT 1")
+      .bind(account.userId,flow.provider,account.accountId).first();
+    // A failed/ambiguous refresh invalidates the old-account fallback too. Only a
+    // newly returned refresh token can establish offline access in that case.
+    const refreshToken = tokens.refreshToken ?? (!needsReconnect && account.refreshToken && context
       ? await decryptOAuthToken(account.refreshToken, context.context) : undefined);
     await storeProviderGrant(env, { userId: account.userId, provider: flow.provider, accountId: account.accountId, tenantId: flow.tenantId }, {
       accountEmail, // Verified provider account identity, never the platform user's login email.

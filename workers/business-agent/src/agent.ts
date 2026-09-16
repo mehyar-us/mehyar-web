@@ -4,6 +4,7 @@ import { HttpError } from './http';
 import { CHAT_ROLES, OPERATORS, requireMembership, requireTenant } from './permissions';
 import { appendActivity } from './tenants';
 import { ActionControls } from './actions';
+import { connectedCalendars } from './connectors/calendar-access';
 
 type AgentState = { tenantId: string | null; paused: boolean };
 type Message = {id:string;role:'user'|'assistant';content:string;createdAt:string;};
@@ -55,6 +56,12 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   }
 
   private controls() { return new ActionControls(this.ctx.storage.sql,this.env,()=>this.state.paused); }
+  async connectionCalendars(actor:Actor,grantId:string,provider:'google'|'microsoft') {
+    return this.result(async()=>{await this.bind(actor);
+      if(this.state.paused)throw new HttpError(409,'agent_paused','Resume your agent before reading connected calendars.');
+      return connectedCalendars(this.env,actor,grantId,provider,fetch,()=>this.state.paused);
+    });
+  }
   async actionPolicies(actor:Actor) { return this.result(async()=>{await this.bind(actor);return this.controls().policies(actor);}); }
   async saveActionPolicy(actor:Actor,input:unknown) { return this.result(async()=>{await this.bind(actor);return this.controls().savePolicy(actor,input);}); }
   async actionReviews(actor:Actor) { return this.result(async()=>{await this.bind(actor);return this.controls().list(actor);}); }

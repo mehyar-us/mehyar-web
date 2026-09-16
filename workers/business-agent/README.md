@@ -48,7 +48,19 @@ Billing tests use signed synthetic events and mocked Stripe responses. Reconcili
 - New Stripe billing is a separately named shared destination. It never attaches legacy `payment_id` or `report_id` metadata, forwards old events, or invokes old fulfillment.
 - Catalog definitions, automation templates and provider authorization are not evidence that external automations are running. Unavailable capabilities remain unavailable and unbilled.
 
-## Action reviews and owner policies
+## Server credential renewal and calendar reads
+
+`src/connectors/credentials.ts` is server-only. It checks business membership, the grant owner's current role, provider binding and actual scopes before decrypting or renewing an account. Google and Microsoft use fixed HTTPS token endpoints, bounded responses and no redirects. Rotated tokens are re-encrypted; compare-and-swap writes prevent an in-flight refresh from restoring revoked access or overwriting newer consent. The new `0005` migration stores per-grant refresh leases only in `AGENT_DB`.
+
+An ambiguous refresh or crashed lease requires reconnecting rather than blindly rotating again. `invalid_grant` also marks reconnect required. Subsequent consent cannot recover that rejected token from the identity account's fallback. A missing refresh-response scope retains only the prior verified scope set; an explicit response may narrow but cannot expand it. No refresh token is returned to ordinary connector code, and no credential-returning HTTP or Agent RPC exists.
+
+`GET /api/tenants/:tenantId/connections/:grantId/calendars?provider=google|microsoft` uses this module for an owner/manager's read-only account picker. It requires enabled calendar capabilities, current grants and scopes, and an unpaused agent. It rechecks access before returning results. Responses contain normalized calendar choices and an explicit `incomplete` flag if more provider pages exist. Frontend calendar selection and pagination are still pending. This route cannot create or modify an appointment.
+
+The action dispatcher must still add current paid entitlement, saved policy, assigned resources, execution-time usage reservation, provider receipts and reconciliation. Credential renewal alone does not authorize those effects. Current renewal tests use fixtures; provider-console and live account evidence remain outstanding.
+
+Protocol references reviewed September 16, 2026: [Google web-server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server#offline), [Microsoft token renewal](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow#refresh-the-access-token), [OAuth refresh semantics](https://www.rfc-editor.org/rfc/rfc6749#section-6).
+
+## Action review API
 
 The business Durable Object now stores versioned owner policies, immutable mail-reply/calendar-create proposals, approval reservations and append-only decision records. All routes below are under `/api/tenants/:tenantId`; the public Worker derives the actor from the verified session and every RPC rechecks current membership and business ownership.
 

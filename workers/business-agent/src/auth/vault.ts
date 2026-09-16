@@ -59,7 +59,7 @@ export async function storeProviderGrant(env: AuthEnv, binding: CredentialBindin
   const tenantScope = binding.tenantId ?? "";
   const previous = await env.AGENT_DB.prepare("SELECT id, ciphertext, status FROM auth_provider_grants WHERE user_id = ? AND provider = ? AND account_id = ? AND tenant_scope = ?")
     .bind(binding.userId, binding.provider, binding.accountId, tenantScope).first<{ id: string; ciphertext: string; status: string }>();
-  const credential = mergeCredential(previous && previous.status !== "revoked" ? await decryptCredential(previous.ciphertext, binding, env.TOKEN_ENCRYPTION_KEY) : null, incoming);
+  const credential = mergeCredential(previous && previous.status === "authorized" ? await decryptCredential(previous.ciphertext, binding, env.TOKEN_ENCRYPTION_KEY) : null, incoming);
   const ciphertext = await encryptCredential(credential, binding, env.TOKEN_ENCRYPTION_KEY);
   const id = previous?.id ?? crypto.randomUUID();
   await env.AGENT_DB.prepare(`INSERT INTO auth_provider_grants
