@@ -12,6 +12,7 @@
     "AI_ENABLED": "false",
     "COMMERCE_ENABLED": "false",
     "AGENT_BILLING_RECONCILIATION_ENABLED": "false",
+    "AGENT_PLATFORM_EMAIL_ENABLED": "false",
     "EXTERNAL_ACTIONS_ENABLED": "false",
     "RESEARCH_ENABLED": "false",
     "RESEARCH_RECOVERY_ENABLED": "false"
