@@ -29,7 +29,7 @@
 // primary fulfillment trigger.
 
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
-import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
+import { fulfillHustlekit, resumeHustlekitOrder } from "../_shared/fulfillHustlekit.js";
 import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 import { fulfillFreelanceros } from "../_shared/fulfillFreelanceros.js";
@@ -177,6 +177,22 @@ export async function onRequestPost({ request, env, waitUntil }) {
           return json({ ok: true, action: fr && fr.replay ? "already_fulfilled" : "resumed", order_id: existing.id });
         } catch (e) {
           console.error("fulfill-backfill tiktokgrowth resume failed", payment.id, e && e.message);
+          return json({ ok: false, error: "fulfillment_failed" }, 500);
+        }
+      }
+      if (product.fulfillment === "hustlekit") {
+        // HustleKit: the order may be orphaned mid-generation (webhook
+        // waitUntil isolate evicted — stuck in paid/generating) or ready
+        // with the buyer email unsent. Resume is idempotent: ready+emailed
+        // rows are a no-op, so this stays safe to call from the success
+        // page's retry path.
+        const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+        try {
+          const rr = await resumeHustlekitOrder({ db, env, sendEmail }, existing.id);
+          const action = rr.action === "already_done" ? "already_fulfilled" : "resumed";
+          return json({ ok: true, action, order_id: existing.id, resume: rr });
+        } catch (e) {
+          console.error("fulfill-backfill hustlekit resume failed", payment.id, e && e.message);
           return json({ ok: false, error: "fulfillment_failed" }, 500);
         }
       }

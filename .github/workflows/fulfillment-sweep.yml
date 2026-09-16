@@ -1,0 +1,35 @@
+# .github/workflows/fulfillment-sweep.yml
+# Recovery backstop for stuck AI-fulfillment orders: every 5 minutes, drive
+# POST /api/pay/fulfillment-sweep on mehyar.us. The endpoint re-arms orders
+# orphaned in paid/generating (webhook waitUntil isolate evicted mid-run),
+# re-drives generation (idempotent), and sends the buyer email exactly once.
+# Fully automatic — no human touch. Manual runs via workflow_dispatch.
+name: fulfillment-sweep
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run fulfillment sweep
+        env:
+          SWEEP_SECRET: ${{ secrets.AUDIT_CRON_SECRET }}
+        run: |
+          # Browser UA: mehyar.us bot protection (Cloudflare 1010) blocks
+          # non-browser clients even with valid credentials.
+          resp=$(curl -sS -m 570 -X POST "https://mehyar.us/api/pay/fulfillment-sweep" \
+            -H "Authorization: Bearer $SWEEP_SECRET" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            -w "\nHTTP_CODE:%{http_code}")
+          echo "$resp"
+          code=$(echo "$resp" | grep -o 'HTTP_CODE:[0-9]*' | cut -d: -f2)
+          if [ "$code" != "200" ]; then
+            echo "sweep failed with HTTP $code" >&2
+            exit 1
+          fi
