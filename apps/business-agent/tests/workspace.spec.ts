@@ -845,13 +845,14 @@ test('reviews mailbox recovery and retries the same offer after an uncertain res
   await page.route('**/connections/*/mailbox',route=>route.fulfill({json:{state:restarted?'initializing':'needs_attention',setupEnabled:false,pending:2,lastObservedAt:null}}));
   await page.route('**/mailbox/recovery',route=>{
     const body=route.request().postDataJSON();requests.push(body);
-    if(!body.recoveryId)return route.fulfill({json:{recoveryId,expiresAt:new Date(Date.now()+600000).toISOString(),pendingReferences:2,cachedMessages:5,affectedStreams:1}});
+    if(!body.recoveryId)return route.fulfill({json:{recoveryId,expiresAt:new Date(Date.now()+600000).toISOString(),pendingReferences:2,cachedMessages:5,affectedStreams:1,targetLabel:'Gmail mailbox'}});
     if(requests.length===2)return route.abort('failed');
     restarted=true;return route.fulfill({json:{state:'restarted'}});
   });
   await page.goto('/?connected=google');const recovery=page.getByRole('region',{name:'Mailbox recovery'});
   await recovery.getByRole('button',{name:'Review mailbox recovery'}).click();
   await expect(recovery.getByText('At review: 2 pending references and 5 cached messages.')).toBeVisible();
+  await expect(recovery.getByText('Recovery target: Gmail mailbox')).toBeVisible();
   expect(requests).toEqual([{}]);
   expect((await new AxeBuilder({page}).include('[aria-label="Mailbox recovery"]').analyze()).violations).toEqual([]);
   await recovery.getByRole('button',{name:'Confirm mailbox recovery'}).click();

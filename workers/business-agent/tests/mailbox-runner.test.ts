@@ -51,13 +51,14 @@ describe('one-page mailbox provider runner',()=>{
   it('prepares private recovery reviews and repeats the same confirmed request safely',async()=>{
     const f=await fixture('microsoft'),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'private-message',kind:'upsert'}],nextCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$skiptoken=private'});
-    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required',display_name='Customer inquiries' WHERE id=?").bind(f.streamId).run();
     const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
     await runInDurableObject(stub,async(_agent,ctx)=>{
       const offers=new MailboxRecoveryOffers(ctx.storage);offers.initialize();
       const offer=await offers.prepare(ready,f.actor,f.grantId,guard);
-      expect(offer).toMatchObject({pendingReferences:1,cachedMessages:0,affectedStreams:1});
+      expect(offer).toMatchObject({pendingReferences:1,cachedMessages:0,affectedStreams:1,targetLabel:'Customer inquiries'});
       expect(JSON.stringify(offer)).not.toContain('private');expect(JSON.stringify(offer)).not.toContain(f.streamId);
+      await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET display_name='Renamed folder' WHERE id=?").bind(f.streamId).run();
       expect(await offers.prepare(ready,f.actor,f.grantId,guard)).toEqual(offer);
       const noNetwork:typeof fetch=async()=>{throw new Error('unexpected network');};
       expect(await offers.execute(ready,f.actor,f.grantId,offer.recoveryId,guard,noNetwork)).toEqual({state:'restarted'});
@@ -156,10 +157,11 @@ describe('one-page mailbox provider runner',()=>{
     await runInDurableObject(stub,async(_agent,ctx)=>{
       const sessions=new FolderSessions(ctx.storage);sessions.initialize();
       const inventory=await connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,undefined,async()=>Response.json({value:
-        ['inbox','clients'].map(id=>({id,displayName:id,parentFolderId:'root',childFolderCount:0,isHidden:false}))}));
+        ['inbox','clients'].map(id=>({id,displayName:`Business ${id}`,parentFolderId:'root',childFolderCount:0,isHidden:false}))}));
       const configure=(ids:string[])=>initializeMicrosoftFolders(ready,f.actor,f.grantId,sessions,guard,inventory.inventoryId!,ids);
       await expect(configure(['invented'])).rejects.toMatchObject({code:'unknown_mailbox_folder'});
       expect(await configure(['inbox','clients'])).toEqual({state:'configured',configuredFolders:2});
+      expect(await e.AGENT_DB.prepare("SELECT display_name FROM agent_mailbox_sync WHERE grant_id=? AND resource='clients'").bind(f.grantId).first()).toEqual({display_name:'Business clients'});
       await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required',page_cursor='private-progress' WHERE grant_id=? AND resource='inbox'").bind(f.grantId).run();
       expect(await configure(['inbox','clients'])).toEqual({state:'configured',configuredFolders:2});
       expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_sync WHERE grant_id=?').bind(f.grantId).first()).toEqual({n:2});

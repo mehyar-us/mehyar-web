@@ -85,15 +85,17 @@ export class MailboxSync {
     return streamId;
   }
   /** Atomically add a verified Outlook selection. Exact repeats preserve all existing cursors and recovery state. */
-  async openMicrosoftFolders(grantId:string,resources:string[],expectedAuthorization:string) {
-    if(!resources.length||resources.length>100||new Set(resources).size!==resources.length||resources.some(resource=>!id.safeParse(resource).success))throw unavailable();
+  async openMicrosoftFolders(grantId:string,folders:{id:string;name:string}[],expectedAuthorization:string) {
+    const resources=folders.map(folder=>folder.id);
+    if(!resources.length||resources.length>100||new Set(resources).size!==resources.length||resources.some(resource=>!id.safeParse(resource).success)
+      ||folders.some(folder=>typeof folder.name!=='string'||!folder.name||folder.name.length>2048))throw unavailable();
     const {authorization,grant}=await this.authority(grantId,'microsoft');
     if(authorization!==expectedAuthorization)throw unavailable();
-    const rows=await Promise.all(resources.map(async resource=>({resource,
-      id:await digest(JSON.stringify(['mailbox-sync-v1',this.actor.tenantId,grantId,'microsoft',resource,authorization])),round:crypto.randomUUID()})));
-    await this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_sync(id,tenant_id,grant_id,provider,resource,authorization,checkpoint,round_id,updated_at,sync_mode)
-      SELECT json_extract(value,'$.id'),?,?,'microsoft',json_extract(value,'$.resource'),?,NULL,json_extract(value,'$.round'),?,'incremental'
-      FROM json_each(?) WHERE ${this.fence} ON CONFLICT(id) DO NOTHING`)
+    const rows=await Promise.all(folders.map(async folder=>({resource:folder.id,name:folder.name,
+      id:await digest(JSON.stringify(['mailbox-sync-v1',this.actor.tenantId,grantId,'microsoft',folder.id,authorization])),round:crypto.randomUUID()})));
+    await this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_sync(id,tenant_id,grant_id,provider,resource,authorization,checkpoint,round_id,updated_at,sync_mode,display_name)
+      SELECT json_extract(value,'$.id'),?,?,'microsoft',json_extract(value,'$.resource'),?,NULL,json_extract(value,'$.round'),?,'incremental',json_extract(value,'$.name')
+      FROM json_each(?) WHERE ${this.fence} ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name`)
       .bind(this.actor.tenantId,grantId,authorization,this.now(),JSON.stringify(rows),...this.args(grantId,grant)).run();
     for(const row of rows)await this.stream(row.id);
     return {configuredFolders:rows.length};
@@ -115,13 +117,13 @@ export class MailboxSync {
   }
   async recoveryCandidate(grantId:string,provider:Provider) {
     const {authorization}=await this.authority(grantId,provider);
-    const candidate=await this.env.AGENT_DB.prepare(`SELECT s.id,s.round_id,COUNT(*) OVER() AS affectedStreams,
+    const candidate=await this.env.AGENT_DB.prepare(`SELECT s.id,s.round_id,s.display_name,COUNT(*) OVER() AS affectedStreams,
       (SELECT COUNT(*) FROM agent_mailbox_changes c WHERE c.stream_id=s.id AND c.state='pending') AS pending,
       (SELECT COUNT(*) FROM agent_mailbox_messages m WHERE m.stream_id=s.id) AS cached
       FROM agent_mailbox_sync s LEFT JOIN agent_mailbox_consumers w ON w.stream_id=s.id
       WHERE s.tenant_id=? AND s.grant_id=? AND s.provider=? AND s.authorization=?
         AND (s.state='resync_required' OR w.state='review_required') ORDER BY s.updated_at,s.id LIMIT 1`)
-      .bind(this.actor.tenantId,grantId,provider,authorization).first<{id:string;round_id:string;affectedStreams:number;pending:number;cached:number}>();
+      .bind(this.actor.tenantId,grantId,provider,authorization).first<{id:string;round_id:string;display_name:string|null;affectedStreams:number;pending:number;cached:number}>();
     if((await this.authority(grantId,provider)).authorization!==authorization)throw unavailable();
     return candidate;
   }

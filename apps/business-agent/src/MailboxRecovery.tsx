@@ -1,9 +1,10 @@
 import {useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
-type Offer={recoveryId:string;expiresAt:string;pendingReferences:number;cachedMessages:number;affectedStreams:number};
+type Offer={recoveryId:string;expiresAt:string;pendingReferences:number;cachedMessages:number;affectedStreams:number;targetLabel:string};
 function valid(value:unknown):value is Offer {
   const v=value as Offer|null;return !!v&&typeof v.recoveryId==='string'&&/^[a-f0-9-]{36}$/.test(v.recoveryId)
     &&typeof v.expiresAt==='string'&&Date.parse(v.expiresAt)>Date.now()
+    &&typeof v.targetLabel==='string'&&v.targetLabel.length>0&&v.targetLabel.length<=2048
     &&[v.pendingReferences,v.cachedMessages,v.affectedStreams].every(n=>Number.isSafeInteger(n)&&n>=0)&&v.affectedStreams>0;
 }
 export default function MailboxRecovery({tenantId,grantId,onRecovered,onUnauthorized}:{tenantId:string;grantId:string;onRecovered:()=>void;onUnauthorized:(error:unknown)=>void}) {
@@ -26,7 +27,8 @@ export default function MailboxRecovery({tenantId,grantId,onRecovered,onUnauthor
   return <section aria-label="Mailbox recovery">
     {error&&<p role="alert">{error}{attempted?' Retry this recovery request or refresh mailbox status before reviewing another.':''}</p>}
     {offer&&<>
-      <p>{offer.affectedStreams} mailbox streams need attention. This recovery applies to one stream.</p>
+      <p>Recovery target: {offer.targetLabel}</p>
+      <p>Targets needing recovery: {offer.affectedStreams}. This review applies only to the target above. Folder names reflect the latest saved setup.</p>
       <p>At review: {offer.pendingReferences} pending references and {offer.cachedMessages} cached messages.</p>
       <p>Recovery replaces queued references with a fresh scan. Saved messages must be checked again. It does not send messages or delete mail from your provider.</p>
       <button className="button secondary" disabled={busy} onClick={()=>void run(true)}>{attempted?'Retry same recovery':'Confirm mailbox recovery'}</button>

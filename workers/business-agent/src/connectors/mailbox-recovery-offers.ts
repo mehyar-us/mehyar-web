@@ -3,7 +3,7 @@ import {HttpError} from '../http';
 import {MailboxSync} from './mailbox-sync';
 import {requireMailboxAccess} from './mailbox-runner';
 import {restartMailbox} from './mailbox-restart';
-type Offer={id:string;user_id:string;grant_id:string;stream_id:string;round_id:string;expires:number;pending:number;cached:number;affected:number};
+type Offer={id:string;user_id:string;grant_id:string;stream_id:string;round_id:string;expires:number;pending:number;cached:number;affected:number;target_label:string|null};
 const expired=()=>new HttpError(409,'mailbox_recovery_expired','This recovery review expired. Review the mailbox again.');
 
 /** Opaque per-business offers keep stream IDs, rounds and provider cursors server-side. */
@@ -11,7 +11,10 @@ export class MailboxRecoveryOffers {
   constructor(private storage:DurableObjectStorage){}
   initialize(){this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS mailbox_recovery_offers(
     id TEXT PRIMARY KEY,user_id TEXT NOT NULL,grant_id TEXT NOT NULL,stream_id TEXT NOT NULL,round_id TEXT NOT NULL,
-    expires INTEGER NOT NULL,pending INTEGER NOT NULL,cached INTEGER NOT NULL,affected INTEGER NOT NULL)`);}
+    expires INTEGER NOT NULL,pending INTEGER NOT NULL,cached INTEGER NOT NULL,affected INTEGER NOT NULL)`);
+    if(!this.storage.sql.exec<{name:string}>('PRAGMA table_info(mailbox_recovery_offers)').toArray().some(column=>column.name==='target_label'))
+      this.storage.sql.exec('ALTER TABLE mailbox_recovery_offers ADD COLUMN target_label TEXT');
+  }
   async prepare(env:Env,actor:Actor,grantId:string,guard:()=>Promise<void>) {
     await guard();
     if(env.MAILBOX_RECOVERY_ENABLED!=='true'||env.MAILBOX_PROCESSING_ENABLED!=='true')throw new HttpError(503,'mailbox_setup_unavailable','Mailbox recovery is awaiting activation.');
@@ -30,11 +33,12 @@ export class MailboxRecoveryOffers {
       if(this.storage.sql.exec<{n:number}>('SELECT COUNT(*) AS n FROM mailbox_recovery_offers').one().n>=10)
         throw new HttpError(429,'mailbox_recovery_limit','Too many recovery reviews are open. Try again in ten minutes.');
       const item={id:crypto.randomUUID(),user_id:actor.userId,grant_id:grantId,stream_id:candidate.id,round_id:candidate.round_id,
-        expires:now+600000,pending:candidate.pending,cached:candidate.cached,affected:candidate.affectedStreams};
-      this.storage.sql.exec('INSERT INTO mailbox_recovery_offers VALUES(?,?,?,?,?,?,?,?,?)',item.id,item.user_id,item.grant_id,item.stream_id,item.round_id,item.expires,item.pending,item.cached,item.affected);
+        expires:now+600000,pending:candidate.pending,cached:candidate.cached,affected:candidate.affectedStreams,
+        target_label:grant.provider==='google'?'Gmail mailbox':candidate.display_name??'Outlook folder (name unavailable)'};
+      this.storage.sql.exec('INSERT INTO mailbox_recovery_offers(id,user_id,grant_id,stream_id,round_id,expires,pending,cached,affected,target_label) VALUES(?,?,?,?,?,?,?,?,?,?)',item.id,item.user_id,item.grant_id,item.stream_id,item.round_id,item.expires,item.pending,item.cached,item.affected,item.target_label);
       return item;
     });
-    return {recoveryId:offer.id,expiresAt:new Date(offer.expires).toISOString(),pendingReferences:offer.pending,cachedMessages:offer.cached,affectedStreams:offer.affected};
+    return {recoveryId:offer.id,expiresAt:new Date(offer.expires).toISOString(),pendingReferences:offer.pending,cachedMessages:offer.cached,affectedStreams:offer.affected,targetLabel:offer.target_label??'Mailbox target (name unavailable)'};
   }
   async execute(env:Env,actor:Actor,grantId:string,recoveryId:string,guard:()=>Promise<void>,transport:typeof fetch=fetch) {
     const read=()=>{

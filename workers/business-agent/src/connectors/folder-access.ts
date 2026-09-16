@@ -48,7 +48,7 @@ export async function initializeMicrosoftFolders(env:Env,actor:Actor,grantId:str
   const {authorization,guard}=await folderAuthority(env,actor,grantId,agentGuard);
   const folders=await sessions.select({userId:actor.userId,grantId,authorization},inventoryId,folderIds,guard);
   await guard();
-  const result=await new MailboxSync(env,actor).openMicrosoftFolders(grantId,folders.map(folder=>folder.id),authorization);
+  const result=await new MailboxSync(env,actor).openMicrosoftFolders(grantId,folders.map(folder=>({id:folder.id,name:folder.displayName})),authorization);
   await guard();
   return {state:'configured' as const,...result};
 }
