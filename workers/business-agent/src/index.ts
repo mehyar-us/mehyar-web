@@ -47,6 +47,8 @@ async function route(request:Request,env:Env) {
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   const research=section.match(/^research(?:\/([a-f0-9-]{36}))?$/);
+  const confirmation=section.match(/^research\/([a-f0-9-]{36})\/confirm$/);
+  if(confirmation&&request.method==='POST')return json(unwrap(await agent.confirmResearchClaim(actor,confirmation[1],await readJson(request))));
   if(research&&request.method==='GET') {
     const offset=z.coerce.number().int().min(0).max(100_000).parse(url.searchParams.get('offset')??0);
     return json(research[1]?unwrap(await agent.researchEvidence(actor,research[1],offset)):unwrap(await agent.researchJobs(actor,offset)));

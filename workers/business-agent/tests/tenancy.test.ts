@@ -31,6 +31,20 @@ describe('dedicated business isolation',()=>{
     expect(detail.pages[0].evidence[0].value).toBe('Private research');
     expect(detail.job).toMatchObject({id,evidencePages:1,usedPages:0,reservedPages:20});
     expect(JSON.stringify(detail)).not.toMatch(/private-request-key|private-period|private-provider/);
+    const confirmation={url:detail.pages[0].url,index:0,key:'Research title',expectedValue:'Private research'};
+    expect(await agent.confirmResearchClaim(actor,id,{...confirmation,expectedValue:'Tampered'})).toMatchObject({ok:false,error:{code:'research_claim_changed'}});
+    await addMemory(e,actor,{key:'Existing topic',value:'Keep this'});
+    expect(await agent.confirmResearchClaim(actor,id,{...confirmation,key:'Existing topic'})).toMatchObject({ok:false,error:{code:'research_memory_conflict'}});
+    const [confirmed,replayed]=await Promise.all([agent.confirmResearchClaim(actor,id,confirmation),agent.confirmResearchClaim(actor,id,confirmation)]);
+    expect(unwrap(confirmed)).toMatchObject({confirmed:true,removed:false,memory:{key:'Research title',value:'Private research',source:'owner_confirmed_website',sourceUrl:detail.pages[0].url}});
+    expect(unwrap(replayed)).toEqual(unwrap(confirmed));
+    const saved=await getMemory(e,actor);expect(saved).toHaveLength(2);
+    const confirmedId=String(unwrap(confirmed).memory!.id);
+    expect((await e.AGENT_DB.prepare('SELECT evidence_json FROM agent_research_confirmations WHERE tenant_id=? AND id=?').bind(a.id,confirmedId).first<{evidence_json:string}>())?.evidence_json).toContain('unverified');
+    expect(await agent.confirmResearchClaim(actor,id,{...confirmation,key:'Different topic'})).toMatchObject({ok:false,error:{code:'research_confirmation_conflict'}});
+    await deleteMemory(e,actor,confirmedId);
+    expect(unwrap(await agent.confirmResearchClaim(actor,id,confirmation))).toMatchObject({confirmed:true,removed:true,memory:null});
+    expect(await getMemory(e,actor)).toHaveLength(1);
     unwrap(await agent.pause(actor,true));expect(unwrap(await agent.researchJobs(actor)).jobs).toHaveLength(1);
     expect(await other.researchEvidence({tenantId:b.id,userId:bob},id)).toMatchObject({ok:false,error:{status:404}});
     expect(await other.researchJobs(actor)).toMatchObject({ok:false,error:{code:'agent_mismatch'}});
@@ -39,6 +53,7 @@ describe('dedicated business isolation',()=>{
         .bind(a.id,userId,role,new Date().toISOString(),role==='support'?new Date(Date.now()+60_000).toISOString():null,role==='support'?'Research access test':null).run();
       const result=await agent.researchEvidence({tenantId:a.id,userId},id);
       if(role==='manager')expect(result.ok).toBe(true);else expect(result).toMatchObject({ok:false,error:{status:403}});
+      expect(await agent.confirmResearchClaim({tenantId:a.id,userId},id,confirmation)).toMatchObject({ok:false,error:{status:403}});
     }
     await e.AGENT_DB.prepare("UPDATE agent_memberships SET status='revoked' WHERE tenant_id=? AND user_id=?").bind(a.id,alice).run();
     expect(await agent.researchEvidence(actor,id)).toMatchObject({ok:false,error:{status:404}});

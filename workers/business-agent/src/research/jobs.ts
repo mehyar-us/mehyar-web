@@ -126,6 +126,13 @@ export class ResearchJobs {
     if(!Number.isSafeInteger(offset)||offset<0)throw conflict('Invalid research page offset.');
     return this.storage.sql.exec<{evidence:string}>('SELECT evidence FROM research_pages WHERE job_id=? ORDER BY url LIMIT 20 OFFSET ?',id,offset).toArray().map(row=>JSON.parse(row.evidence) as ExtractedPage);
   }
+  claim(id:string,url:string,index:number) {
+    this.get(id);
+    const row=this.storage.sql.exec<{evidence:string}>('SELECT evidence FROM research_pages WHERE job_id=? AND url=?',id,url).toArray()[0];
+    const claim=row?(JSON.parse(row.evidence) as ExtractedPage).evidence[index]:undefined;
+    if(!claim)throw new HttpError(404,'research_claim_missing','This source claim is not available.');
+    return claim;
+  }
   checkpoint(id:string) {
     this.get(id);
     return this.storage.sql.exec<{cursor:number;steps:number;outcome:string;done:number}>('SELECT cursor,steps,outcome,done FROM research_poll WHERE job_id=?',id).toArray()[0]

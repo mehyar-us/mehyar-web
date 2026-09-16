@@ -7,6 +7,8 @@ import { ActionControls } from './actions';
 import { connectedCalendars } from './connectors/calendar-access';
 import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
+import {confirmResearch} from './research/confirm';
+import {z} from 'zod';
 
 type AgentState = { tenantId: string | null; paused: boolean };
 type Message = {id:string;role:'user'|'assistant';content:string;createdAt:string;};
@@ -68,6 +70,15 @@ export class BusinessAgent extends Agent<Env,AgentState> {
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
       const jobs=new ResearchJobs(this.ctx.storage),job=jobs.summary(id),pages=jobs.pages(id,offset);
       return {job,pages,nextOffset:offset+pages.length<job.evidencePages?offset+pages.length:null};
+    });
+  }
+  async confirmResearchClaim(actor:Actor,id:string,input:unknown) {
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,['owner']);
+      const parsed=z.object({url:z.string().url().max(4096),index:z.number().int().min(0).max(99),key:z.string().trim().min(1).max(120),expectedValue:z.string().max(2000)}).strict().safeParse(input);
+      if(!parsed.success)throw new HttpError(400,'invalid_research_confirmation','Choose a source claim and a topic for this business fact.');
+      const {url,index,key,expectedValue}=parsed.data,claim=new ResearchJobs(this.ctx.storage).claim(id,url,index);
+      if(claim.value!==expectedValue)throw new HttpError(409,'research_claim_changed','Refresh and review this source claim before confirming.');
+      return confirmResearch(this.env,actor,id,index,key,claim);
     });
   }
   async connectionCalendars(actor:Actor,grantId:string,provider:'google'|'microsoft') {
