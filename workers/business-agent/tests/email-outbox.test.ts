@@ -13,6 +13,39 @@ async function fixture(){
 }
 const config={from:'notices@example.test',routeRef:'resend:verified-route-fixture'},providerId='4ef9a417-02e9-4d39-ad75-9611e0fcc33c';
 describe('durable invitation email state',()=>{
+  async function suppress(id:string,scope:string){
+    await e.AGENT_DB.prepare(`INSERT INTO agent_platform_email_suppressions(recipient,scope_key,reason,status,evidence_ref,recorded_by,created_at,updated_at)
+      SELECT lower(trim(recipient)),?,'recipient_request','active','fixture-only','test-operator',?,? FROM agent_platform_email_outbox WHERE id=?`)
+      .bind(scope,new Date().toISOString(),new Date().toISOString(),id).run();
+  }
+  it('cancels globally suppressed unattempted mail without consuming an attempt or reviving it on release',async()=>{
+    const f=await fixture(),box=new InvitationEmailOutbox(e),job=await box.prepare(f.actor,f.invitationId,config);
+    await suppress(job.id,'*');
+    expect(await box.claim(f.actor.tenantId,job.id,config.routeRef)).toBeNull();
+    expect(await e.AGENT_DB.prepare('SELECT state,attempts,first_attempt_at FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first()).toEqual({state:'cancelled',attempts:0,first_attempt_at:null});
+    await e.AGENT_DB.prepare("UPDATE agent_platform_email_suppressions SET status='released' WHERE recipient=(SELECT recipient FROM agent_platform_email_outbox WHERE id=?)").bind(job.id).run();
+    expect(await box.claim(f.actor.tenantId,job.id,config.routeRef)).toBeNull();
+  });
+  it('scopes recipient blocks to their workspace and rechecks new suppression before dispatch',async()=>{
+    const f=await fixture(),box=new InvitationEmailOutbox(e),job=await box.prepare(f.actor,f.invitationId,config);
+    await suppress(job.id,uid());
+    const claim=(await box.claim(f.actor.tenantId,job.id,config.routeRef))!;
+    expect(await box.mayDispatch(claim,config.routeRef)).toBe(true);
+    await suppress(job.id,f.actor.tenantId);
+    expect(await box.mayDispatch(claim,config.routeRef)).toBe(false);
+    expect(await box.reconcileAuthority(f.actor.tenantId,job.id)).toBe(false);
+    // A suppression arriving after submission cannot erase provider acceptance.
+    expect(await box.settle(claim,{state:'accepted',providerId})).toBe(true);
+    expect(await box.reconcileAuthority(f.actor.tenantId,job.id)).toBe(false);
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first()).toEqual({state:'accepted'});
+  });
+  it('stops ambiguous retries after suppression while retaining review of possible prior delivery',async()=>{
+    const f=await fixture();let now=Date.now();const box=new InvitationEmailOutbox(e,()=>now),job=await box.prepare(f.actor,f.invitationId,config),claim=(await box.claim(f.actor.tenantId,job.id,config.routeRef))!;
+    expect(await box.settle(claim,{state:'uncertain',code:'email_transport_uncertain'})).toBe(true);
+    await suppress(job.id,'*');now+=180000;
+    expect(await box.claim(f.actor.tenantId,job.id,config.routeRef)).toBeNull();
+    expect(await e.AGENT_DB.prepare('SELECT state,attempts,first_attempt_at FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first()).toEqual({state:'review_required',attempts:1,first_attempt_at:claim.firstAttemptAt});
+  });
   it('cancels only unattempted invalid invitations and keeps paused work resumable',async()=>{
     const f=await fixture(),box=new InvitationEmailOutbox(e),prepared=await box.prepare(f.actor,f.invitationId,config);
     await e.AGENT_DB.prepare("UPDATE agent_tenants SET status='paused' WHERE id=?").bind(f.actor.tenantId).run();

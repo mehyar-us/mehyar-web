@@ -10,10 +10,12 @@ const config=z.object({from:z.email().max(254),routeRef:z.string().min(1).max(12
 function authoritySql(allowPaused:boolean){return `EXISTS(SELECT 1 FROM agent_team_invitations i JOIN agent_tenants t ON t.id=i.tenant_id JOIN agent_memberships m ON m.tenant_id=i.tenant_id AND m.user_id=i.invited_by
   WHERE i.id=agent_platform_email_outbox.invitation_id AND i.tenant_id=agent_platform_email_outbox.tenant_id AND i.status='pending' AND i.expires_at>? AND i.expires_at=agent_platform_email_outbox.invitation_expires_at AND i.invited_email=agent_platform_email_outbox.recipient AND i.role=agent_platform_email_outbox.invited_role
   AND t.status NOT IN ('deleted','offboarding'${allowPaused?'':",'paused'"}) AND m.role='owner' AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?))
-  AND EXISTS(SELECT 1 FROM agent_memberships m WHERE m.tenant_id=agent_platform_email_outbox.tenant_id AND m.user_id=agent_platform_email_outbox.prepared_by AND m.role='owner' AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?))`;}
+  AND EXISTS(SELECT 1 FROM agent_memberships m WHERE m.tenant_id=agent_platform_email_outbox.tenant_id AND m.user_id=agent_platform_email_outbox.prepared_by AND m.role='owner' AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?))
+  AND NOT EXISTS(SELECT 1 FROM agent_platform_email_suppressions s WHERE s.recipient=lower(trim(agent_platform_email_outbox.recipient)) AND s.scope_key IN ('*',agent_platform_email_outbox.tenant_id) AND s.status='active')`;}
 
 /** Durable state only: no network calls and no enabled public enqueue/dispatch path.
- * A future dispatcher must enforce sender/account readiness, suppression and quotas. */
+ * Claims and dispatch checks enforce recorded recipient suppression. A future
+ * dispatcher must also enforce sender/account readiness and quotas. */
 export class InvitationEmailOutbox {
   constructor(private readonly env:Env,private readonly clock:()=>number=Date.now){}
   async prepare(actor:Actor,invitationId:string,configuration:z.infer<typeof config>){

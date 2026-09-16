@@ -5,7 +5,7 @@ import {requirePlatformSender} from './readiness';
 import type {SendResult} from './resend';
 
 /** Compose sender evidence with durable invitation identity. This is deliberately
- * not a sender: runtime suppression/quota/supplier-budget gates must be added
+ * not a sender: runtime quota/supplier-budget gates must be added
  * before a scheduled or public path can invoke network transport. */
 export class VerifiedInvitationOutbox {
   private readonly outbox:InvitationEmailOutbox;
