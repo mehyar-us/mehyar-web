@@ -830,7 +830,10 @@ test('reads saved Outlook monitoring status and clears unverifiable counts',asyn
     expect(route.request().method()).toBe('POST');expect(route.request().postDataJSON()).toEqual({});stopped=true;
     return route.fulfill({json:{state:'stopped'}});
   });
-  await page.route('**/mailbox/folders/status',route=>route.fulfill({json:{state:stopped?'stopped':'needs_attention',setupEnabled:false,pending:5,lastObservedAt:null,configuredFolders:invalid?-1:3}}));
+  await page.route('**/mailbox/resume',route=>{
+    expect(route.request().postDataJSON()).toEqual({expectedRevision:2});stopped=false;return route.fulfill({json:{state:'resumed'}});
+  });
+  await page.route('**/mailbox/folders/status',route=>route.fulfill({json:{state:stopped?'stopped':'needs_attention',setupEnabled:false,pending:5,lastObservedAt:null,configuredFolders:invalid?-1:3,...stopped?{controlRevision:2,resumeEnabled:true}:{}}}));
   await page.goto('/?connected=microsoft');const panel=page.locator('[aria-label="Mailbox monitoring"]');
   await expect(panel.getByText('3 folders configured under current account permission.')).toBeVisible();
   await expect(panel.getByText('Needs attention',{exact:true})).toBeVisible();
@@ -839,6 +842,8 @@ test('reads saved Outlook monitoring status and clears unverifiable counts',asyn
   await panel.getByRole('button',{name:'Confirm stop monitoring'}).click();
   await expect(panel.getByText('Monitoring stopped',{exact:true})).toBeVisible();
   await expect(panel.getByRole('button',{name:'Stop monitoring',exact:true})).toHaveCount(0);
+  await panel.getByRole('button',{name:'Resume monitoring'}).click();
+  await expect(panel.getByText('Needs attention',{exact:true})).toBeVisible();
   await expect(panel.getByRole('button',{name:'Set up mailbox monitoring'})).toHaveCount(0);
   invalid=true;await panel.getByRole('button',{name:'Refresh mailbox status'}).click();
   await expect(panel.getByRole('alert')).toContainText('Mailbox status could not be verified');

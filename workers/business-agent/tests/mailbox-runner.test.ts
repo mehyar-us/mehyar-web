@@ -14,6 +14,7 @@ import {runInDurableObject} from 'cloudflare:test';
 import {getAgentByName} from 'agents';
 import {FolderSessions} from '../src/connectors/folder-sessions';
 import {connectedMailboxFolders,initializeMicrosoftFolders} from '../src/connectors/folder-access';
+import {stopMailbox,resumeMailbox} from '../src/connectors/mailbox-control';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -36,6 +37,25 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('resumes with verified access and a matching control revision without resetting work',async()=>{
+    const f=await fixture(),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'next'});
+    await stopMailbox(e,f.actor,f.grantId);
+    expect(await googleMailboxStatus(ready,f.actor,f.grantId,()=>false)).toMatchObject({state:'stopped',controlRevision:2,resumeEnabled:true,pending:1});
+    expect(await resumeMailbox(ready,f.actor,f.grantId,2,guard)).toEqual({state:'resumed'});
+    expect(await resumeMailbox(ready,f.actor,f.grantId,2,guard)).toEqual({state:'resumed'});
+    expect(await e.AGENT_DB.prepare('SELECT checkpoint,page_cursor FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({checkpoint:'200',page_cursor:'next'});
+    expect(await f.ledger.claimChange(f.streamId)).not.toBeNull();
+    await stopMailbox(e,f.actor,f.grantId);
+    await expect(resumeMailbox(ready,f.actor,f.grantId,2,guard)).rejects.toMatchObject({code:'mailbox_control_changed'});
+    expect(await googleMailboxStatus(ready,f.actor,f.grantId,()=>false)).toMatchObject({state:'stopped',controlRevision:4});
+  });
+  it('keeps stopped mailboxes stopped when processing or the owning Agent is unavailable',async()=>{
+    const f=await fixture('microsoft');await stopMailbox(e,f.actor,f.grantId);
+    await expect(resumeMailbox(e,f.actor,f.grantId,2,guard)).rejects.toMatchObject({code:'mailbox_setup_unavailable'});
+    await expect(resumeMailbox({...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.grantId,2,async()=>{throw new Error('paused');})).rejects.toThrow('paused');
+    expect(await microsoftMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({state:'stopped',controlRevision:2,resumeEnabled:false});
+  });
   it('summarizes current Outlook folders, bootstrap, pending work and recovery without private identifiers',async()=>{
     const f=await fixture('microsoft'),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
     const second=await f.ledger.open(f.grantId,'microsoft','private-folder');

@@ -12,7 +12,7 @@ import {runMailboxPage} from './connectors/mailbox-runner';
 import {initializeGoogleMailbox} from './connectors/mailbox-bootstrap';
 import {consumeMailboxChange} from './connectors/mailbox-consumer';
 import {googleMailboxStatus,microsoftMailboxStatus} from './connectors/mailbox-status';
-import {stopMailbox} from './connectors/mailbox-control';
+import {stopMailbox,resumeMailbox} from './connectors/mailbox-control';
 import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
@@ -124,6 +124,13 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   }
   async stopMailboxMonitoring(actor:Actor,grantId:string) {
     return this.result(async()=>{await this.bind(actor);return stopMailbox(this.env,actor,grantId);});
+  }
+  async resumeMailboxMonitoring(actor:Actor,grantId:string,expectedRevision:number) {
+    return this.result(async()=>{
+      const guard=async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused)throw new HttpError(409,'agent_paused','Your agent is paused.');};
+      return resumeMailbox(this.env,actor,grantId,expectedRevision,guard);
+    });
   }
   async outlookMailboxStatus(actor:Actor,grantId:string) {
     return this.result(async()=>{await this.bind(actor);return microsoftMailboxStatus(this.env,actor,grantId,()=>this.state.paused);});

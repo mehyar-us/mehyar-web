@@ -80,6 +80,11 @@ async function route(request:Request,env:Env) {
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   const mailbox=section.match(/^connections\/([a-f0-9-]{36})\/mailbox$/);
   const mailboxStop=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/stop$/);
+  const mailboxResume=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/resume$/);
+  if(mailboxResume&&request.method==='POST'){
+    const input=z.object({expectedRevision:z.number().int().min(1).max(Number.MAX_SAFE_INTEGER-1)}).strict().parse(await readJson(request));
+    return json(unwrap(await agent.resumeMailboxMonitoring(actor,mailboxResume[1],input.expectedRevision)));
+  }
   if(mailboxStop&&request.method==='POST'){
     z.object({}).strict().parse(await readJson(request));
     return json(unwrap(await agent.stopMailboxMonitoring(actor,mailboxStop[1])));

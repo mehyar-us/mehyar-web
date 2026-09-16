@@ -1,10 +1,11 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
 const labels={not_started:'Not set up',initializing:'Reading initial mailbox references',monitoring:'Monitoring configured',paused:'Paused',stopped:'Monitoring stopped',needs_attention:'Needs attention',disabled:'Monitoring unavailable',reconnect_required:'Reconnect required'};
-type Status={state:keyof typeof labels;setupEnabled:boolean;pending:number;lastObservedAt:string|null;configuredFolders?:number};
+type Status={state:keyof typeof labels;setupEnabled:boolean;pending:number;lastObservedAt:string|null;configuredFolders?:number;controlRevision?:number;resumeEnabled?:boolean};
 function valid(value:unknown):value is Status {
   const s=value as Status|null;return !!s&&Object.hasOwn(labels,s.state)&&typeof s.setupEnabled==='boolean'
     &&(!s.setupEnabled||s.state==='not_started')&&Number.isSafeInteger(s.pending)&&s.pending>=0
+    &&(s.state!=='stopped'||typeof s.resumeEnabled==='boolean'&&Number.isSafeInteger(s.controlRevision)&&s.controlRevision!>0)
     &&(s.lastObservedAt===null||typeof s.lastObservedAt==='string'&&Number.isFinite(Date.parse(s.lastObservedAt)));
 }
 export default function MailboxPanel({tenantId,grantId,online,onUnauthorized,provider='google'}:{tenantId:string;grantId:string;online:boolean;onUnauthorized:(error:unknown)=>void;provider?:'google'|'microsoft'}) {
@@ -24,10 +25,12 @@ export default function MailboxPanel({tenantId,grantId,online,onUnauthorized,pro
   },[tenantId,grantId,online,onUnauthorized,provider]);
   useEffect(()=>{setBusy(false);void load();return()=>request.current?.abort();},[load]);
   useEffect(()=>setConfirmStop(false),[tenantId,grantId,online]);
-  async function stop() {
+  async function stop(resume=false) {
+    const expectedRevision=status?.controlRevision;
+    if(resume&&(!status?.resumeEnabled||!expectedRevision))return;
     request.current?.abort();const controller=new AbortController();request.current=controller;setBusy(true);setError('');setStatus(null);setConfirmStop(false);
     try{
-      await api(`/api/tenants/${encodeURIComponent(tenantId)}/connections/${encodeURIComponent(grantId)}/mailbox/stop`,{method:'POST',body:'{}',signal:controller.signal});
+      await api(`/api/tenants/${encodeURIComponent(tenantId)}/connections/${encodeURIComponent(grantId)}/mailbox/${resume?'resume':'stop'}`,{method:'POST',body:JSON.stringify(resume?{expectedRevision}:{}),signal:controller.signal});
       if(!controller.signal.aborted)await load();
     }catch(cause){if(!controller.signal.aborted){setError(cause instanceof Error?cause.message:'Stop could not be verified.');if(cause instanceof ApiError&&cause.status===401)onUnauthorized(cause);}}
     finally{if(!controller.signal.aborted)setBusy(false);}
@@ -40,7 +43,8 @@ export default function MailboxPanel({tenantId,grantId,online,onUnauthorized,pro
       <p>{status.lastObservedAt?`Last message observation: ${new Date(status.lastObservedAt).toLocaleString()}`:'No message observation recorded yet.'}</p>
       {status.state==='not_started'&&!status.setupEnabled&&<p>{provider==='microsoft'?'Use folder discovery to select folders after your subscription and mailbox service are activated.':'Setup becomes available after your subscription and mailbox service are activated.'}</p>}
       {status.state==='needs_attention'&&<p>Contact support to review synchronization. Your saved progress is preserved.</p>}
-      {status.state==='stopped'&&<p>Saved progress is preserved. Contact support before restarting monitoring.</p>}
+      {status.state==='stopped'&&<><p>Saved progress is preserved. Resuming does not reset recovery issues or guarantee that old provider checkpoints remain valid.</p>
+        {status.resumeEnabled?<button className="button secondary" disabled={busy||!online} onClick={()=>void stop(true)}>Resume monitoring</button>:<p>Resume is unavailable until account permission and mailbox service readiness are verified.</p>}</>}
       {status.setupEnabled&&<button className="button secondary" onClick={()=>void load(true)}>Set up mailbox monitoring</button>}
     </>:null}
     <button className="button secondary" disabled={!online||busy} onClick={()=>void load()}>Refresh mailbox status</button>
