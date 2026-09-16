@@ -166,6 +166,20 @@ export async function onRequestPost({ request, env, waitUntil }) {
         const emailResult = await maybeSendPromptpackEmail(db, env, payment);
         return json({ ok: true, action: "already_fulfilled", order_id: existing.id, email: emailResult.action });
       }
+      if (product.fulfillment === "tiktokgrowth") {
+        // TikTok Growth: the order may be incomplete (failed generation, or
+        // ready but the delivery email never went out). Re-enter fulfillment;
+        // it resumes incomplete work and returns replay for fully-done orders
+        // (ready + emailed), so this stays idempotent.
+        const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+        try {
+          const fr = await spec.fulfill({ db, env, waitUntil, sendEmail }, payment);
+          return json({ ok: true, action: fr && fr.replay ? "already_fulfilled" : "resumed", order_id: existing.id });
+        } catch (e) {
+          console.error("fulfill-backfill tiktokgrowth resume failed", payment.id, e && e.message);
+          return json({ ok: false, error: "fulfillment_failed" }, 500);
+        }
+      }
       return json({ ok: true, action: "already_fulfilled", order_id: existing.id });
     }
 
