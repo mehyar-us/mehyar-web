@@ -33,6 +33,8 @@ describe('server-derived research allowances',()=>{
         expect(await instance.requestResearch(actor,{...input,allowance:1000},key)).toMatchObject({ok:false,error:{code:'invalid_research_request'}});
         expect(await instance.requestResearch(actor,{...input,pages:21},key)).toMatchObject({ok:false,error:{code:'research_page_limit'}});
         const reserved=unwrap(await instance.requestResearch(actor,input,key));expect(reserved.job).toMatchObject({status:'reserved',pageLimit:20,reservedPages:20});
+        await instance.maintainResearch();await instance.onStart();
+        expect((await instance.listSchedules({type:'interval'})).filter(schedule=>schedule.callback==='maintainResearch')).toHaveLength(1);
         expect(unwrap(await instance.requestResearch(actor,{url:input.url},key))).toEqual(reserved);
         expect(await instance.requestResearch(actor,{...input,url:'https://other.example.com/'},key)).toMatchObject({ok:false,error:{code:'research_request_reused'}});
         expect(await instance.requestResearch(actor,input,crypto.randomUUID())).toMatchObject({ok:false,error:{code:'research_job_limit'}});
@@ -41,9 +43,12 @@ describe('server-derived research allowances',()=>{
         expect(unwrap(await instance.researchJobs(actor)).jobs).toHaveLength(1);
         unwrap(await instance.pause(actor,false));
         instance.sql`UPDATE research_jobs SET deadline=0 WHERE id=${reserved.job.id}`;
+        await instance.maintainResearch();
+        expect((await instance.listSchedules({type:'interval'})).filter(schedule=>schedule.callback==='maintainResearch')).toHaveLength(0);
         expect(unwrap(await instance.requestResearch(actor,input,key)).job.status).toBe('cancelled');
         const replacement=unwrap(await instance.requestResearch(actor,input,crypto.randomUUID()));
         expect(replacement.job.id).not.toBe(reserved.job.id);expect(replacement.job.status).toBe('reserved');
+        expect((await instance.listSchedules({type:'interval'})).filter(schedule=>schedule.callback==='maintainResearch')).toHaveLength(1);
       }finally{(instance as any).env=original;}
     });
   });

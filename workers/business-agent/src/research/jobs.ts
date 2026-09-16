@@ -42,6 +42,7 @@ export class ResearchJobs {
       this.storage.sql.exec("UPDATE research_spend SET status='released' WHERE status='reserved' AND job_id IN (SELECT id FROM research_jobs WHERE status='cancelled' AND provider_id IS NULL)");
     });
   }
+  hasDeadlines(){return this.storage.sql.exec<{count:number}>("SELECT COUNT(*) AS count FROM research_jobs WHERE status IN ('reserved','submitting','running')").one().count>0;}
   get(id:string):Job {
     const row=this.storage.sql.exec<Job>('SELECT * FROM research_jobs WHERE id=?',id).toArray()[0];
     if(!row)throw new HttpError(404,'research_job_missing','Research job not found.');return row;

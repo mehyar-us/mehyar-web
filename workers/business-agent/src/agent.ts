@@ -37,6 +37,18 @@ export class BusinessAgent extends Agent<Env,AgentState> {
     // Generation has no external effect; interrupted generation is released for a safe retry.
     this.sql`UPDATE turns SET status = 'failed' WHERE status = 'running'`;
     this.sql`UPDATE provider_attempts SET status = 'interrupted' WHERE status = 'started'`;
+    await this.maintainResearch();
+  }
+
+  /** Local maintenance only: does not fetch websites or dispatch provider calls. */
+  async maintainResearch(){
+    const jobs=new ResearchJobs(this.ctx.storage);jobs.expire();
+    if(jobs.hasDeadlines())await this.scheduleEvery(60,'maintainResearch');
+    else for(const schedule of await this.listSchedules({type:'interval'})){
+      if(schedule.callback==='maintainResearch'&&!jobs.hasDeadlines())await this.cancelSchedule(schedule.id);
+    }
+    // A reservation may arrive while cancelling an idle schedule.
+    if(jobs.hasDeadlines())await this.scheduleEvery(60,'maintainResearch');
   }
 
   async onRequest() { return new Response('Not found',{status:404}); }
@@ -79,10 +91,10 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       const prior=jobs.byRequestKey(key);
       if(prior){
         if(prior.source!==url||prior.page_limit!==parsed.data.pages||prior.depth!==parsed.data.depth)throw new HttpError(409,'research_request_reused','This request key belongs to different website research.');
-        return {job:jobs.summary(prior.id)};
+        await this.maintainResearch();return {job:jobs.summary(prior.id)};
       }
       const job=jobs.reserve({key,url,pages:parsed.data.pages,depth:parsed.data.depth,period:access.period,allowance:access.allowance,maxJobs:access.maxJobs,deadline:Date.now()+30*60_000});
-      return {job:jobs.summary(job.id)};
+      await this.maintainResearch();return {job:jobs.summary(job.id)};
     });
   }
   async researchEvidence(actor:Actor,id:string,offset=0) {
