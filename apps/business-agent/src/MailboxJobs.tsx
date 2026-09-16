@@ -5,6 +5,7 @@ import {validOffer,type Offer} from './MailboxReview';
 export default function MailboxJobs({tenantId,onUnauthorized}:{tenantId:string;onUnauthorized:(error:unknown)=>void}){
   const [jobs,setJobs]=useState<MailboxJob[]>([]),[cursor,setCursor]=useState<string>(),[loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
   const [review,setReview]=useState<{job:MailboxJob;offer:Offer}>();
+  const [view,setView]=useState<'all'|'active'>('all');
   const active=useRef<AbortController|null>(null),seen=useRef(new Set<string>());
   const base=`/api/tenants/${encodeURIComponent(tenantId)}/mailbox-analysis`;
   function clear(){setJobs([]);setCursor(undefined);setLoaded(false);setReview(undefined);seen.current.clear();}
@@ -15,13 +16,14 @@ export default function MailboxJobs({tenantId,onUnauthorized}:{tenantId:string;o
     finally{if(active.current===controller){active.current=null;setBusy(false);}}
   }
   const post=(path:string,body:unknown,signal:AbortSignal)=>api<unknown>(`${base}/${path}`,{method:'POST',body:JSON.stringify(body),signal});
-  function load(more=false){void work(async signal=>{
+  function load(more=false,mode=view){void work(async signal=>{
     setReview(undefined);if(!more)clear();
-    const result=await api<unknown>(`${base}/section-jobs${more&&cursor?`?after=${encodeURIComponent(cursor)}`:''}`,{signal});
+    setView(mode);const query=new URLSearchParams({view:mode});if(more&&cursor)query.set('after',cursor);
+    const result=await api<unknown>(`${base}/section-jobs?${query}`,{signal});
     if(signal.aborted)return;
-    if(!validMailboxJobs(result)||more&&result.nextCursor&&(result.nextCursor===cursor||seen.current.has(result.nextCursor))||more&&result.jobs.some(j=>jobs.some(old=>old.id===j.id)))throw new Error('Background analyses could not be verified. Refresh to try again.');
+    if(!validMailboxJobs(result)||mode==='active'&&result.jobs.some(j=>!['queued','running'].includes(j.status))||more&&result.nextCursor&&(result.nextCursor===cursor||seen.current.has(result.nextCursor))||more&&result.jobs.some(j=>jobs.some(old=>old.id===j.id)))throw new Error('Background analyses could not be verified. Refresh to try again.');
     if(result.nextCursor)seen.current.add(result.nextCursor);
-    setJobs(old=>more?[...old,...result.jobs]:result.jobs);setCursor(result.nextCursor);setLoaded(true);
+    setJobs(result.jobs);setCursor(result.nextCursor);setLoaded(true);
   });}
   function cancel(job:MailboxJob){void work(async signal=>{
     setReview(undefined);let result;
@@ -29,7 +31,7 @@ export default function MailboxJobs({tenantId,onUnauthorized}:{tenantId:string;o
     catch(cause){if(cause instanceof ApiError&&cause.status===401)throw cause;throw new Error('Cancellation could not be confirmed. Refresh background analyses to check its status.');}
     if(signal.aborted)return;
     if(!validMailboxJob(result)||result.id!==job.id||['queued','running'].includes(result.status))throw new Error('Cancellation status could not be verified. Refresh background analyses.');
-    setJobs(old=>old.map(j=>j.id===job.id?result:j));setStatus(result.status==='cancelled'?'The job is stopped. Completed sections remain available.':'The job had already stopped or completed. Its latest status is shown.');
+    setJobs(old=>view==='active'?old.filter(j=>j.id!==job.id):old.map(j=>j.id===job.id?result:j));setStatus(result.status==='cancelled'?'The job is stopped. Completed sections remain available.':'The job had already stopped or completed. Refresh all analyses to see its latest status.');
   });}
   function quote(job:MailboxJob){setReview(undefined);void work(async signal=>{
     let result;
@@ -49,6 +51,8 @@ export default function MailboxJobs({tenantId,onUnauthorized}:{tenantId:string;o
   return <section className="panel mailbox-jobs" aria-label="Your background analyses"><h2>Your background analyses</h2>
     <p>Your approved section jobs across this business’s mailboxes. They can continue while the app is closed, until their approval expires. Refresh to check current progress.</p>
     <button className="button secondary" disabled={busy} onClick={()=>load()}>{loaded?'Refresh background analyses':'View background analyses'}</button>
+    <button className="button secondary" disabled={busy} onClick={()=>load(false,view==='all'?'active':'all')}>{view==='all'?'Show active analyses':'Show all analyses'}</button>
+    {loaded&&<p>{view==='active'?'Showing active jobs only.':'Showing all job states, one page at a time.'} Refresh returns to the first page.</p>}
     {busy&&<p role="status">Checking background analysis…</p>}{status&&<p role="status">{status}</p>}{error&&<p role="alert">{error}</p>}
     {loaded&&!jobs.length&&<p>No background analyses on this page.</p>}
     {jobs.map(job=><article className="notice" key={job.id}><h3>Analysis {job.id.slice(0,8)} · {jobStates[job.status]}</h3>
@@ -58,7 +62,7 @@ export default function MailboxJobs({tenantId,onUnauthorized}:{tenantId:string;o
       {['queued','running'].includes(job.status)&&<><p>Stopping prevents further work. Already submitted requests may finish and use approved credits.</p><button className="button secondary" disabled={busy} onClick={()=>cancel(job)}>Stop job</button></>}
       {job.status==='completed'&&<button className="button secondary" disabled={busy} onClick={()=>quote(job)}>Review combined summary cost</button>}
     </article>)}
-    {cursor&&(jobs.length<100?<button className="button secondary" disabled={busy} onClick={()=>load(true)}>Load more background analyses</button>:<p>Showing 100 jobs. Refresh to check the current directory.</p>)}
+    {cursor&&<button className="button secondary" disabled={busy} onClick={()=>load(true)}>Next background analyses</button>}
     {review&&<div className="notice"><h3>Combined summary cost for analysis {review.job.id.slice(0,8)}</h3>
       <p>Uses up to {review.offer.textCredits} text {review.offer.textCredits===1?'credit':'credits'}. This combines completed sections only and does not authorize messages or appointments.</p>
       <p>Review expires: {new Date(review.offer.expiresAt).toLocaleTimeString()}.</p>

@@ -113,6 +113,11 @@ describe('one-page mailbox provider runner',()=>{
       const cancelled=await mailboxSectionJobRequest(new Request('https://app.example.test',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}),
         `mailbox-analysis/section-jobs/${ids[0]}/cancel`,f.actor,instance);
       expect(await cancelled.json()).toMatchObject({id:ids[0],status:'cancelled'});
+      const activeJob=jobs.start(f.actor,crypto.randomUUID(),terms),otherActive=jobs.start(other,crypto.randomUUID(),terms);
+      const activePage=unwrap(await instance.mailboxSectionJobs(f.actor,undefined,'active'));
+      expect(activePage.jobs.map(j=>j.id)).toEqual([activeJob.id]);expect(activePage.nextCursor).toBeUndefined();
+      jobs.cancel(f.actor,activeJob.id);jobs.cancel(other,otherActive.id);
+      expect(unwrap(await instance.mailboxSectionJobs(f.actor,undefined,'active')).jobs).toEqual([]);
       expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:0,reserved:0});
     });
   });

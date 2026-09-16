@@ -215,6 +215,7 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     expect(await jobDirectory.json()).toEqual({jobs:[]});expect(jobDirectory.headers.get('cache-control')).toContain('no-store');
     expect((await worker.fetch(request(jobsPath),workerEnv)).status).toBe(401);
     expect((await worker.fetch(request(jobsPath+'?after=invalid',undefined,sessionCookie),workerEnv)).status).toBe(400);
+    expect((await worker.fetch(request(jobsPath+'?view=unknown',undefined,sessionCookie),workerEnv)).status).toBe(400);
     expect((await worker.fetch(request(jobsPath+'/'+jobId,undefined,sessionCookie),workerEnv)).status).toBe(404);
     expect((await worker.fetch(request(jobsPath+'/'+jobId+'/cancel',{},sessionCookie),workerEnv)).status).toBe(404);
     expect((await worker.fetch(request(jobsPath,{offerId:jobId},sessionCookie),workerEnv)).status).toBe(400);

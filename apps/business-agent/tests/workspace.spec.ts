@@ -998,6 +998,26 @@ test('clears unverified background history and does not claim an uncertain cance
   await page.getByLabel('YOUR WORKSPACE').selectOption('business-b');await expect(history.getByText('Credit limit:',{exact:false})).toHaveCount(0);
 });
 
+test('finds active analyses without scanning history and navigates beyond one hundred jobs',async({page})=>{
+  await fixture(page);const createdAt=new Date().toISOString();
+  const rows=Array.from({length:102},(_,i)=>({id:`${(i+1).toString(16).padStart(8,'0')}-1111-4111-8111-111111111111`,status:i===101?'queued':'completed',completedSections:i===101?0:1,totalSections:1,maximumTextCredits:1,createdAt,approvalExpiresAt:new Date(Date.parse(createdAt)+86400000).toISOString(),source:{streamId:'s',messageId:`m${i}`,receipt:'11111111-1111-4111-8111-111111111111'},reason:null,includesAggregation:false,authorizesExternalActions:false}));
+  await page.route('**/mailbox-analysis/section-jobs**',route=>{
+    if(route.request().method()==='POST')return route.fulfill({json:{...rows[101],status:'cancelled'}});
+    const query=new URL(route.request().url()).searchParams;
+    if(query.get('view')==='active')return route.fulfill({json:{jobs:[rows[101]]}});
+    const start=query.has('after')?rows.findIndex(j=>j.id===query.get('after'))+1:0;
+    return route.fulfill({json:{jobs:rows.slice(start,start+10),...(start+10<rows.length?{nextCursor:rows[start+9].id}:{})}});
+  });
+  await page.goto('/?connected=google');const history=page.getByRole('region',{name:'Your background analyses'});
+  await history.getByRole('button',{name:'Show active analyses'}).click();await expect(history.getByRole('heading',{name:/Analysis 00000066/})).toBeVisible();
+  await expect(history.locator('article')).toHaveCount(1);
+  await history.getByRole('button',{name:'Stop job'}).click();await expect(history.locator('article')).toHaveCount(0);
+  await history.getByRole('button',{name:'Show all analyses'}).click();await expect(history.locator('article')).toHaveCount(10);
+  for(let i=0;i<10;i++){await history.getByRole('button',{name:'Next background analyses'}).click();await expect(history.getByRole('heading',{name:new RegExp(`Analysis ${(i*10+11).toString(16).padStart(8,'0')}`)})).toBeVisible();}
+  await expect(history.locator('article')).toHaveCount(2);await expect(history.getByRole('button',{name:'Next background analyses'})).toHaveCount(0);
+  await history.getByRole('button',{name:'Refresh background analyses'}).click();await expect(history.getByRole('heading',{name:/Analysis 00000001/})).toBeVisible();
+});
+
 test('reviews mailbox recovery and retries the same offer after an uncertain response',async({page})=>{
   await fixture(page);let restarted=false;const requests:unknown[]=[];
   const recoveryId='33333333-3333-4333-8333-333333333333';

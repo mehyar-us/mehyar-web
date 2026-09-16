@@ -242,9 +242,9 @@ export class BusinessAgent extends Agent<Env,AgentState> {
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
       const jobs=new MailboxSectionJobs(this.ctx.storage);return jobs.present(jobs.get(actor,id));});
   }
-  async mailboxSectionJobs(actor:Actor,after?:string){
+  async mailboxSectionJobs(actor:Actor,after?:string,view:'all'|'active'='all'){
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
-      return new MailboxSectionJobs(this.ctx.storage).list(actor,after);});
+      return new MailboxSectionJobs(this.ctx.storage).list(actor,after,view);});
   }
   async cancelMailboxSectionJob(actor:Actor,id:string){
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);

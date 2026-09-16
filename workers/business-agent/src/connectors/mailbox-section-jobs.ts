@@ -10,7 +10,8 @@ export class MailboxSectionJobs {
     id TEXT PRIMARY KEY,offer_id TEXT NOT NULL UNIQUE,user_id TEXT NOT NULL,terms TEXT NOT NULL,state TEXT NOT NULL,
     completed INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0,next_at INTEGER NOT NULL,deadline INTEGER NOT NULL,
     lease TEXT,lease_until INTEGER NOT NULL DEFAULT 0,reason TEXT)`);
-    this.storage.sql.exec('CREATE INDEX IF NOT EXISTS mailbox_section_jobs_owner ON mailbox_section_jobs(user_id,id)');}
+    this.storage.sql.exec('CREATE INDEX IF NOT EXISTS mailbox_section_jobs_owner ON mailbox_section_jobs(user_id,id)');
+    this.storage.sql.exec('CREATE INDEX IF NOT EXISTS mailbox_section_jobs_active ON mailbox_section_jobs(user_id,state,id)');}
   recover(){this.storage.sql.exec("UPDATE mailbox_section_jobs SET state=CASE WHEN attempts>=3 THEN 'review_required' ELSE 'queued' END,lease=NULL,lease_until=0,reason='interrupted' WHERE state='running'");this.expire();}
   expire(){
     this.storage.sql.exec("UPDATE mailbox_section_jobs SET state='expired',lease=NULL,reason='approval_expired' WHERE state IN ('queued','running') AND deadline<=?",Date.now());
@@ -31,9 +32,10 @@ export class MailboxSectionJobs {
     this.expire();const job=this.storage.sql.exec<Job>('SELECT * FROM mailbox_section_jobs WHERE id=? AND user_id=?',id,actor.userId).toArray()[0];
     if(!job)throw new HttpError(404,'section_job_unavailable','This analysis job is unavailable.');return job;
   }
-  list(actor:Actor,after?:string){
+  list(actor:Actor,after?:string,view:'all'|'active'='all'){
+    if(!z.enum(['all','active']).safeParse(view).success)throw new HttpError(400,'invalid_section_job_view','Select a valid job view.');
     if(after!==undefined&&!z.string().uuid().safeParse(after).success)throw new HttpError(400,'invalid_section_job_cursor','Refresh background analyses.');
-    this.expire();const rows=this.storage.sql.exec<Job>('SELECT * FROM mailbox_section_jobs WHERE user_id=? AND id>? ORDER BY id LIMIT 11',actor.userId,after??'').toArray();
+    this.expire();const rows=this.storage.sql.exec<Job>(`SELECT * FROM mailbox_section_jobs WHERE user_id=? AND id>? ${view==='active'?"AND state IN ('queued','running')":''} ORDER BY id LIMIT 11`,actor.userId,after??'').toArray();
     return {jobs:rows.slice(0,10).map(job=>this.present(job)),nextCursor:rows.length>10?rows[9].id:undefined};
   }
   present(job:Job){const terms=JSON.parse(job.terms) as SectionTerms;return {id:job.id,status:job.state,completedSections:job.completed,totalSections:terms.indices.length,
