@@ -22,6 +22,7 @@ import {runMailboxTriageDispatch} from '../src/connectors/mailbox-triage-dispatc
 import {calibratedTextReservation} from '../src/billing/text-calibration';
 import {mailboxAnalysisRequest} from '../src/connectors/mailbox-analysis-api';
 import {MailboxSectionJobs} from '../src/connectors/mailbox-section-jobs';
+import {mailboxSectionJobRequest} from '../src/connectors/mailbox-section-job-api';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -60,7 +61,10 @@ describe('one-page mailbox provider runner',()=>{
         }}};
         try{
           const offer=unwrap(await instance.reviewMailboxSections(f.actor,f.streamId,'background',claim.token));
-          const job=unwrap(await instance.startMailboxSectionJob(f.actor,offer.offerId));
+          const accepted=await mailboxSectionJobRequest(new Request('https://app.example.test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({offerId:offer.offerId,backgroundApproval:{version:1,maximumHours:24,includesAggregation:false}})}),
+            'mailbox-analysis/section-jobs',f.actor,instance);
+          expect(accepted.status).toBe(202);expect(accepted.headers.get('cache-control')).toContain('no-store');
+          const job=await accepted.json() as ReturnType<MailboxSectionJobs['present']>;
           expect(job).toMatchObject({status:'queued',completedSections:0,totalSections:2,maximumTextCredits:2,includesAggregation:false,authorizesExternalActions:false});expect(calls).toBe(0);
           expect(unwrap(await instance.startMailboxSectionJob(f.actor,offer.offerId)).id).toBe(job.id);
           expect((await instance.mailboxSectionJob({...f.actor,userId:crypto.randomUUID()},job.id)).ok).toBe(false);
@@ -79,6 +83,9 @@ describe('one-page mailbox provider runner',()=>{
           expect(await instance.confirmMailboxSection(f.actor,offer.offerId,1)).toMatchObject({ok:false,error:{code:'section_offer_expired'}});
           await instance.maintainMailboxSections();expect(calls).toBe(2);
           expect(unwrap(await instance.mailboxSectionJob(f.actor,job.id))).toMatchObject({status:'completed',completedSections:2});
+          const directory=unwrap(await instance.mailboxSectionJobs(f.actor));
+          expect(directory.jobs).toHaveLength(1);expect(directory.jobs[0]).toMatchObject({id:job.id,status:'completed',source:{streamId:f.streamId,messageId:'background',receipt:claim.token}});
+          expect(JSON.stringify(directory)).not.toContain('sourceHash');expect(JSON.stringify(directory)).not.toContain('lease');
           expect(unwrap(await instance.startMailboxSectionJob(f.actor,offer.offerId)).id).toBe(job.id);
           expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:2,reserved:0});
           expect((await instance.listSchedules({type:'interval'})).filter(s=>s.callback==='maintainMailboxSections')).toHaveLength(0);
@@ -87,6 +94,27 @@ describe('one-page mailbox provider runner',()=>{
         }finally{(instance as any).env=original;}
       });
     }finally{vi.useRealTimers();}
+  });
+  it('paginates only the requesting user’s durable job history',async()=>{
+    const f=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+      const jobs=new MailboxSectionJobs(ctx.storage),ids=[];
+      const terms={streamId:f.streamId,messageId:'private-message',receipt:crypto.randomUUID(),sourceHash:'a'.repeat(64),period:'fixture',sectionCount:2,indices:[0,1]};
+      for(let i=0;i<12;i++){
+        const row=jobs.start(f.actor,crypto.randomUUID(),terms);ids.push(row.id);jobs.cancel(f.actor,row.id);
+      }
+      const other={...f.actor,userId:crypto.randomUUID()},otherJob=jobs.start(other,crypto.randomUUID(),terms);jobs.cancel(other,otherJob.id);
+      const first=unwrap(await instance.mailboxSectionJobs(f.actor)),last=unwrap(await instance.mailboxSectionJobs(f.actor,first.nextCursor));
+      expect(first.jobs).toHaveLength(10);expect(last.jobs).toHaveLength(2);expect(last.nextCursor).toBeUndefined();
+      expect([...first.jobs,...last.jobs].map(j=>j.id)).toEqual(ids.sort());
+      expect(await instance.mailboxSectionJobs(f.actor,'invalid')).toMatchObject({ok:false,error:{code:'invalid_section_job_cursor'}});
+      expect(await instance.mailboxSectionJob(f.actor,otherJob.id)).toMatchObject({ok:false,error:{code:'section_job_unavailable'}});
+      expect(await instance.cancelMailboxSectionJob(f.actor,otherJob.id)).toMatchObject({ok:false,error:{code:'section_job_unavailable'}});
+      const cancelled=await mailboxSectionJobRequest(new Request('https://app.example.test',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}),
+        `mailbox-analysis/section-jobs/${ids[0]}/cancel`,f.actor,instance);
+      expect(await cancelled.json()).toMatchObject({id:ids[0],status:'cancelled'});
+      expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:0,reserved:0});
+    });
   });
   it.each(['cancel','pause','source','revoke','retry','expiry','disabled'] as const)('bounds background analysis when %s interrupts progress',async(mode)=>{
     vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-09-17T00:00:00Z'));

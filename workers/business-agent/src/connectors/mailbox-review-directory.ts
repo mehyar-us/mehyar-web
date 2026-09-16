@@ -54,5 +54,6 @@ export async function mailboxReviewDirectory(env:Env,actor:Actor,grantId:string,
   }
   if(await guard()!==authorization)throw new HttpError(409,'triage_access_changed','Mailbox access changed. Refresh messages.');
   return {items,withheld,nextCursor:rows.length>10?encode(rows[9].stream_id,rows[9].message_id):undefined,
+    backgroundAnalysisEnabled:env.MAILBOX_EXTENDED_JOBS_ENABLED==='true',
     extendedAnalysisEnabled:env.MAILBOX_EXTENDED_TRIAGE_ENABLED==='true'&&env.MAILBOX_TRIAGE_ENABLED==='true'&&env.MAILBOX_PROCESSING_ENABLED==='true'&&env.MAILBOX_SYNC_ENABLED==='true'&&env.AI_ENABLED==='true'};
 }
