@@ -1,5 +1,6 @@
 import { ProviderHTTP, appointmentInput, query, requireEtag, segment, singleLine, stableId, windowInput } from "./http";
 import { requireReschedulable, rescheduleInput, rescheduleReceipt, type RescheduleInput } from './reschedule';
+import { busyAppointments, requireRescheduleAvailability } from './reschedule-availability';
 import { ConnectorError, type AppointmentInput, type AppointmentReceipt, type Availability, type Calendar, type ClientOptions, type ConnectorAuth, type Operation, type Page, type TimeWindow, type WatchReceipt } from "./types";
 
 const scope = (suffix: string) => `https://www.googleapis.com/auth/${suffix}`;
@@ -38,6 +39,14 @@ export class GoogleCalendarClient {
   async readAppointment(calendarId: string, eventId: string): Promise<GoogleEvent> {
     return this.http.request(GOOGLE_CALENDAR_OPERATIONS.read, `calendars/${segment(calendarId)}/events/${segment(eventId)}`);
   }
+  async listBusyAppointments(calendarId: string, window: TimeWindow, pageToken?: string) {
+    windowInput(window);
+    const data = await this.http.request<unknown>(GOOGLE_CALENDAR_OPERATIONS.read,
+      query(`calendars/${segment(calendarId)}/events`, { timeMin: new Date(Math.floor(Date.parse(window.start) / 1000) * 1000).toISOString(),
+        timeMax: new Date(Math.ceil(Date.parse(window.end) / 1000) * 1000).toISOString(), timeZone: 'UTC',
+        singleEvents: 'true', showDeleted: 'false', showHiddenInvitations: 'true', maxResults: '250', pageToken }));
+    return busyAppointments('google', data, window);
+  }
   private receipt(event: GoogleEvent, calendarId: string, input: AppointmentInput): AppointmentReceipt {
     if (!event.id || !event.etag) throw new ConnectorError("ambiguous_write", "google.calendar.receipt");
     return { provider: "google", id: event.id, calendarId, etag: event.etag, url: event.htmlLink, timeZone: event.start?.timeZone ?? input.timeZone, state: "applied", requestId: input.requestId };
@@ -64,6 +73,7 @@ export class GoogleCalendarClient {
     rescheduleInput(input, etag);
     const original = await this.readAppointment(calendarId, eventId);
     requireReschedulable('google', original, eventId, etag);
+    await requireRescheduleAvailability(this, calendarId, eventId, input);
     const event = await this.http.request<unknown>(GOOGLE_CALENDAR_OPERATIONS.update, `calendars/${segment(calendarId)}/events/${segment(eventId)}?sendUpdates=all`, {
       method: 'PATCH', headers: { 'if-match': etag },
       body: { start: { dateTime: input.start, timeZone: input.timeZone }, end: { dateTime: input.end, timeZone: input.timeZone } },

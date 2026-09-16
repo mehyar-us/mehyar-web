@@ -1,5 +1,6 @@
 import { ProviderHTTP, appointmentInput, cursorURL, query, requireEtag, segment, singleLine, windowInput } from "./http";
 import { requireReschedulable, rescheduleInput, rescheduleReceipt, type RescheduleInput } from './reschedule';
+import { busyAppointments, requireRescheduleAvailability } from './reschedule-availability';
 import { ConnectorError, type AppointmentInput, type AppointmentReceipt, type Availability, type Calendar, type ClientOptions, type ConnectorAuth, type Operation, type Page, type TimeWindow } from "./types";
 export const GRAPH_BASE = "https://graph.microsoft.com/v1.0/";
 const read = ["Calendars.Read", "Calendars.ReadWrite"];
@@ -54,6 +55,14 @@ export class MicrosoftCalendarClient {
   async readAppointment(calendarId: string, eventId: string): Promise<GraphEvent> {
     return this.http.request(MICROSOFT_CALENDAR_OPERATIONS.read, `me/calendars/${segment(calendarId)}/events/${segment(eventId)}`);
   }
+  async listBusyAppointments(calendarId: string, window: TimeWindow, cursor?: string) {
+    windowInput(window);
+    const path = `me/calendars/${segment(calendarId)}/calendarView`;
+    const url = cursorURL(cursor, query(path, { startDateTime: window.start, endDateTime: window.end,
+      '$top': '100', '$select': 'id,start,end,showAs,isCancelled' }), GRAPH_BASE, '/v1.0/' + path);
+    const data = await this.http.request<unknown>(MICROSOFT_CALENDAR_OPERATIONS.read, url, { headers: { Prefer: 'outlook.timezone="UTC"' } });
+    return busyAppointments('microsoft', data, window);
+  }
   private body(input: AppointmentInput) {
     appointmentInput(input);
     return { subject: input.title, body: { contentType: "text", content: input.description ?? "" }, start: absoluteTime(input.start), end: absoluteTime(input.end), attendees: input.attendees.map((address) => ({ emailAddress: { address }, type: "required" })) };
@@ -76,6 +85,7 @@ export class MicrosoftCalendarClient {
     rescheduleInput(input, etag);
     const original = await this.readAppointment(calendarId, eventId);
     requireReschedulable('microsoft', original, eventId, etag);
+    await requireRescheduleAvailability(this, calendarId, eventId, input);
     const event = await this.http.request<unknown>(MICROSOFT_CALENDAR_OPERATIONS.update, `me/calendars/${segment(calendarId)}/events/${segment(eventId)}`, {
       method: 'PATCH', headers: { 'if-match': etag, Prefer: 'outlook.timezone="UTC"' },
       body: { start: absoluteTime(input.start), end: absoluteTime(input.end) },

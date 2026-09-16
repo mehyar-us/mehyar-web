@@ -9,6 +9,7 @@ function original(provider: Provider) {
     ? { id: 'event', etag: 'old', status: 'confirmed', organizer: { self: true }, eventType: 'default', start: { dateTime: '2026-11-01T01:30:00-04:00' }, end: { dateTime: '2026-11-01T01:45:00-04:00' } }
     : { id: 'event', '@odata.etag': 'old', isOrganizer: true, isCancelled: false, isAllDay: false, type: 'singleInstance' };
 }
+function empty(provider: Provider) { return provider === 'google' ? { items: [] } : { value: [] }; }
 function result(provider: Provider) {
   return provider === 'google'
     ? { id: 'event', etag: 'new', status: 'confirmed', start: { dateTime: input.start }, end: { dateTime: input.end } }
@@ -30,17 +31,17 @@ function fixture(provider: Provider, responses: unknown[], write = true) {
 
 describe.each(['google', 'microsoft'] as const)('%s time-only rescheduling', provider => {
   it('moves the second repeated DST hour without rewriting meeting content and validates the returned time', async () => {
-    const { client, fetcher } = fixture(provider, [original(provider), result(provider)]);
+    const { client, fetcher } = fixture(provider, [original(provider), empty(provider), result(provider)]);
     expect(await client.rescheduleAppointment('calendar', 'event', 'old', input)).toEqual({ provider, calendarId: 'calendar', id: 'event', etag: 'new', timeZone: input.timeZone, state: 'applied', requestId: input.requestId });
     const calls = fetcher.mock.calls as unknown as [URL, RequestInit][];
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
     expect(calls[0][1].method).toBe('GET');
-    expect(calls[1][1]).toMatchObject({ method: 'PATCH', headers: { 'if-match': 'old' } });
-    const patch = JSON.parse(String(calls[1][1].body));
+    expect(calls[2][1]).toMatchObject({ method: 'PATCH', headers: { 'if-match': 'old' } });
+    const patch = JSON.parse(String(calls[2][1].body));
     expect(Object.keys(patch).sort()).toEqual(['end', 'start']);
     expect(patch.start).toEqual(provider === 'google' ? { dateTime: input.start, timeZone: input.timeZone } : { dateTime: '2026-11-01T06:30:00.000', timeZone: 'UTC' });
-    if (provider === 'google') expect(calls[1][0].searchParams.get('sendUpdates')).toBe('all');
-    else expect(calls[1][1].headers).toMatchObject({ Prefer: 'outlook.timezone="UTC"' });
+    if (provider === 'google') expect(calls[2][0].searchParams.get('sendUpdates')).toBe('all');
+    else expect(calls[2][1].headers).toMatchObject({ Prefer: 'outlook.timezone="UTC"' });
   });
   it('requires write permission and valid absolute times before any request', async () => {
     const denied = fixture(provider, [], false);
@@ -67,9 +68,27 @@ describe.each(['google', 'microsoft'] as const)('%s time-only rescheduling', pro
     }
   });
   it('surfaces an edit racing the read as conflict without retrying the patch', async () => {
-    const { client, fetcher } = fixture(provider, [original(provider), Response.json({}, { status: 412 })]);
+    const { client, fetcher } = fixture(provider, [original(provider), empty(provider), Response.json({}, { status: 412 })]);
     await expect(client.rescheduleAppointment('calendar', 'event', 'old', input)).rejects.toMatchObject({ kind: 'conflict' });
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+  it('checks identified appointments before dispatch and never hides a second overlapping booking', async () => {
+    const event = (id: string) => provider === 'google'
+      ? { id, status: 'confirmed', start: { dateTime: input.start }, end: { dateTime: input.end } }
+      : { id, isCancelled: false, showAs: 'busy', start: { dateTime: '2026-11-01T06:30:00', timeZone: 'UTC' }, end: { dateTime: '2026-11-01T06:45:00', timeZone: 'UTC' } };
+    for (const conflicting of [false, true]) {
+      const events = [event('event'), ...(conflicting ? [event('other')] : [])];
+      const { client, fetcher } = fixture(provider, [original(provider), provider === 'google' ? { items: events } : { value: events }, result(provider)]);
+      if (conflicting) {
+        await expect(client.rescheduleAppointment('calendar', 'event', 'old', input)).rejects.toMatchObject({ kind: 'conflict' });
+        expect(fetcher).toHaveBeenCalledTimes(2);
+        const calls = fetcher.mock.calls as unknown as [URL, RequestInit][];
+        expect(calls.every(call => call[1].method === 'GET')).toBe(true);
+      } else {
+        await expect(client.rescheduleAppointment('calendar', 'event', 'old', input)).resolves.toMatchObject({ state: 'applied' });
+        expect(fetcher).toHaveBeenCalledTimes(3);
+      }
+    }
   });
   it('does not retry or claim success when dispatch loses its response or returns incomplete evidence', async () => {
     for (const response of [new Error('connection lost'), null, {}, { ...result(provider), id: 'other' },
@@ -77,9 +96,9 @@ describe.each(['google', 'microsoft'] as const)('%s time-only rescheduling', pro
       { ...result(provider), etag: undefined, '@odata.etag': undefined },
       { ...result(provider), status: 'cancelled', isCancelled: true },
       { ...result(provider), status: undefined, isCancelled: undefined }]) {
-      const { client, fetcher } = fixture(provider, [original(provider), response]);
+      const { client, fetcher } = fixture(provider, [original(provider), empty(provider), response]);
       await expect(client.rescheduleAppointment('calendar', 'event', 'old', input)).rejects.toMatchObject({ kind: 'ambiguous_write' });
-      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(fetcher).toHaveBeenCalledTimes(3);
     }
   });
 });
