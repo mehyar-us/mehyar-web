@@ -79,7 +79,9 @@ export async function fulfillHustlekit({ db, env, waitUntil, sendEmail }, paymen
     return { ok: true, replay: true, order_id: existing.id, status: existing.status };
   }
 
-  const accessToken = randomToken(32);
+  // Token: REUSE the payment's access_token (it's already in the buyer's
+  // success URL). Generating a new token orphans the success link.
+  const accessToken = payment.access_token || randomToken(32);
   const inputsJson = JSON.stringify({ track, inputs });
   const ins = await db
     .prepare(
@@ -89,15 +91,6 @@ export async function fulfillHustlekit({ db, env, waitUntil, sendEmail }, paymen
     .bind(payment.id, productId, payment.email, inputsJson, accessToken)
     .run();
   const orderId = ins.meta.last_row_id;
-
-  // Token unification: the Stripe success_url_template receives
-  // billing_payments.access_token, but every HustleKit surface (generate,
-  // status, deliverable) gates on hustlekit_orders tokens. Point the payment
-  // row at the HustleKit token so ONE token works everywhere.
-  await db
-    .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
-    .bind(accessToken, payment.id)
-    .run();
 
   const { from, fromName } = fromAddress(env);
   const trackName = TRACKS[track] || track;
