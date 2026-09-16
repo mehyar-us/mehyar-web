@@ -11,14 +11,20 @@ const present=(row:Invitation)=>({id:row.id,email:row.invited_email,role:row.rol
 const ownerSql="EXISTS (SELECT 1 FROM agent_memberships m JOIN agent_tenants t ON t.id=m.tenant_id WHERE m.tenant_id=? AND m.user_id=? AND m.role='owner' AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?) AND t.status NOT IN ('deleted','offboarding'))";
 async function owner(env:Env,actor:Actor){await requireTenant(env,actor);await requireMembership(env,actor,['owner']);}
 
-export async function teamDirectory(env:Env,actor:Actor){
+export async function teamDirectory(env:Env,actor:Actor,cursors:{membersCursor?:string|null;invitationsCursor?:string|null}={}){
   await owner(env,actor);
   const tenant=await requireTenant(env,actor);
+  const parsed=z.object({membersCursor:z.string().min(1).max(128).nullable().optional(),invitationsCursor:z.string().regex(/^[a-f0-9]{64}$/).nullable().optional()}).strict().parse(cursors);
+  const memberCursor=parsed.membersCursor?await env.AGENT_DB.prepare('SELECT created_at,user_id FROM agent_memberships WHERE tenant_id=? AND user_id=?').bind(actor.tenantId,parsed.membersCursor).first<{created_at:string;user_id:string}>():null;
+  const invitationCursor=parsed.invitationsCursor?await env.AGENT_DB.prepare('SELECT created_at,id FROM agent_team_invitations WHERE tenant_id=? AND id=?').bind(actor.tenantId,parsed.invitationsCursor).first<{created_at:string;id:string}>():null;
+  if(parsed.membersCursor&&!memberCursor||parsed.invitationsCursor&&!invitationCursor)throw new HttpError(400,'invalid_team_cursor','Refresh the team list to continue.');
   const members=await env.AGENT_DB.prepare(`SELECT m.user_id AS id,u.name,u.email,m.role,m.status,m.revision,m.expires_at AS expiresAt FROM agent_memberships m
-    LEFT JOIN auth_user u ON u.id=m.user_id WHERE m.tenant_id=? ORDER BY m.created_at,m.user_id LIMIT 101`).bind(actor.tenantId).all();
-  const invitations=await env.AGENT_DB.prepare('SELECT * FROM agent_team_invitations WHERE tenant_id=? ORDER BY created_at DESC,id DESC LIMIT 51').bind(actor.tenantId).all<Invitation>();
+    LEFT JOIN auth_user u ON u.id=m.user_id WHERE m.tenant_id=? ${memberCursor?'AND (m.created_at>? OR (m.created_at=? AND m.user_id>?))':''}
+    ORDER BY m.created_at,m.user_id LIMIT 101`).bind(actor.tenantId,...(memberCursor?[memberCursor.created_at,memberCursor.created_at,memberCursor.user_id]:[])).all();
+  const invitations=await env.AGENT_DB.prepare(`SELECT * FROM agent_team_invitations WHERE tenant_id=? ${invitationCursor?'AND (created_at<? OR (created_at=? AND id<?))':''}
+    ORDER BY created_at DESC,id DESC LIMIT 51`).bind(actor.tenantId,...(invitationCursor?[invitationCursor.created_at,invitationCursor.created_at,invitationCursor.id]:[])).all<Invitation>();
   await owner(env,actor);
-  return {members:members.results.slice(0,100),invitations:invitations.results.slice(0,50).map(present),moreMembers:members.results.length>100,moreInvitations:invitations.results.length>50,seatLimit:getPlan(tenant.plan_id)?.allowances.seats??1};
+  return {members:members.results.slice(0,100),invitations:invitations.results.slice(0,50).map(present),moreMembers:members.results.length>100,moreInvitations:invitations.results.length>50,nextMembersCursor:members.results.length>100?String(members.results[99].id):null,nextInvitationsCursor:invitations.results.length>50?invitations.results[49].id:null,seatLimit:getPlan(tenant.plan_id)?.allowances.seats??1};
 }
 export async function inviteMember(env:Env,actor:Actor,input:unknown,key:string){
   await owner(env,actor);const data=inputSchema.parse(input),hash=await digest(JSON.stringify(data));

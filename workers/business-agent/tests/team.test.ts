@@ -9,6 +9,20 @@ const e=env as unknown as Env,uuid=()=>crypto.randomUUID();
 async function user(verified=true){const id=uuid(),email=`${id}@example.test`;await e.AGENT_DB.prepare('INSERT INTO auth_user(id,name,email,emailVerified,createdAt,updatedAt) VALUES (?,?,?,?,?,?)').bind(id,'Team member',email,verified?1:0,Date.now(),Date.now()).run();return {id,email};}
 async function fixture(){const u=await user(),tenant=await createTenant(e,u.id,{name:'Studio',website:'https://studio.com',goal:'Manage appointments'},uuid());await e.AGENT_DB.prepare("UPDATE agent_tenants SET plan_id='business' WHERE id=?").bind(tenant.id).run();return {actor:{userId:u.id,tenantId:tenant.id},u};}
 describe('verified team invitations',()=>{
+  it('pages the full team history with tied timestamps and rejects foreign continuation anchors',async()=>{
+    const f=await fixture(),other=await fixture(),stamp=new Date().toISOString();
+    await e.AGENT_DB.batch(Array.from({length:105},()=>e.AGENT_DB.prepare("INSERT INTO agent_memberships(tenant_id,user_id,role,status,created_at) VALUES (?,?,'staff','revoked',?)").bind(f.actor.tenantId,uuid(),stamp)));
+    await e.AGENT_DB.batch(Array.from({length:55},(_,i)=>e.AGENT_DB.prepare("INSERT INTO agent_team_invitations(id,tenant_id,invited_email,role,invited_by,request_key,request_hash,status,created_at,expires_at) VALUES (?,?,?,'staff',?,?,?,'revoked',?,?)")
+      .bind(uuid().replaceAll('-','').repeat(2),f.actor.tenantId,`former${i}@example.test`,f.u.id,uuid(),uuid(),stamp,stamp)));
+    const first=await teamDirectory(e,f.actor);expect(first.members).toHaveLength(100);expect(first.invitations).toHaveLength(50);
+    const last=await teamDirectory(e,f.actor,{membersCursor:first.nextMembersCursor,invitationsCursor:first.nextInvitationsCursor});
+    expect(last.members).toHaveLength(6);expect(last.invitations).toHaveLength(5);expect(last.nextMembersCursor).toBeNull();expect(last.nextInvitationsCursor).toBeNull();
+    expect(new Set([...first.members,...last.members].map(m=>m.id)).size).toBe(106);expect(new Set([...first.invitations,...last.invitations].map(i=>i.id)).size).toBe(55);
+    await expect(teamDirectory(e,other.actor,{membersCursor:first.nextMembersCursor})).rejects.toMatchObject({code:'invalid_team_cursor'});
+    await expect(teamDirectory(e,other.actor,{invitationsCursor:first.nextInvitationsCursor})).rejects.toMatchObject({code:'invalid_team_cursor'});
+    await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='manager' WHERE tenant_id=? AND user_id=?").bind(f.actor.tenantId,f.u.id).run();
+    await expect(teamDirectory(e,f.actor,{membersCursor:first.nextMembersCursor})).rejects.toMatchObject({code:'permission_denied'});
+  });
   it('records removal once and never applies an old request to a reinvited membership',async()=>{
     const f=await fixture(),person=await user(),key=uuid();
     const invite=await inviteMember(e,f.actor,{email:person.email,role:'staff'},uuid());await acceptInvitation(e,person.id,invite.invitation.id);

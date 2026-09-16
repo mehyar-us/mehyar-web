@@ -85,3 +85,21 @@ test('uncertain member removal retries the original membership revision and requ
   await page.getByRole('button',{name:'Confirm removal'}).click();await expect(page.getByText('staff · revoked',{exact:true})).toBeVisible();
   expect(requests).toHaveLength(2);expect(requests[0]).toEqual(requests[1]);expect(requests[0].body).toEqual({userId:'pat',expectedRevision:7});expect(requests[0].key).toBeTruthy();
 });
+
+test('team lists load independently and discard private pages when continuation fails',async({page})=>{
+  await fixture(page);let failure=false;const queries:string[]=[];
+  const member=(id:string)=>({id,name:id,email:`${id}@example.test`,role:'staff',status:'revoked',revision:2,expiresAt:null});
+  const invite=(id:string)=>({id,email:`${id}@example.test`,role:'staff',status:'revoked',expiresAt:'2026-09-23T00:00:00Z'});
+  await page.route('**/api/tenants/business-a/team?*',route=>{
+    const url=new URL(route.request().url());queries.push(url.search);
+    if(failure)return route.fulfill({status:403,json:{error:{message:'Team access is unavailable.'}}});
+    return route.fulfill({json:{seatLimit:3,members:[member('older-member')],invitations:[invite('older-invite')],moreMembers:false,moreInvitations:false,nextMembersCursor:null,nextInvitationsCursor:null}});
+  });
+  await page.route('**/api/tenants/business-a/team',route=>route.fulfill({json:{seatLimit:3,members:[member('first-member')],invitations:[invite('first-invite')],moreMembers:true,moreInvitations:true,nextMembersCursor:'member-cursor',nextInvitationsCursor:'invite-cursor'}}));
+  await page.goto('/');await page.getByRole('button',{name:'Team',exact:true}).click();const team=page.getByRole('region',{name:'Manage team'});
+  await team.getByRole('button',{name:'Load more members'}).click();await expect(team.getByText('older-member',{exact:true})).toBeVisible();await expect(team.getByText('older-invite@example.test',{exact:true})).toHaveCount(0);
+  await team.getByRole('button',{name:'Load older invitations'}).click();await expect(team.getByText('older-invite@example.test',{exact:true})).toBeVisible();await expect(team.getByText('first-member',{exact:true})).toBeVisible();
+  expect(queries).toEqual(['?membersCursor=member-cursor','?invitationsCursor=invite-cursor']);
+  await team.getByRole('button',{name:'Refresh team',exact:true}).click();await expect(team.getByText('older-member',{exact:true})).toHaveCount(0);
+  failure=true;await team.getByRole('button',{name:'Load more members'}).click();await expect(team.getByRole('alert')).toHaveText('Team access is unavailable.');await expect(team.getByText('first-member',{exact:true})).toHaveCount(0);
+});

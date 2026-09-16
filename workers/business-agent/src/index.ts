@@ -53,7 +53,7 @@ async function route(request:Request,env:Env) {
   const tenant=await requireTenant(env,actor);
   const membership=await requireMembership(env,actor);
   const section=match[2]||'';
-  if(section==='team'&&request.method==='GET')return json(await teamDirectory(env,actor));
+  if(section==='team'&&request.method==='GET')return json(await teamDirectory(env,actor,{membersCursor:url.searchParams.get('membersCursor'),invitationsCursor:url.searchParams.get('invitationsCursor')}));
   if(section==='team/invitations'&&request.method==='POST')return json(await inviteMember(env,actor,await readJson(request),requestKey(request)),201);
   if(section==='team/role'&&request.method==='POST')return json(await changeMemberRole(env,actor,await readJson(request),requestKey(request)));
   if(section==='team/revoke-member'&&request.method==='POST'){
