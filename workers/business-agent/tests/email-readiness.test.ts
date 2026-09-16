@@ -9,6 +9,7 @@ import {PlatformEmailSupplierBudget} from '../src/email/supplier-budget';
 import {platformEmailAccess} from '../src/email/access';
 import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
+import {dispatchInvitationEmail} from '../src/email/dispatch';
 async function activate(e:Env,tenantId:string){
   const now=new Date().toISOString(),until=new Date(Date.now()+86400000).toISOString();
   await e.AGENT_DB.prepare("UPDATE agent_tenants SET plan_id='business',status='active' WHERE id=?").bind(tenantId).run();
@@ -28,6 +29,34 @@ async function evidence(e:Env){
   return config;
 }
 describe('dedicated platform sender readiness',()=>{
+  it('dispatches once across concurrent workers and durably records acceptance and capacity',async()=>{
+    const e=fixture(),invite=await invitation(e);await evidence(e);const box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id);let calls=0;
+    const transport=async(_url:string,init:RequestInit)=>{calls++;expect(JSON.parse(String(init.body)).to).toHaveLength(1);return Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});};
+    const results=await Promise.all([dispatchInvitationEmail(e,invite.actor.tenantId,job.id,transport),dispatchInvitationEmail(e,invite.actor.tenantId,job.id,transport)]);
+    expect(calls).toBe(1);expect(results).toContainEqual({state:'recorded',outcome:'accepted'});expect(results).toContainEqual({state:'not_claimed'});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_platform_email_reservations WHERE job_id=?').bind(job.id).first()).toEqual({state:'consumed'});
+    expect(await dispatchInvitationEmail(e,invite.actor.tenantId,job.id,transport)).toEqual({state:'not_claimed'});expect(calls).toBe(1);
+  });
+  it('recovers a lost response with the same payload and idempotency key after durable backoff',async()=>{
+    const e=fixture(),invite=await invitation(e);await evidence(e);let now=Date.now();const box=new VerifiedInvitationOutbox(e,()=>now),job=await box.prepare(invite.actor,invite.id),requests:Array<{body:unknown;key:string|null}>=[];
+    const transport=async(_url:string,init:RequestInit)=>{requests.push({body:init.body,key:new Headers(init.headers).get('Idempotency-Key')});if(requests.length===1)throw new Error('synthetic response lost');return Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});};
+    expect(await dispatchInvitationEmail(e,invite.actor.tenantId,job.id,transport,()=>now)).toEqual({state:'recorded',outcome:'uncertain'});
+    const first=await e.AGENT_DB.prepare('SELECT first_attempt_at FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first();
+    expect(await dispatchInvitationEmail(e,invite.actor.tenantId,job.id,transport,()=>now)).toEqual({state:'not_claimed'});expect(requests).toHaveLength(1);
+    now+=180000;
+    expect(await dispatchInvitationEmail(e,invite.actor.tenantId,job.id,transport,()=>now)).toEqual({state:'recorded',outcome:'accepted'});
+    expect(requests[1]).toEqual(requests[0]);expect(await e.AGENT_DB.prepare('SELECT first_attempt_at FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first()).toEqual(first);
+  });
+  it('never transports disabled or suppressed mail and records acceptance after in-flight evidence withdrawal',async()=>{
+    const e=fixture(),invite=await invitation(e),config=await evidence(e),box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id);let calls=0;
+    const transport=async()=>{calls++;await e.AGENT_DB.prepare("UPDATE agent_platform_email_readiness SET status='revoked' WHERE route_ref=?").bind(config.routeRef).run();return Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});};
+    e.AGENT_PLATFORM_EMAIL_ENABLED='false';await expect(dispatchInvitationEmail(e,invite.actor.tenantId,job.id,transport)).rejects.toMatchObject({code:'platform_email_disabled'});expect(calls).toBe(0);
+    e.AGENT_PLATFORM_EMAIL_ENABLED='true';
+    expect(await dispatchInvitationEmail(e,invite.actor.tenantId,job.id,transport)).toEqual({state:'recorded',outcome:'accepted'});expect(calls).toBe(1);
+    const other=fixture(),otherInvite=await invitation(other);await evidence(other);const otherBox=new VerifiedInvitationOutbox(other),otherJob=await otherBox.prepare(otherInvite.actor,otherInvite.id);
+    await other.AGENT_DB.prepare("INSERT INTO agent_platform_email_suppressions(recipient,scope_key,reason,status,evidence_ref,recorded_by,created_at,updated_at) SELECT recipient,'*','complaint','active','fixture-only','test-operator',created_at,created_at FROM agent_platform_email_outbox WHERE id=?").bind(otherJob.id).run();
+    expect(await dispatchInvitationEmail(other,otherInvite.actor.tenantId,otherJob.id,transport)).toEqual({state:'not_claimed'});expect(calls).toBe(1);
+  });
   it('enforces one supplier budget across simultaneous claims from separate tenants',async()=>{
     const e=fixture(),first=await invitation(e),second=await invitation(e),config=await evidence(e),box=new VerifiedInvitationOutbox(e);
     await e.AGENT_DB.prepare('UPDATE agent_email_supplier_budgets SET limit_microusd=100 WHERE account_ref=?').bind(config.routeRef).run();
