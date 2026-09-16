@@ -45,7 +45,8 @@ function fromAddress(env) {
   };
 }
 
-function dayOneEmail({ dashboardUrl, fromName }) {
+function dayOneEmail({ dashboardUrl, fromName, accessToken }) {
+  const unsubUrl = `https://sprint30.mehyar.us/api/sprint30/unsubscribe?token=${accessToken}`;
   const subject = "Day 1 of 30: inventory every skill you have";
   const text =
     `Your Sprint30 starts today. 30 days, one mission a day, one goal: a real side-income stream built on skills you already have.\n\n` +
@@ -56,7 +57,8 @@ function dayOneEmail({ dashboardUrl, fromName }) {
     `REPLY TO THIS EMAIL with your answer to this: what's your #1 starred skill — and why is it obvious to you that people would pay for it? I read every reply — and tomorrow's mission builds directly on it.\n\n` +
     `Day 2 lands tomorrow morning: pick one lane, kill the rest.\n\n` +
     `-- ${fromName}\n` +
-    `P.S. Your dashboard tracks all 30 days and your progress checklist: ${dashboardUrl}`;
+    `P.S. Your dashboard tracks all 30 days and your progress checklist: ${dashboardUrl}\n\n` +
+    `Don't want these emails? Unsubscribe in one click: ${unsubUrl}`;
   const html =
     `<p>Your Sprint30 starts today. 30 days, one mission a day, one goal: a real side-income stream built on skills you already have.</p>` +
     `<p><a href="${dashboardUrl}" style="display:inline-block;background:#111827;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Open your dashboard</a></p>` +
@@ -66,8 +68,9 @@ function dayOneEmail({ dashboardUrl, fromName }) {
     `<p><strong>Do this today:</strong> write down 10 skills and star 3.</p>` +
     `<p><strong>Reply to this email</strong> with your answer: what's your #1 starred skill — and why is it obvious to you that people would pay for it? Every reply gets read — and tomorrow's mission builds directly on it.</p>` +
     `<p>Day 2 lands tomorrow morning: pick one lane, kill the rest.</p>` +
-    `<p>-- ${fromName}</p>`;
-  return { subject, text, html };
+    `<p>-- ${fromName}</p>` +
+    `<p style="color:#9aa4b2;font-size:12px;">Don't want these emails? <a href="${unsubUrl}">Unsubscribe</a></p>`;
+  return { subject, text, html, unsubUrl };
 }
 
 export async function fulfillSprint30({ db, env, waitUntil, sendEmail }, payment) {
@@ -131,7 +134,7 @@ export async function fulfillSprint30({ db, env, waitUntil, sendEmail }, payment
   const dashboardUrl = `${baseUrl(env)}/dashboard?token=${accessToken}`;
 
   // ── Day-1 email, sent immediately at fulfillment ──
-  const { subject, text, html } = dayOneEmail({ dashboardUrl, fromName });
+  const { subject, text, html, unsubUrl } = dayOneEmail({ dashboardUrl, fromName, accessToken });
   let emailOk = false;
   try {
     const result = await sendEmail(env, {
@@ -142,6 +145,10 @@ export async function fulfillSprint30({ db, env, waitUntil, sendEmail }, payment
       subject,
       text,
       html,
+      headers: {
+        "List-Unsubscribe": `<${unsubUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     });
     emailOk = !!(result && result.ok);
     if (!emailOk) console.error("fulfillSprint30 day-1 email failed", productId, result && result.error);
