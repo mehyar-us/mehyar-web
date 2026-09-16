@@ -56,10 +56,4 @@ export class ResearchRunner {
     const next=this.jobs.advance(id,checkpoint.cursor,result.status,result.cursor);
     return next.done?this.jobs.finish(id):this.jobs.get(id);
   }
-  async cancel(id:string) {
-    // Caller uses a withdrawal-specific authorization gate, not a paid-access gate.
-    await this.gate();const job=this.jobs.cancel(id);
-    if(job.status==='cancel_requested'&&job.provider_id)await this.provider.cancel(job.provider_id);
-    return this.jobs.get(id);
-  }
 }

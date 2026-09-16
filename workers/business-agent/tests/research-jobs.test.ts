@@ -6,6 +6,7 @@ import type {Env} from '../src/env';
 import {ResearchJobs} from '../src/research/jobs';
 import {ResearchRunner} from '../src/research/runner';
 import {ResearchSpend} from '../src/research/spend';
+import {ResearchCancellation} from '../src/research/cancellation';
 const input=()=>({key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
 const provider='11111111-1111-4111-8111-111111111111';
 async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:DurableObjectStorage)=>void|Promise<void>){
@@ -235,8 +236,36 @@ describe('durable research reservations',()=>{
   }));
   it('retains cancellation allowance until a terminal provider snapshot is consumed',async()=>ledger(async jobs=>{
     const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);let cancelled=0;
-    const runner=new ResearchRunner(jobs,{start:async()=>({id:provider}),cancel:async()=>{cancelled++;return {requested:true};},results:async()=>({id:provider,status:'cancelled_by_user',records:[]})},async()=>{});
-    expect(await runner.cancel(job.id)).toMatchObject({status:'cancel_requested',reserved:20});expect(cancelled).toBe(1);
+    const api={start:async()=>({id:provider}),cancel:async()=>{cancelled++;return {requested:true};},results:async()=>({id:provider,status:'cancelled_by_user' as const,records:[]})};
+    const runner=new ResearchRunner(jobs,api,async()=>{});
+    jobs.withdraw(job.id,'owner');
+    expect(await new ResearchCancellation(jobs,api,async()=>{}).deliver(job.id)).toMatchObject({status:'cancel_requested',reserved:20});expect(cancelled).toBe(1);
     expect(await runner.poll(job.id)).toMatchObject({status:'cancelled',reserved:0,used:0});
+  }));
+  it('delivers a recorded stop after execution authority is revoked without starting or importing work',async()=>ledger(async(jobs,spend)=>{
+    const job=jobs.reserve(input());jobs.reserveSpend(job.id,100,100,'fixture');jobs.beginFunded(job.id);jobs.submitted(job.id,provider);
+    let starts=0,reads=0,stops=0;
+    const api={start:async()=>{starts++;return {id:provider};},results:async()=>{reads++;return {id:provider,status:'running' as const,records:[]};},cancel:async(id:string)=>{expect(id).toBe(provider);stops++;return {requested:true};}};
+    const runner=new ResearchRunner(jobs,api,async()=>{throw new Error('revoked');});
+    jobs.withdraw(job.id,'another-current-owner');jobs.initialize();
+    await expect(runner.submit(job.id)).rejects.toThrow('revoked');
+    await expect(runner.poll(job.id)).rejects.toThrow('revoked');
+    await new ResearchCancellation(jobs,api,async id=>{expect(id).toBe(job.id);}).deliver(job.id);
+    expect({starts,reads,stops}).toEqual({starts:0,reads:0,stops:1});
+    expect(jobs.get(job.id)).toMatchObject({status:'cancel_requested',reserved:20});
+    expect(spend.get(job.id)?.status).toBe('dispatched');expect(jobs.pages(job.id)).toEqual([]);
+  }));
+  it('requires recorded stop intent, a known provider and independent stop authority',async()=>ledger(async jobs=>{
+    const job=jobs.reserve(input());let calls=0;
+    const api={cancel:async()=>{calls++;return {requested:true};}},stop=new ResearchCancellation(jobs,api,async()=>{});
+    await expect(stop.deliver(job.id)).rejects.toMatchObject({code:'research_stop_not_ready'});
+    jobs.begin(job.id);jobs.submitted(job.id,provider);
+    await expect(stop.deliver(job.id)).rejects.toMatchObject({code:'research_stop_not_ready'});
+    jobs.cancel(job.id);
+    await expect(new ResearchCancellation(jobs,api,async()=>{throw new Error('wrong workspace');}).deliver(job.id)).rejects.toThrow('wrong workspace');
+    expect(calls).toBe(0);
+    await expect(new ResearchCancellation(jobs,{cancel:async()=>{throw new Error('network lost');}},async()=>{}).deliver(job.id)).rejects.toThrow('network lost');
+    expect(jobs.get(job.id)).toMatchObject({status:'cancel_requested',reserved:20});
+    jobs.settle(job.id,'cancelled',0);await stop.deliver(job.id);expect(calls).toBe(0);
   }));
 });
