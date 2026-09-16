@@ -223,6 +223,23 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
   },
   {
+    id: "prepguide",
+    name: "PrepGuide",
+    url: "https://prepguide.mehyar.us",
+    tagline: "A preparedness plan built around your actual household.",
+    description:
+      "Answer six questions about your household — adults, kids, pets, home type, region, budget — and get a personalized preparedness playbook: a 72-hour checklist scaled to your people, exact water-storage math, a 30-day food plan, a power-outage playbook, and a prioritized buy list, delivered as a PDF for a one-time $37. Calm, practical, specific — no fear-mongering.",
+    audience: "Households who want calm, practical preparedness built around their actual home — not a generic checklist.",
+    highlights: [
+      "Personalized 72-hour checklist scaled to your household size",
+      "Exact water-storage math for your people, home, and region",
+      "30-day food plan and power-outage playbook for your budget tier",
+      "One-time $37 — free teaser first, PDF download, no account needed",
+    ],
+    logo: "/assets/prepguide-logo.png",
+    accentClass: "from-stone-100 to-white dark:from-stone-900 dark:to-stone-950",
+  },
+  {
     id: "truesketch",
     name: "TrueSketch",
     url: "https://truesketch.mehyar.us",

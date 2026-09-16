@@ -18,6 +18,7 @@ import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
 import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
+import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
 import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
 import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
@@ -192,6 +193,15 @@ const fulfillHooks = {
   async creditfixkit({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillCreditfixkit({ db, env, waitUntil, sendEmail }, payment);
+  },
+
+  // PrepGuide personalized preparedness playbook ($37 one-time). Creates the
+  // prepguide_orders row (idempotent on payment_id via the UNIQUE payment
+  // index), reuses the payment access_token as the order token, then hands
+  // off to the standalone module for background generation + buyer email.
+  async prepguide({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillPrepguide({ db, env, waitUntil, sendEmail }, payment);
   },
 
   // TrueSketch AI portrait sketch + reading ($37 one-time). Hands off to the

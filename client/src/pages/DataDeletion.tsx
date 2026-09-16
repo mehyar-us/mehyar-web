@@ -25,6 +25,7 @@
 //  15. PLR Vault — https://plrvault.mehyar.us (private-label-rights digital product vault)
 //  16. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
 //  17. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
+//  18. PrepGuide — https://prepguide.mehyar.us (personalized household preparedness playbook)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -253,7 +254,19 @@ id: "promptpack",
       "Email address (to deliver your purchase and send your pack link), the profession you pick at checkout, the generated prompt pack, and checkout records.",
     whatWeDelete:
       "Email address, profession choice, generated prompt pack, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },];
+  },  {
+    id: "prepguide",
+    name: "PrepGuide",
+    url: "https://prepguide.mehyar.us",
+    tagline: "Personalized household preparedness playbook.",
+    icon: ShieldCheck,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase), the household intake answers you submit (adults, kids, pets, home type, region, budget tier), the generated playbook PDF, and checkout records.",
+    whatWeDelete:
+      "Email address, household intake answers, generated playbook, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+];
 
 interface Section {
   icon?: any;
