@@ -12,6 +12,29 @@ async function ledger(work:(jobs:ResearchJobs)=>void|Promise<void>){
   await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs);});
 }
 describe('durable research reservations',()=>{
+  it('keeps missing provider usage unknown and explicit zero distinct across restarts',async()=>ledger(jobs=>{
+    const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);
+    expect(jobs.providerUsage(job.id)).toBeNull();
+    expect(jobs.observeProviderUsage(job.id,provider,undefined,true)).toBeNull();
+    expect(jobs.observeProviderUsage(job.id,provider,0,false)).toMatchObject({browser_seconds:0,terminal_observed:0});
+    jobs.initialize();expect(jobs.providerUsage(job.id)).toMatchObject({browser_seconds:0});
+  }));
+  it('retains cumulative usage without summing polling duplicates or stale values',async()=>ledger(jobs=>{
+    const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);
+    jobs.observeProviderUsage(job.id,provider,12.75,false);
+    jobs.observeProviderUsage(job.id,provider,12.75,false);
+    jobs.observeProviderUsage(job.id,provider,5,false);
+    expect(jobs.providerUsage(job.id)).toMatchObject({browser_seconds:12.75,terminal_observed:0});
+    jobs.observeProviderUsage(job.id,provider,20.5,true);jobs.settle(job.id,'completed',0);jobs.initialize();
+    expect(jobs.providerUsage(job.id)).toMatchObject({browser_seconds:20.5,terminal_observed:1});
+    expect(jobs.summary(job.id)).not.toHaveProperty('browser_seconds');
+  }));
+  it('rejects malformed usage and foreign provider attribution',async()=>ledger(jobs=>{
+    const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);
+    for(const value of [-1,NaN,Infinity,Number.MAX_SAFE_INTEGER*2])expect(()=>jobs.observeProviderUsage(job.id,provider,value,false)).toThrow('invalid browser usage');
+    expect(()=>jobs.observeProviderUsage(job.id,'different-provider',5,false)).toThrow('does not match');
+    expect(jobs.providerUsage(job.id)).toBeNull();
+  }));
   it('allows only one trial dispatch even when it used fewer than twenty pages',async()=>ledger(jobs=>{
     const request={...input(),maxJobs:1,pages:5},cancelled=jobs.reserve(request);jobs.cancel(cancelled.id);
     const job=jobs.reserve({...request,key:crypto.randomUUID()});jobs.begin(job.id);jobs.submitted(job.id,provider);jobs.settle(job.id,'completed',1);
@@ -107,7 +130,7 @@ describe('durable research reservations',()=>{
   }));
   it('submits once and resumes paginated terminal evidence after restart before settling',async()=>ledger(async jobs=>{
     const job=jobs.reserve(input());let starts=0;
-    const api={start:async()=>{starts++;return {id:provider};},cancel:async()=>({requested:true}),results:async(_id:string,_url:string,cursor?:number)=>({id:provider,status:'completed' as const,
+    const api={start:async()=>{starts++;return {id:provider};},cancel:async()=>({requested:true}),results:async(_id:string,_url:string,cursor?:number)=>({id:provider,status:'completed' as const,browserSecondsUsed:15.5,
       records:[{url:job.source+(cursor?'contact':''),status:'completed' as const,httpStatus:200,html:'<title>Salon</title>'}],...(cursor?{}:{cursor:1})})};
     const runner=new ResearchRunner(jobs,api,async()=>{});
     await runner.submit(job.id);await expect(runner.submit(job.id)).rejects.toThrow('cannot be submitted');expect(starts).toBe(1);
@@ -115,6 +138,7 @@ describe('durable research reservations',()=>{
     jobs.initialize();
     expect(await new ResearchRunner(jobs,api,async()=>{}).poll(job.id)).toMatchObject({status:'completed',used:2,reserved:0});
     expect(jobs.pages(job.id)).toHaveLength(2);
+    expect(jobs.providerUsage(job.id)).toMatchObject({browser_seconds:15.5,terminal_observed:1});
   }));
   it('retains ambiguous submissions and captures late receipts after cancellation',async()=>ledger(async jobs=>{
     const job=jobs.reserve({...input(),pages:5});let calls=0;

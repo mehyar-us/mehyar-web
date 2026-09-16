@@ -29,6 +29,7 @@ export class ResearchRunner {
     const result=await this.provider.results(job.provider_id,job.source,checkpoint.steps?checkpoint.cursor:undefined);
     await this.gate();
     if(result.id!==job.provider_id)throw new HttpError(502,'research_provider_mismatch','The provider returned a different job.');
+    this.jobs.observeProviderUsage(id,job.provider_id,result.browserSecondsUsed,result.status!=='running');
     // Read only stable terminal snapshots; running jobs can change record ordering.
     if(result.status==='running'){
       if(checkpoint.steps)throw new HttpError(502,'research_snapshot_changed','The provider completion snapshot changed.');

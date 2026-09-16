@@ -25,6 +25,9 @@ export class ResearchJobs {
       outcome TEXT NOT NULL,done INTEGER NOT NULL)`);
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_withdrawals (
       job_id TEXT PRIMARY KEY,user_id TEXT NOT NULL,requested_at TEXT NOT NULL)`);
+    this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_provider_usage (
+      job_id TEXT PRIMARY KEY,browser_seconds REAL NOT NULL,observed_at TEXT NOT NULL,
+      terminal_observed INTEGER NOT NULL DEFAULT 0)`);
     // An interrupted POST may have created a billable provider job. Keep its reservation.
     this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
     this.expire();
@@ -41,6 +44,25 @@ export class ResearchJobs {
     if(!row)throw new HttpError(404,'research_job_missing','Research job not found.');return row;
   }
   byRequestKey(key:string){return this.storage.sql.exec<Job>('SELECT * FROM research_jobs WHERE request_key=?',key).toArray()[0];}
+  providerUsage(id:string){
+    this.get(id);
+    return this.storage.sql.exec<{browser_seconds:number;observed_at:string;terminal_observed:number}>('SELECT browser_seconds,observed_at,terminal_observed FROM research_provider_usage WHERE job_id=?',id).toArray()[0]??null;
+  }
+  observeProviderUsage(id:string,providerId:string,seconds:number|undefined,terminal:boolean){
+    const job=this.get(id);
+    if(!job.provider_id||job.provider_id!==providerId)throw conflict('Provider usage does not match this research job.');
+    if(seconds===undefined)return this.providerUsage(id);
+    if(!Number.isFinite(seconds)||seconds<0||seconds>Number.MAX_SAFE_INTEGER)
+      throw conflict('The provider reported invalid browser usage.');
+    // Provider totals are cumulative across result pages. Never sum repeated polls
+    // or reduce the high-water observation when an older result arrives later.
+    this.storage.sql.exec(`INSERT INTO research_provider_usage(job_id,browser_seconds,observed_at,terminal_observed) VALUES(?,?,?,?)
+      ON CONFLICT(job_id) DO UPDATE SET
+      observed_at=CASE WHEN excluded.browser_seconds>=research_provider_usage.browser_seconds THEN excluded.observed_at ELSE research_provider_usage.observed_at END,
+      browser_seconds=MAX(research_provider_usage.browser_seconds,excluded.browser_seconds),
+      terminal_observed=MAX(research_provider_usage.terminal_observed,excluded.terminal_observed)`,id,seconds,new Date().toISOString(),terminal?1:0);
+    return this.providerUsage(id);
+  }
   summary(id:string) {
     const job=this.get(id);
     const evidencePages=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
