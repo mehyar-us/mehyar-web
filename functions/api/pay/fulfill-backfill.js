@@ -37,6 +37,7 @@ import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
 import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
 import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
 import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
+import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 
 const PRODUCTS = {
@@ -49,6 +50,7 @@ const PRODUCTS = {
   prepguide: { fulfill: fulfillPrepguide, ordersTable: "prepguide_orders" },
   promptpack: { fulfill: fulfillPromptpack, ordersTable: "promptpack_orders" },
   truesketch: { fulfill: fulfillTruesketch, ordersTable: "truesketch_orders" },
+  tiktokgrowth: { fulfill: fulfillTiktokgrowth, ordersTable: "tiktokgrowth_orders" },
 };
 
 const PROF_NAMES = {
@@ -192,3 +194,4 @@ export async function onRequestPost({ request, env, waitUntil }) {
     return json({ ok: false }, 500);
   }
 }
+

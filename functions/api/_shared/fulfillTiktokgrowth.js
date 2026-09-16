@@ -85,7 +85,12 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
     return { ok: true, replay: true, order_id: existing.id, status: existing.status };
   }
 
-  const accessToken = randomToken(32);
+  // Token unification (Sprint30/HustleKit lesson): Stripe already baked
+  // payment.access_token into the buyer's success URL at session creation.
+  // Reuse it as the order token so ONE token works on the success page,
+  // the deliverable, and the buyer email. Minting a fresh token here would
+  // orphan the success-page link.
+  const accessToken = payment.access_token || randomToken(32);
   const inputsJson = JSON.stringify({ inputs: intakeInputs });
   const ins = await db
     .prepare(
@@ -96,15 +101,14 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
     .run();
   const orderId = ins.meta.last_row_id;
 
-  // Token unification: the Stripe success_url_template receives
-  // billing_payments.access_token, but every TikTok Growth surface
-  // (generate.js, deliverable.html, success.html) gates on
-  // tiktokgrowth_orders tokens. Point the payment row at the product token
-  // so ONE token works everywhere.
-  await db
-    .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
-    .bind(accessToken, payment.id)
-    .run();
+  // Defensive: if the payment row somehow lacked a token, point it at the
+  // order token now so the backfill lookup (by access_token) keeps working.
+  if (!payment.access_token) {
+    await db
+      .prepare("UPDATE billing_payments SET access_token=<redacted>")
+      .bind(accessToken, payment.id)
+      .run();
+  }
 
   const { from, fromName } = fromAddress(env);
 
@@ -158,3 +162,4 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
 
   return { ok: true, order_id: orderId, product_id: productId };
 }
+
