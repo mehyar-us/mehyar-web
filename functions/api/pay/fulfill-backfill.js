@@ -8,6 +8,12 @@
 // order and kicks off the same fulfillment pipeline the webhook uses.
 // Idempotent: if an order already exists for the payment, it does nothing.
 //
+// PromptPack Pro (2026-09-16): generation is CLIENT-DRIVEN. The webhook and
+// this backfill only create the promptpack_orders row; the buyer's browser
+// drives the 3 generation batches via the PWA. When the order is ready and
+// the buyer email hasn't gone out, this endpoint sends it (called by the
+// PWA's /api/promptpack/notify-ready, idempotent via email_sent_at).
+//
 // Supported products (by billing_products.fulfillment):
 //   designful -> fulfillDesignful / designful_orders
 //   hustlekit -> fulfillHustlekit / hustlekit_orders
@@ -45,11 +51,76 @@ const PRODUCTS = {
   truesketch: { fulfill: fulfillTruesketch, ordersTable: "truesketch_orders" },
 };
 
+const PROF_NAMES = {
+  "contractor": "Contractor",
+  "realtor": "Realtor",
+  "coach-consultant": "Coach & Consultant",
+  "freelancer": "Freelancer",
+};
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
+}
+
+// PromptPack buyer email: sends once per order (guarded by email_sent_at).
+// Called when the order is ready — generation is client-driven, so the
+// webhook/backfill can't send it at fulfill time.
+async function maybeSendPromptpackEmail(db, env, payment) {
+  const order = await db
+    .prepare(
+      "SELECT id, status, access_token, email, inputs_json, email_sent_at " +
+        "FROM promptpack_orders WHERE payment_id = ?"
+    )
+    .bind(payment.id)
+    .first();
+  if (!order || order.status !== "ready" || order.email_sent_at) {
+    return { action: order && order.status !== "ready" ? "not_ready" : "already_sent" };
+  }
+
+  let profession = "contractor";
+  try {
+    const inputs = JSON.parse(order.inputs_json || "{}").inputs || {};
+    const raw = String(inputs.profession || "").toLowerCase().trim();
+    if (PROF_NAMES[raw]) profession = raw;
+  } catch {}
+  const profName = PROF_NAMES[profession];
+  const baseUrl = String(env.PROMPTPACK_BASE_URL || "https://promptpack.mehyar.us").replace(/\/+$/, "");
+  const deliverUrl = `${baseUrl}/deliverable.html?token=${order.access_token}`;
+  const subject = `Your PromptPack Pro (${profName}) is ready`;
+  const text =
+    `Thanks for your purchase!\n\n` +
+    `Your PromptPack Pro pack for ${profName} is ready — 50 prompts + 10 swipe files:\n${deliverUrl}\n\n` +
+    `There's a one-click PDF download on the page. ` +
+    `This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.\n\n-- PromptPack Pro`;
+  const html =
+    `<p>Thanks for your purchase!</p>` +
+    `<p>Your <strong>PromptPack Pro</strong> pack for <strong>${profName}</strong> is ready — 50 prompts + 10 swipe files.</p>` +
+    `<p><a href="${deliverUrl}" style="display:inline-block;background:#f59e0b;color:#1a1206;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Open your pack</a></p>` +
+    `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${deliverUrl}">${deliverUrl}</a></p>` +
+    `<p style="color:#6b7280;font-size:13px;">There's a one-click PDF download on the page. This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.</p>` +
+    `<p>-- PromptPack Pro</p>`;
+
+  const result = await sendCloudflareEmail(env, {
+    from: "team@mehyar.us",
+    fromName: "PromptPack Pro",
+    to: payment.email,
+    replyTo: "info@mehyar.us",
+    subject,
+    text,
+    html,
+  });
+  if (!result.ok) {
+    console.error("fulfill-backfill: promptpack email failed", payment.id, result.error);
+    return { action: "email_failed", error: result.error };
+  }
+  await db
+    .prepare("UPDATE promptpack_orders SET email_sent_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?")
+    .bind(order.id)
+    .run();
+  return { action: "email_sent", order_id: order.id };
 }
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -87,6 +158,12 @@ export async function onRequestPost({ request, env, waitUntil }) {
       `SELECT id FROM ${spec.ordersTable} WHERE payment_id = ?`
     ).bind(payment.id).first();
     if (existing) {
+      // PromptPack: the order may now be ready (client-driven generation).
+      // Send the buyer email if it hasn't gone out.
+      if (product.fulfillment === "promptpack") {
+        const emailResult = await maybeSendPromptpackEmail(db, env, payment);
+        return json({ ok: true, action: "already_fulfilled", order_id: existing.id, email: emailResult.action });
+      }
       return json({ ok: true, action: "already_fulfilled", order_id: existing.id });
     }
 
@@ -102,6 +179,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
     const order = await db.prepare(
       `SELECT id, status FROM ${spec.ordersTable} WHERE payment_id = ?`
     ).bind(payment.id).first();
+
+    // PromptPack: order row created; generation is client-driven. If it's
+    // somehow already ready (e.g. instant), send the email now.
+    if (product.fulfillment === "promptpack") {
+      const emailResult = await maybeSendPromptpackEmail(db, env, payment);
+      return json({ ok: true, action: "fulfilled", order_id: order && order.id, email: emailResult.action });
+    }
     return json({ ok: true, action: "fulfilled", order_id: order && order.id });
   } catch (e) {
     console.error("fulfill-backfill error", e && e.message);
