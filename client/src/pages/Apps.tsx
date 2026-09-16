@@ -273,6 +273,24 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/plrvault-logo.png",
     accentClass: "from-amber-100 to-white dark:from-amber-900 dark:to-amber-950",
   },
+  {
+    id: "freelanceros",
+    name: "FreelancerOS",
+    url: "https://freelanceros.mehyar.us",
+    tagline: "Your entire freelance business. One dashboard.",
+    description:
+      "The freelancer operating system: a client tracker with follow-up reminders, a branded invoice generator with PDF export, a content pipeline board, and a downloadable template pack (contract, proposal, client onboarding) — one $29 payment, yours forever.",
+    audience: "Freelancers and solo operators who are done juggling spreadsheets, invoice tools, and sticky notes.",
+    highlights: [
+      "Client tracker with statuses and follow-up reminders so no lead goes cold",
+      "Branded invoice generator with one-click PDF export",
+      "Content pipeline board from idea to published",
+      "Contract, proposal, and onboarding templates included — free interactive demo before you pay",
+    ],
+    logo: "/assets/freelanceros-logo.png",
+    accentClass: "from-slate-100 to-white dark:from-slate-900 dark:to-slate-950",
+  },
+
 ];
 
 const buildPillars = [

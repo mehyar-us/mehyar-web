@@ -16,6 +16,7 @@
 //   6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
 //   7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
 //   8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
+//   9. FreelancerOS — https://freelanceros.mehyar.us (freelancer OS: clients, invoices, content, templates)
 //   9. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
 //  10. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
 //  11. CreditFix Kit — https://creditfixkit.mehyar.us (DIY credit repair kit: dispute letters + rebuild plan)
@@ -33,7 +34,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles, LayoutDashboard} from "lucide-react";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -230,6 +231,19 @@ const apps: AppInfo[] = [
     whatWeDelete:
       "Email address, intake answers, optional selfie, generated sketch and reading, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
+  {
+    id: "freelanceros",
+    name: "FreelancerOS",
+    url: "https://freelanceros.mehyar.us",
+    tagline: "Freelancer OS: clients, invoices, content, templates.",
+    icon: LayoutDashboard,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase and dashboard link), your dashboard data (clients, invoices, content items, settings), and checkout records.",
+    whatWeDelete:
+      "Email address, dashboard data, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+
 ];
 
 interface Section {

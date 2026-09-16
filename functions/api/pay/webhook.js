@@ -13,6 +13,7 @@
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
+import { fulfillFreelanceros } from "../_shared/fulfillFreelanceros.js";
 import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
 import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
@@ -146,6 +147,13 @@ const fulfillHooks = {
   async designful({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillDesignful({ db, env, waitUntil, sendEmail }, payment);
+  },
+  // FreelancerOS dashboard. Creates the freelanceros_orders row (idempotent on
+  // payment_id via idx_freelanceros_orders_payment), unifies the access token
+  // onto the billing_payments row, then emails the buyer their dashboard link.
+  async freelanceros({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillFreelanceros({ db, env, waitUntil, sendEmail }, payment);
   },
 
   // HustleKit AI side-hustle playbooks. Creates the hustlekit_orders row
