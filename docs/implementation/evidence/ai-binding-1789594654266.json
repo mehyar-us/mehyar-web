@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-16T21:37:34.125Z",
+  "syntheticOnly": true,
+  "permissions": [
+    "Workers Scripts Write",
+    "Workers AI Read",
+    "AI Gateway Run"
+  ],
+  "tokenExpiresAt": "2026-09-16T22:07:34.125Z",
+  "tokenRevoked": false,
+  "productionAcceptanceApproved": false,
+  "state": "failed",
+  "error": "Probe credential operation failed: HTTP 400 [{\"code\":400,\"message\":\"- These rules must pass for `{ \\\"name\\\": \\\"Mehyar Business Agent temporary binding probe\\\", \\\"expires_on\\\": \\\"2026-09-16T22:07:34.125Z\\\", \\\"policies\\\": { { \\\"effect\\\": \\\"allow\\\", \\\"permission_groups\\\": ..., \\\"resources\\\": ... } } }`\\n  - expires_on must be a valid date/time in the format \\\"2005-12-30T01:02:03Z\\\"\"}]",
+  "wranglerLog": "",
+  "completedAt": "2026-09-16T21:37:34.266Z"
+}

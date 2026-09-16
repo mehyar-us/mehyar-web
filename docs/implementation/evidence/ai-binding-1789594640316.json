@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-16T21:37:20.172Z",
+  "syntheticOnly": true,
+  "permissions": [
+    "Workers Scripts Write",
+    "Workers AI Read",
+    "AI Gateway Run"
+  ],
+  "tokenExpiresAt": "2026-09-16T22:07:20.173Z",
+  "tokenRevoked": false,
+  "productionAcceptanceApproved": false,
+  "state": "failed",
+  "error": "Probe credential operation failed: HTTP 400",
+  "wranglerLog": "",
+  "completedAt": "2026-09-16T21:37:20.315Z"
+}

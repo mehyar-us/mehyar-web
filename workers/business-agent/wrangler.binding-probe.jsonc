@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mehyar-business-agent-binding-probe",
+  "main": "src/probes/ai-binding.ts",
+  "compatibility_date": "2026-09-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "ai": {"binding": "AI", "remote": true},
+  "observability": {"enabled": false}
+}
