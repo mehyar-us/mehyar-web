@@ -29,7 +29,7 @@
 // primary fulfillment trigger.
 
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
-import { fulfillHustlekit, resumeHustlekitOrder } from "../_shared/fulfillHustlekit.js";
+import { fulfillHustlekit, hustlekitBaseUrl } from "../_shared/fulfillHustlekit.js";
 import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 import { fulfillFreelanceros } from "../_shared/fulfillFreelanceros.js";
@@ -182,15 +182,29 @@ export async function onRequestPost({ request, env, waitUntil }) {
       }
       if (product.fulfillment === "hustlekit") {
         // HustleKit: the order may be orphaned mid-generation (webhook
-        // waitUntil isolate evicted — stuck in paid/generating) or ready
-        // with the buyer email unsent. Resume is idempotent: ready+emailed
-        // rows are a no-op, so this stays safe to call from the success
-        // page's retry path.
-        const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+        // waitUntil isolate evicted — stuck in paid/generating). Kick the
+        // checkpointed generate fire-and-forget (never await the ~150s body:
+        // the caller's edge would 524) and let the scheduled sweep finish it
+        // + send the buyer email exactly once. Safe for the success page's
+        // retry path: generate resumes from checkpoints, ready rows replay.
         try {
-          const rr = await resumeHustlekitOrder({ db, env, sendEmail }, existing.id);
-          const action = rr.action === "already_done" ? "already_fulfilled" : "resumed";
-          return json({ ok: true, action, order_id: existing.id, resume: rr });
+          const orow = await db.prepare(
+            "SELECT id, access_token, inputs_json, status FROM hustlekit_orders WHERE payment_id=?"
+          ).bind(payment.id).first();
+          if (orow && orow.status !== "ready") {
+            let inputs = {};
+            try { inputs = JSON.parse(orow.inputs_json || "{}"); } catch {}
+            const track = inputs.track || "ai-writing";
+            const base = hustlekitBaseUrl(env);
+            const p = fetch(`${base}/api/hustlekit/generate`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ order_token: orow.access_token, track, inputs }),
+            }).catch(() => {});
+            if (typeof waitUntil === "function") waitUntil(p);
+            return json({ ok: true, action: "resumed", order_id: orow.id, dispatched: true });
+          }
+          return json({ ok: true, action: "already_fulfilled", order_id: orow && orow.id });
         } catch (e) {
           console.error("fulfill-backfill hustlekit resume failed", payment.id, e && e.message);
           return json({ ok: false, error: "fulfillment_failed" }, 500);
