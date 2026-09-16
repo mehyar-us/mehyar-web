@@ -111,7 +111,12 @@ export async function fulfillSprint30({ db, env, waitUntil, sendEmail }, payment
     return { ok: true, replay: true, enrollment_id: existing.id, status: existing.status };
   }
 
-  const accessToken = randomToken(32);
+  // Reuse the checkout-time token: Stripe's success_url is rendered with
+  // billing_payments.access_token at session creation, so the enrollment
+  // MUST use that same token - minting a new one orphans the success
+  // page dashboard link (bug found 2026-09-16 on payment 68).
+  const accessToken = payment.access_token;
+  if (!accessToken) throw new Error("fulfillSprint30: payment has no access_token");
   const ins = await db
     .prepare(
       `INSERT INTO sprint30_enrollments (payment_id, product_id, email, access_token, status, started_at, current_day) ` +
@@ -121,14 +126,8 @@ export async function fulfillSprint30({ db, env, waitUntil, sendEmail }, payment
     .run();
   const enrollmentId = ins.meta.last_row_id;
 
-  // Token unification: the Stripe success_url_template receives
-  // billing_payments.access_token, and every Sprint30 buyer surface
-  // (dashboard, success page) gates on the enrollment token.
-  // Point the payment row at the enrollment token so ONE token works everywhere.
-  await db
-    .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
-    .bind(accessToken, payment.id)
-    .run();
+  // Token is already unified: the enrollment reuses payment.access_token,
+  // which is exactly what the Stripe success_url_template rendered.
 
   const { from, fromName } = fromAddress(env);
   const dashboardUrl = `${baseUrl(env)}/dashboard?token=${accessToken}`;
