@@ -379,7 +379,7 @@ export default function App() {
   const [tenantId, setTenantId] = useState("");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationBriefDraft,setConversationBriefDraft]=useState<{tenantId:string;id:string;text:string;field?:string}|null>(null);
+  const [conversationBriefDraft,setConversationBriefDraft]=useState<{tenantId:string;id:string;text:string;field?:string;industryPack?:string}|null>(null);
   useEffect(()=>setConversationBriefDraft(null),[tenantId,user?.id]);
   const [tab, setTab] = useState<Tab>(() =>
     window.location.pathname === "/billing"
@@ -1270,7 +1270,7 @@ export default function App() {
                               </div>
                               <p>{message.content}</p>
                               {message.role==="user"&&snapshot.membership.role==="owner"&&<button className="button secondary" disabled={!online} onClick={()=>{setConversationBriefDraft({tenantId,id:message.id,text:message.content});go("knowledge");}}>Use in business brief</button>}
-                              {message.role==='assistant'&&snapshot.membership.role==='owner'&&Array.isArray(message.briefSuggestions)&&message.briefSuggestions.slice(0,3).filter(s=>s&&typeof s.field==='string'&&businessDetailLabel(s.field)&&typeof s.value==='string'&&s.value.length<=2000&&typeof s.sourceMessageId==='string').map(s=><div key={s.field}><p>Suggested {businessDetailLabel(s.field)?.toLowerCase()}: {s.value}</p><button className="button secondary" disabled={!online} onClick={()=>{setConversationBriefDraft({tenantId,id:s.sourceMessageId,text:s.value,field:s.field});go('knowledge');}}>Review suggested {businessDetailLabel(s.field)?.toLowerCase()}</button></div>)}
+                              {message.role==='assistant'&&snapshot.membership.role==='owner'&&Array.isArray(message.briefSuggestions)&&message.briefSuggestions.slice(0,3).filter(s=>s&&typeof s.field==='string'&&businessDetailLabel(s.field)&&typeof s.value==='string'&&s.value.length<=2000&&typeof s.sourceMessageId==='string').map(s=><div key={s.field}><p>Suggested {businessDetailLabel(s.field)?.toLowerCase()}: {s.value}</p><button className="button secondary" disabled={!online} onClick={()=>{setConversationBriefDraft({tenantId,id:s.sourceMessageId,text:s.value,field:s.field,industryPack:s.industryPack});go('knowledge');}}>Review suggested {businessDetailLabel(s.field)?.toLowerCase()}</button></div>)}
                             </div>
                           </article>
                         ))}

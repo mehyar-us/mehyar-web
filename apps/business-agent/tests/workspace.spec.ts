@@ -495,6 +495,17 @@ test("workspace creation retries keep the same idempotency key", async ({
   expect(keys[2]).not.toBe(keys[1]);
 });
 
+for(const changed of [false,true])test(`industry suggestion ${changed?'blocks a changed pack':'copies a reviewed industry answer'}`,async({page})=>{
+  const requests=await fixture(page),data={...briefFixture(),brief:{...briefFixture().brief,fields:{...briefFixture().brief.fields,industryPack:changed?'clinics-dentists':'barbershops-salons'}},industryQuestions:changed?[]:[{field:'deposits',question:'What deposit rules should be explained?',answer:'',answered:false,fromBrief:false}]};
+  await page.route('**/api/tenants/business-a/business-brief',route=>route.fulfill({json:data}));
+  await page.route('**/api/tenants/business-a/messages',route=>route.fulfill({json:{messages:[{id:'reply',role:'assistant',content:'Review your deposit policy.',briefSuggestions:[{field:'industryAnswers.deposits',value:'No deposits',sourceMessageId:'owner-message',industryPack:'barbershops-salons'}]}]}}));
+  await page.goto('/');await page.getByRole('button',{name:'Review suggested industry setup'}).click();
+  const candidate=page.getByRole('region',{name:'Conversation brief draft'});
+  if(changed){await expect(candidate.getByRole('alert')).toContainText('Your industry selection changed');await expect(candidate.getByRole('button',{name:'Copy to draft'})).toBeDisabled();}
+  else{await expect(candidate.getByLabel('Business detail to update')).toHaveValue('industryAnswers.deposits');await candidate.getByRole('button',{name:'Copy to draft'}).click();await expect(page.getByLabel('What deposit rules should be explained?')).toHaveValue('No deposits');}
+  expect(requests.some(r=>r.path.endsWith('/business-brief')&&r.method==='POST')).toBe(false);
+});
+
 test('grounded assistant suggestion opens the correct editable field without saving it',async({page})=>{
   const requests=await fixture(page);
   await page.route('**/api/tenants/business-a/messages',route=>route.fulfill({json:{messages:[{id:'reply',role:'assistant',content:'Review your hours.',briefSuggestions:[{field:'hours',value:'9 AM to 5 PM',sourceMessageId:'owner-message'}]}]}}));

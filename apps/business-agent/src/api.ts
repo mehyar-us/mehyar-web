@@ -66,7 +66,7 @@ export type Tenant = {
   paused?: boolean;
 };
 export type Message = {
-  briefSuggestions?:{field:string;value:string;sourceMessageId:string}[];
+  briefSuggestions?:{field:string;value:string;sourceMessageId:string;industryPack?:string}[];
   id: string;
   role: string;
   content: string;

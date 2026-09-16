@@ -30,6 +30,28 @@ async function activatePaid(actor:{tenantId:string;userId:string},interval="mont
 }
 
 describe('durable generation accounting',()=>{
+  it('binds industry suggestions to the pack used for inference even when the brief changes',async()=>{
+    const {actor,stub}=await fixture();
+    unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields:{industryPack:'barbershops-salons'}},crypto.randomUUID()));
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;
+      (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any)=>{
+        expect(input.messages[0].content).toContain('industryAnswers.deposits');expect(input.messages[0].content).not.toContain('industryAnswers.urgent_care_boundary');
+        unwrap(await instance.saveBusinessBrief(actor,{expectedRevision:1,reviewed:true,fields:{industryPack:'clinics-dentists'}},crypto.randomUUID()));
+        return {choices:[{message:{content:JSON.stringify({reply:'Review your deposit policy.',briefSuggestions:[{field:'industryAnswers.deposits',value:'No deposits',industryPack:'clinics-dentists'}]})}}]};
+      }}};
+      try{
+        const result=unwrap(await instance.chat(actor,'No deposits',crypto.randomUUID()));
+        expect(result.reply.briefSuggestions).toEqual([{field:'industryAnswers.deposits',value:'No deposits',sourceMessageId:result.message.id,industryPack:'barbershops-salons'}]);
+        expect(unwrap(await instance.businessBrief(actor)).brief).toMatchObject({revision:2,fields:{industryPack:'clinics-dentists'},industryAnswers:{}});
+      }finally{(instance as any).env=original;}
+    });
+  });
+  it('only permits industry answer fields from the selected pack',()=>{
+    const raw=JSON.stringify({reply:'Review this answer.',briefSuggestions:[{field:'industryAnswers.deposits',value:'No deposits'},{field:'industryAnswers.urgent_care_boundary',value:'No deposits'}]}),message={id:'owner-message',content:'No deposits'};
+    expect(parseBriefReply(raw,message,true,'barbershops-salons').suggestions.map(s=>s.field)).toEqual(['industryAnswers.deposits']);
+    expect(parseBriefReply(raw,message,true).suggestions).toEqual([]);
+  });
   it('persists grounded model suggestions without changing the brief and replays them exactly',async()=>{
     const {actor,stub}=await fixture();
     await runInDurableObject(stub,async(instance:BusinessAgent)=>{
