@@ -6,6 +6,7 @@ import {createTenant} from '../src/tenants';
 import {storeProviderGrant} from '../src/auth/vault';
 import {MailboxSync} from '../src/connectors/mailbox-sync';
 import {runMailboxRecovery} from '../src/connectors/mailbox-recovery';
+import {runMailboxProcessing} from '../src/connectors/mailbox-processing';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',MAILBOX_RECOVERY_ENABLED:'true'} as unknown as Env;
 async function fixture() {
   const userId=crypto.randomUUID();
@@ -23,7 +24,76 @@ async function fixture() {
   return {actor,addStream,...stream};
 }
 describe('bounded recurring mailbox dispatch',()=>{
-  beforeEach(async()=>{await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required'").run();});
+  beforeEach(async()=>{
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required'").run();
+    await e.AGENT_DB.prepare("UPDATE agent_tenants SET status='paused'").run();
+  });
+  async function queued() {
+    const f=await fixture(),ledger=new MailboxSync(e,f.actor),claim=(await ledger.claim(f.streamId))!;
+    await ledger.commit(claim,{changes:[{messageId:'message',kind:'upsert'}],syncCursor:'300'});
+    return {...f,ledger,pageToken:claim.token};
+  }
+  const processing={...e,MAILBOX_PROCESSING_ENABLED:'true'};
+  it('gates message processing before database access on all three flags',async()=>{
+    const db={prepare(){throw new Error('must not read');}} as unknown as D1Database;
+    for(const flag of ['MAILBOX_SYNC_ENABLED','MAILBOX_RECOVERY_ENABLED','MAILBOX_PROCESSING_ENABLED'])
+      expect(await runMailboxProcessing({...processing,[flag]:'false',AGENT_DB:db})).toEqual({disabled:true,selected:0,processed:0,deferred:0});
+  });
+  it('limits processing to five tenants and five round-robin calls per tenant',async()=>{
+    for(let i=0;i<6;i++)await queued();
+    const seen:string[]=[];
+    expect(await runMailboxProcessing(processing,async actor=>{seen.push(actor.tenantId);return {ok:true,value:{state:'processed'}};}))
+      .toEqual({disabled:false,selected:5,processed:25,deferred:0});
+    expect(new Set(seen.slice(0,5)).size).toBe(5);
+    expect(seen.slice(0,5)).toEqual(seen.slice(5,10));
+    for(const tenant of new Set(seen))expect(seen.filter(id=>id===tenant)).toHaveLength(5);
+  });
+  it('drains a full queue even when polling requires resynchronization',async()=>{
+    const f=await queued();
+    await e.AGENT_DB.prepare(`INSERT INTO agent_mailbox_changes(stream_id,page_token,ordinal,message_id,kind,created_at)
+      SELECT ?,?,CAST(key AS INTEGER)+1,'seed-'||key,'upsert',? FROM json_each(?)`)
+      .bind(f.streamId,f.pageToken,new Date().toISOString(),JSON.stringify(Array.from({length:9999},(_,i)=>i))).run();
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    expect(await runMailboxRecovery(e,async()=>{throw new Error('polling must be blocked');})).toMatchObject({selected:0});
+    expect(await runMailboxProcessing(processing,async()=>{
+      const claim=(await f.ledger.claimChange(f.streamId))!;
+      expect(await f.ledger.saveChange(claim,null)).toBe(true);
+      return {ok:true,value:{state:'processed'}};
+    })).toEqual({disabled:false,selected:1,processed:5,deferred:0});
+    expect(await e.AGENT_DB.prepare("SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=? AND state='pending'").bind(f.streamId).first()).toEqual({n:9995});
+  });
+  it('stops a failed tenant without blocking others and preserves concurrent consumer backoff',async()=>{
+    const failed=await queued(),successful=await queued();
+    const later=new Date(Date.now()+3600000).toISOString();let calls=0;
+    const result=await runMailboxProcessing(processing,async(_actor,id)=>{
+      if(id===failed.streamId){calls++;
+        await e.AGENT_DB.prepare('INSERT INTO agent_mailbox_consumers(stream_id,next_attempt_at) VALUES (?,?)').bind(id,later).run();
+        throw new Error('fixture failure');
+      }
+      expect(id).toBe(successful.streamId);return {ok:true,value:{state:'processed'}};
+    });
+    expect(result).toEqual({disabled:false,selected:2,processed:5,deferred:1});expect(calls).toBe(1);
+    expect(await e.AGENT_DB.prepare('SELECT next_attempt_at FROM agent_mailbox_consumers WHERE stream_id=?').bind(failed.streamId).first()).toEqual({next_attempt_at:later});
+  });
+  it('excludes active consumers, retry delays and review-required streams',async()=>{
+    const held=await queued(),delayed=await queued(),review=await queued(),eligible=await queued();
+    await held.ledger.claimChange(held.streamId);
+    const delayClaim=(await delayed.ledger.claimChange(delayed.streamId))!;await delayed.ledger.deferChange(delayClaim,3600);
+    const reviewClaim=(await review.ledger.claimChange(review.streamId))!;await review.ledger.deferChange(reviewClaim,300,true);
+    const seen:string[]=[];
+    expect(await runMailboxProcessing(processing,async(_actor,id)=>{seen.push(id);return {ok:true,value:{state:'review_required'}};}))
+      .toEqual({disabled:false,selected:1,processed:0,deferred:1});
+    expect(seen).toEqual([eligible.streamId]);
+  });
+  it('honors actual Agent pause during processing and creates bounded delay for an unstarted consumer',async()=>{
+    const f=await queued();
+    const agent=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await agent.provision(f.actor);await agent.pause(f.actor,true);
+    expect(await runMailboxProcessing(processing)).toEqual({disabled:false,selected:1,processed:0,deferred:1});
+    const saved=await e.AGENT_DB.prepare('SELECT next_attempt_at,attempts FROM agent_mailbox_consumers WHERE stream_id=?').bind(f.streamId).first<{next_attempt_at:string;attempts:number}>();
+    expect(saved!.attempts).toBe(0);expect(Date.parse(saved!.next_attempt_at)).toBeGreaterThan(Date.now()+800000);
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+  });
   it('does no database or dispatch work when either flag is disabled',async()=>{
     const db={prepare(){throw new Error('disabled database access');}} as unknown as D1Database;
     for(const flags of [{MAILBOX_SYNC_ENABLED:'false'},{MAILBOX_RECOVERY_ENABLED:'false'}]) {

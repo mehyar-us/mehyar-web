@@ -13,6 +13,7 @@ import {renameAgent} from './agent-settings';
 import {runBillingReconciliation} from './billing/reconciliation';
 import {runEmailRecovery} from './email/recovery';
 import {runMailboxRecovery} from './connectors/mailbox-recovery';
+import {runMailboxProcessing} from './connectors/mailbox-processing';
 import {runEmailMaintenance} from './email/maintenance';
 import {queueInvitationEmail,cancelInvitationEmail} from './email/customer';
 import {platformEmailUsage} from './email/usage';
@@ -131,6 +132,7 @@ export default {
     try{await runEmailMaintenance(env);}catch{console.error(JSON.stringify({event:'agent_email_maintenance_unavailable'}));}
     try{await runBillingReconciliation(env);}catch{console.error(JSON.stringify({event:'agent_billing_reconciliation_unavailable'}));}
     try{await runEmailRecovery(env);}catch{console.error(JSON.stringify({event:'agent_email_recovery_unavailable'}));}
+    try{await runMailboxProcessing(env);}catch{console.error(JSON.stringify({event:'agent_mailbox_processing_unavailable'}));}
     try{await runMailboxRecovery(env);}catch{console.error(JSON.stringify({event:'agent_mailbox_recovery_unavailable'}));}
   },
   async fetch(request:Request,env:Env):Promise<Response> {
