@@ -15,6 +15,7 @@ import {getAgentByName} from 'agents';
 import {FolderSessions} from '../src/connectors/folder-sessions';
 import {connectedMailboxFolders,initializeMicrosoftFolders} from '../src/connectors/folder-access';
 import {stopMailbox,resumeMailbox} from '../src/connectors/mailbox-control';
+import {restartMailbox} from '../src/connectors/mailbox-restart';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -37,6 +38,36 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('captures a fresh Gmail recovery baseline once and replays completed requests without provider reads',async()=>{
+    const f=await fixture(),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'},key=crypto.randomUUID();
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    const round=(await e.AGENT_DB.prepare('SELECT round_id FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{round_id:string}>())!.round_id;
+    let calls=0;const transport:typeof fetch=async input=>{calls++;expect(String(input)).toContain('/profile');return Response.json({emailAddress:'owner@example.test',historyId:'900'});};
+    expect(await restartMailbox(ready,f.actor,f.streamId,key,round,guard,transport)).toEqual({state:'restarted'});
+    const claim=(await f.ledger.claim(f.streamId))!;
+    await f.ledger.commit(claim,{changes:[],nextCursor:'new-progress'});
+    expect(await restartMailbox(ready,f.actor,f.streamId,key,round,guard,transport)).toEqual({state:'restarted'});
+    expect(calls).toBe(1);
+    expect(await e.AGENT_DB.prepare('SELECT checkpoint,page_cursor,sync_mode FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({checkpoint:'900',page_cursor:'new-progress',sync_mode:'bootstrap'});
+    await expect(restartMailbox(ready,f.actor,f.streamId,key,crypto.randomUUID(),guard,transport)).rejects.toBeDefined();expect(calls).toBe(1);
+  });
+  it('does not restart after an account stop during the recovery profile read',async()=>{
+    const f=await fixture(),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    const round=(await e.AGENT_DB.prepare('SELECT round_id FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{round_id:string}>())!.round_id;
+    await expect(restartMailbox(ready,f.actor,f.streamId,crypto.randomUUID(),round,guard,async()=>{
+      await stopMailbox(e,f.actor,f.grantId);return Response.json({emailAddress:'owner@example.test',historyId:'900'});
+    })).rejects.toBeDefined();
+    expect(await e.AGENT_DB.prepare('SELECT state,checkpoint FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({state:'resync_required',checkpoint:'200'});
+    expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_resync_receipts WHERE stream_id=?').bind(f.streamId).first()).toEqual({n:0});
+  });
+  it('restarts Graph through the guarded service without inventing a provider baseline',async()=>{
+    const f=await fixture('microsoft'),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    const round=(await e.AGENT_DB.prepare('SELECT round_id FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{round_id:string}>())!.round_id;
+    expect(await restartMailbox(ready,f.actor,f.streamId,crypto.randomUUID(),round,guard,async()=>{throw new Error('unexpected network');})).toEqual({state:'restarted'});
+    expect(await f.ledger.claim(f.streamId)).toMatchObject({checkpoint:null,pageCursor:null});
+  });
   it('resumes with verified access and a matching control revision without resetting work',async()=>{
     const f=await fixture(),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'next'});

@@ -13,6 +13,7 @@ import {initializeGoogleMailbox} from './connectors/mailbox-bootstrap';
 import {consumeMailboxChange} from './connectors/mailbox-consumer';
 import {googleMailboxStatus,microsoftMailboxStatus} from './connectors/mailbox-status';
 import {stopMailbox,resumeMailbox} from './connectors/mailbox-control';
+import {restartMailbox} from './connectors/mailbox-restart';
 import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
@@ -130,6 +131,13 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       const guard=async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
         if(this.state.paused)throw new HttpError(409,'agent_paused','Your agent is paused.');};
       return resumeMailbox(this.env,actor,grantId,expectedRevision,guard);
+    });
+  }
+  async restartMailboxSync(actor:Actor,streamId:string,requestKey:string,expectedRound:string) {
+    return this.result(async()=>{
+      const guard=async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused)throw new HttpError(409,'agent_paused','Your agent is paused.');};
+      await guard();return restartMailbox(this.env,actor,streamId,requestKey,expectedRound,guard);
     });
   }
   async outlookMailboxStatus(actor:Actor,grantId:string) {

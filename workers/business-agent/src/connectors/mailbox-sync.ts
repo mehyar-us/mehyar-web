@@ -101,6 +101,18 @@ export class MailboxSync {
   /** Internal recovery primitive. The service must verify readiness and, for
    * Gmail, capture a fresh profile baseline before calling with a stable key.
    * Cached messages remain unverified until individually observed again. */
+  async recoveryContext(streamId:string,requestKey:string,expectedRound:string) {
+    if(!z.string().uuid().safeParse(requestKey).success||!z.string().uuid().safeParse(expectedRound).success)throw unavailable();
+    const {row}=await this.stream(streamId);
+    const prior=await this.env.AGENT_DB.prepare('SELECT expected_round FROM agent_mailbox_resync_receipts WHERE stream_id=? AND request_key=?')
+      .bind(streamId,requestKey).first<{expected_round:string|null}>();
+    if(prior&&prior.expected_round!==expectedRound)throw unavailable();
+    if(!prior) {
+      const consumer=await this.env.AGENT_DB.prepare('SELECT state FROM agent_mailbox_consumers WHERE stream_id=?').bind(streamId).first<{state:string}>();
+      if(row.round_id!==expectedRound||(row.state!=='resync_required'&&consumer?.state!=='review_required'))throw unavailable();
+    }
+    return {grantId:row.grant_id,provider:row.provider,authorization:row.authorization,alreadyRestarted:!!prior};
+  }
   async restart(streamId:string,requestKey:string,expectedRound:string,gmailBaseline?:string) {
     if(!z.string().uuid().safeParse(requestKey).success||!z.string().uuid().safeParse(expectedRound).success)throw unavailable();
     const {row,grant}=await this.stream(streamId),now=this.now();
@@ -111,11 +123,11 @@ export class MailboxSync {
       .bind(streamId,requestKey).first<{payload_hash:string}>();
     if(prior){if(prior.payload_hash!==payloadHash)throw unavailable();return {state:'restarted' as const};}
     const newRound=crypto.randomUUID();
-    const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_resync_receipts(stream_id,request_key,payload_hash,new_round,created_at)
-      SELECT ?,?,?,?,? FROM agent_mailbox_sync WHERE id=? AND round_id=? AND
+    const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_resync_receipts(stream_id,request_key,payload_hash,new_round,created_at,expected_round)
+      SELECT ?,?,?,?,?,? FROM agent_mailbox_sync WHERE id=? AND round_id=? AND
       (state='resync_required' OR EXISTS(SELECT 1 FROM agent_mailbox_consumers WHERE stream_id=? AND state='review_required'))
       AND ${this.fence} ON CONFLICT(stream_id,request_key) DO NOTHING`)
-      .bind(streamId,requestKey,payloadHash,newRound,now,streamId,expectedRound,streamId,...this.args(row.grant_id,grant));
+      .bind(streamId,requestKey,payloadHash,newRound,now,expectedRound,streamId,expectedRound,streamId,...this.args(row.grant_id,grant));
     const saved=`EXISTS(SELECT 1 FROM agent_mailbox_resync_receipts WHERE stream_id=? AND request_key=? AND new_round=?)`;
     const savedArgs=[streamId,requestKey,newRound];
     const results=await this.env.AGENT_DB.batch([receipt,
