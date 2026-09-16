@@ -81,9 +81,15 @@ export async function fulfillPrepguide({ db, env, waitUntil, sendEmail }, paymen
   // ── background generation, then email ──
   const run = async () => {
     try {
+      // Browser-style UA: Cloudflare bot defenses on *.mehyar.us block
+      // bare server-side fetches (403/1010). Every server-to-mehyar.us call
+      // must spoof a browser User-Agent.
       const genResp = await fetch(`${baseUrl(env)}/api/prepguide/generate`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        },
         body: JSON.stringify({ order_token: token }),
       });
       const genData = await genResp.json().catch(() => ({}));
@@ -91,7 +97,9 @@ export async function fulfillPrepguide({ db, env, waitUntil, sendEmail }, paymen
         throw new Error("generate:" + String((genData && genData.error) || genResp.status));
       }
 
-      const successUrl = `${baseUrl(env)}/success.html?token=${token}`;
+      // Clean route: never route a payment-return/download link through
+      // the success.html 308 (a cached tokenless 308 can strip ?token=).
+      const successUrl = `${baseUrl(env)}/success?token=${token}`;
       const subject = "Your PrepGuide playbook is ready";
       const text =
         `Thanks for your purchase!\n\n` +

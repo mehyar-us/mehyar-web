@@ -261,23 +261,34 @@ export async function onRequestPost({ request, env, waitUntil }) {
         ).bind(paymentId).first();
         if (payment) {
           // Duplicate guard: same session id seen and row already out of
-          // pending → skip re-processing, still answer 200.
+          // pending → skip the paid-marking re-processing, still answer 200.
+          // NOTE: the legacy audit webhook's ledger mirror marks billing paid
+          // too, but it never dispatches product fulfillment. Hooks that
+          // create their own order row are idempotent on payment_id, so they
+          // must run even on a "duplicate" hit — otherwise the buyer is paid
+          // with no order, no generation, no email. digital/none/audit_report
+          // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch"]);
           if (!duplicate) {
             await db.prepare(
               "UPDATE billing_payments SET stripe_payment_intent=?, stripe_session_id=?, status='paid', paid_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') " +
               "WHERE id=? AND status != 'paid'"
             ).bind(sess.payment_intent || null, sess.id || null, paymentId).run();
-            // Fulfillment dispatch by product.
-            const product = await db.prepare(
-              "SELECT * FROM billing_products WHERE id = ?"
-            ).bind(payment.product_id).first();
+          }
+          // Fulfillment dispatch by product.
+          const product = await db.prepare(
+            "SELECT * FROM billing_products WHERE id = ?"
+          ).bind(payment.product_id).first();
+          const fulfillment = (product && product.fulfillment) || "none";
+          const runFulfillment = !duplicate || ORDER_HOOKS.has(fulfillment);
+          if (runFulfillment) {
             try {
               await db.prepare(
                 "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'product_lookup', ?)"
-              ).bind(payment.id, JSON.stringify({pid: payment.product_id, found: !!product, fulfillment: product && product.fulfillment}).slice(0,300)).run();
+              ).bind(payment.id, JSON.stringify({pid: payment.product_id, found: !!product, fulfillment: fulfillment, duplicate: !!duplicate}).slice(0,300)).run();
             } catch {}
-            const hook = fulfillHooks[(product && product.fulfillment) || "none"] || fulfillHooks.none;
+            const hook = fulfillHooks[fulfillment] || fulfillHooks.none;
             try {
               await hook({ db, request, env, waitUntil }, payment, sess);
             } catch (e) {
