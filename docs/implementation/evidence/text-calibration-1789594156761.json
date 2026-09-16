@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-16T21:29:12.657Z",
+  "mode": "live",
+  "route": "workers-ai-direct-rest",
+  "model": "@cf/openai/gpt-oss-120b",
+  "syntheticOnly": true,
+  "productionSettingsChanged": false,
+  "records": [
+    {
+      "id": "short",
+      "requestSha256": "e0e7aa75e8e53e7a6a8cac7af3be4636006a41761f10b9a926b474394552e5f3",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 22,
+        "outputTokenLimit": 64,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 934,
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 79,
+        "outputTokens": 45,
+        "totalTokens": 124
+      },
+      "state": "reported",
+      "inputTokenDifference": 57
+    },
+    {
+      "id": "unicode-json",
+      "requestSha256": "eb48393fa6795fca57a11ead4918bc2ceda345d33857419d53e05fa5bb0c936e",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 42,
+        "outputTokenLimit": 64,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 1278,
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 99,
+        "outputTokens": 64,
+        "totalTokens": 163
+      },
+      "state": "reported",
+      "inputTokenDifference": 57
+    },
+    {
+      "id": "credit-boundary",
+      "requestSha256": "c197eca372844ecb32d399a48976b14d3ffbd6806b455f87899b80569c4a4c03",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 9619,
+        "outputTokenLimit": 64,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 1866,
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 9676,
+        "outputTokens": 64,
+        "totalTokens": 9740
+      },
+      "state": "reported",
+      "inputTokenDifference": 57
+    }
+  ],
+  "completedAt": "2026-09-16T21:29:16.759Z",
+  "allReported": true,
+  "productionCalibrationApproved": false
+}
