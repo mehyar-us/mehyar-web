@@ -495,6 +495,17 @@ test("workspace creation retries keep the same idempotency key", async ({
   expect(keys[2]).not.toBe(keys[1]);
 });
 
+test('grounded assistant suggestion opens the correct editable field without saving it',async({page})=>{
+  const requests=await fixture(page);
+  await page.route('**/api/tenants/business-a/messages',route=>route.fulfill({json:{messages:[{id:'reply',role:'assistant',content:'Review your hours.',briefSuggestions:[{field:'hours',value:'9 AM to 5 PM',sourceMessageId:'owner-message'}]}]}}));
+  await page.goto('/');await page.getByRole('button',{name:'Review suggested business hours'}).click();
+  const candidate=page.getByRole('region',{name:'Conversation brief draft'});
+  await expect(candidate.getByLabel('Business detail to update')).toHaveValue('hours');await expect(candidate.getByLabel('Proposed wording')).toHaveValue('9 AM to 5 PM');
+  await candidate.getByRole('button',{name:'Copy to draft'}).click();
+  const panel=page.getByRole('region',{name:'Business brief'});await expect(panel.getByLabel('Business hours')).toHaveValue('9 AM to 5 PM');
+  await expect(panel.getByRole('button',{name:'Save reviewed brief'})).toBeDisabled();expect(requests.some(r=>r.path.endsWith('/business-brief')&&r.method==='POST')).toBe(false);
+});
+
 test('owner conversation wording becomes a reviewed brief edit without an automatic write',async({page})=>{
   await fixture(page);let data=briefFixture();data.brief.fields.services='Existing services';const writes:any[]=[];
   await page.route('**/api/tenants/business-a/business-brief',route=>{

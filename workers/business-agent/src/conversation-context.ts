@@ -8,9 +8,9 @@ function clip(value:string,limit:number){
 }
 
 /** Complete JSON within a UTF-8 budget. Context is descriptive, never authority. */
-export function conversationContext(goal:string,facts:{key:string;value:string}[],brief?:ReturnType<BusinessBrief['present']>){
+export function conversationContext(goal:string,facts:{key:string;value:string}[],brief?:ReturnType<BusinessBrief['present']>,byteLimit=3000){
   const data:{goal:string;briefRevision:number|null;details:Record<string,string>;industryAnswers:Record<string,string>;questions:string[];facts:{key:string;value:string}[];truncated:boolean}={goal:clip(goal,200),briefRevision:brief?.brief.revision??null,details:{},industryAnswers:{},questions:[],facts:[],truncated:false};
-  const fits=()=>encoder.encode(JSON.stringify(data)).length<=3000;
+  const fits=()=>encoder.encode(JSON.stringify(data)).length<=byteLimit;
   const add=(target:Record<string,string>,key:string,value:string)=>{
     if(!value)return;
     target[key]=clip(value,240);

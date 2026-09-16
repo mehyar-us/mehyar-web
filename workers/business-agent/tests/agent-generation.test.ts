@@ -8,6 +8,7 @@ import {createTenant} from '../src/tenants';
 import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
 import {conversationContext} from '../src/conversation-context';
+import {parseBriefReply} from '../src/brief-suggestions';
 
 const e=env as unknown as Env;
 async function fixture() {
@@ -29,6 +30,36 @@ async function activatePaid(actor:{tenantId:string;userId:string},interval="mont
 }
 
 describe('durable generation accounting',()=>{
+  it('persists grounded model suggestions without changing the brief and replays them exactly',async()=>{
+    const {actor,stub}=await fixture();
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;let calls=0;
+      (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any)=>{
+        calls++;expect(input.messages[0].content).toContain('Return JSON only');
+        return {choices:[{message:{content:JSON.stringify({reply:'Review these hours before saving.',briefSuggestions:[{field:'hours',value:'9 AM to 5 PM',sourceMessageId:'forged-id'}]})}}]};
+      }}};
+      try{
+        const key=crypto.randomUUID(),content='We open 9 AM to 5 PM.';
+        const result=unwrap(await instance.chat(actor,content,key));
+        expect(result.reply.content).toBe('Review these hours before saving.');expect(result.reply.briefSuggestions).toEqual([{field:'hours',value:'9 AM to 5 PM',sourceMessageId:result.message.id}]);
+        expect(unwrap(await instance.chat(actor,content,key))).toEqual(result);expect(calls).toBe(1);
+        expect(unwrap(await instance.messages(actor)).at(-1)).toEqual(result.reply);
+        expect(unwrap(await instance.businessBrief(actor)).brief.revision).toBe(0);
+        await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='manager' WHERE tenant_id=? AND user_id=?").bind(actor.tenantId,actor.userId).run();
+        expect(unwrap(await instance.messages(actor)).at(-1)?.briefSuggestions).toBeUndefined();
+      }finally{(instance as any).env=original;}
+    });
+  });
+  it('rejects invented suggestions and malformed structured replies',()=>{
+    const message={id:'trusted-message',content:'Our services are haircuts.'};
+    const envelope=(briefSuggestions:unknown[])=>JSON.stringify({reply:'Review the proposed detail.',briefSuggestions});
+    expect(parseBriefReply(envelope([{field:'services',value:'haircuts'},{field:'services',value:'haircuts'},{field:'hours',value:'Always open'}]),message,true).suggestions).toEqual([{field:'services',value:'haircuts',sourceMessageId:'trusted-message'}]);
+    expect(parseBriefReply(envelope([{field:'industryPack',value:'haircuts'},{field:'billingStatus',value:'haircuts'}]),message,true).suggestions).toEqual([]);
+    expect(()=>parseBriefReply('{"reply":',message,true)).toThrow();
+    expect(()=>parseBriefReply('{"reply":"","briefSuggestions":[]}',message,true)).toThrow();
+    expect(parseBriefReply('A normal conversational response',message,true).suggestions).toEqual([]);
+    expect(parseBriefReply(envelope([{field:'services',value:'haircuts'}]),message,false).suggestions).toEqual([]);
+  });
   it('withdraws operator-derived replies from history and replay after a demotion',async()=>{
     const {actor,stub}=await fixture();
     unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields:{businessName:'Private brief context'}},crypto.randomUUID()));
