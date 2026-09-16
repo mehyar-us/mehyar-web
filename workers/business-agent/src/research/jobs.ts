@@ -38,6 +38,7 @@ export class ResearchJobs {
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_stop_work (
       job_id TEXT PRIMARY KEY,attempts INTEGER NOT NULL DEFAULT 0,next_at INTEGER NOT NULL DEFAULT 0,
       lease_id TEXT,lease_until INTEGER NOT NULL DEFAULT 0,acknowledged_at TEXT)`);
+    this.storage.sql.exec('CREATE TABLE IF NOT EXISTS research_scheduler_cursor (id INTEGER PRIMARY KEY CHECK(id=1),last_row INTEGER NOT NULL)');
     // An interrupted POST may have created a billable provider job. Keep its reservation.
     this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
     this.expire();
@@ -51,6 +52,31 @@ export class ResearchJobs {
     });
   }
   hasDeadlines(){return this.storage.sql.exec<{count:number}>("SELECT COUNT(*) AS count FROM research_jobs WHERE status IN ('reserved','submitting','running')").one().count>0;}
+  dueWork(limit=5,now=Date.now()){
+    if(!Number.isSafeInteger(limit)||limit<1||limit>5)throw conflict('Research scheduling batches must contain one to five jobs.');
+    this.expire(now);
+    const cursor=this.storage.sql.exec<{last_row:number}>('SELECT last_row FROM research_scheduler_cursor WHERE id=1').toArray()[0]?.last_row??0;
+    return this.storage.sql.exec<{id:string;row_number:number;operation:'submit'|'poll'|'stop'}>(`
+      WITH candidates AS (
+        SELECT j.id,j.rowid AS row_number,
+        CASE
+          WHEN j.status='cancel_requested' AND j.provider_id IS NOT NULL AND s.acknowledged_at IS NULL
+            AND COALESCE(s.attempts,0)<8 AND COALESCE(s.next_at,0)<=? AND COALESCE(s.lease_until,0)<=? THEN 'stop'
+          WHEN j.status IN ('running','cancel_requested') AND j.provider_id IS NOT NULL
+            AND COALESCE(p.attempts,0)<j.page_limit+120 AND COALESCE(p.failures,0)<8
+            AND COALESCE(p.next_at,0)<=? AND COALESCE(p.lease_until,0)<=? THEN 'poll'
+          WHEN j.status='reserved' AND j.deadline>? AND f.status='reserved' AND r.job_id IS NOT NULL THEN 'submit'
+          ELSE NULL END AS operation
+        FROM research_jobs j LEFT JOIN research_stop_work s ON s.job_id=j.id
+          LEFT JOIN research_poll_work p ON p.job_id=j.id LEFT JOIN research_spend f ON f.job_id=j.id
+          LEFT JOIN research_requesters r ON r.job_id=j.id
+      ) SELECT id,row_number,operation FROM candidates WHERE operation IS NOT NULL
+        ORDER BY CASE WHEN row_number>? THEN 0 ELSE 1 END,row_number LIMIT ?`,now,now,now,now,now,cursor,limit).toArray();
+  }
+  visitedWork(id:string){
+    this.get(id);
+    this.storage.sql.exec('INSERT INTO research_scheduler_cursor(id,last_row) SELECT 1,rowid FROM research_jobs WHERE id=? ON CONFLICT(id) DO UPDATE SET last_row=excluded.last_row',id);
+  }
   stopDelivery(id:string){
     this.get(id);
     return this.storage.sql.exec<{attempts:number;next_at:number;lease_id:string|null;lease_until:number;acknowledged_at:string|null}>(

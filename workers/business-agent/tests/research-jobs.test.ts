@@ -7,6 +7,7 @@ import {ResearchJobs} from '../src/research/jobs';
 import {ResearchRunner} from '../src/research/runner';
 import {ResearchSpend} from '../src/research/spend';
 import {ResearchCancellation} from '../src/research/cancellation';
+import {ResearchScheduler} from '../src/research/scheduler';
 const input=()=>({key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
 const provider='11111111-1111-4111-8111-111111111111';
 async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:DurableObjectStorage)=>void|Promise<void>){
@@ -14,6 +15,30 @@ async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:Durabl
   await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs,new ResearchSpend(ctx.storage),ctx.storage);});
 }
 describe('durable research reservations',()=>{
+  it('selects only due funded work and rotates past denied jobs across restart',async()=>ledger(async jobs=>{
+    const actor={tenantId:'business',userId:'owner'},ids:string[]=[];
+    for(let i=0;i<7;i++){
+      const job=jobs.reserveFor(actor,{...input(),pages:1});jobs.reserveSpend(job.id,10,100,'fixture');ids.push(job.id);
+    }
+    const unfunded=jobs.reserveFor(actor,{...input(),pages:1});
+    const seen:string[]=[];
+    const scheduler=new ResearchScheduler(jobs,id=>({submit:async()=>{seen.push(id);throw new Error('secret provider payload');},poll:async()=>{throw new Error('unexpected poll');}}),()=>({deliver:async()=>{throw new Error('unexpected stop');}}));
+    const first=await scheduler.tick();expect(first).toHaveLength(5);
+    expect(first.every(result=>!result.ok&&result.code==='research_work_failed')).toBe(true);
+    expect(JSON.stringify(first)).not.toContain('secret');jobs.initialize();
+    await scheduler.tick(2);expect(seen).toEqual(ids);expect(seen).not.toContain(unfunded.id);
+    expect(()=>jobs.dueWork(6)).toThrow('one to five');
+  }));
+  it('routes a stop before polling and respects persisted polling backoff',async()=>ledger(async jobs=>{
+    const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);jobs.cancel(job.id);
+    let stopped=0,polled=0;
+    const api={start:async()=>({id:provider}),cancel:async()=>{stopped++;return {requested:true};},results:async()=>{polled++;return {id:provider,status:'running' as const,records:[]};}};
+    const scheduler=new ResearchScheduler(jobs,()=>new ResearchRunner(jobs,api,async()=>{}),()=>new ResearchCancellation(jobs,api,async()=>{}));
+    expect(await scheduler.tick()).toMatchObject([{operation:'stop',ok:true}]);
+    expect(await scheduler.tick()).toMatchObject([{operation:'poll',ok:true}]);
+    expect(await scheduler.tick()).toEqual([]);expect({stopped,polled}).toEqual({stopped:1,polled:1});
+    expect(jobs.get(job.id).reserved).toBe(20);
+  }));
   it('persists stop acknowledgement without resending or releasing commitments',async()=>ledger(async(jobs,spend)=>{
     const job=jobs.reserve(input());jobs.reserveSpend(job.id,100,100,'fixture');jobs.beginFunded(job.id);jobs.submitted(job.id,provider);jobs.cancel(job.id);
     let calls=0,release!:()=>void;
