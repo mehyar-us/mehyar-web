@@ -103,52 +103,22 @@ export async function fulfillPromptpack({ db, env, waitUntil, sendEmail }, payme
   const { from, fromName } = fromAddress(env);
 
   const run = async () => {
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     try {
-      // Kick off generation — returns 202 immediately; the model calls run
-      // in the function background. Poll status for completion.
-      const genResp = await fetch(`${baseUrl(env)}/api/promptpack/generate`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ order_token: accessToken, profession })
-      });
-      const genData = await genResp.json().catch(() => ({}));
-      const accepted = genResp.status === 202 || (genResp.ok && (genData.ok || genData.accepted || genData.cached));
-      if (!accepted) {
-        throw new Error("generate:" + String((genData && genData.error) || genResp.status));
-      }
-      if (genData.cached) {
-        // already ready — fall through to the email below
-      } else {
-        // Poll for completion: 15s cadence, up to ~8 minutes.
-        let ready = false;
-        for (let i = 0; i < 32; i++) {
-          await sleep(15000);
-          try {
-            const stResp = await fetch(
-              `${baseUrl(env)}/api/promptpack/status?token=${encodeURIComponent(accessToken)}`,
-              { headers: { "cache-control": "no-store" } }
-            );
-            const st = await stResp.json().catch(() => ({}));
-            if (stResp.ok && st && st.status === "ready") { ready = true; break; }
-            if (stResp.ok && st && st.status === "failed") {
-              throw new Error("generate:failed");
-            }
-          } catch (e) {
-            if (String((e && e.message) || e).startsWith("generate:")) throw e;
-            // transient poll hiccup — keep polling
-          }
-        }
-        if (!ready) {
-          console.error("fulfillPromptpack generate poll timed out", productId, "order", orderId);
-          try {
-            await db.prepare("UPDATE promptpack_orders SET status='failed' WHERE id=? AND status='generating'")
-              .bind(orderId).run();
-          } catch {}
-          return; // buyer's retry button can re-kick; no email on timeout
+      // Generation runs as 3 sequential batches (one model call per request,
+      // so each fits the edge request budget). Run them in order; batch 3
+      // merges and marks the order ready.
+      for (const batch of [1, 2, 3]) {
+        const genResp = await fetch(`${baseUrl(env)}/api/promptpack/generate`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ order_token: accessToken, profession, batch })
+        });
+        const genData = await genResp.json().catch(() => ({}));
+        if (!genResp.ok || !genData.ok) {
+          throw new Error("generate:batch" + batch + ":" + String((genData && genData.error) || genResp.status));
         }
       }
-      // Confirm ready before emailing.
+      // Batch 3 marked the order ready; confirm before emailing.
       const check = await db
         .prepare("SELECT status FROM promptpack_orders WHERE id = ?")
         .bind(orderId)
