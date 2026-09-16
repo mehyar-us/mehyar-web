@@ -9,6 +9,26 @@ const e=env as unknown as Env,uuid=()=>crypto.randomUUID();
 async function user(verified=true){const id=uuid(),email=`${id}@example.test`;await e.AGENT_DB.prepare('INSERT INTO auth_user(id,name,email,emailVerified,createdAt,updatedAt) VALUES (?,?,?,?,?,?)').bind(id,'Team member',email,verified?1:0,Date.now(),Date.now()).run();return {id,email};}
 async function fixture(){const u=await user(),tenant=await createTenant(e,u.id,{name:'Studio',website:'https://studio.com',goal:'Manage appointments'},uuid());await e.AGENT_DB.prepare("UPDATE agent_tenants SET plan_id='business' WHERE id=?").bind(tenant.id).run();return {actor:{userId:u.id,tenantId:tenant.id},u};}
 describe('verified team invitations',()=>{
+  it('records removal once and never applies an old request to a reinvited membership',async()=>{
+    const f=await fixture(),person=await user(),key=uuid();
+    const invite=await inviteMember(e,f.actor,{email:person.email,role:'staff'},uuid());await acceptInvitation(e,person.id,invite.invitation.id);
+    expect(await revokeMember(e,f.actor,person.id,1,key)).toEqual({recorded:true,revision:2});
+    expect(await revokeMember(e,f.actor,person.id,1,key)).toEqual({recorded:true,revision:2});
+    const again=await inviteMember(e,f.actor,{email:person.email,role:'manager'},uuid());await acceptInvitation(e,person.id,again.invitation.id);
+    await revokeMember(e,f.actor,person.id,1,key);
+    expect((await teamDirectory(e,f.actor)).members.find(m=>m.id===person.id)).toMatchObject({role:'manager',status:'active',revision:3});
+    await expect(revokeMember(e,f.actor,person.id,1,uuid())).rejects.toMatchObject({code:'membership_changed'});
+    await expect(revokeMember(e,f.actor,person.id,3,key)).rejects.toMatchObject({code:'request_key_conflict'});
+    const logs=await e.AGENT_DB.prepare("SELECT id FROM agent_activity WHERE tenant_id=? AND action='team.member.removed'").bind(f.actor.tenantId).all();expect(logs.results).toHaveLength(1);
+  });
+  it('serializes removal against role changes and forbids foreign removal receipts',async()=>{
+    const f=await fixture(),other=await fixture(),person=await user();const invite=await inviteMember(e,f.actor,{email:person.email,role:'staff'},uuid());await acceptInvitation(e,person.id,invite.invitation.id);
+    await expect(revokeMember(e,other.actor,person.id,1,uuid())).rejects.toMatchObject({code:'membership_changed'});
+    await expect(revokeMember(e,{userId:person.id,tenantId:f.actor.tenantId},f.u.id,1,uuid())).rejects.toMatchObject({code:'permission_denied'});
+    const results=await Promise.allSettled([revokeMember(e,f.actor,person.id,1,uuid()),changeMemberRole(e,f.actor,{userId:person.id,role:'billing',expectedRevision:1},uuid())]);
+    expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+    expect((await teamDirectory(e,f.actor)).members.find(m=>m.id===person.id)?.revision).toBe(2);
+  });
   it('changes roles with immutable receipts and prevents stale edits across removal and reinvitation',async()=>{
     const f=await fixture(),person=await user();
     const invitation=await inviteMember(e,f.actor,{email:person.email,role:'manager'},uuid());await acceptInvitation(e,person.id,invitation.invitation.id);
@@ -19,7 +39,7 @@ describe('verified team invitations',()=>{
     expect(await changeMemberRole(e,f.actor,input,key)).toEqual({recorded:true,role:'staff',revision:2});
     expect((await requireMembership(e,{userId:person.id,tenantId:f.actor.tenantId})).role).toBe('billing');
     await expect(changeMemberRole(e,f.actor,{...input,role:'viewer'},key)).rejects.toMatchObject({code:'request_key_conflict'});
-    await revokeMember(e,f.actor,person.id);
+    await revokeMember(e,f.actor,person.id,3,uuid());
     const again=await inviteMember(e,f.actor,{email:person.email,role:'staff'},uuid());await acceptInvitation(e,person.id,again.invitation.id);
     await expect(changeMemberRole(e,f.actor,{...input,role:'manager',expectedRevision:3},uuid())).rejects.toMatchObject({code:'membership_changed'});
     expect((await teamDirectory(e,f.actor)).members.find(m=>m.id===person.id)).toMatchObject({role:'staff',revision:5});
@@ -44,8 +64,8 @@ describe('verified team invitations',()=>{
     expect((await listTenants(e,recipient.id)).map(t=>t.id)).toEqual([f.actor.tenantId]);
     expect((await teamDirectory(e,f.actor)).members.find(m=>m.id===recipient.id)?.role).toBe('billing');
     expect((await e.AGENT_DB.prepare('SELECT id FROM auth_provider_grants WHERE user_id=?').bind(recipient.id).all()).results).toHaveLength(0);
-    await revokeMember(e,f.actor,recipient.id);await expect(acceptInvitation(e,recipient.id,invite.invitation.id)).rejects.toMatchObject({code:'workspace_not_found'});
-    expect(await listTenants(e,recipient.id)).toEqual([]);await expect(revokeMember(e,f.actor,f.u.id)).rejects.toMatchObject({code:'owner_protected'});
+    await revokeMember(e,f.actor,recipient.id,1,uuid());await expect(acceptInvitation(e,recipient.id,invite.invitation.id)).rejects.toMatchObject({code:'workspace_not_found'});
+    expect(await listTenants(e,recipient.id)).toEqual([]);await expect(revokeMember(e,f.actor,f.u.id,1,uuid())).rejects.toMatchObject({code:'owner_protected'});
   });
   it('rejects expired, revoked, unverified and owner-withdrawn invitations',async()=>{
     const f=await fixture(),recipient=await user(false);

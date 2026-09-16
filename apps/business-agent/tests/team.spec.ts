@@ -17,8 +17,8 @@ async function fixture(page:Page,{empty=false,role='owner'}={}){
       keys.push(request.headers()['x-idempotency-key']);expect(request.postDataJSON()).toEqual({email:'pat@example.test',role:'billing'});
       created=true;if(++attempts===1)return reply({error:{message:'Response could not be confirmed.'}},503);return reply({invitation:{id}});
     }
-    if(path.endsWith('/team/revoke-member')){expect(request.postDataJSON()).toEqual({userId:'pat'});revoked=true;return reply({revoked:true});}
-    if(path.endsWith('/team'))return reply({seatLimit:3,moreMembers:false,moreInvitations:false,members:[{id:'user',name:'Sam',email:'sam@example.test',role:'owner',status:'active',expiresAt:null},{id:'pat',name:'Pat',email:'pat@other.test',role:'staff',status:revoked?'revoked':'active',expiresAt:null}],invitations:created?[{id,email:'pat@example.test',role:'billing',status:'pending',expiresAt:'2026-09-23T00:00:00Z'}]:[]});
+    if(path.endsWith('/team/revoke-member')){expect(request.postDataJSON()).toEqual({userId:'pat',expectedRevision:1});revoked=true;return reply({revoked:true});}
+    if(path.endsWith('/team'))return reply({seatLimit:3,moreMembers:false,moreInvitations:false,members:[{id:'user',name:'Sam',email:'sam@example.test',role:'owner',status:'active',expiresAt:null},{id:'pat',name:'Pat',email:'pat@other.test',role:'staff',revision:1,status:revoked?'revoked':'active',expiresAt:null}],invitations:created?[{id,email:'pat@example.test',role:'billing',status:'pending',expiresAt:'2026-09-23T00:00:00Z'}]:[]});
     if(path.endsWith('/messages'))return reply({messages:[]});
     if(path.startsWith('/api/tenants/'))return reply({tenant,membership:{role},memory:[],connections:[],activity:[],usage:{}});
     return reply({error:{message:'Unavailable fixture action'}},503);
@@ -70,4 +70,18 @@ test('a stale role edit requires a refreshed membership before another change',a
   await form.getByLabel('Role for Pat').selectOption('manager');await form.getByRole('button',{name:'Confirm role change'}).click();
   await expect(form.getByRole('alert')).toHaveText('Refresh the team list.');await expect(form.getByRole('button',{name:'Retry role change'})).toBeDisabled();
   await page.getByRole('button',{name:'Refresh team',exact:true}).click();await expect(form.getByLabel('Role for Pat')).toHaveValue('viewer');await expect(form.getByLabel('Role for Pat')).toBeEnabled();
+});
+
+test('uncertain member removal retries the original membership revision and request key',async({page})=>{
+  await fixture(page);let removed=false;const requests:{body:unknown;key:string}[]=[];
+  await page.route('**/api/tenants/business-a/team',route=>route.fulfill({json:{seatLimit:3,moreMembers:false,moreInvitations:false,invitations:[],members:[{id:'pat',name:'Pat',email:'pat@example.test',role:'staff',status:removed?'revoked':'active',revision:removed?8:7,expiresAt:null}]}}));
+  await page.route('**/api/tenants/business-a/team/revoke-member',route=>{
+    requests.push({body:route.request().postDataJSON(),key:route.request().headers()['x-idempotency-key']});removed=true;
+    return requests.length===1?route.fulfill({status:503,json:{error:{message:'Removal confirmation unavailable.'}}}):route.fulfill({json:{recorded:true,revision:8}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Team',exact:true}).click();
+  await page.getByRole('button',{name:'Remove access for Pat'}).click();await page.getByRole('button',{name:'Confirm removal'}).click();
+  await expect(page.getByRole('region',{name:'Manage team'}).getByRole('alert')).toHaveText('Removal confirmation unavailable.');
+  await page.getByRole('button',{name:'Confirm removal'}).click();await expect(page.getByText('staff · revoked',{exact:true})).toBeVisible();
+  expect(requests).toHaveLength(2);expect(requests[0]).toEqual(requests[1]);expect(requests[0].body).toEqual({userId:'pat',expectedRevision:7});expect(requests[0].key).toBeTruthy();
 });

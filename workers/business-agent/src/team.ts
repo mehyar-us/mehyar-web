@@ -3,6 +3,7 @@ import type {Actor,Env} from './env';
 import {digest,HttpError} from './http';
 import {requireMembership,requireTenant} from './permissions';
 import {getPlan} from './catalog';
+export {revokeMember} from './team-removal';
 
 const inputSchema=z.object({email:z.email().max(254).transform(value=>value.toLowerCase()),role:z.enum(['manager','staff','billing','viewer'])}).strict();
 type Invitation={id:string;tenant_id:string;invited_email:string;role:string;invited_by:string;request_hash:string;status:string;created_at:string;expires_at:string;accepted_by:string|null};
@@ -18,16 +19,6 @@ export async function teamDirectory(env:Env,actor:Actor){
   const invitations=await env.AGENT_DB.prepare('SELECT * FROM agent_team_invitations WHERE tenant_id=? ORDER BY created_at DESC,id DESC LIMIT 51').bind(actor.tenantId).all<Invitation>();
   await owner(env,actor);
   return {members:members.results.slice(0,100),invitations:invitations.results.slice(0,50).map(present),moreMembers:members.results.length>100,moreInvitations:invitations.results.length>50,seatLimit:getPlan(tenant.plan_id)?.allowances.seats??1};
-}
-export async function revokeMember(env:Env,actor:Actor,userId:string){
-  await owner(env,actor);const now=new Date().toISOString();
-  if(userId===actor.userId)throw new HttpError(409,'owner_protected','Ownership changes require a separate transfer process.');
-  await env.AGENT_DB.prepare(`UPDATE agent_memberships SET status='revoked',revoked_by=?,revoked_at=?,revision=revision+1 WHERE tenant_id=? AND user_id=? AND role!='owner' AND status='active' AND ${ownerSql}`)
-    .bind(actor.userId,now,actor.tenantId,userId,actor.tenantId,actor.userId,now).run();
-  await owner(env,actor);
-  const member=await env.AGENT_DB.prepare("SELECT status FROM agent_memberships WHERE tenant_id=? AND user_id=? AND role!='owner'").bind(actor.tenantId,userId).first<{status:string}>();
-  if(member?.status!=='revoked')throw new HttpError(409,'member_unavailable','This member cannot be removed. Refresh the team list.');
-  return {revoked:true};
 }
 export async function inviteMember(env:Env,actor:Actor,input:unknown,key:string){
   await owner(env,actor);const data=inputSchema.parse(input),hash=await digest(JSON.stringify(data));

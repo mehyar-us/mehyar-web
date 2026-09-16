@@ -57,7 +57,7 @@ async function route(request:Request,env:Env) {
   if(section==='team/invitations'&&request.method==='POST')return json(await inviteMember(env,actor,await readJson(request),requestKey(request)),201);
   if(section==='team/role'&&request.method==='POST')return json(await changeMemberRole(env,actor,await readJson(request),requestKey(request)));
   if(section==='team/revoke-member'&&request.method==='POST'){
-    const {userId}=z.object({userId:z.string().min(1).max(128)}).strict().parse(await readJson(request));return json(await revokeMember(env,actor,userId));
+    const {userId,expectedRevision}=z.object({userId:z.string().min(1).max(128),expectedRevision:z.number().int().min(1)}).strict().parse(await readJson(request));return json(await revokeMember(env,actor,userId,expectedRevision,requestKey(request)));
   }
   const invitation=section.match(/^team\/invitations\/([a-f0-9]{64})\/revoke$/);
   if(invitation&&request.method==='POST'){z.object({}).strict().parse(await readJson(request));return json(await revokeInvitation(env,actor,invitation[1]));}
