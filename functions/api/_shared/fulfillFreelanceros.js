@@ -5,7 +5,7 @@
 // token-gated dashboard PWA, so the deliverable is ready at purchase time.
 //
 // Contract: fulfillFreelanceros({ db, env, waitUntil, sendEmail }, payment)
-//   db        — D1 binding (shared mehyar-jobs DB; has freelanceros_orders)
+//   db        — D1 binding (shared mehyar_leads_prod DB; has freelanceros_orders)
 //   env       — worker env (FREELANCEROS_BASE_URL optional, defaults below)
 //   waitUntil — unused (kept for contract symmetry)
 //   sendEmail — injected mailer: sendEmail(env, {from, fromName, to, replyTo,
@@ -77,11 +77,23 @@ export async function fulfillFreelanceros({ db, env, sendEmail }, payment) {
   const ins = await db
     .prepare(
       "INSERT INTO freelanceros_orders (payment_id, product_id, email, data_json, status, access_token, ready_at) " +
-        `VALUES (?, ?, ?, '{}', 'ready', ?, ${nowSql})`
+        `VALUES (?, ?, ?, '{}', 'ready', ?, ${nowSql}) ` +
+        "ON CONFLICT(payment_id) DO NOTHING RETURNING id"
     )
     .bind(payment.id, productId, payment.email, accessToken)
-    .run();
-  const orderId = ins.meta.last_row_id;
+    .first();
+  // Race recovery: a concurrent webhook may have won the INSERT between our
+  // SELECT and now. ON CONFLICT DO NOTHING returns no row — re-read and treat
+  // as a replay instead of throwing (Stripe retries would 500-loop otherwise).
+  const row = ins || (await db
+    .prepare("SELECT id FROM freelanceros_orders WHERE payment_id = ?")
+    .bind(payment.id)
+    .first());
+  if (!row) throw new Error("fulfillFreelanceros: order insert failed");
+  if (!ins) {
+    return { ok: true, replay: true, order_id: row.id, status: "ready" };
+  }
+  const orderId = row.id;
 
   const { from, fromName } = fromAddress(env);
   const appUrl = `${baseUrl(env)}/app.html?token=${accessToken}`;
