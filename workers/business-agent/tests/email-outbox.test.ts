@@ -13,6 +13,30 @@ async function fixture(){
 }
 const config={from:'notices@example.test',routeRef:'resend:verified-route-fixture'},providerId='4ef9a417-02e9-4d39-ad75-9611e0fcc33c';
 describe('durable invitation email state',()=>{
+  it('cancels only unattempted invalid invitations and keeps paused work resumable',async()=>{
+    const f=await fixture(),box=new InvitationEmailOutbox(e),prepared=await box.prepare(f.actor,f.invitationId,config);
+    await e.AGENT_DB.prepare("UPDATE agent_tenants SET status='paused' WHERE id=?").bind(f.actor.tenantId).run();
+    expect(await box.reconcileAuthority(f.actor.tenantId,prepared.id)).toBe(false);expect(await box.claim(f.actor.tenantId,prepared.id,config.routeRef)).toBeNull();
+    await e.AGENT_DB.prepare("UPDATE agent_tenants SET status='trial' WHERE id=?").bind(f.actor.tenantId).run();
+    await revokeInvitation(e,f.actor,f.invitationId);expect(await box.reconcileAuthority(f.actor.tenantId,prepared.id)).toBe(true);
+    expect(await e.AGENT_DB.prepare('SELECT state,first_attempt_at FROM agent_platform_email_outbox WHERE id=?').bind(prepared.id).first()).toEqual({state:'cancelled',first_attempt_at:null});
+    expect(await box.reconcileAuthority(f.actor.tenantId,prepared.id)).toBe(false);
+    const other=await fixture();let now=Date.now();const timed=new InvitationEmailOutbox(e,()=>now),expired=await timed.prepare(other.actor,other.invitationId,config);now+=8*86400000;
+    expect(await timed.reconcileAuthority(other.actor.tenantId,expired.id)).toBe(true);
+    expect(await timed.claim(other.actor.tenantId,expired.id,config.routeRef)).toBeNull();
+  });
+  it('rechecks immutable claims before dispatch and preserves uncertainty when authority is lost in flight',async()=>{
+    const f=await fixture();let now=Date.now();const box=new InvitationEmailOutbox(e,()=>now),prepared=await box.prepare(f.actor,f.invitationId,config),claim=(await box.claim(f.actor.tenantId,prepared.id,config.routeRef))!;
+    expect(await box.mayDispatch(claim,config.routeRef)).toBe(true);
+    expect(await box.mayDispatch({...claim,message:{...claim.message,to:['foreign@example.test']}},config.routeRef)).toBe(false);
+    expect(await box.mayDispatch({...claim,firstAttemptAt:new Date(now+1).toISOString()},config.routeRef)).toBe(false);
+    expect(await box.mayDispatch(claim,'other-route')).toBe(false);
+    await revokeInvitation(e,f.actor,f.invitationId);expect(await box.mayDispatch(claim,config.routeRef)).toBe(false);
+    expect(await box.reconcileAuthority(f.actor.tenantId,prepared.id)).toBe(false); // active lease may have an in-flight request
+    now+=91000;expect(await box.reconcileAuthority(f.actor.tenantId,prepared.id)).toBe(true);
+    expect(await e.AGENT_DB.prepare('SELECT state,attempts FROM agent_platform_email_outbox WHERE id=?').bind(prepared.id).first()).toEqual({state:'review_required',attempts:1});
+    expect(await box.settle(claim,{state:'accepted',providerId})).toBe(false);
+  });
   it('freezes one owned invitation payload and records provider acceptance without claiming delivery',async()=>{
     const f=await fixture(),box=new InvitationEmailOutbox(e),prepared=await box.prepare(f.actor,f.invitationId,config);
     expect(await box.prepare(f.actor,f.invitationId,config)).toEqual(prepared);
