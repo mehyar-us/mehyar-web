@@ -113,6 +113,18 @@ export class MailboxSync {
     }
     return {grantId:row.grant_id,provider:row.provider,authorization:row.authorization,alreadyRestarted:!!prior};
   }
+  async recoveryCandidate(grantId:string,provider:Provider) {
+    const {authorization}=await this.authority(grantId,provider);
+    const candidate=await this.env.AGENT_DB.prepare(`SELECT s.id,s.round_id,COUNT(*) OVER() AS affectedStreams,
+      (SELECT COUNT(*) FROM agent_mailbox_changes c WHERE c.stream_id=s.id AND c.state='pending') AS pending,
+      (SELECT COUNT(*) FROM agent_mailbox_messages m WHERE m.stream_id=s.id) AS cached
+      FROM agent_mailbox_sync s LEFT JOIN agent_mailbox_consumers w ON w.stream_id=s.id
+      WHERE s.tenant_id=? AND s.grant_id=? AND s.provider=? AND s.authorization=?
+        AND (s.state='resync_required' OR w.state='review_required') ORDER BY s.updated_at,s.id LIMIT 1`)
+      .bind(this.actor.tenantId,grantId,provider,authorization).first<{id:string;round_id:string;affectedStreams:number;pending:number;cached:number}>();
+    if((await this.authority(grantId,provider)).authorization!==authorization)throw unavailable();
+    return candidate;
+  }
   async restart(streamId:string,requestKey:string,expectedRound:string,gmailBaseline?:string) {
     if(!z.string().uuid().safeParse(requestKey).success||!z.string().uuid().safeParse(expectedRound).success)throw unavailable();
     const {row,grant}=await this.stream(streamId),now=this.now();

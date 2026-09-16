@@ -16,6 +16,7 @@ import {FolderSessions} from '../src/connectors/folder-sessions';
 import {connectedMailboxFolders,initializeMicrosoftFolders} from '../src/connectors/folder-access';
 import {stopMailbox,resumeMailbox} from '../src/connectors/mailbox-control';
 import {restartMailbox} from '../src/connectors/mailbox-restart';
+import {MailboxRecoveryOffers} from '../src/connectors/mailbox-recovery-offers';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -38,6 +39,37 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('prepares private recovery reviews and repeats the same confirmed request safely',async()=>{
+    const f=await fixture('microsoft'),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'private-message',kind:'upsert'}],nextCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$skiptoken=private'});
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const offers=new MailboxRecoveryOffers(ctx.storage);offers.initialize();
+      const offer=await offers.prepare(ready,f.actor,f.grantId,guard);
+      expect(offer).toMatchObject({pendingReferences:1,cachedMessages:0,affectedStreams:1});
+      expect(JSON.stringify(offer)).not.toContain('private');expect(JSON.stringify(offer)).not.toContain(f.streamId);
+      expect(await offers.prepare(ready,f.actor,f.grantId,guard)).toEqual(offer);
+      const noNetwork:typeof fetch=async()=>{throw new Error('unexpected network');};
+      expect(await offers.execute(ready,f.actor,f.grantId,offer.recoveryId,guard,noNetwork)).toEqual({state:'restarted'});
+      expect(await offers.execute(ready,f.actor,f.grantId,offer.recoveryId,guard,noNetwork)).toEqual({state:'restarted'});
+      await expect(offers.prepare(ready,f.actor,f.grantId,guard)).rejects.toMatchObject({code:'mailbox_recovery_unneeded'});
+    });
+  });
+  it('rejects foreign and expired recovery reviews before touching a provider',async()=>{
+    const f=await fixture('google'),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const offers=new MailboxRecoveryOffers(ctx.storage);offers.initialize();const offer=await offers.prepare(ready,f.actor,f.grantId,guard);
+      let reads=0;const transport:typeof fetch=async()=>{reads++;return Response.json({});};
+      await expect(offers.execute(ready,{...f.actor,userId:'foreign'},f.grantId,offer.recoveryId,guard,transport)).rejects.toMatchObject({code:'mailbox_recovery_expired'});
+      await expect(offers.execute(ready,f.actor,'foreign',offer.recoveryId,guard,transport)).rejects.toMatchObject({code:'mailbox_recovery_expired'});
+      ctx.storage.sql.exec('UPDATE mailbox_recovery_offers SET expires=0');
+      await expect(offers.execute(ready,f.actor,f.grantId,offer.recoveryId,guard,transport)).rejects.toMatchObject({code:'mailbox_recovery_expired'});
+      expect(reads).toBe(0);
+    });
+  });
   it('captures a fresh Gmail recovery baseline once and replays completed requests without provider reads',async()=>{
     const f=await fixture(),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'},key=crypto.randomUUID();
     await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();

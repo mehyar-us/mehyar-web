@@ -14,6 +14,7 @@ import {consumeMailboxChange} from './connectors/mailbox-consumer';
 import {googleMailboxStatus,microsoftMailboxStatus} from './connectors/mailbox-status';
 import {stopMailbox,resumeMailbox} from './connectors/mailbox-control';
 import {restartMailbox} from './connectors/mailbox-restart';
+import {MailboxRecoveryOffers} from './connectors/mailbox-recovery-offers';
 import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
@@ -40,6 +41,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   async onStart() {
     new CalendarSessions(this.ctx.storage).initialize();
     new FolderSessions(this.ctx.storage).initialize();
+    new MailboxRecoveryOffers(this.ctx.storage).initialize();
     new BusinessBrief(this.ctx.storage).initialize();
     new ResearchJobs(this.ctx.storage).initialize();
     this.controls().initialize();
@@ -138,6 +140,14 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       const guard=async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
         if(this.state.paused)throw new HttpError(409,'agent_paused','Your agent is paused.');};
       await guard();return restartMailbox(this.env,actor,streamId,requestKey,expectedRound,guard);
+    });
+  }
+  async reviewMailboxRecovery(actor:Actor,grantId:string,recoveryId?:string) {
+    return this.result(async()=>{
+      const guard=async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused)throw new HttpError(409,'agent_paused','Your agent is paused.');};
+      const offers=new MailboxRecoveryOffers(this.ctx.storage);
+      await guard();return recoveryId?offers.execute(this.env,actor,grantId,recoveryId,guard):offers.prepare(this.env,actor,grantId,guard);
     });
   }
   async outlookMailboxStatus(actor:Actor,grantId:string) {

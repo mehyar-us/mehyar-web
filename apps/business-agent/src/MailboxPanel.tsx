@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
+import MailboxRecovery from './MailboxRecovery';
 const labels={not_started:'Not set up',initializing:'Reading initial mailbox references',monitoring:'Monitoring configured',paused:'Paused',stopped:'Monitoring stopped',needs_attention:'Needs attention',disabled:'Monitoring unavailable',reconnect_required:'Reconnect required'};
 type Status={state:keyof typeof labels;setupEnabled:boolean;pending:number;lastObservedAt:string|null;configuredFolders?:number;controlRevision?:number;resumeEnabled?:boolean};
 function valid(value:unknown):value is Status {
@@ -42,7 +43,8 @@ export default function MailboxPanel({tenantId,grantId,online,onUnauthorized,pro
       {provider==='microsoft'&&<p>{status.configuredFolders} folders configured under current account permission.</p>}
       <p>{status.lastObservedAt?`Last message observation: ${new Date(status.lastObservedAt).toLocaleString()}`:'No message observation recorded yet.'}</p>
       {status.state==='not_started'&&!status.setupEnabled&&<p>{provider==='microsoft'?'Use folder discovery to select folders after your subscription and mailbox service are activated.':'Setup becomes available after your subscription and mailbox service are activated.'}</p>}
-      {status.state==='needs_attention'&&<p>Contact support to review synchronization. Your saved progress is preserved.</p>}
+      {status.state==='needs_attention'&&<><p>Review synchronization recovery. Your saved records are preserved.</p>
+        <MailboxRecovery key={`${tenantId}:${grantId}`} tenantId={tenantId} grantId={grantId} onRecovered={()=>void load()} onUnauthorized={onUnauthorized}/></>}
       {status.state==='stopped'&&<><p>Saved progress is preserved. Resuming does not reset recovery issues or guarantee that old provider checkpoints remain valid.</p>
         {status.resumeEnabled?<button className="button secondary" disabled={busy||!online} onClick={()=>void stop(true)}>Resume monitoring</button>:<p>Resume is unavailable until account permission and mailbox service readiness are verified.</p>}</>}
       {status.setupEnabled&&<button className="button secondary" onClick={()=>void load(true)}>Set up mailbox monitoring</button>}
