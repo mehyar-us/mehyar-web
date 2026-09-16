@@ -91,7 +91,10 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   }
   async saveBusinessBrief(actor:Actor,input:unknown,key:string){
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,['owner']);
-      return {brief:new BusinessBrief(this.ctx.storage).save(actor.userId,key,input)};
+      const brief=new BusinessBrief(this.ctx.storage),replay=brief.replay(actor.userId,key,input);
+      if(replay)return {brief:replay};
+      const sources=await briefSources(this.env,actor);await requireMembership(this.env,actor,['owner']);
+      return {brief:brief.save(actor.userId,key,input,sources)};
     });
   }
   async researchJobs(actor:Actor,offset=0) {

@@ -3,6 +3,7 @@ import {OPERATORS,requireMembership,requireTenant} from './permissions';
 import {normalizeWebsite} from './tenants';
 
 const mapping:Record<string,string>={business_name:'businessName',category:'category',service:'services',offer_name:'services',price_range:'prices',currency:'currency',hours:'hours',location:'locations',service_area:'serviceArea',contact_phone:'contactRoutes',contact_email:'contactRoutes'};
+export type BriefSource={id:string;field:string;value:string;sourceUrl:string;retrievedAt:string;confirmedAt:string;confidence:string};
 /** Suggestions only from still-present, unchanged owner-confirmed memory.
  * Arbitrary memory topics and unverified crawl claims cannot supply policies. */
 export async function briefSources(env:Env,actor:Actor){
@@ -13,7 +14,7 @@ export async function briefSources(env:Env,actor:Actor){
       AND m.value=c.memory_value AND m.source_url=c.source_url
     ORDER BY c.confirmed_at DESC,c.id LIMIT 100`).bind(actor.tenantId)
     .all<{id:string;memory_value:string;source_url:string;evidence_json:string;confirmed_at:string}>();
-  const sources:{id:string;field:string;value:string;sourceUrl:string;retrievedAt:string;confirmedAt:string;confidence:string}[]=[];
+  const sources:BriefSource[]=[];
   for(const row of rows.results){
     try{
       const evidence=JSON.parse(row.evidence_json),field=mapping[evidence.field],sourceUrl=normalizeWebsite(row.source_url);

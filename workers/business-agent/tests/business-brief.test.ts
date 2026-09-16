@@ -8,6 +8,20 @@ import {confirmResearch} from '../src/research/confirm';
 const e=env as unknown as Env;
 async function fixture(){const userId=crypto.randomUUID(),tenant=await createTenant(e,userId,{name:'Brief business'},crypto.randomUUID()),actor={userId,tenantId:tenant.id};const stub=await getAgentByName(e.BUSINESS_AGENTS,tenant.id);unwrap(await stub.provision(actor));return {actor,stub};}
 describe('owner-reviewed business brief',()=>{
+  it('verifies saved field provenance and replays the original receipt after source deletion',async()=>{
+    const a=await fixture(),b=await fixture(),claim={field:'business_name',value:'Sourced salon',sourceUrl:'https://salon.example.com/',retrievedAt:new Date().toISOString(),selector:'title',basis:'direct_page_claim' as const,confidence:'high' as const,verification:'unverified' as const,trustedForInstructions:false as const};
+    const confirmation=await confirmResearch(e,a.actor,crypto.randomUUID(),0,'Salon name',claim),sourceId=confirmation.memory!.id;
+    const input={expectedRevision:0,reviewed:true,fields:{businessName:claim.value},sourceIds:{businessName:sourceId}},key=crypto.randomUUID();
+    expect(await b.stub.saveBusinessBrief(b.actor,input,crypto.randomUUID())).toMatchObject({ok:false,error:{code:'brief_source_changed'}});
+    expect(await a.stub.saveBusinessBrief(a.actor,{...input,fields:{businessName:'Different claim'}},crypto.randomUUID())).toMatchObject({ok:false,error:{code:'brief_source_changed'}});
+    const saved=unwrap(await a.stub.saveBusinessBrief(a.actor,input,key));expect(saved.brief.sources.businessName).toMatchObject({id:sourceId,value:claim.value,sourceUrl:claim.sourceUrl});
+    await e.AGENT_DB.prepare('DELETE FROM agent_memory WHERE tenant_id=? AND id=?').bind(a.actor.tenantId,sourceId).run();
+    expect(unwrap(await a.stub.saveBusinessBrief(a.actor,input,key))).toEqual(saved);
+    expect(await a.stub.saveBusinessBrief(a.actor,{...input,expectedRevision:1},crypto.randomUUID())).toMatchObject({ok:false,error:{code:'brief_source_changed'}});
+    const edited=unwrap(await a.stub.saveBusinessBrief(a.actor,{expectedRevision:1,reviewed:true,fields:{businessName:'Owner edited name'}},crypto.randomUUID()));expect(edited.brief.sources).toEqual({});
+    expect(unwrap(await a.stub.saveBusinessBrief(a.actor,input,key))).toEqual(saved);
+    expect(unwrap(await a.stub.businessBrief(a.actor)).brief.fields.businessName).toBe('Owner edited name');
+  });
   it('offers only current confirmed research as sourced suggestions without changing the brief',async()=>{
     const a=await fixture(),b=await fixture(),stamp=new Date().toISOString();
     const claim={field:'business_name',value:'Verified by owner',sourceUrl:'https://salon.example.com/',retrievedAt:stamp,selector:'meta[og:site_name]',basis:'direct_page_claim' as const,confidence:'medium' as const,verification:'unverified' as const,trustedForInstructions:false as const};

@@ -2,12 +2,13 @@ import {z} from 'zod';
 import {HttpError} from './http';
 import {AUTOMATIONS} from './automations';
 import {getPlan} from './catalog';
+import type {BriefSource} from './brief-sources';
 
 const text=z.string().trim().max(2000).default('');
 export const briefFields=z.object({businessName:text,category:text,services:text,prices:text,currency:text,hours:text,locations:text,serviceArea:text,contactRoutes:text,bookingSystem:text,publicPolicies:text,brandLanguage:text,existingTools:text,requestOwner:text,serviceDuration:text,staffResources:text,cancellationRules:text,escalationDestination:text,tone:text,permittedAutonomy:text}).strict();
-const input=z.object({expectedRevision:z.number().int().min(0),reviewed:z.literal(true),fields:briefFields}).strict();
+const input=z.object({expectedRevision:z.number().int().min(0),reviewed:z.literal(true),fields:briefFields,sourceIds:z.record(z.string().max(40),z.string().max(128)).default({}).refine(value=>Object.keys(value).length<=20)}).strict();
 type Fields=z.infer<typeof briefFields>;
-type Saved={revision:number;fields:Fields;confirmedBy:string|null;confirmedAt:string|null};
+type Saved={revision:number;fields:Fields;sources:Record<string,BriefSource>;confirmedBy:string|null;confirmedAt:string|null};
 const questions=[['requestOwner','Who should own incoming requests?'],['serviceDuration','How long do your services take?'],['staffResources','Which staff and resources can be scheduled?'],['cancellationRules','What cancellation and rescheduling rules apply?'],['escalationDestination','Where should the agent send questions it cannot resolve?'],['tone','What tone should your agent use?'],['permittedAutonomy','Which actions should require your review?']] as const;
 
 /** Private per-business owner-reviewed brief. It is factual context, never an
@@ -20,18 +21,31 @@ export class BusinessBrief {
   }
   read():Saved{
     const row=this.storage.sql.exec<{value:string}>('SELECT value FROM business_brief WHERE id=1').toArray()[0];
-    return row?JSON.parse(row.value):{revision:0,fields:briefFields.parse({}),confirmedBy:null,confirmedAt:null};
+    return row?{sources:{},...JSON.parse(row.value)}:{revision:0,fields:briefFields.parse({}),sources:{},confirmedBy:null,confirmedAt:null};
   }
-  save(userId:string,key:string,value:unknown):Saved{
+  replay(userId:string,key:string,value:unknown):Saved|null{
+    const parsed=input.safeParse(value);
+    if(!parsed.success||!/^[a-zA-Z0-9_-]{16,128}$/.test(key))throw new HttpError(400,'invalid_business_brief','Review your business details and provide the current revision.');
+    const prior=this.storage.sql.exec<{user_id:string;payload:string;value:string}>('SELECT * FROM business_brief_receipts WHERE request_key=?',key).toArray()[0];
+    if(!prior)return null;
+    if(prior.user_id!==userId||JSON.stringify(input.parse(JSON.parse(prior.payload)))!==JSON.stringify(parsed.data))throw new HttpError(409,'brief_request_reused','This request belongs to a different brief update.');
+    return {sources:{},...JSON.parse(prior.value)};
+  }
+  save(userId:string,key:string,value:unknown,availableSources:BriefSource[]=[]):Saved{
     const parsed=input.safeParse(value);
     if(!parsed.success||!/^[a-zA-Z0-9_-]{16,128}$/.test(key))throw new HttpError(400,'invalid_business_brief','Review your business details and provide the current revision.');
     const payload=JSON.stringify(parsed.data);
     return this.storage.transactionSync(()=>{
-      const prior=this.storage.sql.exec<{user_id:string;payload:string;value:string}>('SELECT * FROM business_brief_receipts WHERE request_key=?',key).toArray()[0];
-      if(prior){if(prior.user_id!==userId||prior.payload!==payload)throw new HttpError(409,'brief_request_reused','This request belongs to a different brief update.');return JSON.parse(prior.value);}
+      const replay=this.replay(userId,key,value);if(replay)return replay;
       const current=this.read();
       if(current.revision!==parsed.data.expectedRevision)throw new HttpError(409,'brief_revision_conflict','The business brief changed. Refresh it before saving your edits.');
-      const saved:Saved={revision:current.revision+1,fields:parsed.data.fields,confirmedBy:userId,confirmedAt:new Date().toISOString()},json=JSON.stringify(saved);
+      const sources:Record<string,BriefSource>={};
+      for(const [field,id] of Object.entries(parsed.data.sourceIds)){
+        const source=availableSources.find(item=>item.id===id&&item.field===field);
+        if(!source||!Object.hasOwn(parsed.data.fields,field)||parsed.data.fields[field as keyof Fields]!==source.value)throw new HttpError(409,'brief_source_changed','A selected research fact is unavailable or differs from the brief. Reload sources or save that field as your own edit.');
+        sources[field]=source;
+      }
+      const saved:Saved={revision:current.revision+1,fields:parsed.data.fields,sources,confirmedBy:userId,confirmedAt:new Date().toISOString()},json=JSON.stringify(saved);
       this.storage.sql.exec('INSERT INTO business_brief(id,value) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value',json);
       this.storage.sql.exec('INSERT INTO business_brief_receipts(request_key,user_id,payload,value) VALUES(?,?,?,?)',key,userId,payload,json);
       return saved;

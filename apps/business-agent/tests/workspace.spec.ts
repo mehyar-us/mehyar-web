@@ -495,6 +495,23 @@ test("workspace creation retries keep the same idempotency key", async ({
   expect(keys[2]).not.toBe(keys[1]);
 });
 
+test('saved brief sources survive refresh and manual edits stop claiming that source',async({page})=>{
+  await fixture(page);const source={id:'saved-source',field:'businessName',value:'Sourced name',sourceUrl:'https://salon.example.com/',retrievedAt:'2026-09-16T12:00:00Z',confirmedAt:'2026-09-16T13:00:00Z',confidence:'high'};
+  let data={...briefFixture(),sources:[source],brief:{...briefFixture().brief,sources:{} as Record<string,typeof source>}};const bodies:any[]=[];
+  await page.route('**/api/tenants/business-a/business-brief',route=>{
+    if(route.request().method()==='POST'){const body=route.request().postDataJSON();bodies.push(body);data={...data,brief:{revision:body.expectedRevision+1,fields:body.fields,sources:body.sourceIds.businessName?{businessName:source}:{}}};return route.fulfill({json:{brief:data.brief}});}
+    return route.fulfill({json:data});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();const panel=page.getByRole('region',{name:'Business brief'});
+  await panel.getByText('Confirmed research suggestions (1)',{exact:true}).click();await panel.getByRole('button',{name:'Copy into empty field'}).click();
+  await panel.getByLabel('I reviewed these business details.').check();await panel.getByRole('button',{name:'Save reviewed brief'}).click();
+  await expect(panel.getByRole('link',{name:'Saved source for business name'})).toHaveAttribute('href',source.sourceUrl);
+  expect(bodies[0].sourceIds).toEqual({businessName:source.id});expect(bodies[0]).not.toHaveProperty('sources');
+  await panel.getByLabel('Business name',{exact:true}).fill('Owner revised name');await expect(panel.getByRole('link',{name:'Saved source for business name'})).toHaveCount(0);
+  await panel.getByLabel('I reviewed these business details.').check();await panel.getByRole('button',{name:'Save reviewed brief'}).click();
+  await expect.poll(()=>bodies.length).toBe(2);expect(bodies[1].sourceIds).toEqual({});
+});
+
 test('confirmed research fills only empty brief drafts and requires a separate save',async({page})=>{
   await fixture(page);let writes=0;
   const data={...briefFixture(),sources:[{id:'source-name',field:'businessName',value:'Owner confirmed salon',sourceUrl:'https://salon.example.com/',retrievedAt:'2026-09-16T12:00:00Z',confirmedAt:'2026-09-16T13:00:00Z',confidence:'high'}]};
