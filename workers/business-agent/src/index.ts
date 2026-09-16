@@ -14,6 +14,7 @@ import {runBillingReconciliation} from './billing/reconciliation';
 import {runEmailRecovery} from './email/recovery';
 import {runMailboxRecovery} from './connectors/mailbox-recovery';
 import {runMailboxProcessing} from './connectors/mailbox-processing';
+import {runMailboxTriageDispatch} from './connectors/mailbox-triage-dispatch';
 import {runMailboxMaintenance} from './connectors/mailbox-maintenance';
 import {runMailboxAuthorityReview} from './connectors/mailbox-authority-review';
 import {runEmailMaintenance} from './email/maintenance';
@@ -175,6 +176,7 @@ export default {
     try{await runBillingReconciliation(env);}catch{console.error(JSON.stringify({event:'agent_billing_reconciliation_unavailable'}));}
     try{await runEmailRecovery(env);}catch{console.error(JSON.stringify({event:'agent_email_recovery_unavailable'}));}
     try{await runMailboxProcessing(env);}catch{console.error(JSON.stringify({event:'agent_mailbox_processing_unavailable'}));}
+    try{await runMailboxTriageDispatch(env);}catch{console.error(JSON.stringify({event:'agent_mailbox_triage_dispatch_unavailable'}));}
     try{await runMailboxRecovery(env);}catch{console.error(JSON.stringify({event:'agent_mailbox_recovery_unavailable'}));}
   },
   async fetch(request:Request,env:Env):Promise<Response> {

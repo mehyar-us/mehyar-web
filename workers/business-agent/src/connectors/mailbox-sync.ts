@@ -281,7 +281,13 @@ export class MailboxSync {
     const release=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_consumers SET lease_token=NULL,lease_until=NULL,attempts=0,next_attempt_at=? WHERE stream_id=? AND lease_token=?
       AND EXISTS(SELECT 1 FROM agent_mailbox_messages WHERE stream_id=? AND message_id=? AND receipt_token=?)`)
       .bind(now,row.id,claim.token,row.id,context.message_id,claim.token);
-    const results=await this.env.AGENT_DB.batch([receipt,acknowledge,release]);
+    const triage=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_triage_queue(stream_id,message_id,receipt_token,state,next_attempt_at)
+      SELECT stream_id,message_id,receipt_token,CASE WHEN state='present' THEN 'pending' ELSE 'obsolete' END,?
+      FROM agent_mailbox_messages WHERE stream_id=? AND message_id=? AND receipt_token=?
+      ON CONFLICT(stream_id,message_id) DO UPDATE SET receipt_token=excluded.receipt_token,state=excluded.state,
+        next_attempt_at=excluded.next_attempt_at,attempts=0,lease_token=NULL,lease_until=NULL`)
+      .bind(now,row.id,context.message_id,claim.token);
+    const results=await this.env.AGENT_DB.batch([receipt,acknowledge,release,triage]);
     return results[1].meta.changes===1;
   }
   /** Internal analysis input pinned to a particular provider-read receipt. Callers

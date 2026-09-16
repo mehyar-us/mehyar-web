@@ -18,6 +18,7 @@ import {stopMailbox,resumeMailbox} from '../src/connectors/mailbox-control';
 import {restartMailbox} from '../src/connectors/mailbox-restart';
 import {MailboxRecoveryOffers} from '../src/connectors/mailbox-recovery-offers';
 import {BusinessAgent,unwrap} from '../src/agent';
+import {runMailboxTriageDispatch} from '../src/connectors/mailbox-triage-dispatch';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -40,6 +41,38 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('leases automatic triage once and cannot acknowledge a superseding observation',async()=>{
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_triage_queue SET state='complete'").run();
+    const f=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'queued',kind:'upsert'}],syncCursor:'300'});
+    const claim=(await f.ledger.claimChange(f.streamId))!;
+    await f.ledger.saveChange(claim,{provider:'google',id:'queued',content:{id:'queued',threadId:'t',payload:{mimeType:'text/plain',body:{size:5,data:'SGVsbG8'}}}});
+    const ready={...e,MAILBOX_TRIAGE_DISPATCH_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true',AI_ENABLED:'true'};
+    expect(await runMailboxTriageDispatch({...ready,MAILBOX_TRIAGE_DISPATCH_ENABLED:'false'},async()=>{throw new Error('disabled');})).toMatchObject({disabled:true});
+    let calls=0;
+    const result=await runMailboxTriageDispatch(ready,async(actor,stream,message,receipt)=>{
+      calls++;expect(actor).toEqual(f.actor);expect([stream,message,receipt]).toEqual([f.streamId,'queued',claim.token]);
+      expect(await runMailboxTriageDispatch(ready,async()=>{throw new Error('overlap');})).toMatchObject({selected:0});
+      await e.AGENT_DB.prepare("UPDATE agent_mailbox_triage_queue SET receipt_token='replacement',lease_token=NULL,lease_until=NULL,attempts=0 WHERE stream_id=?").bind(f.streamId).run();
+      return {ok:true};
+    });
+    expect(calls).toBe(1);expect(result.complete).toBe(0);
+    expect(await e.AGENT_DB.prepare('SELECT state,receipt_token,attempts FROM agent_mailbox_triage_queue WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending',receipt_token:'replacement',attempts:0});
+  });
+  it('backs off failed automatic analyses and stops after six attempts',async()=>{
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_triage_queue SET state='complete'").run();
+    const f=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'queued',kind:'upsert'}],syncCursor:'300'});
+    await f.ledger.saveChange((await f.ledger.claimChange(f.streamId))!,{provider:'google',id:'queued',content:{id:'queued',threadId:'t',payload:{}}});
+    const ready={...e,MAILBOX_TRIAGE_DISPATCH_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true',AI_ENABLED:'true'};
+    let time=Date.now(),calls=0;
+    for(let i=0;i<6;i++){
+      expect(await runMailboxTriageDispatch(ready,async()=>{calls++;return {ok:false};},()=>time)).toMatchObject({selected:1,deferred:1});
+      expect(await runMailboxTriageDispatch(ready,async()=>{throw new Error('early retry');},()=>time)).toMatchObject({selected:0});
+      time+=86400000;
+    }
+    expect(calls).toBe(6);expect(await e.AGENT_DB.prepare('SELECT state,attempts FROM agent_mailbox_triage_queue WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'review_required',attempts:6});
+  });
   it.each(['success','malformed','stopped','invalidated','brief_changed'] as const)('runs guarded budgeted triage with %s model completion',async(mode)=>{
     const f=await fixture();
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'message',kind:'upsert'}],syncCursor:'300'});

@@ -67,6 +67,7 @@ describe('durable mailbox synchronization',()=>{
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'m',kind:'delete'}],syncCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=done'});
     expect(await f.ledger.saveChange((await f.ledger.claimChange(f.streamId))!,null)).toBe(true);
     expect(await e.AGENT_DB.prepare('SELECT text_json,content_bytes FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({text_json:null,content_bytes:0});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_triage_queue WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'obsolete'});
   });
   it('records only completed scans, including empty scans, and clears freshness on restart',async()=>{
     const f=await fixture();
@@ -189,6 +190,7 @@ describe('durable mailbox synchronization',()=>{
     try {await expect(f.ledger.saveChange(claim,snapshot)).rejects.toBeDefined();}
     finally {await e.AGENT_DB.prepare('DROP TRIGGER mailbox_ack_failure').run();}
     expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({n:0});
+    expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_triage_queue WHERE stream_id=?').bind(f.streamId).first()).toEqual({n:0});
     expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
     expect(await f.ledger.saveChange(claim,snapshot)).toBe(true);
     const stored=await e.AGENT_DB.prepare('SELECT text_json FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first<{text_json:string}>();
