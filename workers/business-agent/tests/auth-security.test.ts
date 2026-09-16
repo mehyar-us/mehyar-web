@@ -203,6 +203,9 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     const researchResponse=await worker.fetch(request(tenantPath+'/research',undefined,sessionCookie),workerEnv);
     expect(researchResponse.status).toBe(200);expect(researchResponse.headers.get('cache-control')).toContain('no-store');
     expect(await researchResponse.json()).toEqual({jobs:[],nextOffset:null});
+    const researchRequest=request(tenantPath+'/research',{url:'https://salon.example.com/'},sessionCookie);researchRequest.headers.set('x-idempotency-key',crypto.randomUUID());
+    const researchDisabled=await worker.fetch(researchRequest,workerEnv);expect(researchDisabled.status).toBe(503);
+    expect(await researchDisabled.json()).toMatchObject({error:{code:'research_disabled'}});
     expect((await worker.fetch(request(tenantPath+'/research?offset=-1',undefined,sessionCookie),workerEnv)).status).toBe(400);
     expect((await worker.fetch(request('/api/tenants/another-business/research',undefined,sessionCookie),workerEnv)).status).toBe(404);
     expect((await worker.fetch(request(tenantPath+'/research/'+crypto.randomUUID(),undefined,sessionCookie),workerEnv)).status).toBe(404);

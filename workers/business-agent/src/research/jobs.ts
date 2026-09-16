@@ -38,6 +38,7 @@ export class ResearchJobs {
     const row=this.storage.sql.exec<Job>('SELECT * FROM research_jobs WHERE id=?',id).toArray()[0];
     if(!row)throw new HttpError(404,'research_job_missing','Research job not found.');return row;
   }
+  byRequestKey(key:string){return this.storage.sql.exec<Job>('SELECT * FROM research_jobs WHERE request_key=?',key).toArray()[0];}
   summary(id:string) {
     const job=this.get(id);
     const evidencePages=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;

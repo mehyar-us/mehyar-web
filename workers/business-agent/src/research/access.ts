@@ -3,6 +3,14 @@ import {textAccess} from '../billing/text-access';
 import type {Actor,Env} from '../env';
 import {HttpError} from '../http';
 import {OPERATORS,requireMembership,requireTenant} from '../permissions';
+import {requireVerifiedGates} from '../billing/service';
+
+export const RESEARCH_GATES=['network_safety','crawl_permissions','supplier_cost_controls','provider_acceptance','scheduler_recovery'] as const;
+export async function requireResearchReady(env:Env){
+  if(env.RESEARCH_ENABLED!=='true')throw new HttpError(503,'research_disabled','Website research is not enabled yet. You can add business knowledge manually.');
+  try{await requireVerifiedGates(env,'research:crawl',RESEARCH_GATES);}
+  catch(error){if(error instanceof HttpError)throw new HttpError(409,'research_not_ready','Website research checks are incomplete. No crawl was started.');throw error;}
+}
 
 /** Server-owned allowance derivation, not authorization to contact a website.
  * Network readiness and supplier-cost reservations are additional dispatch gates. */

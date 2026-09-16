@@ -11,7 +11,8 @@
     "ENVIRONMENT": "local",
     "AI_ENABLED": "false",
     "COMMERCE_ENABLED": "false",
-    "EXTERNAL_ACTIONS_ENABLED": "false"
+    "EXTERNAL_ACTIONS_ENABLED": "false",
+    "RESEARCH_ENABLED": "false"
   },
   "d1_databases": [{
     "binding": "AGENT_DB",

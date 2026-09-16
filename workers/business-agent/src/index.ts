@@ -47,6 +47,7 @@ async function route(request:Request,env:Env) {
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   const research=section.match(/^research(?:\/([a-f0-9-]{36}))?$/);
+  if(section==='research'&&request.method==='POST')return json(unwrap(await agent.requestResearch(actor,await readJson(request),requestKey(request))),202);
   const confirmation=section.match(/^research\/([a-f0-9-]{36})\/confirm$/);
   if(confirmation&&request.method==='POST')return json(unwrap(await agent.confirmResearchClaim(actor,confirmation[1],await readJson(request))));
   if(research&&request.method==='GET') {

@@ -2,12 +2,13 @@ import { Agent } from 'agents';
 import type { Actor, Env } from './env';
 import { HttpError } from './http';
 import { CHAT_ROLES, OPERATORS, requireMembership, requireTenant } from './permissions';
-import { appendActivity } from './tenants';
+import { appendActivity,normalizeWebsite } from './tenants';
 import { ActionControls } from './actions';
 import { connectedCalendars } from './connectors/calendar-access';
 import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
+import {researchAccess,requireResearchReady} from './research/access';
 import {z} from 'zod';
 
 type AgentState = { tenantId: string | null; paused: boolean };
@@ -64,6 +65,24 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   async researchJobs(actor:Actor,offset=0) {
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
       return new ResearchJobs(this.ctx.storage).list(offset);
+    });
+  }
+  async requestResearch(actor:Actor,input:unknown,key:string){
+    return this.result(async()=>{
+      await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+      const parsed=z.object({url:z.string().max(4096),pages:z.number().int().min(1).max(1000).default(20),depth:z.number().int().min(0).max(5).default(2)}).strict().safeParse(input);
+      if(!parsed.success||!/^[a-zA-Z0-9_-]{16,128}$/.test(key))throw new HttpError(400,'invalid_research_request','Choose a public website and bounded research limits.');
+      const url=normalizeWebsite(parsed.data.url);if(!url)throw new HttpError(400,'invalid_research_request','A website is required.');
+      await requireResearchReady(this.env);
+      const access=await researchAccess(this.env,actor,()=>this.state.paused),jobs=new ResearchJobs(this.ctx.storage);
+      jobs.expire();
+      const prior=jobs.byRequestKey(key);
+      if(prior){
+        if(prior.source!==url||prior.page_limit!==parsed.data.pages||prior.depth!==parsed.data.depth)throw new HttpError(409,'research_request_reused','This request key belongs to different website research.');
+        return {job:jobs.summary(prior.id)};
+      }
+      const job=jobs.reserve({key,url,pages:parsed.data.pages,depth:parsed.data.depth,period:access.period,allowance:access.allowance,maxJobs:access.maxJobs,deadline:Date.now()+30*60_000});
+      return {job:jobs.summary(job.id)};
     });
   }
   async researchEvidence(actor:Actor,id:string,offset=0) {

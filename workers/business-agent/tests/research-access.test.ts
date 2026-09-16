@@ -2,7 +2,10 @@ import {env} from 'cloudflare:workers';
 import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
-import {researchAccess} from '../src/research/access';
+import {researchAccess,RESEARCH_GATES} from '../src/research/access';
+import {runInDurableObject} from 'cloudflare:test';
+import {getAgentByName} from 'agents';
+import {BusinessAgent,unwrap} from '../src/agent';
 import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
 const e=env as unknown as Env;
@@ -16,6 +19,34 @@ async function paid(actor:{tenantId:string},plan:string,interval:string){
       .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
 }
 describe('server-derived research allowances',()=>{
+  it('fails closed before reservation and reserves idempotently only behind all launch gates',async()=>{
+    const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId);unwrap(await stub.provision(actor));
+    const key=crypto.randomUUID(),input={url:'https://salon.example.com/',pages:20,depth:2};
+    expect(await stub.requestResearch(actor,input,key)).toMatchObject({ok:false,error:{code:'research_disabled'}});
+    expect(unwrap(await stub.researchJobs(actor)).jobs).toEqual([]);
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;(instance as any).env={...original,RESEARCH_ENABLED:'true'};
+      try{
+        expect(await instance.requestResearch(actor,input,key)).toMatchObject({ok:false,error:{code:'research_not_ready'}});
+        for(const gate of RESEARCH_GATES)await e.AGENT_DB.prepare("INSERT INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES ('research:crawl',?,?,'verified','fixture-only','test',?,?)")
+          .bind(gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
+        expect(await instance.requestResearch(actor,{...input,allowance:1000},key)).toMatchObject({ok:false,error:{code:'invalid_research_request'}});
+        expect(await instance.requestResearch(actor,{...input,pages:21},key)).toMatchObject({ok:false,error:{code:'research_page_limit'}});
+        const reserved=unwrap(await instance.requestResearch(actor,input,key));expect(reserved.job).toMatchObject({status:'reserved',pageLimit:20,reservedPages:20});
+        expect(unwrap(await instance.requestResearch(actor,{url:input.url},key))).toEqual(reserved);
+        expect(await instance.requestResearch(actor,{...input,url:'https://other.example.com/'},key)).toMatchObject({ok:false,error:{code:'research_request_reused'}});
+        expect(await instance.requestResearch(actor,input,crypto.randomUUID())).toMatchObject({ok:false,error:{code:'research_job_limit'}});
+        unwrap(await instance.pause(actor,true));
+        expect(await instance.requestResearch(actor,input,key)).toMatchObject({ok:false,error:{code:'agent_paused'}});
+        expect(unwrap(await instance.researchJobs(actor)).jobs).toHaveLength(1);
+        unwrap(await instance.pause(actor,false));
+        instance.sql`UPDATE research_jobs SET deadline=0 WHERE id=${reserved.job.id}`;
+        expect(unwrap(await instance.requestResearch(actor,input,key)).job.status).toBe('cancelled');
+        const replacement=unwrap(await instance.requestResearch(actor,input,crypto.randomUUID()));
+        expect(replacement.job.id).not.toBe(reserved.job.id);expect(replacement.job.status).toBe('reserved');
+      }finally{(instance as any).env=original;}
+    });
+  });
   it('grants one trial crawl of twenty pages only to current operators',async()=>{
     const actor=await fixture();expect(await researchAccess(e,actor,()=>false)).toEqual({period:'trial',allowance:20,maxJobs:1,resetsAt:null});
     await expect(researchAccess(e,actor,()=>true)).rejects.toMatchObject({code:'agent_paused'});
