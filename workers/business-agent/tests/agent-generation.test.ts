@@ -45,15 +45,17 @@ describe('durable generation accounting',()=>{
       await vi.advanceTimersByTimeAsync(1);await rejected;expect(aborted).toBe(true);expect(vi.getTimerCount()).toBe(0);
     }finally{vi.useRealTimers();}
   });
-  it.each([false,true])('releases chat resources for eviction after provider failure=%s',async(failed)=>{
+  it.each(['success','failure','invalid_reply','invalid_usage'] as const)('retains chat accounting across eviction after %s',async(mode)=>{
+    const failed=mode==='failure'||mode==='invalid_reply';
     const {actor,stub}=await fixture();let calls=0;
     await runInDurableObject(stub,async(instance:BusinessAgent)=>{
       const original=(instance as any).env;
       (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async()=>{
-        calls++;if(failed)throw new Error('Provider failed');return {choices:[{message:{content:'Ready to review your business.'}}]};
+        calls++;if(mode==='failure')throw new Error('Provider failed');return {usage:{prompt_tokens:17,completion_tokens:2,total_tokens:mode==='invalid_usage'?20:19,private:'discard-me'},choices:[{message:{content:mode==='invalid_reply'?'':'Ready to review your business.'}}]};
       }}};
       try{
-        expect((await instance.chat(actor,'Hello',crypto.randomUUID())).ok).toBe(!failed);
+        const key=crypto.randomUUID(),result=await instance.chat(actor,'Hello',key);expect(result.ok).toBe(!failed);
+        if(!failed)expect(await instance.chat(actor,'Hello',key)).toEqual(result);
         expect(unwrap(await instance.usage(actor)).textCredits).toMatchObject({used:failed?0:1,reserved:0});
       }finally{(instance as any).env=original;}
     });
@@ -62,6 +64,12 @@ describe('durable generation accounting',()=>{
       expect(unwrap(await instance.usage(actor)).textCredits).toMatchObject({used:failed?0:1,reserved:0});
       expect(ctx.storage.sql.exec<{status:string}>('SELECT status FROM provider_attempts').toArray()).toEqual([{status:failed?'failed':'succeeded'}]);
       expect(unwrap(await instance.messages(actor)).filter(m=>m.role==='assistant')).toHaveLength(failed?0:1);
+      const receipts=ctx.storage.sql.exec<{value:string}>('SELECT value FROM text_provider_receipts').toArray();
+      expect(receipts).toHaveLength(mode==='failure'?0:1);
+      if(mode!=='failure'){
+        expect(JSON.parse(receipts[0].value)).toMatchObject({receipt:mode==='invalid_usage'?{state:'invalid'}:{state:'reported',inputTokens:17,outputTokens:2,totalTokens:19}});
+        expect(receipts[0].value).not.toContain('discard-me');expect(receipts[0].value).not.toContain('Ready to review');
+      }
     });expect(calls).toBe(1);
   });
   it('includes background reservations in chat admission and customer usage',async()=>{
@@ -77,6 +85,7 @@ describe('durable generation accounting',()=>{
         usage.finish(tokens[0],false);
         unwrap(await instance.chat(actor,'Hello',crypto.randomUUID()));expect(calls).toBe(1);
         expect(unwrap(await instance.usage(actor)).textCredits).toEqual({used:1,reserved:49,limit:50});
+        expect(JSON.parse(ctx.storage.sql.exec<{value:string}>('SELECT value FROM text_provider_receipts').one().value)).toMatchObject({receipt:{state:'missing'}});
       }finally{(instance as any).env=original;}
     });
   });
