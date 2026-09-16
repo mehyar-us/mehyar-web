@@ -20,6 +20,7 @@ import {MailboxRecoveryOffers} from '../src/connectors/mailbox-recovery-offers';
 import {BusinessAgent,unwrap} from '../src/agent';
 import {runMailboxTriageDispatch} from '../src/connectors/mailbox-triage-dispatch';
 import {calibratedTextReservation} from '../src/billing/text-calibration';
+import {mailboxAnalysisRequest} from '../src/connectors/mailbox-analysis-api';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -83,6 +84,10 @@ describe('one-page mailbox provider runner',()=>{
           valid=true;const result=unwrap(await instance.confirmMailboxAggregation(f.actor,offer.offerId));
           expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:sectionCredits+requiredCredits,reserved:0});
           expect(unwrap(await instance.confirmMailboxAggregation(f.actor,offer.offerId))).toEqual(result);
+          const response=await mailboxAnalysisRequest(new Request('https://app.example.test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({offerId:offer.offerId})}),
+            'mailbox-analysis/aggregation/confirm',f.actor,instance);
+          expect(response.headers.get('cache-control')).toContain('no-store');
+          expect(await response.json()).toEqual({complete:true,availableInMailboxAnalyses:true,requiresReview:true,authorizesActions:false});
           expect(calls).toBe(sectionCredits+2);
           expect(ctx.storage.sql.exec('SELECT attempt_id FROM text_provider_receipts').toArray()).toHaveLength(sectionCredits+2);
           expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId)).items).toHaveLength(1);
@@ -166,6 +171,9 @@ describe('one-page mailbox provider runner',()=>{
         expect(section).toMatchObject({partial:true,sectionIndex:1});expect(section.sectionCount).toBeGreaterThan(1);
         expect(section.evidence[0].start).toBeGreaterThan(0);expect(text.slice(section.evidence[0].start,section.evidence[0].end)).toBe(section.evidence[0].excerpt);
         expect(unwrap(await instance.confirmMailboxSection(f.actor,offer.offerId,1))).toEqual(section);expect(calls).toBe(1);
+        const response=await mailboxAnalysisRequest(new Request('https://app.example.test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({offerId:offer.offerId,sectionIndex:1})}),
+          'mailbox-analysis/sections/confirm',f.actor,instance);
+        expect(await response.json()).toEqual({complete:true,sectionIndex:1,sectionCount:2,requiresReview:true,authorizesActions:false});expect(calls).toBe(1);
         expect(unwrap(await instance.mailboxSectionProgress(f.actor,f.streamId,'long',claim.token))).toMatchObject({completedSections:[1],missingSections:[0]});expect(calls).toBe(1);
         await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
         expect((await instance.confirmMailboxSection(f.actor,offer.offerId,1)).ok).toBe(false);expect(calls).toBe(1);

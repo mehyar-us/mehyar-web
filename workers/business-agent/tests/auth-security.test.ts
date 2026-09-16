@@ -210,6 +210,24 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     expect(snapshot.status).toBe(200);
     expect(await snapshot.json()).toMatchObject({ membership: { role: "owner" }, memory: [] });
     const usageResponse=await worker.fetch(request(tenantPath+'/usage',undefined,sessionCookie),workerEnv);
+    for(const route of ['sections/review','sections/confirm','aggregation/review','aggregation/confirm']){
+      const path=tenantPath+'/mailbox-analysis/'+route;
+      expect((await worker.fetch(request(path,{},sessionCookie),workerEnv)).status).toBe(400);
+      expect((await worker.fetch(request(path,{}),workerEnv)).status).toBe(401);
+      const crossOrigin=request(path,{},sessionCookie);crossOrigin.headers.set('origin','https://attacker.example');
+      expect((await worker.fetch(crossOrigin,workerEnv)).status).toBe(403);
+      expect((await worker.fetch(request('/api/tenants/another-business/mailbox-analysis/'+route,{},sessionCookie),workerEnv)).status).toBe(404);
+      expect((await worker.fetch(request(path,undefined,sessionCookie),workerEnv)).status).toBe(404);
+      const input=route.endsWith('/review')?{streamId:'fixture',messageId:'fixture',receipt:crypto.randomUUID()}:
+        {offerId:crypto.randomUUID(),...(route.startsWith('sections/')?{sectionIndex:0}:{})};
+      expect((await worker.fetch(request(path,{...input,textCredits:0},sessionCookie),workerEnv)).status).toBe(400);
+      const unavailable=await worker.fetch(request(path,input,sessionCookie),workerEnv);
+      expect(unavailable.status).toBe(route.endsWith('/confirm')?409:503);
+      expect(unavailable.headers.get('cache-control')).toContain('no-store');
+      expect(await unavailable.json()).toMatchObject({error:{code:route.endsWith('/confirm')?
+        (route.startsWith('sections/')?'section_offer_expired':'aggregation_offer_expired'):
+        (route.startsWith('sections/')?'mailbox_sync_disabled':'extended_triage_disabled')}});
+    }
     expect(usageResponse.status).toBe(200);expect(usageResponse.headers.get('cache-control')).toContain('no-store');
     expect(await usageResponse.json()).toMatchObject({usage:{period:'trial',textCredits:{used:0,reserved:0,limit:50}}});
     expect((await worker.fetch(request('/api/tenants/another-business/usage',undefined,sessionCookie),workerEnv)).status).toBe(404);

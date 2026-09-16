@@ -17,6 +17,7 @@ import {runMailboxProcessing} from './connectors/mailbox-processing';
 import {runMailboxTriageDispatch} from './connectors/mailbox-triage-dispatch';
 import {runMailboxMaintenance} from './connectors/mailbox-maintenance';
 import {runMailboxAuthorityReview} from './connectors/mailbox-authority-review';
+import {mailboxAnalysisRequest,mailboxAnalysisRoutes} from './connectors/mailbox-analysis-api';
 import {runEmailMaintenance} from './email/maintenance';
 import {queueInvitationEmail,cancelInvitationEmail} from './email/customer';
 import {platformEmailUsage} from './email/usage';
@@ -79,6 +80,10 @@ async function route(request:Request,env:Env) {
   if(cancelEmail&&request.method==='POST'){z.object({}).strict().parse(await readJson(request));return json(await cancelInvitationEmail(env,actor,cancelEmail[1]));}
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
+  if(mailboxAnalysisRoutes.has(section)&&request.method==='POST'){
+    await requireMembership(env,actor,OPERATORS);
+    return mailboxAnalysisRequest(request,section,actor,agent);
+  }
   const mailbox=section.match(/^connections\/([a-f0-9-]{36})\/mailbox$/);
   const mailboxAnalyses=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/analyses$/);
   if(mailboxAnalyses&&request.method==='GET')return json(unwrap(await agent.mailboxAnalyses(actor,mailboxAnalyses[1],url.searchParams.get('after')??undefined)));
