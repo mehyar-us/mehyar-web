@@ -6,6 +6,7 @@ import { appendActivity } from './tenants';
 import { ActionControls } from './actions';
 import { connectedCalendars } from './connectors/calendar-access';
 import {textAccess} from './billing/text-access';
+import {ResearchJobs} from './research/jobs';
 
 type AgentState = { tenantId: string | null; paused: boolean };
 type Message = {id:string;role:'user'|'assistant';content:string;createdAt:string;};
@@ -20,6 +21,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   initialState: AgentState = {tenantId:null,paused:false};
 
   async onStart() {
+    new ResearchJobs(this.ctx.storage).initialize();
     this.controls().initialize();
     this.sql`CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
       role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL)`;
