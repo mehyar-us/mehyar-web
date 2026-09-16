@@ -39,7 +39,11 @@ function randomToken(bytes = 32) {
 }
 
 function baseUrl(env) {
-  return String(env.HUSTLEKIT_BASE_URL || "https://hustlekit.mehyar.us").replace(/\/+$/, "");
+  // NOTE 2026-09-16: hustlekit.mehyar.us is still provisioning on Cloudflare
+  // (Pages custom-domain "pending" — does not resolve). Until it goes live,
+  // hit the stable production Pages URL so generation + deliverable links
+  // actually work. HUSTLEKIT_BASE_URL env overrides when set.
+  return String(env.HUSTLEKIT_BASE_URL || "https://hustlekit.pages.dev").replace(/\/+$/, "");
 }
 
 function fromAddress(env) {

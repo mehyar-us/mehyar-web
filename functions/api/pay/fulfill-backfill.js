@@ -1,19 +1,28 @@
 // functions/api/pay/fulfill-backfill.js
 // POST /api/pay/fulfill-backfill — Backfill fulfillment for paid payments
-// that missed the webhook (e.g. Stripe sending to a stale URL).
+// that missed the webhook (e.g. Stripe delivering to a stale deployment).
 //
 // Body: { token } — the payment's access_token (from the success page URL).
 //
-// If the payment is paid, has a Designful product, and has no
-// designful_orders row yet, this creates the order and kicks off the
-// same fulfillDesignful pipeline the webhook uses. Idempotent: if an
-// order already exists for the payment, it does nothing.
+// If the payment is paid and has no product order row yet, this creates the
+// order and kicks off the same fulfillment pipeline the webhook uses.
+// Idempotent: if an order already exists for the payment, it does nothing.
+//
+// Supported products (by billing_products.fulfillment):
+//   designful -> fulfillDesignful / designful_orders
+//   hustlekit -> fulfillHustlekit / hustlekit_orders
 //
 // This is a safety net, not the primary path. The webhook remains the
 // primary fulfillment trigger.
 
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
+import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
+
+const PRODUCTS = {
+  designful: { fulfill: fulfillDesignful, ordersTable: "designful_orders" },
+  hustlekit: { fulfill: fulfillHustlekit, ordersTable: "hustlekit_orders" },
+};
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -44,17 +53,17 @@ export async function onRequestPost({ request, env, waitUntil }) {
       return json({ ok: true, action: "not_paid_yet", status: payment.status });
     }
 
-    // Only Designful products.
     const product = await db.prepare(
       "SELECT * FROM billing_products WHERE id = ?"
     ).bind(payment.product_id).first();
-    if (!product || product.fulfillment !== "designful") {
-      return json({ ok: true, action: "not_designful" });
+    const spec = product && PRODUCTS[product.fulfillment];
+    if (!spec) {
+      return json({ ok: true, action: "unsupported_product", fulfillment: product && product.fulfillment });
     }
 
     // Idempotency: order already exists?
     const existing = await db.prepare(
-      "SELECT id FROM designful_orders WHERE payment_id = ?"
+      `SELECT id FROM ${spec.ordersTable} WHERE payment_id = ?`
     ).bind(payment.id).first();
     if (existing) {
       return json({ ok: true, action: "already_fulfilled", order_id: existing.id });
@@ -63,14 +72,14 @@ export async function onRequestPost({ request, env, waitUntil }) {
     // Run the same fulfillment the webhook uses.
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     try {
-      await fulfillDesignful({ db, env, waitUntil, sendEmail }, payment);
+      await spec.fulfill({ db, env, waitUntil, sendEmail }, payment);
     } catch (e) {
       console.error("fulfill-backfill failed", payment.id, e && e.message);
       return json({ ok: false, error: "fulfillment_failed" }, 500);
     }
 
     const order = await db.prepare(
-      "SELECT id, status FROM designful_orders WHERE payment_id = ?"
+      `SELECT id, status FROM ${spec.ordersTable} WHERE payment_id = ?`
     ).bind(payment.id).first();
     return json({ ok: true, action: "fulfilled", order_id: order && order.id });
   } catch (e) {
