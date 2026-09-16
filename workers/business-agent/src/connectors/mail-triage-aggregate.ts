@@ -2,6 +2,7 @@ import {z} from 'zod';
 import {HttpError} from '../http';
 import {sourceSchema,type MailTriageSource} from './mail-triage';
 import {validateMailTriageCoverage} from './mail-triage-coverage';
+import {estimateStandardText} from '../billing/text-meter';
 
 const reply=z.object({category:z.enum(['inquiry','appointment','billing','complaint','other','unknown']),
   priority:z.enum(['routine','urgent','unknown']),summary:z.string().trim().min(1).max(1500),
@@ -29,7 +30,7 @@ export function mailTriageAggregationRequest(input:MailTriageSource,values:unkno
   // Never drop a section or shorten its summary to fit a cheaper request.
   if(inputBytes>64000)throw new HttpError(422,'triage_aggregation_limit','Message analysis requires a larger aggregation workflow.');
   return {request,evidence,sectionCount:coverage.sectionCount,inputBytes,
-    fitsStandardRequest:inputBytes<=9000,coverage};
+    fitsStandardRequest:inputBytes<=9000,tokenEstimate:estimateStandardText(request),coverage};
 }
 
 /** Larger-work prices are token-based in the commercial contract. Byte counts
