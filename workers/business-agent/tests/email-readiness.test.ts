@@ -10,6 +10,7 @@ import {platformEmailAccess} from '../src/email/access';
 import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
 import {dispatchInvitationEmail} from '../src/email/dispatch';
+import {reconcileInvitationDelivery} from '../src/email/delivery';
 async function activate(e:Env,tenantId:string){
   const now=new Date().toISOString(),until=new Date(Date.now()+86400000).toISOString();
   await e.AGENT_DB.prepare("UPDATE agent_tenants SET plan_id='business',status='active' WHERE id=?").bind(tenantId).run();
@@ -29,6 +30,35 @@ async function evidence(e:Env){
   return config;
 }
 describe('dedicated platform sender readiness',()=>{
+  async function accepted(){const e=fixture(),invite=await invitation(e);await evidence(e);const job=await new VerifiedInvitationOutbox(e).prepare(invite.actor,invite.id);await dispatchInvitationEmail(e,invite.actor.tenantId,job.id,async()=>Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'}));const stored=await e.AGENT_DB.prepare('SELECT payload_json FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first<{payload_json:string}>();return {e,invite,job,message:JSON.parse(stored!.payload_json)};}
+  it('records verified delivery without treating opened events as a delivery receipt',async()=>{
+    const f=await accepted();let now=Date.now(),event='opened';const transport=async(_url:string,init:RequestInit)=>{expect(init.method).toBe('GET');return Response.json({...f.message,id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c',cc:[],bcc:[],last_event:event});};
+    expect(await reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport,()=>now)).toEqual({state:'recorded'});
+    expect(await f.e.AGENT_DB.prepare('SELECT delivered_seen FROM agent_platform_email_delivery WHERE job_id=?').bind(f.job.id).first()).toEqual({delivered_seen:0});
+    now+=3600001;event='delivered';await reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport,()=>now);
+    now+=3600001;event='clicked';await reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport,()=>now);
+    expect(await f.e.AGENT_DB.prepare('SELECT last_event,delivered_seen FROM agent_platform_email_delivery WHERE job_id=?').bind(f.job.id).first()).toEqual({last_event:'clicked',delivered_seen:1});
+  });
+  it('polls once concurrently and suppresses each verified complaint only once',async()=>{
+    const f=await accepted();let calls=0,now=Date.now(),event='complained';const transport=async()=>{calls++;return Response.json({...f.message,id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c',cc:[],bcc:[],last_event:event});};
+    const results=await Promise.all([reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport,()=>now),reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport,()=>now)]);
+    expect(calls).toBe(1);expect(results).toContainEqual({state:'recorded'});expect(results).toContainEqual({state:'not_checked'});
+    expect(await f.e.AGENT_DB.prepare("SELECT reason,status FROM agent_platform_email_suppressions WHERE recipient=? AND scope_key='*'").bind(f.message.to[0]).first()).toEqual({reason:'complaint',status:'active'});
+    await f.e.AGENT_DB.prepare("UPDATE agent_platform_email_suppressions SET status='released' WHERE recipient=?").bind(f.message.to[0]).run();
+    now+=3600001;await reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport,()=>now);
+    expect(await f.e.AGENT_DB.prepare("SELECT status FROM agent_platform_email_suppressions WHERE recipient=? AND scope_key='*'").bind(f.message.to[0]).first()).toEqual({status:'released'});
+    event='bounced';now+=3600001;await reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport,()=>now);
+    expect(await f.e.AGENT_DB.prepare('SELECT reason,status FROM agent_platform_email_suppressions WHERE recipient=?').bind(f.message.to[0]).first()).toEqual({reason:'hard_bounce',status:'active'});
+  });
+  it('rejects mismatched receipts and never queries foreign jobs or changed credential routes',async()=>{
+    const f=await accepted();let calls=0;const transport=async()=>{calls++;return Response.json({...f.message,to:['foreign@example.test'],id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c',cc:[],bcc:[],last_event:'bounced'});};
+    expect(await reconcileInvitationDelivery(f.e,crypto.randomUUID(),f.job.id,transport)).toEqual({state:'not_checked'});expect(calls).toBe(0);
+    expect(await reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport)).toEqual({state:'unverified'});
+    expect(await f.e.AGENT_DB.prepare('SELECT bounced_seen,last_event FROM agent_platform_email_delivery WHERE job_id=?').bind(f.job.id).first()).toEqual({bounced_seen:0,last_event:null});
+    expect(await f.e.AGENT_DB.prepare('SELECT recipient FROM agent_platform_email_suppressions WHERE recipient=?').bind(f.message.to[0]).first()).toBeNull();
+    f.e.AGENT_PLATFORM_RESEND_API_KEY='re_rotated';await evidence(f.e);
+    expect(await reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport)).toEqual({state:'not_checked'});expect(calls).toBe(1);
+  });
   it('dispatches once across concurrent workers and durably records acceptance and capacity',async()=>{
     const e=fixture(),invite=await invitation(e);await evidence(e);const box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id);let calls=0;
     const transport=async(_url:string,init:RequestInit)=>{calls++;expect(JSON.parse(String(init.body)).to).toHaveLength(1);return Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});};
