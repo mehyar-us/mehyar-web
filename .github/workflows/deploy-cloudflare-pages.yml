@@ -84,6 +84,8 @@ jobs:
               # 2026-09-14: signing secret for the NEW test-mode webhook endpoint
               # we_1UFibf4NaXpNyV6yLNtqmBuY -> https://mehyar.us/api/pay/webhook
               "STRIPE_WEBHOOK_SECRET_TEST2": os.environ["SECRET_STRIPE_WH_TEST2"],
+              # 2026-09-16: HustleKit PWA -> mehyar.us double-opt-in email relay
+              "HUSTLEKIT_RELAY_SECRET": os.environ["SECRET_HK_RELAY"],
           }
           with open("wrangler.toml", "r") as f:
               lines = f.readlines()
@@ -138,6 +140,7 @@ jobs:
           SECRET_CRM_ID: ${{ secrets.CRM_ACCESS_CLIENT_ID }}
           SECRET_SESSION: ${{ secrets.ADMIN_SESSION_SECRET }}
           SECRET_STRIPE_WH_TEST2: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST2 }}
+          SECRET_HK_RELAY: ${{ secrets.HUSTLEKIT_RELAY_SECRET }}
       - name: Verify production runtime client config
         run: |
           CONFIG_JSON="$(curl -fsS https://mehyar.us/api/client-config)"
