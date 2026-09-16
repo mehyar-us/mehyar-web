@@ -48,6 +48,8 @@ const capabilities = {
   },
 };
 type Fixtures = { signedIn?: boolean; empty?: boolean; unavailable?: boolean };
+const briefFixture=()=>({brief:{revision:0,fields:Object.fromEntries('businessName category services prices currency hours locations serviceArea contactRoutes bookingSystem publicPolicies brandLanguage existingTools requestOwner serviceDuration staffResources cancellationRules escalationDestination tone permittedAutonomy'.split(' ').map(key=>[key,'']))},identityVerified:false,authorizesActions:false,
+  unresolvedQuestions:[{field:'requestOwner',question:'Who should own incoming requests?'}],recommendations:['Draft responses','Check availability','Follow up on inquiries'].map((name,i)=>({id:`fixture-${i}`,name,proposed:true,executionEnabled:false,prerequisites:['mailbox_connected'],example:'Prepare work for your review.',expectedImprovement:'Reduce repeated work.',plan:{name:'Business Agent',monthlyCents:34900,setupCents:150000},addon:null}))});
 async function fixture(page: Page, options: Fixtures = {}) {
   let paused = false;
   const memories: { id: string; key: string; value: string; source: string }[] =
@@ -108,6 +110,7 @@ async function fixture(page: Page, options: Fixtures = {}) {
         currency: "USD",
       });
     if (path === "/api/auth/grants") return reply({ grants: [] });
+    if(path.endsWith('/business-brief'))return reply(briefFixture());
     if (path === "/api/auth/sign-out") return reply({ ok: true });
     if (path === "/api/tenants" && method === "POST")
       return reply({ tenant: { ...tenant, ...body } });
@@ -490,6 +493,51 @@ test("workspace creation retries keep the same idempotency key", async ({
   await page.getByRole("button", { name: "Create my workspace" }).click();
   await expect.poll(() => keys.length).toBe(3);
   expect(keys[2]).not.toBe(keys[1]);
+});
+
+test('business brief requires review, preserves retries and displays proposed plan pricing',async({page})=>{
+  await fixture(page);let data=briefFixture();const requests:{body:any;key:string|undefined}[]=[];
+  await page.route('**/api/tenants/business-a/business-brief',route=>{
+    if(route.request().method()==='POST'){
+      const body=route.request().postDataJSON();requests.push({body,key:route.request().headers()['x-idempotency-key']});
+      if(requests.length===1)return route.fulfill({status:503,json:{error:{message:'Unconfirmed save'}}});
+      data={...data,brief:{revision:1,fields:body.fields},unresolvedQuestions:[]};return route.fulfill({json:{brief:data.brief}});
+    }
+    return route.fulfill({json:data});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Business brief'});
+  await panel.getByLabel('Business name',{exact:true}).fill('Oak & Ivy');
+  await panel.getByLabel('Owner of incoming requests').fill('Sam');
+  await expect(panel.getByRole('button',{name:'Save reviewed brief'})).toBeDisabled();
+  await panel.getByLabel('I reviewed these business details.').check();await panel.getByRole('button',{name:'Save reviewed brief'}).click();
+  await expect(panel.getByRole('alert')).toHaveText('Unconfirmed save');
+  await expect(panel.getByLabel('Business name',{exact:true})).toBeDisabled();
+  await panel.getByRole('button',{name:'Retry same brief update'}).click();
+  await expect(panel.getByRole('status')).toContainText('Business brief saved');
+  expect(requests).toHaveLength(2);expect(requests[0]).toEqual(requests[1]);expect(requests[0].key).toBeTruthy();
+  await expect(panel.getByText('Who should own incoming requests?')).toHaveCount(0);
+  await expect(panel.getByText('Business Agent: $349.00/month plus $1,500.00 setup.',{exact:true})).toHaveCount(3);
+  await page.setViewportSize({width:390,height:844});
+  expect((await new AxeBuilder({page}).include('[aria-label="Business brief"]').analyze()).violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await panel.screenshot({path:'test-results/business-brief-mobile.png',animations:'disabled'});
+});
+
+test('brief revision conflicts require refresh and managers cannot save',async({page})=>{
+  await fixture(page);let data=briefFixture();
+  await page.route('**/api/tenants/business-a/business-brief',route=>{
+    if(route.request().method()==='POST'){data={...data,brief:{revision:2,fields:{...data.brief.fields,businessName:'Another owner edit'}}};return route.fulfill({status:409,json:{error:{code:'brief_revision_conflict',message:'The business brief changed. Refresh it before saving your edits.'}}});}
+    return route.fulfill({json:data});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Business brief'});
+  await panel.getByLabel('Business name',{exact:true}).fill('My edit');await panel.getByLabel('I reviewed these business details.').check();await panel.getByRole('button',{name:'Save reviewed brief'}).click();
+  await expect(panel.getByRole('alert')).toContainText('Refresh');await expect(panel.getByLabel('Business name',{exact:true})).toHaveValue('My edit');
+  await panel.getByRole('button',{name:'Reload saved brief'}).click();await expect(panel.getByLabel('Business name',{exact:true})).toHaveValue('Another owner edit');
+  await page.route('**/api/tenants/business-a',route=>route.fulfill({json:{tenant,membership:{role:'manager'},activity:[],connections:[],usage:{},memory:[]}}));
+  await page.reload();await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  await expect(panel.getByLabel('Business name',{exact:true})).toBeDisabled();await expect(panel.getByRole('button',{name:'Save reviewed brief'})).toHaveCount(0);
 });
 
 test('website research retries preserve the request and open the accepted job',async({page})=>{

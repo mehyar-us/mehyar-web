@@ -59,6 +59,7 @@ import {
 import BillingPanel from "./BillingPanel";
 import ApprovalsPanel from "./ApprovalsPanel";
 import ResearchPanel from "./ResearchPanel";
+import BusinessBriefPanel from "./BusinessBriefPanel";
 import googleLogo from "./assets/google-g.svg?raw";
 
 type Tab =
@@ -1585,6 +1586,7 @@ export default function App() {
                       )}
                     </section>
                   </div>
+                  {['owner','manager'].includes(snapshot.membership.role) && <BusinessBriefPanel key={`brief:${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} online={online} canEdit={snapshot.membership.role==='owner'} onUnauthorized={fail}/>}
                   {['owner','manager'].includes(snapshot.membership.role) && <ResearchPanel key={`${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} online={online} canConfirm={snapshot.membership.role==='owner'} onSaved={()=>refreshWorkspace(tenantId)} onUnauthorized={fail}/>}
                 </div>
               )}
