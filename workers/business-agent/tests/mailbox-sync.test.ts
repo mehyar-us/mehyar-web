@@ -4,6 +4,7 @@ import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
 import {storeProviderGrant,revokeProviderGrant} from '../src/auth/vault';
 import {MailboxSync} from '../src/connectors/mailbox-sync';
+import {stopMailbox} from '../src/connectors/mailbox-control';
 const e=env as unknown as Env;
 async function fixture(provider:'google'|'microsoft'='google') {
   const userId=crypto.randomUUID();
@@ -20,6 +21,22 @@ async function fixture(provider:'google'|'microsoft'='google') {
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
+  it('stops one account without losing queued work, grants or checkpoints and fences active callbacks',async()=>{
+    const f=await fixture(),other=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'next'});
+    const polling=(await f.ledger.claim(f.streamId))!,consumer=(await f.ledger.claimChange(f.streamId))!;
+    const before=await e.AGENT_DB.prepare('SELECT status,granted_scopes,ciphertext,authorization_revision FROM auth_provider_grants WHERE id=?').bind(f.grantId).first();
+    expect(await stopMailbox(e,f.actor,f.grantId)).toEqual({state:'stopped'});
+    expect(await stopMailbox(e,f.actor,f.grantId)).toEqual({state:'stopped'});
+    expect(await e.AGENT_DB.prepare('SELECT status,granted_scopes,ciphertext,authorization_revision FROM auth_provider_grants WHERE id=?').bind(f.grantId).first()).toEqual(before);
+    expect(await e.AGENT_DB.prepare('SELECT checkpoint,page_cursor,lease_token FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({checkpoint:'200',page_cursor:'next',lease_token:null});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+    await expect(f.ledger.commit(polling,{changes:[],syncCursor:'300'})).rejects.toBeDefined();
+    await expect(f.ledger.saveChange(consumer,null)).rejects.toBeDefined();
+    await expect(f.ledger.claimChange(f.streamId)).rejects.toBeDefined();
+    expect(await other.ledger.claim(other.streamId)).not.toBeNull();
+    await expect(stopMailbox(e,other.actor,f.grantId)).rejects.toMatchObject({code:'mailbox_not_found'});
+  });
   it('retires queued work and leases atomically on new consent without touching other accounts',async()=>{
     const f=await fixture(),other=await fixture();
     for(const item of [f,other])await item.ledger.commit((await item.ledger.claim(item.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'next'});

@@ -12,6 +12,7 @@ import {runMailboxPage} from './connectors/mailbox-runner';
 import {initializeGoogleMailbox} from './connectors/mailbox-bootstrap';
 import {consumeMailboxChange} from './connectors/mailbox-consumer';
 import {googleMailboxStatus,microsoftMailboxStatus} from './connectors/mailbox-status';
+import {stopMailbox} from './connectors/mailbox-control';
 import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
@@ -120,6 +121,9 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   }
   async mailboxStatus(actor:Actor,grantId:string) {
     return this.result(async()=>{await this.bind(actor);return googleMailboxStatus(this.env,actor,grantId,()=>this.state.paused);});
+  }
+  async stopMailboxMonitoring(actor:Actor,grantId:string) {
+    return this.result(async()=>{await this.bind(actor);return stopMailbox(this.env,actor,grantId);});
   }
   async outlookMailboxStatus(actor:Actor,grantId:string) {
     return this.result(async()=>{await this.bind(actor);return microsoftMailboxStatus(this.env,actor,grantId,()=>this.state.paused);});

@@ -17,7 +17,7 @@ export async function runMailboxRecovery(env:Env,dispatch?:Dispatch,clock:()=>nu
     JOIN agent_tenants t ON t.id=s.tenant_id
     JOIN agent_memberships m ON m.tenant_id=t.id AND m.user_id=g.user_id
     WHERE s.state='ready' AND s.next_poll_at<=? AND (s.lease_until IS NULL OR s.lease_until<=?)
-      AND g.status='authorized' AND m.status='active' AND m.role IN ('owner','manager') AND (m.expires_at IS NULL OR m.expires_at>?)
+      AND g.status='authorized' AND g.mailbox_paused=0 AND m.status='active' AND m.role IN ('owner','manager') AND (m.expires_at IS NULL OR m.expires_at>?)
       AND t.status IN ('active','past-due','degraded') AND t.plan_id!='trial'
       AND (SELECT COUNT(*) FROM agent_mailbox_changes c JOIN agent_mailbox_sync backlog ON backlog.id=c.stream_id
         WHERE backlog.tenant_id=s.tenant_id AND c.state='pending')<=9000

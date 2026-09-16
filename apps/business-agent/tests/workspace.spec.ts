@@ -825,11 +825,20 @@ test('exhausted research checks show needs attention without claiming continued 
 test('reads saved Outlook monitoring status and clears unverifiable counts',async({page})=>{
   await fixture(page);
   await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:'11111111-1111-4111-8111-111111111111',provider:'microsoft',tenantId:tenant.id,status:'authorized',grantedCapabilities:['mail_read'],grantedScopes:[],selectedCapabilities:['mail_read']}]}}));
-  let invalid=false;
-  await page.route('**/mailbox/folders/status',route=>route.fulfill({json:{state:'needs_attention',setupEnabled:false,pending:5,lastObservedAt:null,configuredFolders:invalid?-1:3}}));
+  let invalid=false,stopped=false;
+  await page.route('**/mailbox/stop',route=>{
+    expect(route.request().method()).toBe('POST');expect(route.request().postDataJSON()).toEqual({});stopped=true;
+    return route.fulfill({json:{state:'stopped'}});
+  });
+  await page.route('**/mailbox/folders/status',route=>route.fulfill({json:{state:stopped?'stopped':'needs_attention',setupEnabled:false,pending:5,lastObservedAt:null,configuredFolders:invalid?-1:3}}));
   await page.goto('/?connected=microsoft');const panel=page.locator('[aria-label="Mailbox monitoring"]');
   await expect(panel.getByText('3 folders configured under current account permission.')).toBeVisible();
   await expect(panel.getByText('Needs attention',{exact:true})).toBeVisible();
+  await panel.getByRole('button',{name:'Stop monitoring',exact:true}).click();
+  expect(stopped).toBe(false);
+  await panel.getByRole('button',{name:'Confirm stop monitoring'}).click();
+  await expect(panel.getByText('Monitoring stopped',{exact:true})).toBeVisible();
+  await expect(panel.getByRole('button',{name:'Stop monitoring',exact:true})).toHaveCount(0);
   await expect(panel.getByRole('button',{name:'Set up mailbox monitoring'})).toHaveCount(0);
   invalid=true;await panel.getByRole('button',{name:'Refresh mailbox status'}).click();
   await expect(panel.getByRole('alert')).toContainText('Mailbox status could not be verified');

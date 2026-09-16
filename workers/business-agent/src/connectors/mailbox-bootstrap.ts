@@ -4,6 +4,7 @@ import {connectionAuthorizationStamp,connectorCredential} from './credentials';
 import {GoogleMailClient,GOOGLE_MAIL_OPERATIONS} from './google-mail';
 import {MailboxSync} from './mailbox-sync';
 import {requireMailboxAccess} from './mailbox-runner';
+import {requireMailboxRunning} from './mailbox-control';
 
 /** Internal initialization. Profile history is captured before any enumeration;
  * the final bootstrap page keeps that baseline for incremental catch-up.
@@ -17,6 +18,7 @@ export async function initializeGoogleMailbox(env:Env,actor:Actor,grantId:string
   if(existing)return {streamId:existing};
   const authorization=await connectionAuthorizationStamp(env,actor,grantId,'google',GOOGLE_MAIL_OPERATIONS.read);
   const guard=async()=>{
+    await requireMailboxRunning(env,actor,grantId);
     await requireMailboxAccess(env,actor,agentGuard,'google');
     if(authorization!==await connectionAuthorizationStamp(env,actor,grantId,'google',GOOGLE_MAIL_OPERATIONS.read))
       throw new HttpError(409,'mailbox_authorization_changed','Mailbox authorization changed. Restart initialization.');

@@ -6,6 +6,7 @@ import {MicrosoftMailClient,MICROSOFT_MAIL_OPERATIONS} from './microsoft-mail';
 import {requireMailboxAccess} from './mailbox-runner';
 import type {FolderSessions} from './folder-sessions';
 import {MailboxSync} from './mailbox-sync';
+import {requireMailboxRunning} from './mailbox-control';
 
 /** Read-only setup discovery. The caller supplies the owning Agent's live guard/storage. */
 async function folderAuthority(env:Env,actor:Actor,grantId:string,agentGuard:()=>Promise<void>) {
@@ -15,6 +16,7 @@ async function folderAuthority(env:Env,actor:Actor,grantId:string,agentGuard:()=
     const own=await env.AGENT_DB.prepare("SELECT id FROM auth_provider_grants WHERE id=? AND tenant_scope=? AND user_id=? AND provider='microsoft'")
       .bind(grantId,actor.tenantId,actor.userId).first();
     if(!own)throw new HttpError(404,'mailbox_not_found','This mailbox connection is unavailable.');
+    await requireMailboxRunning(env,actor,grantId);
   };
   await access();
   const authorization=await connectionAuthorizationStamp(env,actor,grantId,'microsoft',MICROSOFT_MAIL_OPERATIONS.read);

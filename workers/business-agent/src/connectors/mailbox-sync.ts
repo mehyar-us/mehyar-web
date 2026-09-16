@@ -31,9 +31,9 @@ export class MailboxSync {
   private async authority(grantId:string,provider:Provider) {
     const authorization=await connectionAuthorizationStamp(this.env,this.actor,grantId,provider,
       provider==='google'?GOOGLE_MAIL_OPERATIONS.read:MICROSOFT_MAIL_OPERATIONS.read);
-    const grant=await this.env.AGENT_DB.prepare('SELECT user_id,authorization_revision,granted_scopes FROM auth_provider_grants WHERE id=? AND tenant_scope=? AND provider=?')
-      .bind(grantId,this.actor.tenantId,provider).first<{user_id:string;authorization_revision:number;granted_scopes:string}>();
-    if(!grant||grant.user_id!==this.actor.userId)throw unavailable();
+    const grant=await this.env.AGENT_DB.prepare('SELECT user_id,authorization_revision,granted_scopes,mailbox_paused FROM auth_provider_grants WHERE id=? AND tenant_scope=? AND provider=?')
+      .bind(grantId,this.actor.tenantId,provider).first<{user_id:string;authorization_revision:number;granted_scopes:string;mailbox_paused:number}>();
+    if(!grant||grant.user_id!==this.actor.userId||grant.mailbox_paused)throw unavailable();
     // Read the stamp again so consent cannot change between the stamp and SQL fence.
     if(authorization!==await connectionAuthorizationStamp(this.env,this.actor,grantId,provider,
       provider==='google'?GOOGLE_MAIL_OPERATIONS.read:MICROSOFT_MAIL_OPERATIONS.read))throw unavailable();
@@ -41,7 +41,7 @@ export class MailboxSync {
   }
   private fence = `EXISTS (SELECT 1 FROM auth_provider_grants g
     JOIN agent_tenants t ON t.id=g.tenant_scope JOIN agent_memberships m ON m.tenant_id=t.id AND m.user_id=g.user_id
-    WHERE g.id=? AND g.tenant_scope=? AND g.user_id=? AND g.status='authorized'
+    WHERE g.id=? AND g.tenant_scope=? AND g.user_id=? AND g.status='authorized' AND g.mailbox_paused=0
     AND g.authorization_revision=? AND g.granted_scopes=?
     AND t.status NOT IN ('paused','offboarding','deleted') AND m.status='active' AND m.role IN ('owner','manager')
     AND (m.expires_at IS NULL OR m.expires_at>?))`;

@@ -79,6 +79,11 @@ async function route(request:Request,env:Env) {
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   const mailbox=section.match(/^connections\/([a-f0-9-]{36})\/mailbox$/);
+  const mailboxStop=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/stop$/);
+  if(mailboxStop&&request.method==='POST'){
+    z.object({}).strict().parse(await readJson(request));
+    return json(unwrap(await agent.stopMailboxMonitoring(actor,mailboxStop[1])));
+  }
   const mailboxFolders=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/folders$/);
   const outlookStatus=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/folders\/status$/);
   if(outlookStatus&&request.method==='GET')return json(unwrap(await agent.outlookMailboxStatus(actor,outlookStatus[1])));

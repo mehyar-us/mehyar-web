@@ -16,7 +16,7 @@ export async function runMailboxProcessing(env:Env,dispatch?:Dispatch,clock:()=>
     FROM agent_mailbox_sync s JOIN auth_provider_grants g ON g.id=s.grant_id AND g.tenant_scope=s.tenant_id AND g.provider=s.provider
     JOIN agent_tenants t ON t.id=s.tenant_id JOIN agent_memberships m ON m.tenant_id=t.id AND m.user_id=g.user_id
     LEFT JOIN agent_mailbox_consumers w ON w.stream_id=s.id
-    WHERE g.status='authorized' AND m.status='active' AND m.role IN ('owner','manager') AND (m.expires_at IS NULL OR m.expires_at>?)
+    WHERE g.status='authorized' AND g.mailbox_paused=0 AND m.status='active' AND m.role IN ('owner','manager') AND (m.expires_at IS NULL OR m.expires_at>?)
       AND t.status IN ('active','past-due','degraded') AND t.plan_id!='trial'
       AND (w.state IS NULL OR w.state='ready') AND (w.next_attempt_at IS NULL OR w.next_attempt_at<=?)
       AND (w.lease_until IS NULL OR w.lease_until<=?)

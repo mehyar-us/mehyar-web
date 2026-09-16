@@ -9,6 +9,7 @@ import {runMailboxRecovery} from '../src/connectors/mailbox-recovery';
 import {runMailboxProcessing} from '../src/connectors/mailbox-processing';
 import {runMailboxMaintenance} from '../src/connectors/mailbox-maintenance';
 import {runMailboxAuthorityReview} from '../src/connectors/mailbox-authority-review';
+import {stopMailbox} from '../src/connectors/mailbox-control';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',MAILBOX_RECOVERY_ENABLED:'true'} as unknown as Env;
 async function fixture() {
   const userId=crypto.randomUUID();
@@ -36,6 +37,15 @@ describe('bounded recurring mailbox dispatch',()=>{
     return {...f,ledger,pageToken:claim.token};
   }
   const processing={...e,MAILBOX_PROCESSING_ENABLED:'true'};
+  it('excludes stopped accounts from polling and processing while local maintenance preserves their work',async()=>{
+    const f=await queued();await stopMailbox(e,f.actor,f.grantId);
+    const unexpected=async()=>{throw new Error('stopped mailbox dispatched');};
+    expect(await runMailboxRecovery(e,unexpected)).toMatchObject({selected:0});
+    expect(await runMailboxProcessing(processing,unexpected)).toMatchObject({selected:0});
+    expect(await runMailboxMaintenance(e)).toMatchObject({retired:0});
+    expect(await runMailboxAuthorityReview(e)).toMatchObject({retired:0});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+  });
   it('retires historical consent mismatches while preserving current-consent work and leases',async()=>{
     const stale=await queued(),current=await queued();
     const staleClaim=(await stale.ledger.claimChange(stale.streamId))!,currentClaim=(await current.ledger.claimChange(current.streamId))!;

@@ -3,7 +3,7 @@ import {HttpError} from '../http';
 import {OPERATORS,requireMembership,requireTenant} from '../permissions';
 import {credentialAuthorizationStamp} from './credentials';
 import {requireMailboxAccess} from './mailbox-runner';
-type Grant={user_id:string;account_id:string;authorization_revision:number;granted_scopes:string;status:string};
+type Grant={user_id:string;account_id:string;authorization_revision:number;granted_scopes:string;status:string;mailbox_paused:number};
 export async function googleMailboxStatus(env:Env,actor:Actor,grantId:string,paused:()=>boolean) {
   return mailboxStatus(env,actor,grantId,paused,'google');
 }
@@ -13,7 +13,7 @@ export async function microsoftMailboxStatus(env:Env,actor:Actor,grantId:string,
 async function mailboxStatus(env:Env,actor:Actor,grantId:string,paused:()=>boolean,provider:'google'|'microsoft') {
   const readGrant=async()=>{
     await requireMembership(env,actor,OPERATORS);await requireTenant(env,actor);
-    const row=await env.AGENT_DB.prepare("SELECT user_id,account_id,authorization_revision,granted_scopes,status FROM auth_provider_grants WHERE id=? AND tenant_scope=? AND user_id=? AND provider=?")
+    const row=await env.AGENT_DB.prepare("SELECT user_id,account_id,authorization_revision,granted_scopes,status,mailbox_paused FROM auth_provider_grants WHERE id=? AND tenant_scope=? AND user_id=? AND provider=?")
       .bind(grantId,actor.tenantId,actor.userId,provider).first<Grant>();
     if(!row)throw new HttpError(404,'mailbox_not_found','This mailbox is not available.');return row;
   };
@@ -36,12 +36,12 @@ async function mailboxStatus(env:Env,actor:Actor,grantId:string,paused:()=>boole
     catch(error){if(!(error instanceof HttpError))throw error;}
   }
   const latest=await readGrant();
-  if(latest.status!==grant.status||await credentialAuthorizationStamp(latest)!==authorization)
+  if(latest.status!==grant.status||latest.mailbox_paused!==grant.mailbox_paused||await credentialAuthorizationStamp(latest)!==authorization)
     throw new HttpError(409,'mailbox_changed','Mailbox authorization changed. Refresh its status.');
   const tenant=await requireTenant(env,actor);
   const granted=new Set((JSON.parse(grant.granted_scopes) as string[]).map(scope=>scope.replace(/^https:\/\/graph.microsoft.com\//,'')));
   const readable=(provider==='google'?['https://www.googleapis.com/auth/gmail.readonly','https://www.googleapis.com/auth/gmail.modify','https://mail.google.com/']:['Mail.Read','Mail.ReadWrite']).some(scope=>granted.has(scope));
-  const state=grant.status!=='authorized'||!readable?'reconnect_required'
+  const state=grant.mailbox_paused?'stopped':grant.status!=='authorized'||!readable?'reconnect_required'
     :paused()||['paused','offboarding'].includes(tenant.status)?'paused'
     :!summary?.configuredFolders?'not_started':summary.attention>0?'needs_attention'
     :!available?'disabled':summary.initializing>0?'initializing':'monitoring';
