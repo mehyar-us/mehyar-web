@@ -13,6 +13,7 @@
 //   hustlekit -> fulfillHustlekit / hustlekit_orders
 //   creditfixkit -> fulfillCreditfixkit / creditfixkit_orders
 //   sprint30 -> fulfillSprint30 / sprint30_enrollments
+//   truesketch -> fulfillTruesketch / truesketch_orders (PWA-owned rows, same D1)
 //   freelanceros -> fulfillFreelanceros / freelanceros_orders
 //   bizbuilder -> fulfillBizbuilder / bizbuilder_orders
 //   prepguide -> fulfillPrepguide / prepguide_orders
@@ -29,6 +30,7 @@ import { fulfillFreelanceros } from "../_shared/fulfillFreelanceros.js";
 import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
 import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
 import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
+import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 
 const PRODUCTS = {
@@ -40,6 +42,7 @@ const PRODUCTS = {
   bizbuilder: { fulfill: fulfillBizbuilder, ordersTable: "bizbuilder_orders" },
   prepguide: { fulfill: fulfillPrepguide, ordersTable: "prepguide_orders" },
   promptpack: { fulfill: fulfillPromptpack, ordersTable: "promptpack_orders" },
+  truesketch: { fulfill: fulfillTruesketch, ordersTable: "truesketch_orders" },
 };
 
 function json(data, status = 200) {
