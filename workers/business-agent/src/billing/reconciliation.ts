@@ -1,6 +1,7 @@
 import {HttpError} from '../http';
 import {configuredClient,requireVerifiedGates,allowedPriceIds} from './service';
 import {AGENT_BILLING_DOMAIN,assertNoLegacyMetadata,objectId,type BillingEnv,type StripeClient,type StripeObject} from './stripe';
+import {paidPeriodFindings} from './paid-period-audit';
 
 /** Read-only supplier comparison. Findings are not entitlement or payment evidence. */
 export async function auditSubscription(env:BillingEnv,tenantId:string,client:StripeClient):Promise<string[]>{
@@ -27,6 +28,7 @@ export async function auditSubscription(env:BillingEnv,tenantId:string,client:St
     if(!recorded)findings.push('latest_invoice_not_recorded');
     else if(invoice.status!==recorded.status||invoice.amount_paid!==recorded.amount_paid_cents||invoice.currency!==recorded.currency)findings.push('invoice_snapshot_mismatch');
     if(local.last_invoice_id!==invoiceId)findings.push('latest_invoice_mapping_mismatch');
+    findings.push(...paidPeriodFindings(invoice,local.price_id,local.paid_through));
   }
   // Concurrent webhooks can change local accounting while supplier reads are in flight.
   const after=await env.AGENT_DB.prepare('SELECT * FROM agent_billing_subscriptions WHERE tenant_id=?').bind(tenantId).first<StripeObject>();

@@ -4,6 +4,7 @@ import { CATALOG_VERSION, getPlan } from "../src/catalog";
 import { handleBillingRequest } from "../src/billing";
 import { processBillingEvent } from "../src/billing/events";
 import {auditSubscription,runBillingReconciliation} from '../src/billing/reconciliation';
+import {paidPeriodFindings} from '../src/billing/paid-period-audit';
 import { RELEASE_GATES, createCheckout, enforceExpiredBillingGrace, parsePriceMap, type CheckoutInput } from "../src/billing/service";
 import { AGENT_BILLING_DOMAIN, STRIPE_API_VERSION, StripeClient, agentMetadata, assertNoLegacyMetadata, encodeParameters, verifyStripeSignature, type BillingEnv, type StripeEvent, type StripeObject } from "../src/billing/stripe";
 import type { Actor } from "../src/env";
@@ -197,8 +198,24 @@ describe("new-agent two-stage checkout", () => {
 });
 
 describe("new-agent verified lifecycle and recovery", () => {
+  it('detects missed paid-period accounting without extending access',async()=>{
+    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});Object.assign(a.invoice.lines,{has_more:false});
+    const previous=await f.env.AGENT_DB.prepare('SELECT paid_through FROM agent_billing_subscriptions WHERE tenant_id=?').bind(f.actor.tenantId).first<{paid_through:string}>();
+    a.invoice.lines.data[0].period.end+=86400;
+    expect(await auditSubscription(f.env,f.actor.tenantId,f.stripe.client)).toEqual(['paid_through_behind_invoice']);
+    expect(await f.env.AGENT_DB.prepare('SELECT paid_through FROM agent_billing_subscriptions WHERE tenant_id=?').bind(f.actor.tenantId).first()).toEqual(previous);
+  });
+  it('requires complete matching paid invoice lines and preserves access from earlier invoices',()=>{
+    const invoice={status:'paid',amount_paid:34900,amount_remaining:0,currency:'usd',lines:{has_more:false,data:[{price:'price_owned',period:{end:2000000000}}]}};
+    expect(paidPeriodFindings(invoice,'price_owned',null)).toEqual(['paid_through_missing']);
+    expect(paidPeriodFindings({...invoice,lines:{...invoice.lines,has_more:true}},'price_owned',null)).toEqual(['invoice_period_unverified']);
+    expect(paidPeriodFindings(invoice,'price_foreign',null)).toEqual(['invoice_price_mismatch']);
+    expect(paidPeriodFindings({...invoice,amount_remaining:100},'price_owned',null)).toEqual(['invoice_payment_unverified']);
+    expect(paidPeriodFindings({...invoice,status:'open'},'price_owned',null)).toEqual([]);
+    expect(paidPeriodFindings(invoice,'price_owned',new Date(2000000001*1000).toISOString())).toEqual([]);
+  });
   it('audits mapped subscriptions and latest invoices without changing entitlements or Stripe',async()=>{
-    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});
+    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});Object.assign(a.invoice.lines,{has_more:false});
     const before=await f.env.AGENT_DB.prepare('SELECT * FROM agent_billing_subscriptions WHERE tenant_id=?').bind(f.actor.tenantId).first();const callStart=f.stripe.calls.length;
     expect(await auditSubscription(f.env,f.actor.tenantId,f.stripe.client)).toEqual([]);
     Object.assign(a.sub,{status:'canceled',cancel_at_period_end:true});Object.assign(a.invoice,{amount_paid:100});
@@ -208,7 +225,7 @@ describe("new-agent verified lifecycle and recovery", () => {
     Object.assign(a.sub.metadata,{payment_id:'legacy'});await expect(auditSubscription(f.env,f.actor.tenantId,f.stripe.client)).rejects.toMatchObject({code:'legacy_metadata_forbidden'});
   });
   it('schedules gated daily comparisons and stores sanitized failures with backoff',async()=>{
-    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});
+    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});Object.assign(a.invoice.lines,{has_more:false});
     const before=f.stripe.calls.length;expect(await runBillingReconciliation(f.env,f.stripe.client)).toEqual({checked:0,disabled:true});expect(f.stripe.calls).toHaveLength(before);
     f.env.AGENT_BILLING_RECONCILIATION_ENABLED='true';await expect(runBillingReconciliation(f.env,f.stripe.client)).rejects.toMatchObject({code:'activation_not_ready'});
     const stamp=new Date().toISOString();for(const gate of ['stripe_account_verified','billing_reconciliation_tests'])await f.env.AGENT_DB.prepare("INSERT INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture','fixture',?,?)")
@@ -221,7 +238,7 @@ describe("new-agent verified lifecycle and recovery", () => {
     expect(await f.env.AGENT_DB.prepare('SELECT status,last_error_code FROM agent_billing_reconciliation WHERE tenant_id=?').bind(f.actor.tenantId).first()).toEqual({status:'failed',last_error_code:'subscription_contract_mismatch'});
   });
   it('rejects a comparison when a webhook changes the local subscription mid-read',async()=>{
-    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});
+    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});Object.assign(a.invoice.lines,{has_more:false});
     f.stripe.beforeRequest=async path=>{if(path.startsWith('/v1/invoices/'))await f.env.AGENT_DB.prepare("UPDATE agent_billing_subscriptions SET access_state='paused' WHERE tenant_id=?").bind(f.actor.tenantId).run();};
     await expect(auditSubscription(f.env,f.actor.tenantId,f.stripe.client)).rejects.toMatchObject({code:'billing_snapshot_changed'});
   });
