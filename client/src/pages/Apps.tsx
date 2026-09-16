@@ -154,6 +154,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/designful-logo.png",
     accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
   },
+  {
+    id: "sprint30",
+    name: "Sprint30",
+    url: "https://sprint30.mehyar.us",
+    tagline: "30 days. 30 missions. One real side-income stream.",
+    description:
+      "A 30-day challenge that builds a real side-income stream: pick a lane, ship an offer, land your first customers. One specific, skill-framed mission a day by email, plus a personal dashboard with your current day and progress checklist — $37 one-time, with days 1–3 free to preview.",
+    audience: "Builders and freelancers who want a concrete 30-day plan to launch paid work, not another course.",
+    highlights: [
+      "30 daily missions — specific steps, real tools, zero hype",
+      "Days 1–3 free to preview before you pay anything",
+      "Personal dashboard with your current day + progress checklist",
+      "Reply-driven emails — every mission pulls a real response",
+    ],
+    logo: "/assets/sprint30-logo.png",
+    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
+  },
 ];
 
 const buildPillars = [
@@ -395,7 +412,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30), and the request form.
           </p>
         </div>
       </section>

@@ -16,6 +16,7 @@
 //   6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
 //   7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
 //   8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
+//   9. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -26,7 +27,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap } from "lucide-react";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -138,6 +139,18 @@ const apps: AppInfo[] = [
       "Email address (to deliver your purchase and send download links), the business name / website URL / logo you submit for each design job, the generated design deliverables, and checkout records.",
     whatWeDelete:
       "Email address, submitted business assets, generated deliverables, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "sprint30",
+    name: "Sprint30",
+    url: "https://sprint30.mehyar.us",
+    tagline: "30-day side-income challenge.",
+    icon: Zap,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase, send the 30 daily challenge emails, and gate your dashboard), your challenge progress checklist, and checkout records.",
+    whatWeDelete:
+      "Email address, challenge progress, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

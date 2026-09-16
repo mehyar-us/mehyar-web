@@ -13,6 +13,7 @@
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
+import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -140,6 +141,15 @@ const fulfillHooks = {
   async designful({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillDesignful({ db, env, waitUntil, sendEmail }, payment);
+  },
+
+  // Sprint30 30-day challenge. Creates the sprint30_enrollments row
+  // (idempotent on payment_id via idx_sprint30_enrollments_payment), unifies
+  // the access token onto the billing_payments row, and sends the Day-1
+  // challenge email immediately. Days 2-30 go out via the daily scheduler.
+  async sprint30({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillSprint30({ db, env, waitUntil, sendEmail }, payment);
   },
 };
 
