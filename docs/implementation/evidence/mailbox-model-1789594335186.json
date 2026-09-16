@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-16T21:32:15.172Z",
+  "mode": "dry-run",
+  "route": "workers-ai-direct-rest",
+  "model": "@cf/openai/gpt-oss-120b",
+  "syntheticOnly": true,
+  "scriptSha256": "a2d0eb2c4703669d73d8c0b7fe3117ef9b736310ff1e6f109fb3c6731cf21a2a",
+  "sourceSha256": "9b79d4648087bc9bd496c2167feb2ec2815574eb2023c5f9bc70ac1c54ed2de2",
+  "sectionCount": 2,
+  "records": [
+    {
+      "id": "section-0",
+      "requestSha256": "95d5fe39161bab7ea7915a98223f1740172b217c88b55dc6b2e68653e1049f30",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 1464,
+        "outputTokenLimit": 2000,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "state": "planned"
+    },
+    {
+      "id": "section-1",
+      "requestSha256": "6856fa0af3043536d713046379a20f1b194109817e165a2fcd9706fbb0967b5f",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 647,
+        "outputTokenLimit": 2000,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "state": "planned"
+    }
+  ],
+  "productionAcceptanceApproved": false,
+  "completedAt": "2026-09-16T21:32:15.186Z",
+  "pipelineValidated": false
+}
