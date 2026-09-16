@@ -492,6 +492,42 @@ test("workspace creation retries keep the same idempotency key", async ({
   expect(keys[2]).not.toBe(keys[1]);
 });
 
+test('website research retries preserve the request and open the accepted job',async({page})=>{
+  await fixture(page);const requests:{key:string|undefined;body:unknown}[]=[];
+  const job={id:'new-research',website:'https://salon.example.com/',status:'reserved',pageLimit:20,evidencePages:0,usedPages:0,reservedPages:20};
+  await page.route('**/api/tenants/business-a/research**',route=>{
+    if(route.request().method()==='POST'){
+      requests.push({key:route.request().headers()['x-idempotency-key'],body:route.request().postDataJSON()});
+      return route.fulfill(requests.length===1?{status:503,json:{error:{message:'Response lost'}}}:{status:202,json:{job}});
+    }
+    return route.fulfill({json:new URL(route.request().url()).pathname.endsWith('/new-research')?{job,pages:[],nextOffset:null}:{jobs:[],nextOffset:null}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});
+  await panel.getByLabel('Website to research').fill(job.website);
+  await panel.getByRole('button',{name:'Request website research',exact:true}).click();
+  await expect(panel.getByRole('alert')).toContainText('Response lost');
+  await expect(panel.getByLabel('Website to research')).toBeDisabled();
+  await panel.getByRole('button',{name:'Retry same research request'}).click();
+  await expect(panel.getByText('Queued',{exact:true})).toBeVisible();
+  expect(requests).toHaveLength(2);expect(requests[0]).toEqual(requests[1]);
+  expect(requests[0].key).toMatch(/^[a-zA-Z0-9_-]{16,128}$/);
+  expect(requests[0].body).toEqual({url:job.website,pages:20,depth:2});
+});
+
+test('research readiness rejection keeps manual fallback and permits a corrected website',async({page})=>{
+  await fixture(page);
+  await page.route('**/api/tenants/business-a/research**',route=>route.fulfill(route.request().method()==='POST'?{status:503,json:{error:{code:'research_disabled',message:'Website research is not enabled yet. You can add business knowledge manually.'}}}:{json:{jobs:[],nextOffset:null}}));
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});
+  await panel.getByLabel('Website to research').fill('https://salon.example.com/');
+  await panel.getByRole('button',{name:'Request website research',exact:true}).click();
+  await expect(panel.getByRole('alert')).toContainText('not enabled yet');
+  await expect(panel.getByLabel('Website to research')).toBeEnabled();
+  await expect(panel.getByText('No website research is available yet.',{exact:false})).toBeVisible();
+  expect((await new AxeBuilder({page}).include('.research-panel').analyze()).violations).toEqual([]);
+});
+
 test('research displays unverified sources as text and clears failed refreshes', async ({page})=>{
   await page.setViewportSize({width:390,height:844});
   await fixture(page);

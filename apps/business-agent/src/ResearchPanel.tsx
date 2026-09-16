@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
 import ConfirmResearchClaim from './ConfirmResearchClaim';
+import StartResearch from './StartResearch';
 type Job={id:string;website:string;status:string;pageLimit:number;evidencePages:number;usedPages:number;reservedPages:number;attention?:'submission_uncertain'|'poll_failures'|'poll_limit'|'stop_limit'|null};
 type Claim={field:string;value:string;sourceUrl:string;retrievedAt:string;confidence:string;selector:string};
 type EvidencePage={url:string;retrievedAt:string;evidence:Claim[];warnings:string[]};
@@ -45,6 +46,11 @@ export default function ResearchPanel({tenantId,online,canConfirm,onSaved,onUnau
   return <section className="panel research-panel" aria-label="Website research" style={{overflowWrap:'anywhere'}}>
     <div className="panel-heading"><h2>Website research</h2><button className="button secondary" disabled={!online||loading} onClick={()=>void load()}>Refresh research</button></div>
     <p className="small muted">Website claims need your review. They are not saved business knowledge or permission to act.</p>
+    {!jobId&&<StartResearch key={tenantId} tenantId={tenantId} online={online} onUnauthorized={onUnauthorized} onCreated={value=>{
+      const job=value as Job;
+      if(!validJob(job))throw new Error('The research response was incomplete. Retry the same request to check its outcome.');
+      select(job.id);
+    }}/>}
     {jobId&&<button className="button secondary" onClick={()=>select(null)}>Back to research</button>}
     {!online?<p>Reconnect to view research.</p>:loading?<p role="status">Loading research…</p>:error?<p role="alert">{error}</p>:result?<>
       {result.jobs?.length===0&&<p>No website research is available yet. You can add business details manually above.</p>}
