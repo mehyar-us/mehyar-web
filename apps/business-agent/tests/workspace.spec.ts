@@ -586,3 +586,17 @@ test('research cancellation stays available while paused and does not claim prov
   await expect(panel.getByText('20 reserved',{exact:false})).toBeVisible();
   await expect(panel.getByRole('button',{name:'Cancel research'})).toHaveCount(0);expect(cancelled).toBe(1);
 });
+
+test('exhausted research checks show needs attention without claiming continued progress',async({page})=>{
+  await fixture(page);
+  const job={id:'research-review',website:'https://salon.example.com/',status:'running',attention:'poll_limit',pageLimit:20,evidencePages:0,usedPages:0,reservedPages:20};
+  await page.route('**/api/tenants/business-a/research**',route=>route.fulfill({json:new URL(route.request().url()).pathname.endsWith('/research-review')?{job,pages:[],nextOffset:null}:{jobs:[job],nextOffset:null}}));
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});
+  await expect(panel.getByText('Needs attention',{exact:false})).toBeVisible();
+  await panel.getByRole('button',{name:'View source evidence'}).click();
+  await expect(panel.getByText('Needs attention',{exact:true})).toBeVisible();
+  await expect(panel.getByRole('status')).toContainText('Research needs review before status checks can resume');
+  await expect(panel.getByText('Researching',{exact:true})).toHaveCount(0);
+  await expect(panel.getByRole('button',{name:'Cancel research'})).toBeEnabled();
+});

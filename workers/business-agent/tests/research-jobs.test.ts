@@ -31,6 +31,7 @@ describe('durable research reservations',()=>{
       now+=900_001;
     }
     jobs.initialize();expect(()=>jobs.claimPoll(job.id,now)).toThrow('operator review');
+    expect(jobs.summary(job.id).attention).toBe('poll_failures');
     expect(spend.get(job.id)?.status).toBe('dispatched');
   }));
   it('bounds total polls even when every provider response reports running',async()=>ledger(jobs=>{
@@ -38,6 +39,8 @@ describe('durable research reservations',()=>{
     let now=Date.now();
     for(let i=0;i<121;i++){const lease=jobs.claimPoll(job.id,now);jobs.finishPoll(job.id,lease,true,30_000,now);now+=30_001;}
     expect(()=>jobs.claimPoll(job.id,now)).toThrow('operator review');
+    expect(jobs.summary(job.id).attention).toBe('poll_limit');
+    jobs.settle(job.id,'completed',0);expect(jobs.summary(job.id).attention).toBeNull();
   }));
   it('requires supplier funding atomically before provider dispatch',async()=>ledger(async jobs=>{
     const job=jobs.reserve(input());let calls=0;
@@ -104,6 +107,7 @@ describe('durable research reservations',()=>{
   it('retains uncertain submission reservations across reinitialization and forbids resubmission',async()=>ledger(jobs=>{
     const job=jobs.reserve(input());jobs.begin(job.id);jobs.initialize();
     expect(jobs.get(job.id)).toMatchObject({status:'uncertain',reserved:20});
+    expect(jobs.summary(job.id).attention).toBe('submission_uncertain');
     expect(()=>jobs.begin(job.id)).toThrow('cannot be submitted');
     expect(jobs.cancel(job.id).status).toBe('uncertain');
     expect(()=>jobs.settle(job.id,'failed',0)).toThrow('verified');

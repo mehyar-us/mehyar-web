@@ -95,8 +95,11 @@ export class ResearchJobs {
   summary(id:string) {
     const job=this.get(id);
     const evidencePages=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
+    const work=this.storage.sql.exec<{attempts:number;failures:number}>('SELECT attempts,failures FROM research_poll_work WHERE job_id=?',id).toArray()[0];
+    const active=['running','cancel_requested'].includes(job.status);
+    const attention=job.status==='uncertain'?'submission_uncertain':active&&work&&work.failures>=8?'poll_failures':active&&work&&work.attempts>=job.page_limit+120?'poll_limit':null;
     return {id:job.id,website:job.source,status:job.status,pageLimit:job.page_limit,evidencePages,
-      usedPages:job.used,reservedPages:job.reserved,deadline:new Date(job.deadline).toISOString()};
+      usedPages:job.used,reservedPages:job.reserved,deadline:new Date(job.deadline).toISOString(),attention};
   }
   list(offset=0) {
     if(!Number.isSafeInteger(offset)||offset<0)throw conflict('Invalid research job offset.');
