@@ -15,7 +15,13 @@ export class ResearchCancellation {
     if(['completed','failed','cancelled'].includes(job.status))return job;
     if(job.status!=='cancel_requested'||!job.provider_id)
       throw new HttpError(409,'research_stop_not_ready','Research needs a recorded stop request and a known provider job.');
-    await this.provider.cancel(job.provider_id);
+    const lease=this.jobs.claimStop(id);
+    if(!lease)return this.jobs.get(id);
+    try{
+      const response=await this.provider.cancel(job.provider_id);
+      if(response.requested!==true)throw new HttpError(502,'research_stop_unconfirmed','The provider did not acknowledge the stop request.');
+      this.jobs.finishStop(id,lease,true);
+    }catch(error){this.jobs.finishStop(id,lease,false);throw error;}
     // DELETE acceptance is not terminal evidence and cannot release reservations.
     return this.jobs.get(id);
   }

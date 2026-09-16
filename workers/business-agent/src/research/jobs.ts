@@ -35,6 +35,9 @@ export class ResearchJobs {
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_poll_work (
       job_id TEXT PRIMARY KEY,attempts INTEGER NOT NULL DEFAULT 0,failures INTEGER NOT NULL DEFAULT 0,
       next_at INTEGER NOT NULL DEFAULT 0,lease_id TEXT,lease_until INTEGER NOT NULL DEFAULT 0)`);
+    this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_stop_work (
+      job_id TEXT PRIMARY KEY,attempts INTEGER NOT NULL DEFAULT 0,next_at INTEGER NOT NULL DEFAULT 0,
+      lease_id TEXT,lease_until INTEGER NOT NULL DEFAULT 0,acknowledged_at TEXT)`);
     // An interrupted POST may have created a billable provider job. Keep its reservation.
     this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
     this.expire();
@@ -48,6 +51,33 @@ export class ResearchJobs {
     });
   }
   hasDeadlines(){return this.storage.sql.exec<{count:number}>("SELECT COUNT(*) AS count FROM research_jobs WHERE status IN ('reserved','submitting','running')").one().count>0;}
+  stopDelivery(id:string){
+    this.get(id);
+    return this.storage.sql.exec<{attempts:number;next_at:number;lease_id:string|null;lease_until:number;acknowledged_at:string|null}>(
+      'SELECT attempts,next_at,lease_id,lease_until,acknowledged_at FROM research_stop_work WHERE job_id=?',id).toArray()[0]??null;
+  }
+  claimStop(id:string,now=Date.now()){
+    return this.storage.transactionSync(()=>{
+      const job=this.get(id);
+      if(job.status!=='cancel_requested'||!job.provider_id)throw conflict('Only known pending stops can be delivered.');
+      this.storage.sql.exec('INSERT OR IGNORE INTO research_stop_work(job_id) VALUES(?)',id);
+      const work=this.stopDelivery(id)!;
+      if(work.acknowledged_at)return null;
+      if(work.attempts>=8)throw new HttpError(409,'research_stop_review','Research stop delivery needs operator review.');
+      if(work.next_at>now||work.lease_until>now)throw new HttpError(409,'research_stop_wait','Research stop delivery is active or waiting to retry.');
+      const lease=crypto.randomUUID();
+      this.storage.sql.exec('UPDATE research_stop_work SET attempts=attempts+1,lease_id=?,lease_until=? WHERE job_id=?',lease,now+60_000,id);
+      return lease;
+    });
+  }
+  finishStop(id:string,lease:string,acknowledged:boolean,now=Date.now()){
+    const work=this.stopDelivery(id);
+    if(!work||work.lease_id!==lease||work.lease_until<=now)return false;
+    const delay=Math.min(900_000,5000*2**Math.min(work.attempts-1,8));
+    this.storage.sql.exec('UPDATE research_stop_work SET acknowledged_at=?,next_at=?,lease_id=NULL,lease_until=0 WHERE job_id=? AND lease_id=?',
+      acknowledged?new Date(now).toISOString():null,acknowledged?0:now+delay,id,lease);
+    return true;
+  }
   get(id:string):Job {
     const row=this.storage.sql.exec<Job>('SELECT * FROM research_jobs WHERE id=?',id).toArray()[0];
     if(!row)throw new HttpError(404,'research_job_missing','Research job not found.');return row;

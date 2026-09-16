@@ -14,6 +14,34 @@ async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:Durabl
   await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs,new ResearchSpend(ctx.storage),ctx.storage);});
 }
 describe('durable research reservations',()=>{
+  it('persists stop acknowledgement without resending or releasing commitments',async()=>ledger(async(jobs,spend)=>{
+    const job=jobs.reserve(input());jobs.reserveSpend(job.id,100,100,'fixture');jobs.beginFunded(job.id);jobs.submitted(job.id,provider);jobs.cancel(job.id);
+    let calls=0,release!:()=>void;
+    const pending=new Promise<void>(resolve=>{release=resolve;});
+    const stop=new ResearchCancellation(jobs,{cancel:async()=>{calls++;await pending;return {requested:true};}},async()=>{});
+    const first=stop.deliver(job.id);
+    // Advance microtasks until the provider owns the pending request.
+    while(calls===0)await Promise.resolve();
+    await expect(stop.deliver(job.id)).rejects.toMatchObject({code:'research_stop_wait'});
+    release();await first;jobs.initialize();
+    await stop.deliver(job.id);expect(calls).toBe(1);
+    expect(jobs.stopDelivery(job.id)).toMatchObject({attempts:1,lease_id:null,acknowledged_at:expect.any(String)});
+    expect(jobs.get(job.id)).toMatchObject({status:'cancel_requested',reserved:20});expect(spend.get(job.id)?.status).toBe('dispatched');
+  }));
+  it('bounds stop retries across restarts and fences stale acknowledgements',async()=>ledger(jobs=>{
+    const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);jobs.cancel(job.id);
+    let now=Date.now();const first=jobs.claimStop(job.id,now)!;
+    now+=60_001;const second=jobs.claimStop(job.id,now)!;
+    expect(jobs.finishStop(job.id,first,true,now)).toBe(false);
+    expect(jobs.finishStop(job.id,second,false,now)).toBe(true);
+    expect(()=>jobs.claimStop(job.id,now+9999)).toThrow('waiting to retry');
+    for(let attempt=2;attempt<8;attempt++){
+      now+=900_001;const lease=jobs.claimStop(job.id,now)!;jobs.finishStop(job.id,lease,false,now);
+    }
+    jobs.initialize();expect(()=>jobs.claimStop(job.id,now+900_001)).toThrow('operator review');
+    expect(jobs.stopDelivery(job.id)).toMatchObject({attempts:8,acknowledged_at:null});
+    expect(jobs.get(job.id).reserved).toBe(20);
+  }));
   it('preserves the original business and requester across retries and restart',async()=>ledger(jobs=>{
     const actor={tenantId:crypto.randomUUID(),userId:crypto.randomUUID()},request=input();
     const job=jobs.reserveFor(actor,request);jobs.initialize();
