@@ -858,7 +858,7 @@ test('reviews mailbox analyses without actions and clears failed or offline resu
   await expect(panel.getByText('Only part of the business brief was included.')).toBeVisible();
   await expect(panel.getByText('Analyses waiting: 2; needing review: 3.')).toBeVisible();
   await expect(panel.getByText('Automatic analysis is not enabled.')).toBeVisible();
-  await expect(panel.getByText('Long messages needing manual review: 1. Extended analysis is unavailable.')).toBeVisible();
+  await expect(panel.getByText('Long messages needing manual review: 1.')).toBeVisible();
   await panel.getByText('Read email evidence',{exact:true}).click();await expect(panel.getByText(item.evidence[0],{exact:true})).toBeVisible();
   expect(await panel.locator('script').count()).toBe(0);
   expect((await new AxeBuilder({page}).include('[aria-label="Mailbox analyses"]').analyze()).violations).toEqual([]);
@@ -872,6 +872,73 @@ test('reviews mailbox analyses without actions and clears failed or offline resu
   await expect(panel.getByText('Analyses waiting: 2; needing review: 3.')).toHaveCount(0);
   invalidQueue=false;await panel.getByRole('button',{name:'View analyses',exact:true}).click();await expect(panel.getByText(item.summary,{exact:true})).toBeVisible();
   await context.setOffline(true);await expect(panel).toHaveCount(0);expect(methods.every(method=>method==='GET')).toBe(true);
+});
+
+test('requires separate section and summary credit approvals for a selected long message',async({page,context})=>{
+  await fixture(page);
+  const id='11111111-1111-4111-8111-111111111111';
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id,provider:'google',tenantId:tenant.id,status:'authorized',grantedCapabilities:['gmail_read'],grantedScopes:[],selectedCapabilities:['gmail_read']}]}}));
+  await page.route('**/connections/*/mailbox',route=>route.fulfill({json:{state:'monitoring',setupEnabled:false,pending:0,lastObservedAt:null}}));
+  const item={source:{streamId:'stream-one',messageId:'message-one',receipt:id},excerpt:'<script>bad()</script> Please review Friday and Monday options.',observedAt:'2026-09-16T12:00:00Z',historicalContext:true,extractionOmissions:['attachment']};
+  let enabled=false,combined=false;const calls:{path:string;body:any}[]=[];
+  await page.route('**/mailbox/review-messages**',route=>route.fulfill({json:{items:[item],withheld:0,extendedAnalysisEnabled:enabled}}));
+  await page.route('**/mailbox/analyses**',route=>route.fulfill({json:{items:combined?[{id:'a'.repeat(64),category:'appointment',priority:'routine',summary:'Review both appointment options.',evidence:['Friday and Monday options'],observedAt:item.observedAt,historicalContext:true,extractionOmissions:[],contextTruncated:false,requiresReview:true,authorizesActions:false}]:[],withheld:0}}));
+  await page.route('**/mailbox-analysis/**',route=>{
+    const path=new URL(route.request().url()).pathname.split('/mailbox-analysis/')[1],body=route.request().postDataJSON();calls.push({path,body});
+    const common={offerId:id,expiresAt:new Date(Date.now()+600000).toISOString(),sectionCount:2,authorizesExternalActions:false};
+    if(path==='sections/review')return route.fulfill({json:{...common,textCredits:2,scope:'analyze_remaining_sections',remainingSections:[0,1],includesAggregation:false}});
+    if(path==='sections/confirm')return route.fulfill({json:{complete:true,sectionIndex:body.sectionIndex,sectionCount:2,requiresReview:true,authorizesActions:false}});
+    if(path==='aggregation/review')return route.fulfill({json:{...common,textCredits:3,scope:'combine_completed_sections',includesSectionAnalysis:false}});
+    combined=true;return route.fulfill({json:{complete:true,availableInMailboxAnalyses:true,requiresReview:true,authorizesActions:false}});
+  });
+  await page.goto('/?connected=google');const panel=page.getByRole('region',{name:'Extended message review'});
+  await panel.getByRole('button',{name:'View messages needing review'}).click();
+  await expect(panel.getByRole('button',{name:'Review analysis cost'})).toBeDisabled();expect(calls).toEqual([]);
+  enabled=true;await panel.getByRole('button',{name:'Refresh review messages'}).click();
+  await panel.getByRole('button',{name:'Review analysis cost'}).click();
+  await expect(panel.getByText('Uses up to 2 text credits from your allowance.')).toBeVisible();expect(calls.map(c=>c.path)).toEqual(['sections/review']);
+  expect(calls[0].body).toEqual(item.source);expect(await panel.locator('script').count()).toBe(0);
+  expect((await new AxeBuilder({page}).include('[aria-label="Extended message review"]').analyze()).violations).toEqual([]);
+  await panel.getByRole('button',{name:'Cancel cost review'}).click();expect(calls).toHaveLength(1);
+  await panel.getByRole('button',{name:'Review analysis cost'}).click();await panel.getByRole('button',{name:'Approve 2 credits'}).click();
+  await expect(panel.getByRole('heading',{name:'Combined summary cost'})).toBeVisible();
+  expect(calls.filter(c=>c.path==='sections/confirm').map(c=>c.body)).toEqual([{offerId:id,sectionIndex:0},{offerId:id,sectionIndex:1}]);
+  expect(calls.some(c=>c.path==='aggregation/confirm')).toBe(false);
+  await panel.getByRole('button',{name:'Approve 3 credits'}).click();
+  await expect(page.getByText('Review both appointment options.',{exact:true})).toBeVisible();
+  expect(calls.filter(c=>c.path==='aggregation/confirm').map(c=>c.body)).toEqual([{offerId:id}]);
+  await context.setOffline(true);await expect(panel).toHaveCount(0);
+});
+
+test('withholds malformed credit offers and re-quotes remaining sections after an uncertain confirmation',async({page})=>{
+  await fixture(page);const id='11111111-1111-4111-8111-111111111111';
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id,provider:'google',tenantId:tenant.id,status:'authorized',grantedCapabilities:['gmail_read'],grantedScopes:[],selectedCapabilities:['gmail_read']}]}}));
+  await page.route('**/connections/*/mailbox',route=>route.fulfill({json:{state:'monitoring',setupEnabled:false,pending:0,lastObservedAt:null}}));
+  const item={source:{streamId:'stream-one',messageId:'message-one',receipt:id},excerpt:'Private long inquiry',observedAt:'2026-09-16T12:00:00Z',historicalContext:false,extractionOmissions:[]};
+  await page.route('**/mailbox/review-messages**',route=>route.fulfill({json:{items:[item],withheld:0,extendedAnalysisEnabled:true}}));
+  let malformed=true,completed=0,confirmations=0,hold=false,aggregationRequests=0;
+  let release!:()=>void,settled!:()=>void;
+  const held=new Promise<void>(resolve=>{release=resolve;}),finished=new Promise<void>(resolve=>{settled=resolve;});
+  await page.route('**/mailbox-analysis/**',async route=>{
+    if(route.request().url().includes('/aggregation/'))aggregationRequests++;
+    if(route.request().url().endsWith('/sections/review'))return route.fulfill({json:{offerId:id,expiresAt:new Date(Date.now()+600000).toISOString(),textCredits:malformed?0:2-completed,sectionCount:2,authorizesExternalActions:false,scope:'analyze_remaining_sections',remainingSections:completed?[1]:[0,1],includesAggregation:false}});
+    confirmations++;completed=1;
+    if(hold){await held;await route.fulfill({json:{complete:true,sectionIndex:1,sectionCount:2,requiresReview:true,authorizesActions:false}}).catch(()=>{});settled();return;}
+    return route.abort('failed');
+  });
+  await page.goto('/?connected=google');const panel=page.getByRole('region',{name:'Extended message review'});
+  await panel.getByRole('button',{name:'View messages needing review'}).click();await panel.getByRole('button',{name:'Review analysis cost'}).click();
+  await expect(panel.getByRole('alert')).toContainText('cost could not be verified');expect(confirmations).toBe(0);
+  await expect(panel.getByText(item.excerpt,{exact:true})).toHaveCount(0);
+  malformed=false;await panel.getByRole('button',{name:'View messages needing review'}).click();await panel.getByRole('button',{name:'Review analysis cost'}).click();
+  await panel.getByRole('button',{name:'Approve 2 credits'}).click();await expect(panel.getByRole('alert')).toContainText("couldn't reach");expect(confirmations).toBe(1);
+  await expect(panel.getByRole('button',{name:/Approve/})).toHaveCount(0);
+  await panel.getByRole('button',{name:'View messages needing review'}).click();await panel.getByRole('button',{name:'Review analysis cost'}).click();
+  await expect(panel.getByRole('button',{name:'Approve 1 credit',exact:true})).toBeVisible();expect(confirmations).toBe(1);
+  hold=true;await panel.getByRole('button',{name:'Approve 1 credit',exact:true}).click();await expect.poll(()=>confirmations).toBe(2);
+  await panel.getByRole('button',{name:'Stop remaining work'}).click();release();await finished;
+  await expect(panel.getByRole('status')).toContainText('may finish and use its approved credits');
+  await expect(panel.getByRole('button',{name:/Approve/})).toHaveCount(0);expect(aggregationRequests).toBe(0);
 });
 
 test('reviews mailbox recovery and retries the same offer after an uncertain response',async({page})=>{

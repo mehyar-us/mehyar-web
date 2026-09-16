@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
+import MailboxReview from './MailboxReview';
 const categories={inquiry:'Inquiry',appointment:'Appointment',billing:'Billing',complaint:'Complaint',other:'Other',unknown:'Unclear'};
 const priorities={routine:'Routine',urgent:'Potentially urgent',unknown:'Priority unclear'};
 const warnings={attachment:'Attachments were excluded.',external_body:'Some content was unavailable.',unsupported_mime:'Some message formats were unsupported.',invalid_part:'Some message parts were malformed.',invalid_encoding:'Some content could not be decoded.',limit:'Message decoding reached a limit.',html_nontext:'Nontext or hidden HTML content was excluded.',html_visibility_unresolved:'HTML visibility could not be fully determined.',text_limit:'Extracted text reached its size limit.',html_limit:'HTML processing reached a limit.',controls_removed:'Control characters were removed.'};
@@ -46,10 +47,11 @@ export default function MailboxAnalyses({tenantId,grantId,onUnauthorized}:{tenan
     {busy&&<p role="status">Loading analyses…</p>}{error&&<p role="alert">{error}</p>}
     {queue&&<div><p>Analyses waiting: {queue.pending}; needing review: {queue.needsReview}.</p>
       <p>{queue.dispatchEnabled?'Automatic analysis is configured. Work can still wait for account or service readiness.':'Automatic analysis is not enabled.'}</p>
-      {queue.longMessages>0&&<p>Long messages needing manual review: {queue.longMessages}. Extended analysis is unavailable.</p>}
+      {queue.longMessages>0&&<p>Long messages needing manual review: {queue.longMessages}.</p>}
       {queue.unavailableText>0&&<p>Messages without usable text: {queue.unavailableText}.</p>}
       {queue.invalidResponses>0&&<p>Unverified model responses: {queue.invalidResponses}.</p>}
     </div>}
+    <MailboxReview tenantId={tenantId} grantId={grantId} onUnauthorized={onUnauthorized} onComplete={()=>void load()}/>
     {loaded&&!items.length&&<p>No current analyses on this page. This does not mean your mailbox has no inquiries.</p>}
     {withheld>0&&<p>{withheld} saved analyses withheld because their source, access or business context is no longer current.</p>}
     {items.map(item=><article key={item.id} className="notice">
