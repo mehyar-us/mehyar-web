@@ -140,7 +140,7 @@ export class ActionControls {
   async savePolicy(actor:Actor,input:unknown) {
     const {expectedVersion,...policy}=parse(policySchema,input);
     const start=Date.parse(policy.startsAt),end=Date.parse(policy.expiresAt);
-    if(start>=end||end<=Date.now()||end>Date.now()+366*86400000) throw invalid('invalid_policy_window','Choose an expiry within one year and after the start.',400);
+    if(start>=end||(policy.enabled&&end<=Date.now())||end>Date.now()+366*86400000) throw invalid('invalid_policy_window','Choose an expiry within one year and after the start; enabled policies must not be expired.',400);
     if(policy.mode==='automatic'&&policy.operation==='mail.reply'&&!policy.template?.trim()) throw invalid('template_required','An automatic reply policy needs an exact approved template.',400);
     const body=JSON.stringify(policy),hash=await digest(body);
     await requireTenant(this.env,actor); await requireMembership(this.env,actor,['owner']);

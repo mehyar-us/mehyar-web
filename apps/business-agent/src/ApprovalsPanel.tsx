@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { api, ApiError, post,type Grant } from './api';
 import CalendarPolicyForm from './CalendarPolicyForm';
+import PolicyManager from './PolicyManager';
 
 type Review = {
   id:string; requestedBy:string; policyId:string; policyVersion:number; actionHash:string;
@@ -15,6 +16,7 @@ export default function ApprovalsPanel({tenantId,role,online,paused,onUnauthoriz
   tenantId:string;role:string;online:boolean;paused:boolean;onUnauthorized:(error:unknown)=>void;grants?:Grant[];
 }) {
   const [setup,setSetup]=useState(false);
+  const [manage,setManage]=useState(false);
   const [reviews,setReviews]=useState<Review[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState('');
   const [loading,setLoading]=useState(true),[notice,setNotice]=useState('');
   const mounted=useRef(true),request=useRef<AbortController|null>(null),inFlight=useRef(false);
@@ -69,6 +71,8 @@ export default function ApprovalsPanel({tenantId,role,online,paused,onUnauthoriz
       <p>Review the exact recipient, content and destination before granting permission.</p></div>
     {role==='owner'&&<><button className="button secondary" onClick={()=>setSetup(value=>!value)} aria-expanded={setup}>{setup?'Close appointment setup':'Set up appointments'}</button>
       {setup&&<CalendarPolicyForm tenantId={tenantId} grants={grants} online={online} paused={paused} onUnauthorized={onUnauthorized}/>}</>}
+    {role==='owner'&&<><button className="button secondary" onClick={()=>setManage(value=>!value)} aria-expanded={manage}>{manage?'Close saved policies':'Manage saved policies'}</button>
+      {manage&&<PolicyManager tenantId={tenantId} online={online} onUnauthorized={onUnauthorized} onChanged={()=>void refresh()}/>}</>}
     {!canRead?<section className="panel"><h2>Review access is limited</h2><p>Your role cannot view customer action reviews.</p></section>:<>
       <div className="billing-toolbar"><p className="small muted">Staff see their own proposals. Owners and managers can decide.</p>
         <button className="button secondary" disabled={!online||loading||!!busy} onClick={()=>void refresh()}><RefreshCw size={16}/> Refresh reviews</button></div>

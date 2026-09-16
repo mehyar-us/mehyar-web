@@ -35,6 +35,17 @@ async function member(tenantId:string,role:Role) {
   return {tenantId,userId};
 }
 describe('durable action reviews and saved authority',()=>{
+  it('allows withdrawal of expired permissions while rejecting expired enabled policies',async()=>{
+    const f=await fixture();
+    const action=unwrap(await f.stub.proposeAction(f.actor,f.proposal,crypto.randomUUID()));
+    unwrap(await f.stub.decideAction(f.actor,action.id,{decision:'approve',actionHash:action.actionHash}));
+    const expired={...f.input,expectedVersion:1,startsAt:'2020-01-01T00:00:00.000Z',expiresAt:'2020-02-01T00:00:00.000Z'};
+    expect(await f.stub.saveActionPolicy(f.actor,expired)).toMatchObject({ok:false,error:{code:'invalid_policy_window'}});
+    const withdrawn=unwrap(await f.stub.saveActionPolicy(f.actor,{...expired,enabled:false}));
+    expect(withdrawn).toMatchObject({version:2,enabled:false});
+    expect(unwrap(await f.stub.actionReview(f.actor,action.id)).status).toBe('cancelled');
+    expect(unwrap(await f.stub.saveActionPolicy(f.actor,{...expired,enabled:false})).version).toBe(2);
+  });
   it.each(['google','microsoft'] as const)('validates %s calendar permissions, guests, timezone and appointment timing',async(provider)=>{
     const f=await fixture();
     const grantId=await storeProviderGrant(e,{userId:f.actor.userId,tenantId:f.actor.tenantId,provider,accountId:crypto.randomUUID()},

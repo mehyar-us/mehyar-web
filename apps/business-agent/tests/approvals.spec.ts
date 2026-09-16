@@ -99,6 +99,43 @@ test('mobile appointment setup clears calendar access on pause and workspace cha
   await page.getByRole('button',{name:'Set up appointments',exact:true}).click();
   await expect(page.getByRole('combobox',{name:'Connected account',exact:true})).toBeDisabled();
 });
+
+const savedPolicy=()=>({id:'33333333-3333-4333-8333-333333333333',version:4,name:'Appointments',trigger:'Owner request',operation:'calendar.create',provider:'google',
+  grantId:'22222222-2222-4222-8222-222222222222',mode:'approve',resources:['work-calendar'],recipients:['client@example.com'],startsAt:'2026-01-01T00:00:00.000Z',expiresAt:'2027-01-01T00:00:00.000Z',
+  maxActionsPerDay:10,maxCostMicrosPerDay:0,escalation:'Ask the owner',enabled:true,authorizedBy:'fixture-user',updatedAt:'2026-09-16T00:00:00.000Z'});
+
+test('owner can disable a saved policy while paused without changing its permissions',async({page})=>{
+  await fixture(page,'owner',true);const bodies:any[]=[];let policy=savedPolicy();
+  await page.route('**/action-policies',async route=>{
+    if(route.request().method()==='GET')return route.fulfill({json:{policies:[policy]}});
+    const body=route.request().postDataJSON();bodies.push(body);policy={...policy,...body,version:body.expectedVersion+1};
+    return route.fulfill({json:{policy}});
+  });
+  await page.getByRole('button',{name:'Manage saved policies',exact:true}).click();
+  await page.getByRole('button',{name:'Edit Appointments',exact:true}).click();
+  await page.getByLabel('Policy enabled',{exact:true}).uncheck();
+  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations).toEqual([]);
+  await page.getByRole('button',{name:'Save policy changes',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Saved policies'})).toContainText('Disabled · Version 5');
+  expect(bodies).toHaveLength(1);expect(bodies[0]).toMatchObject({id:policy.id,expectedVersion:4,enabled:false,resources:['work-calendar'],recipients:['client@example.com'],expiresAt:'2027-01-01T00:00:00.000Z'});
+  expect(bodies[0]).not.toHaveProperty('authorizedBy');expect(bodies[0]).not.toHaveProperty('updatedAt');
+});
+
+test('concurrent policy edits require refresh and never silently overwrite a newer version',async({page})=>{
+  await fixture(page);let posts=0;
+  await page.route('**/action-policies',async route=>{
+    if(route.request().method()==='GET')return route.fulfill({json:{policies:[{...savedPolicy(),version:posts?5:4,name:posts?'Owner revision':'Appointments'}]}});
+    posts++;return route.fulfill({status:409,json:{error:{code:'policy_version_conflict',message:'Refresh the policy before saving your changes.'}}});
+  });
+  await page.getByRole('button',{name:'Manage saved policies',exact:true}).click();
+  await page.getByRole('button',{name:'Edit Appointments',exact:true}).click();
+  await page.getByRole('button',{name:'Save policy changes',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText('Refresh the policy');
+  expect(posts).toBe(1);
+  await page.getByRole('button',{name:'Refresh policies',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Edit Owner revision',exact:true})).toBeVisible();
+  await expect(page.getByRole('form',{name:'Edit policy'})).toHaveCount(0);
+});
 test('reviews exact content and immutable hash, then shows permission without a delivery claim',async({page})=>{
   const calls=await fixture(page);
   await expect(page.getByText('customer@example.com',{exact:true})).toBeVisible();
