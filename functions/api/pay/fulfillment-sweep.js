@@ -22,9 +22,11 @@
 //      checkpoint — progress is monotonic, repeated drives converge to ready.
 //
 // The sweep therefore has two quick passes (both far under the edge budget):
-//   PASS 1 — fire-and-forget dispatch for rows stuck in paid/generating > 8
-//            min (best-effort bonus) AND return their tokens so the workflow
-//            can drive generation directly as the stable caller.
+//   PASS 1 — fire-and-forget dispatch for rows stuck in paid/generating/
+//            failed > 8 min (best-effort bonus) AND return their tokens so the
+//            workflow can drive generation directly as the stable caller.
+//            'failed' rows are included (capped by drive_attempts): most
+//            failures are transient infra throws, not content failures.
 //   PASS 2 — send the buyer email exactly once for ready-but-unemailed rows
 //            (atomic email_sent_at claim; claim released if the send fails).
 //
@@ -43,8 +45,9 @@ import {
   claimHustlekitEmailSent,
 } from "../_shared/fulfillHustlekit.js";
 
-const STUCK_MINUTES = 8; // older than this in paid/generating => orphaned run
+const STUCK_MINUTES = 8; // older than this in paid/generating/failed => orphaned run
 const MAX_ROWS = 20;
+const MAX_DRIVE_ATTEMPTS = 8; // cap sweeper retries per order (poison-row guard)
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
@@ -94,17 +97,21 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
 
   // ── PASS 1: dispatch generate for stuck rows (fire-and-forget) ──
-  // NOTE: 'failed' is deliberately excluded — it means generate itself threw
-  // (a content failure, not an orphaned run) and stays buyer-retryable via
-  // the success page.
+  // 'failed' is INCLUDED on purpose: generate.js marks a row failed on ANY
+  // throw — including transient infra failures (isolate eviction mid-run),
+  // not just content failures — and generate.js re-arms failed rows on the
+  // next attempt. drive_attempts caps sweeper retries so a genuine poison
+  // row ages out; the buyer retry button stays available regardless.
   const cutoff = new Date(Date.now() - STUCK_MINUTES * 60000).toISOString();
   const stuck = await db
     .prepare(
       "SELECT id, access_token, inputs_json FROM hustlekit_orders " +
-        "WHERE status IN ('paid','generating') AND (created_at IS NULL OR created_at < ?) " +
+        "WHERE status IN ('paid','generating','failed') " +
+        "AND COALESCE(drive_attempts,0) < ? " +
+        "AND (created_at IS NULL OR created_at < ?) " +
         "ORDER BY created_at ASC LIMIT ?"
     )
-    .bind(cutoff, MAX_ROWS)
+    .bind(MAX_DRIVE_ATTEMPTS, cutoff, MAX_ROWS)
     .all();
   const dispatched = [];
   const drive = []; // tokens for the workflow's stable-caller generate drive
@@ -163,3 +170,4 @@ export async function onRequestPost({ request, env, waitUntil }) {
 
   return json({ ok: true, stuck_minutes: STUCK_MINUTES, dispatched, drive, emailed });
 }
+
