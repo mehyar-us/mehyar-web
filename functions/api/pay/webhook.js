@@ -22,6 +22,7 @@ import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
 import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
 import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
+import { fulfillUnlockLink } from "../_shared/fulfillUnlockLink.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -140,6 +141,15 @@ const fulfillHooks = {
     if (!result.ok) {
       console.error("pay/webhook digital email failed", payment.product_id, result.error);
     }
+  },
+
+  // Token-unlock products (BabyPeek, RoastMe): no generated file — the buyer
+  // unlocks on the product site with their per-purchase access token. Emails
+  // the transactional receipt + unlock link (idempotent per payment via
+  // unlock_receipts), then hands off to the standalone module.
+  async unlock_link({ db, env }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillUnlockLink({ db, env, sendEmail }, payment);
   },
 
   // Designful AI design deliverables. Creates the designful_orders row
