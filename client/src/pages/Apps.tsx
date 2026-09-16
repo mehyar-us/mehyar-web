@@ -239,6 +239,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/tiktokgrowth-logo.png",
     accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
   },
+  {
+    id: "plrvault",
+    name: "PLR Vault",
+    url: "https://plrvault.mehyar.us",
+    tagline: "Five sellable digital packs you can rebrand and resell — for $9.95.",
+    description:
+      "A private-label-rights vault: a 2026 planner pack with Canva-editable templates, a 30-day content calendar, 50 email swipes, and 8 mini-course blueprints — all rebrandable, all yours to resell and keep 100%. Free teaser on the site; the full vault is a one-time $9.95.",
+    audience: "Creators and side-hustlers who want ready-to-sell digital products without starting from a blank page.",
+    highlights: [
+      "2026 planner pack with Canva-editable SVG templates",
+      "30-day content calendar — hooks, captions, and CTAs done for you",
+      "50-email swipe pack plus 8 mini-course blueprints",
+      "Plain-English PLR license: rebrand, resell as your own, keep 100%",
+    ],
+    logo: "/assets/plrvault-logo.png",
+    accentClass: "from-amber-100 to-white dark:from-amber-900 dark:to-amber-950",
+  },
 ];
 
 const buildPillars = [
@@ -480,7 +497,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault), and the request form.
           </p>
         </div>
       </section>
