@@ -100,6 +100,10 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">DIY credit repair kit — dispute letters and rebuild plan.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">TikTok Growth System — <a className="text-brand-700 underline dark:text-brand-100" href="https://tiktokgrowth.mehyar.us" target="_blank" rel="noreferrer">tiktokgrowth.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI-generated organic short-form growth playbook.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and white-label hosted PWAs under <code>connectree-*</code> / <code>blue-apple-space-*</code>.</div>
           </li>

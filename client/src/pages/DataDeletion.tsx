@@ -20,6 +20,7 @@
 //  10. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
 //  11. CreditFix Kit — https://creditfixkit.mehyar.us (DIY credit repair kit: dispute letters + rebuild plan)
 //  12. HustleKit — https://hustlekit.mehyar.us (AI side-hustle starter kits: personalized playbook PDFs)
+//  13. TikTok Growth System — https://tiktokgrowth.mehyar.us (AI-generated organic short-form growth playbook)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -30,7 +31,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp } from "lucide-react";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -190,6 +191,18 @@ const apps: AppInfo[] = [
       "Email address (to deliver your purchase), the name / situation / state / goal / account descriptions you submit for personalization, the generated kit PDF, and checkout records.",
     whatWeDelete:
       "Email address, submitted intake details, generated kit, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "tiktokgrowth",
+    name: "TikTok Growth System",
+    url: "https://tiktokgrowth.mehyar.us",
+    tagline: "AI-generated organic short-form growth playbook.",
+    icon: TrendingUp,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase and send the playbook link), your niche, on-camera comfort level, hours per week, optional handle, the generated playbook, and checkout records.",
+    whatWeDelete:
+      "Email address, submitted inputs, generated playbook, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

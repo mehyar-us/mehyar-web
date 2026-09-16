@@ -222,6 +222,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/creditfixkit-logo.png",
     accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
   },
+  {
+    id: "tiktokgrowth",
+    name: "TikTok Growth System",
+    url: "https://tiktokgrowth.mehyar.us",
+    tagline: "A 30-day organic TikTok playbook, generated for your niche.",
+    description:
+      "An AI playbook builder for organic short-form growth: tell it your niche, camera comfort, and hours per week, and it generates a 30-day posting plan, 30 first-3-second hook scripts, a bio + CTA pack, and a trend-jacking playbook — one-time $27 with 5 free hook scripts before you pay.",
+    audience: "Creators, founders, and small businesses starting or restarting organic TikTok growth.",
+    highlights: [
+      "30-day posting plan built around your niche, schedule, and on-camera comfort",
+      "30 hook scripts for the first 3 seconds, each with why-it-works and delivery tips",
+      "Bio + CTA pack and a trend-jacking playbook — original-content methods only",
+      "5 free hook scripts before you pay — $27 one-time, 7-day redo-or-refund",
+    ],
+    logo: "/assets/tiktokgrowth-logo.png",
+    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
+  },
 ];
 
 const buildPillars = [
@@ -463,7 +480,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System), and the request form.
           </p>
         </div>
       </section>

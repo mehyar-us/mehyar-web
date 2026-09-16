@@ -17,6 +17,7 @@ import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
 import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
+import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -181,6 +182,15 @@ const fulfillHooks = {
   async creditfixkit({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillCreditfixkit({ db, env, waitUntil, sendEmail }, payment);
+  },
+
+  // TikTok Growth System playbook. Creates the tiktokgrowth_orders row
+  // (idempotent on payment_id via idx_tiktokgrowth_orders_payment), unifies
+  // the access token onto the billing_payments row, then hands off to the
+  // standalone module for background generation + buyer email.
+  async tiktokgrowth({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, payment);
   },
 };
 
