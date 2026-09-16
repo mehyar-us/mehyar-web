@@ -6,9 +6,9 @@ import type {Env} from '../src/env';
 import {ResearchJobs} from '../src/research/jobs';
 const input=()=>({key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
 const provider='11111111-1111-4111-8111-111111111111';
-async function ledger(work:(jobs:ResearchJobs)=>void){
+async function ledger(work:(jobs:ResearchJobs)=>void|Promise<void>){
   const stub=await getAgentByName((env as unknown as Env).BUSINESS_AGENTS,crypto.randomUUID());
-  await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();work(jobs);});
+  await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs);});
 }
 describe('durable research reservations',()=>{
   it('reserves one allowance atomically and replays only the same request',async()=>ledger(jobs=>{
@@ -60,5 +60,42 @@ describe('durable research reservations',()=>{
     expect(jobs.get(queued.id)).toMatchObject({status:'cancelled',reserved:0});
     expect(jobs.get(running.id)).toMatchObject({status:'cancel_requested',reserved:5});
     expect(jobs.get(submitting.id)).toMatchObject({status:'uncertain',reserved:5});
+  }));
+  it('persists source-backed evidence once across concurrent delivery and restart',async()=>ledger(async jobs=>{
+    const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);
+    const record={url:job.source,status:'completed' as const,httpStatus:200,html:'<title>Oak Salon</title>'};
+    const stamp=new Date().toISOString();
+    const [a,b]=await Promise.all([jobs.ingest(job.id,provider,record,stamp),jobs.ingest(job.id,provider,record,stamp)]);
+    expect(a).toEqual(b);jobs.initialize();
+    expect(jobs.pages(job.id)).toEqual([a]);
+    expect(a.evidence[0]).toMatchObject({value:'Oak Salon',sourceUrl:job.source,verification:'unverified',trustedForInstructions:false});
+    await expect(jobs.ingest(job.id,provider,{...record,html:'<title>Different</title>'},stamp)).rejects.toThrow('conflicting content');
+    expect(()=>jobs.settle(job.id,'completed',0)).toThrow('cannot omit');
+    expect(jobs.settle(job.id,'completed',1)).toMatchObject({used:1,reserved:0});
+  }));
+  it('rejects foreign providers, origins, disallowed pages and over-limit evidence',async()=>ledger(async jobs=>{
+    const job=jobs.reserve({...input(),pages:1});jobs.begin(job.id);jobs.submitted(job.id,provider);
+    const record={url:job.source,status:'completed' as const,httpStatus:200,html:'<title>Page</title>'},stamp=new Date().toISOString();
+    await expect(jobs.ingest(job.id,'another-provider',record,stamp)).rejects.toThrow('provider job');
+    await expect(jobs.ingest(job.id,provider,{...record,finalUrl:'https://other.example.com/'},stamp)).rejects.toThrow('approved website');
+    await expect(jobs.ingest(job.id,provider,{...record,status:'disallowed'},stamp)).rejects.toThrow('permitted');
+    await jobs.ingest(job.id,provider,record,stamp);
+    await expect(jobs.ingest(job.id,provider,{...record,url:job.source+'contact'},stamp)).rejects.toThrow('reserved page limit');
+    expect(jobs.pages(job.id)).toHaveLength(1);
+  }));
+  it('rechecks settlement after asynchronous extraction before writing evidence',async()=>ledger(async jobs=>{
+    const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);
+    const pending=jobs.ingest(job.id,provider,{url:job.source,status:'completed',httpStatus:200,html:'<title>Late page</title>'},new Date().toISOString());
+    jobs.settle(job.id,'cancelled',0);
+    await expect(pending).rejects.toThrow('stopped accepting');expect(jobs.pages(job.id)).toEqual([]);
+  }));
+  it('deduplicates redirects by final source and keeps reads scoped to the job',async()=>ledger(async jobs=>{
+    const job=jobs.reserve({...input(),pages:5});jobs.begin(job.id);jobs.submitted(job.id,provider);
+    const record={url:job.source,status:'completed' as const,httpStatus:200,finalUrl:job.source+'about',html:'<title>About</title>'};
+    await jobs.ingest(job.id,provider,record,new Date().toISOString());
+    await jobs.ingest(job.id,provider,{...record,url:job.source+'old-about'},new Date().toISOString());
+    expect(jobs.pages(job.id)).toHaveLength(1);expect(jobs.pages(job.id)[0].url).toBe(record.finalUrl);
+    const other=jobs.reserve({...input(),pages:5});expect(jobs.pages(other.id)).toEqual([]);
+    expect(jobs.pages(job.id,20)).toEqual([]);expect(()=>jobs.pages(job.id,-1)).toThrow('offset');
   }));
 });

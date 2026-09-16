@@ -1,5 +1,7 @@
 import {HttpError} from '../http';
 import {normalizeWebsite} from '../tenants';
+import {extractSiteEvidence,type ExtractedPage} from './extract';
+import type {CrawlRecord} from './cloudflare-crawl';
 
 type Status='reserved'|'submitting'|'uncertain'|'running'|'cancel_requested'|'completed'|'cancelled'|'failed';
 type Job={id:string;request_key:string;source:string;period:string;page_limit:number;depth:number;deadline:number;
@@ -15,6 +17,9 @@ export class ResearchJobs {
       id TEXT PRIMARY KEY,request_key TEXT NOT NULL UNIQUE,source TEXT NOT NULL,period TEXT NOT NULL,
       page_limit INTEGER NOT NULL,depth INTEGER NOT NULL,deadline INTEGER NOT NULL,status TEXT NOT NULL,
       provider_id TEXT UNIQUE,used INTEGER NOT NULL DEFAULT 0,reserved INTEGER NOT NULL)`);
+    this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_pages (
+      job_id TEXT NOT NULL,url TEXT NOT NULL,content_hash TEXT NOT NULL,evidence TEXT NOT NULL,
+      PRIMARY KEY(job_id,url))`);
     // An interrupted POST may have created a billable provider job. Keep its reservation.
     this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
     this.expire();
@@ -78,9 +83,38 @@ export class ResearchJobs {
     else if(job.status==='submitting')return this.uncertain(id);
     return this.get(id);
   }
+  async ingest(id:string,providerId:string,record:CrawlRecord,retrievedAt:string):Promise<ExtractedPage> {
+    const job=this.get(id);
+    if(job.provider_id!==providerId||!['running','cancel_requested'].includes(job.status))throw conflict('Research does not accept pages for this provider job.');
+    if(record.status!=='completed'||typeof record.html!=='string'||!Number.isInteger(record.httpStatus)||record.httpStatus!<200||record.httpStatus!>=300)
+      throw conflict('Only permitted successful HTML may become research evidence.');
+    const url=normalizeWebsite(record.url),finalUrl=normalizeWebsite(record.finalUrl??record.url);
+    if(!url||!finalUrl||new URL(url).origin!==new URL(job.source).origin||new URL(finalUrl).origin!==new URL(job.source).origin)
+      throw conflict('Research evidence must belong to the approved website.');
+    const page=await extractSiteEvidence(record.html,finalUrl,retrievedAt);
+    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(record.html));
+    const hash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+    return this.storage.transactionSync(()=>{
+      const current=this.get(id);
+      if(current.provider_id!==providerId||!['running','cancel_requested'].includes(current.status))throw conflict('Research stopped accepting evidence during extraction.');
+      const prior=this.storage.sql.exec<{content_hash:string;evidence:string}>('SELECT content_hash,evidence FROM research_pages WHERE job_id=? AND url=?',id,finalUrl).toArray()[0];
+      if(prior){if(prior.content_hash!==hash)throw conflict('This page has conflicting content in the same crawl.');return JSON.parse(prior.evidence) as ExtractedPage;}
+      const count=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
+      if(count>=current.page_limit)throw conflict('Research has reached its reserved page limit.');
+      this.storage.sql.exec('INSERT INTO research_pages(job_id,url,content_hash,evidence) VALUES(?,?,?,?)',id,finalUrl,hash,JSON.stringify(page));
+      return page;
+    });
+  }
+  pages(id:string,offset=0):ExtractedPage[] {
+    this.get(id);
+    if(!Number.isSafeInteger(offset)||offset<0)throw conflict('Invalid research page offset.');
+    return this.storage.sql.exec<{evidence:string}>('SELECT evidence FROM research_pages WHERE job_id=? ORDER BY url LIMIT 20 OFFSET ?',id,offset).toArray().map(row=>JSON.parse(row.evidence) as ExtractedPage);
+  }
   settle(id:string,status:'completed'|'cancelled'|'failed',successfulPages:number):Job {
     const job=this.get(id);
     if(!Number.isInteger(successfulPages)||successfulPages<0||successfulPages>job.page_limit)throw conflict('Invalid verified page count.');
+    const imported=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
+    if(successfulPages<imported)throw conflict('Verified page count cannot omit stored successful pages.');
     if(job.status===status&&job.used===successfulPages&&job.reserved===0)return job;
     if(!job.provider_id||!['running','cancel_requested'].includes(job.status))throw conflict('Provider completion must be verified before settling research.');
     this.storage.sql.exec('UPDATE research_jobs SET status=?,used=?,reserved=0 WHERE id=?',status,successfulPages,id);return this.get(id);
