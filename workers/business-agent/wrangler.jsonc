@@ -17,6 +17,7 @@
     "AGENT_PLATFORM_EMAIL_WEBHOOK_ENABLED": "false",
     "EXTERNAL_ACTIONS_ENABLED": "false",
     "MAILBOX_SYNC_ENABLED": "false",
+    "MAILBOX_RECOVERY_ENABLED": "false",
     "RESEARCH_ENABLED": "false",
     "RESEARCH_RECOVERY_ENABLED": "false"
   },

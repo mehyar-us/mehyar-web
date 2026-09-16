@@ -6,6 +6,7 @@ import { appendActivity,normalizeWebsite } from './tenants';
 import { ActionControls } from './actions';
 import { connectedCalendars } from './connectors/calendar-access';
 import {CalendarSessions} from './connectors/calendar-sessions';
+import {runMailboxPage} from './connectors/mailbox-runner';
 import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
@@ -90,6 +91,17 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   }
 
   private controls() { return new ActionControls(this.ctx.storage.sql,this.env,()=>this.state.paused); }
+  async syncMailbox(actor:Actor,streamId:string) {
+    return this.result(async()=>{
+      const guard=async()=>{
+        await this.bind(actor);
+        await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused)throw new HttpError(409,'agent_paused','Mailbox monitoring is paused.');
+      };
+      await guard();
+      return runMailboxPage(this.env,actor,streamId,guard);
+    });
+  }
   async businessBrief(actor:Actor){
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
       const sources=await briefSources(this.env,actor);return {...new BusinessBrief(this.ctx.storage).present(),sources};
