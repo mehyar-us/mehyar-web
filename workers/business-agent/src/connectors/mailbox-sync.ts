@@ -285,7 +285,7 @@ export class MailboxSync {
       SELECT stream_id,message_id,receipt_token,CASE WHEN state='present' THEN 'pending' ELSE 'obsolete' END,?
       FROM agent_mailbox_messages WHERE stream_id=? AND message_id=? AND receipt_token=?
       ON CONFLICT(stream_id,message_id) DO UPDATE SET receipt_token=excluded.receipt_token,state=excluded.state,
-        next_attempt_at=excluded.next_attempt_at,attempts=0,lease_token=NULL,lease_until=NULL`)
+        next_attempt_at=excluded.next_attempt_at,attempts=0,lease_token=NULL,lease_until=NULL,last_reason=NULL`)
       .bind(now,row.id,context.message_id,claim.token);
     const results=await this.env.AGENT_DB.batch([receipt,acknowledge,release,triage]);
     return results[1].meta.changes===1;

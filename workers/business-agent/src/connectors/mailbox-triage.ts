@@ -101,8 +101,11 @@ export class MailboxTriage {
       const response=await env.AI!.run('@cf/openai/gpt-oss-120b',request,
         {gateway:{id:env.AI_GATEWAY_ID!,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent',workload:'mailbox_triage'}},signal:AbortSignal.timeout(60_000)});
       const raw=typeof response==='object'&&response&&'choices' in response?response.choices?.[0]?.message?.content:null;
-      if(typeof raw!=='string')throw new Error('Invalid mailbox triage response');
-      const result=parseMailTriage(raw,source);
+      let result:MailTriageResult;
+      try{
+        if(typeof raw!=='string')throw new Error();
+        result=parseMailTriage(raw,source);
+      }catch{throw new HttpError(502,'triage_invalid_response','The analysis response could not be verified.');}
       await guard();
       const delivery=await textAccess(env,actor,await requireTenant(env,actor));
       if(delivery.period!==access.period||delivery.limit!==access.limit)throw new HttpError(409,'usage_period_changed','The analysis allowance changed. Retry the analysis.');

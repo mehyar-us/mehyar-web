@@ -41,6 +41,24 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it.each([
+    ['triage_long_message','review_required',1,'long_message'],
+    ['triage_no_text','review_required',1,'no_text'],
+    ['triage_invalid_response','review_required',1,'invalid_response'],
+    ['usage_limit','pending',0,'allowance_unavailable'],
+    ['provider_budget_limit','pending',0,'allowance_unavailable'],
+    ['analysis_running','pending',0,'analysis_running'],
+  ] as const)('classifies automatic triage failure %s without blind retries',async(code,state,attempts,reason)=>{
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_triage_queue SET state='complete'").run();
+    const f=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'queued',kind:'upsert'}],syncCursor:'300'});
+    await f.ledger.saveChange((await f.ledger.claimChange(f.streamId))!,{provider:'google',id:'queued',content:{id:'queued',threadId:'t',payload:{}}});
+    const ready={...e,MAILBOX_TRIAGE_DISPATCH_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true',AI_ENABLED:'true'};
+    const time=Date.now();
+    await runMailboxTriageDispatch(ready,async()=>({ok:false,error:{code}}),()=>time);
+    expect(await e.AGENT_DB.prepare('SELECT state,attempts,last_reason FROM agent_mailbox_triage_queue WHERE stream_id=?').bind(f.streamId).first()).toEqual({state,attempts,last_reason:reason});
+    expect(await runMailboxTriageDispatch(ready,async()=>{throw new Error('early retry');},()=>time+1000)).toMatchObject({selected:0});
+  });
   it('leases automatic triage once and cannot acknowledge a superseding observation',async()=>{
     await e.AGENT_DB.prepare("UPDATE agent_mailbox_triage_queue SET state='complete'").run();
     const f=await fixture();

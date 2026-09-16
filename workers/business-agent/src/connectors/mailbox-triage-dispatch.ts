@@ -24,7 +24,7 @@ export async function runMailboxTriageDispatch(env:Env,dispatch?:Dispatch,clock:
     FROM agent_mailbox_triage_queue q JOIN agent_mailbox_sync s ON s.id=q.stream_id JOIN auth_provider_grants g ON g.id=s.grant_id
     WHERE q.state='pending' AND q.attempts<6 AND q.next_attempt_at<=? AND (q.lease_until IS NULL OR q.lease_until<=?) AND ${eligibility}
   ) SELECT * FROM eligible WHERE rank=1 ORDER BY next_attempt_at,stream_id,message_id LIMIT 5`).bind(now,now,now).all<Candidate>()).results;
-  const deliver=dispatch??(async(actor,id,message,receipt)=>(await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId)).analyzeMailbox(actor,id,message,receipt));
+  const deliver:Dispatch=dispatch??(async(actor,id,message,receipt)=>(await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId)).analyzeMailbox(actor,id,message,receipt));
   let complete=0,deferred=0;
   for(const candidate of rows){
     const token=crypto.randomUUID();
@@ -33,12 +33,19 @@ export async function runMailboxTriageDispatch(env:Env,dispatch?:Dispatch,clock:
       AND (lease_until IS NULL OR lease_until<=?) AND ${eligibility} RETURNING attempts`)
       .bind(token,new Date(clock()+120000).toISOString(),candidate.stream_id,candidate.message_id,candidate.receipt_token,now,now,now).first<{attempts:number}>();
     if(!claimed)continue;
-    let success=false;
-    try{success=(await deliver({tenantId:candidate.tenant_id,userId:candidate.user_id},candidate.stream_id,candidate.message_id,candidate.receipt_token)).ok;}catch{/* Retry only through a new bounded queue claim. */}
-    const state=success?'complete':claimed.attempts>=6?'review_required':'pending';
-    const result=await env.AGENT_DB.prepare(`UPDATE agent_mailbox_triage_queue SET state=?,next_attempt_at=?,lease_token=NULL,lease_until=NULL
+    let success=false,code='';
+    try{const outcome=await deliver({tenantId:candidate.tenant_id,userId:candidate.user_id},candidate.stream_id,candidate.message_id,candidate.receipt_token);success=outcome.ok;code=outcome.error?.code??'';}catch{/* Retry only through a new bounded queue claim. */}
+    const permanent=['triage_no_text','triage_long_message','triage_invalid_response'].includes(code);
+    // These specific failures occur before model dispatch. Other failures may
+    // follow provider work, so their attempt remains counted conservatively.
+    const unspent=!success&&['usage_limit','provider_budget_limit','analysis_running'].includes(code);
+    const attempts=claimed.attempts-(unspent?1:0);
+    const reason=success?null:code==='triage_no_text'?'no_text':code==='triage_long_message'?'long_message':code==='triage_invalid_response'?'invalid_response':unspent?(code==='analysis_running'?'analysis_running':'allowance_unavailable'):'execution_unavailable';
+    const state=success?'complete':permanent||attempts>=6?'review_required':'pending';
+    const delay=unspent?3600000:Math.min(86400000,900000*2**(claimed.attempts-1));
+    const result=await env.AGENT_DB.prepare(`UPDATE agent_mailbox_triage_queue SET state=?,next_attempt_at=?,attempts=?,last_reason=?,lease_token=NULL,lease_until=NULL
       WHERE stream_id=? AND message_id=? AND receipt_token=? AND lease_token=? AND lease_until>?`)
-      .bind(state,new Date(clock()+Math.min(86400000,900000*2**(claimed.attempts-1))).toISOString(),candidate.stream_id,candidate.message_id,candidate.receipt_token,token,new Date(clock()).toISOString()).run();
+      .bind(state,new Date(clock()+delay).toISOString(),attempts,reason,candidate.stream_id,candidate.message_id,candidate.receipt_token,token,new Date(clock()).toISOString()).run();
     if(result.meta.changes){if(success)complete++;else deferred++;}
   }
   return {disabled:false,selected:rows.length,complete,deferred};
