@@ -129,6 +129,9 @@ describe('one-page mailbox provider runner',()=>{
         if(mode==='success'){
           (instance as any).env.AI_ENABLED='false';
           const directory=unwrap(await instance.mailboxAnalyses(f.actor,f.grantId));
+          expect(directory.queue).toEqual({pending:1,needsReview:0,longMessages:0,unavailableText:0,invalidResponses:0,dispatchEnabled:false});
+          await e.AGENT_DB.prepare("UPDATE agent_mailbox_triage_queue SET state='review_required',last_reason='long_message' WHERE stream_id=?").bind(f.streamId).run();
+          expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId)).queue).toMatchObject({pending:0,needsReview:1,longMessages:1});
           expect(directory).toMatchObject({withheld:0,items:[{summary:'A greeting with no clear request.',evidence:['Hello'],requiresReview:true,authorizesActions:false}]});
           expect(JSON.stringify(directory)).not.toContain(claim.token);expect(JSON.stringify(directory)).not.toContain(f.streamId);
           expect(await instance.mailboxAnalyses(f.actor,crypto.randomUUID())).toMatchObject({ok:false,error:{code:'triage_access_unavailable'}});
@@ -142,6 +145,7 @@ describe('one-page mailbox provider runner',()=>{
           expect(new Set([...firstPage.items,...lastPage.items].map(item=>item.id)).size).toBe(13);
           await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
           const withheldPage=unwrap(await instance.mailboxAnalyses(f.actor,f.grantId));
+          expect(withheldPage.queue).toMatchObject({pending:0,needsReview:0,longMessages:0});
           expect(withheldPage).toMatchObject({items:[],withheld:10});expect(withheldPage.nextCursor).toBeDefined();
           expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId,withheldPage.nextCursor))).toMatchObject({items:[],withheld:3});
           expect(calls).toBe(1);expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:1,reserved:0});

@@ -56,9 +56,20 @@ export class MailboxTriage {
         withheld++;
       }
     }
+    const counts=await env.AGENT_DB.prepare(`SELECT COALESCE(SUM(q.state='pending'),0) AS pending,
+      COALESCE(SUM(q.state='review_required'),0) AS needsReview,
+      COALESCE(SUM(q.state='review_required' AND q.last_reason='long_message'),0) AS longMessages,
+      COALESCE(SUM(q.state='review_required' AND q.last_reason='no_text'),0) AS unavailableText,
+      COALESCE(SUM(q.state='review_required' AND q.last_reason='invalid_response'),0) AS invalidResponses
+      FROM agent_mailbox_triage_queue q JOIN agent_mailbox_sync s ON s.id=q.stream_id
+      JOIN agent_mailbox_messages m ON m.stream_id=q.stream_id AND m.message_id=q.message_id AND m.receipt_token=q.receipt_token
+      WHERE s.tenant_id=? AND s.grant_id=? AND s.authorization=? AND m.state='present' AND m.needs_reconciliation=0
+        AND q.state IN ('pending','review_required')`)
+      .bind(actor.tenantId,grantId,authorization).first<{pending:number;needsReview:number;longMessages:number;unavailableText:number;invalidResponses:number}>();
     if(await guard()!==authorization)throw new HttpError(409,'triage_access_changed','Mailbox access changed. Reload analyses.');
     if(JSON.stringify(this.businessContext())!==JSON.stringify(context))throw new HttpError(409,'triage_context_changed','The business brief changed. Reload analyses.');
-    return {items,withheld,nextCursor:rows.length>10?rows[9].id:undefined};
+    return {items,withheld,nextCursor:rows.length>10?rows[9].id:undefined,queue:{...counts!,dispatchEnabled:
+      env.MAILBOX_TRIAGE_DISPATCH_ENABLED==='true'&&env.MAILBOX_TRIAGE_ENABLED==='true'&&env.MAILBOX_PROCESSING_ENABLED==='true'&&env.MAILBOX_SYNC_ENABLED==='true'&&env.AI_ENABLED==='true'}};
   }
   private businessContext(){
     const present=new BusinessBrief(this.storage).present();
