@@ -12,6 +12,7 @@
 // sessions it created in flight keep working on their registered URLs.
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
+import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {

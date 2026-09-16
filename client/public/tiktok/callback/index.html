@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TikTok connected — MehyarSoft</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0b0b10; color: #f2f2f5; font-family: -apple-system, "Segoe UI", Inter, Roboto, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .card { max-width: 520px; width: 100%; background: #14141c; border: 1px solid #262633; border-radius: 18px; padding: 32px 28px; text-align: center; }
+  .ok { font-size: 52px; margin-bottom: 12px; }
+  h1 { font-size: 22px; margin-bottom: 10px; }
+  p { color: #a7a7b8; font-size: 15px; line-height: 1.55; margin-bottom: 14px; }
+  .codebox { background: #0b0b10; border: 1px dashed #3a3a4d; border-radius: 12px; padding: 18px 12px; font-family: ui-monospace, Menlo, monospace; font-size: 15px; word-break: break-all; color: #7df9c6; margin: 16px 0; min-height: 60px; }
+  button { background: #fe2c55; color: #fff; border: 0; border-radius: 999px; padding: 13px 34px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button:active { transform: scale(.97); }
+  .err { color: #ff7a7a; }
+  .hint { font-size: 13px; color: #8a8a9e; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="card" id="card"><div class="ok">⏳</div><h1>Finishing TikTok connection…</h1></div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var card = document.getElementById('card');
+  var code = q.get('code'), err = q.get('error'), edesc = q.get('error_description');
+  if (err) {
+    card.innerHTML = '<div class="ok">⚠️</div><h1>Authorization ' +
+      (err === 'access_denied' ? 'was declined' : 'failed') + '</h1>' +
+      '<p class="err">' + (edesc || err).replace(/</g, '&lt;') + '</p>' +
+      '<p class="hint">Go back to the chat and tell Hot Zero what happened.</p>';
+    return;
+  }
+  if (!code) {
+    card.innerHTML = '<div class="ok">❓</div><h1>No code received</h1>' +
+      '<p>This page should have opened with a <b>?code=</b> in the address. Try the authorize link again.</p>';
+    return;
+  }
+  var safe = code.replace(/</g, '&lt;');
+  card.innerHTML = '<div class="ok">✅</div><h1>TikTok authorized</h1>' +
+    '<p>Copy this code and paste it back into your chat with Hot Zero to finish connecting:</p>' +
+    '<div class="codebox" id="codebox">' + safe + '</div>' +
+    '<button id="copy">Copy code</button>' +
+    '<p class="hint">The code expires in a few minutes — paste it right away.</p>';
+  document.getElementById('copy').addEventListener('click', function () {
+    var done = function (t) { document.getElementById('copy').textContent = t; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(function () { done('Copied ✓'); }, function () { done('Copy failed — long-press the code'); });
+    } else {
+      var r = document.createRange(); r.selectNode(document.getElementById('codebox'));
+      var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      try { document.execCommand('copy'); done('Copied ✓'); } catch (e) { done('Copy failed — long-press the code'); }
+    }
+  });
+})();
+</script>
+</body>
+</html>
