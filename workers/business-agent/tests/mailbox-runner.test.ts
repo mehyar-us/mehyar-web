@@ -10,7 +10,7 @@ import {runMailboxPage} from '../src/connectors/mailbox-runner';
 import {initializeGoogleMailbox} from '../src/connectors/mailbox-bootstrap';
 import {consumeMailboxChange} from '../src/connectors/mailbox-consumer';
 import {googleMailboxStatus,microsoftMailboxStatus} from '../src/connectors/mailbox-status';
-import {runInDurableObject} from 'cloudflare:test';
+import {runInDurableObject,runDurableObjectAlarm,evictDurableObject} from 'cloudflare:test';
 import {getAgentByName} from 'agents';
 import {FolderSessions} from '../src/connectors/folder-sessions';
 import {connectedMailboxFolders,initializeMicrosoftFolders} from '../src/connectors/folder-access';
@@ -45,6 +45,51 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it.each([false,true])('dispatches through SDK alarms and survives eviction with transient failure=%s',async(retry)=>{
+    vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-09-17T00:00:00Z'));
+    try{
+      const f=await fixture(),text='Please book Friday. '.repeat(500);
+      await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'alarm-message',kind:'upsert'}],syncCursor:'300'});
+      const claim=(await f.ledger.claimChange(f.streamId))!;
+      await f.ledger.saveChange(claim,{provider:'google',id:'alarm-message',content:{id:'alarm-message',threadId:'thread',payload:{mimeType:'text/plain',body:{size:text.length,data:btoa(text).replace(/=+$/,'')}}}});
+      const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);let calls=0,original:Env|undefined;
+      try{
+        const job=await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+          original=(instance as any).env;
+          (instance as any).env={...e,MAILBOX_EXTENDED_JOBS_ENABLED:'true',MAILBOX_EXTENDED_TRIAGE_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true',AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any)=>{
+            calls++;const data=JSON.parse(input.messages[1].content);expect(data.sections).toBeUndefined();
+            if(retry&&calls===1)throw new Error('Transient model failure');
+            return {choices:[{message:{content:JSON.stringify({category:'appointment',priority:'routine',summary:'Review Friday.',evidence:[{excerpt:data.emailText.slice(0,20)}]})}}]};
+          }}};
+          const offer=unwrap(await instance.reviewMailboxSections(f.actor,f.streamId,'alarm-message',claim.token));
+          const accepted=unwrap(await instance.startMailboxSectionJob(f.actor,offer.offerId));
+          expect(await ctx.storage.getAlarm()).not.toBeNull();return accepted;
+        });
+        expect(await runDurableObjectAlarm(stub)).toBe(true);expect(calls).toBe(0);
+        const expectedCalls=retry?3:2;
+        for(let step=1;step<=expectedCalls;step++){
+          vi.setSystemTime(new Date(Date.now()+61000));
+          expect(await runDurableObjectAlarm(stub)).toBe(true);
+          await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+            const completed=step-(retry?1:0);
+            expect(unwrap(await instance.mailboxSectionJob(f.actor,job.id))).toMatchObject({completedSections:completed,status:completed===2?'completed':'queued'});
+            expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:completed,reserved:0});
+          });expect(calls).toBe(step);
+        }
+        await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+          expect((await instance.listSchedules({type:'interval'})).filter(s=>s.callback==='maintainMailboxSections')).toHaveLength(0);
+          (instance as any).env=original;
+        });original=undefined;
+        vi.useRealTimers();
+        await evictDurableObject(stub);
+        await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+          expect(unwrap(await instance.mailboxSectionJob(f.actor,job.id))).toMatchObject({status:'completed',completedSections:2});
+          expect(ctx.storage.sql.exec("SELECT id FROM background_text_usage WHERE status='complete'").toArray()).toHaveLength(2);
+          expect(ctx.storage.sql.exec('SELECT id FROM mailbox_triage_aggregations').toArray()).toHaveLength(0);
+        });expect(calls).toBe(expectedCalls);
+      }finally{if(original)await runInDurableObject(stub,(instance:BusinessAgent)=>{(instance as any).env=original;});}
+    }finally{vi.useRealTimers();}
+  });
   it('persists approved background sections, recovers a restart and completes after the offer expires',async()=>{
     vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-09-17T00:00:00Z'));
     try{
