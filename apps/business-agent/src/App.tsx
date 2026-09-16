@@ -1498,7 +1498,7 @@ export default function App() {
                               <span className="small muted">
                                 {memory.source === "owner"
                                   ? "Added by your business"
-                                  : memory.source || "Source not recorded"}
+                                  : memory.source === "owner_confirmed_website" ? "Website claim confirmed by owner" : memory.source || "Source not recorded"}
                                 {memory.updatedAt
                                   ? ` · ${safeDate(memory.updatedAt)}`
                                   : ""}
@@ -1585,7 +1585,7 @@ export default function App() {
                       )}
                     </section>
                   </div>
-                  {['owner','manager'].includes(snapshot.membership.role) && <ResearchPanel key={`${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} online={online} onUnauthorized={fail}/>}
+                  {['owner','manager'].includes(snapshot.membership.role) && <ResearchPanel key={`${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} online={online} canConfirm={snapshot.membership.role==='owner'} onSaved={()=>refreshWorkspace(tenantId)} onUnauthorized={fail}/>}
                 </div>
               )}
               {tab === "connections" && (

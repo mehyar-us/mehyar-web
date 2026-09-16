@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
+import ConfirmResearchClaim from './ConfirmResearchClaim';
 type Job={id:string;website:string;status:string;pageLimit:number;evidencePages:number;usedPages:number;reservedPages:number};
 type Claim={field:string;value:string;sourceUrl:string;retrievedAt:string;confidence:string;selector:string};
 type EvidencePage={url:string;retrievedAt:string;evidence:Claim[];warnings:string[]};
@@ -12,7 +13,7 @@ function valid(result:Result,detail:boolean){
   if(!detail)return Array.isArray(result.jobs)&&result.jobs.length<=20&&result.jobs.every(validJob);
   return !!result.job&&validJob(result.job)&&Array.isArray(result.pages)&&result.pages.length<=20&&result.pages.every(page=>safeUrl(page.url)&&typeof page.retrievedAt==='string'&&Number.isFinite(Date.parse(page.retrievedAt))&&Array.isArray(page.warnings)&&page.warnings.every(w=>typeof w==='string')&&Array.isArray(page.evidence)&&page.evidence.length<=100&&page.evidence.every(claim=>claim&&[claim.field,claim.value,claim.selector,claim.confidence,claim.retrievedAt].every(v=>typeof v==='string')&&safeUrl(claim.sourceUrl)));
 }
-export default function ResearchPanel({tenantId,online,onUnauthorized}:{tenantId:string;online:boolean;onUnauthorized:(cause:unknown)=>void}){
+export default function ResearchPanel({tenantId,online,canConfirm,onSaved,onUnauthorized}:{tenantId:string;online:boolean;canConfirm:boolean;onSaved:()=>Promise<void>;onUnauthorized:(cause:unknown)=>void}){
   const [jobId,setJobId]=useState<string|null>(null),[offset,setOffset]=useState(0),[result,setResult]=useState<Result|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState('');
   const active=useRef<AbortController|null>(null);
   const load=useCallback(async()=>{
@@ -38,7 +39,7 @@ export default function ResearchPanel({tenantId,online,onUnauthorized}:{tenantId
       {result.pages?.map(page=><article className="memory-item" key={page.url}><div>
         <a href={page.url} target="_blank" rel="noopener noreferrer">{page.url}</a><p className="small muted">Retrieved {new Date(page.retrievedAt).toLocaleString()}</p>
         {page.warnings.length>0&&<p>Extraction notes: {page.warnings.map(w=>w.replaceAll('_',' ')).join('; ')}</p>}
-        {page.evidence.length===0?<p>No business claims were extracted from this page.</p>:page.evidence.map((claim,index)=><div key={index} className="memory-item"><div><strong>{claim.field.replaceAll('_',' ')}</strong><p>{claim.value}</p><p className="small muted">Unverified website claim · Extraction confidence: {claim.confidence}</p><a href={claim.sourceUrl} target="_blank" rel="noopener noreferrer">Claim source</a><details><summary>Source details</summary><p>{claim.selector}</p><p>{claim.retrievedAt}</p></details></div></div>)}
+        {page.evidence.length===0?<p>No business claims were extracted from this page.</p>:page.evidence.map((claim,index)=><div key={index} className="memory-item"><div><strong>{claim.field.replaceAll('_',' ')}</strong><p>{claim.value}</p><p className="small muted">Unverified website claim · Extraction confidence: {claim.confidence}</p><a href={claim.sourceUrl} target="_blank" rel="noopener noreferrer">Claim source</a><details><summary>Source details</summary><p>{claim.selector}</p><p>{claim.retrievedAt}</p></details>{canConfirm&&jobId&&<ConfirmResearchClaim tenantId={tenantId} jobId={jobId} url={page.url} index={index} field={claim.field} value={claim.value} online={online} onSaved={onSaved} onUnauthorized={onUnauthorized}/>}</div></div>)}
       </div></article>)}
       <div className="panel-heading">{offset>0&&<button className="button secondary" onClick={()=>{setResult(null);setOffset(Math.max(0,offset-20));}}>Previous results</button>}{result.nextOffset!==null&&<button className="button secondary" onClick={()=>{setResult(null);setOffset(result.nextOffset!);}}>Next results</button>}</div>
     </>:null}

@@ -527,3 +527,42 @@ test('research offers manual fallback and rejects unsafe result links',async({pa
   await expect(panel.getByRole('alert')).toContainText('unexpected response');
   await expect(panel.locator('a')).toHaveCount(0);
 });
+
+test('owner confirmation requires review, preserves uncertain retries and refreshes knowledge',async({page})=>{
+  await fixture(page);
+  const job={id:'research-confirm',website:'https://salon.example.com/',status:'completed',pageLimit:20,evidencePages:1,usedPages:1,reservedPages:0};
+  const bodies:unknown[]=[];let saved=false;
+  await page.route('**/api/tenants/business-a',route=>route.fulfill({json:{tenant,membership:{role:'owner'},activity:[],connections:[],usage:{},memory:saved?[{id:'confirmed-memory',key:'Business name',value:'Oak Salon',source:'owner_confirmed_website'}]:[]}}));
+  await page.route('**/api/tenants/business-a/research**',route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path.endsWith('/confirm')){bodies.push(route.request().postDataJSON());if(bodies.length===1)return route.abort('failed');saved=true;return route.fulfill({json:{confirmed:true,removed:false,memory:{key:'Business name',value:'Oak Salon'}}});}
+    return route.fulfill({json:path.endsWith('/research-confirm')?{job,pages:[{url:job.website,retrievedAt:'2026-09-16T12:00:00Z',warnings:[],evidence:[{field:'business_name',value:'Oak Salon',sourceUrl:job.website,retrievedAt:'2026-09-16T12:00:00Z',confidence:'high',selector:'title'}]}],nextOffset:null}:{jobs:[job],nextOffset:null}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});
+  await panel.getByRole('button',{name:'View source evidence'}).click();
+  await panel.getByRole('button',{name:'Review for business knowledge'}).click();
+  await expect(panel.getByRole('button',{name:'Confirm and save fact'})).toBeDisabled();
+  await panel.getByLabel('Knowledge topic').fill('Business name');
+  await panel.getByRole('checkbox').check();
+  expect((await new AxeBuilder({page}).include('.research-panel').analyze()).violations).toEqual([]);
+  await panel.screenshot({path:'test-results/research-confirmation.png',animations:'disabled'});
+  await panel.getByRole('button',{name:'Confirm and save fact'}).click();
+  await expect(panel.getByRole('alert')).toBeVisible();await expect(panel.getByLabel('Knowledge topic')).toBeDisabled();
+  await panel.getByRole('button',{name:'Retry same confirmation'}).click();
+  await expect(panel.getByRole('status')).toHaveText('Saved to business knowledge with its source.');
+  expect(bodies).toEqual([{url:job.website,index:0,key:'Business name',expectedValue:'Oak Salon'},{url:job.website,index:0,key:'Business name',expectedValue:'Oak Salon'}]);
+  await expect(page.getByText('Website claim confirmed by owner',{exact:false})).toBeVisible();
+  await expect(page.locator('.memory-list').getByText('Oak Salon',{exact:true})).toBeVisible();
+});
+
+test('managers can review sources but cannot confirm website claims',async({page})=>{
+  await fixture(page);
+  await page.route('**/api/tenants/business-a',route=>route.fulfill({json:{tenant,membership:{role:'manager'},activity:[],connections:[],usage:{},memory:[]}}));
+  const job={id:'research-manager',website:'https://salon.example.com/',status:'completed',pageLimit:20,evidencePages:1,usedPages:1,reservedPages:0};
+  await page.route('**/api/tenants/business-a/research**',route=>route.fulfill({json:new URL(route.request().url()).pathname.endsWith('/research-manager')?{job,pages:[{url:job.website,retrievedAt:'2026-09-16T12:00:00Z',warnings:[],evidence:[{field:'business_name',value:'Owner review required',sourceUrl:job.website,retrievedAt:'2026-09-16T12:00:00Z',confidence:'high',selector:'title'}]}],nextOffset:null}:{jobs:[job],nextOffset:null}}));
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});await panel.getByRole('button',{name:'View source evidence'}).click();
+  await expect(panel.getByText('Owner review required',{exact:true})).toBeVisible();
+  await expect(panel.getByRole('button',{name:'Review for business knowledge'})).toHaveCount(0);
+});
