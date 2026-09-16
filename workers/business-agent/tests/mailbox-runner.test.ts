@@ -10,6 +10,10 @@ import {runMailboxPage} from '../src/connectors/mailbox-runner';
 import {initializeGoogleMailbox} from '../src/connectors/mailbox-bootstrap';
 import {consumeMailboxChange} from '../src/connectors/mailbox-consumer';
 import {googleMailboxStatus} from '../src/connectors/mailbox-status';
+import {runInDurableObject} from 'cloudflare:test';
+import {getAgentByName} from 'agents';
+import {FolderSessions} from '../src/connectors/folder-sessions';
+import {connectedMailboxFolders} from '../src/connectors/folder-access';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -32,6 +36,58 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('discovers current-account Outlook folders through real tenant storage without exposing provider cursors',async()=>{
+    const f=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const sessions=new FolderSessions(ctx.storage);sessions.initialize();let calls=0;
+      const transport:typeof fetch=async(input)=>{
+        const url=new URL(String(input));expect(url.origin).toBe('https://graph.microsoft.com');calls++;
+        return Response.json({value:[],...(calls<=5?{'@odata.nextLink':`https://graph.microsoft.com/v1.0/me/mailFolders?$skiptoken=private-${calls}`}:{})});
+      };
+      const first=await connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,undefined,transport);
+      expect(first.incomplete).toBe(true);expect(JSON.stringify(first)).not.toContain('private-');
+      const last=await connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,first.continuation,transport);
+      expect(last.incomplete).toBe(false);expect(last.inventoryId).toBeTruthy();expect(calls).toBe(6);
+      await expect(connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,first.continuation,transport)).rejects.toMatchObject({code:'folder_inventory_expired'});
+      expect(calls).toBe(6);
+    });
+  });
+  it('rejects disabled discovery, foreign grants and nonoperators before provider access',async()=>{
+    const f=await fixture('microsoft',false),other=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const sessions=new FolderSessions(ctx.storage);sessions.initialize();let calls=0;
+      const transport:typeof fetch=async()=>{calls++;return Response.json({value:[]});};
+      await expect(connectedMailboxFolders({...e,MAILBOX_SYNC_ENABLED:'false'},f.actor,f.grantId,sessions,guard,undefined,transport)).rejects.toMatchObject({code:'mailbox_sync_disabled'});
+      await expect(connectedMailboxFolders(e,f.actor,other.grantId,sessions,guard,undefined,transport)).rejects.toMatchObject({code:'mailbox_not_found'});
+      await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='billing' WHERE tenant_id=? AND user_id=?").bind(f.actor.tenantId,f.actor.userId).run();
+      await expect(connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,undefined,transport)).rejects.toBeDefined();
+      expect(calls).toBe(0);
+    });
+  });
+  it('withholds Outlook folder results when consent changes during provider access',async()=>{
+    const f=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const sessions=new FolderSessions(ctx.storage);sessions.initialize();
+      await expect(connectedMailboxFolders(e,f.actor,f.grantId,sessions,guard,undefined,async()=>{
+        await storeProviderGrant(e,f.binding,f.credential,[]);return Response.json({value:[]});
+      })).rejects.toMatchObject({code:'mailbox_authorization_changed'});
+      expect(ctx.storage.sql.exec('SELECT * FROM mailbox_folder_sessions').toArray()).toEqual([]);
+    });
+  });
+  it('checks the live Agent guard after provider access and before committing discovery',async()=>{
+    const f=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(_agent,ctx)=>{
+      const sessions=new FolderSessions(ctx.storage);sessions.initialize();let paused=false;
+      await expect(connectedMailboxFolders(e,f.actor,f.grantId,sessions,async()=>{if(paused)throw new Error('paused');},undefined,
+        async()=>{paused=true;return Response.json({value:[]});})).rejects.toThrow('paused');
+      expect(ctx.storage.sql.exec('SELECT * FROM mailbox_folder_sessions').toArray()).toEqual([]);
+    });
+  });
+  it('enforces tenant binding and the disabled flag at the actual folder Agent RPC',async()=>{
+    const f=await fixture('microsoft',false),other=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    expect(await stub.mailboxFolders(other.actor,other.grantId)).toMatchObject({ok:false,error:{code:'agent_mismatch'}});
+    expect(await stub.mailboxFolders(f.actor,f.grantId)).toMatchObject({ok:false,error:{code:'mailbox_sync_disabled'}});
+  });
   it('reports setup eligibility only after activation and all mailbox gates',async()=>{
     const f=await fixture('google',false);
     expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>false)).toEqual({state:'not_started',setupEnabled:false,pending:0,lastObservedAt:null});

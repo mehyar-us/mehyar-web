@@ -16,7 +16,7 @@ async function fixture(provider:'google'|'microsoft'='google') {
   let time=Date.now();
   const ledger=new MailboxSync(e,actor,()=>time);
   const streamId=await ledger.open(grantId,provider,provider==='google'?'mailbox':'inbox',provider==='google'?'200':undefined);
-  return {actor,binding,credential,grantId,ledger,streamId,advance:(seconds=91)=>{time+=seconds*1000;}};
+  return {actor,binding,credential,grantId,ledger,streamId,clock:()=>time,advance:(seconds=91)=>{time+=seconds*1000;}};
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
@@ -107,7 +107,7 @@ describe('durable mailbox synchronization',()=>{
     const f=await fixture(),claim=(await f.ledger.claim(f.streamId))!;
     expect(claim).toMatchObject({checkpoint:'200',pageCursor:null});
     expect(await f.ledger.commit(claim,{changes:[{messageId:'a',kind:'upsert'}],nextCursor:'page-two'})).toBe(true);
-    const restarted=new MailboxSync(e,f.actor),next=(await restarted.claim(f.streamId))!;
+    const restarted=new MailboxSync(e,f.actor,f.clock),next=(await restarted.claim(f.streamId))!;
     expect(next).toMatchObject({checkpoint:'200',pageCursor:'page-two'});
     expect(await restarted.commit(next,{changes:[{messageId:'b',kind:'delete'}],syncCursor:'300'})).toBe(true);
     expect(await count(f.streamId)).toBe(2);
