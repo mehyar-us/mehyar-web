@@ -54,6 +54,14 @@ export class ResearchJobs {
     });
   }
   hasDeadlines(){return this.storage.sql.exec<{count:number}>("SELECT COUNT(*) AS count FROM research_jobs WHERE status IN ('reserved','submitting','running')").one().count>0;}
+  stopForPause(){
+    this.storage.transactionSync(()=>{
+      this.storage.sql.exec("UPDATE research_jobs SET status='cancelled',reserved=0 WHERE status='reserved'");
+      this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
+      this.storage.sql.exec("UPDATE research_jobs SET status='cancel_requested' WHERE status='running'");
+      this.storage.sql.exec("UPDATE research_spend SET status='released' WHERE status='reserved' AND job_id IN (SELECT id FROM research_jobs WHERE status='cancelled' AND provider_id IS NULL)");
+    });
+  }
   hasRecoveryWork(){
     return this.storage.sql.exec<{count:number}>(`SELECT COUNT(*) AS count FROM research_jobs j
       LEFT JOIN research_poll_work p ON p.job_id=j.id LEFT JOIN research_stop_work s ON s.job_id=j.id

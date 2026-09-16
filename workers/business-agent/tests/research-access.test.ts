@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:workers';
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
 import {researchAccess,researchJobAccess,RESEARCH_GATES} from '../src/research/access';
@@ -21,6 +21,36 @@ async function paid(actor:{tenantId:string},plan:string,interval:string){
       .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
 }
 describe('server-derived research allowances',()=>{
+  it('recovers paused provider work through the actual maintenance callback and removes its idle schedule',async()=>{
+    const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId),account='b'.repeat(32),scope=`research:recovery:${account}`;
+    unwrap(await stub.provision(actor));
+    for(const gate of RECOVERY_GATES)await e.AGENT_DB.prepare("INSERT OR REPLACE INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture-only','test',?,?)")
+      .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
+    try{await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+      const jobs=new ResearchJobs(ctx.storage);jobs.initialize();
+      const input={key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:5,depth:2,deadline:Date.now()+60_000};
+      const running=jobs.reserveFor(actor,input),queued=jobs.reserveFor(actor,{...input,key:crypto.randomUUID()});
+      jobs.reserveSpend(running.id,100,200,'fixture');jobs.reserveSpend(queued.id,100,200,'fixture');jobs.bindProviderAccount(running.id,account);jobs.beginFunded(running.id);
+      const providerId='22222222-2222-4222-8222-222222222222';jobs.submitted(running.id,providerId);
+      const original=(instance as any).env;(instance as any).env={...original,RESEARCH_ENABLED:'false',RESEARCH_RECOVERY_ENABLED:'true',RESEARCH_ACCOUNT_ID:account,RESEARCH_API_TOKEN:'fixture-token'};
+      const methods:string[]=[];
+      const mock=vi.spyOn(globalThis,'fetch').mockImplementation(async(url,init)=>{
+        expect(String(url)).toContain(`/accounts/${account}/browser-rendering/crawl/${providerId}`);
+        methods.push(init?.method??'GET');
+        return Response.json({success:true,result:init?.method==='DELETE'?{}:{id:providerId,status:'cancelled_by_user',records:[]}});
+      });
+      try{
+        unwrap(await instance.pause(actor,true));expect(methods).toEqual([]);
+        expect(jobs.get(queued.id)).toMatchObject({status:'cancelled',reserved:0});expect(jobs.get(running.id).status).toBe('cancel_requested');
+        await instance.onStart();expect(methods).toEqual(['DELETE']);
+        expect((await instance.listSchedules({type:'interval'})).filter(s=>s.callback==='maintainResearch')).toHaveLength(1);
+        await instance.maintainResearch();expect(methods).toEqual(['DELETE','GET']);
+        expect(jobs.get(running.id)).toMatchObject({status:'cancelled',reserved:0});
+        expect((await instance.listSchedules({type:'interval'})).filter(s=>s.callback==='maintainResearch')).toHaveLength(0);
+        unwrap(await instance.pause(actor,false));await instance.maintainResearch();expect(methods).toHaveLength(2);
+      }finally{mock.mockRestore();(instance as any).env=original;}
+    });}finally{await e.AGENT_DB.prepare('DELETE FROM agent_billing_readiness WHERE scope_id=?').bind(scope).run();}
+  });
   it('runs gated stop recovery after revocation while execution remains disabled',async()=>{
     const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId),account='a'.repeat(32);
     await runInDurableObject(stub,async(_instance,ctx)=>{
