@@ -141,6 +141,7 @@ async function fixture(
         usage: {},
       });
     if (path === "/api/agent-billing/status") return reply(status);
+    if (path === "/api/agent-billing/notices") return reply({notices:[],nextCursor:null});
     if (path === "/api/agent-billing/cancel")
       return reply({
         requested: true,
@@ -170,6 +171,32 @@ test('paid usage displays remaining credits and refreshes without exposing subsc
   await expect(panel).not.toContainText('sub_private_identifier');
   used=130;await panel.getByRole('button',{name:'Refresh usage',exact:true}).click();
   await expect(panel).toContainText('1,867');await expect(panel).not.toContainText('1,877');
+});
+
+test('billing activity loads older notices and clears private history after failure, offline or workspace changes',async({page,context})=>{
+  await fixture(page);let failed=false;
+  const first='a'.repeat(32),last='b'.repeat(32);
+  await page.route('**/api/agent-billing/notices?**',route=>{
+    const url=new URL(route.request().url());
+    if(failed)return route.fulfill({status:403,json:{error:{message:'Billing access is unavailable.'}}});
+    if(url.searchParams.get('tenantId')==='business-b')return route.fulfill({json:{notices:[],nextCursor:null}});
+    const older=url.searchParams.has('cursor');
+    return route.fulfill({json:{notices:[{id:older?last:first,recordedAt:'2026-09-16T12:00:00Z',title:older?'Annual renewal approaching':'Subscription payment failed',message:older?'Review your subscription before renewal.':'Review your payment method.'}],nextCursor:older?null:first}});
+  });
+  await page.goto('/billing');const panel=page.getByRole('region',{name:'Billing activity'});
+  await expect(panel.getByRole('heading',{name:'Subscription payment failed'})).toBeVisible();
+  await panel.getByRole('button',{name:'Load older billing activity'}).click();
+  await expect(panel.getByRole('heading',{name:'Annual renewal approaching'})).toBeVisible();
+  await expect(panel.getByRole('listitem')).toHaveCount(2);
+  await expect(panel.getByRole('button',{name:'Load older billing activity'})).toHaveCount(0);
+  expect((await new AxeBuilder({page}).include('[aria-label="Billing activity"]').analyze()).violations).toEqual([]);
+  failed=true;await panel.getByRole('button',{name:'Refresh billing activity'}).click();
+  await expect(panel.getByRole('alert')).toHaveText('Billing access is unavailable.');await expect(panel.getByRole('listitem')).toHaveCount(0);
+  failed=false;await panel.getByRole('button',{name:'Refresh billing activity'}).click();await expect(panel.getByRole('listitem')).toHaveCount(1);
+  await context.setOffline(true);await expect(panel).toContainText('Reconnect to load billing activity.');await expect(panel.getByRole('listitem')).toHaveCount(0);
+  await context.setOffline(false);await expect(panel.getByRole('listitem')).toHaveCount(1);
+  await page.getByLabel('YOUR WORKSPACE').selectOption('business-b');
+  await expect(panel).toContainText('No billing updates have been recorded yet.');await expect(panel.getByRole('listitem')).toHaveCount(0);
 });
 
 test('usage failures remove stale totals and malformed accounting is never displayed',async({page})=>{

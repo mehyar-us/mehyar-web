@@ -13,7 +13,7 @@ function invoiceSubscription(invoice: StripeObject): string | undefined { return
 function priceId(item: StripeObject): string | undefined { return objectId(item.price) ?? item.pricing?.price_details?.price; }
 function stmt(env: BillingEnv, query: string, ...values: unknown[]) { return env.AGENT_DB.prepare(query).bind(...values); }
 function notice(env: BillingEnv, tenantId: string, event: StripeEvent, kind: string) {
-  return stmt(env, "INSERT INTO agent_billing_notices (id,tenant_id,event_id,kind,created_at) VALUES (?,?,?,?,?) ON CONFLICT DO NOTHING", `bn_${tenantId}_${event.data.object.id}_${kind}`, tenantId, event.id, kind, new Date().toISOString());
+  return stmt(env, "INSERT INTO agent_billing_notices (id,tenant_id,event_id,kind,created_at,public_key) VALUES (?,?,?,?,?,?) ON CONFLICT DO NOTHING", `bn_${tenantId}_${event.data.object.id}_${kind}`, tenantId, event.id, kind, new Date().toISOString(),crypto.randomUUID().replaceAll('-',''));
 }
 async function knownCustomer(env: BillingEnv, customerId?: string): Promise<{ tenant_id: string } | null> {
   if (!customerId) return null;

@@ -3,6 +3,7 @@ import type { Actor } from "../env";
 import { HttpError, json, readJson, requestKey, requireOrigin } from "../http";
 import { BILLING_ROLES, requireMembership, requireTenant } from "../permissions";
 import { processBillingEvent } from "./events";
+import {billingNotices} from './notices';
 import { billingStatus, cancelAtPeriodEnd, createCheckout, portalSession } from "./service";
 import { parseStripeEvent, readRawBody, verifyStripeSignature, type BillingEnv, type StripeClient } from "./stripe";
 
@@ -27,6 +28,7 @@ export async function handleBillingRequest(request: Request, env: BillingEnv, ac
   if (url.searchParams.get("tenantId") !== actor.tenantId) throw new HttpError(403, "billing_tenant_mismatch", "Select the correct workspace.");
   await requireMembership(env, actor, BILLING_ROLES); await requireTenant(env, actor);
   if (path === "/api/agent-billing/status" && request.method === "GET") return json(await billingStatus(env, actor));
+  if (path === "/api/agent-billing/notices" && request.method === "GET") return json(await billingNotices(env,actor,url.searchParams.get('cursor')));
   if (path === "/api/agent-billing/checkout" && request.method === "POST") return json(await createCheckout(env, actor, checkoutSchema.parse(await readJson(request)), requestKey(request), injectedClient));
   if (path === "/api/agent-billing/portal" && request.method === "POST") { z.object({}).strict().parse(await readJson(request)); return json(await portalSession(env, actor, requestKey(request), injectedClient)); }
   if (path === "/api/agent-billing/cancel" && request.method === "POST") { z.object({}).strict().parse(await readJson(request)); return json(await cancelAtPeriodEnd(env, actor, requestKey(request), injectedClient)); }

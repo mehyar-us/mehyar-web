@@ -6,6 +6,7 @@ import { processBillingEvent } from "../src/billing/events";
 import {auditSubscription,runBillingReconciliation} from '../src/billing/reconciliation';
 import {paidPeriodFindings} from '../src/billing/paid-period-audit';
 import {reconciliationStatus} from '../src/billing/reconciliation-status';
+import {billingNotices} from '../src/billing/notices';
 import { RELEASE_GATES, createCheckout, enforceExpiredBillingGrace, parsePriceMap, type CheckoutInput } from "../src/billing/service";
 import { AGENT_BILLING_DOMAIN, STRIPE_API_VERSION, StripeClient, agentMetadata, assertNoLegacyMetadata, encodeParameters, verifyStripeSignature, type BillingEnv, type StripeEvent, type StripeObject } from "../src/billing/stripe";
 import type { Actor } from "../src/env";
@@ -199,6 +200,30 @@ describe("new-agent two-stage checkout", () => {
 });
 
 describe("new-agent verified lifecycle and recovery", () => {
+  it('exposes verified billing activity without provider identifiers, delivery claims or duplicate notices',async()=>{
+    const f=await fixture(),a=await activated(f);
+    await processBillingEvent(f.env,a.paidEvent,f.stripe.client);
+    const response=await handleBillingRequest(new Request(`https://app.example.test/api/agent-billing/notices?tenantId=${f.actor.tenantId}`),f.env,f.actor);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    const result=await response.json() as {notices:{id:string;title:string;message:string}[];nextCursor:null};
+    expect(result.notices.map(n=>n.title).sort()).toEqual(['Setup payment received','Subscription payment recorded']);
+    expect(result.notices.every(n=>/^[a-f0-9]{32}$/.test(n.id))).toBe(true);expect(result.nextCursor).toBeNull();
+    const text=JSON.stringify(result);for(const privateValue of [a.sub.id,a.invoice.id,a.paidEvent.id,'pending'])expect(text).not.toContain(privateValue);
+    expect((await f.env.AGENT_DB.prepare("SELECT status FROM agent_billing_notices WHERE tenant_id=?").bind(f.actor.tenantId).all()).results.every(row=>row.status==='pending')).toBe(true);
+  });
+  it('paginates notices with tied timestamps and rejects foreign cursors or lost billing authority',async()=>{
+    const f=await fixture(),other=await fixture(),stamp=new Date().toISOString();
+    await f.env.AGENT_DB.batch(Array.from({length:27},(_,i)=>f.env.AGENT_DB.prepare('INSERT INTO agent_billing_notices(id,tenant_id,event_id,kind,created_at,public_key) VALUES (?,?,?,?,?,?)').bind(uid(),f.actor.tenantId,uid(),i===26?'constructor':'payment_failed',stamp,i.toString(16).padStart(32,'0'))));
+    const first=await billingNotices(f.env,f.actor);expect(first.notices).toHaveLength(25);expect(first.notices[0].title).toBe('Billing update recorded');
+    const last=await billingNotices(f.env,f.actor,first.nextCursor);expect(last.notices).toHaveLength(2);expect(last.nextCursor).toBeNull();
+    expect(new Set([...first.notices,...last.notices].map(n=>n.id)).size).toBe(27);
+    await expect(billingNotices(other.env,other.actor,first.nextCursor)).rejects.toMatchObject({code:'invalid_notice_cursor'});
+    await expect(billingNotices(f.env,f.actor,'not-a-cursor')).rejects.toMatchObject({code:'invalid_notice_cursor'});
+    await f.env.AGENT_DB.prepare("UPDATE agent_memberships SET role='billing' WHERE tenant_id=? AND user_id=?").bind(f.actor.tenantId,f.actor.userId).run();
+    expect((await billingNotices(f.env,f.actor)).notices).toHaveLength(25);
+    await f.env.AGENT_DB.prepare("UPDATE agent_memberships SET role='staff' WHERE tenant_id=? AND user_id=?").bind(f.actor.tenantId,f.actor.userId).run();
+    await expect(billingNotices(f.env,f.actor)).rejects.toMatchObject({code:'permission_denied'});
+  });
   it('never presents malformed or inconsistent billing audits as a successful check',async()=>{
     const f=await fixture(),now=new Date().toISOString();
     await f.env.AGENT_DB.prepare("INSERT INTO agent_billing_reconciliation(tenant_id,status,findings_json,checked_at,next_check_at) VALUES (?,'checked','[]',?,?)").bind(f.actor.tenantId,now,now).run();

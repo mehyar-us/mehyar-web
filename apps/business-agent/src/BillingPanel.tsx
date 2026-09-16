@@ -11,6 +11,7 @@ import {
 import { api, ApiError, post, type Catalog } from "./api";
 import TextUsagePanel from './TextUsagePanel';
 import BillingCheck from './BillingCheck';
+import BillingNotices from './BillingNotices';
 
 type PlanId = "business" | "growth" | "operations";
 type Interval = "monthly" | "annual";
@@ -430,6 +431,7 @@ export default function BillingPanel({
             </div>
           )}
           {status&&online&&<BillingCheck report={status.reconciliation}/>}
+          <BillingNotices key={tenantId} tenantId={tenantId} online={online} onUnauthorized={onUnauthorized}/>
           {status && (
             <>
               <section className="panel current-plan billing-current">
