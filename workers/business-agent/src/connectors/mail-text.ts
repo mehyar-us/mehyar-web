@@ -1,9 +1,13 @@
 import {Parser} from 'htmlparser2';
 import {decodeMailBody,type MailBody} from './mail-body';
 import type {MailSnapshot} from './mail-snapshot';
+import {z} from 'zod';
 
 export type MailText={version:1;text:string;trustedForInstructions:false;
   omissions:(MailBody['omissions'][number]|'html_nontext'|'html_visibility_unresolved'|'text_limit'|'html_limit'|'controls_removed')[]};
+export const mailTextSchema=z.object({version:z.literal(1),text:z.string().max(32000).refine(value=>new TextEncoder().encode(value).length<=32000),
+  trustedForInstructions:z.literal(false),omissions:z.array(z.enum(['attachment','external_body','unsupported_mime','invalid_part','invalid_encoding','limit',
+    'html_nontext','html_visibility_unresolved','text_limit','html_limit','controls_removed'])).max(12)}).strict();
 const ignored=new Set(['head','script','style','template','noscript','iframe','object','embed','svg','math']);
 const breaks=new Set(['address','article','aside','blockquote','br','div','dl','dt','dd','fieldset','figcaption','figure','footer','h1','h2','h3','h4','h5','h6','header','hr','li','main','nav','ol','p','pre','section','table','tr','ul']);
 

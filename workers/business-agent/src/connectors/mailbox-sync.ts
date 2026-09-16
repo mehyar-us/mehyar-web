@@ -7,7 +7,7 @@ import { MICROSOFT_MAIL_OPERATIONS } from './microsoft-mail';
 import { cursorURL, segment } from './http';
 import type { Provider } from './types';
 import {mailSnapshot,type MailSnapshot} from './mail-snapshot';
-import {extractMailText} from './mail-text';
+import {extractMailText,mailTextSchema} from './mail-text';
 
 const id = z.string().min(1).max(2048).regex(/^[^\u0000-\u001f\u007f]+$/);
 const pageSchema = z.object({
@@ -283,5 +283,32 @@ export class MailboxSync {
       .bind(now,row.id,claim.token,row.id,context.message_id,claim.token);
     const results=await this.env.AGENT_DB.batch([receipt,acknowledge,release]);
     return results[1].meta.changes===1;
+  }
+  /** Internal analysis input pinned to a particular provider-read receipt. Callers
+   * must enforce paid/capability/Agent readiness and recheck this receipt after
+   * inference before saving a result. This does not authorize sending or establish
+   * current provider state: observedAt is the time of the cached provider read. */
+  async readText(streamId:string,messageId:string,expectedReceipt:string) {
+    if(!id.safeParse(messageId).success||!z.string().uuid().safeParse(expectedReceipt).success)throw unavailable();
+    const {row,grant}=await this.stream(streamId);
+    const read=()=>this.env.AGENT_DB.prepare(`SELECT m.text_json,m.observed_at,m.source_mode FROM agent_mailbox_messages m
+      JOIN agent_mailbox_sync s ON s.id=m.stream_id
+      WHERE m.stream_id=? AND s.tenant_id=? AND m.message_id=? AND m.receipt_token=?
+      AND m.state='present' AND m.needs_reconciliation=0 AND m.text_json IS NOT NULL
+      AND s.state='ready' AND s.authorization=? AND ${this.fence}
+      AND NOT EXISTS(SELECT 1 FROM agent_mailbox_changes c WHERE c.stream_id=m.stream_id AND c.message_id=m.message_id AND c.state='pending')`)
+      .bind(streamId,this.actor.tenantId,messageId,expectedReceipt,row.authorization,...this.args(row.grant_id,grant))
+      .first<{text_json:string;observed_at:string;source_mode:string}>();
+    const cached=await read();
+    if(!cached)throw unavailable();
+    let projection;
+    try{projection=mailTextSchema.parse(JSON.parse(cached.text_json));}catch{throw unavailable();}
+    if(!Number.isFinite(Date.parse(cached.observed_at))||!['bootstrap','incremental','unknown'].includes(cached.source_mode))throw unavailable();
+    // Consent, recovery and a newer provider observation can change while reading.
+    await this.stream(streamId);
+    const current=await read();
+    if(!current||current.text_json!==cached.text_json||current.observed_at!==cached.observed_at||current.source_mode!==cached.source_mode)throw unavailable();
+    return {streamId,messageId,receipt:expectedReceipt,provider:row.provider,observedAt:cached.observed_at,
+      sourceMode:cached.source_mode as 'bootstrap'|'incremental'|'unknown',projection};
   }
 }

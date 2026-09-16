@@ -21,6 +21,41 @@ async function fixture(provider:'google'|'microsoft'='google') {
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
+  async function readable() {
+    const f=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'300'});
+    const claim=(await f.ledger.claimChange(f.streamId))!;
+    const snapshot={provider:'google' as const,id:'a',content:{id:'a',threadId:'t',payload:{mimeType:'text/plain',body:{size:5,data:'SGVsbG8'}}}};
+    await f.ledger.saveChange(claim,snapshot);
+    return {...f,receipt:claim.token,snapshot,read:()=>f.ledger.readText(f.streamId,'a',claim.token)};
+  }
+  it('reads a versioned untrusted projection only for its own exact observation receipt',async()=>{
+    const f=await readable(),other=await fixture();
+    expect(await f.read()).toMatchObject({messageId:'a',receipt:f.receipt,provider:'google',sourceMode:'incremental',projection:{version:1,text:'Hello',trustedForInstructions:false}});
+    await expect(f.ledger.readText(f.streamId,'a',crypto.randomUUID())).rejects.toBeDefined();
+    await expect(other.ledger.readText(f.streamId,'a',f.receipt)).rejects.toBeDefined();
+    f.advance(301);
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'400'});
+    await expect(f.read()).rejects.toBeDefined();
+    const next=(await f.ledger.claimChange(f.streamId))!;
+    await f.ledger.saveChange(next,f.snapshot);
+    await expect(f.read()).rejects.toBeDefined();
+    expect((await f.ledger.readText(f.streamId,'a',next.token)).projection.text).toBe('Hello');
+  });
+  it('withholds projections after stop, consent replacement or recovery invalidation',async()=>{
+    const stopped=await readable();await stopMailbox(e,stopped.actor,stopped.grantId);await expect(stopped.read()).rejects.toBeDefined();
+    const changed=await readable();await storeProviderGrant(e,changed.binding,changed.credential,[]);await expect(changed.read()).rejects.toBeDefined();
+    const recovery=await readable();
+    await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(recovery.streamId).run();
+    await expect(recovery.read()).rejects.toBeDefined();
+  });
+  it('rejects old, corrupt or falsely trusted stored projections',async()=>{
+    const f=await readable();
+    for(const value of [null,'not json',JSON.stringify({version:2,text:'Hello',omissions:[],trustedForInstructions:false}),JSON.stringify({version:1,text:'Hello',omissions:[],trustedForInstructions:true}),JSON.stringify({version:1,text:'🌍'.repeat(9000),omissions:[],trustedForInstructions:false})]){
+      await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET text_json=? WHERE stream_id=?').bind(value,f.streamId).run();
+      await expect(f.read()).rejects.toBeDefined();
+    }
+  });
   it('stores extracted text with its source receipt and budget, and clears it on a confirmed missing message',async()=>{
     const f=await fixture('microsoft');
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'m',kind:'upsert'}],nextCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$skiptoken=one'});
