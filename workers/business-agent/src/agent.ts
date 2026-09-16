@@ -59,6 +59,17 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   }
 
   private controls() { return new ActionControls(this.ctx.storage.sql,this.env,()=>this.state.paused); }
+  async researchJobs(actor:Actor,offset=0) {
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+      return new ResearchJobs(this.ctx.storage).list(offset);
+    });
+  }
+  async researchEvidence(actor:Actor,id:string,offset=0) {
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+      const jobs=new ResearchJobs(this.ctx.storage),job=jobs.summary(id),pages=jobs.pages(id,offset);
+      return {job,pages,nextOffset:offset+pages.length<job.evidencePages?offset+pages.length:null};
+    });
+  }
   async connectionCalendars(actor:Actor,grantId:string,provider:'google'|'microsoft') {
     return this.result(async()=>{await this.bind(actor);
       if(this.state.paused)throw new HttpError(409,'agent_paused','Resume your agent before reading connected calendars.');

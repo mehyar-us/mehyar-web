@@ -38,6 +38,17 @@ export class ResearchJobs {
     const row=this.storage.sql.exec<Job>('SELECT * FROM research_jobs WHERE id=?',id).toArray()[0];
     if(!row)throw new HttpError(404,'research_job_missing','Research job not found.');return row;
   }
+  summary(id:string) {
+    const job=this.get(id);
+    const evidencePages=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
+    return {id:job.id,website:job.source,status:job.status,pageLimit:job.page_limit,evidencePages,
+      usedPages:job.used,reservedPages:job.reserved,deadline:new Date(job.deadline).toISOString()};
+  }
+  list(offset=0) {
+    if(!Number.isSafeInteger(offset)||offset<0)throw conflict('Invalid research job offset.');
+    const rows=this.storage.sql.exec<{id:string}>('SELECT id FROM research_jobs ORDER BY rowid DESC LIMIT 21 OFFSET ?',offset).toArray();
+    return {jobs:rows.slice(0,20).map(row=>this.summary(row.id)),nextOffset:rows.length>20?offset+20:null};
+  }
   reserve(input:{key:string;url:string;period:string;allowance:number;pages:number;depth:number;deadline:number},now=Date.now()):Job {
     const source=normalizeWebsite(input.url);
     if(!source||!input.key||input.key.length>128||!input.period||input.period.length>128||

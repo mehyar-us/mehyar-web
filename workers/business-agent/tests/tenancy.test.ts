@@ -1,5 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { getAgentByName } from 'agents';
+import {runInDurableObject} from 'cloudflare:test';
+import {ResearchJobs} from '../src/research/jobs';
 import { describe,it,expect,beforeEach } from 'vitest';
 import type { Env } from '../src/env';
 import { createTenant,addMemory,deleteMemory,getMemory,listTenants,normalizeWebsite } from '../src/tenants';
@@ -15,6 +17,32 @@ async function make(userId=alice,key=crypto.randomUUID()) {
 }
 
 describe('dedicated business isolation',()=>{
+  it('limits research reads to current business operators and hides provider billing internals',async()=>{
+    const a=await make(alice),b=await make(bob),actor={tenantId:a.id,userId:alice};
+    const agent=await getAgentByName(e.BUSINESS_AGENTS,a.id),other=await getAgentByName(e.BUSINESS_AGENTS,b.id);
+    unwrap(await agent.provision(actor));unwrap(await other.provision({tenantId:b.id,userId:bob}));
+    const id=await runInDurableObject(agent,async(_instance,ctx)=>{
+      const jobs=new ResearchJobs(ctx.storage),job=jobs.reserve({key:'private-request-key',url:'https://salon.example.com',period:'private-period',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
+      jobs.begin(job.id);jobs.submitted(job.id,'private-provider-11111111');
+      await jobs.ingest(job.id,'private-provider-11111111',{url:job.source,status:'completed',httpStatus:200,html:'<title>Private research</title>'},new Date().toISOString());
+      return job.id;
+    });
+    const detail=unwrap(await agent.researchEvidence(actor,id));
+    expect(detail.pages[0].evidence[0].value).toBe('Private research');
+    expect(detail.job).toMatchObject({id,evidencePages:1,usedPages:0,reservedPages:20});
+    expect(JSON.stringify(detail)).not.toMatch(/private-request-key|private-period|private-provider/);
+    unwrap(await agent.pause(actor,true));expect(unwrap(await agent.researchJobs(actor)).jobs).toHaveLength(1);
+    expect(await other.researchEvidence({tenantId:b.id,userId:bob},id)).toMatchObject({ok:false,error:{status:404}});
+    expect(await other.researchJobs(actor)).toMatchObject({ok:false,error:{code:'agent_mismatch'}});
+    for(const role of ['viewer','staff','billing','support','manager'] as const){
+      const userId=crypto.randomUUID();await e.AGENT_DB.prepare('INSERT INTO agent_memberships(tenant_id,user_id,role,created_at,expires_at,support_reason) VALUES(?,?,?,?,?,?)')
+        .bind(a.id,userId,role,new Date().toISOString(),role==='support'?new Date(Date.now()+60_000).toISOString():null,role==='support'?'Research access test':null).run();
+      const result=await agent.researchEvidence({tenantId:a.id,userId},id);
+      if(role==='manager')expect(result.ok).toBe(true);else expect(result).toMatchObject({ok:false,error:{status:403}});
+    }
+    await e.AGENT_DB.prepare("UPDATE agent_memberships SET status='revoked' WHERE tenant_id=? AND user_id=?").bind(a.id,alice).run();
+    expect(await agent.researchEvidence(actor,id)).toMatchObject({ok:false,error:{status:404}});
+  });
   it('provisions idempotently and rejects reused keys with changed business data',async()=>{
     const key=crypto.randomUUID();
     const one=await make(alice,key);

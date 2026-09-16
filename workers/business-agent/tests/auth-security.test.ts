@@ -200,6 +200,13 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     expect(usageResponse.status).toBe(200);expect(usageResponse.headers.get('cache-control')).toContain('no-store');
     expect(await usageResponse.json()).toMatchObject({usage:{period:'trial',textCredits:{used:0,reserved:0,limit:50}}});
     expect((await worker.fetch(request('/api/tenants/another-business/usage',undefined,sessionCookie),workerEnv)).status).toBe(404);
+    const researchResponse=await worker.fetch(request(tenantPath+'/research',undefined,sessionCookie),workerEnv);
+    expect(researchResponse.status).toBe(200);expect(researchResponse.headers.get('cache-control')).toContain('no-store');
+    expect(await researchResponse.json()).toEqual({jobs:[],nextOffset:null});
+    expect((await worker.fetch(request(tenantPath+'/research?offset=-1',undefined,sessionCookie),workerEnv)).status).toBe(400);
+    expect((await worker.fetch(request('/api/tenants/another-business/research',undefined,sessionCookie),workerEnv)).status).toBe(404);
+    expect((await worker.fetch(request(tenantPath+'/research/'+crypto.randomUUID(),undefined,sessionCookie),workerEnv)).status).toBe(404);
+    expect((await worker.fetch(request(tenantPath+'/research'),workerEnv)).status).toBe(401);
     const memory = await worker.fetch(request(tenantPath + "/memory", { key: "Hours", value: "Monday through Friday" }, sessionCookie), workerEnv);
     expect(memory.status).toBe(201);
     const actionGrant = await storeProviderGrant(env,{userId:session!.user.id,tenantId:created.tenant.id,provider:'google',accountId:'review-fixture'},

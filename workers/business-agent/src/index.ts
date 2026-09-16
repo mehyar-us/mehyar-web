@@ -46,6 +46,11 @@ async function route(request:Request,env:Env) {
   const section=match[2]||'';
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
+  const research=section.match(/^research(?:\/([a-f0-9-]{36}))?$/);
+  if(research&&request.method==='GET') {
+    const offset=z.coerce.number().int().min(0).max(100_000).parse(url.searchParams.get('offset')??0);
+    return json(research[1]?unwrap(await agent.researchEvidence(actor,research[1],offset)):unwrap(await agent.researchJobs(actor,offset)));
+  }
   const calendarConnection=section.match(/^connections\/([a-f0-9-]{36})\/calendars$/);
   if(calendarConnection&&request.method==='GET') {
     const provider=z.enum(['google','microsoft']).parse(url.searchParams.get('provider'));
