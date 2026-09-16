@@ -14,6 +14,7 @@
 //   creditfixkit -> fulfillCreditfixkit / creditfixkit_orders
 //   sprint30 -> fulfillSprint30 / sprint30_enrollments
 //   freelanceros -> fulfillFreelanceros / freelanceros_orders
+//   bizbuilder -> fulfillBizbuilder / bizbuilder_orders
 //
 // This is a safety net, not the primary path. The webhook remains the
 // primary fulfillment trigger.
@@ -23,6 +24,7 @@ import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
 import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 import { fulfillFreelanceros } from "../_shared/fulfillFreelanceros.js";
+import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 
 const PRODUCTS = {
@@ -31,6 +33,7 @@ const PRODUCTS = {
   creditfixkit: { fulfill: fulfillCreditfixkit, ordersTable: "creditfixkit_orders" },
   sprint30: { fulfill: fulfillSprint30, ordersTable: "sprint30_enrollments" },
   freelanceros: { fulfill: fulfillFreelanceros, ordersTable: "freelanceros_orders" },
+  bizbuilder: { fulfill: fulfillBizbuilder, ordersTable: "bizbuilder_orders" },
 };
 
 function json(data, status = 200) {
