@@ -1,9 +1,10 @@
 import {useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
+import {validMailboxJob} from './mailbox-job-contract';
 type Source={streamId:string;messageId:string;receipt:string};
 type Item={source:Source;excerpt:string;observedAt:string;historicalContext:boolean;extractionOmissions:string[]};
-type Page={items:Item[];withheld:number;nextCursor?:string;extendedAnalysisEnabled:boolean};
-type Offer={offerId:string;expiresAt:string;textCredits:number;sectionCount:number;authorizesExternalActions:false}&(
+type Page={items:Item[];withheld:number;nextCursor?:string;extendedAnalysisEnabled:boolean;backgroundAnalysisEnabled?:boolean};
+export type Offer={offerId:string;expiresAt:string;textCredits:number;sectionCount:number;authorizesExternalActions:false}&(
   {scope:'analyze_remaining_sections';remainingSections:number[];includesAggregation:false}|
   {scope:'combine_completed_sections';includesSectionAnalysis:false});
 const uuid=(v:unknown)=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
@@ -13,13 +14,14 @@ const key=(i:Item)=>JSON.stringify([i.source.streamId,i.source.messageId]);
 function validPage(v:unknown):v is Page{
   const p=v as Page|null;
   return !!p&&typeof p.extendedAnalysisEnabled==='boolean'&&integer(p.withheld,0,10)
+    &&(p.backgroundAnalysisEnabled===undefined||typeof p.backgroundAnalysisEnabled==='boolean')
     &&(p.nextCursor===undefined||bounded(p.nextCursor,8192)&&/^[A-Za-z0-9_-]+$/.test(p.nextCursor))
     &&Array.isArray(p.items)&&p.items.length<=10&&p.items.every(i=>i&&i.source&&bounded(i.source.streamId,2048)&&bounded(i.source.messageId,2048)&&uuid(i.source.receipt)
       &&typeof i.excerpt==='string'&&Array.from(i.excerpt).length<=160&&typeof i.observedAt==='string'&&Number.isFinite(Date.parse(i.observedAt))
       &&typeof i.historicalContext==='boolean'&&Array.isArray(i.extractionOmissions)&&i.extractionOmissions.length<=12&&i.extractionOmissions.every(w=>bounded(w,64)))
     &&new Set(p.items.map(key)).size===p.items.length;
 }
-function validOffer(v:unknown):v is Offer{
+export function validOffer(v:unknown):v is Offer{
   const o=v as Offer|null;
   return !!o&&uuid(o.offerId)&&typeof o.expiresAt==='string'&&Date.parse(o.expiresAt)>Date.now()
     &&integer(o.textCredits,1,32)&&integer(o.sectionCount,1,32)&&o.authorizesExternalActions===false
@@ -31,15 +33,16 @@ function validOffer(v:unknown):v is Offer{
 export default function MailboxReview({tenantId,grantId,onUnauthorized,onComplete}:{tenantId:string;grantId:string;onUnauthorized:(error:unknown)=>void;onComplete:()=>void}){
   const [items,setItems]=useState<Item[]>([]),[cursor,setCursor]=useState<string>(),[enabled,setEnabled]=useState(false),[loaded,setLoaded]=useState(false);
   const [selected,setSelected]=useState<Item>(),[offer,setOffer]=useState<Offer>(),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
+  const [backgroundEnabled,setBackgroundEnabled]=useState(false),[background,setBackground]=useState(false),[startingBackground,setStartingBackground]=useState(false);
   const active=useRef<AbortController|null>(null),seen=useRef(new Set<string>());
   const base=`/api/tenants/${encodeURIComponent(tenantId)}`,directory=`${base}/connections/${encodeURIComponent(grantId)}/mailbox/review-messages`;
-  function clear(){setItems([]);setCursor(undefined);setSelected(undefined);setOffer(undefined);setLoaded(false);setEnabled(false);seen.current.clear();}
-  useEffect(()=>{clear();setBusy(false);setError('');setStatus('');return()=>{active.current?.abort();active.current=null;};},[tenantId,grantId]);
+  function clear(){setItems([]);setCursor(undefined);setSelected(undefined);setOffer(undefined);setLoaded(false);setEnabled(false);setBackgroundEnabled(false);setBackground(false);seen.current.clear();}
+  useEffect(()=>{clear();setBusy(false);setStartingBackground(false);setError('');setStatus('');return()=>{active.current?.abort();active.current=null;};},[tenantId,grantId]);
   async function work(fn:(signal:AbortSignal)=>Promise<void>){
     if(active.current)return;
     const controller=new AbortController();active.current=controller;setBusy(true);setError('');setStatus('');
     try{await fn(controller.signal);}catch(cause){if(!controller.signal.aborted){clear();setStatus('');setError(cause instanceof Error?cause.message:'Review could not be completed.');if(cause instanceof ApiError&&cause.status===401)onUnauthorized(cause);}}
-    finally{if(active.current===controller){active.current=null;setBusy(false);}}
+    finally{if(active.current===controller){active.current=null;setBusy(false);setStartingBackground(false);}}
   }
   async function post(path:string,body:unknown,signal:AbortSignal){return api<unknown>(`${base}/mailbox-analysis/${path}`,{method:'POST',body:JSON.stringify(body),signal});}
   async function quote(item:Item,kind:'sections'|'aggregation',signal:AbortSignal){
@@ -53,7 +56,7 @@ export default function MailboxReview({tenantId,grantId,onUnauthorized,onComplet
     }
     if(signal.aborted)return;
     if(!validOffer(result)||result.scope!==(kind==='sections'?'analyze_remaining_sections':'combine_completed_sections'))throw new Error('The analysis cost could not be verified. Refresh messages.');
-    setSelected(item);setOffer(result);
+    setSelected(item);setOffer(result);setBackground(false);
   }
   function load(more=false){void work(async signal=>{
     setOffer(undefined);setSelected(undefined);
@@ -63,12 +66,22 @@ export default function MailboxReview({tenantId,grantId,onUnauthorized,onComplet
     if(!validPage(result)||more&&result.nextCursor&&(result.nextCursor===cursor||seen.current.has(result.nextCursor))||more&&result.items.some(i=>items.some(old=>key(old)===key(i))))throw new Error('Messages could not be verified. Refresh to try again.');
     if(result.nextCursor)seen.current.add(result.nextCursor);
     setItems(old=>more?[...old,...result.items]:result.items);setCursor(result.nextCursor);setEnabled(result.extendedAnalysisEnabled);setLoaded(true);
+    setBackgroundEnabled(result.backgroundAnalysisEnabled===true);
     if(result.withheld)setStatus(`${result.withheld} messages were withheld because their source or access changed.`);
   });}
   function confirm(){if(!offer||!selected)return;const approved=offer,item=selected;void work(async signal=>{
     if(Date.parse(approved.expiresAt)<=Date.now())throw new Error('This cost review expired. Refresh messages and review the cost again.');
     setOffer(undefined);
     if(approved.scope==='analyze_remaining_sections'){
+      if(background&&backgroundEnabled){
+        setStartingBackground(true);
+        let result:unknown;
+        try{result=await post('section-jobs',{offerId:approved.offerId,backgroundApproval:{version:1,maximumHours:24,includesAggregation:false}},signal);}
+        catch(cause){if(cause instanceof ApiError&&cause.status===401)throw cause;throw new Error('Background acceptance could not be confirmed. Check your background analyses before starting again.');}
+        if(signal.aborted)return;
+        if(!validMailboxJob(result)||result.maximumTextCredits!==approved.textCredits||result.source.streamId!==item.source.streamId||result.source.messageId!==item.source.messageId||result.source.receipt!==item.source.receipt)throw new Error('Background acceptance could not be verified. Check your background analyses before starting again.');
+        setStatus('Background analysis accepted. You can leave this view. Use Your background analyses in Connections to check progress or stop the job. The combined summary still needs separate approval.');setSelected(undefined);setBackground(false);return;
+      }
       for(let n=0;n<approved.remainingSections.length;n++){
         if(signal.aborted)return;
         setStatus(`Analyzing section ${n+1} of ${approved.remainingSections.length}…`);
@@ -86,9 +99,9 @@ export default function MailboxReview({tenantId,grantId,onUnauthorized,onComplet
     }
   });}
   function stop(){active.current?.abort();active.current=null;setBusy(false);setOffer(undefined);setStatus('Stopped requesting further work. A request already submitted may finish and use its approved credits. Refresh messages to check remaining work.');}
-  return <section aria-label="Extended message review"><h4>Long-message review</h4>
+  return <section className="mailbox-review" aria-label="Extended message review"><h4>Long-message review</h4>
     <p>Review a message’s credit cost before analysis. Section analysis and the combined summary have separate approvals. This does not send email or schedule appointments.</p>
-    <p>Keep this view open while analyzing. If you leave, return to review remaining work; requests already submitted may still finish.</p>
+    <p>Keep this view open for on-screen analysis. When background analysis is offered and approved, you can leave after it is accepted.</p>
     <button className="button secondary" disabled={busy} onClick={()=>load()}>{loaded?'Refresh review messages':'View messages needing review'}</button>
     {error&&<p role="alert">{error}</p>}{status&&<p role="status">{status}</p>}
     {loaded&&!enabled&&<p>Extended analysis is not enabled. You can view available excerpts.</p>}
@@ -102,9 +115,10 @@ export default function MailboxReview({tenantId,grantId,onUnauthorized,onComplet
     {offer&&selected&&<div className="notice"><h5>{offer.scope==='analyze_remaining_sections'?'Section analysis cost':'Combined summary cost'}</h5><blockquote>{selected.excerpt}</blockquote>
       <p>Uses up to {offer.textCredits} text {offer.textCredits===1?'credit':'credits'} from your allowance.</p><p>{offer.scope==='analyze_remaining_sections'?`Covers ${offer.remainingSections.length} remaining sections. The combined summary is not included.`:'Combines completed sections only. No new section analysis is included.'}</p>
       <p>Cost review expires: {new Date(offer.expiresAt).toLocaleTimeString()}. Completed sections are reused if you return later.</p>
-      <button className="button" disabled={busy} onClick={confirm}>Approve {offer.textCredits} {offer.textCredits===1?'credit':'credits'}</button>
+      {offer.scope==='analyze_remaining_sections'&&backgroundEnabled&&<label><input type="checkbox" checked={background} disabled={busy} onChange={event=>setBackground(event.target.checked)}/> Continue in the background for up to 24 hours, within this credit limit. I can stop the job from Your background analyses. This excludes the combined summary.</label>}
+      <button className="button" disabled={busy} onClick={confirm}>Approve {offer.textCredits} {offer.textCredits===1?'credit':'credits'}{background?' for background analysis':''}</button>
       <button className="button secondary" disabled={busy} onClick={()=>{setOffer(undefined);setSelected(undefined);}}>Cancel cost review</button>
     </div>}
-    {busy&&<><p>Checking or analyzing the message…</p><button className="button secondary" onClick={stop}>Stop remaining work</button></>}
+    {busy&&<><p>{startingBackground?'Waiting for background acceptance. Closing this view does not cancel an accepted job.':'Checking or analyzing the message…'}</p>{!startingBackground&&<button className="button secondary" onClick={stop}>Stop remaining work</button>}</>}
   </section>;
 }

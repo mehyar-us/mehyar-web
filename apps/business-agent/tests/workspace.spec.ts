@@ -941,6 +941,63 @@ test('withholds malformed credit offers and re-quotes remaining sections after a
   await expect(panel.getByRole('button',{name:/Approve/})).toHaveCount(0);expect(aggregationRequests).toBe(0);
 });
 
+test('explicitly approves background analysis and recovers progress after reopening the app',async({page,context})=>{
+  await fixture(page);const id='11111111-1111-4111-8111-111111111111',jobId='22222222-2222-4222-8222-222222222222';
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id,provider:'google',tenantId:tenant.id,status:'authorized',grantedCapabilities:['gmail_read'],grantedScopes:[],selectedCapabilities:['gmail_read']}]}}));
+  await page.route('**/connections/*/mailbox',route=>route.fulfill({json:{state:'monitoring',setupEnabled:false,pending:0,lastObservedAt:null}}));
+  const source={streamId:'stream-one',messageId:'message-one',receipt:id},createdAt=new Date().toISOString();
+  let job={id:jobId,status:'queued',completedSections:0,totalSections:2,maximumTextCredits:2,createdAt,approvalExpiresAt:new Date(Date.parse(createdAt)+86400000).toISOString(),source,reason:null,includesAggregation:false,authorizesExternalActions:false};
+  const calls:{path:string;method:string;body:unknown}[]=[];
+  await page.route('**/mailbox/review-messages**',route=>route.fulfill({json:{items:[{source,excerpt:'A long booking inquiry',observedAt:createdAt,historicalContext:false,extractionOmissions:[]}],withheld:0,extendedAnalysisEnabled:true,backgroundAnalysisEnabled:true}}));
+  await page.route('**/mailbox-analysis/**',route=>{
+    const path=new URL(route.request().url()).pathname.split('/mailbox-analysis/')[1],method=route.request().method(),body=method==='POST'?route.request().postDataJSON():undefined;calls.push({path,method,body});
+    const common={offerId:id,expiresAt:new Date(Date.now()+600000).toISOString(),sectionCount:2,authorizesExternalActions:false};
+    if(path==='sections/review')return route.fulfill({json:{...common,textCredits:2,scope:'analyze_remaining_sections',remainingSections:[0,1],includesAggregation:false}});
+    if(path==='section-jobs')return route.fulfill({status:method==='POST'?202:200,json:method==='POST'?job:{jobs:[job]}});
+    if(path.endsWith('/cancel')){job={...job,status:'cancelled'};return route.fulfill({json:job});}
+    if(path==='aggregation/review')return route.fulfill({json:{...common,textCredits:1,scope:'combine_completed_sections',includesSectionAnalysis:false}});
+    if(path==='aggregation/confirm')return route.fulfill({json:{complete:true,availableInMailboxAnalyses:true,requiresReview:true,authorizesActions:false}});
+    return route.fulfill({status:500,json:{error:{message:'Unexpected operation'}}});
+  });
+  await page.goto('/?connected=google');const review=page.getByRole('region',{name:'Extended message review'}),history=page.getByRole('region',{name:'Your background analyses'});
+  await review.getByRole('button',{name:'View messages needing review'}).click();await review.getByRole('button',{name:'Review analysis cost'}).click();
+  const checkbox=review.getByRole('checkbox',{name:/Continue in the background/});await expect(checkbox).not.toBeChecked();
+  await checkbox.check();await review.getByRole('button',{name:'Approve 2 credits for background analysis'}).click();
+  await expect(review.getByRole('status')).toContainText('Background analysis accepted');
+  expect(calls.filter(c=>c.path==='section-jobs'&&c.method==='POST').map(c=>c.body)).toEqual([{offerId:id,backgroundApproval:{version:1,maximumHours:24,includesAggregation:false}}]);
+  expect(calls.some(c=>c.path==='sections/confirm'||c.path==='aggregation/confirm')).toBe(false);
+  await page.reload();await page.getByRole('button',{name:'Connections',exact:true}).click();await history.getByRole('button',{name:'View background analyses'}).click();await expect(history.getByText('0 of 2 approved sections completed. Credit limit: 2.')).toBeVisible();
+  job={...job,status:'completed',completedSections:2};await history.getByRole('button',{name:'Refresh background analyses'}).click();
+  await history.getByRole('button',{name:'Review combined summary cost'}).click();expect(calls.some(c=>c.path==='aggregation/confirm')).toBe(false);
+  expect((await new AxeBuilder({page}).include('[aria-label="Your background analyses"]').analyze()).violations).toEqual([]);
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await expect(history.locator('article.notice').first()).toHaveCSS('flex-direction','column');
+  await history.screenshot({path:'test-results/background-analysis-mobile.png',animations:'disabled'});
+  await history.getByRole('button',{name:'Approve 1 credit for summary'}).click();await expect(history.getByRole('status')).toContainText('combined summary is ready');
+  job={...job,id:'33333333-3333-4333-8333-333333333333',status:'queued',completedSections:0};await history.getByRole('button',{name:'Refresh background analyses'}).click();
+  await history.getByRole('button',{name:'Stop job'}).click();await expect(history.getByRole('status')).toContainText('job is stopped');
+  await context.setOffline(true);await expect(history).toHaveCount(0);
+});
+
+test('clears unverified background history and does not claim an uncertain cancellation succeeded',async({page})=>{
+  await fixture(page);const createdAt=new Date().toISOString(),id='11111111-1111-4111-8111-111111111111';
+  let invalid=false,cancelled=0;
+  const job={id,status:'queued',completedSections:0,totalSections:2,maximumTextCredits:2,createdAt,approvalExpiresAt:new Date(Date.parse(createdAt)+86400000).toISOString(),source:{streamId:'stream',messageId:'message',receipt:id},reason:null,includesAggregation:false,authorizesExternalActions:false};
+  await page.route('**/mailbox-analysis/section-jobs**',route=>{
+    if(route.request().method()==='POST'){cancelled++;return route.abort('failed');}
+    return route.fulfill({json:{jobs:[{...job,maximumTextCredits:invalid?0:2}]}});
+  });
+  await page.goto('/?connected=google');const history=page.getByRole('region',{name:'Your background analyses'});
+  await history.getByRole('button',{name:'View background analyses'}).click();await history.getByRole('button',{name:'Stop job'}).click();
+  await expect(history.getByRole('alert')).toContainText('Cancellation could not be confirmed');expect(cancelled).toBe(1);
+  await expect(history.getByRole('button',{name:'Stop job'})).toHaveCount(0);await expect(history.getByText('The job is stopped.',{exact:false})).toHaveCount(0);
+  invalid=true;await history.getByRole('button',{name:'View background analyses'}).click();await expect(history.getByRole('alert')).toContainText('could not be verified');
+  await expect(history.getByText('Credit limit:',{exact:false})).toHaveCount(0);
+  invalid=false;await history.getByRole('button',{name:'View background analyses'}).click();await expect(history.getByText('0 of 2 approved sections completed. Credit limit: 2.')).toBeVisible();
+  await page.getByLabel('YOUR WORKSPACE').selectOption('business-b');await expect(history.getByText('Credit limit:',{exact:false})).toHaveCount(0);
+});
+
 test('reviews mailbox recovery and retries the same offer after an uncertain response',async({page})=>{
   await fixture(page);let restarted=false;const requests:unknown[]=[];
   const recoveryId='33333333-3333-4333-8333-333333333333';

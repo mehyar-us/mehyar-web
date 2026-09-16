@@ -2511,3 +2511,15 @@ button svg {
 .action-preview { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border: 1px solid var(--border, #ddd); border-radius: 10px; }
 
 .mailbox-panel p { color: #45544b; }
+.mailbox-jobs { padding: 24px; }
+.mailbox-jobs, .mailbox-review, .mailbox-analyses { min-width: 0; overflow-wrap: anywhere; }
+.mailbox-jobs .notice, .mailbox-review .notice, .mailbox-analyses > article.notice {
+  flex-direction: column;
+  align-items: stretch;
+  margin-block: 16px;
+}
+.mailbox-jobs .notice h3, .mailbox-review .notice h5 { margin: 0; }
+.mailbox-jobs .button, .mailbox-review .button { align-self: flex-start; max-width: 100%; white-space: normal; }
+.mailbox-review blockquote { margin: 0; }
+.mailbox-review label { display: flex; align-items: flex-start; gap: 10px; }
+.mailbox-review input[type="checkbox"] { flex: 0 0 auto; margin-top: 6px; }

@@ -41,7 +41,7 @@ export default function MailboxAnalyses({tenantId,grantId,onUnauthorized}:{tenan
     }catch(cause){if(!controller.signal.aborted){setItems([]);setCursor(undefined);setWithheld(0);setLoaded(false);setError(cause instanceof Error?cause.message:'Mailbox analyses are unavailable.');if(cause instanceof ApiError&&cause.status===401)onUnauthorized(cause);}}
     finally{if(!controller.signal.aborted)setBusy(false);}
   }
-  return <section aria-label="Mailbox analyses">
+  return <section className="mailbox-analyses" aria-label="Mailbox analyses">
     <h3>Mailbox analyses</h3><p>AI suggestions for your review. Viewing an analysis does not send a reply or approve an action.</p>
     <button className="button secondary" disabled={busy} onClick={()=>void load()}>{loaded?'Refresh analyses':'View analyses'}</button>
     {busy&&<p role="status">Loading analyses…</p>}{error&&<p role="alert">{error}</p>}

@@ -1,5 +1,6 @@
 import TeamPanel from './TeamPanel';
 import MailboxPanel from './MailboxPanel';
+import MailboxJobs from './MailboxJobs';
 import OutlookFolders from './OutlookFolders';
 import InvitationInbox from './InvitationInbox';
 import {
@@ -1693,6 +1694,7 @@ export default function App() {
                         ))}
                     </section>
                   )}
+                  {canManage&&online&&<MailboxJobs key={`mailbox-jobs:${tenantId}`} tenantId={tenantId} onUnauthorized={fail}/>}
                   <div className="notice connection-notice">
                     <ShieldCheck size={17} />
                     <p>
