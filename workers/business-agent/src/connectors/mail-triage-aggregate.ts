@@ -55,3 +55,14 @@ export function parseMailTriageAggregation(raw:string,input:MailTriageSource,val
     extractionOmissions:projection.omissions,historicalContext:source.sourceMode!=='incremental',
     aggregation:{basis:'validated_section_summaries' as const,sectionCount:planned.sectionCount,extractedTextCoverageComplete:true as const}};
 }
+
+/** Revalidate persisted aggregation metadata and evidence against current sections. */
+export function validateStoredMailAggregation(value:unknown,source:MailTriageSource,values:unknown[]){
+  try{
+    const saved=value as ReturnType<typeof parseMailTriageAggregation>,planned=mailTriageAggregationRequest(source,values);
+    const evidenceIds=saved.evidence.map(item=>planned.evidence.findIndex(candidate=>candidate.start===item.start&&candidate.end===item.end&&candidate.excerpt===item.excerpt));
+    const canonical=parseMailTriageAggregation(JSON.stringify({category:saved.category,priority:saved.priority,summary:saved.summary,evidenceIds}),source,values);
+    if(JSON.stringify(saved)!==JSON.stringify(canonical))throw new Error('Changed aggregation');
+    return canonical;
+  }catch{throw new HttpError(409,'triage_aggregation_unavailable','The saved aggregation no longer matches this message.');}
+}

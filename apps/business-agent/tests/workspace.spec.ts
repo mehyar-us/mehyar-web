@@ -842,7 +842,7 @@ test('reviews mailbox analyses without actions and clears failed or offline resu
   await fixture(page);
   await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:'11111111-1111-4111-8111-111111111111',provider:'google',tenantId:tenant.id,status:'authorized',grantedCapabilities:['gmail_read'],grantedScopes:[],selectedCapabilities:['gmail_read']}]}}));
   await page.route('**/connections/*/mailbox',route=>route.fulfill({json:{state:'monitoring',setupEnabled:false,pending:0,lastObservedAt:null}}));
-  const item={id:'a'.repeat(64),category:'inquiry',priority:'urgent',summary:'<script>bad()</script> Customer asks about pricing.',evidence:['What does a haircut cost?'],observedAt:'2026-09-16T12:00:00.000Z',historicalContext:true,extractionOmissions:['attachment'],contextTruncated:true,requiresReview:true,authorizesActions:false};
+  const item={id:'a'.repeat(64),category:'inquiry',priority:'urgent',summary:'<script>bad()</script> Customer asks about pricing.',evidence:['What does a haircut cost?'],observedAt:'2026-09-16T12:00:00.000Z',historicalContext:true,extractionOmissions:['attachment'],contextTruncated:true,requiresReview:true,authorizesActions:false,aggregation:{basis:'validated_section_summaries',sectionCount:2,extractedTextCoverageComplete:true}};
   const methods:string[]=[];let invalid=false,invalidQueue=false;
   await page.route('**/mailbox/analyses**',route=>{
     methods.push(route.request().method());
@@ -854,6 +854,7 @@ test('reviews mailbox analyses without actions and clears failed or offline resu
   await panel.getByRole('button',{name:'View analyses',exact:true}).click();
   await expect(panel.getByText(item.summary,{exact:true})).toBeVisible();
   await expect(panel.getByText('Attachments were excluded.')).toBeVisible();
+  await expect(panel.getByText('Combined from 2 section analyses. All extracted text was covered; omitted content was not analyzed.')).toBeVisible();
   await expect(panel.getByText('Only part of the business brief was included.')).toBeVisible();
   await expect(panel.getByText('Analyses waiting: 2; needing review: 3.')).toBeVisible();
   await expect(panel.getByText('Automatic analysis is not enabled.')).toBeVisible();

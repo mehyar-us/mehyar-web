@@ -72,8 +72,16 @@ describe('one-page mailbox provider runner',()=>{
         expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:3,reserved:0});
         expect(unwrap(await instance.aggregateMailboxSections(f.actor,f.streamId,'aggregate',claim.token))).toEqual(result);expect(calls).toBe(5);
         expect(ctx.storage.sql.exec('SELECT id FROM provider_attempts').toArray()).toHaveLength(5);
-        expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId)).items).toEqual([]);
+        const directory=unwrap(await instance.mailboxAnalyses(f.actor,f.grantId));
+        expect(directory.items).toHaveLength(1);expect(directory.items[0]).toMatchObject({summary:result.summary,aggregation:{basis:'validated_section_summaries',sectionCount:2}});
+        const saved=ctx.storage.sql.exec<{id:string;value:string}>('SELECT id,value FROM mailbox_triage_aggregations').toArray()[0];
+        ctx.storage.sql.exec('UPDATE mailbox_triage_aggregations SET value=? WHERE id=?',JSON.stringify({...JSON.parse(saved.value),authorizesActions:true}),saved.id);
+        expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId))).toMatchObject({items:[],withheld:1});
+        ctx.storage.sql.exec('UPDATE mailbox_triage_aggregations SET value=? WHERE id=?',saved.value,saved.id);
         (instance as any).env.MAILBOX_EXTENDED_TRIAGE_ENABLED='false';
+        expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId)).items).toHaveLength(1);expect(calls).toBe(5);
+        await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
+        expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId))).toMatchObject({items:[],withheld:1});
         expect(await instance.aggregateMailboxSections(f.actor,f.streamId,'aggregate',claim.token)).toMatchObject({ok:false,error:{code:'extended_triage_disabled'}});expect(calls).toBe(5);
       }finally{(instance as any).env=original;}
     });

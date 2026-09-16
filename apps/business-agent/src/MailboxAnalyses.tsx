@@ -3,7 +3,7 @@ import {api,ApiError} from './api';
 const categories={inquiry:'Inquiry',appointment:'Appointment',billing:'Billing',complaint:'Complaint',other:'Other',unknown:'Unclear'};
 const priorities={routine:'Routine',urgent:'Potentially urgent',unknown:'Priority unclear'};
 const warnings={attachment:'Attachments were excluded.',external_body:'Some content was unavailable.',unsupported_mime:'Some message formats were unsupported.',invalid_part:'Some message parts were malformed.',invalid_encoding:'Some content could not be decoded.',limit:'Message decoding reached a limit.',html_nontext:'Nontext or hidden HTML content was excluded.',html_visibility_unresolved:'HTML visibility could not be fully determined.',text_limit:'Extracted text reached its size limit.',html_limit:'HTML processing reached a limit.',controls_removed:'Control characters were removed.'};
-type Item={id:string;category:keyof typeof categories;priority:keyof typeof priorities;summary:string;evidence:string[];observedAt:string;historicalContext:boolean;extractionOmissions:(keyof typeof warnings)[];contextTruncated:boolean;requiresReview:true;authorizesActions:false};
+type Item={id:string;category:keyof typeof categories;priority:keyof typeof priorities;summary:string;evidence:string[];observedAt:string;historicalContext:boolean;extractionOmissions:(keyof typeof warnings)[];contextTruncated:boolean;requiresReview:true;authorizesActions:false;aggregation?:{basis:'validated_section_summaries';sectionCount:number;extractedTextCoverageComplete:true}};
 type Queue={pending:number;needsReview:number;longMessages:number;unavailableText:number;invalidResponses:number;dispatchEnabled:boolean};
 type Directory={items:Item[];withheld:number;nextCursor?:string;queue?:Queue};
 function validQueue(q:Queue|undefined){return q===undefined||!!q&&typeof q.dispatchEnabled==='boolean'
@@ -15,6 +15,7 @@ function valid(value:unknown):value is Directory{
   return !!page&&validQueue(page.queue)&&Number.isSafeInteger(page.withheld)&&page.withheld>=0&&page.withheld<=10
     &&(page.nextCursor===undefined||identifier(page.nextCursor))&&Array.isArray(page.items)&&page.items.length<=10
     &&new Set(page.items.map(i=>i?.id)).size===page.items.length&&page.items.every(i=>i&&identifier(i.id)&&Object.hasOwn(categories,i.category)&&Object.hasOwn(priorities,i.priority)
+      &&(i.aggregation===undefined||!!i.aggregation&&i.aggregation.basis==='validated_section_summaries'&&i.aggregation.extractedTextCoverageComplete===true&&Number.isInteger(i.aggregation.sectionCount)&&i.aggregation.sectionCount>=1&&i.aggregation.sectionCount<=32)
       &&typeof i.summary==='string'&&i.summary.trim().length>0&&i.summary.length<=1500
       &&Array.isArray(i.evidence)&&i.evidence.length>0&&i.evidence.length<=5&&i.evidence.every(e=>typeof e==='string'&&e.trim().length>0&&e.length<=1000)
       &&typeof i.observedAt==='string'&&Number.isFinite(Date.parse(i.observedAt))&&typeof i.historicalContext==='boolean'&&typeof i.contextTruncated==='boolean'
@@ -53,6 +54,7 @@ export default function MailboxAnalyses({tenantId,grantId,onUnauthorized}:{tenan
     {withheld>0&&<p>{withheld} saved analyses withheld because their source, access or business context is no longer current.</p>}
     {items.map(item=><article key={item.id} className="notice">
       <h4>{categories[item.category]} · {priorities[item.priority]}</h4><p>{item.summary}</p>
+      {item.aggregation&&<p>Combined from {item.aggregation.sectionCount} section analyses. All extracted text was covered; omitted content was not analyzed.</p>}
       <p>Source observed: {new Date(item.observedAt).toLocaleString()}</p>
       {item.historicalContext&&<p>This analysis includes historical mailbox content.</p>}
       {item.contextTruncated&&<p>Only part of the business brief was included.</p>}

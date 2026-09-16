@@ -15,7 +15,7 @@ import {GOOGLE_MAIL_OPERATIONS} from './google-mail';
 import {MICROSOFT_MAIL_OPERATIONS} from './microsoft-mail';
 import {planMailTriageChunks,parseMailTriageChunk,mailTriageSectionId} from './mail-triage-chunks';
 import {validateMailTriageCoverage} from './mail-triage-coverage';
-import {mailTriageAggregationRequest,parseMailTriageAggregation,aggregationTextCredits} from './mail-triage-aggregate';
+import {mailTriageAggregationRequest,parseMailTriageAggregation,aggregationTextCredits,validateStoredMailAggregation} from './mail-triage-aggregate';
 
 /** Internal, review-only analysis. No sender, calendar tool or public route. */
 export class MailboxTriage {
@@ -27,6 +27,7 @@ export class MailboxTriage {
     this.storage.sql.exec('CREATE INDEX IF NOT EXISTS mailbox_triage_directory ON mailbox_triage_results(user_id,grant_id,id)');
     this.storage.sql.exec('CREATE TABLE IF NOT EXISTS mailbox_triage_sections(id TEXT PRIMARY KEY,value TEXT NOT NULL,user_id TEXT NOT NULL,grant_id TEXT NOT NULL)');
     this.storage.sql.exec('CREATE TABLE IF NOT EXISTS mailbox_triage_aggregations(id TEXT PRIMARY KEY,value TEXT NOT NULL,user_id TEXT NOT NULL,grant_id TEXT NOT NULL)');
+    this.storage.sql.exec('CREATE INDEX IF NOT EXISTS mailbox_aggregation_directory ON mailbox_triage_aggregations(user_id,grant_id,id)');
   }
   /** Read-only directory. No generation, credit reservation or external calls.
    * Scan a bounded page; invalidated records are withheld, not silently refreshed. */
@@ -41,7 +42,9 @@ export class MailboxTriage {
       return connectionAuthorizationStamp(env,actor,grantId,grant.provider,grant.provider==='google'?GOOGLE_MAIL_OPERATIONS.read:MICROSOFT_MAIL_OPERATIONS.read);
     };
     const authorization=await guard();
-    const rows=this.storage.sql.exec<{id:string;value:string}>('SELECT id,value FROM mailbox_triage_results WHERE user_id=? AND grant_id=? AND id>? ORDER BY id LIMIT 11',actor.userId,grantId,after??'').toArray();
+    const rows=this.storage.sql.exec<{id:string;value:string;kind:string}>(`SELECT id,value,'standard' AS kind FROM mailbox_triage_results WHERE user_id=? AND grant_id=? AND id>?
+      UNION ALL SELECT a.id,a.value,'aggregation' AS kind FROM mailbox_triage_aggregations a JOIN background_text_usage u ON u.id=a.id
+      WHERE a.user_id=? AND a.grant_id=? AND a.id>? AND u.user_id=a.user_id AND u.status='complete' ORDER BY id LIMIT 11`,actor.userId,grantId,after??'',actor.userId,grantId,after??'').toArray();
     const items=[];let withheld=0;
     const context=this.businessContext(),ledger=new MailboxSync(env,actor);
     for(const row of rows.slice(0,10)){
@@ -50,11 +53,25 @@ export class MailboxTriage {
         const belongs=await env.AGENT_DB.prepare('SELECT id FROM agent_mailbox_sync WHERE id=? AND tenant_id=? AND grant_id=?').bind(saved.source.streamId,actor.tenantId,grantId).first();
         if(!belongs||JSON.stringify(saved.source.businessContext)!==JSON.stringify(context)){withheld++;continue;}
         const observed=await ledger.readText(saved.source.streamId,saved.source.messageId,saved.source.receipt);
-        const validated=parseMailTriage(JSON.stringify({category:saved.category,priority:saved.priority,summary:saved.summary,evidence:saved.evidence.map(e=>({excerpt:e.excerpt}))}),{...observed,businessContext:context});
+        const source={...observed,businessContext:context};
+        let validated:MailTriageResult;
+        if(row.kind==='aggregation'){
+          const values:unknown[]=[];
+          for(const section of planMailTriageChunks(source).chunks){
+            if(!section.request)continue;
+            const id=await mailTriageSectionId(actor.userId,section);
+            const record=this.storage.sql.exec<{value:string}>(`SELECT r.value FROM mailbox_triage_sections r JOIN background_text_usage u ON u.id=r.id
+              WHERE r.id=? AND r.user_id=? AND u.user_id=? AND u.status='complete'`,id,actor.userId,actor.userId).toArray()[0];
+            if(record)values.push(JSON.parse(record.value));
+          }
+          validated=validateStoredMailAggregation(saved,source,values);
+          await ledger.readText(saved.source.streamId,saved.source.messageId,saved.source.receipt);
+        }else validated=parseMailTriage(JSON.stringify({category:saved.category,priority:saved.priority,summary:saved.summary,evidence:saved.evidence.map(e=>({excerpt:e.excerpt}))}),source);
         items.push({id:row.id,category:validated.category,priority:validated.priority,summary:validated.summary,
           evidence:validated.evidence.map(e=>e.excerpt),observedAt:validated.source.observedAt,
           historicalContext:validated.historicalContext,extractionOmissions:validated.extractionOmissions,
-          contextTruncated:context.truncated,requiresReview:true,authorizesActions:false});
+          contextTruncated:context.truncated,requiresReview:true,authorizesActions:false,
+          ...(validated.aggregation?{aggregation:validated.aggregation}:{})});
       }catch(error){
         if(error instanceof HttpError&&![403,409].includes(error.status))throw error;
         if(!(error instanceof HttpError||error instanceof SyntaxError||error instanceof z.ZodError||error instanceof TypeError))throw error;

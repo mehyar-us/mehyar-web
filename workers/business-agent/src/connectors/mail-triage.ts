@@ -19,7 +19,8 @@ export type MailTriageResult={version:1;source:Omit<MailTriageSource,'projection
   category:z.infer<typeof classification>;priority:z.infer<typeof priority>;summary:string;
   evidence:{excerpt:string;start:number;end:number}[];basis:'model_suggestion';requiresReview:true;
   extractionOmissions:MailText['omissions'];historicalContext:boolean;authorizesActions:false;
-  partial?:true;sectionIndex?:number;sectionCount?:number};
+  partial?:true;sectionIndex?:number;sectionCount?:number;
+  aggregation?:{basis:'validated_section_summaries';sectionCount:number;extractedTextCoverageComplete:true}};
 
 /** Bounded model contract only. Dispatch must separately reserve customer and
  * supplier budgets and enforce readiness, then revalidate the source receipt.
