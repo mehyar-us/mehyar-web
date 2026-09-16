@@ -838,6 +838,34 @@ test('shows completed scan freshness separately from message observations',async
   await expect(panel.getByText('Last completed scan:',{exact:false})).toHaveCount(0);
 });
 
+test('reviews mailbox analyses without actions and clears failed or offline results',async({page,context})=>{
+  await fixture(page);
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:'11111111-1111-4111-8111-111111111111',provider:'google',tenantId:tenant.id,status:'authorized',grantedCapabilities:['gmail_read'],grantedScopes:[],selectedCapabilities:['gmail_read']}]}}));
+  await page.route('**/connections/*/mailbox',route=>route.fulfill({json:{state:'monitoring',setupEnabled:false,pending:0,lastObservedAt:null}}));
+  const item={id:'a'.repeat(64),category:'inquiry',priority:'urgent',summary:'<script>bad()</script> Customer asks about pricing.',evidence:['What does a haircut cost?'],observedAt:'2026-09-16T12:00:00.000Z',historicalContext:true,extractionOmissions:['attachment'],contextTruncated:true,requiresReview:true,authorizesActions:false};
+  const methods:string[]=[];let invalid=false;
+  await page.route('**/mailbox/analyses**',route=>{
+    methods.push(route.request().method());
+    const more=new URL(route.request().url()).searchParams.has('after');
+    return route.fulfill({json:{items:more?[{...item,id:'b'.repeat(64),summary:'Second inquiry',authorizesActions:invalid}]:[item],withheld:more?0:1,...more?{}:{nextCursor:'c'.repeat(64)}}});
+  });
+  await page.goto('/?connected=google');const panel=page.getByRole('region',{name:'Mailbox analyses'});
+  await panel.getByRole('button',{name:'View analyses',exact:true}).click();
+  await expect(panel.getByText(item.summary,{exact:true})).toBeVisible();
+  await expect(panel.getByText('Attachments were excluded.')).toBeVisible();
+  await expect(panel.getByText('Only part of the business brief was included.')).toBeVisible();
+  await panel.getByText('Read email evidence',{exact:true}).click();await expect(panel.getByText(item.evidence[0],{exact:true})).toBeVisible();
+  expect(await panel.locator('script').count()).toBe(0);
+  expect((await new AxeBuilder({page}).include('[aria-label="Mailbox analyses"]').analyze()).violations).toEqual([]);
+  await panel.getByRole('button',{name:'Refresh analyses'}).click();await expect(panel.getByText(item.summary,{exact:true})).toBeVisible();
+  await panel.getByRole('button',{name:'Load more analyses'}).click();await expect(panel.getByText('Second inquiry',{exact:true})).toBeVisible();
+  await panel.getByRole('button',{name:'Refresh analyses'}).click();invalid=true;
+  await panel.getByRole('button',{name:'Load more analyses'}).click();await expect(panel.getByRole('alert')).toContainText('could not be verified');
+  await expect(panel.getByText(item.summary,{exact:true})).toHaveCount(0);
+  invalid=false;await panel.getByRole('button',{name:'View analyses',exact:true}).click();await expect(panel.getByText(item.summary,{exact:true})).toBeVisible();
+  await context.setOffline(true);await expect(panel).toHaveCount(0);expect(methods.every(method=>method==='GET')).toBe(true);
+});
+
 test('reviews mailbox recovery and retries the same offer after an uncertain response',async({page})=>{
   await fixture(page);let restarted=false;const requests:unknown[]=[];
   const recoveryId='33333333-3333-4333-8333-333333333333';

@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
 import MailboxRecovery from './MailboxRecovery';
+import MailboxAnalyses from './MailboxAnalyses';
 const labels={not_started:'Not set up',initializing:'Reading initial mailbox references',monitoring:'Monitoring configured',paused:'Paused',stopped:'Monitoring stopped',needs_attention:'Needs attention',disabled:'Monitoring unavailable',reconnect_required:'Reconnect required'};
 type Status={state:keyof typeof labels;setupEnabled:boolean;pending:number;lastObservedAt:string|null;lastCheckedAt?:string|null;configuredFolders?:number;controlRevision?:number;resumeEnabled?:boolean};
 function valid(value:unknown):value is Status {
@@ -58,5 +59,6 @@ export default function MailboxPanel({tenantId,grantId,online,onUnauthorized,pro
       <button className="button secondary" disabled={busy} onClick={()=>void stop()}>Confirm stop monitoring</button>
       <button className="button secondary" disabled={busy} onClick={()=>setConfirmStop(false)}>Keep monitoring</button></div>}
     <p>Monitoring reads this account. Sending replies requires separate permission and an approved automation.</p>
+    {online&&!busy&&status&&['monitoring','initializing','needs_attention','disabled'].includes(status.state)&&<MailboxAnalyses key={`${tenantId}:${grantId}`} tenantId={tenantId} grantId={grantId} onUnauthorized={onUnauthorized}/>}
   </div></div>;
 }
