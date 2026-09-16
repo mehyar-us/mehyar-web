@@ -131,6 +131,7 @@ async function fixture(
     if (path === "/api/tenants") return reply({ tenants });
     if (path.endsWith("/messages")) return reply({ messages: [] });
     if(path.endsWith('/usage'))return reply({usage:{period:'trial',textCredits:{used:0,reserved:0,limit:50}}});
+    if(path.endsWith('/platform-email-usage'))return reply({state:'unavailable'});
     if (path.startsWith("/api/tenants/"))
       return reply({
         tenant: tenants.find((tenant) => path.endsWith(tenant.id)),
@@ -566,4 +567,23 @@ test("billing API failure and offline mode disable purchases without cached auth
   await expect(page.getByRole("button", { name: "Review setup" })).toHaveCount(
     0,
   );
+});
+
+test('platform email usage separates reservations and warns at allowance thresholds',async({page})=>{
+  await fixture(page);let reserved=100;
+  await page.route('**/api/tenants/business-a/platform-email-usage',route=>route.fulfill({json:{state:'available',accepted:600,reserved,limit:1000,remaining:Math.max(0,400-reserved),resetsAt:'2026-10-16T12:00:00Z',warning:reserved>=400?'100':reserved>=300?'90':'70',deliveryEnabled:false}}));
+  await page.goto('/billing?tenantId=business-a');const panel=page.getByRole('region',{name:'Platform email usage'});
+  await expect(panel).toContainText('Reserved or awaiting confirmation');await expect(panel).toContainText('70% or more');await expect(panel).toContainText('Email delivery is currently disabled.');
+  reserved=300;await panel.getByRole('button',{name:'Refresh email usage'}).click();await expect(panel).toContainText('90% or more');
+  reserved=400;await panel.getByRole('button',{name:'Refresh email usage'}).click();await expect(panel).toContainText('New email reservations are paused');await expect(panel).toContainText('no automatic overage charge');
+  expect((await new AxeBuilder({page}).include('[aria-label="Platform email usage"]').analyze()).violations).toEqual([]);
+});
+
+test('platform email usage clears on denied reads and offline state and rejects invalid balances',async({page,context})=>{
+  await fixture(page);let state='valid';
+  await page.route('**/api/tenants/business-a/platform-email-usage',route=>state==='denied'?route.fulfill({status:403,json:{error:{message:'Email usage access denied.'}}}):route.fulfill({json:{state:'available',accepted:17,reserved:1,limit:1000,remaining:state==='valid'?982:-1,resetsAt:'2026-10-16T12:00:00Z',warning:'normal',deliveryEnabled:true}}));
+  await page.goto('/billing?tenantId=business-a');const panel=page.getByRole('region',{name:'Platform email usage'});
+  await expect(panel).toContainText('982');state='denied';await panel.getByRole('button',{name:'Refresh email usage'}).click();await expect(panel.getByRole('alert')).toContainText('access denied');await expect(panel).not.toContainText('982');
+  await context.setOffline(true);await page.evaluate(()=>window.dispatchEvent(new Event('offline')));await expect(panel).toContainText('Reconnect to load email usage.');
+  state='invalid';await context.setOffline(false);await page.evaluate(()=>window.dispatchEvent(new Event('online')));await expect(panel.getByRole('alert')).toContainText('could not be verified');await expect(panel).not.toContainText('Available emails');
 });

@@ -6,6 +6,7 @@ import {VerifiedInvitationOutbox} from '../src/email/verified-outbox';
 import {createTenant} from '../src/tenants';
 import {inviteMember,revokeInvitation,teamDirectory} from '../src/team';
 import {queueInvitationEmail} from '../src/email/customer';
+import {platformEmailUsage,emailUsageWarning} from '../src/email/usage';
 import {PlatformEmailSupplierBudget} from '../src/email/supplier-budget';
 import {platformEmailAccess} from '../src/email/access';
 import {CATALOG_VERSION} from '../src/catalog';
@@ -32,6 +33,20 @@ async function evidence(e:Env){
   return config;
 }
 describe('dedicated platform sender readiness',()=>{
+  it.each([[699,'normal'],[700,'70'],[900,'90'],[1000,'100'],[1001,'100']] as const)('warns at email capacity thresholds %s', (used,expected)=>{expect(emailUsageWarning(used,1000)).toBe(expected);});
+  it('reports held versus accepted capacity privately and denies non-billing roles',async()=>{
+    const e=fixture(),invite=await invitation(e);await evidence(e);const box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id),claim=(await box.claim(invite.actor.tenantId,job.id))!;
+    const held=await platformEmailUsage(e,invite.actor);expect(held).toMatchObject({state:'available',accepted:0,reserved:1,limit:1000,remaining:999,warning:'normal',deliveryEnabled:false});expect(JSON.stringify(held)).not.toContain('sub_');
+    await box.settle(claim,{state:'accepted',providerId:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});
+    expect(await platformEmailUsage(e,invite.actor)).toMatchObject({accepted:1,reserved:0,remaining:999});
+    const other=await invitation(e);expect(await platformEmailUsage(e,other.actor)).toMatchObject({accepted:0,reserved:0,remaining:1000});
+    await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='billing' WHERE tenant_id=? AND user_id=?").bind(invite.actor.tenantId,invite.actor.userId).run();expect(await platformEmailUsage(e,invite.actor)).toMatchObject({accepted:1});
+    await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='manager' WHERE tenant_id=? AND user_id=?").bind(invite.actor.tenantId,invite.actor.userId).run();await expect(platformEmailUsage(e,invite.actor)).rejects.toMatchObject({code:'permission_denied'});
+  });
+  it('does not report a zero balance as verified when subscription access is unavailable',async()=>{
+    const e=fixture(),invite=await invitation(e);await e.AGENT_DB.prepare("UPDATE agent_billing_subscriptions SET paid_through='2000-01-01T00:00:00Z' WHERE tenant_id=?").bind(invite.actor.tenantId).run();
+    expect(await platformEmailUsage(e,invite.actor)).toEqual({state:'unavailable'});
+  });
   it('queues one frozen email only on an authorized explicit owner request and presents private delivery state',async()=>{
     const e=fixture();e.AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED='true';const invite=await invitation(e);await evidence(e);
     const before=await teamDirectory(e,invite.actor);expect(before.emailQueueEnabled).toBe(true);expect(before.invitations[0].emailDelivery.state).toBe('not_queued');
