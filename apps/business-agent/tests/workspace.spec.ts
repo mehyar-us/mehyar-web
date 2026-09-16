@@ -48,7 +48,7 @@ const capabilities = {
   },
 };
 type Fixtures = { signedIn?: boolean; empty?: boolean; unavailable?: boolean };
-const briefFixture=()=>({brief:{revision:0,fields:Object.fromEntries('businessName category services prices currency hours locations serviceArea contactRoutes bookingSystem publicPolicies brandLanguage existingTools requestOwner serviceDuration staffResources cancellationRules escalationDestination tone permittedAutonomy'.split(' ').map(key=>[key,'']))},identityVerified:false,authorizesActions:false,
+const briefFixture=()=>({brief:{revision:0,fields:Object.fromEntries('businessName category industryPack services prices currency hours locations serviceArea contactRoutes bookingSystem publicPolicies brandLanguage existingTools requestOwner serviceDuration staffResources cancellationRules escalationDestination tone permittedAutonomy'.split(' ').map(key=>[key,'']))},identityVerified:false,authorizesActions:false,industryOptions:[{id:'barbershops-salons',name:'Barbers and salons'},{id:'clinics-dentists',name:'Clinics and dentists'}],
   unresolvedQuestions:[{field:'requestOwner',question:'Who should own incoming requests?'}],recommendations:['Draft responses','Check availability','Follow up on inquiries'].map((name,i)=>({id:`fixture-${i}`,name,proposed:true,executionEnabled:false,prerequisites:['mailbox_connected'],example:'Prepare work for your review.',expectedImprovement:'Reduce repeated work.',plan:{name:'Business Agent',monthlyCents:34900,setupCents:150000},addon:null}))});
 async function fixture(page: Page, options: Fixtures = {}) {
   let paused = false;
@@ -543,6 +543,8 @@ test('business brief requires review, preserves retries and displays proposed pl
   const panel=page.getByRole('region',{name:'Business brief'});
   await panel.getByLabel('Business name',{exact:true}).fill('Oak & Ivy');
   await panel.getByLabel('Owner of incoming requests').fill('Sam');
+  await panel.getByText('Business details and operating preferences',{exact:true}).click();
+  await panel.getByLabel('Industry workflow pack').selectOption('barbershops-salons');
   await expect(panel.getByRole('button',{name:'Save reviewed brief'})).toBeDisabled();
   await panel.getByLabel('I reviewed these business details.').check();await panel.getByRole('button',{name:'Save reviewed brief'}).click();
   await expect(panel.getByRole('alert')).toHaveText('Unconfirmed save');
@@ -550,6 +552,7 @@ test('business brief requires review, preserves retries and displays proposed pl
   await panel.getByRole('button',{name:'Retry same brief update'}).click();
   await expect(panel.getByRole('status')).toContainText('Business brief saved');
   expect(requests).toHaveLength(2);expect(requests[0]).toEqual(requests[1]);expect(requests[0].key).toBeTruthy();
+  expect(requests[0].body.fields.industryPack).toBe('barbershops-salons');
   await expect(panel.getByText('Who should own incoming requests?')).toHaveCount(0);
   await expect(panel.getByText('Business Agent: $349.00/month plus $1,500.00 setup.',{exact:true})).toHaveCount(3);
   await page.setViewportSize({width:390,height:844});

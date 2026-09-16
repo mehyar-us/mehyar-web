@@ -5,9 +5,25 @@ import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
 import {unwrap} from '../src/agent';
 import {confirmResearch} from '../src/research/confirm';
+import {INDUSTRY_PACKS} from '../src/automations';
+import {briefRecommendations} from '../src/brief-recommendations';
 const e=env as unknown as Env;
 async function fixture(){const userId=crypto.randomUUID(),tenant=await createTenant(e,userId,{name:'Brief business'},crypto.randomUUID()),actor={userId,tenantId:tenant.id};const stub=await getAgentByName(e.BUSINESS_AGENTS,tenant.id);unwrap(await stub.provision(actor));return {actor,stub};}
 describe('owner-reviewed business brief',()=>{
+  it.each(INDUSTRY_PACKS.map(pack=>[pack.id]))('uses the explicit %s pack without enabling its workflows',id=>{
+    const result=briefRecommendations({industryPack:id,bookingSystem:'',serviceDuration:''});
+    expect(result.industry?.id).toBe(id);expect(result.recommendations).toHaveLength(3);
+    expect(new Set(result.recommendations.map(item=>item.id)).size).toBe(3);
+    expect(result.recommendations.every(item=>item.basis==='owner_selected_industry'&&!item.executionEnabled&&item.plan.monthlyCents>=34900)).toBe(true);
+    if(id==='clinics-dentists')expect(result.recommendations.map(item=>item.id)).toEqual(['front-desk.faq','setup.first-preview','setup.missing-information']);
+    else expect(result.recommendations.map(item=>item.id)).toEqual(INDUSTRY_PACKS.find(pack=>pack.id===id)!.defaultAutomationIds.slice(0,3));
+  });
+  it('persists an explicit industry choice and rejects invented packs',async()=>{
+    const {actor,stub}=await fixture();
+    expect(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields:{industryPack:'invented'}},crypto.randomUUID())).toMatchObject({ok:false,error:{code:'invalid_business_brief'}});
+    unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields:{industryPack:'home-services'}},crypto.randomUUID()));
+    const result=unwrap(await stub.businessBrief(actor));expect(result.industry?.id).toBe('home-services');expect(result.industryOptions).toHaveLength(10);
+  });
   it('verifies saved field provenance and replays the original receipt after source deletion',async()=>{
     const a=await fixture(),b=await fixture(),claim={field:'business_name',value:'Sourced salon',sourceUrl:'https://salon.example.com/',retrievedAt:new Date().toISOString(),selector:'title',basis:'direct_page_claim' as const,confidence:'high' as const,verification:'unverified' as const,trustedForInstructions:false as const};
     const confirmation=await confirmResearch(e,a.actor,crypto.randomUUID(),0,'Salon name',claim),sourceId=confirmation.memory!.id;

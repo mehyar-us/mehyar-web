@@ -1,11 +1,11 @@
 import {z} from 'zod';
 import {HttpError} from './http';
-import {AUTOMATIONS} from './automations';
-import {getPlan} from './catalog';
+import {getIndustryPack} from './automations';
+import {briefRecommendations} from './brief-recommendations';
 import type {BriefSource} from './brief-sources';
 
 const text=z.string().trim().max(2000).default('');
-export const briefFields=z.object({businessName:text,category:text,services:text,prices:text,currency:text,hours:text,locations:text,serviceArea:text,contactRoutes:text,bookingSystem:text,publicPolicies:text,brandLanguage:text,existingTools:text,requestOwner:text,serviceDuration:text,staffResources:text,cancellationRules:text,escalationDestination:text,tone:text,permittedAutonomy:text}).strict();
+export const briefFields=z.object({businessName:text,category:text,industryPack:z.string().trim().max(80).default('').refine(value=>!value||!!getIndustryPack(value)),services:text,prices:text,currency:text,hours:text,locations:text,serviceArea:text,contactRoutes:text,bookingSystem:text,publicPolicies:text,brandLanguage:text,existingTools:text,requestOwner:text,serviceDuration:text,staffResources:text,cancellationRules:text,escalationDestination:text,tone:text,permittedAutonomy:text}).strict();
 const input=z.object({expectedRevision:z.number().int().min(0),reviewed:z.literal(true),fields:briefFields,sourceIds:z.record(z.string().max(40),z.string().max(128)).default({}).refine(value=>Object.keys(value).length<=20)}).strict();
 type Fields=z.infer<typeof briefFields>;
 type Saved={revision:number;fields:Fields;sources:Record<string,BriefSource>;confirmedBy:string|null;confirmedAt:string|null};
@@ -21,7 +21,7 @@ export class BusinessBrief {
   }
   read():Saved{
     const row=this.storage.sql.exec<{value:string}>('SELECT value FROM business_brief WHERE id=1').toArray()[0];
-    return row?{sources:{},...JSON.parse(row.value)}:{revision:0,fields:briefFields.parse({}),sources:{},confirmedBy:null,confirmedAt:null};
+    return row?{sources:{},...JSON.parse(row.value),fields:briefFields.parse(JSON.parse(row.value).fields)}:{revision:0,fields:briefFields.parse({}),sources:{},confirmedBy:null,confirmedAt:null};
   }
   replay(userId:string,key:string,value:unknown):Saved|null{
     const parsed=input.safeParse(value);
@@ -29,7 +29,7 @@ export class BusinessBrief {
     const prior=this.storage.sql.exec<{user_id:string;payload:string;value:string}>('SELECT * FROM business_brief_receipts WHERE request_key=?',key).toArray()[0];
     if(!prior)return null;
     if(prior.user_id!==userId||JSON.stringify(input.parse(JSON.parse(prior.payload)))!==JSON.stringify(parsed.data))throw new HttpError(409,'brief_request_reused','This request belongs to a different brief update.');
-    return {sources:{},...JSON.parse(prior.value)};
+    return {sources:{},...JSON.parse(prior.value),fields:briefFields.parse(JSON.parse(prior.value).fields)};
   }
   save(userId:string,key:string,value:unknown,availableSources:BriefSource[]=[]):Saved{
     const parsed=input.safeParse(value);
@@ -53,18 +53,8 @@ export class BusinessBrief {
   }
   present(){
     const brief=this.read();
-    const ids=['email.draft',brief.fields.bookingSystem||brief.fields.serviceDuration?'appointments.availability':'email.summary','email.unanswered-followup'];
     return {brief,identityVerified:false,authorizesActions:false,
       unresolvedQuestions:questions.filter(([field])=>!brief.fields[field]).map(([field,question])=>({field,question})),
-      recommendations:ids.map((id,index)=>{
-        const definition=AUTOMATIONS.find(item=>item.id===id)!;
-        const plan=getPlan(definition.eligibility.plans[0])!;
-        return {id,priority:index+1,name:definition.name,basis:'owner_brief_rule' as const,
-          proposed:true,executionEnabled:false,permissions:definition.permissions,prerequisites:definition.eligibility.prerequisites,
-          plan:{id:plan.id,name:plan.name,monthlyCents:plan.monthlyCents,setupCents:plan.setupCents},
-          addon:definition.eligibility.businessAddon??null,
-          example:id==='email.draft'?'Prepare a reply to a customer question for your review.':id==='appointments.availability'?'Suggest open times from an approved calendar without making a booking.':id==='email.summary'?'Show the key points and open questions in an authorized email thread.':'Prepare an allowed follow-up after checking that the inquiry is still unanswered.',
-          expectedImprovement:id==='email.draft'?'Reduce repeated reply writing.':id==='appointments.availability'?'Reduce back-and-forth over available times.':id==='email.summary'?'Make long customer threads easier to review.':'Reduce missed follow-up on unresolved inquiries.'};
-      })};
+      ...briefRecommendations(brief.fields)};
   }
 }
