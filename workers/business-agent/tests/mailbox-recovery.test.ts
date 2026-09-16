@@ -8,6 +8,7 @@ import {MailboxSync} from '../src/connectors/mailbox-sync';
 import {runMailboxRecovery} from '../src/connectors/mailbox-recovery';
 import {runMailboxProcessing} from '../src/connectors/mailbox-processing';
 import {runMailboxMaintenance} from '../src/connectors/mailbox-maintenance';
+import {runMailboxAuthorityReview} from '../src/connectors/mailbox-authority-review';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',MAILBOX_RECOVERY_ENABLED:'true'} as unknown as Env;
 async function fixture() {
   const userId=crypto.randomUUID();
@@ -35,6 +36,28 @@ describe('bounded recurring mailbox dispatch',()=>{
     return {...f,ledger,pageToken:claim.token};
   }
   const processing={...e,MAILBOX_PROCESSING_ENABLED:'true'};
+  it('retires historical consent mismatches while preserving current-consent work and leases',async()=>{
+    const stale=await queued(),current=await queued();
+    const staleClaim=(await stale.ledger.claimChange(stale.streamId))!,currentClaim=(await current.ledger.claimChange(current.streamId))!;
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET authorization='historical-consent' WHERE id=?").bind(stale.streamId).run();
+    const result=await runMailboxAuthorityReview({...e,MAILBOX_SYNC_ENABLED:'false'});
+    expect(result.retired).toBe(1);expect(result.failed).toBe(0);
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(stale.streamId).first()).toEqual({state:'discarded'});
+    expect(await e.AGENT_DB.prepare('SELECT state,lease_token FROM agent_mailbox_consumers WHERE stream_id=?').bind(current.streamId).first()).toEqual({state:'ready',lease_token:currentClaim.token});
+    await expect(stale.ledger.saveChange(staleClaim,null)).rejects.toBeDefined();
+    expect(await current.ledger.saveChange(currentClaim,null)).toBe(true);
+  });
+  it('does not retire using a grant snapshot changed before the batch commits',async()=>{
+    const f=await queued();
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET authorization='historical-consent' WHERE id=?").bind(f.streamId).run();
+    const db={prepare:e.AGENT_DB.prepare.bind(e.AGENT_DB),batch:async(statements:D1PreparedStatement[])=>{
+      await e.AGENT_DB.prepare("UPDATE auth_provider_grants SET account_id='replacement-account' WHERE id=?").bind(f.grantId).run();
+      return e.AGENT_DB.batch(statements);
+    }} as unknown as D1Database;
+    expect(await runMailboxAuthorityReview({...e,AGENT_DB:db})).toMatchObject({retired:0,failed:0});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+    expect(await runMailboxAuthorityReview(e)).toMatchObject({retired:1});
+  });
   it('retires expired membership work with provider execution disabled while preserving paused accounts',async()=>{
     const f=await queued(),paused=await queued();
     const claim=(await f.ledger.claimChange(f.streamId))!;
