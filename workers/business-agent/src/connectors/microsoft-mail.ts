@@ -1,6 +1,7 @@
 import { ProviderHTTP, cursorURL, query, segment, singleLine } from "./http";
 import { base64, buildReply } from "./mail";
 import { graphMailPage } from "./mail-pages";
+import { graphFolderPage, type MailFolder } from "./mail-folders";
 import {mailSnapshot} from './mail-snapshot';
 import { ConnectorError, type ClientOptions, type ConnectorAuth, type MailMessage, type MailReceipt, type Operation, type Page, type ReplyInput } from "./types";
 import { GRAPH_BASE } from "./microsoft-calendar";
@@ -27,6 +28,13 @@ function normalize(message: GraphMessage): MailMessage {
 export class MicrosoftMailClient {
   private readonly http: ProviderHTTP;
   constructor(auth: ConnectorAuth, options?: ClientOptions) { this.http = new ProviderHTTP(auth, GRAPH_BASE, options); }
+  async listFolders(parentId?: string, cursor?: string): Promise<Page<MailFolder>> {
+    const path = parentId === undefined ? "me/mailFolders" : `me/mailFolders/${segment(parentId)}/childFolders`;
+    const initial = query(path, { "$select": "id,displayName,parentFolderId,childFolderCount,isHidden", "$top": "100", includeHiddenFolders: "true" });
+    const data = await this.http.request<unknown>(MICROSOFT_MAIL_OPERATIONS.read,
+      cursorURL(cursor, initial, GRAPH_BASE, "/v1.0/" + path));
+    return graphFolderPage(data, GRAPH_BASE, "/v1.0/" + path, parentId);
+  }
   async readSnapshot(folderId:string,messageId:string) {
     const value=await this.http.request<unknown>(MICROSOFT_MAIL_OPERATIONS.read,query(`me/mailFolders/${segment(folderId)}/messages/${segment(messageId)}`,{'$select':fields}),
       {headers:{Prefer:'IdType="ImmutableId", outlook.body-content-type="text"'}});
