@@ -138,6 +138,7 @@ async function fixture(page: Page, options: Fixtures = {}) {
     if (path.endsWith("/messages"))
       return reply({ messages: path.includes("business-b") ? [] : messages });
     if(path.endsWith('/usage'))return route.fulfill({json:{usage:{period:'trial',textCredits:{used:0,reserved:0,limit:50}}}});
+    if(path.endsWith('/research'))return reply({jobs:[],nextOffset:null});
     if (path.startsWith("/api/tenants/"))
       return reply({
         tenant: {
@@ -489,4 +490,40 @@ test("workspace creation retries keep the same idempotency key", async ({
   await page.getByRole("button", { name: "Create my workspace" }).click();
   await expect.poll(() => keys.length).toBe(3);
   expect(keys[2]).not.toBe(keys[1]);
+});
+
+test('research displays unverified sources as text and clears failed refreshes', async ({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await fixture(page);
+  const job={id:'research-one',website:'https://salon.example.com/',status:'completed',pageLimit:20,evidencePages:1,usedPages:1,reservedPages:0};
+  let failed=false;
+  await page.route('**/api/tenants/business-a/research**',route=>{
+    if(failed)return route.fulfill({status:503,json:{error:{message:'Research unavailable'}}});
+    const detail=new URL(route.request().url()).pathname.endsWith('/research-one');
+    return route.fulfill({json:detail?{job,pages:[{url:job.website,retrievedAt:'2026-09-16T12:00:00Z',warnings:[],evidence:[{field:'business_name',value:'<script>window.injected=true</script>',sourceUrl:job.website,retrievedAt:'2026-09-16T12:00:00Z',confidence:'high',selector:'title'}]}],nextOffset:null}:{jobs:[job],nextOffset:null}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Open navigation'}).click();await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});
+  await panel.getByRole('button',{name:'View source evidence'}).click();
+  await expect(panel.getByText('<script>window.injected=true</script>',{exact:true})).toBeVisible();
+  await expect(panel.getByText('Unverified website claim',{exact:false})).toBeVisible();
+  await expect(panel.getByRole('link',{name:'Claim source'})).toHaveAttribute('href',job.website);
+  expect(await page.evaluate(()=>('injected' in window))).toBe(false);
+  expect((await new AxeBuilder({page}).include('.research-panel').analyze()).violations).toEqual([]);
+  await panel.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await panel.screenshot({path:'test-results/research-panel.png',animations:'disabled'});
+  failed=true;await panel.getByRole('button',{name:'Refresh research'}).click();
+  await expect(panel.getByRole('alert')).toHaveText('Research unavailable');
+  await expect(panel.getByText('<script>window.injected=true</script>',{exact:true})).toHaveCount(0);
+});
+
+test('research offers manual fallback and rejects unsafe result links',async({page})=>{
+  await fixture(page);await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});
+  await expect(panel.getByText('No website research is available yet.',{exact:false})).toBeVisible();
+  await page.route('**/api/tenants/business-a/research**',route=>route.fulfill({json:{jobs:[{id:'bad',website:'javascript:alert(1)',status:'completed',pageLimit:20,evidencePages:0,usedPages:0,reservedPages:0}],nextOffset:null}}));
+  await panel.getByRole('button',{name:'Refresh research'}).click();
+  await expect(panel.getByRole('alert')).toContainText('unexpected response');
+  await expect(panel.locator('a')).toHaveCount(0);
 });

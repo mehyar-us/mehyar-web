@@ -58,6 +58,7 @@ import {
 
 import BillingPanel from "./BillingPanel";
 import ApprovalsPanel from "./ApprovalsPanel";
+import ResearchPanel from "./ResearchPanel";
 import googleLogo from "./assets/google-g.svg?raw";
 
 type Tab =
@@ -1584,6 +1585,7 @@ export default function App() {
                       )}
                     </section>
                   </div>
+                  {['owner','manager'].includes(snapshot.membership.role) && <ResearchPanel key={`${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} online={online} onUnauthorized={fail}/>}
                 </div>
               )}
               {tab === "connections" && (
