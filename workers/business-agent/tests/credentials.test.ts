@@ -3,7 +3,7 @@ import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
 import {storeProviderGrant,decryptCredential,revokeProviderGrant,type ProviderCredential} from '../src/auth/vault';
-import {connectorCredential} from '../src/connectors/credentials';
+import {connectorCredential,connectionAuthorizationStamp} from '../src/connectors/credentials';
 import {GOOGLE_MAIL_OPERATIONS} from '../src/connectors/google-mail';
 import {MICROSOFT_MAIL_OPERATIONS} from '../src/connectors/microsoft-mail';
 import {connectedCalendars} from '../src/connectors/calendar-access';
@@ -22,6 +22,22 @@ async function fixture(provider:'google'|'microsoft'='google',fresh=false) {
 }
 const response=(extra:Record<string,unknown>={})=>Response.json({access_token:'fixture-new-access',token_type:'Bearer',expires_in:3600,...extra});
 describe('server credential renewal',()=>{
+  it('keeps authorization identity stable on token refresh but changes it on renewed consent',async()=>{
+    const f=await fixture();const before=await connectionAuthorizationStamp(e,f.actor,f.id,f.provider,f.operation);
+    await connectorCredential(e,f.actor,f.id,f.provider,f.operation,async()=>response());
+    expect(await connectionAuthorizationStamp(e,f.actor,f.id,f.provider,f.operation)).toBe(before);
+    await storeProviderGrant(e,f.binding,{...f.credential,accessTokenExpiresAt:new Date(Date.now()+3600000).toISOString()},[]);
+    expect(await connectionAuthorizationStamp(e,f.actor,f.id,f.provider,f.operation)).not.toBe(before);
+    await revokeProviderGrant(e,f.actor.userId,f.id,f.actor.tenantId);
+    await expect(connectionAuthorizationStamp(e,f.actor,f.id,f.provider,f.operation)).rejects.toMatchObject({code:'connection_unavailable'});
+  });
+  it('withholds a calendar page when consent changes during its provider read',async()=>{
+    const f=await fixture('google',true),credential={...f.credential,grantedScopes:['https://www.googleapis.com/auth/calendar.calendarlist.readonly']};
+    await storeProviderGrant(e,f.binding,credential,['calendar_read']);let calls=0;
+    await expect(connectedCalendars({...e,GOOGLE_ENABLED_CAPABILITIES:'calendar_read'},f.actor,f.id,'google',async()=>{
+      calls++;await storeProviderGrant(e,f.binding,credential,['calendar_read']);return Response.json({items:[{id:'private-calendar',summary:'Private',accessRole:'owner'}],nextPageToken:'next'});
+    })).rejects.toMatchObject({code:'calendar_authorization_changed'});expect(calls).toBe(1);
+  });
   it.each(['google','microsoft'] as const)('collects later %s calendar pages without exposing provider cursors',async provider=>{
     const f=await fixture(provider,true);let calls=0;
     await storeProviderGrant(e,f.binding,{...f.credential,grantedScopes:provider==='google'?['https://www.googleapis.com/auth/calendar.calendarlist.readonly']:['Calendars.Read']},['calendar_read']);

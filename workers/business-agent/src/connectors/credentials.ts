@@ -6,7 +6,7 @@ import { CHAT_ROLES, OPERATORS, requireMembership, requireTenant } from '../perm
 import type { ConnectorAuth, Operation } from './types';
 
 type Grant = {id:string;user_id:string;provider:OAuthProvider;account_id:string;tenant_scope:string;
-  ciphertext:string;granted_scopes:string;status:string;key_version:number};
+  ciphertext:string;granted_scopes:string;status:string;key_version:number;authorization_revision:number};
 const failure=(code:string,message:string,status=409)=>new HttpError(status,code,message);
 const normalize=(scope:string)=>scope.replace(/^https:\/\/graph\.microsoft\.com\//,'');
 function scopes(value:unknown):string[] {
@@ -44,6 +44,13 @@ async function boundedJSON(response:Response):Promise<Record<string,unknown>> {
 export async function assertConnectionAvailable(env:Env,actor:Actor,grantId:string,provider:OAuthProvider,operation:Operation):Promise<void> {
   const row=await readGrant(env,actor,grantId,provider);
   permitted(scopes(JSON.parse(row.granted_scopes)),operation);
+}
+
+/** Internal authorization identity, stable across token refresh but not renewed consent. */
+export async function connectionAuthorizationStamp(env:Env,actor:Actor,grantId:string,provider:OAuthProvider,operation:Operation):Promise<string>{
+  const row=await readGrant(env,actor,grantId,provider),granted=scopes(JSON.parse(row.granted_scopes));permitted(granted,operation);
+  if(!Number.isSafeInteger(row.authorization_revision)||row.authorization_revision<1)throw failure('invalid_credential','Reconnect this account to restore secure access.');
+  return digest(JSON.stringify([row.user_id,row.account_id,row.authorization_revision,granted.sort()]));
 }
 
 /** SERVER MODULE ONLY: never expose this return value through Agent RPC or HTTP.

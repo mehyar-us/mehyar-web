@@ -67,7 +67,8 @@ export async function storeProviderGrant(env: AuthEnv, binding: CredentialBindin
     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
     ON CONFLICT(user_id, provider, account_id, tenant_scope) DO UPDATE SET
       ciphertext = excluded.ciphertext, granted_scopes = excluded.granted_scopes,
-      selected_capabilities = excluded.selected_capabilities, status = excluded.status, updated_at = excluded.updated_at`)
+      selected_capabilities = excluded.selected_capabilities, status = excluded.status, updated_at = excluded.updated_at,
+      authorization_revision = auth_provider_grants.authorization_revision + 1`)
     .bind(id, binding.userId, binding.provider, binding.accountId, tenantScope, ciphertext,
       JSON.stringify(credential.grantedScopes), JSON.stringify(selected), credential.refreshToken ? "authorized" : "reconnect_required", new Date().toISOString()).run();
   return id;
@@ -93,7 +94,7 @@ export async function revokeProviderGrant(env: AuthEnv, userId: string, grantId:
   if (!row || (tenantId !== undefined && tenantId !== row.tenant_scope)) throw new Error("grant_not_found");
   if (row.tenant_scope) await requireConnectorManager(env, row.tenant_scope, userId);
   await env.AGENT_DB.prepare(`UPDATE auth_provider_grants SET status = 'revoked', ciphertext = '',
-    granted_scopes = '[]', selected_capabilities = '[]', updated_at = ? WHERE id = ? AND user_id = ?`)
+    granted_scopes = '[]', selected_capabilities = '[]', authorization_revision = authorization_revision + 1, updated_at = ? WHERE id = ? AND user_id = ?`)
     .bind(new Date().toISOString(), grantId, userId).run();
   return { id: grantId, tenantId: row.tenant_scope || null, status: "revoked", providerRevoked: false };
 }

@@ -5,7 +5,7 @@ import {runInDurableObject} from 'cloudflare:test';
 import {getAgentByName} from 'agents';
 import type {Env} from '../src/env';
 import {CalendarSessions} from '../src/connectors/calendar-sessions';
-const scope={userId:'owner',grantId:'grant',provider:'google'};
+const scope={userId:'owner',grantId:'grant',provider:'google',authorization:'original-consent'};
 async function session(work:(sessions:CalendarSessions,storage:DurableObjectStorage)=>Promise<void>){
   const stub=await getAgentByName((env as unknown as Env).BUSINESS_AGENTS,crypto.randomUUID());
   await runInDurableObject(stub,async(_instance,ctx)=>{const sessions=new CalendarSessions(ctx.storage);sessions.initialize();await work(sessions,ctx.storage);});
@@ -22,7 +22,7 @@ describe('bounded calendar directory',()=>{
   it('rejects cross-account, cross-user and expired handles without provider reads',async()=>session(async(sessions,storage)=>{
     let reads=0;const client={listCalendars:async()=>({items:[calendar(String(++reads))],nextCursor:`private-${reads}`})};
     const first=await sessions.read(scope,client,async()=>{});
-    for(const other of [{...scope,userId:'other'},{...scope,grantId:'other'},{...scope,provider:'microsoft'}])await expect(sessions.read(other,client,async()=>{},first.continuation)).rejects.toMatchObject({code:'calendar_continuation_expired'});
+    for(const other of [{...scope,userId:'other'},{...scope,grantId:'other'},{...scope,provider:'microsoft'},{...scope,authorization:'renewed-consent'}])await expect(sessions.read(other,client,async()=>{},first.continuation)).rejects.toMatchObject({code:'calendar_continuation_expired'});
     storage.sql.exec('UPDATE calendar_directory_sessions SET expires=0');await expect(sessions.read(scope,client,async()=>{},first.continuation)).rejects.toMatchObject({code:'calendar_continuation_expired'});expect(reads).toBe(5);
   }));
   it('does not return partial data after revoked access or advance its continuation',async()=>session(async sessions=>{

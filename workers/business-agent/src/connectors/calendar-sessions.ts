@@ -1,8 +1,8 @@
 import {HttpError} from '../http';
 import {ConnectorError,type Calendar,type Page} from './types';
 
-type State={items:Calendar[];seen:string[];cursor?:string;pages:number};
-type Scope={userId:string;grantId:string;provider:string};
+type State={items:Calendar[];seen:string[];cursor?:string;pages:number;authorization:string};
+type Scope={userId:string;grantId:string;provider:string;authorization:string};
 type Row={id:string;user_id:string;grant_id:string;provider:string;state:string;expires:number;work:string|null;lease:number};
 export type DirectoryResult={items:Calendar[];incomplete:boolean;continuation?:string};
 
@@ -18,11 +18,11 @@ export class CalendarSessions{
     const row=this.storage.transactionSync(()=>{
       if(token&&!/^[a-f0-9-]{36}$/.test(token))throw new HttpError(400,'invalid_calendar_continuation','Reload the calendar list.');
       let saved=token?this.storage.sql.exec<Row>('SELECT * FROM calendar_directory_sessions WHERE id=?',token).toArray()[0]:undefined;
-      if(token&&(!saved||saved.user_id!==scope.userId||saved.grant_id!==scope.grantId||saved.provider!==scope.provider))throw new HttpError(409,'calendar_continuation_expired','The calendar list expired. Reload it.');
+      if(token&&(!saved||saved.user_id!==scope.userId||saved.grant_id!==scope.grantId||saved.provider!==scope.provider||JSON.parse(saved.state).authorization!==scope.authorization))throw new HttpError(409,'calendar_continuation_expired','The calendar list expired. Reload it.');
       if(!saved){
         const count=this.storage.sql.exec<{count:number}>('SELECT COUNT(*) AS count FROM calendar_directory_sessions').one().count;
         if(count>=10)throw new HttpError(429,'calendar_directory_limit','Too many calendar lists are open. Try again in ten minutes.');
-        saved={id:crypto.randomUUID(),user_id:scope.userId,grant_id:scope.grantId,provider:scope.provider,state:JSON.stringify({items:[],seen:[],pages:0}),expires:now+600000,work:null,lease:0};
+        saved={id:crypto.randomUUID(),user_id:scope.userId,grant_id:scope.grantId,provider:scope.provider,state:JSON.stringify({items:[],seen:[],pages:0,authorization:scope.authorization}),expires:now+600000,work:null,lease:0};
         this.storage.sql.exec('INSERT INTO calendar_directory_sessions(id,user_id,grant_id,provider,state,expires) VALUES(?,?,?,?,?,?)',saved.id,saved.user_id,saved.grant_id,saved.provider,saved.state,saved.expires);
       }
       if(saved.lease>now)throw new HttpError(409,'calendar_directory_busy','This calendar list is already loading.');
