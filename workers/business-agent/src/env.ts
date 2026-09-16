@@ -18,6 +18,7 @@ export interface Env {
   AI_ENABLED?: string;
   AI_GATEWAY_ID?: string;
   COMMERCE_ENABLED?: string;
+  EXTERNAL_ACTIONS_ENABLED?: string;
   AGENT_STRIPE_SECRET_KEY?: string;
   AGENT_STRIPE_WEBHOOK_SECRET?: string;
   AGENT_STRIPE_ACCOUNT_ID?: string;

@@ -6,6 +6,7 @@ type Review = {
   id:string; requestedBy:string; policyId:string; policyVersion:number; actionHash:string;
   status:string; createdAt:string; expiresAt:string; approvedBy:string|null; approvedAt:string|null;
   reason:string|null; executionAvailable:boolean; executionNote:string;
+  receipt?:{provider:string;state:'accepted'|'applied';id?:string;calendarId?:string;internetMessageId?:string}|null;
   action: {operation:'mail.reply';resourceId:string;messageId:string;recipient:string;text:string}
     | {operation:'calendar.create';resourceId:string;title:string;description?:string;attendees:string[];start:string;end:string;timeZone:string};
 };
@@ -49,6 +50,18 @@ export default function ApprovalsPanel({tenantId,role,online,paused,onUnauthoriz
     } catch(cause){report(cause);}
     finally {inFlight.current=false;if(mounted.current)setBusy('');}
   }
+  async function execute(review:Review) {
+    if(inFlight.current||!online||paused||!canDecide||!review.executionAvailable||review.status!=='approved')return;
+    inFlight.current=true;setBusy(review.id);setError('');setNotice('');
+    try {
+      const result=await post<{action:Review;receipt:NonNullable<Review['receipt']>}>(`${endpoint}/${encodeURIComponent(review.id)}/execute`,{actionHash:review.actionHash});
+      if(result.action.id!==review.id||result.action.actionHash!==review.actionHash||result.action.status!=='succeeded'||!['accepted','applied'].includes(result.receipt.state))
+        throw new Error('The provider result could not be verified. Refresh the review before taking another action.');
+      if(mounted.current){setReviews(items=>items.map(item=>item.id===review.id?result.action:item));
+        setNotice(result.receipt.state==='accepted'?'The provider accepted the reply. Delivery is not yet confirmed.':'The provider confirmed the appointment was created.');}
+    }catch(cause){await refresh();report(cause);}
+    finally{inFlight.current=false;if(mounted.current)setBusy('');}
+  }
   return <div className="page approvals-page">
     <div className="page-heading"><span className="eyebrow">YOU HAVE THE FINAL SAY</span><h1>Approvals.</h1>
       <p>Review the exact recipient, content and destination before granting permission.</p></div>
@@ -72,10 +85,14 @@ export default function ApprovalsPanel({tenantId,role,online,paused,onUnauthoriz
         </dl>
         <p className="action-preview">{review.action.operation==='mail.reply'?review.action.text:review.action.description||'No appointment description.'}</p>
         {review.reason&&<p className="small">{review.reason}</p>}
+        {review.receipt&&<p className="small" aria-label="Provider receipt">{review.receipt.provider}: {review.receipt.state==='accepted'?'Reply accepted; delivery not confirmed.':'Appointment created.'}
+          {review.receipt.id&&` Receipt: ${review.receipt.id}`}</p>}
         {!review.executionAvailable&&<p className="small muted">{review.executionNote}</p>}
         {canDecide&&['pending','approved','preview'].includes(review.status)&&<div className="dialog-actions">
           <button className="button secondary" disabled={!online||!!busy||loading} onClick={()=>void decide(review,'reject')}><X size={16}/> Reject action</button>
           {review.status==='pending'&&<button className="button primary" disabled={!online||paused||!!busy||loading} onClick={()=>void decide(review,'approve')}><Check size={16}/> Approve action</button>}
+          {review.status==='approved'&&review.executionAvailable&&<button className="button primary" disabled={!online||paused||!!busy||loading} onClick={()=>void execute(review)}>
+            {review.action.operation==='mail.reply'?'Send approved reply':'Book approved appointment'}</button>}
         </div>}
       </article>)}</div>
     </>}

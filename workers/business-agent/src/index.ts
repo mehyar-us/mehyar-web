@@ -59,6 +59,8 @@ async function route(request:Request,env:Env) {
   if(decision&&request.method==='POST') return json({action:unwrap(await agent.decideAction(actor,decision[1],await readJson(request)))});
   const review=section.match(/^actions\/([a-f0-9-]{36})$/);
   if(review&&request.method==='GET') return json({action:unwrap(await agent.actionReview(actor,review[1]))});
+  const execution=section.match(/^actions\/([a-f0-9-]{36})\/execute$/);
+  if(execution&&request.method==='POST') return json(unwrap(await agent.executeAction(actor,execution[1],await readJson(request))));
   if(!section&&request.method==='GET') {
     const canKnow=KNOWLEDGE_ROLES.includes(membership.role);
     const connections=OPERATORS.includes(membership.role)?(await env.AGENT_DB.prepare('SELECT id,provider,account_label AS accountLabel,status,last_sync_at AS lastSyncAt FROM agent_connections WHERE tenant_id = ?').bind(actor.tenantId).all()).results:[];

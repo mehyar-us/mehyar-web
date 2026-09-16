@@ -68,6 +68,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   async actionReview(actor:Actor,id:string) { return this.result(async()=>{await this.bind(actor);return this.controls().detail(actor,id);}); }
   async proposeAction(actor:Actor,input:unknown,key:string) { return this.result(async()=>{await this.bind(actor);return this.controls().propose(actor,input,key);}); }
   async decideAction(actor:Actor,id:string,input:unknown) { return this.result(async()=>{await this.bind(actor);return this.controls().decide(actor,id,input);}); }
+  async executeAction(actor:Actor,id:string,input:unknown) {return this.result(async()=>{await this.bind(actor);return this.controls().execute(actor,id,input);});}
 
   async messages(actor:Actor) {
     return this.result(async()=>{

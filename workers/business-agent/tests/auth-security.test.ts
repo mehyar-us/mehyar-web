@@ -219,6 +219,9 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     const accepted=await worker.fetch(request(decisionPath,{decision:'approve',actionHash:action.actionHash},sessionCookie),workerEnv);
     expect(accepted.status).toBe(200);
     expect(await accepted.json()).toMatchObject({action:{status:'approved',executionAvailable:false}});
+    const disabledExecution=await worker.fetch(request(tenantPath+'/actions/'+action.id+'/execute',{actionHash:action.actionHash},sessionCookie),workerEnv);
+    expect(disabledExecution.status).toBe(503);
+    expect(await disabledExecution.json()).toMatchObject({error:{code:'execution_disabled'}});
     const reviewed=await worker.fetch(request(tenantPath+'/actions/'+action.id,undefined,sessionCookie),workerEnv);
     expect(await reviewed.json()).toMatchObject({action:{decisions:[{decision:'approved'}]}});
     const paused = await worker.fetch(request(tenantPath + "/pause", { paused: true }, sessionCookie), workerEnv);

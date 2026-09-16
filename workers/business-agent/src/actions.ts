@@ -6,6 +6,7 @@ import { GOOGLE_MAIL_OPERATIONS } from './connectors/google-mail';
 import { GOOGLE_CALENDAR_OPERATIONS } from './connectors/google-calendar';
 import { MICROSOFT_MAIL_OPERATIONS } from './connectors/microsoft-mail';
 import { MICROSOFT_CALENDAR_OPERATIONS } from './connectors/microsoft-calendar';
+import {performAction,requireExecutionAccess,type ActionReceipt} from './connectors/execution';
 
 const identifier = z.string().min(1).max(512).regex(/^[^\s\x00-\x1f]+$/);
 const email = z.string().email().max(254).transform(value => value.toLowerCase());
@@ -33,8 +34,8 @@ const proposalSchema = z.object({
       start:instant,end:instant,timeZone:z.string().min(1).max(100)}).strict(),
   ]),
 }).strict();
-type Policy = Omit<z.infer<typeof policySchema>, 'expectedVersion'>;
-type Proposal = z.infer<typeof proposalSchema>;
+export type Policy = Omit<z.infer<typeof policySchema>, 'expectedVersion'>;
+export type Proposal = z.infer<typeof proposalSchema>;
 type PolicyRow = {id:string;version:number;body:string;body_hash:string;authorized_by:string;updated_at:string};
 type ActionRow = {id:string;user_id:string;request_key:string;request_hash:string;policy_id:string;policy_version:number;
   body:string;body_hash:string;status:string;created_at:string;expires_at:string;approved_by:string|null;
@@ -67,6 +68,11 @@ export class ActionControls {
     this.sql.exec('CREATE INDEX IF NOT EXISTS action_reviews_budget ON action_reviews(policy_id,reservation_day,status)');
     this.sql.exec(`CREATE TABLE IF NOT EXISTS action_decisions(id TEXT PRIMARY KEY,action_id TEXT NOT NULL,
       actor_id TEXT NOT NULL,decision TEXT NOT NULL,action_hash TEXT NOT NULL,reason TEXT,created_at TEXT NOT NULL)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS action_executions(action_id TEXT PRIMARY KEY,intent_hash TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL,dispatched INTEGER NOT NULL DEFAULT 0,receipt_json TEXT,started_at TEXT NOT NULL,finished_at TEXT)`);
+    // On object restart there is no live request to safely resume. Never resend an unknown effect.
+    this.sql.exec("UPDATE action_executions SET status='uncertain' WHERE status='running'");
+    this.sql.exec("UPDATE action_reviews SET status='uncertain',decision_reason='Execution interrupted; reconciliation required' WHERE status='running'");
   }
   private recordDecision(action:ActionRow,actorId:string,decision:string,reason:string|null=null) {
     this.sql.exec('INSERT INTO action_decisions(id,action_id,actor_id,decision,action_hash,reason,created_at) VALUES (?,?,?,?,?,?,?)',
@@ -117,10 +123,14 @@ export class ActionControls {
     this.sql.exec("UPDATE action_reviews SET status='expired',decision_reason='Review authorization expired' WHERE status IN ('pending','approved','preview') AND expires_at <= ?",now);
   }
   private present(row:ActionRow) {
+    const [execution]=this.rows<{receipt_json:string|null}>('SELECT receipt_json FROM action_executions WHERE action_id=?',row.id);
     return {id:row.id,requestedBy:row.user_id,policyId:row.policy_id,policyVersion:row.policy_version,
       action:JSON.parse(row.body) as Proposal['action'],actionHash:row.body_hash,status:row.status,createdAt:row.created_at,expiresAt:row.expires_at,
       approvedBy:row.approved_by,approvedAt:row.approved_at,reason:row.decision_reason,
-      executionAvailable:false,executionNote:'Approval records permission only. Connector execution is not enabled yet.'};
+      receipt:execution?.receipt_json?JSON.parse(execution.receipt_json) as ActionReceipt:null,
+      executionAvailable:this.env.EXTERNAL_ACTIONS_ENABLED==='true'&&row.status==='approved',executionNote:this.env.EXTERNAL_ACTIONS_ENABLED==='true'
+        ?'Approval is permission, not a completion receipt. Execution rechecks billing and provider readiness.'
+        :'Approval records permission only. Connector execution is not enabled yet.'};
   }
   async policies(actor:Actor) {
     await requireMembership(this.env,actor,OPERATORS);
@@ -227,5 +237,67 @@ export class ActionControls {
     this.sql.exec("UPDATE action_reviews SET status='approved',approved_by=?,approved_at=?,reservation_day=?,reserved_cost_micros=0 WHERE id=? AND status='pending'",actor.userId,new Date().toISOString(),day,id);
     this.recordDecision(action,actor.userId,'approved');
     return this.present(this.rows<ActionRow>('SELECT * FROM action_reviews WHERE id=?',id)[0]);
+  }
+  async execute(actor:Actor,id:string,input:unknown,transport:typeof fetch=fetch) {
+    const {actionHash}=parse(z.object({actionHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict(),input);
+    await requireMembership(this.env,actor,OPERATORS);await requireTenant(this.env,actor);this.expire();
+    const [action]=this.rows<ActionRow>('SELECT * FROM action_reviews WHERE id=?',id);
+    if(!action)throw invalid('action_not_found','This action is not available.',404);
+    if(action.body_hash!==actionHash)throw invalid('action_changed','Review the current action before executing it.');
+    const [old]=this.rows<{status:string;receipt_json:string|null;dispatched:number}>('SELECT * FROM action_executions WHERE action_id=?',id);
+    if(old?.status==='succeeded')return {action:this.present(action),receipt:JSON.parse(old.receipt_json!) as ActionReceipt,replay:true};
+    if(old&&!(old.status==='failed'&&old.dispatched===0))throw invalid('execution_not_repeatable','This execution is running, resolved or awaiting reconciliation. It cannot be sent again.');
+    if(action.status!=='approved'||!action.approved_by)throw invalid('approval_required','Approve this exact action before executing it.');
+    const {row,policy}=this.currentPolicy(action.policy_id,action.policy_version);
+    const payload=JSON.parse(action.body) as Proposal['action'];
+    const intent=await digest(JSON.stringify([policy.grantId,payload]));
+    const guard=async()=>{
+      await requireMembership(this.env,actor,OPERATORS);
+      await requireMembership(this.env,{...actor,userId:action.user_id},CHAT_ROLES);
+      await requireMembership(this.env,{...actor,userId:action.approved_by!},OPERATORS);
+      await this.authority(actor,policy,row);
+      await requireExecutionAccess(this.env,actor,policy);
+      this.currentPolicy(action.policy_id,action.policy_version);
+      if(this.paused())throw invalid('agent_paused','Your agent is paused.');
+      if(Date.parse(action.expires_at)<=Date.now())throw invalid('approval_expired','This approval has expired.');
+      this.checkAction(policy,payload);
+      const [current]=this.rows<ActionRow>('SELECT * FROM action_reviews WHERE id=?',id);
+      if(!['approved','running'].includes(current.status))throw invalid('action_resolved','This action is no longer authorized.');
+    };
+    await guard();
+    // No await from the final duplicate/budget checks through the durable execution claim.
+    if(this.rows("SELECT action_id FROM action_executions WHERE (action_id=? OR intent_hash=?) AND NOT(action_id=? AND status='failed' AND dispatched=0)",id,intent,id).length)
+      throw invalid('duplicate_execution','This action or identical business effect already has an execution record.');
+    const day=new Date().toISOString().slice(0,10);
+    const [budget]=this.rows<{count:number}>("SELECT COUNT(*) AS count FROM action_reviews WHERE policy_id=? AND id!=? AND reservation_day=? AND status IN ('approved','running','uncertain','succeeded')",policy.id,id,day);
+    if(budget.count>=policy.maxActionsPerDay)throw invalid('action_budget_limit','The execution-day action allowance is reserved.',429);
+    if(payload.operation==='calendar.create') {
+      const conflict=this.rows("SELECT id FROM action_reviews WHERE id!=? AND status IN ('running','uncertain','succeeded') AND json_extract(body,'$.operation')='calendar.create' AND json_extract(body,'$.resourceId')=? AND julianday(json_extract(body,'$.start'))<julianday(?) AND julianday(json_extract(body,'$.end'))>julianday(?)",id,payload.resourceId,payload.end,payload.start);
+      if(conflict.length)throw invalid('calendar_reserved','Another action has reserved this time. Reconcile it before retrying.');
+    }
+    this.sql.exec("INSERT INTO action_executions(action_id,intent_hash,status,started_at) VALUES (?,?,'running',?) ON CONFLICT(action_id) DO UPDATE SET status='running',started_at=excluded.started_at,finished_at=NULL WHERE action_executions.status='failed' AND action_executions.dispatched=0",id,intent,new Date().toISOString());
+    this.sql.exec("UPDATE action_reviews SET status='running',reservation_day=? WHERE id=?",day,id);
+    this.recordDecision(action,actor.userId,'execution_started');
+    let dispatched=false;
+    try {
+      const receipt=await performAction(this.env,actor,policy,payload,id,guard,()=>{
+        // Guard awaits D1; recheck local pause/policy synchronously at the actual network boundary.
+        this.currentPolicy(action.policy_id,action.policy_version);
+        if(this.paused())throw invalid('agent_paused','Your agent is paused.');
+        if(dispatched)throw invalid('duplicate_dispatch','An action can perform only one business effect.');
+        this.sql.exec("UPDATE action_executions SET dispatched=1 WHERE action_id=? AND status='running'",id);dispatched=true;
+      },transport);
+      this.sql.exec("UPDATE action_executions SET status='succeeded',receipt_json=?,finished_at=? WHERE action_id=?",JSON.stringify(receipt),new Date().toISOString(),id);
+      this.sql.exec("UPDATE action_reviews SET status='succeeded' WHERE id=?",id);
+      this.recordDecision(action,actor.userId,'provider_accepted');
+      return {action:this.present(this.rows<ActionRow>('SELECT * FROM action_reviews WHERE id=?',id)[0]),receipt,replay:false};
+    } catch(error) {
+      const status=dispatched?'uncertain':'failed';
+      this.sql.exec('UPDATE action_executions SET status=?,finished_at=? WHERE action_id=?',status,new Date().toISOString(),id);
+      this.sql.exec('UPDATE action_reviews SET status=?,decision_reason=? WHERE id=?',dispatched?'uncertain':'pending',dispatched?'Provider outcome needs reconciliation; do not resend.':'No business effect was dispatched. A fresh approval is required before retrying.',id);
+      this.recordDecision(action,actor.userId,status);
+      if(error instanceof HttpError&&!dispatched)throw error;
+      throw invalid(dispatched?'execution_uncertain':'execution_failed',dispatched?'The provider outcome is uncertain. Reconciliation is required before retrying.':'The action could not be dispatched. Review the connection and action.',503);
+    }
   }
 }
