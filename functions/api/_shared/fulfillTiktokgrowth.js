@@ -113,34 +113,27 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
 
   const { from, fromName } = fromAddress(env);
 
-  // ── stepwise generation, then email ──
-  // gen-step.js runs ONE bounded AI call per HTTP request (synchronous).
-  // We drive the 5 phases in sequence; each request has its own execution
-  // budget, so no background waitUntil needs to survive multiple long calls.
+  // ── generation via PWA drive endpoint, then email ──
+  // /api/tiktok/drive runs all 5 phases (hooks→bio→trends→plan→assemble)
+  // sequentially in ONE request. Each phase is a bounded AI call; the
+  // request survives because it's I/O-bound. Single request = no fragile
+  // multi-fetch waitUntil orchestration.
   const run = async () => {
     try {
-      const step = async (phase) => {
-        const r = await fetch(`${baseUrl(env)}/api/tiktok/gen-step`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            // Cloudflare bot protection 403s non-browser UAs on *.mehyar.us
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
-          },
-          body: JSON.stringify({ order_token: accessToken, phase, inputs: intakeInputs }),
-        });
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok || !data.ok) {
-          throw new Error(`gen-step:${phase}:` + String((data && (data.detail || data.error)) || r.status));
-        }
-        return data;
-      };
-      await step("hooks");
-      await step("bio");
-      await step("trends");
-      await step("plan");
-      const asm = await step("assemble");
-      if (asm.status !== "ready") throw new Error("gen-step:assemble:not_ready");
+      const r = await fetch(`${baseUrl(env)}/api/tiktok/drive`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          // Cloudflare bot protection 403s non-browser UAs on *.mehyar.us
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        },
+        body: JSON.stringify({ order_token: accessToken }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.ok) {
+        throw new Error("drive:" + String((data && (data.detail || data.error)) || r.status));
+      }
+      if (data.status !== "ready") throw new Error("drive:not_ready");
       // Read the manifest back for the email (assemble wrote it).
       const orow = await db.prepare(
         "SELECT output_json FROM tiktokgrowth_orders WHERE id = ?"
