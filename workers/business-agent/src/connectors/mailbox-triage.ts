@@ -13,7 +13,8 @@ import {OPERATORS,requireMembership} from '../permissions';
 import {connectionAuthorizationStamp} from './credentials';
 import {GOOGLE_MAIL_OPERATIONS} from './google-mail';
 import {MICROSOFT_MAIL_OPERATIONS} from './microsoft-mail';
-import {planMailTriageChunks,parseMailTriageChunk} from './mail-triage-chunks';
+import {planMailTriageChunks,parseMailTriageChunk,mailTriageSectionId} from './mail-triage-chunks';
+import {validateMailTriageCoverage} from './mail-triage-coverage';
 
 /** Internal, review-only analysis. No sender, calendar tool or public route. */
 export class MailboxTriage {
@@ -79,6 +80,27 @@ export class MailboxTriage {
     return {briefRevision:present.brief.revision,reviewed:present.brief.confirmedAt!==null,
       details,truncated:JSON.parse(details).truncated as boolean};
   }
+  /** Internal resumable progress, not a whole-message summary or new inference. */
+  async sections(env:Env,actor:Actor,streamId:string,messageId:string,receipt:string,agentGuard:()=>Promise<void>){
+    if(env.MAILBOX_EXTENDED_TRIAGE_ENABLED!=='true')throw new HttpError(503,'extended_triage_disabled','Extended message analysis is not enabled.');
+    await requireMailboxAccess(env,actor,agentGuard);
+    const ledger=new MailboxSync(env,actor),observed=await ledger.readText(streamId,messageId,receipt);
+    await requireMailboxAccess(env,actor,agentGuard,observed.provider);
+    const businessContext=this.businessContext(),source={...observed,businessContext},plan=planMailTriageChunks(source);
+    const completed:number[]=[],missing:number[]=[],values:unknown[]=[];
+    for(const section of plan.chunks){
+      if(!section.request)continue;
+      const id=await mailTriageSectionId(actor.userId,section);
+      const saved=this.storage.sql.exec<{value:string}>(`SELECT r.value FROM mailbox_triage_sections r
+        JOIN background_text_usage u ON u.id=r.id WHERE r.id=? AND r.user_id=? AND u.user_id=? AND u.status='complete'`,id,actor.userId,actor.userId).toArray()[0];
+      if(saved){values.push(JSON.parse(saved.value));completed.push(section.index);}else missing.push(section.index);
+    }
+    const coverage=missing.length?undefined:validateMailTriageCoverage(source,values);
+    await requireMailboxAccess(env,actor,agentGuard,source.provider);await ledger.readText(streamId,messageId,receipt);await agentGuard();
+    if(env.MAILBOX_EXTENDED_TRIAGE_ENABLED!=='true'||JSON.stringify(this.businessContext())!==JSON.stringify(businessContext))throw new HttpError(409,'triage_context_changed','The analysis context changed. Refresh progress.');
+    return {sectionCount:plan.chunks.length,analysisCredits:plan.analysisCredits,aggregationCreditsIncluded:false as const,
+      completedSections:completed,missingSections:missing,coverage};
+  }
   async run(env:Env,actor:Actor,streamId:string,messageId:string,receipt:string,agentGuard:()=>Promise<void>,sectionIndex?:number):Promise<MailTriageResult> {
     if(sectionIndex!==undefined&&!z.number().int().min(0).max(31).safeParse(sectionIndex).success)throw new HttpError(400,'invalid_triage_section','Select a valid message section.');
     const enabled=()=>{
@@ -101,7 +123,7 @@ export class MailboxTriage {
     const guard=async()=>{enabled();await requireMailboxAccess(env,actor,agentGuard,source.provider);};
     await guard();
     const request=mailTriageRequest(source),access=await textAccess(env,actor,await requireTenant(env,actor));
-    const id=await digest(JSON.stringify(section?['mailbox-triage-section-v1',actor.userId,streamId,messageId,receipt,businessContext,section.index,section.source.coverage]:['mailbox-triage-v2',actor.userId,streamId,messageId,receipt,businessContext]));
+    const id=section?await mailTriageSectionId(actor.userId,section):await digest(JSON.stringify(['mailbox-triage-v2',actor.userId,streamId,messageId,receipt,businessContext]));
     const payloadHash=await digest(JSON.stringify(source));
     const usage=new TextUsage(this.storage),reservation=usage.reserve(id,actor.userId,payloadHash,access);
     if(reservation.state==='complete'){

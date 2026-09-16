@@ -1,7 +1,11 @@
-import {HttpError} from '../http';
+import {digest,HttpError} from '../http';
 import {mailTriageRequest,parseMailTriage,sourceSchema,type MailTriageSource} from './mail-triage';
 
 type Chunk={index:number;start:number;end:number;source:MailTriageSource;request:ReturnType<typeof mailTriageRequest>|null};
+export function mailTriageSectionId(userId:string,section:Chunk){
+  const source=section.source;
+  return digest(JSON.stringify(['mailbox-triage-section-v1',userId,source.streamId,source.messageId,source.receipt,source.businessContext,section.index,source.coverage]));
+}
 /** Plan complete coverage of extracted text, not of omitted MIME/attachments.
  * Every nonempty section uses its own standard credit; whitespace-only sections
  * need no inference. Planning never reserves credit or dispatches a model. */
