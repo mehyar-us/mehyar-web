@@ -41,6 +41,36 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('resumes paid section analyses without exposing them as whole-message results',async()=>{
+    const f=await fixture(),text='Please book Friday. '.repeat(500);
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'long',kind:'upsert'}],syncCursor:'300'});
+    const claim=(await f.ledger.claimChange(f.streamId))!;
+    await f.ledger.saveChange(claim,{provider:'google',id:'long',content:{id:'long',threadId:'t',payload:{mimeType:'text/plain',body:{size:text.length,data:btoa(text).replace(/=+$/,'')}}}});
+    const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+      const original=(instance as any).env;let calls=0;
+      (instance as any).env={...e,MAILBOX_PROCESSING_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_EXTENDED_TRIAGE_ENABLED:'true',AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any)=>{
+        calls++;const data=JSON.parse(input.messages[1].content);expect(data.coverage.total).toBe(text.trim().length);
+        return {choices:[{message:{content:JSON.stringify({category:'appointment',priority:'routine',summary:'This section discusses booking.',evidence:[{excerpt:data.emailText.slice(0,20)}]})}}]};
+      }}};
+      try{
+        const section=unwrap(await instance.analyzeMailboxSection(f.actor,f.streamId,'long',claim.token,1));
+        expect(section).toMatchObject({partial:true,sectionIndex:1});expect(section.sectionCount).toBeGreaterThan(1);
+        expect(section.evidence[0].start).toBeGreaterThan(0);expect(text.slice(section.evidence[0].start,section.evidence[0].end)).toBe(section.evidence[0].excerpt);
+        expect(unwrap(await instance.analyzeMailboxSection(f.actor,f.streamId,'long',claim.token,1))).toEqual(section);expect(calls).toBe(1);
+        await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
+        expect((await instance.analyzeMailboxSection(f.actor,f.streamId,'long',claim.token,1)).ok).toBe(false);expect(calls).toBe(1);
+        await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=0 WHERE stream_id=?').bind(f.streamId).run();
+        unwrap(await instance.analyzeMailboxSection(f.actor,f.streamId,'long',claim.token,0));expect(calls).toBe(2);
+        expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:2,reserved:0});
+        expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId)).items).toEqual([]);
+        expect(ctx.storage.sql.exec<{n:number}>('SELECT COUNT(*) AS n FROM mailbox_triage_sections').toArray()[0].n).toBe(2);
+        (instance as any).env.MAILBOX_EXTENDED_TRIAGE_ENABLED='false';
+        expect(await instance.analyzeMailboxSection(f.actor,f.streamId,'long',claim.token,0)).toMatchObject({ok:false,error:{code:'extended_triage_disabled'}});
+        expect(calls).toBe(2);
+      }finally{(instance as any).env=original;}
+    });
+  });
   it.each([
     ['triage_long_message','review_required',1,'long_message'],
     ['triage_no_text','review_required',1,'no_text'],

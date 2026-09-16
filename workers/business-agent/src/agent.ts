@@ -131,6 +131,16 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
     },after));
   }
+  async analyzeMailboxSection(actor:Actor,streamId:string,messageId:string,receipt:string,sectionIndex:number){
+    return this.result(async()=>{
+      const guard=async()=>{
+        await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused)throw new HttpError(409,'agent_paused','Mailbox analysis is paused.');
+      };
+      await guard();
+      return new MailboxTriage(this.ctx.storage).run(this.env,actor,streamId,messageId,receipt,guard,sectionIndex);
+    });
+  }
   async initializeMailbox(actor:Actor,grantId:string) {
     return this.result(async()=>{
       const guard=async()=>{

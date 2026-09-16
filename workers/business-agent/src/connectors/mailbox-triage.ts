@@ -13,6 +13,7 @@ import {OPERATORS,requireMembership} from '../permissions';
 import {connectionAuthorizationStamp} from './credentials';
 import {GOOGLE_MAIL_OPERATIONS} from './google-mail';
 import {MICROSOFT_MAIL_OPERATIONS} from './microsoft-mail';
+import {planMailTriageChunks,parseMailTriageChunk} from './mail-triage-chunks';
 
 /** Internal, review-only analysis. No sender, calendar tool or public route. */
 export class MailboxTriage {
@@ -22,6 +23,7 @@ export class MailboxTriage {
     const columns=this.storage.sql.exec<{name:string}>('PRAGMA table_info(mailbox_triage_results)').toArray();
     for(const column of ['user_id','grant_id'])if(!columns.some(c=>c.name===column))this.storage.sql.exec(`ALTER TABLE mailbox_triage_results ADD COLUMN ${column} TEXT`);
     this.storage.sql.exec('CREATE INDEX IF NOT EXISTS mailbox_triage_directory ON mailbox_triage_results(user_id,grant_id,id)');
+    this.storage.sql.exec('CREATE TABLE IF NOT EXISTS mailbox_triage_sections(id TEXT PRIMARY KEY,value TEXT NOT NULL,user_id TEXT NOT NULL,grant_id TEXT NOT NULL)');
   }
   /** Read-only directory. No generation, credit reservation or external calls.
    * Scan a bounded page; invalidated records are withheld, not silently refreshed. */
@@ -77,8 +79,10 @@ export class MailboxTriage {
     return {briefRevision:present.brief.revision,reviewed:present.brief.confirmedAt!==null,
       details,truncated:JSON.parse(details).truncated as boolean};
   }
-  async run(env:Env,actor:Actor,streamId:string,messageId:string,receipt:string,agentGuard:()=>Promise<void>):Promise<MailTriageResult> {
+  async run(env:Env,actor:Actor,streamId:string,messageId:string,receipt:string,agentGuard:()=>Promise<void>,sectionIndex?:number):Promise<MailTriageResult> {
+    if(sectionIndex!==undefined&&!z.number().int().min(0).max(31).safeParse(sectionIndex).success)throw new HttpError(400,'invalid_triage_section','Select a valid message section.');
     const enabled=()=>{
+      if(sectionIndex!==undefined&&env.MAILBOX_EXTENDED_TRIAGE_ENABLED!=='true')throw new HttpError(503,'extended_triage_disabled','Extended message analysis is not enabled.');
       if(env.MAILBOX_TRIAGE_ENABLED!=='true'||env.MAILBOX_PROCESSING_ENABLED!=='true'||env.AI_ENABLED!=='true'||!env.AI||!env.AI_GATEWAY_ID)
         throw new HttpError(503,'mailbox_triage_disabled','Mailbox analysis is not enabled.');
     };
@@ -86,19 +90,24 @@ export class MailboxTriage {
     const ledger=new MailboxSync(env,actor),observed=await ledger.readText(streamId,messageId,receipt);
     const stream=await env.AGENT_DB.prepare('SELECT grant_id FROM agent_mailbox_sync WHERE id=? AND tenant_id=?').bind(streamId,actor.tenantId).first<{grant_id:string}>();
     if(!stream)throw new HttpError(409,'triage_source_unavailable','This mailbox observation is unavailable.');
-    const businessContext=this.businessContext(),source={...observed,businessContext};
+    const businessContext=this.businessContext(),wholeSource={...observed,businessContext};
+    const plan=sectionIndex===undefined?undefined:planMailTriageChunks(wholeSource);
+    const section=plan?.chunks[sectionIndex!];
+    if(sectionIndex!==undefined&&(!section||!section.request))throw new HttpError(422,'triage_section_unavailable','This section does not require or support model analysis.');
+    const source=section?.source??wholeSource;
+    const table=section?'mailbox_triage_sections':'mailbox_triage_results';
     const checkContext=()=>{if(JSON.stringify(this.businessContext())!==JSON.stringify(businessContext))
       throw new HttpError(409,'triage_context_changed','The business brief changed. Retry the analysis with current details.');};
     const guard=async()=>{enabled();await requireMailboxAccess(env,actor,agentGuard,source.provider);};
     await guard();
     const request=mailTriageRequest(source),access=await textAccess(env,actor,await requireTenant(env,actor));
-    const id=await digest(JSON.stringify(['mailbox-triage-v2',actor.userId,streamId,messageId,receipt,businessContext]));
+    const id=await digest(JSON.stringify(section?['mailbox-triage-section-v1',actor.userId,streamId,messageId,receipt,businessContext,section.index,section.source.coverage]:['mailbox-triage-v2',actor.userId,streamId,messageId,receipt,businessContext]));
     const payloadHash=await digest(JSON.stringify(source));
     const usage=new TextUsage(this.storage),reservation=usage.reserve(id,actor.userId,payloadHash,access);
     if(reservation.state==='complete'){
       await guard();await ledger.readText(streamId,messageId,receipt);
       checkContext();
-      const saved=this.storage.sql.exec<{value:string}>('SELECT value FROM mailbox_triage_results WHERE id=?',id).toArray()[0];
+      const saved=this.storage.sql.exec<{value:string}>(`SELECT value FROM ${table} WHERE id=?`,id).toArray()[0];
       if(!saved)throw new HttpError(409,'triage_result_unavailable','This analysis needs service review.');
       return JSON.parse(saved.value) as MailTriageResult;
     }
@@ -110,12 +119,12 @@ export class MailboxTriage {
       checkContext();
       usage.startAttempt(reservation.token,current);
       const response=await env.AI!.run('@cf/openai/gpt-oss-120b',request,
-        {gateway:{id:env.AI_GATEWAY_ID!,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent',workload:'mailbox_triage'}},signal:AbortSignal.timeout(60_000)});
+        {gateway:{id:env.AI_GATEWAY_ID!,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent',workload:section?'mailbox_triage_section':'mailbox_triage'}},signal:AbortSignal.timeout(60_000)});
       const raw=typeof response==='object'&&response&&'choices' in response?response.choices?.[0]?.message?.content:null;
       let result:MailTriageResult;
       try{
         if(typeof raw!=='string')throw new Error();
-        result=parseMailTriage(raw,source);
+        result=section?{...parseMailTriageChunk(raw,section),sectionCount:plan!.chunks.length}:parseMailTriage(raw,source);
       }catch{throw new HttpError(502,'triage_invalid_response','The analysis response could not be verified.');}
       await guard();
       const delivery=await textAccess(env,actor,await requireTenant(env,actor));
@@ -124,7 +133,7 @@ export class MailboxTriage {
       checkContext();
       this.storage.transactionSync(()=>{
         usage.finish(reservation.token,true);
-        this.storage.sql.exec('INSERT INTO mailbox_triage_results(id,value,user_id,grant_id) VALUES (?,?,?,?)',id,JSON.stringify(result),actor.userId,stream.grant_id);
+        this.storage.sql.exec(`INSERT INTO ${table}(id,value,user_id,grant_id) VALUES (?,?,?,?)`,id,JSON.stringify(result),actor.userId,stream.grant_id);
       });
       return result;
     }catch(error){
