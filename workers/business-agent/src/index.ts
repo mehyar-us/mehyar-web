@@ -11,6 +11,7 @@ import { KNOWLEDGE_ROLES, OPERATORS, requireMembership, requireTenant } from './
 import { addMemory, createTenant, deleteMemory, getMemory, listTenants, presentTenant } from './tenants';
 import {renameAgent} from './agent-settings';
 import {runBillingReconciliation} from './billing/reconciliation';
+import {runEmailRecovery} from './email/recovery';
 import {teamDirectory,inviteMember,revokeInvitation,revokeMember,myInvitations,acceptInvitation} from './team';
 import {changeMemberRole} from './team-roles';
 
@@ -117,6 +118,7 @@ async function route(request:Request,env:Env) {
 export default {
   async scheduled(_controller,env){
     try{await runBillingReconciliation(env);}catch{console.error(JSON.stringify({event:'agent_billing_reconciliation_unavailable'}));}
+    try{await runEmailRecovery(env);}catch{console.error(JSON.stringify({event:'agent_email_recovery_unavailable'}));}
   },
   async fetch(request:Request,env:Env):Promise<Response> {
     const requestId=crypto.randomUUID();

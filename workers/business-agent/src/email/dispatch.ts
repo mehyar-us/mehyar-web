@@ -7,7 +7,7 @@ import type {EmailClaim} from './outbox';
 
 export type EmailDispatchResult={state:'not_claimed'}|{state:'recorded'|'unrecorded';outcome:SendResult['state']};
 
-/** One bounded attempt. No public route or scheduler invokes this yet. Recovery
+/** One bounded attempt. The separately gated scheduler invokes this. Recovery
  * must call this again with the SAME job, never recreate its payload or key. */
 export async function dispatchInvitationEmail(env:Env,tenantId:string,jobId:string,transport:EmailTransport=fetch,clock:()=>number=Date.now):Promise<EmailDispatchResult>{
   // Bind this entire attempt to one credential/configuration snapshot. Operator

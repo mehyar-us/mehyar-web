@@ -11,6 +11,7 @@ import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
 import {dispatchInvitationEmail} from '../src/email/dispatch';
 import {reconcileInvitationDelivery} from '../src/email/delivery';
+import {runEmailRecovery} from '../src/email/recovery';
 async function activate(e:Env,tenantId:string){
   const now=new Date().toISOString(),until=new Date(Date.now()+86400000).toISOString();
   await e.AGENT_DB.prepare("UPDATE agent_tenants SET plan_id='business',status='active' WHERE id=?").bind(tenantId).run();
@@ -30,7 +31,37 @@ async function evidence(e:Env){
   return config;
 }
 describe('dedicated platform sender readiness',()=>{
+  it('keeps recovery disabled before database or credential access',async()=>{
+    expect(await runEmailRecovery({AGENT_PLATFORM_EMAIL_ENABLED:'true'} as Env)).toEqual({disabled:true,sent:0,checked:0,deferred:0});
+    expect(await runEmailRecovery({AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED:'true'} as Env)).toEqual({disabled:true,sent:0,checked:0,deferred:0});
+  });
+  it('recovers healthy jobs despite blocked billing and checks delivery on a later tick without resending',async()=>{
+    const e=fixture();e.AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED='true';const bad=await invitation(e),good=await invitation(e);await evidence(e);const box=new VerifiedInvitationOutbox(e),badJob=await box.prepare(bad.actor,bad.id),goodJob=await box.prepare(good.actor,good.id);
+    await e.AGENT_DB.prepare("UPDATE agent_billing_subscriptions SET paid_through='2000-01-01T00:00:00Z' WHERE tenant_id=?").bind(bad.actor.tenantId).run();
+    const stored=await e.AGENT_DB.prepare('SELECT payload_json FROM agent_platform_email_outbox WHERE id=?').bind(goodJob.id).first<{payload_json:string}>();let sends=0,reads=0;
+    const transport=async(_url:string,init:RequestInit)=>{if(init.method==='GET'){reads++;return Response.json({...JSON.parse(stored!.payload_json),id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c',cc:[],bcc:[],last_event:'delivered'});}sends++;return Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});};
+    expect(await runEmailRecovery(e,transport)).toEqual({disabled:false,sent:1,checked:0,deferred:1});
+    const blocked=await e.AGENT_DB.prepare('SELECT attempts,next_attempt_at FROM agent_platform_email_outbox WHERE id=?').bind(badJob.id).first<{attempts:number;next_attempt_at:string}>();expect(blocked!.attempts).toBe(0);expect(Date.parse(blocked!.next_attempt_at)).toBeGreaterThan(Date.now());
+    expect(await runEmailRecovery(e,transport)).toEqual({disabled:false,sent:0,checked:1,deferred:0});expect(sends).toBe(1);expect(reads).toBe(1);
+  });
+  it('bounds one recovery batch to five tenants and leaves remaining work due',async()=>{
+    const e=fixture();e.AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED='true';await evidence(e);const box=new VerifiedInvitationOutbox(e);
+    for(let i=0;i<6;i++){const invite=await invitation(e);await box.prepare(invite.actor,invite.id);}
+    let calls=0;const result=await runEmailRecovery(e,async()=>{calls++;return Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});});
+    expect(result.sent).toBe(5);expect(calls).toBe(5);
+    const config=await platformSenderConfiguration(e);expect(await e.AGENT_DB.prepare("SELECT count(*) AS pending FROM agent_platform_email_outbox WHERE route_ref=? AND state='prepared'").bind(`resend:${config.configurationHash}`).first()).toEqual({pending:1});
+  });
   async function accepted(){const e=fixture(),invite=await invitation(e);await evidence(e);const job=await new VerifiedInvitationOutbox(e).prepare(invite.actor,invite.id);await dispatchInvitationEmail(e,invite.actor.tenantId,job.id,async()=>Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'}));const stored=await e.AGENT_DB.prepare('SELECT payload_json FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first<{payload_json:string}>();return {e,invite,job,message:JSON.parse(stored!.payload_json)};}
+  it('backs off corrupt receipt candidates without contacting the provider',async()=>{
+    const f=await accepted();f.e.AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED='true';
+    await f.e.AGENT_DB.prepare("UPDATE agent_platform_email_outbox SET payload_hash='corrupt' WHERE id=?").bind(f.job.id).run();
+    let calls=0;const transport=async()=>{calls++;return Response.json({});};
+    expect(await runEmailRecovery(f.e,transport)).toEqual({disabled:false,sent:0,checked:0,deferred:1});
+    expect(await runEmailRecovery(f.e,transport)).toEqual({disabled:false,sent:0,checked:0,deferred:0});
+    expect(calls).toBe(0);
+    const saved=await f.e.AGENT_DB.prepare('SELECT checks,next_check_at,last_error_code FROM agent_platform_email_delivery WHERE job_id=?').bind(f.job.id).first<{checks:number;next_check_at:string;last_error_code:string}>();
+    expect(saved!.checks).toBe(1);expect(saved!.last_error_code).toBe('email_receipt_unverified');expect(Date.parse(saved!.next_check_at)).toBeGreaterThan(Date.now());
+  });
   it('records verified delivery without treating opened events as a delivery receipt',async()=>{
     const f=await accepted();let now=Date.now(),event='opened';const transport=async(_url:string,init:RequestInit)=>{expect(init.method).toBe('GET');return Response.json({...f.message,id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c',cc:[],bcc:[],last_event:event});};
     expect(await reconcileInvitationDelivery(f.e,f.invite.actor.tenantId,f.job.id,transport,()=>now)).toEqual({state:'recorded'});
