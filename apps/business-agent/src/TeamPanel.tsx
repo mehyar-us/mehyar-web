@@ -1,7 +1,8 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
+import MemberRoleForm from './MemberRoleForm';
 type Invitation={id:string;email:string;role:string;status:string;expiresAt:string};
-type Member={id:string;name:string|null;email:string|null;role:string;status:string;expiresAt:string|null};
+type Member={id:string;name:string|null;email:string|null;role:string;status:string;expiresAt:string|null;revision:number};
 type Directory={members:Member[];invitations:Invitation[];seatLimit:number;moreMembers:boolean;moreInvitations:boolean};
 type Draft={email:string;role:string;key:string};
 export default function TeamPanel({tenantId,online}:{tenantId:string;online:boolean}){
@@ -31,7 +32,7 @@ export default function TeamPanel({tenantId,online}:{tenantId:string;online:bool
       {error&&<p role="alert">{error}</p>}{busy&&<p role="status">Updating team…</p>}
       {data&&<>
         <p>Your current plan allows {data.seatLimit} {data.seatLimit===1?'seat':'seats'}, including the owner. An invitation uses a seat when it is accepted.</p>
-        <ul>{data.members.map(member=><li key={member.id}><strong>{member.name||member.email||'Workspace member'}</strong>{member.email&&<span> — {member.email}</span>}<p>{member.role} · {member.status}{member.expiresAt?` · expires ${new Date(member.expiresAt).toLocaleString()}`:''}</p>{member.role!=='owner'&&member.status==='active'&&<button className="button secondary" disabled={busy} onClick={()=>setRemoval(member)}>Remove access for {member.name||member.email||'member'}</button>}</li>)}</ul>
+        <ul>{data.members.map(member=><li key={member.id}><strong>{member.name||member.email||'Workspace member'}</strong>{member.email&&<span> — {member.email}</span>}<p>{member.role} · {member.status}{member.expiresAt?` · expires ${new Date(member.expiresAt).toLocaleString()}`:''}</p>{member.role!=='owner'&&member.status==='active'&&<button className="button secondary" disabled={busy} onClick={()=>setRemoval(member)}>Remove access for {member.name||member.email||'member'}</button>}{['manager','staff','billing','viewer'].includes(member.role)&&member.status==='active'&&Number.isSafeInteger(member.revision)&&<MemberRoleForm key={`${member.id}:${member.revision}`} tenantId={tenantId} member={member} disabled={busy||!online} onSaved={refresh}/>}</li>)}</ul>
         {data.moreMembers&&<p>The first 100 memberships are shown. Contact support for the complete directory.</p>}
         {removal&&<div role="group" aria-label="Confirm member removal"><p>Remove {removal.email||removal.name||'this member'} from this business? Their access to other businesses will stay unchanged.</p><button className="button primary" disabled={busy} onClick={()=>void(async()=>{if(await mutate('revoke-member',{userId:removal.id})&&live.current){setRemoval(null);await refresh();}})()}>Confirm removal</button><button className="button secondary" disabled={busy} onClick={()=>setRemoval(null)}>Keep member</button></div>}
         <form onSubmit={event=>{event.preventDefault();void invite();}}>

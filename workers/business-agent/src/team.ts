@@ -13,7 +13,7 @@ async function owner(env:Env,actor:Actor){await requireTenant(env,actor);await r
 export async function teamDirectory(env:Env,actor:Actor){
   await owner(env,actor);
   const tenant=await requireTenant(env,actor);
-  const members=await env.AGENT_DB.prepare(`SELECT m.user_id AS id,u.name,u.email,m.role,m.status,m.expires_at AS expiresAt FROM agent_memberships m
+  const members=await env.AGENT_DB.prepare(`SELECT m.user_id AS id,u.name,u.email,m.role,m.status,m.revision,m.expires_at AS expiresAt FROM agent_memberships m
     LEFT JOIN auth_user u ON u.id=m.user_id WHERE m.tenant_id=? ORDER BY m.created_at,m.user_id LIMIT 101`).bind(actor.tenantId).all();
   const invitations=await env.AGENT_DB.prepare('SELECT * FROM agent_team_invitations WHERE tenant_id=? ORDER BY created_at DESC,id DESC LIMIT 51').bind(actor.tenantId).all<Invitation>();
   await owner(env,actor);
@@ -22,7 +22,7 @@ export async function teamDirectory(env:Env,actor:Actor){
 export async function revokeMember(env:Env,actor:Actor,userId:string){
   await owner(env,actor);const now=new Date().toISOString();
   if(userId===actor.userId)throw new HttpError(409,'owner_protected','Ownership changes require a separate transfer process.');
-  await env.AGENT_DB.prepare(`UPDATE agent_memberships SET status='revoked',revoked_by=?,revoked_at=? WHERE tenant_id=? AND user_id=? AND role!='owner' AND status='active' AND ${ownerSql}`)
+  await env.AGENT_DB.prepare(`UPDATE agent_memberships SET status='revoked',revoked_by=?,revoked_at=?,revision=revision+1 WHERE tenant_id=? AND user_id=? AND role!='owner' AND status='active' AND ${ownerSql}`)
     .bind(actor.userId,now,actor.tenantId,userId,actor.tenantId,actor.userId,now).run();
   await owner(env,actor);
   const member=await env.AGENT_DB.prepare("SELECT status FROM agent_memberships WHERE tenant_id=? AND user_id=? AND role!='owner'").bind(actor.tenantId,userId).first<{status:string}>();
@@ -83,7 +83,7 @@ export async function acceptInvitation(env:Env,userId:string,id:string){
       AND NOT EXISTS(SELECT 1 FROM agent_memberships WHERE tenant_id=? AND user_id=? AND status='active')`)
       .bind(userId,now,operation,id,email,now,row.tenant_id,row.invited_by,now,userId,email,row.tenant_id,tenant?.plan_id??'',row.tenant_id,now,seats,row.tenant_id,userId),
     env.AGENT_DB.prepare(`INSERT INTO agent_memberships(tenant_id,user_id,role,status,created_at) SELECT tenant_id,?,role,'active',? FROM agent_team_invitations WHERE id=? AND acceptance_token=?
-      ON CONFLICT(tenant_id,user_id) DO UPDATE SET role=excluded.role,status='active',expires_at=NULL,support_reason=NULL,revoked_by=NULL,revoked_at=NULL`)
+      ON CONFLICT(tenant_id,user_id) DO UPDATE SET role=excluded.role,status='active',expires_at=NULL,support_reason=NULL,revoked_by=NULL,revoked_at=NULL,revision=agent_memberships.revision+1`)
       .bind(userId,now,id,operation),
     env.AGENT_DB.prepare(`INSERT OR IGNORE INTO agent_activity(id,tenant_id,actor_id,action,summary,created_at) SELECT ?,tenant_id,?,'team.invitation.accepted','A verified account accepted a team invitation.',? FROM agent_team_invitations WHERE id=? AND acceptance_token=?`)
       .bind(`invite_${id}`,userId,now,id,operation),

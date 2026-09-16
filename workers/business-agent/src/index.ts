@@ -12,6 +12,7 @@ import { addMemory, createTenant, deleteMemory, getMemory, listTenants, presentT
 import {renameAgent} from './agent-settings';
 import {runBillingReconciliation} from './billing/reconciliation';
 import {teamDirectory,inviteMember,revokeInvitation,revokeMember,myInvitations,acceptInvitation} from './team';
+import {changeMemberRole} from './team-roles';
 
 export { BusinessAgent };
 
@@ -54,6 +55,7 @@ async function route(request:Request,env:Env) {
   const section=match[2]||'';
   if(section==='team'&&request.method==='GET')return json(await teamDirectory(env,actor));
   if(section==='team/invitations'&&request.method==='POST')return json(await inviteMember(env,actor,await readJson(request),requestKey(request)),201);
+  if(section==='team/role'&&request.method==='POST')return json(await changeMemberRole(env,actor,await readJson(request),requestKey(request)));
   if(section==='team/revoke-member'&&request.method==='POST'){
     const {userId}=z.object({userId:z.string().min(1).max(128)}).strict().parse(await readJson(request));return json(await revokeMember(env,actor,userId));
   }

@@ -45,3 +45,29 @@ test('non-owners never request the private team directory',async({page})=>{
   await expect(page.getByText('The business owner manages team invitations and access.',{exact:false})).toBeVisible();
   expect(calls.some(path=>path.endsWith('/team'))).toBe(false);
 });
+
+test('role changes preserve the exact request after an uncertain response and refresh the saved role',async({page})=>{
+  await fixture(page);let role='staff',revision=1;const attempts:{key:string;body:unknown}[]=[];
+  await page.route('**/api/tenants/business-a/team',route=>route.fulfill({json:{seatLimit:3,moreMembers:false,moreInvitations:false,invitations:[],members:[{id:'pat',name:'Pat',email:'pat@example.test',role,status:'active',revision,expiresAt:null}]}}));
+  await page.route('**/api/tenants/business-a/team/role',route=>{
+    attempts.push({key:route.request().headers()['x-idempotency-key'],body:route.request().postDataJSON()});role='billing';revision=2;
+    return attempts.length===1?route.fulfill({status:503,json:{error:{message:'Confirmation unavailable. Retry the same change.'}}}):route.fulfill({json:{recorded:true,role,revision}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Team',exact:true}).click();
+  const form=page.getByRole('form',{name:'Change role for Pat'});
+  await form.getByLabel('Role for Pat').selectOption('billing');await expect(form).toContainText('Change this member from staff to billing?');
+  await form.getByRole('button',{name:'Confirm role change'}).click();await expect(form.getByRole('alert')).toContainText('Confirmation unavailable');
+  await expect(form.getByLabel('Role for Pat')).toBeDisabled();await form.getByRole('button',{name:'Retry role change'}).click();
+  await expect(page.getByText('billing · active',{exact:true})).toBeVisible();expect(attempts).toHaveLength(2);expect(attempts[0]).toEqual(attempts[1]);expect(attempts[0].body).toEqual({userId:'pat',role:'billing',expectedRevision:1});
+  expect((await new AxeBuilder({page}).include('[aria-label="Manage team"]').analyze()).violations).toEqual([]);
+});
+
+test('a stale role edit requires a refreshed membership before another change',async({page})=>{
+  await fixture(page);let revision=1;
+  await page.route('**/api/tenants/business-a/team',route=>route.fulfill({json:{seatLimit:3,moreMembers:false,moreInvitations:false,invitations:[],members:[{id:'pat',name:'Pat',email:'pat@example.test',role:revision===1?'staff':'viewer',status:'active',revision,expiresAt:null}]}}));
+  await page.route('**/api/tenants/business-a/team/role',route=>{revision=3;return route.fulfill({status:409,json:{error:{code:'membership_changed',message:'Refresh the team list.'}}});});
+  await page.goto('/');await page.getByRole('button',{name:'Team',exact:true}).click();const form=page.getByRole('form',{name:'Change role for Pat'});
+  await form.getByLabel('Role for Pat').selectOption('manager');await form.getByRole('button',{name:'Confirm role change'}).click();
+  await expect(form.getByRole('alert')).toHaveText('Refresh the team list.');await expect(form.getByRole('button',{name:'Retry role change'})).toBeDisabled();
+  await page.getByRole('button',{name:'Refresh team',exact:true}).click();await expect(form.getByLabel('Role for Pat')).toHaveValue('viewer');await expect(form.getByLabel('Role for Pat')).toBeEnabled();
+});
