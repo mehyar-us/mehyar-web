@@ -17,9 +17,10 @@
 // Behavior:
 //   1. Idempotent: exactly one tiktokgrowth_orders row per payment.id
 //      (UNIQUE index idx_tiktokgrowth_orders_payment). Replays return early.
-//   2. Single SKU 'tiktokgrowth-system' → create order, then background:
-//      POST TIKTOKGROWTH_BASE_URL/api/tiktok/generate {order_token, inputs};
-//      on success mark ready + email the token-gated deliverable link;
+//   2. Single SKU 'tiktokgrowth-system' → create order, then stepwise:
+//      POST TIKTOKGROWTH_BASE_URL/api/tiktok/gen-step {order_token, phase}
+//      for phases hooks→bio→trends→plan→assemble (one bounded AI call per
+//      request); on success mark ready + email the token-gated link;
 //      on failure mark failed (buyer retries from the success page).
 //
 // NOTE: only one SKU exists today (tiktokgrowth-system). The product lookup
@@ -112,41 +113,39 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
 
   const { from, fromName } = fromAddress(env);
 
-  // ── background generation, then email ──
+  // ── stepwise generation, then email ──
+  // gen-step.js runs ONE bounded AI call per HTTP request (synchronous).
+  // We drive the 5 phases in sequence; each request has its own execution
+  // budget, so no background waitUntil needs to survive multiple long calls.
   const run = async () => {
     try {
-      const genResp = await fetch(`${baseUrl(env)}/api/tiktok/generate`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ order_token: accessToken, inputs: intakeInputs }),
-      });
-      const genData = await genResp.json().catch(() => ({}));
-      if (!genResp.ok || !genData.ok) {
-        throw new Error("generate:" + String((genData && genData.error) || genResp.status));
-      }
-      // generate.js is async: HTTP 202 {status:"generating"} means the
-      // playbook is still building in the background; 200 + manifest means
-      // a replay of an already-ready order. Poll the order row until the
-      // background generation writes the manifest (generate.js owns the
-      // status/output_json writes — we must NOT mark ready here, or the
-      // background UPDATE's WHERE status!='ready' guard drops the manifest.
-      let manifest = genData.manifest || null;
-      if (!manifest) {
-        const deadline = Date.now() + 8 * 60 * 1000;
-        for (;;) {
-          await new Promise((r) => setTimeout(r, 10000));
-          const orow = await db.prepare(
-            "SELECT status, output_json FROM tiktokgrowth_orders WHERE id = ?"
-          ).bind(orderId).first();
-          if (orow && orow.status === "ready") {
-            try { manifest = JSON.parse(orow.output_json || "null"); } catch {}
-            break;
-          }
-          if (orow && orow.status === "failed") throw new Error("generate:background_failed");
-          if (Date.now() >= deadline) throw new Error("generate:timeout");
+      const step = async (phase) => {
+        const r = await fetch(`${baseUrl(env)}/api/tiktok/gen-step`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ order_token: accessToken, phase, inputs: intakeInputs }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.ok) {
+          throw new Error(`gen-step:${phase}:` + String((data && (data.detail || data.error)) || r.status));
         }
+        return data;
+      };
+      await step("hooks");
+      await step("bio");
+      await step("trends");
+      await step("plan");
+      const asm = await step("assemble");
+      if (asm.status !== "ready") throw new Error("gen-step:assemble:not_ready");
+      // Read the manifest back for the email (assemble wrote it).
+      const orow = await db.prepare(
+        "SELECT output_json FROM tiktokgrowth_orders WHERE id = ?"
+      ).bind(orderId).first();
+      let manifest = null;
+      try { manifest = JSON.parse((orow && orow.output_json) || "null"); } catch {}
+      if (!manifest || typeof manifest !== "object" || manifest.version !== 1) {
+        throw new Error("generate:empty_manifest");
       }
-      if (!manifest || typeof manifest !== "object") throw new Error("generate:empty_manifest");
       const deliverUrl = `${baseUrl(env)}/deliverable.html?token=${accessToken}`;
       const subject = `Your TikTok Growth System playbook is ready`;
       const text =
