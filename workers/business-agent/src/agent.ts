@@ -20,6 +20,7 @@ import {TextUsage} from './billing/text-usage';
 import {MailboxTriage} from './connectors/mailbox-triage';
 import {MailboxAggregationOffers} from './connectors/mailbox-aggregation-offers';
 import {MailboxSectionOffers} from './connectors/mailbox-section-offers';
+import {mailboxReviewDirectory} from './connectors/mailbox-review-directory';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
 import {researchAccess,requireResearchReady} from './research/access';
@@ -132,6 +133,11 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   }
   async mailboxAnalyses(actor:Actor,grantId:string,after?:string){
     return this.result(async()=>new MailboxTriage(this.ctx.storage).list(this.env,actor,grantId,async()=>{
+      await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+    },after));
+  }
+  async mailboxReviewMessages(actor:Actor,grantId:string,after?:string){
+    return this.result(async()=>mailboxReviewDirectory(this.env,actor,grantId,async()=>{
       await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
     },after));
   }

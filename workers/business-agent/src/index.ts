@@ -86,6 +86,8 @@ async function route(request:Request,env:Env) {
   }
   const mailbox=section.match(/^connections\/([a-f0-9-]{36})\/mailbox$/);
   const mailboxAnalyses=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/analyses$/);
+  const mailboxReviewMessages=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/review-messages$/);
+  if(mailboxReviewMessages&&request.method==='GET')return json(unwrap(await agent.mailboxReviewMessages(actor,mailboxReviewMessages[1],url.searchParams.get('after')??undefined)));
   if(mailboxAnalyses&&request.method==='GET')return json(unwrap(await agent.mailboxAnalyses(actor,mailboxAnalyses[1],url.searchParams.get('after')??undefined)));
   const mailboxReview=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/recovery$/);
   if(mailboxReview&&request.method==='POST'){

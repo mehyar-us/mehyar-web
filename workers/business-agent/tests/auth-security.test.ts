@@ -210,6 +210,12 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     expect(snapshot.status).toBe(200);
     expect(await snapshot.json()).toMatchObject({ membership: { role: "owner" }, memory: [] });
     const usageResponse=await worker.fetch(request(tenantPath+'/usage',undefined,sessionCookie),workerEnv);
+    const reviewPath=tenantPath+'/connections/'+crypto.randomUUID()+'/mailbox/review-messages';
+    expect((await worker.fetch(request(reviewPath),workerEnv)).status).toBe(401);
+    const missingMailbox=await worker.fetch(request(reviewPath,undefined,sessionCookie),workerEnv);
+    expect(missingMailbox.status).toBe(403);expect(missingMailbox.headers.get('cache-control')).toContain('no-store');
+    expect((await worker.fetch(request(reviewPath+'?after=malformed',undefined,sessionCookie),workerEnv)).status).toBe(400);
+    expect((await worker.fetch(request(reviewPath.replace(created.tenant.id,'another-business'),undefined,sessionCookie),workerEnv)).status).toBe(404);
     for(const route of ['sections/review','sections/confirm','aggregation/review','aggregation/confirm']){
       const path=tenantPath+'/mailbox-analysis/'+route;
       expect((await worker.fetch(request(path,{},sessionCookie),workerEnv)).status).toBe(400);

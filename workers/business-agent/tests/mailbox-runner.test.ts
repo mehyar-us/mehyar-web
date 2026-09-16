@@ -43,6 +43,38 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('pages authorized long-message review sources without inference or private raw payloads',async()=>{
+    const f=await fixture(),text='Please review this long inquiry. '.repeat(400);
+    const ids=Array.from({length:12},(_,i)=>`review-${String(i).padStart(2,'0')}`);
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:ids.map(messageId=>({messageId,kind:'upsert' as const})),syncCursor:'300'});
+    for(const id of ids){
+      const claim=(await f.ledger.claimChange(f.streamId))!;
+      expect(await f.ledger.saveChange(claim,{provider:'google',id,content:{id,threadId:'private-thread',payload:{mimeType:'text/plain',body:{size:text.length,data:btoa(text).replace(/=+$/,'')}}}})).toBe(true);
+    }
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_triage_queue SET state='review_required',last_reason='long_message' WHERE stream_id=?").bind(f.streamId).run();
+    const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;
+      (instance as any).env={...e,AI:{run:()=>{throw new Error('Listing must not call AI');}}};
+      try{
+        const page=unwrap(await instance.mailboxReviewMessages(f.actor,f.grantId));
+        expect(page.items).toHaveLength(10);expect(page.withheld).toBe(0);expect(page.nextCursor).toBeTruthy();expect(page.extendedAnalysisEnabled).toBe(false);
+        expect(page.items[0].source).toMatchObject({streamId:f.streamId,messageId:ids[0]});expect(page.items[0].excerpt).toHaveLength(160);
+        expect(JSON.stringify(page)).not.toContain('private-thread');expect(JSON.stringify(page)).not.toContain(text);
+        const last=unwrap(await instance.mailboxReviewMessages(f.actor,f.grantId,page.nextCursor));
+        expect(last.items.map(item=>item.source.messageId)).toEqual(ids.slice(10));expect(last.nextCursor).toBeUndefined();
+        expect(await instance.mailboxReviewMessages(f.actor,f.grantId,'malformed')).toMatchObject({ok:false,error:{code:'invalid_mailbox_review_cursor'}});
+        expect((await instance.mailboxReviewMessages({...f.actor,userId:crypto.randomUUID()},f.grantId)).ok).toBe(false);
+        expect((await instance.mailboxReviewMessages(f.actor,crypto.randomUUID())).ok).toBe(false);
+        await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=? AND message_id=?').bind(f.streamId,ids[0]).run();
+        const refreshed=unwrap(await instance.mailboxReviewMessages(f.actor,f.grantId));
+        expect(refreshed.items.map(item=>item.source.messageId)).not.toContain(ids[0]);expect(refreshed.items).toHaveLength(10);
+        expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:0,reserved:0});
+        await e.AGENT_DB.prepare("UPDATE auth_provider_grants SET status='revoked' WHERE id=?").bind(f.grantId).run();
+        expect(await instance.mailboxReviewMessages(f.actor,f.grantId,page.nextCursor)).toMatchObject({ok:false,error:{code:'triage_access_unavailable'}});
+      }finally{(instance as any).env=original;}
+    });
+  });
   it.each(['missing','mismatch'] as const)('releases multi-credit aggregation on %s usage and settles a verified retry once',async(failure)=>{
     vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-09-17T00:00:00Z'));
     try{
