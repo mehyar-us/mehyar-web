@@ -1,10 +1,10 @@
 // functions/api/_shared/fulfillBizbuilder.js
 // Standalone ES module: Stripe fulfillment for fulfillment='bizbuilder' products.
 // Called from the shared /api/pay/webhook in mehyar-web. Modeled on
-// fulfill-designful.js (same contract, single SKU, no bundles).
+// Shared fulfillment module: one hook per product, same contract.
 //
 // Contract: fulfillBizbuilder({ db, env, waitUntil, sendEmail }, payment)
-//   db        — D1 binding (mehyar_leads_prod; has bizbuilder_orders)
+//   db        — D1 binding (shared mehyar_leads_prod DB; has bizbuilder_orders)
 //   env       — worker env (BIZBUILDER_BASE_URL optional; defaults to
 //               https://bizbuilder.mehyar.us so no dashboard env change needed)
 //   waitUntil — Pages Functions waitUntil (optional; falls back to await)
@@ -45,7 +45,10 @@ function fromAddress(env) {
 }
 
 export async function fulfillBizbuilder({ db, env, waitUntil, sendEmail }, payment) {
-  if (!db || !payment || !payment.id) throw new Error("fulfillBizbuilder: bad args");
+  if (!db || !payment || !payment.id) {
+    console.error("fulfillBizbuilder: bad args — no db or payment");
+    return { ok: false, error: "bad_args" };
+  }
 
   const productId = payment.product_id;
 
@@ -67,7 +70,15 @@ export async function fulfillBizbuilder({ db, env, waitUntil, sendEmail }, payme
     return { ok: true, replay: true, order_id: existing.id, status: existing.status };
   }
 
-  const accessToken = randomToken(32);
+  // Token unification: the Stripe success_url_template is resolved at
+  // checkout time from billing_payments.access_token, so the buyer's success
+  // link carries the payment token. Reuse it as the order token whenever it
+  // is present and looks valid, so ONE token gates checkout, status,
+  // deliverable, and PDF. Mint a random token only as a fallback.
+  const accessToken =
+    typeof payment.access_token === "string" && payment.access_token.length >= 16
+      ? payment.access_token
+      : randomToken(32);
   const inputsJson = JSON.stringify({ inputs: intakeInputs });
   const ins = await db
     .prepare(
@@ -78,10 +89,8 @@ export async function fulfillBizbuilder({ db, env, waitUntil, sendEmail }, payme
     .run();
   const orderId = ins.meta.last_row_id;
 
-  // Token unification: the Stripe success_url_template receives
-  // billing_payments.access_token, but every BizBuilder surface gates on
-  // bizbuilder_orders tokens. Point the payment row at the BizBuilder token
-  // so ONE token works everywhere.
+  // Keep the payment row pointing at the same unified token (no-op when the
+  // payment token was reused; fixes the fallback case).
   await db
     .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
     .bind(accessToken, payment.id)
@@ -94,7 +103,12 @@ export async function fulfillBizbuilder({ db, env, waitUntil, sendEmail }, payme
     try {
       const genResp = await fetch(`${baseUrl(env)}/api/bizbuilder/generate`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          // Server-side self-requests carry a normal browser User-Agent.
+          "user-agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        },
         body: JSON.stringify({ order_token: accessToken, inputs: intakeInputs }),
       });
       const genData = await genResp.json().catch(() => ({}));
