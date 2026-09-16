@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-09-16T21:34:52.3182764Z",
+  "gateway": "mehyar-business-agent-dev-negative-control",
+  "expected": "non-success for nonexistent gateway",
+  "syntheticOnly": true,
+  "matchesValidShortRequest": true,
+  "httpStatus": 400,
+  "providerSuccess": false,
+  "usage": null,
+  "errors": [
+    {
+      "code": 2001,
+      "message": "Please configure AI Gateway in the Cloudflare dashboard"
+    }
+  ]
+}

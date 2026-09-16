@@ -18,9 +18,11 @@ const source={streamId:'synthetic-stream',messageId:'synthetic-message',receipt:
   businessContext:{briefRevision:1,reviewed:true,details:'Synthetic salon. Appointment times and prices require owner confirmation.',truncated:false},
   projection:{version:1,text,omissions:['attachment'],trustedForInstructions:false}};
 const live=process.argv.includes('--live'),plan=api.planMailTriageChunks(source);
+const gateway=process.argv.includes('--gateway')?'mehyar-business-agent-dev':undefined;
 if(plan.analysisCredits>3)throw new Error('Synthetic probe exceeds its three-section budget.');
 const report={version:1,startedAt:new Date().toISOString(),mode:live?'live':'dry-run',route:'workers-ai-direct-rest',model:'@cf/openai/gpt-oss-120b',syntheticOnly:true,
   scriptSha256:createHash('sha256').update(await readFile(fileURLToPath(import.meta.url))).digest('hex'),sourceSha256:createHash('sha256').update(JSON.stringify(source)).digest('hex'),sectionCount:plan.chunks.length,records:[],productionAcceptanceApproved:false};
+if(gateway){report.route='workers-ai-gateway-rest';report.gateway=gateway;}
 const account=process.env.CLOUDFLARE_ACCOUNT_ID??process.env.CF_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
 const key=process.env.CLOUDFLARE_API_KEY??process.env.CF_API_KEY,email=process.env.CLOUDFLARE_EMAIL??process.env.CF_API_EMAIL;
 if(live&&(!/^[a-f0-9]{32}$/i.test(account??'')||(!token&&!(key&&email))))throw new Error('Cloudflare account and credentials are required; values are not logged.');
@@ -30,8 +32,9 @@ async function run(id,request,parse){
   const started=Date.now();
   try{
     const response=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/openai/gpt-oss-120b`,{method:'POST',redirect:'error',signal:AbortSignal.timeout(60000),
-      headers:{'content-type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{'X-Auth-Key':key,'X-Auth-Email':email})},body});
+      headers:{'content-type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{'X-Auth-Key':key,'X-Auth-Email':email}),...(gateway?{'cf-aig-gateway-id':gateway,'cf-aig-skip-cache':'true','cf-aig-collect-log':'false','cf-aig-max-attempts':'1'}:{})},body});
     record.httpStatus=response.status;record.elapsedMs=Date.now()-started;
+    if(gateway)record.gatewayHeaders=Object.fromEntries([...response.headers].filter(([name])=>name.startsWith('cf-aig-')));
     const envelope=await response.json();
     if(!response.ok||envelope.success===false){record.state='provider_error';throw new Error('Provider rejected synthetic probe.');}
     const result=envelope.result??envelope;record.receipt=api.parseTextUsageReceipt(result);

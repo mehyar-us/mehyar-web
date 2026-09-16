@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-16T21:34:02.781Z",
+  "mode": "live",
+  "route": "workers-ai-gateway-rest",
+  "model": "@cf/openai/gpt-oss-120b",
+  "syntheticOnly": true,
+  "productionSettingsChanged": false,
+  "records": [
+    {
+      "id": "short",
+      "requestSha256": "e0e7aa75e8e53e7a6a8cac7af3be4636006a41761f10b9a926b474394552e5f3",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 22,
+        "outputTokenLimit": 64,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 1112,
+      "gatewayHeaders": {},
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 79,
+        "outputTokens": 46,
+        "totalTokens": 125
+      },
+      "state": "reported",
+      "inputTokenDifference": 57,
+      "reportedCreditUnits": 1
+    },
+    {
+      "id": "unicode-json",
+      "requestSha256": "eb48393fa6795fca57a11ead4918bc2ceda345d33857419d53e05fa5bb0c936e",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 42,
+        "outputTokenLimit": 64,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 1040,
+      "gatewayHeaders": {},
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 99,
+        "outputTokens": 64,
+        "totalTokens": 163
+      },
+      "state": "reported",
+      "inputTokenDifference": 57,
+      "reportedCreditUnits": 1
+    },
+    {
+      "id": "long-ascii",
+      "requestSha256": "c197eca372844ecb32d399a48976b14d3ffbd6806b455f87899b80569c4a4c03",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 9619,
+        "outputTokenLimit": 64,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 3786,
+      "gatewayHeaders": {},
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 9676,
+        "outputTokens": 64,
+        "totalTokens": 9740
+      },
+      "state": "reported",
+      "inputTokenDifference": 57,
+      "reportedCreditUnits": 1
+    },
+    {
+      "id": "credit-boundary",
+      "requestSha256": "fe490ac34a76a7baccfa2572f2248e455d7d5dbcc89f94d3a929f6eb78355bc8",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 11968,
+        "outputTokenLimit": 64,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 3043,
+      "gatewayHeaders": {},
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 12025,
+        "outputTokens": 64,
+        "totalTokens": 12089
+      },
+      "state": "reported",
+      "inputTokenDifference": 57,
+      "reportedCreditUnits": 2
+    }
+  ],
+  "gateway": "mehyar-business-agent-dev",
+  "scriptSha256": "bd4fdaf0307604851d6aafba578a193bfc4fb23ad030573e52f253d1b0a2ebe2",
+  "completedAt": "2026-09-16T21:34:11.833Z",
+  "allReported": true,
+  "productionCalibrationApproved": false
+}

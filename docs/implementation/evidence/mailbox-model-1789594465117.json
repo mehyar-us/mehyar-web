@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-16T21:34:17.217Z",
+  "mode": "live",
+  "route": "workers-ai-gateway-rest",
+  "model": "@cf/openai/gpt-oss-120b",
+  "syntheticOnly": true,
+  "scriptSha256": "838e91d25486df521d54dcebeeca635ec794dd16b7248a42f2623f4c1037bd3c",
+  "sourceSha256": "9b79d4648087bc9bd496c2167feb2ec2815574eb2023c5f9bc70ac1c54ed2de2",
+  "sectionCount": 2,
+  "records": [
+    {
+      "id": "section-0",
+      "requestSha256": "95d5fe39161bab7ea7915a98223f1740172b217c88b55dc6b2e68653e1049f30",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 1464,
+        "outputTokenLimit": 2000,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 3958,
+      "gatewayHeaders": {},
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 1521,
+        "outputTokens": 397,
+        "totalTokens": 1918
+      },
+      "inputTokenDifference": 57,
+      "result": {
+        "version": 1,
+        "source": {
+          "streamId": "synthetic-stream",
+          "messageId": "synthetic-message",
+          "receipt": "11111111-1111-4111-8111-111111111111",
+          "provider": "google",
+          "observedAt": "2026-09-16T12:00:00.000Z",
+          "sourceMode": "incremental",
+          "businessContext": {
+            "briefRevision": 1,
+            "reviewed": true,
+            "details": "Synthetic salon. Appointment times and prices require owner confirmation.",
+            "truncated": false
+          },
+          "coverage": {
+            "start": 0,
+            "end": 6000,
+            "total": 7751
+          }
+        },
+        "category": "inquiry",
+        "priority": "routine",
+        "summary": "The sender references a prior, unconfirmed request for a Friday haircut and asks for the salon's available appointment times and pricing for a haircut. The message repeats this request many times, indicating the core need is information about scheduling and cost. No urgent language is present, so the request appears routine.",
+        "evidence": [
+          {
+            "excerpt": "Hello, I previously asked about a Friday haircut. That was an initial idea, not a confirmed appointment.",
+            "start": 0,
+            "end": 104
+          },
+          {
+            "excerpt": "Background: I am considering a haircut and would like to know the available times and price.",
+            "start": 105,
+            "end": 197
+          }
+        ],
+        "basis": "model_suggestion",
+        "requiresReview": true,
+        "extractionOmissions": [
+          "attachment"
+        ],
+        "historicalContext": false,
+        "authorizesActions": false,
+        "partial": true,
+        "sectionIndex": 0,
+        "sectionCount": 2
+      },
+      "state": "validated"
+    },
+    {
+      "id": "section-1",
+      "requestSha256": "6856fa0af3043536d713046379a20f1b194109817e165a2fcd9706fbb0967b5f",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 647,
+        "outputTokenLimit": 2000,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 2078,
+      "gatewayHeaders": {},
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 704,
+        "outputTokens": 346,
+        "totalTokens": 1050
+      },
+      "inputTokenDifference": 57,
+      "result": {
+        "version": 1,
+        "source": {
+          "streamId": "synthetic-stream",
+          "messageId": "synthetic-message",
+          "receipt": "11111111-1111-4111-8111-111111111111",
+          "provider": "google",
+          "observedAt": "2026-09-16T12:00:00.000Z",
+          "sourceMode": "incremental",
+          "businessContext": {
+            "briefRevision": 1,
+            "reviewed": true,
+            "details": "Synthetic salon. Appointment times and prices require owner confirmation.",
+            "truncated": false
+          },
+          "coverage": {
+            "start": 6000,
+            "end": 7751,
+            "total": 7751
+          }
+        },
+        "category": "appointment",
+        "priority": "routine",
+        "summary": "The sender is interested in scheduling a haircut and asks for the available appointment times and the price. They express a preference for a Monday afternoon slot rather than Friday and request confirmation of availability without actually booking the appointment. The email repeats the same request multiple times, which may be due to a formatting issue, but the core request is clear. No urgent language is present, so the request is treated as routine.",
+        "evidence": [
+          {
+            "excerpt": "I am considering a haircut and would like to know the available times and price.",
+            "start": 6069,
+            "end": 6149
+          },
+          {
+            "excerpt": "My final preference is Monday afternoon instead of Friday. Please tell me whether a slot is available; do not book yet.",
+            "start": 7546,
+            "end": 7665
+          }
+        ],
+        "basis": "model_suggestion",
+        "requiresReview": true,
+        "extractionOmissions": [
+          "attachment"
+        ],
+        "historicalContext": false,
+        "authorizesActions": false,
+        "partial": true,
+        "sectionIndex": 1,
+        "sectionCount": 2
+      },
+      "state": "validated"
+    },
+    {
+      "id": "aggregation",
+      "requestSha256": "283ae6bd16ec64cc454edfbdf5e6a852794973ee6efe32c4a628a60d82b7005e",
+      "estimate": {
+        "version": 1,
+        "model": "@cf/openai/gpt-oss-120b",
+        "tokenizer": "gpt-tokenizer@4.0.0/o200k_harmony",
+        "basis": "local_harmony_estimate",
+        "inputTokens": 532,
+        "outputTokenLimit": 2000,
+        "estimatedCredits": 1,
+        "providerValidated": false
+      },
+      "httpStatus": 200,
+      "elapsedMs": 1831,
+      "gatewayHeaders": {},
+      "receipt": {
+        "state": "reported",
+        "inputTokens": 589,
+        "outputTokens": 274,
+        "totalTokens": 863
+      },
+      "inputTokenDifference": 57,
+      "result": {
+        "version": 1,
+        "source": {
+          "streamId": "synthetic-stream",
+          "messageId": "synthetic-message",
+          "receipt": "11111111-1111-4111-8111-111111111111",
+          "provider": "google",
+          "observedAt": "2026-09-16T12:00:00.000Z",
+          "sourceMode": "incremental",
+          "businessContext": {
+            "briefRevision": 1,
+            "reviewed": true,
+            "details": "Synthetic salon. Appointment times and prices require owner confirmation.",
+            "truncated": false
+          }
+        },
+        "category": "inquiry",
+        "priority": "routine",
+        "summary": "The sender is seeking information about scheduling a haircut. They reference a prior, unconfirmed request for a Friday appointment and now express a preference for a Monday afternoon slot, asking whether such a time is available. They also request the price for the haircut. The email repeats these requests multiple times, likely due to formatting issues, but no urgent language or commitment to book is present. The core need is clarification of available times and cost before any appointment is confirmed.",
+        "evidence": [
+          {
+            "excerpt": "Hello, I previously asked about a Friday haircut. That was an initial idea, not a confirmed appointment.",
+            "start": 0,
+            "end": 104
+          },
+          {
+            "excerpt": "Background: I am considering a haircut and would like to know the available times and price.",
+            "start": 105,
+            "end": 197
+          },
+          {
+            "excerpt": "I am considering a haircut and would like to know the available times and price.",
+            "start": 6069,
+            "end": 6149
+          },
+          {
+            "excerpt": "My final preference is Monday afternoon instead of Friday. Please tell me whether a slot is available; do not book yet.",
+            "start": 7546,
+            "end": 7665
+          }
+        ],
+        "basis": "model_suggestion",
+        "requiresReview": true,
+        "authorizesActions": false,
+        "extractionOmissions": [
+          "attachment"
+        ],
+        "historicalContext": false,
+        "aggregation": {
+          "basis": "validated_section_summaries",
+          "sectionCount": 2,
+          "extractedTextCoverageComplete": true
+        }
+      },
+      "state": "validated"
+    }
+  ],
+  "productionAcceptanceApproved": false,
+  "gateway": "mehyar-business-agent-dev",
+  "completedAt": "2026-09-16T21:34:25.117Z",
+  "pipelineValidated": true
+}

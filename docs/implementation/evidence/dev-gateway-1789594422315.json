@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-09-16T21:33:42.312Z",
+  "created": false,
+  "desired": {
+    "id": "mehyar-business-agent-dev",
+    "authentication": true,
+    "collect_logs": false,
+    "cache_ttl": 0,
+    "cache_invalidate_on_update": false,
+    "rate_limiting_interval": 60,
+    "rate_limiting_limit": 10,
+    "rate_limiting_technique": "fixed",
+    "retry_max_attempts": 1,
+    "workers_ai_billing_mode": "postpaid"
+  },
+  "observed": {
+    "id": "mehyar-business-agent-dev",
+    "authentication": true,
+    "collect_logs": false,
+    "cache_ttl": 0,
+    "cache_invalidate_on_update": false,
+    "rate_limiting_interval": 60,
+    "rate_limiting_limit": 10,
+    "rate_limiting_technique": "fixed",
+    "retry_max_attempts": 1,
+    "workers_ai_billing_mode": "postpaid"
+  },
+  "settingsMatch": true,
+  "existingGatewaysUnchanged": true,
+  "productionReleaseApproved": false
+}

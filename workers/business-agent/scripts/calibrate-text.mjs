@@ -14,7 +14,9 @@ const cases=[
 ];
 const requests=cases.map(item=>({id:item.id,request:{messages:[{role:'system',content:'Synthetic token calibration. Reply only OK.'},{role:'user',content:item.text}],max_tokens:64}}));
 const live=process.argv.includes('--live');
+const gateway=process.argv.includes('--gateway')?'mehyar-business-agent-dev':undefined;
 const report={version:1,startedAt:new Date().toISOString(),mode:live?'live':'dry-run',route:'workers-ai-direct-rest',model:'@cf/openai/gpt-oss-120b',syntheticOnly:true,productionSettingsChanged:false,records:[]};
+if(gateway){report.route='workers-ai-gateway-rest';report.gateway=gateway;}
 report.scriptSha256=createHash('sha256').update(await readFile(fileURLToPath(import.meta.url))).digest('hex');
 const account=process.env.CLOUDFLARE_ACCOUNT_ID??process.env.CF_ACCOUNT_ID;
 const token=process.env.CLOUDFLARE_API_TOKEN;
@@ -27,8 +29,9 @@ for(const {id,request} of requests){
   try{
     const started=Date.now();
     const response=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/openai/gpt-oss-120b`,{
-      method:'POST',redirect:'error',signal:AbortSignal.timeout(60000),headers:{'content-type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{'X-Auth-Key':key,'X-Auth-Email':email})},body});
+      method:'POST',redirect:'error',signal:AbortSignal.timeout(60000),headers:{'content-type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{'X-Auth-Key':key,'X-Auth-Email':email}),...(gateway?{'cf-aig-gateway-id':gateway,'cf-aig-skip-cache':'true','cf-aig-collect-log':'false','cf-aig-max-attempts':'1'}:{})},body});
     record.httpStatus=response.status;record.elapsedMs=Date.now()-started;
+    if(gateway)record.gatewayHeaders=Object.fromEntries([...response.headers].filter(([name])=>name.startsWith('cf-aig-')));
     const envelope=await response.json();
     if(!response.ok||envelope.success===false){record.state='provider_error';record.errorCodes=Array.isArray(envelope.errors)?envelope.errors.map(e=>e.code).filter(Number.isSafeInteger):[];break;}
     record.receipt=parseTextUsageReceipt(envelope.result??envelope);
