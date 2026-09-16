@@ -65,7 +65,11 @@ export async function fulfillCreditfixkit({ db, env, waitUntil, sendEmail }, pay
     return { ok: true, replay: true, order_id: existing.id, status: existing.status };
   }
 
-  const accessToken = randomToken(32);
+  // The order reuses the payment's checkout-time token (the one baked into the
+  // Stripe success_url). Minting a fresh token here would orphan the buyer's
+  // success URL — the deliverable endpoint gates on the order token, so one
+  // token must work from checkout through delivery.
+  const accessToken = payment.access_token || randomToken(32);
   const inputsJson = JSON.stringify({ inputs: intakeInputs });
   const ins = await db
     .prepare(
@@ -76,10 +80,9 @@ export async function fulfillCreditfixkit({ db, env, waitUntil, sendEmail }, pay
     .run();
   const orderId = ins.meta.last_row_id;
 
-  // Token unification: the Stripe success_url_template receives
-  // billing_payments.access_token, but every CreditFix Kit surface gates on
-  // the order token. Point the payment row at the order token so ONE token
-  // works everywhere.
+  // Token unification (safety net): if a fallback token was minted above,
+  // point the payment row at it so billing_payments.access_token always
+  // matches the order token. Normally a no-op since the token is reused.
   await db
     .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
     .bind(accessToken, payment.id)
