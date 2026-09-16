@@ -7,7 +7,7 @@ import type {PlatformEmail,SendResult} from './resend';
 type Row={id:string;tenant_id:string;route_ref:string;payload_json:string;payload_hash:string;idempotency_key:string;state:string;first_attempt_at:string|null;attempts:number;lease_token:string|null};
 export type EmailClaim={id:string;tenantId:string;token:string;message:PlatformEmail;idempotencyKey:string;firstAttemptAt:string};
 const config=z.object({from:z.email().max(254),routeRef:z.string().min(1).max(128).regex(/^[a-zA-Z0-9:_-]+$/)}).strict();
-function authoritySql(allowPaused:boolean){return `EXISTS(SELECT 1 FROM agent_team_invitations i JOIN agent_tenants t ON t.id=i.tenant_id JOIN agent_memberships m ON m.tenant_id=i.tenant_id AND m.user_id=i.invited_by
+export function invitationEmailAuthoritySql(allowPaused:boolean){return `EXISTS(SELECT 1 FROM agent_team_invitations i JOIN agent_tenants t ON t.id=i.tenant_id JOIN agent_memberships m ON m.tenant_id=i.tenant_id AND m.user_id=i.invited_by
   WHERE i.id=agent_platform_email_outbox.invitation_id AND i.tenant_id=agent_platform_email_outbox.tenant_id AND i.status='pending' AND i.expires_at>? AND i.expires_at=agent_platform_email_outbox.invitation_expires_at AND i.invited_email=agent_platform_email_outbox.recipient AND i.role=agent_platform_email_outbox.invited_role
   AND t.status NOT IN ('deleted','offboarding'${allowPaused?'':",'paused'"}) AND m.role='owner' AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?))
   AND EXISTS(SELECT 1 FROM agent_memberships m WHERE m.tenant_id=agent_platform_email_outbox.tenant_id AND m.user_id=agent_platform_email_outbox.prepared_by AND m.role='owner' AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?))
@@ -46,7 +46,7 @@ export class InvitationEmailOutbox {
       .bind(tenantId,id,now,oldest).run();
     const changed=await this.env.AGENT_DB.prepare(`UPDATE agent_platform_email_outbox SET state='sending',attempts=attempts+1,first_attempt_at=COALESCE(first_attempt_at,?),lease_token=?,lease_expires_at=?
       WHERE tenant_id=? AND id=? AND route_ref=? AND state IN ('prepared','retry','sending') AND next_attempt_at<=? AND (lease_expires_at IS NULL OR lease_expires_at<=?) AND attempts<5 AND (first_attempt_at IS NULL OR (first_attempt_at>? AND first_attempt_at<=?))
-      AND ${authoritySql(false)}`)
+      AND ${invitationEmailAuthoritySql(false)}`)
       .bind(now,token,new Date(this.clock()+90000).toISOString(),tenantId,id,routeRef,now,now,oldest,now,now,now,now).run();
     if(!changed.meta.changes)return null;
     const row=await this.env.AGENT_DB.prepare('SELECT * FROM agent_platform_email_outbox WHERE tenant_id=? AND id=? AND lease_token=?').bind(tenantId,id,token).first<Row>();
@@ -59,7 +59,7 @@ export class InvitationEmailOutbox {
     const now=new Date(this.clock()).toISOString();
     const changed=await this.env.AGENT_DB.prepare(`UPDATE agent_platform_email_outbox
       SET state=CASE WHEN first_attempt_at IS NULL THEN 'cancelled' ELSE 'review_required' END,last_code='email_authority_withdrawn',lease_token=NULL,lease_expires_at=NULL
-      WHERE tenant_id=? AND id=? AND state IN ('prepared','retry','sending') AND (lease_expires_at IS NULL OR lease_expires_at<=?) AND NOT (${authoritySql(true)})`)
+      WHERE tenant_id=? AND id=? AND state IN ('prepared','retry','sending') AND (lease_expires_at IS NULL OR lease_expires_at<=?) AND NOT (${invitationEmailAuthoritySql(true)})`)
       .bind(tenantId,id,now,now,now,now).run();
     return Boolean(changed.meta.changes);
   }
@@ -67,7 +67,7 @@ export class InvitationEmailOutbox {
   async mayDispatch(claim:EmailClaim,routeRef:string){
     const now=new Date(this.clock()).toISOString(),oldest=new Date(this.clock()-23*3600000).toISOString();
     const row=await this.env.AGENT_DB.prepare(`SELECT payload_hash,idempotency_key,first_attempt_at FROM agent_platform_email_outbox
-      WHERE tenant_id=? AND id=? AND route_ref=? AND state='sending' AND lease_token=? AND lease_expires_at>? AND first_attempt_at>? AND first_attempt_at<=? AND ${authoritySql(false)}`)
+      WHERE tenant_id=? AND id=? AND route_ref=? AND state='sending' AND lease_token=? AND lease_expires_at>? AND first_attempt_at>? AND first_attempt_at<=? AND ${invitationEmailAuthoritySql(false)}`)
       .bind(claim.tenantId,claim.id,routeRef,claim.token,now,oldest,now,now,now,now).first<Row>();
     return Boolean(row&&row.first_attempt_at===claim.firstAttemptAt&&row.idempotency_key===claim.idempotencyKey&&await digest(JSON.stringify(claim.message))===row.payload_hash);
   }

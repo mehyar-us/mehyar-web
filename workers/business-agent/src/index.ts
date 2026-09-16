@@ -12,6 +12,7 @@ import { addMemory, createTenant, deleteMemory, getMemory, listTenants, presentT
 import {renameAgent} from './agent-settings';
 import {runBillingReconciliation} from './billing/reconciliation';
 import {runEmailRecovery} from './email/recovery';
+import {runEmailMaintenance} from './email/maintenance';
 import {queueInvitationEmail,cancelInvitationEmail} from './email/customer';
 import {platformEmailUsage} from './email/usage';
 import {handleEmailWebhook} from './email/webhook';
@@ -126,6 +127,7 @@ async function route(request:Request,env:Env) {
 
 export default {
   async scheduled(_controller,env){
+    try{await runEmailMaintenance(env);}catch{console.error(JSON.stringify({event:'agent_email_maintenance_unavailable'}));}
     try{await runBillingReconciliation(env);}catch{console.error(JSON.stringify({event:'agent_billing_reconciliation_unavailable'}));}
     try{await runEmailRecovery(env);}catch{console.error(JSON.stringify({event:'agent_email_recovery_unavailable'}));}
   },
