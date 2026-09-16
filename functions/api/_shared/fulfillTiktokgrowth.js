@@ -157,6 +157,10 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
       // (e.g. resume where only the email was missing).
       const st0 = await db.prepare("SELECT status FROM tiktokgrowth_orders WHERE id = ?").bind(orderId).first();
       if (!st0 || st0.status !== "ready") {
+        // Fire-and-forget: the drive takes ~5 min (4 bounded AI phases) which
+        // exceeds the waitUntil execution window. The PWA processes the drive
+        // independently and triggers the delivery email via backfill on ready.
+        // We await the fetch DISPATCH (request sent) but not the response body.
         const r = await fetch(`${baseUrl(env)}/api/tiktok/drive`, {
           method: "POST",
           headers: {
@@ -166,11 +170,12 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
           },
           body: JSON.stringify({ order_token: accessToken }),
         });
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok || !data.ok) {
-          throw new Error("drive:" + String((data && (data.detail || data.error)) || r.status));
+        if (!r.ok) {
+          throw new Error("drive:dispatch_failed:" + r.status);
         }
-        if (data.status !== "ready") throw new Error("drive:not_ready");
+        // Return early: the drive runs independently. The email is sent via
+        // backfill (triggered by the drive on ready, and by the success page).
+        return { ok: true, dispatched: true, order_id: orderId };
       }
       // Read the manifest back for the email (assemble wrote it).
       const orow = await db.prepare(
