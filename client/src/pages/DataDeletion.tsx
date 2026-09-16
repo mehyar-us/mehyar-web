@@ -17,6 +17,7 @@
 //   7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
 //   8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
 //   9. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
+//  10. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -27,7 +28,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket } from "lucide-react";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -151,6 +152,18 @@ const apps: AppInfo[] = [
       "Email address (to deliver your purchase, send the 30 daily challenge emails, and gate your dashboard), your challenge progress checklist, and checkout records.",
     whatWeDelete:
       "Email address, challenge progress, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "bizbuilder",
+    name: "BizBuilder",
+    url: "https://bizbuilder.mehyar.us",
+    tagline: "AI business builder: idea to launch-ready plan.",
+    icon: Rocket,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase and send deliverable links), the business idea / audience / price point you submit, the generated plan and copy deliverables, and checkout records.",
+    whatWeDelete:
+      "Email address, submitted intake, generated deliverables, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

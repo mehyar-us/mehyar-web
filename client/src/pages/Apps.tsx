@@ -171,6 +171,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/sprint30-logo.png",
     accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
   },
+  {
+    id: "bizbuilder",
+    name: "BizBuilder",
+    url: "https://bizbuilder.mehyar.us",
+    tagline: "Your business idea becomes a launch-ready plan for $17.",
+    description:
+      "An AI business builder that turns a 2-sentence idea into a one-page business plan, full landing-page copy, and a 5-email welcome sequence — delivered as a styled web doc plus PDF, with a free real excerpt before you pay.",
+    audience: "Solo founders and side-hustlers who want a working plan today, not a $2,000 agency engagement.",
+    highlights: [
+      "Free real plan excerpt from your own idea — concept, customer, section, milestones",
+      "One $17 one-time build: 8-section plan, landing copy, 5-email sequence",
+      "Delivered in minutes as a styled web doc + PDF — no account needed",
+      "No income promises, ever — plans on founder actions, not fantasy outcomes",
+    ],
+    logo: "/assets/bizbuilder-logo.png",
+    accentClass: "from-slate-100 to-white dark:from-slate-900 dark:to-slate-950",
+  },
 ];
 
 const buildPillars = [
@@ -412,7 +429,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder), and the request form.
           </p>
         </div>
       </section>

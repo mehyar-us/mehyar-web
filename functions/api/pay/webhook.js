@@ -14,6 +14,7 @@
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
+import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -150,6 +151,16 @@ const fulfillHooks = {
   async sprint30({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillSprint30({ db, env, waitUntil, sendEmail }, payment);
+  },
+
+  // BizBuilder AI business builder ($17 one-time). Creates the
+  // bizbuilder_orders row (idempotent on payment_id via
+  // idx_bizbuilder_orders_payment), unifies the access token onto the
+  // billing_payments row, then hands off to the standalone module for
+  // background generation + buyer email.
+  async bizbuilder({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillBizbuilder({ db, env, waitUntil, sendEmail }, payment);
   },
 };
 

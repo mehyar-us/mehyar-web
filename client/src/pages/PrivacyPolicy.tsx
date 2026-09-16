@@ -217,6 +217,10 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">30-day side-income challenge — daily missions by email.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">BizBuilder — <a className="text-brand-700 underline dark:text-brand-100" href="https://bizbuilder.mehyar.us" target="_blank" rel="noreferrer">bizbuilder.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI business builder — idea to launch-ready plan.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>
