@@ -46,6 +46,12 @@ describe('dedicated business isolation',()=>{
     expect(unwrap(await agent.confirmResearchClaim(actor,id,confirmation))).toMatchObject({confirmed:true,removed:true,memory:null});
     expect(await getMemory(e,actor)).toHaveLength(1);
     unwrap(await agent.pause(actor,true));expect(unwrap(await agent.researchJobs(actor)).jobs).toHaveLength(1);
+    await e.AGENT_DB.prepare("UPDATE agent_tenants SET trial_expires_at='2020-01-01T00:00:00.000Z' WHERE id=?").bind(a.id).run();
+    expect(unwrap(await agent.cancelResearch(actor,id)).job).toMatchObject({status:'cancel_requested',reservedPages:20});
+    expect(unwrap(await agent.cancelResearch(actor,id)).job.status).toBe('cancel_requested');
+    await runInDurableObject(agent,async(instance)=>{
+      expect(instance.sql<{count:number}>`SELECT COUNT(*) AS count FROM research_withdrawals WHERE job_id=${id}`[0].count).toBe(1);
+    });
     expect(await other.researchEvidence({tenantId:b.id,userId:bob},id)).toMatchObject({ok:false,error:{status:404}});
     expect(await other.researchJobs(actor)).toMatchObject({ok:false,error:{code:'agent_mismatch'}});
     for(const role of ['viewer','staff','billing','support','manager'] as const){
@@ -53,10 +59,12 @@ describe('dedicated business isolation',()=>{
         .bind(a.id,userId,role,new Date().toISOString(),role==='support'?new Date(Date.now()+60_000).toISOString():null,role==='support'?'Research access test':null).run();
       const result=await agent.researchEvidence({tenantId:a.id,userId},id);
       if(role==='manager')expect(result.ok).toBe(true);else expect(result).toMatchObject({ok:false,error:{status:403}});
+      if(role!=='manager')expect(await agent.cancelResearch({tenantId:a.id,userId},id)).toMatchObject({ok:false,error:{status:403}});
       expect(await agent.confirmResearchClaim({tenantId:a.id,userId},id,confirmation)).toMatchObject({ok:false,error:{status:403}});
     }
     await e.AGENT_DB.prepare("UPDATE agent_memberships SET status='revoked' WHERE tenant_id=? AND user_id=?").bind(a.id,alice).run();
     expect(await agent.researchEvidence(actor,id)).toMatchObject({ok:false,error:{status:404}});
+    expect(await agent.cancelResearch(actor,id)).toMatchObject({ok:false,error:{status:404}});
   });
   it('provisions idempotently and rejects reused keys with changed business data',async()=>{
     const key=crypto.randomUUID();

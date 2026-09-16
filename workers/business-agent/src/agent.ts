@@ -91,6 +91,12 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       return {job,pages,nextOffset:offset+pages.length<job.evidencePages?offset+pages.length:null};
     });
   }
+  async cancelResearch(actor:Actor,id:string){
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+      const jobs=new ResearchJobs(this.ctx.storage);jobs.withdraw(id,actor.userId);
+      return {job:jobs.summary(id)};
+    });
+  }
   async confirmResearchClaim(actor:Actor,id:string,input:unknown) {
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,['owner']);
       const parsed=z.object({url:z.string().url().max(4096),index:z.number().int().min(0).max(99),key:z.string().trim().min(1).max(120),expectedValue:z.string().max(2000)}).strict().safeParse(input);

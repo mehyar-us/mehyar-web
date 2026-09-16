@@ -49,6 +49,8 @@ async function route(request:Request,env:Env) {
   const research=section.match(/^research(?:\/([a-f0-9-]{36}))?$/);
   if(section==='research'&&request.method==='POST')return json(unwrap(await agent.requestResearch(actor,await readJson(request),requestKey(request))),202);
   const confirmation=section.match(/^research\/([a-f0-9-]{36})\/confirm$/);
+  const researchCancellation=section.match(/^research\/([a-f0-9-]{36})\/cancel$/);
+  if(researchCancellation&&request.method==='POST')return json(unwrap(await agent.cancelResearch(actor,researchCancellation[1])));
   if(confirmation&&request.method==='POST')return json(unwrap(await agent.confirmResearchClaim(actor,confirmation[1],await readJson(request))));
   if(research&&request.method==='GET') {
     const offset=z.coerce.number().int().min(0).max(100_000).parse(url.searchParams.get('offset')??0);

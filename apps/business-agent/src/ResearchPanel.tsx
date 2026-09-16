@@ -16,7 +16,20 @@ function valid(result:Result,detail:boolean){
 export default function ResearchPanel({tenantId,online,canConfirm,onSaved,onUnauthorized}:{tenantId:string;online:boolean;canConfirm:boolean;onSaved:()=>Promise<void>;onUnauthorized:(cause:unknown)=>void}){
   const [jobId,setJobId]=useState<string|null>(null),[offset,setOffset]=useState(0),[result,setResult]=useState<Result|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState('');
   const active=useRef<AbortController|null>(null);
+  const cancellation=useRef<AbortController|null>(null),[cancelling,setCancelling]=useState(false);
+  useEffect(()=>()=>cancellation.current?.abort(),[]);
+  async function cancel(){
+    if(!online||!jobId||cancelling)return;
+    const controller=new AbortController();cancellation.current=controller;setCancelling(true);setError('');
+    try{
+      const response=await api<{job:Job}>(`/api/tenants/${encodeURIComponent(tenantId)}/research/${encodeURIComponent(jobId)}/cancel`,{method:'POST',body:'{}',signal:controller.signal});
+      if(!validJob(response.job)||response.job.id!==jobId)throw new Error('Cancellation could not be verified. Refresh research to check its status.');
+      if(!controller.signal.aborted)setResult(current=>current?.job?.id===jobId?{...current,job:response.job}:current);
+    }catch(cause){if(!controller.signal.aborted){setError(cause instanceof Error?cause.message:'Cancellation could not be verified.');if(cause instanceof ApiError&&cause.status===401)onUnauthorized(cause);}}
+    finally{if(!controller.signal.aborted)setCancelling(false);}
+  }
   const load=useCallback(async()=>{
+    cancellation.current?.abort();setCancelling(false);
     active.current?.abort();setResult(null);setError('');setLoading(false);if(!online)return;
     const controller=new AbortController();active.current=controller;setLoading(true);
     try{
@@ -27,7 +40,7 @@ export default function ResearchPanel({tenantId,online,canConfirm,onSaved,onUnau
     finally{if(!controller.signal.aborted)setLoading(false);}
   },[tenantId,jobId,offset,online,onUnauthorized]);
   useEffect(()=>{void load();return()=>active.current?.abort();},[load]);
-  function select(id:string|null){active.current?.abort();setResult(null);setJobId(id);setOffset(0);}
+  function select(id:string|null){active.current?.abort();cancellation.current?.abort();setCancelling(false);setResult(null);setJobId(id);setOffset(0);}
   return <section className="panel research-panel" aria-label="Website research" style={{overflowWrap:'anywhere'}}>
     <div className="panel-heading"><h2>Website research</h2><button className="button secondary" disabled={!online||loading} onClick={()=>void load()}>Refresh research</button></div>
     <p className="small muted">Website claims need your review. They are not saved business knowledge or permission to act.</p>
@@ -35,7 +48,7 @@ export default function ResearchPanel({tenantId,online,canConfirm,onSaved,onUnau
     {!online?<p>Reconnect to view research.</p>:loading?<p role="status">Loading research…</p>:error?<p role="alert">{error}</p>:result?<>
       {result.jobs?.length===0&&<p>No website research is available yet. You can add business details manually above.</p>}
       {result.jobs?.map(job=><article className="memory-item" key={job.id}><div><strong>{job.website}</strong><p>{statuses[job.status]} · {job.evidencePages} source pages</p><button className="button secondary" onClick={()=>select(job.id)}>View source evidence</button></div></article>)}
-      {result.job&&<><p><strong>{statuses[result.job.status]}</strong> · {result.job.evidencePages} source pages · {result.job.usedPages} pages used · {result.job.reservedPages} reserved</p>{result.pages?.length===0&&<p>No source evidence is available for this research yet.</p>}</>}
+      {result.job&&<><p><strong>{statuses[result.job.status]}</strong> · {result.job.evidencePages} source pages · {result.job.usedPages} pages used · {result.job.reservedPages} reserved</p>{['reserved','submitting','running','uncertain'].includes(result.job.status)&&<button className="button secondary" disabled={!online||cancelling} onClick={()=>void cancel()}>{cancelling?'Requesting cancellation…':'Cancel research'}</button>}{result.job.status==='cancel_requested'&&<p role="status">Cancellation requested. Page reservations remain until the provider confirms the final outcome.</p>}{result.job.status==='uncertain'&&<p>The submission outcome needs review. Cancellation cannot yet be confirmed.</p>}{result.pages?.length===0&&<p>No source evidence is available for this research yet.</p>}</>}
       {result.pages?.map(page=><article className="memory-item" key={page.url}><div>
         <a href={page.url} target="_blank" rel="noopener noreferrer">{page.url}</a><p className="small muted">Retrieved {new Date(page.retrievedAt).toLocaleString()}</p>
         {page.warnings.length>0&&<p>Extraction notes: {page.warnings.map(w=>w.replaceAll('_',' ')).join('; ')}</p>}

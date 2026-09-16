@@ -566,3 +566,23 @@ test('managers can review sources but cannot confirm website claims',async({page
   await expect(panel.getByText('Owner review required',{exact:true})).toBeVisible();
   await expect(panel.getByRole('button',{name:'Review for business knowledge'})).toHaveCount(0);
 });
+
+test('research cancellation stays available while paused and does not claim provider completion',async({page})=>{
+  await fixture(page);
+  await page.route('**/api/tenants/business-a',route=>route.fulfill({json:{tenant,membership:{role:'owner'},activity:[],connections:[],usage:{paused:true},memory:[]}}));
+  const job={id:'research-cancel',website:'https://salon.example.com/',status:'running',pageLimit:20,evidencePages:0,usedPages:0,reservedPages:20};
+  let cancelled=0;
+  await page.route('**/api/tenants/business-a/research**',route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path.endsWith('/cancel')){cancelled++;expect(route.request().method()).toBe('POST');return route.fulfill({json:{job:{...job,status:'cancel_requested'}}});}
+    return route.fulfill({json:path.endsWith('/research-cancel')?{job,pages:[],nextOffset:null}:{jobs:[job],nextOffset:null}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});await panel.getByRole('button',{name:'View source evidence'}).click();
+  await expect(panel.getByRole('button',{name:'Cancel research'})).toBeEnabled();
+  await panel.getByRole('button',{name:'Cancel research'}).click();
+  await expect(panel.getByRole('status')).toContainText('Page reservations remain until the provider confirms');
+  await expect(panel.getByText('Stopping',{exact:true})).toBeVisible();
+  await expect(panel.getByText('20 reserved',{exact:false})).toBeVisible();
+  await expect(panel.getByRole('button',{name:'Cancel research'})).toHaveCount(0);expect(cancelled).toBe(1);
+});

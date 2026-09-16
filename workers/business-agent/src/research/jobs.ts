@@ -23,6 +23,8 @@ export class ResearchJobs {
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_poll (
       job_id TEXT PRIMARY KEY,cursor INTEGER NOT NULL,steps INTEGER NOT NULL,
       outcome TEXT NOT NULL,done INTEGER NOT NULL)`);
+    this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_withdrawals (
+      job_id TEXT PRIMARY KEY,user_id TEXT NOT NULL,requested_at TEXT NOT NULL)`);
     // An interrupted POST may have created a billable provider job. Keep its reservation.
     this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
     this.expire();
@@ -104,6 +106,13 @@ export class ResearchJobs {
     // Unknown submissions remain uncertain; cancellation cannot prove no provider effect.
     else if(job.status==='submitting')return this.uncertain(id);
     return this.get(id);
+  }
+  withdraw(id:string,userId:string){
+    return this.storage.transactionSync(()=>{
+      const job=this.cancel(id);
+      this.storage.sql.exec('INSERT OR IGNORE INTO research_withdrawals(job_id,user_id,requested_at) VALUES(?,?,?)',id,userId,new Date().toISOString());
+      return job;
+    });
   }
   async ingest(id:string,providerId:string,record:CrawlRecord,retrievedAt:string):Promise<ExtractedPage> {
     const job=this.get(id);
