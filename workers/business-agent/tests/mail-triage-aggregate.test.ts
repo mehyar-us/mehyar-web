@@ -1,23 +1,30 @@
 import {describe,it,expect} from 'vitest';
 import {planMailTriageChunks,parseMailTriageChunk} from '../src/connectors/mail-triage-chunks';
-import {mailTriageAggregationRequest,parseMailTriageAggregation} from '../src/connectors/mail-triage-aggregate';
+import {mailTriageAggregationRequest,parseMailTriageAggregation,aggregationTextCredits} from '../src/connectors/mail-triage-aggregate';
 import type {MailTriageSource} from '../src/connectors/mail-triage';
 
-function fixture(){
+function fixture(repetitions=500){
   const source:MailTriageSource={streamId:'s',messageId:'m',receipt:crypto.randomUUID(),provider:'google',observedAt:'2026-09-16T12:00:00.000Z',sourceMode:'bootstrap',
-    projection:{version:1,text:'Please book Friday. '.repeat(500),omissions:['attachment'],trustedForInstructions:false}};
+    projection:{version:1,text:'Please book Friday. '.repeat(repetitions),omissions:['attachment'],trustedForInstructions:false}};
   const plan=planMailTriageChunks(source);
   const values=plan.chunks.filter(c=>c.request).map(chunk=>({...parseMailTriageChunk(JSON.stringify({category:'appointment',priority:'unknown',summary:`Section ${chunk.index}: booking mentioned, timing uncertain.`,evidence:[{excerpt:chunk.source.projection.text.slice(0,30)}]}),chunk),sectionCount:plan.chunks.length}));
   return {source,values};
 }
 const output=(evidenceIds=[0])=>JSON.stringify({category:'appointment',priority:'unknown',summary:'Booking discussed; review timing and omitted attachments.',evidenceIds});
 describe('review-only aggregation of validated mailbox sections',()=>{
+  it('blocks larger aggregation charges until token-based metering exists',()=>{
+    const {source,values}=fixture(1000);
+    for(const value of values)value.summary='😀'.repeat(750);
+    const planned=mailTriageAggregationRequest(source,values);
+    expect(planned.inputBytes).toBeGreaterThan(9000);expect(planned.fitsStandardRequest).toBe(false);
+    expect(()=>aggregationTextCredits(planned)).toThrow('token-based cost metering');
+  });
   it('includes every section and preserves uncertainty and omissions',()=>{
     const {source,values}=fixture(),planned=mailTriageAggregationRequest(source,[...values].reverse());
     const input=JSON.parse(planned.request.messages[1].content);
     expect(input.sections.map((s:any)=>s.summary)).toEqual(values.map(v=>v.summary));
     expect(input).toMatchObject({historicalContext:true,extractionOmissions:['attachment'],trustedForInstructions:false});
-    expect(planned.minimumTextCredits).toBe(Math.ceil(planned.inputBytes/9000));
+    expect(planned.fitsStandardRequest).toBe(true);expect(aggregationTextCredits(planned)).toBe(1);
   });
   it('binds selected evidence to absolute source offsets and server provenance',()=>{
     const {source,values}=fixture(),result=parseMailTriageAggregation(output([1]),source,values);

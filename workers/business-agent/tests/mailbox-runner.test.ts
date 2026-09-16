@@ -41,6 +41,43 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('aggregates complete sections with durable credits, replay and source fencing',async()=>{
+    const f=await fixture(),text='Please book Friday. '.repeat(500);
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'aggregate',kind:'upsert'}],syncCursor:'300'});
+    const claim=(await f.ledger.claimChange(f.streamId))!;
+    await f.ledger.saveChange(claim,{provider:'google',id:'aggregate',content:{id:'aggregate',threadId:'t',payload:{mimeType:'text/plain',body:{size:text.length,data:btoa(text).replace(/=+$/,'')}}}});
+    const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+      const original=(instance as any).env;let calls=0,mode='invalid';
+      (instance as any).env={...e,MAILBOX_PROCESSING_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_EXTENDED_TRIAGE_ENABLED:'true',AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any,options:any)=>{
+        calls++;const data=JSON.parse(input.messages[1].content);
+        if(data.sections){
+          expect(options.gateway.metadata.workload).toBe('mailbox_triage_aggregation');expect(data.sections).toHaveLength(2);
+          if(mode==='stale')await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
+          return {choices:[{message:{content:JSON.stringify({category:'appointment',priority:'routine',summary:'Booking inquiry; review the timing.',evidenceIds:[mode==='invalid'?999:0]})}}]};
+        }
+        return {choices:[{message:{content:JSON.stringify({category:'appointment',priority:'routine',summary:'Booking in this section.',evidence:[{excerpt:data.emailText.slice(0,20)}]})}}]};
+      }}};
+      try{
+        expect(await instance.aggregateMailboxSections(f.actor,f.streamId,'aggregate',claim.token)).toMatchObject({ok:false,error:{code:'triage_coverage_incomplete'}});expect(calls).toBe(0);
+        for(const index of [0,1])unwrap(await instance.analyzeMailboxSection(f.actor,f.streamId,'aggregate',claim.token,index));
+        expect(await instance.aggregateMailboxSections(f.actor,f.streamId,'aggregate',claim.token)).toMatchObject({ok:false,error:{code:'triage_invalid_response'}});
+        expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:2,reserved:0});
+        mode='stale';expect((await instance.aggregateMailboxSections(f.actor,f.streamId,'aggregate',claim.token)).ok).toBe(false);
+        expect(ctx.storage.sql.exec('SELECT id FROM mailbox_triage_aggregations').toArray()).toEqual([]);
+        expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:2,reserved:0});
+        await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=0 WHERE stream_id=?').bind(f.streamId).run();
+        mode='valid';const result=unwrap(await instance.aggregateMailboxSections(f.actor,f.streamId,'aggregate',claim.token));
+        expect(result).toMatchObject({requiresReview:true,authorizesActions:false,aggregation:{basis:'validated_section_summaries',extractedTextCoverageComplete:true}});
+        expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:3,reserved:0});
+        expect(unwrap(await instance.aggregateMailboxSections(f.actor,f.streamId,'aggregate',claim.token))).toEqual(result);expect(calls).toBe(5);
+        expect(ctx.storage.sql.exec('SELECT id FROM provider_attempts').toArray()).toHaveLength(5);
+        expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId)).items).toEqual([]);
+        (instance as any).env.MAILBOX_EXTENDED_TRIAGE_ENABLED='false';
+        expect(await instance.aggregateMailboxSections(f.actor,f.streamId,'aggregate',claim.token)).toMatchObject({ok:false,error:{code:'extended_triage_disabled'}});expect(calls).toBe(5);
+      }finally{(instance as any).env=original;}
+    });
+  });
   it('resumes paid section analyses without exposing them as whole-message results',async()=>{
     const f=await fixture(),text='Please book Friday. '.repeat(500);
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'long',kind:'upsert'}],syncCursor:'300'});

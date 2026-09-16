@@ -29,7 +29,14 @@ export function mailTriageAggregationRequest(input:MailTriageSource,values:unkno
   // Never drop a section or shorten its summary to fit a cheaper request.
   if(inputBytes>64000)throw new HttpError(422,'triage_aggregation_limit','Message analysis requires a larger aggregation workflow.');
   return {request,evidence,sectionCount:coverage.sectionCount,inputBytes,
-    minimumTextCredits:Math.max(1,Math.ceil(inputBytes/9000)),coverage};
+    fitsStandardRequest:inputBytes<=9000,coverage};
+}
+
+/** Larger-work prices are token-based in the commercial contract. Byte counts
+ * may bound a standard request but must never determine a multi-credit charge. */
+export function aggregationTextCredits(plan:ReturnType<typeof mailTriageAggregationRequest>){
+  if(!plan.fitsStandardRequest)throw new HttpError(422,'triage_aggregation_metering_required','This aggregation requires token-based cost metering before execution.');
+  return 1;
 }
 
 export function parseMailTriageAggregation(raw:string,input:MailTriageSource,values:unknown[]){
