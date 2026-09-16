@@ -29,6 +29,46 @@ async function activatePaid(actor:{tenantId:string;userId:string},interval="mont
 }
 
 describe('durable generation accounting',()=>{
+  it('withdraws operator-derived replies from history and replay after a demotion',async()=>{
+    const {actor,stub}=await fixture();
+    unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields:{businessName:'Private brief context'}},crypto.randomUUID()));
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;let calls=0;
+      (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any)=>{
+        calls++;
+        if(calls===2){expect(JSON.stringify(input)).not.toContain('Private operator answer');expect(input.messages[0].content).not.toContain('Private brief context');}
+        return {choices:[{message:{content:calls===1?'Private operator answer':'Staff draft'}}]};
+      }}};
+      try{
+        const key=crypto.randomUUID();unwrap(await instance.chat(actor,'Help with setup',key));
+        await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='staff' WHERE tenant_id=? AND user_id=?").bind(actor.tenantId,actor.userId).run();
+        expect(unwrap(await instance.messages(actor)).map(m=>m.role)).toEqual(['user']);
+        expect(await instance.chat(actor,'Help with setup',key)).toMatchObject({ok:false,error:{code:'context_access_changed'}});expect(calls).toBe(1);
+        const staffKey=crypto.randomUUID(),reply=unwrap(await instance.chat(actor,'Draft a greeting',staffKey));
+        expect(unwrap(await instance.chat(actor,'Draft a greeting',staffKey))).toEqual(reply);expect(calls).toBe(2);
+        expect(unwrap(await instance.messages(actor)).map(m=>m.content)).toEqual(['Help with setup','Draft a greeting','Staff draft']);
+        instance.sql`INSERT INTO conversations(id,user_id,role,content,created_at) VALUES ('untagged',${actor.userId},'assistant','Older unclassified answer','2026-01-01')`;
+        expect(unwrap(await instance.messages(actor)).some(m=>m.id==='untagged')).toBe(false);
+      }finally{(instance as any).env=original;}
+    });
+  });
+  it('withholds an in-flight private answer after demotion without charging a text credit',async()=>{
+    const {actor,stub}=await fixture();
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;
+      (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async()=>{
+        await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='staff' WHERE tenant_id=? AND user_id=?").bind(actor.tenantId,actor.userId).run();
+        return {choices:[{message:{content:'Private answer must be withheld'}}]};
+      }}};
+      try{
+        expect(await instance.chat(actor,'Help with setup',crypto.randomUUID())).toMatchObject({ok:false,error:{code:'context_access_changed'}});
+        expect(unwrap(await instance.messages(actor)).map(m=>m.role)).toEqual(['user']);
+        expect(unwrap(await instance.usage(actor)).textCredits).toMatchObject({used:0,reserved:0});
+        expect(instance.sql<{status:string}>`SELECT status FROM provider_attempts`).toEqual([{status:'failed'}]);
+        expect(instance.sql`SELECT * FROM conversation_visibility`).toEqual([]);
+      }finally{(instance as any).env=original;}
+    });
+  });
   it('passes reviewed context to operators without exposing it to staff or another tenant',async()=>{
     const {actor,stub}=await fixture(),other=await fixture();
     unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields:{businessName:'Reviewed private salon',industryPack:'barbershops-salons',services:'Haircuts'},industryAnswers:{deposits:'Ten dollars'}},crypto.randomUUID()));
