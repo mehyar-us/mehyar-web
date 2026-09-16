@@ -1,13 +1,13 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
 import ConfirmResearchClaim from './ConfirmResearchClaim';
-type Job={id:string;website:string;status:string;pageLimit:number;evidencePages:number;usedPages:number;reservedPages:number;attention?:'submission_uncertain'|'poll_failures'|'poll_limit'|null};
+type Job={id:string;website:string;status:string;pageLimit:number;evidencePages:number;usedPages:number;reservedPages:number;attention?:'submission_uncertain'|'poll_failures'|'poll_limit'|'stop_limit'|null};
 type Claim={field:string;value:string;sourceUrl:string;retrievedAt:string;confidence:string;selector:string};
 type EvidencePage={url:string;retrievedAt:string;evidence:Claim[];warnings:string[]};
 type Result={jobs?:Job[];job?:Job;pages?:EvidencePage[];nextOffset:number|null};
 const statuses:Record<string,string>={reserved:'Queued',submitting:'Starting',uncertain:'Needs attention',running:'Researching',cancel_requested:'Stopping',completed:'Complete',cancelled:'Cancelled',failed:'Failed'};
 function safeUrl(value:unknown):value is string {try{if(typeof value!=='string')return false;const url=new URL(value);return ['http:','https:'].includes(url.protocol)&&!url.username&&!url.password;}catch{return false;}}
-function validJob(job:Job){return job&&typeof job.id==='string'&&safeUrl(job.website)&&Object.hasOwn(statuses,job.status)&&(job.attention==null||['submission_uncertain','poll_failures','poll_limit'].includes(job.attention))&&[job.pageLimit,job.evidencePages,job.usedPages,job.reservedPages].every(n=>Number.isSafeInteger(n)&&n>=0);}
+function validJob(job:Job){return job&&typeof job.id==='string'&&safeUrl(job.website)&&Object.hasOwn(statuses,job.status)&&(job.attention==null||['submission_uncertain','poll_failures','poll_limit','stop_limit'].includes(job.attention))&&[job.pageLimit,job.evidencePages,job.usedPages,job.reservedPages].every(n=>Number.isSafeInteger(n)&&n>=0);}
 const jobLabel=(job:Job)=>job.attention?'Needs attention':statuses[job.status];
 function valid(result:Result,detail:boolean){
   if(!result||!(result.nextOffset===null||Number.isSafeInteger(result.nextOffset)&&result.nextOffset>=0))return false;
@@ -52,7 +52,8 @@ export default function ResearchPanel({tenantId,online,canConfirm,onSaved,onUnau
       {result.job&&<>
         <p><strong>{jobLabel(result.job)}</strong> · {result.job.evidencePages} source pages · {result.job.usedPages} pages used · {result.job.reservedPages} reserved</p>
         {['reserved','submitting','running','uncertain'].includes(result.job.status)&&<button className="button secondary" disabled={!online||cancelling} onClick={()=>void cancel()}>{cancelling?'Requesting cancellation…':'Cancel research'}</button>}
-        {result.job.attention&&result.job.attention!=='submission_uncertain'&&<p role="status">Research needs review before status checks can resume. Page reservations remain held while the outcome is unresolved.</p>}
+        {result.job.attention==='stop_limit'&&<p role="status">Cancellation could not be confirmed after repeated delivery attempts and needs review. Automatic stop requests have paused. Page reservations remain held until the final outcome is verified.</p>}
+        {['poll_failures','poll_limit'].includes(result.job.attention??'')&&<p role="status">Research needs review before status checks can resume. Page reservations remain held while the outcome is unresolved.</p>}
         {result.job.status==='cancel_requested'&&<p role="status">Cancellation requested. Page reservations remain until the provider confirms the final outcome.</p>}
         {result.job.status==='uncertain'&&<p>The submission outcome needs review. Cancellation cannot yet be confirmed.</p>}
         {result.pages?.length===0&&<p>No source evidence is available for this research yet.</p>}

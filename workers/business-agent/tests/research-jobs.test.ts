@@ -40,7 +40,9 @@ describe('durable research reservations',()=>{
     }
     jobs.initialize();expect(()=>jobs.claimStop(job.id,now+900_001)).toThrow('operator review');
     expect(jobs.stopDelivery(job.id)).toMatchObject({attempts:8,acknowledged_at:null});
+    expect(jobs.summary(job.id).attention).toBe('stop_limit');
     expect(jobs.get(job.id).reserved).toBe(20);
+    jobs.settle(job.id,'cancelled',0);expect(jobs.summary(job.id).attention).toBeNull();
   }));
   it('preserves the original business and requester across retries and restart',async()=>ledger(jobs=>{
     const actor={tenantId:crypto.randomUUID(),userId:crypto.randomUUID()},request=input();

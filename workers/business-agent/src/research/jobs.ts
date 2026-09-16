@@ -141,7 +141,9 @@ export class ResearchJobs {
     const evidencePages=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
     const work=this.storage.sql.exec<{attempts:number;failures:number}>('SELECT attempts,failures FROM research_poll_work WHERE job_id=?',id).toArray()[0];
     const active=['running','cancel_requested'].includes(job.status);
-    const attention=job.status==='uncertain'?'submission_uncertain':active&&work&&work.failures>=8?'poll_failures':active&&work&&work.attempts>=job.page_limit+120?'poll_limit':null;
+    const stop=this.stopDelivery(id);
+    const stopReview=job.status==='cancel_requested'&&stop&&!stop.acknowledged_at&&stop.attempts>=8&&stop.lease_until<=Date.now();
+    const attention=job.status==='uncertain'?'submission_uncertain':stopReview?'stop_limit':active&&work&&work.failures>=8?'poll_failures':active&&work&&work.attempts>=job.page_limit+120?'poll_limit':null;
     return {id:job.id,website:job.source,status:job.status,pageLimit:job.page_limit,evidencePages,
       usedPages:job.used,reservedPages:job.reserved,deadline:new Date(job.deadline).toISOString(),attention};
   }

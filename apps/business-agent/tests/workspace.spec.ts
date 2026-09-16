@@ -587,6 +587,25 @@ test('research cancellation stays available while paused and does not claim prov
   await expect(panel.getByRole('button',{name:'Cancel research'})).toHaveCount(0);expect(cancelled).toBe(1);
 });
 
+test('exhausted cancellation delivery explains the held reservation and clears after settlement',async({page})=>{
+  await fixture(page);
+  let job={id:'stop-review',website:'https://salon.example.com/',status:'cancel_requested',attention:'stop_limit' as string|null,pageLimit:20,evidencePages:0,usedPages:0,reservedPages:20};
+  await page.route('**/api/tenants/business-a/research**',route=>route.fulfill({json:new URL(route.request().url()).pathname.endsWith('/stop-review')?{job,pages:[],nextOffset:null}:{jobs:[job],nextOffset:null}}));
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();
+  const panel=page.getByRole('region',{name:'Website research'});
+  await expect(panel.getByText('Needs attention',{exact:false})).toBeVisible();
+  await panel.getByRole('button',{name:'View source evidence'}).click();
+  await expect(panel.getByText('Automatic stop requests have paused.',{exact:false})).toBeVisible();
+  await expect(panel.getByText('20 reserved',{exact:false})).toBeVisible();
+  await expect(panel.getByText('Research needs review before status checks can resume',{exact:false})).toHaveCount(0);
+  await expect(panel.getByRole('button',{name:'Cancel research'})).toHaveCount(0);
+  job={...job,status:'cancelled',attention:null,reservedPages:0};
+  await panel.getByRole('button',{name:'Refresh research'}).click();
+  await expect(panel.getByText('Cancelled',{exact:true})).toBeVisible();
+  await expect(panel.getByText('Needs attention',{exact:true})).toHaveCount(0);
+  await expect(panel.getByText('Automatic stop requests have paused.',{exact:false})).toHaveCount(0);
+});
+
 test('exhausted research checks show needs attention without claiming continued progress',async({page})=>{
   await fixture(page);
   const job={id:'research-review',website:'https://salon.example.com/',status:'running',attention:'poll_limit',pageLimit:20,evidencePages:0,usedPages:0,reservedPages:20};
