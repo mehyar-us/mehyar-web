@@ -225,6 +225,36 @@ test("billing returns select only verified workspaces and never infer payment fr
   expect(calls.some((call) => call.path.includes("/pay/"))).toBe(false);
 });
 
+test('billing findings are visible without implying full reconciliation or allowing checkout',async({page})=>{
+  await fixture(page,{status:{reconciliation:{state:'needs_review',checkedAt:'2026-09-14T12:00:00Z',stale:true,issues:['Paid-through access ends before the latest paid invoice period.']}}});
+  await page.route('**/api/agent-billing/status?tenantId=business-b',route=>route.fulfill({json:{commerceEnabled:false,readiness:unavailable,portalAvailable:false,subscription:null,orders:[],currency:'USD',reconciliation:null}}));
+  await page.goto('/billing');
+  const check=page.getByRole('region',{name:'Billing record check'});await expect(check.getByRole('heading')).toHaveText('Billing records need review');
+  await expect(check.getByText('Paid-through access ends before the latest paid invoice period.')).toBeVisible();await expect(check.getByText('These findings are more than a day old.')).toBeVisible();
+  await expect(check.getByText('This check covers your subscription and latest invoice.',{exact:false})).toBeVisible();
+  expect((await new AxeBuilder({page}).include('[aria-label="Billing record check"]').analyze()).violations).toEqual([]);
+  await page.getByLabel('YOUR WORKSPACE').selectOption('business-b');
+  await expect(page.getByRole('heading',{name:'No active paid subscription'})).toBeVisible();
+  await expect(check).toHaveCount(0);
+});
+
+test('billing checks distinguish current, stale, failed and malformed reports',async({page})=>{
+  const {status}=await fixture(page,{status:{reconciliation:{state:'checked',checkedAt:new Date().toISOString(),stale:false,issues:[]}}});
+  const check=page.getByRole('region',{name:'Billing record check'});
+  await page.goto('/billing');
+  await expect(check.getByRole('heading')).toHaveText('No differences found in the last billing check');
+  for(const [report,title] of [
+    [{state:'checked',checkedAt:'2026-09-14T12:00:00Z',stale:true,issues:[]},'Last billing check is out of date'],
+    [{state:'failed',checkedAt:'2026-09-14T12:00:00Z',stale:true,issues:['The subscription status differs from the saved record.']},'Billing check could not finish'],
+    [{state:'checked',checkedAt:'invalid',stale:false,issues:[]},'Billing check unavailable'],
+  ] as const){
+    status.reconciliation=report;await page.reload();
+    await expect(check.getByRole('heading')).toHaveText(title);
+    if(report.state==='failed')await expect(check).toContainText('Findings from the previous completed check:');
+    await expect(page.getByRole('button',{name:'Review setup'}).first()).toBeDisabled();
+  }
+});
+
 test("unavailable checkout shows separate prices, truthful status, accessible mobile layout", async ({
   page,
 }) => {

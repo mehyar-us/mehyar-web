@@ -1,6 +1,7 @@
 import { CATALOG_VERSION, getPlan, type PlanId } from "../catalog";
 import type { Actor } from "../env";
 import { HttpError, digest } from "../http";
+import {reconciliationStatus} from './reconciliation-status';
 import { StripeClient, agentMetadata, encodeParameters, objectId, type BillingEnv, type StripeObject } from "./stripe";
 
 export type BillingInterval = "monthly" | "annual";
@@ -126,7 +127,7 @@ export async function billingStatus(env: BillingEnv, actor: Actor) {
   if (subscription?.grace_expires_at && Date.parse(subscription.grace_expires_at) <= Date.now() && subscription.access_state === "grace") subscription.access_state = "paused";
   if (subscription?.paid_through && Date.parse(subscription.paid_through) <= Date.now() && ["active", "paid_through"].includes(subscription.access_state)) subscription.access_state = "expired";
   const customer = await env.AGENT_DB.prepare("SELECT tenant_id FROM agent_billing_customers WHERE tenant_id = ?").bind(actor.tenantId).first();
-  return { commerceEnabled: env.COMMERCE_ENABLED === "true", readiness: await billingReadiness(env, actor.tenantId), portalAvailable: Boolean(env.AGENT_STRIPE_PORTAL_CONFIGURATION && env.AGENT_STRIPE_SECRET_KEY && customer), subscription, orders: orders.results, currency: "USD" };
+  return { commerceEnabled: env.COMMERCE_ENABLED === "true", reconciliation:await reconciliationStatus(env,actor), readiness: await billingReadiness(env, actor.tenantId), portalAvailable: Boolean(env.AGENT_STRIPE_PORTAL_CONFIGURATION && env.AGENT_STRIPE_SECRET_KEY && customer), subscription, orders: orders.results, currency: "USD" };
 }
 
 /** Read-only readiness for UI; provider secrets and evidence contents never leave the server. */

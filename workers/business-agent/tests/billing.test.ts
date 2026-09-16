@@ -5,6 +5,7 @@ import { handleBillingRequest } from "../src/billing";
 import { processBillingEvent } from "../src/billing/events";
 import {auditSubscription,runBillingReconciliation} from '../src/billing/reconciliation';
 import {paidPeriodFindings} from '../src/billing/paid-period-audit';
+import {reconciliationStatus} from '../src/billing/reconciliation-status';
 import { RELEASE_GATES, createCheckout, enforceExpiredBillingGrace, parsePriceMap, type CheckoutInput } from "../src/billing/service";
 import { AGENT_BILLING_DOMAIN, STRIPE_API_VERSION, StripeClient, agentMetadata, assertNoLegacyMetadata, encodeParameters, verifyStripeSignature, type BillingEnv, type StripeEvent, type StripeObject } from "../src/billing/stripe";
 import type { Actor } from "../src/env";
@@ -198,6 +199,32 @@ describe("new-agent two-stage checkout", () => {
 });
 
 describe("new-agent verified lifecycle and recovery", () => {
+  it('never presents malformed or inconsistent billing audits as a successful check',async()=>{
+    const f=await fixture(),now=new Date().toISOString();
+    await f.env.AGENT_DB.prepare("INSERT INTO agent_billing_reconciliation(tenant_id,status,findings_json,checked_at,next_check_at) VALUES (?,'checked','[]',?,?)").bind(f.actor.tenantId,now,now).run();
+    expect(await reconciliationStatus(f.env,f.actor)).toMatchObject({state:'checked',stale:false,issues:[]});
+    for(const [state,findings,stamp] of [
+      ['checked','invalid-json',now],['checked','{}',now],['checked','[3]',now],
+      ['checked','[]',null],['checked','[]','9999-01-01T00:00:00Z'],['unexpected','[]',now],
+    ]){
+      await f.env.AGENT_DB.prepare('UPDATE agent_billing_reconciliation SET status=?,findings_json=?,checked_at=? WHERE tenant_id=?').bind(state,findings,stamp,f.actor.tenantId).run();
+      expect(await reconciliationStatus(f.env,f.actor)).toEqual({state:'unavailable',checkedAt:null,stale:true,issues:[]});
+    }
+    await f.env.AGENT_DB.prepare("UPDATE agent_billing_reconciliation SET status='checked',findings_json=?,checked_at=? WHERE tenant_id=?").bind(JSON.stringify(['constructor','__proto__','toString']),now,f.actor.tenantId).run();
+    expect(await reconciliationStatus(f.env,f.actor)).toMatchObject({state:'needs_review',issues:['A billing record needs additional review.']});
+    await f.env.AGENT_DB.prepare("UPDATE agent_billing_reconciliation SET status='failed' WHERE tenant_id=?").bind(f.actor.tenantId).run();
+    expect(await reconciliationStatus(f.env,f.actor)).toMatchObject({state:'failed',checkedAt:now});
+  });
+  it('presents scoped billing findings without internal errors and requires current billing authority',async()=>{
+    const f=await fixture(),other=await fixture();expect(await reconciliationStatus(f.env,f.actor)).toBeNull();
+    await f.env.AGENT_DB.prepare("INSERT INTO agent_billing_reconciliation(tenant_id,status,findings_json,checked_at,next_check_at,last_error_code) VALUES (?,'needs_review',?,?,?,'private-internal-error')")
+      .bind(f.actor.tenantId,JSON.stringify(['paid_through_behind_invoice','unknown_internal_reason']),new Date(Date.now()-2*86400000).toISOString(),new Date().toISOString()).run();
+    const report=await reconciliationStatus(f.env,f.actor);expect(report).toMatchObject({state:'needs_review',stale:true,issues:['Paid-through access ends before the latest paid invoice period.','A billing record needs additional review.']});
+    expect(JSON.stringify(report)).not.toContain('private-internal-error');expect(JSON.stringify(report)).not.toContain('unknown_internal_reason');
+    expect(await reconciliationStatus(other.env,other.actor)).toBeNull();
+    await f.env.AGENT_DB.prepare("UPDATE agent_memberships SET role='staff' WHERE tenant_id=? AND user_id=?").bind(f.actor.tenantId,f.actor.userId).run();
+    await expect(reconciliationStatus(f.env,f.actor)).rejects.toMatchObject({code:'permission_denied'});
+  });
   it('detects missed paid-period accounting without extending access',async()=>{
     const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});Object.assign(a.invoice.lines,{has_more:false});
     const previous=await f.env.AGENT_DB.prepare('SELECT paid_through FROM agent_billing_subscriptions WHERE tenant_id=?').bind(f.actor.tenantId).first<{paid_through:string}>();

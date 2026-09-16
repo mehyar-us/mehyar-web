@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { api, ApiError, post, type Catalog } from "./api";
 import TextUsagePanel from './TextUsagePanel';
+import BillingCheck from './BillingCheck';
 
 type PlanId = "business" | "growth" | "operations";
 type Interval = "monthly" | "annual";
@@ -47,6 +48,7 @@ type Order = {
   refunded_cents: number;
 };
 type BillingStatus = {
+  reconciliation?:unknown;
   commerceEnabled: boolean;
   readiness?: {
     setup: boolean;
@@ -427,6 +429,7 @@ export default function BillingPanel({
               <span>{notice}</span>
             </div>
           )}
+          {status&&online&&<BillingCheck report={status.reconciliation}/>}
           {status && (
             <>
               <section className="panel current-plan billing-current">
