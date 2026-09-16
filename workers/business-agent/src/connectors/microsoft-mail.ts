@@ -1,5 +1,6 @@
 import { ProviderHTTP, cursorURL, query, segment, singleLine } from "./http";
 import { base64, buildReply } from "./mail";
+import { graphMailPage } from "./mail-pages";
 import { ConnectorError, type ClientOptions, type ConnectorAuth, type MailMessage, type MailReceipt, type Operation, type Page, type ReplyInput } from "./types";
 import { GRAPH_BASE } from "./microsoft-calendar";
 const read = ["Mail.Read", "Mail.ReadWrite"];
@@ -12,6 +13,7 @@ export interface GraphMessage {
   from?: { emailAddress: { address: string } }; replyTo?: { emailAddress: { address: string } }[];
   internetMessageHeaders?: { name: string; value: string }[]; "@removed"?: { reason: string };
 }
+export type GraphMessageChange = Pick<GraphMessage, "id"> & Partial<Omit<GraphMessage, "id">>;
 interface GraphPage { value: GraphMessage[]; "@odata.nextLink"?: string; "@odata.deltaLink"?: string; }
 const fields = "id,conversationId,subject,internetMessageId,from,replyTo,body,internetMessageHeaders";
 function normalize(message: GraphMessage): MailMessage {
@@ -43,10 +45,10 @@ export class MicrosoftMailClient {
     // 202 only acknowledges submission. Graph does not return the sent message ID here.
     return { provider: "microsoft", state: "accepted", threadId: input.threadId, internetMessageId: mime.internetMessageId };
   }
-  async listChanges(folderId: string, cursor?: string): Promise<Page<GraphMessage>> {
+  async listChanges(folderId: string, cursor?: string): Promise<Page<GraphMessageChange>> {
     const path = `me/mailFolders/${segment(folderId)}/messages/delta`;
     const initial = query(path, { "$select": "id,conversationId,internetMessageId,subject,from,replyTo,body" });
     const data = await this.http.request<GraphPage>(MICROSOFT_MAIL_OPERATIONS.read, cursorURL(cursor, initial, GRAPH_BASE, "/v1.0/" + path), { cursorStatuses: [410], headers: { Prefer: 'IdType="ImmutableId", odata.maxpagesize=100' } });
-    return { items: data.value, nextCursor: data["@odata.nextLink"], syncCursor: data["@odata.nextLink"] ? undefined : data["@odata.deltaLink"] };
+    return graphMailPage(data, GRAPH_BASE, "/v1.0/" + path);
   }
 }
