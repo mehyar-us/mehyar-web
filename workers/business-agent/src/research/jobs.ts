@@ -22,6 +22,7 @@ export class ResearchJobs {
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_pages (
       job_id TEXT NOT NULL,url TEXT NOT NULL,content_hash TEXT NOT NULL,evidence TEXT NOT NULL,
       PRIMARY KEY(job_id,url))`);
+    this.storage.sql.exec('CREATE TABLE IF NOT EXISTS research_accounted_pages (job_id TEXT NOT NULL,url TEXT NOT NULL,PRIMARY KEY(job_id,url))');
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_poll (
       job_id TEXT PRIMARY KEY,cursor INTEGER NOT NULL,steps INTEGER NOT NULL,
       outcome TEXT NOT NULL,done INTEGER NOT NULL)`);
@@ -265,7 +266,23 @@ export class ResearchJobs {
       const count=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
       if(count>=current.page_limit)throw conflict('Research has reached its reserved page limit.');
       this.storage.sql.exec('INSERT INTO research_pages(job_id,url,content_hash,evidence) VALUES(?,?,?,?)',id,finalUrl,hash,JSON.stringify(page));
+      if(this.accountedPages(id)>current.page_limit)throw conflict('Research has reached its reserved page limit.');
       return page;
+    });
+  }
+  accountedPages(id:string){
+    this.get(id);
+    return this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM (SELECT url FROM research_pages WHERE job_id=? UNION SELECT url FROM research_accounted_pages WHERE job_id=?)',id,id).one().total;
+  }
+  accountStoppedPage(id:string,providerId:string,record:CrawlRecord){
+    return this.storage.transactionSync(()=>{
+      const job=this.get(id);
+      if(job.status!=='cancel_requested'||job.provider_id!==providerId)throw conflict('Only stopped provider work can be reconciled without evidence.');
+      if(record.status!=='completed'||!Number.isInteger(record.httpStatus)||record.httpStatus!<200||record.httpStatus!>=300)throw conflict('Only verified successful pages can be counted.');
+      const url=normalizeWebsite(record.url),finalUrl=normalizeWebsite(record.finalUrl??record.url);
+      if(!url||!finalUrl||new URL(url).origin!==new URL(job.source).origin||new URL(finalUrl).origin!==new URL(job.source).origin)throw conflict('Reconciled pages must belong to the approved website.');
+      this.storage.sql.exec('INSERT OR IGNORE INTO research_accounted_pages(job_id,url) VALUES(?,?)',id,finalUrl);
+      if(this.accountedPages(id)>job.page_limit)throw conflict('Reconciled pages exceed the reserved limit.');
     });
   }
   pages(id:string,offset=0):ExtractedPage[] {
@@ -303,13 +320,13 @@ export class ResearchJobs {
   finish(id:string) {
     const checkpoint=this.checkpoint(id);
     if(!checkpoint.done)throw conflict('All provider result pages must be traversed before settlement.');
-    const count=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
+    const count=this.accountedPages(id);
     return this.settle(id,checkpoint.outcome==='completed'?'completed':checkpoint.outcome==='errored'?'failed':'cancelled',count);
   }
   settle(id:string,status:'completed'|'cancelled'|'failed',successfulPages:number):Job {
     const job=this.get(id);
     if(!Number.isInteger(successfulPages)||successfulPages<0||successfulPages>job.page_limit)throw conflict('Invalid verified page count.');
-    const imported=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
+    const imported=this.accountedPages(id);
     if(successfulPages<imported)throw conflict('Verified page count cannot omit stored successful pages.');
     if(job.status===status&&job.used===successfulPages&&job.reserved===0)return job;
     if(!job.provider_id||!['running','cancel_requested'].includes(job.status))throw conflict('Provider completion must be verified before settling research.');

@@ -8,6 +8,7 @@ import {ResearchRunner} from '../src/research/runner';
 import {ResearchSpend} from '../src/research/spend';
 import {ResearchCancellation} from '../src/research/cancellation';
 import {ResearchScheduler} from '../src/research/scheduler';
+import {ResearchReconciliation} from '../src/research/reconciliation';
 const input=()=>({key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
 const provider='11111111-1111-4111-8111-111111111111';
 async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:DurableObjectStorage)=>void|Promise<void>){
@@ -22,7 +23,7 @@ describe('durable research reservations',()=>{
     }
     const unfunded=jobs.reserveFor(actor,{...input(),pages:1});
     const seen:string[]=[];
-    const scheduler=new ResearchScheduler(jobs,id=>({submit:async()=>{seen.push(id);throw new Error('secret provider payload');},poll:async()=>{throw new Error('unexpected poll');}}),()=>({deliver:async()=>{throw new Error('unexpected stop');}}));
+    const scheduler=new ResearchScheduler(jobs,id=>({submit:async()=>{seen.push(id);throw new Error('secret provider payload');},poll:async()=>{throw new Error('unexpected poll');}}),()=>({deliver:async()=>{throw new Error('unexpected stop');}}),()=>({poll:async()=>{throw new Error('unexpected reconciliation');}}));
     const first=await scheduler.tick();expect(first).toHaveLength(5);
     expect(first.every(result=>!result.ok&&result.code==='research_work_failed')).toBe(true);
     expect(JSON.stringify(first)).not.toContain('secret');jobs.initialize();
@@ -33,11 +34,39 @@ describe('durable research reservations',()=>{
     const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);jobs.cancel(job.id);
     let stopped=0,polled=0;
     const api={start:async()=>({id:provider}),cancel:async()=>{stopped++;return {requested:true};},results:async()=>{polled++;return {id:provider,status:'running' as const,records:[]};}};
-    const scheduler=new ResearchScheduler(jobs,()=>new ResearchRunner(jobs,api,async()=>{}),()=>new ResearchCancellation(jobs,api,async()=>{}));
+    const scheduler=new ResearchScheduler(jobs,()=>new ResearchRunner(jobs,api,async()=>{throw new Error('execution revoked');}),()=>new ResearchCancellation(jobs,api,async()=>{}),()=>new ResearchReconciliation(jobs,api,async()=>{}));
     expect(await scheduler.tick()).toMatchObject([{operation:'stop',ok:true}]);
     expect(await scheduler.tick()).toMatchObject([{operation:'poll',ok:true}]);
     expect(await scheduler.tick()).toEqual([]);expect({stopped,polled}).toEqual({stopped:1,polled:1});
     expect(jobs.get(job.id).reserved).toBe(20);
+  }));
+  it('reconciles stopped pages across restart without importing content or double counting earlier evidence',async()=>ledger(async(jobs,spend,storage)=>{
+    const job=jobs.reserve(input());jobs.reserveSpend(job.id,100,100,'fixture');jobs.beginFunded(job.id);jobs.submitted(job.id,provider);
+    await jobs.ingest(job.id,provider,{url:job.source,status:'completed',httpStatus:200,html:'<title>Previously permitted</title>'},new Date().toISOString());jobs.cancel(job.id);
+    const api={results:async(_id:string,_source:string,cursor?:number)=>({id:provider,status:'cancelled_by_user' as const,browserSecondsUsed:12,records:[{url:cursor?job.source+'about':job.source,status:'completed' as const,httpStatus:200,html:'<title>Do not import this</title>'}],...(cursor?{}:{cursor:1})})};
+    await new ResearchReconciliation(jobs,api,async()=>{}).poll(job.id);jobs.initialize();
+    expect(jobs.accountedPages(job.id)).toBe(1);
+    storage.sql.exec('UPDATE research_poll_work SET next_at=0 WHERE job_id=?',job.id);
+    expect(await new ResearchReconciliation(jobs,api,async()=>{}).poll(job.id)).toMatchObject({status:'cancelled',used:2,reserved:0});
+    expect(jobs.pages(job.id)).toHaveLength(1);expect(JSON.stringify(jobs.pages(job.id))).not.toContain('Do not import');
+    expect(jobs.providerUsage(job.id)?.browser_seconds).toBe(12);expect(spend.get(job.id)?.status).toBe('dispatched');
+    expect(jobs.summary(job.id)).toMatchObject({usedPages:2,evidencePages:1});
+  }));
+  it('rejects unauthorized reconciliation, foreign pages and counts above the reserved limit',async()=>ledger(async jobs=>{
+    const job=jobs.reserve({...input(),pages:1});jobs.begin(job.id);jobs.submitted(job.id,provider);
+    let calls=0;const api={results:async()=>{calls++;return {id:provider,status:'cancelled_by_user' as const,records:[]};}};
+    await expect(new ResearchReconciliation(jobs,api,async()=>{}).poll(job.id)).rejects.toMatchObject({code:'research_reconcile_not_ready'});
+    jobs.cancel(job.id);
+    await expect(new ResearchReconciliation(jobs,api,async()=>{throw new Error('wrong tenant');}).poll(job.id)).rejects.toThrow('wrong tenant');expect(calls).toBe(0);
+    const record={url:job.source,status:'completed' as const,httpStatus:200};
+    expect(()=>jobs.accountStoppedPage(job.id,'foreign',record)).toThrow();
+    expect(()=>jobs.accountStoppedPage(job.id,provider,{...record,url:'https://other.example.com/'})).toThrow();
+    jobs.accountStoppedPage(job.id,provider,record);jobs.accountStoppedPage(job.id,provider,record);
+    expect(()=>jobs.accountStoppedPage(job.id,provider,{...record,url:job.source+'about'})).toThrow('reserved limit');
+    expect(jobs.accountedPages(job.id)).toBe(1);expect(jobs.pages(job.id)).toEqual([]);
+    await expect(jobs.ingest(job.id,provider,{...record,url:job.source+'later',html:'<title>Late evidence</title>'},new Date().toISOString())).rejects.toThrow('reserved page limit');
+    expect(jobs.pages(job.id)).toEqual([]);
+    expect(()=>jobs.settle(job.id,'cancelled',0)).toThrow('cannot omit');
   }));
   it('persists stop acknowledgement without resending or releasing commitments',async()=>ledger(async(jobs,spend)=>{
     const job=jobs.reserve(input());jobs.reserveSpend(job.id,100,100,'fixture');jobs.beginFunded(job.id);jobs.submitted(job.id,provider);jobs.cancel(job.id);
