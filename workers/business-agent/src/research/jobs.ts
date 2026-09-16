@@ -27,6 +27,8 @@ export class ResearchJobs {
       outcome TEXT NOT NULL,done INTEGER NOT NULL)`);
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_withdrawals (
       job_id TEXT PRIMARY KEY,user_id TEXT NOT NULL,requested_at TEXT NOT NULL)`);
+    this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_requesters (
+      job_id TEXT PRIMARY KEY,tenant_id TEXT NOT NULL,user_id TEXT NOT NULL,requested_at TEXT NOT NULL)`);
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_provider_usage (
       job_id TEXT PRIMARY KEY,browser_seconds REAL NOT NULL,observed_at TEXT NOT NULL,
       terminal_observed INTEGER NOT NULL DEFAULT 0)`);
@@ -51,6 +53,18 @@ export class ResearchJobs {
     if(!row)throw new HttpError(404,'research_job_missing','Research job not found.');return row;
   }
   byRequestKey(key:string){return this.storage.sql.exec<Job>('SELECT * FROM research_jobs WHERE request_key=?',key).toArray()[0];}
+  requester(id:string){this.get(id);return this.storage.sql.exec<{tenantId:string;userId:string}>('SELECT tenant_id AS tenantId,user_id AS userId FROM research_requesters WHERE job_id=?',id).toArray()[0]??null;}
+  reserveFor(actor:{tenantId:string;userId:string},input:Parameters<ResearchJobs['reserve']>[0]){
+    if(!actor.userId||actor.userId.length>128||!actor.tenantId||actor.tenantId.length>128)throw conflict('A current requester is required for research.');
+    return this.storage.transactionSync(()=>{
+      const existing=this.byRequestKey(input.key);
+      if(existing&&!this.requester(existing.id))throw conflict('Unattributed research cannot acquire a new requester.');
+      const job=this.reserve(input),prior=this.requester(job.id);
+      if(prior&&(prior.userId!==actor.userId||prior.tenantId!==actor.tenantId))throw conflict('The research requester cannot be replaced.');
+      this.storage.sql.exec('INSERT OR IGNORE INTO research_requesters(job_id,tenant_id,user_id,requested_at) VALUES(?,?,?,?)',job.id,actor.tenantId,actor.userId,new Date().toISOString());
+      return job;
+    });
+  }
   providerUsage(id:string){
     this.get(id);
     return this.storage.sql.exec<{browser_seconds:number;observed_at:string;terminal_observed:number}>('SELECT browser_seconds,observed_at,terminal_observed FROM research_provider_usage WHERE job_id=?',id).toArray()[0]??null;

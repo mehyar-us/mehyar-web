@@ -4,6 +4,16 @@ import type {Actor,Env} from '../env';
 import {HttpError} from '../http';
 import {OPERATORS,requireMembership,requireTenant} from '../permissions';
 import {requireVerifiedGates} from '../billing/service';
+import type {ResearchJobs} from './jobs';
+
+/** For a tenant-bound scheduler: never take a replacement actor from its payload. */
+export async function researchJobAccess(env:Env,tenantId:string,jobs:ResearchJobs,id:string,paused:()=>boolean){
+  const actor=jobs.requester(id);
+  if(!actor)throw new HttpError(409,'research_requester_missing','Research needs review because its original requester is unavailable.');
+  if(actor.tenantId!==tenantId)throw new HttpError(404,'research_job_missing','Research job not found.');
+  await requireResearchReady(env);
+  return researchAccess(env,actor,paused);
+}
 
 export const RESEARCH_GATES=['network_safety','crawl_permissions','supplier_cost_controls','provider_acceptance','scheduler_recovery'] as const;
 export async function requireResearchReady(env:Env){

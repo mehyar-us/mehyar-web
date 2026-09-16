@@ -13,6 +13,21 @@ async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:Durabl
   await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs,new ResearchSpend(ctx.storage),ctx.storage);});
 }
 describe('durable research reservations',()=>{
+  it('preserves the original business and requester across retries and restart',async()=>ledger(jobs=>{
+    const actor={tenantId:crypto.randomUUID(),userId:crypto.randomUUID()},request=input();
+    const job=jobs.reserveFor(actor,request);jobs.initialize();
+    expect(jobs.requester(job.id)).toEqual(actor);
+    expect(jobs.reserveFor(actor,request).id).toBe(job.id);
+    expect(()=>jobs.reserveFor({...actor,userId:crypto.randomUUID()},request)).toThrow('cannot be replaced');
+    expect(()=>jobs.reserveFor({...actor,tenantId:crypto.randomUUID()},request)).toThrow('cannot be replaced');
+    expect(jobs.requester(job.id)).toEqual(actor);
+    expect(jobs.summary(job.id)).not.toHaveProperty('userId');
+  }));
+  it('never adopts unattributed work on replay',async()=>ledger(jobs=>{
+    const request=input(),job=jobs.reserve(request);
+    expect(()=>jobs.reserveFor({tenantId:crypto.randomUUID(),userId:crypto.randomUUID()},request)).toThrow('Unattributed');
+    expect(jobs.requester(job.id)).toBeNull();
+  }));
   it('serializes polls and rejects stale leases after recovery',async()=>ledger(jobs=>{
     const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);
     const now=Date.now(),first=jobs.claimPoll(job.id,now);

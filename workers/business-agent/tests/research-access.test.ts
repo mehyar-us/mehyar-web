@@ -2,7 +2,8 @@ import {env} from 'cloudflare:workers';
 import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
-import {researchAccess,RESEARCH_GATES} from '../src/research/access';
+import {researchAccess,researchJobAccess,RESEARCH_GATES} from '../src/research/access';
+import {ResearchJobs} from '../src/research/jobs';
 import {runInDurableObject} from 'cloudflare:test';
 import {getAgentByName} from 'agents';
 import {BusinessAgent,unwrap} from '../src/agent';
@@ -19,6 +20,28 @@ async function paid(actor:{tenantId:string},plan:string,interval:string){
       .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
 }
 describe('server-derived research allowances',()=>{
+  it('reauthorizes the stored requester and refuses missing or foreign attribution',async()=>{
+    const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId);
+    for(const gate of RESEARCH_GATES)await e.AGENT_DB.prepare("INSERT OR REPLACE INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES ('research:crawl',?,?,'verified','fixture-only','test',?,?)")
+      .bind(gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
+    try{await runInDurableObject(stub,async(_instance,ctx)=>{
+      const jobs=new ResearchJobs(ctx.storage);jobs.initialize();
+      const request={key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:10,depth:2,deadline:Date.now()+60_000};
+      const job=jobs.reserveFor(actor,request),ready={...e,RESEARCH_ENABLED:'true'};
+      const check=()=>researchJobAccess(ready,actor.tenantId,jobs,job.id,()=>false);
+      expect(await check()).toMatchObject({period:'trial',allowance:20});
+      await expect(researchJobAccess(e,actor.tenantId,jobs,job.id,()=>false)).rejects.toMatchObject({code:'research_disabled'});
+      await expect(researchJobAccess(ready,actor.tenantId,jobs,job.id,()=>true)).rejects.toMatchObject({code:'agent_paused'});
+      await expect(researchJobAccess(ready,crypto.randomUUID(),jobs,job.id,()=>false)).rejects.toMatchObject({code:'research_job_missing'});
+      const legacy=jobs.reserve({...request,key:crypto.randomUUID()});
+      await expect(researchJobAccess(ready,actor.tenantId,jobs,legacy.id,()=>false)).rejects.toMatchObject({code:'research_requester_missing'});
+      await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='staff' WHERE tenant_id=? AND user_id=?").bind(actor.tenantId,actor.userId).run();
+      await expect(check()).rejects.toMatchObject({code:'permission_denied'});
+      await e.AGENT_DB.prepare('DELETE FROM agent_memberships WHERE tenant_id=? AND user_id=?').bind(actor.tenantId,actor.userId).run();
+      await expect(check()).rejects.toMatchObject({code:'workspace_not_found'});
+      expect(jobs.requester(job.id)).toEqual(actor);
+    });}finally{await e.AGENT_DB.prepare("DELETE FROM agent_billing_readiness WHERE scope_id='research:crawl'").run();}
+  });
   it('fails closed before reservation and reserves idempotently only behind all launch gates',async()=>{
     const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId);unwrap(await stub.provision(actor));
     const key=crypto.randomUUID(),input={url:'https://salon.example.com/',pages:20,depth:2};

@@ -93,7 +93,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
         if(prior.source!==url||prior.page_limit!==parsed.data.pages||prior.depth!==parsed.data.depth)throw new HttpError(409,'research_request_reused','This request key belongs to different website research.');
         await this.maintainResearch();return {job:jobs.summary(prior.id)};
       }
-      const job=jobs.reserve({key,url,pages:parsed.data.pages,depth:parsed.data.depth,period:access.period,allowance:access.allowance,maxJobs:access.maxJobs,deadline:Date.now()+30*60_000});
+      const job=jobs.reserveFor(actor,{key,url,pages:parsed.data.pages,depth:parsed.data.depth,period:access.period,allowance:access.allowance,maxJobs:access.maxJobs,deadline:Date.now()+30*60_000});
       await this.maintainResearch();return {job:jobs.summary(job.id)};
     });
   }
