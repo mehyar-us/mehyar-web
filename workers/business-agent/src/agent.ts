@@ -5,6 +5,7 @@ import { CHAT_ROLES, OPERATORS, requireMembership, requireTenant } from './permi
 import { appendActivity,normalizeWebsite } from './tenants';
 import { ActionControls } from './actions';
 import { connectedCalendars } from './connectors/calendar-access';
+import {CalendarSessions} from './connectors/calendar-sessions';
 import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
@@ -29,6 +30,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   initialState: AgentState = {tenantId:null,paused:false};
 
   async onStart() {
+    new CalendarSessions(this.ctx.storage).initialize();
     new BusinessBrief(this.ctx.storage).initialize();
     new ResearchJobs(this.ctx.storage).initialize();
     this.controls().initialize();
@@ -145,10 +147,10 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       return confirmResearch(this.env,actor,id,index,key,claim);
     });
   }
-  async connectionCalendars(actor:Actor,grantId:string,provider:'google'|'microsoft') {
+  async connectionCalendars(actor:Actor,grantId:string,provider:'google'|'microsoft',continuation?:string) {
     return this.result(async()=>{await this.bind(actor);
       if(this.state.paused)throw new HttpError(409,'agent_paused','Resume your agent before reading connected calendars.');
-      return connectedCalendars(this.env,actor,grantId,provider,fetch,()=>this.state.paused);
+      return connectedCalendars(this.env,actor,grantId,provider,fetch,()=>this.state.paused,new CalendarSessions(this.ctx.storage),continuation);
     });
   }
   async actionPolicies(actor:Actor) { return this.result(async()=>{await this.bind(actor);return this.controls().policies(actor);}); }

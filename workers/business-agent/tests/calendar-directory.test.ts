@@ -1,7 +1,48 @@
 import {describe,it,expect} from 'vitest';
 import {calendarDirectory} from '../src/connectors/calendar-directory';
+import {env} from 'cloudflare:workers';
+import {runInDurableObject} from 'cloudflare:test';
+import {getAgentByName} from 'agents';
+import type {Env} from '../src/env';
+import {CalendarSessions} from '../src/connectors/calendar-sessions';
+const scope={userId:'owner',grantId:'grant',provider:'google'};
+async function session(work:(sessions:CalendarSessions,storage:DurableObjectStorage)=>Promise<void>){
+  const stub=await getAgentByName((env as unknown as Env).BUSINESS_AGENTS,crypto.randomUUID());
+  await runInDurableObject(stub,async(_instance,ctx)=>{const sessions=new CalendarSessions(ctx.storage);sessions.initialize();await work(sessions,ctx.storage);});
+}
 const calendar=(id:string,canWrite=true)=>({id,name:id,canWrite});
 describe('bounded calendar directory',()=>{
+  it('continues beyond a batch with private cursors and conservative duplicate authority',async()=>session(async(sessions,storage)=>{
+    let reads=0;const client={listCalendars:async(cursor?:string)=>{reads++;expect(cursor).toBe(reads===1?undefined:`provider-secret-${reads-1}`);return {items:[calendar('same',reads<6),calendar(String(reads))],...(reads<11?{nextCursor:`provider-secret-${reads}`}:{})};}};
+    const first=await sessions.read(scope,client,async()=>{});expect(reads).toBe(5);expect(first.incomplete).toBe(true);expect(JSON.stringify(first)).not.toContain('provider-secret');
+    const second=await new CalendarSessions(storage).read(scope,client,async()=>{},first.continuation);expect(reads).toBe(10);expect(second.items.find(c=>c.id==='same')?.canWrite).toBe(false);
+    const last=await sessions.read(scope,client,async()=>{},second.continuation);expect(last.incomplete).toBe(false);expect(last.continuation).toBeUndefined();expect(last.items).toHaveLength(12);
+    expect(storage.sql.exec('SELECT * FROM calendar_directory_sessions').toArray()).toEqual([]);
+  }));
+  it('rejects cross-account, cross-user and expired handles without provider reads',async()=>session(async(sessions,storage)=>{
+    let reads=0;const client={listCalendars:async()=>({items:[calendar(String(++reads))],nextCursor:`private-${reads}`})};
+    const first=await sessions.read(scope,client,async()=>{});
+    for(const other of [{...scope,userId:'other'},{...scope,grantId:'other'},{...scope,provider:'microsoft'}])await expect(sessions.read(other,client,async()=>{},first.continuation)).rejects.toMatchObject({code:'calendar_continuation_expired'});
+    storage.sql.exec('UPDATE calendar_directory_sessions SET expires=0');await expect(sessions.read(scope,client,async()=>{},first.continuation)).rejects.toMatchObject({code:'calendar_continuation_expired'});expect(reads).toBe(5);
+  }));
+  it('does not return partial data after revoked access or advance its continuation',async()=>session(async sessions=>{
+    let reads=0;const client={listCalendars:async()=>({items:[calendar(String(++reads))],nextCursor:`private-${reads}`})};
+    const first=await sessions.read(scope,client,async()=>{});
+    await expect(sessions.read(scope,client,async()=>{if(reads>=6)throw new Error('revoked');},first.continuation)).rejects.toThrow('revoked');
+    let received:string|undefined;await sessions.read(scope,{listCalendars:async cursor=>{received=cursor;return {items:[]};}},async()=>{},first.continuation);expect(received).toBe('private-5');
+  }));
+  it('fences concurrent continuation work and stale completion',async()=>session(async(sessions,storage)=>{
+    let reads=0;const first=await sessions.read(scope,{listCalendars:async()=>({items:[],nextCursor:`cursor-${++reads}`})},async()=>{});
+    await expect(sessions.read(scope,{listCalendars:async()=>{
+      await expect(sessions.read(scope,{listCalendars:async()=>{throw new Error('unexpected read');}},async()=>{},first.continuation)).rejects.toMatchObject({code:'calendar_directory_busy'});
+      storage.sql.exec("UPDATE calendar_directory_sessions SET work='replacement'");return {items:[]};
+    }},async()=>{},first.continuation)).rejects.toMatchObject({code:'calendar_continuation_expired'});
+    expect(storage.sql.exec<{work:string}>('SELECT work FROM calendar_directory_sessions').one().work).toBe('replacement');
+  }));
+  it('stops cursor loops without offering another continuation',async()=>session(async sessions=>{
+    const result=await sessions.read(scope,{listCalendars:async()=>({items:[calendar('one')],nextCursor:'loop'})},async()=>{});
+    expect(result).toEqual({items:[calendar('one')],incomplete:true});
+  }));
   it('follows cursors and rechecks authority before and after every page',async()=>{
     const cursors:(string|undefined)[]=[],events:string[]=[];
     const result=await calendarDirectory({listCalendars:async cursor=>{

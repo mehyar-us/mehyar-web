@@ -8,6 +8,7 @@ export default function CalendarPolicyForm({tenantId,grants,online,paused,onUnau
   const eligible=grants.filter(g=>g.tenantId===tenantId&&g.status==='authorized'&&['google','microsoft'].includes(g.provider)&&g.grantedCapabilities.includes('calendar_manage'));
   const [grantId,setGrantId]=useState(''),[calendarId,setCalendarId]=useState('');
   const [calendars,setCalendars]=useState<Calendar[]>([]),[ready,setReady]=useState(false),[loading,setLoading]=useState(false);
+  const [cursor,setCursor]=useState<{tenantId:string;grantId:string;token:string}|null>(null),[nextCursor,setNextCursor]=useState<string|null>(null),[reload,setReload]=useState(0);
   const [name,setName]=useState('Appointments'),[recipients,setRecipients]=useState(''),[limit,setLimit]=useState('10');
   const [days,setDays]=useState('30'),[mode,setMode]=useState('approve'),[escalation,setEscalation]=useState('Ask the owner');
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[saving,setSaving]=useState(false);
@@ -15,19 +16,21 @@ export default function CalendarPolicyForm({tenantId,grants,online,paused,onUnau
   const grant=eligible.find(g=>g.id===grantId);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{
-    const controller=new AbortController();setCalendars([]);setCalendarId('');setReady(false);setLoading(false);setError('');
-    if(!grant||!online||paused)return()=>controller.abort();
+    const controller=new AbortController();setCalendars([]);setCalendarId('');setReady(false);setLoading(false);setError('');setNextCursor(null);
+    if(!grant||!online||paused){setCursor(null);return()=>controller.abort();}
     setLoading(true);
-    void api<{calendars:Calendar[];incomplete:boolean}>(`/api/tenants/${encodeURIComponent(tenantId)}/connections/${encodeURIComponent(grant.id)}/calendars?provider=${grant.provider}`,{signal:controller.signal})
+    const continuation=cursor?.tenantId===tenantId&&cursor.grantId===grantId?`&continuation=${encodeURIComponent(cursor.token)}`:'';
+    void api<{calendars:Calendar[];incomplete:boolean;continuation?:string}>(`/api/tenants/${encodeURIComponent(tenantId)}/connections/${encodeURIComponent(grant.id)}/calendars?provider=${grant.provider}${continuation}`,{signal:controller.signal})
       .then(result=>{
         if(controller.signal.aborted)return;
-        if(!Array.isArray(result.calendars)||typeof result.incomplete!=='boolean')throw new Error('Calendar choices could not be verified.');
+        if(!Array.isArray(result.calendars)||typeof result.incomplete!=='boolean'||result.continuation!==undefined&&(!result.incomplete||typeof result.continuation!=='string'||!/^[a-f0-9-]{36}$/.test(result.continuation)))throw new Error('Calendar choices could not be verified.');
         setCalendars(result.calendars);setReady(!result.incomplete);
+        setNextCursor(result.continuation??null);
         if(result.incomplete)setError('The calendar list is incomplete. A complete list is required before saving this policy.');
       }).catch(cause=>{if(!controller.signal.aborted){setError(cause instanceof Error?cause.message:'Could not load calendars.');if(cause instanceof ApiError&&cause.status===401)onUnauthorized(cause);}})
       .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return()=>controller.abort();
-  },[tenantId,grant?.id,grant?.provider,online,paused,onUnauthorized]);
+  },[tenantId,grant?.id,grant?.provider,online,paused,onUnauthorized,cursor,reload]);
   async function save(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if(busy.current||!online||paused||!grant||!ready||!calendars.some(c=>c.id===calendarId&&c.canWrite))return;
@@ -51,10 +54,12 @@ export default function CalendarPolicyForm({tenantId,grants,online,paused,onUnau
     <h2>Set up appointment permissions</h2><p>Choose one writable calendar, allowed attendees, and a daily limit. This creates permission rules for future proposals.</p>
     {!eligible.length?<p>Connect an account with calendar management access in Connections first.</p>:<form onSubmit={event=>void save(event)}>
       <fieldset disabled={saving||!online||paused} style={{border:0,padding:0,minWidth:0}}>
-        <label className="field">Connected account<select value={grantId} onChange={event=>setGrantId(event.target.value)} required>
+        <label className="field">Connected account<select value={grantId} onChange={event=>{setCursor(null);setGrantId(event.target.value);}} required>
           <option value="">Choose an account</option>{eligible.map((g,i)=><option key={g.id} value={g.id}>{g.provider==='google'?'Google':'Microsoft'} authorization {i+1}</option>)}
         </select></label>
         {loading&&<p role="status">Loading calendars…</p>}
+        {nextCursor&&<button type="button" className="button secondary" disabled={loading} onClick={()=>setCursor({tenantId,grantId,token:nextCursor})}>Load remaining calendars</button>}
+        {grant&&!loading&&<button type="button" className="button secondary" onClick={()=>{setCursor(null);setReload(value=>value+1);}}>Reload calendar list</button>}
         <label className="field">Appointment calendar<select value={calendarId} onChange={event=>setCalendarId(event.target.value)} required disabled={!ready}>
           <option value="">Choose a calendar</option>{calendars.map(c=><option key={c.id} value={c.id} disabled={!c.canWrite}>{c.name}{c.canWrite?'':' (read only)'}</option>)}
         </select></label>

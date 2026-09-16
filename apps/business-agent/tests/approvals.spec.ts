@@ -83,6 +83,19 @@ test('incomplete calendars cannot be selected and managers cannot open policy cr
   await expect(page.getByRole('button',{name:'Set up appointments',exact:true})).toHaveCount(0);
 });
 
+test('calendar continuation enables selection only after the complete inventory arrives',async({page})=>{
+  await fixture(page,'owner',false,false,true);const token='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',queries:string[]=[];
+  await page.route('**/calendars?*',route=>{
+    const query=new URL(route.request().url()).search;queries.push(query);
+    return route.fulfill({json:query.includes('continuation=')?{calendars:[{id:'work-calendar',name:'Work',canWrite:false},{id:'last-calendar',name:'Last calendar',canWrite:true}],incomplete:false}:{calendars:[{id:'work-calendar',name:'Work',canWrite:true}],incomplete:true,continuation:token}});
+  });
+  await page.getByRole('button',{name:'Set up appointments',exact:true}).click();
+  await page.getByRole('combobox',{name:'Connected account',exact:true}).selectOption('22222222-2222-4222-8222-222222222222');
+  await expect(page.getByRole('combobox',{name:'Appointment calendar',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Load remaining calendars'}).click();
+  await expect(page.getByRole('combobox',{name:'Appointment calendar',exact:true})).toBeEnabled();await expect(page.getByRole('option',{name:'Work (read only)'})).toHaveJSProperty('disabled',true);
+  await page.getByRole('combobox',{name:'Appointment calendar',exact:true}).selectOption('last-calendar');expect(queries[1]).toContain(`continuation=${token}`);
+});
+
 test('mobile appointment setup clears calendar access on pause and workspace change',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await fixture(page,'owner',false,false,true);

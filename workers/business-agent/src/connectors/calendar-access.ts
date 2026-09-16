@@ -6,9 +6,10 @@ import { assertConnectionAvailable, connectorCredential } from './credentials';
 import { GoogleCalendarClient, GOOGLE_CALENDAR_OPERATIONS } from './google-calendar';
 import { MicrosoftCalendarClient, MICROSOFT_CALENDAR_OPERATIONS } from './microsoft-calendar';
 import {calendarDirectory} from './calendar-directory';
+import type {CalendarSessions} from './calendar-sessions';
 
 /** A read-only account picker, not authorization to create or change appointments. */
-export async function connectedCalendars(env:Env,actor:Actor,grantId:string,provider:OAuthProvider,transport:typeof fetch=fetch,isPaused:()=>boolean=()=>false) {
+export async function connectedCalendars(env:Env,actor:Actor,grantId:string,provider:OAuthProvider,transport:typeof fetch=fetch,isPaused:()=>boolean=()=>false,sessions?:CalendarSessions,continuation?:string) {
   await requireMembership(env,actor,OPERATORS);
   if(!['google','microsoft'].includes(provider)||!/^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$/.test(grantId))
     throw new HttpError(400,'invalid_connection','Choose a valid connected account.');
@@ -20,10 +21,11 @@ export async function connectedCalendars(env:Env,actor:Actor,grantId:string,prov
   const client=provider==='google'?new GoogleCalendarClient(credential,{fetch:transport}):new MicrosoftCalendarClient(credential,{fetch:transport});
   // Recheck after token refresh, before the provider read. Business action policy is not
   // needed for the owner's account picker; all eventual writes still require the broker.
-  const result=await calendarDirectory(client,async()=>{
+  const guard=async()=>{
     await requireMembership(env,actor,OPERATORS);
     await assertConnectionAvailable(env,actor,grantId,provider,operation);
     if(isPaused())throw new HttpError(409,'agent_paused','Your agent was paused.');
-  });
-  return {calendars:result.items,incomplete:result.incomplete};
+  };
+  const result=sessions?await sessions.read({userId:actor.userId,grantId,provider},client,guard,continuation):await calendarDirectory(client,guard);
+  return {calendars:result.items,incomplete:result.incomplete,...('continuation' in result&&result.continuation?{continuation:result.continuation}:{})};
 }

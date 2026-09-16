@@ -63,7 +63,7 @@ async function route(request:Request,env:Env) {
   const calendarConnection=section.match(/^connections\/([a-f0-9-]{36})\/calendars$/);
   if(calendarConnection&&request.method==='GET') {
     const provider=z.enum(['google','microsoft']).parse(url.searchParams.get('provider'));
-    return json(unwrap(await agent.connectionCalendars(actor,calendarConnection[1],provider)));
+    return json(unwrap(await agent.connectionCalendars(actor,calendarConnection[1],provider,url.searchParams.get('continuation')??undefined)));
   }
   if(section==='action-policies'&&request.method==='GET') return json({policies:unwrap(await agent.actionPolicies(actor))});
   if(section==='usage'&&request.method==='GET') return json({usage:unwrap(await agent.usage(actor))});
