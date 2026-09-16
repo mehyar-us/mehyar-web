@@ -1,0 +1,63 @@
+# Mayor AI business-agent service
+
+This is the separate Cloudflare service for the implementation goal in `docs/plans/2026-09-16-mehyar-business-agent-goal.md`. The complete product goal remains in progress. This service does not import legacy payment/fulfillment code, bind `LEADS_DB`, or deploy over the marketing Pages application.
+
+## Local development
+
+Use Node 24. From this directory:
+
+```powershell
+npm ci
+npm run db:local
+npm run dev
+```
+
+Run `npm ci` and `npm run dev` in `apps/business-agent` as well. Open **http://127.0.0.1:5174**; that app proxies `/api` to the local Worker on port 8788. Use this canonical origin, not a mixture of `localhost` and `127.0.0.1`, because session cookies, OAuth callbacks and mutation origin checks must agree.
+
+The committed Wrangler configuration is local-only: a placeholder D1 ID, separate resource names, no public routes, no AI binding, and commerce disabled. Local migrations operate only on the local `AGENT_DB`. Do not apply these migrations to an existing product database. A build runs `wrangler deploy --dry-run`, which does not deploy.
+
+For actual provider signup, supply configuration in ignored `.dev.vars` or the relevant deployment's secret store:
+
+| Name | Meaning |
+| --- | --- |
+| `BETTER_AUTH_SECRET` | At least 32 random characters; never a fixture key |
+| `TOKEN_ENCRYPTION_KEY` | Base64 encoding of a cryptographically random 32-byte AES key |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Mehyar-owned OAuth application; callback `/api/auth/callback/google` on the configured app origin |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` | Mehyar-owned application; callback `/api/auth/callback/microsoft` |
+| `GOOGLE_ENABLED_CAPABILITIES` | Explicit comma-separated approved/implemented selections; empty means identity-only |
+| `MICROSOFT_ENABLED_CAPABILITIES` | Same rule for Microsoft |
+
+Do not enable mail/calendar capability flags simply because an OAuth client exists. Verification, supported scopes, live connector tests and operating policies are separate release requirements. The source-owned secret variable names are never secret values. No credentials belong in the browser bundle or committed configuration.
+
+## Separate Stripe integration
+
+Keep every existing Stripe checkout, webhook registration, signing secret and product billing flow unchanged. The new destination is shared by all business-agent tenants and named **Mehyar Business Agent - Subscriptions**. Its endpoint is `/api/agent-billing/webhook`. It can use the existing Stripe account after the configured account identity is verified. No destination has been registered by this implementation.
+
+The new service reads `AGENT_STRIPE_SECRET_KEY`, `AGENT_STRIPE_WEBHOOK_SECRET`, `AGENT_STRIPE_ACCOUNT_ID`, `AGENT_STRIPE_PRICE_MAP` and `AGENT_STRIPE_PORTAL_CONFIGURATION`. Store secret values in the new service's secret store. Price mappings contain separate setup, monthly and annual price IDs for each catalog plan. Neither configuring these values nor setting `COMMERCE_ENABLED=true` bypasses the verified, expiring readiness evidence required in the new database.
+
+The authenticated endpoints `/api/agent-billing/status`, `/checkout`, `/portal` and `/cancel` require `tenantId` and current owner/billing membership. Mutation requests require the exact app origin and an `X-Idempotency-Key`. New metadata is namespaced; legacy `payment_id` and `report_id` are prohibited. Checkout completion alone does not grant recurring access. Setup payment, accepted scope, matching plan, subscription payment and activation evidence are separate checks.
+
+Billing tests use signed synthetic events and mocked Stripe responses. Reconciliation scheduling, add-on sales, plan changes and notice delivery remain open. Do not treat fixture results as permission to enable production commerce.
+
+## Runtime boundaries
+
+- Better Auth owns identity in prefixed tables in the new database. Its token-returning browser routes are blocked. Account linking requires an authenticated explicit flow, not matching email addresses.
+- API authorization resolves current tenant membership on every call. Business-agent RPC checks it again, including revocation and membership expiry. Direct SDK WebSocket/agent routes are not exposed.
+- `BusinessAgent` is a separate SQLite-backed Cloudflare Agent for each business. Conversation records are scoped to the current user; shared business memory is explicit. Owner pause persists across requests.
+- Normalized D1 tenant tables hold directory/membership/knowledge/activity records. Encrypted OAuth grants are authenticated against user, tenant, provider and provider account IDs.
+- New Stripe billing is a separately named shared destination. It never attaches legacy `payment_id` or `report_id` metadata, forwards old events, or invokes old fulfillment.
+- Catalog definitions, automation templates and provider authorization are not evidence that external automations are running. Unavailable capabilities remain unavailable and unbilled.
+
+## Verification
+
+```powershell
+npm run verify
+```
+
+This checks the immutable legacy boundary, TypeScript, local workerd tests, and an independent deployment bundle. Test credentials, signed provider tokens and API responses are synthetic fixtures; they are not evidence of real Google/Microsoft/Stripe approvals or live purchases. The tests use local D1 and Durable Objects, not the production resources.
+
+`scripts/legacy-baseline.json` records 503 protected Git blobs from commit `50e0c27990e9e27d5f487da8befc02b08d45ff4d`. The guard applies Git's line-ending normalization so checks work on Windows and Linux. It rejects changes/deletions and new source inside the protected legacy directories. Ignored pre-existing caches are excluded. Do not regenerate this baseline to make an unauthorized legacy change pass.
+
+The separate GitHub Actions workflow runs checks only. It has no production deployment step or production credentials. Deployment of this new service requires a reviewed separate configuration, new resource IDs, scoped deployment access, provider readiness evidence and the release gates in the goal. Existing workflows/configuration remain unchanged.
+
+See `docs/implementation/mayor-ai-progress.md` for the full-scope progress ledger and remaining work.

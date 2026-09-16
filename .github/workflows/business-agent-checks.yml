@@ -1,0 +1,37 @@
+name: Business Agent checks
+
+on:
+  pull_request:
+    paths: ['workers/business-agent/**', 'apps/business-agent/**', '.github/workflows/business-agent-checks.yml']
+  push:
+    branches: ['codex/mayor-ai-platform']
+    paths: ['workers/business-agent/**', 'apps/business-agent/**', '.github/workflows/business-agent-checks.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-platform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            workers/business-agent/package-lock.json
+            apps/business-agent/package-lock.json
+      - run: npm ci
+        working-directory: workers/business-agent
+      - run: npm run verify
+        working-directory: workers/business-agent
+      - run: npm ci
+        working-directory: apps/business-agent
+      - run: npm run build
+        working-directory: apps/business-agent
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/business-agent
+      - run: npm test
+        working-directory: apps/business-agent

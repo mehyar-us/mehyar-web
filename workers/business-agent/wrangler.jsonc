@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mehyar-business-agent-local",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "APP_ORIGIN": "http://127.0.0.1:5174",
+    "ENVIRONMENT": "local",
+    "AI_ENABLED": "false",
+    "COMMERCE_ENABLED": "false"
+  },
+  "d1_databases": [{
+    "binding": "AGENT_DB",
+    "database_name": "mehyar-business-agent-local",
+    "database_id": "00000000-0000-0000-0000-000000000000",
+    "migrations_dir": "migrations"
+  }],
+  "durable_objects": {"bindings": [{"name": "BUSINESS_AGENTS", "class_name": "BusinessAgent"}]},
+  "migrations": [{"tag": "business-agent-v1", "new_sqlite_classes": ["BusinessAgent"]}],
+  "r2_buckets": [{"binding": "ARTIFACTS", "bucket_name": "mehyar-business-agent-local"}],
+  "observability": {"enabled": true, "head_sampling_rate": 0.1}
+}
