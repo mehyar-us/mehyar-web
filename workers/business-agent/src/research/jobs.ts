@@ -30,6 +30,9 @@ export class ResearchJobs {
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_provider_usage (
       job_id TEXT PRIMARY KEY,browser_seconds REAL NOT NULL,observed_at TEXT NOT NULL,
       terminal_observed INTEGER NOT NULL DEFAULT 0)`);
+    this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_poll_work (
+      job_id TEXT PRIMARY KEY,attempts INTEGER NOT NULL DEFAULT 0,failures INTEGER NOT NULL DEFAULT 0,
+      next_at INTEGER NOT NULL DEFAULT 0,lease_id TEXT,lease_until INTEGER NOT NULL DEFAULT 0)`);
     // An interrupted POST may have created a billable provider job. Keep its reservation.
     this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
     this.expire();
@@ -51,6 +54,28 @@ export class ResearchJobs {
   providerUsage(id:string){
     this.get(id);
     return this.storage.sql.exec<{browser_seconds:number;observed_at:string;terminal_observed:number}>('SELECT browser_seconds,observed_at,terminal_observed FROM research_provider_usage WHERE job_id=?',id).toArray()[0]??null;
+  }
+  claimPoll(id:string,now=Date.now()){
+    const job=this.get(id);
+    if(!['running','cancel_requested'].includes(job.status)||!job.provider_id)throw conflict('This research job cannot be polled.');
+    return this.storage.transactionSync(()=>{
+      this.storage.sql.exec('INSERT OR IGNORE INTO research_poll_work(job_id) VALUES(?)',id);
+      const work=this.storage.sql.exec<{attempts:number;failures:number;next_at:number;lease_until:number}>('SELECT attempts,failures,next_at,lease_until FROM research_poll_work WHERE job_id=?',id).one();
+      if(work.attempts>=job.page_limit+120||work.failures>=8)throw new HttpError(409,'research_poll_review','Research polling needs operator review before more provider requests.');
+      if(work.next_at>now||work.lease_until>now)throw new HttpError(409,'research_poll_wait','Research polling is already active or waiting to retry.');
+      const lease=crypto.randomUUID();
+      this.storage.sql.exec('UPDATE research_poll_work SET attempts=attempts+1,lease_id=?,lease_until=? WHERE job_id=?',lease,now+60_000,id);return lease;
+    });
+  }
+  assertPoll(id:string,lease:string,now=Date.now()){
+    const work=this.storage.sql.exec<{lease_id:string;lease_until:number}>('SELECT lease_id,lease_until FROM research_poll_work WHERE job_id=?',id).toArray()[0];
+    if(work?.lease_id!==lease||work.lease_until<=now)throw new HttpError(409,'research_poll_stale','A newer research poll owns this result.');
+  }
+  finishPoll(id:string,lease:string,success:boolean,delayMs:number,now=Date.now()){
+    const work=this.storage.sql.exec<{lease_id:string;failures:number}>('SELECT lease_id,failures FROM research_poll_work WHERE job_id=?',id).toArray()[0];
+    if(work?.lease_id!==lease)return;
+    const failures=success?0:work.failures+1,delay=success?delayMs:Math.min(900_000,5000*2**Math.min(failures-1,8));
+    this.storage.sql.exec('UPDATE research_poll_work SET failures=?,next_at=?,lease_id=NULL,lease_until=0 WHERE job_id=? AND lease_id=?',failures,now+delay,id,lease);
   }
   observeProviderUsage(id:string,providerId:string,seconds:number|undefined,terminal:boolean){
     const job=this.get(id);

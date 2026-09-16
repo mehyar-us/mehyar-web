@@ -8,11 +8,37 @@ import {ResearchRunner} from '../src/research/runner';
 import {ResearchSpend} from '../src/research/spend';
 const input=()=>({key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
 const provider='11111111-1111-4111-8111-111111111111';
-async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend)=>void|Promise<void>){
+async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend,storage:DurableObjectStorage)=>void|Promise<void>){
   const stub=await getAgentByName((env as unknown as Env).BUSINESS_AGENTS,crypto.randomUUID());
-  await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs,new ResearchSpend(ctx.storage));});
+  await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs,new ResearchSpend(ctx.storage),ctx.storage);});
 }
 describe('durable research reservations',()=>{
+  it('serializes polls and rejects stale leases after recovery',async()=>ledger(jobs=>{
+    const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);
+    const now=Date.now(),first=jobs.claimPoll(job.id,now);
+    expect(()=>jobs.claimPoll(job.id,now)).toThrow('already active');
+    const next=jobs.claimPoll(job.id,now+60_001);
+    expect(()=>jobs.assertPoll(job.id,first,now+60_001)).toThrow('newer research poll');
+    jobs.finishPoll(job.id,first,true,0,now+60_001);
+    jobs.assertPoll(job.id,next,now+60_001);
+  }));
+  it('backs off failed polling and stops after repeated failures without releasing uncertain spend',async()=>ledger((jobs,spend)=>{
+    const job=jobs.reserve(input());jobs.reserveSpend(job.id,100,100,'fixture');jobs.beginFunded(job.id);jobs.submitted(job.id,provider);
+    let now=Date.now();
+    for(let i=0;i<8;i++){
+      const lease=jobs.claimPoll(job.id,now);jobs.finishPoll(job.id,lease,false,0,now);
+      if(i===0)expect(()=>jobs.claimPoll(job.id,now+4999)).toThrow('waiting to retry');
+      now+=900_001;
+    }
+    jobs.initialize();expect(()=>jobs.claimPoll(job.id,now)).toThrow('operator review');
+    expect(spend.get(job.id)?.status).toBe('dispatched');
+  }));
+  it('bounds total polls even when every provider response reports running',async()=>ledger(jobs=>{
+    const job=jobs.reserve({...input(),pages:1});jobs.begin(job.id);jobs.submitted(job.id,provider);
+    let now=Date.now();
+    for(let i=0;i<121;i++){const lease=jobs.claimPoll(job.id,now);jobs.finishPoll(job.id,lease,true,30_000,now);now+=30_001;}
+    expect(()=>jobs.claimPoll(job.id,now)).toThrow('operator review');
+  }));
   it('requires supplier funding atomically before provider dispatch',async()=>ledger(async jobs=>{
     const job=jobs.reserve(input());let calls=0;
     const runner=new ResearchRunner(jobs,{start:async()=>{calls++;return {id:provider};},results:async()=>({id:provider,status:'running',records:[]}),cancel:async()=>({requested:true})},async()=>{});
@@ -155,7 +181,7 @@ describe('durable research reservations',()=>{
     const other=jobs.reserve({...input(),pages:5});expect(jobs.pages(other.id)).toEqual([]);
     expect(jobs.pages(job.id,20)).toEqual([]);expect(()=>jobs.pages(job.id,-1)).toThrow('offset');
   }));
-  it('submits once and resumes paginated terminal evidence after restart before settling',async()=>ledger(async jobs=>{
+  it('submits once and resumes paginated terminal evidence after restart before settling',async()=>ledger(async(jobs,_spend,storage)=>{
     const job=jobs.reserve(input());let starts=0;
     const api={start:async()=>{starts++;return {id:provider};},cancel:async()=>({requested:true}),results:async(_id:string,_url:string,cursor?:number)=>({id:provider,status:'completed' as const,browserSecondsUsed:15.5,
       records:[{url:job.source+(cursor?'contact':''),status:'completed' as const,httpStatus:200,html:'<title>Salon</title>'}],...(cursor?{}:{cursor:1})})};
@@ -163,6 +189,7 @@ describe('durable research reservations',()=>{
     jobs.reserveSpend(job.id,100,100,'fixture');await runner.submit(job.id);await expect(runner.submit(job.id)).rejects.toThrow('cannot be submitted');expect(starts).toBe(1);
     expect((await runner.poll(job.id)).status).toBe('running');expect(jobs.checkpoint(job.id).cursor).toBe(1);
     jobs.initialize();
+    storage.sql.exec('UPDATE research_poll_work SET next_at=0 WHERE job_id=?',job.id);
     expect(await new ResearchRunner(jobs,api,async()=>{}).poll(job.id)).toMatchObject({status:'completed',used:2,reserved:0});
     expect(jobs.pages(job.id)).toHaveLength(2);
     expect(jobs.providerUsage(job.id)).toMatchObject({browser_seconds:15.5,terminal_observed:1});
@@ -175,10 +202,11 @@ describe('durable research reservations',()=>{
     expect(calls).toBe(1);expect(jobs.get(job.id)).toMatchObject({status:'uncertain',reserved:5});
     expect(jobs.submitted(job.id,provider)).toMatchObject({status:'cancel_requested',provider_id:provider});
   }));
-  it('does not ingest running results and rejects looping terminal pagination',async()=>ledger(async jobs=>{
+  it('does not ingest running results and rejects looping terminal pagination',async()=>ledger(async(jobs,_spend,storage)=>{
     const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);let running=true;
     const runner=new ResearchRunner(jobs,{start:async()=>({id:provider}),cancel:async()=>({requested:true}),results:async()=>({id:provider,status:running?'running':'completed',records:[],cursor:0})},async()=>{});
     await runner.poll(job.id);expect(jobs.checkpoint(job.id).steps).toBe(0);running=false;
+    storage.sql.exec('UPDATE research_poll_work SET next_at=0 WHERE job_id=?',job.id);
     await expect(runner.poll(job.id)).rejects.toThrow('looping');expect(jobs.get(job.id).reserved).toBe(20);
   }));
   it('withholds fetched evidence after access is revoked during polling',async()=>ledger(async jobs=>{
