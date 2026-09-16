@@ -2,9 +2,37 @@ import {env} from 'cloudflare:workers';
 import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {platformSenderConfiguration,requirePlatformSender,PLATFORM_EMAIL_GATES} from '../src/email/readiness';
+import {VerifiedInvitationOutbox} from '../src/email/verified-outbox';
+import {createTenant} from '../src/tenants';
+import {inviteMember} from '../src/team';
+async function invitation(e:Env){const userId=crypto.randomUUID(),tenant=await createTenant(e,userId,{name:'Oak Studio',website:'https://oakstudio.com',goal:'Help with scheduling'},crypto.randomUUID()),actor={userId,tenantId:tenant.id};const value=await inviteMember(e,actor,{email:`${crypto.randomUUID()}@example.test`,role:'staff'},crypto.randomUUID());return {actor,id:value.invitation.id};}
 function fixture():Env{return {...env,ENVIRONMENT:'staging',APP_ORIGIN:'https://app.mehyar.us',AGENT_PLATFORM_EMAIL_ENABLED:'true',AGENT_PLATFORM_EMAIL_FROM:'notices@example.test',AGENT_PLATFORM_EMAIL_ROUTE:`resend:${crypto.randomUUID()}`,AGENT_PLATFORM_RESEND_API_KEY:'re_synthetic_fixture'} as unknown as Env;}
 async function evidence(e:Env){const config=await platformSenderConfiguration(e),now=Date.now();await e.AGENT_DB.batch(PLATFORM_EMAIL_GATES.map(gate=>e.AGENT_DB.prepare("INSERT INTO agent_platform_email_readiness(route_ref,gate,configuration_hash,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture-only','test-operator',?,?)").bind(config.routeRef,gate,config.configurationHash,new Date(now-1000).toISOString(),new Date(now+86400000).toISOString())));return config;}
 describe('dedicated platform sender readiness',()=>{
+  it('binds prepared jobs to verified credentials rather than a reusable routing label',async()=>{
+    const e=fixture(),invite=await invitation(e),config=await evidence(e),box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id);
+    expect(await e.AGENT_DB.prepare('SELECT route_ref FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first()).toEqual({route_ref:`resend:${config.configurationHash}`});
+    e.AGENT_PLATFORM_RESEND_API_KEY='re_changed_account';await evidence(e);
+    expect(await box.claim(invite.actor.tenantId,job.id)).toBeNull();
+    await expect(box.prepare(invite.actor,invite.id)).rejects.toMatchObject({code:'email_payload_changed'});
+    expect(await e.AGENT_DB.prepare('SELECT attempts,state FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first()).toEqual({attempts:0,state:'prepared'});
+  });
+  it('rechecks readiness before dispatch but retains an accepted outcome after readiness withdrawal',async()=>{
+    const e=fixture(),invite=await invitation(e),config=await evidence(e),box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id),claim=(await box.claim(invite.actor.tenantId,job.id))!;
+    expect(await box.mayDispatch(claim)).toBe(true);
+    await e.AGENT_DB.prepare("UPDATE agent_platform_email_readiness SET status='revoked' WHERE route_ref=?").bind(config.routeRef).run();
+    await expect(box.mayDispatch(claim)).rejects.toMatchObject({code:'platform_email_not_ready'});
+    expect(await box.settle(claim,{state:'accepted',providerId:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'})).toBe(true);
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_platform_email_outbox WHERE id=?').bind(job.id).first()).toEqual({state:'accepted'});
+  });
+  it('does not prepare or claim mail when disabled and refuses a changed sender on an existing claim',async()=>{
+    const e=fixture(),invite=await invitation(e),box=new VerifiedInvitationOutbox(e);e.AGENT_PLATFORM_EMAIL_ENABLED='false';
+    await expect(box.prepare(invite.actor,invite.id)).rejects.toMatchObject({code:'platform_email_disabled'});
+    expect(await e.AGENT_DB.prepare('SELECT id FROM agent_platform_email_outbox WHERE invitation_id=?').bind(invite.id).first()).toBeNull();
+    e.AGENT_PLATFORM_EMAIL_ENABLED='true';await evidence(e);const job=await box.prepare(invite.actor,invite.id),claim=(await box.claim(invite.actor.tenantId,job.id))!;
+    e.AGENT_PLATFORM_EMAIL_FROM='changed@example.test';await evidence(e);expect(await box.mayDispatch(claim)).toBe(false);
+    e.AGENT_PLATFORM_EMAIL_ENABLED='false';await expect(box.claim(invite.actor.tenantId,job.id)).rejects.toMatchObject({code:'platform_email_disabled'});
+  });
   it('remains disabled before touching provider configuration or the database and never falls back to legacy keys',async()=>{
     const e={AGENT_PLATFORM_EMAIL_ENABLED:'false'} as Env;await expect(requirePlatformSender(e)).rejects.toMatchObject({code:'platform_email_disabled'});
     const legacy={...fixture(),AGENT_PLATFORM_RESEND_API_KEY:undefined,RESEND_API_KEY:'re_legacy',RESEND_FROM_EMAIL:'legacy@example.test'};await expect(requirePlatformSender(legacy)).rejects.toMatchObject({code:'platform_email_unconfigured'});
