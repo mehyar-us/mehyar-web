@@ -48,6 +48,33 @@ function mailTransport(provider:'google'|'microsoft',onWrite:()=>Promise<Respons
   };
 }
 describe('gated durable external execution',()=>{
+  it('books a calendar found after the first provider page',async()=>{
+    const f=await fixture('google','calendar.create');let pages=0,creates=0;
+    await withControls(f,async controls=>{
+      const transport:typeof fetch=async input=>{
+        const url=new URL(String(input));
+        if(url.pathname.endsWith('calendarList')) {
+          pages++;
+          return url.searchParams.has('pageToken')?Response.json({items:[{id:'resource-one',accessRole:'owner'}]})
+            :Response.json({items:[{id:'unrelated',accessRole:'reader'}],nextPageToken:'second'});
+        }
+        if(url.pathname.endsWith('freeBusy'))return Response.json({calendars:{'resource-one':{busy:[]}}});
+        creates++;return Response.json({id:'later-page-event',etag:'"v1"'});
+      };
+      expect((await controls.execute(f.actor,f.action.id,{actionHash:f.action.actionHash},transport)).receipt).toMatchObject({id:'later-page-event',state:'applied'});
+      expect(pages).toBe(2);expect(creates).toBe(1);
+    });
+  });
+  it('does not book from an incomplete looping calendar directory',async()=>{
+    const f=await fixture('google','calendar.create');let pages=0;
+    await withControls(f,async controls=>{
+      await expect(controls.execute(f.actor,f.action.id,{actionHash:f.action.actionHash},async input=>{
+        expect(String(input)).toContain('calendarList');pages++;
+        return Response.json({items:[{id:'resource-one',accessRole:'owner'}],nextPageToken:'loop'});
+      })).rejects.toMatchObject({code:'calendar_directory_incomplete'});
+      expect(pages).toBe(2);expect((await controls.detail(f.actor,f.action.id)).status).toBe('pending');
+    });
+  });
   it('checks the execution-day allowance again for a previously approved action',async()=>{
     const f=await fixture();let requests=0;
     await withControls(f,async(controls,instance)=>{

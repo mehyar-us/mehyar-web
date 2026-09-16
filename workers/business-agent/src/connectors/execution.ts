@@ -9,6 +9,7 @@ import {MicrosoftMailClient,MICROSOFT_MAIL_OPERATIONS} from './microsoft-mail';
 import {GoogleCalendarClient,GOOGLE_CALENDAR_OPERATIONS} from './google-calendar';
 import {MicrosoftCalendarClient,MICROSOFT_CALENDAR_OPERATIONS} from './microsoft-calendar';
 import type {MailReceipt,AppointmentReceipt} from './types';
+import {calendarDirectory} from './calendar-directory';
 export type ActionReceipt=MailReceipt|AppointmentReceipt;
 
 export async function requireExecutionAccess(env:Env,actor:Actor,policy:Policy) {
@@ -48,7 +49,8 @@ export async function performAction(env:Env,actor:Actor,policy:Policy,action:Pro
     return client.sendReply({threadId:action.resourceId,messageId:action.messageId,recipient:action.recipient,text:action.text,requestId});
   }
   const client=policy.provider==='google'?new GoogleCalendarClient(auth,{fetch:controlled}):new MicrosoftCalendarClient(auth,{fetch:controlled});
-  const calendars=await client.listCalendars();
+  const calendars=await calendarDirectory(client,guard);
+  if(calendars.incomplete)throw new HttpError(409,'calendar_directory_incomplete','The calendar account could not be fully verified. Refresh the connection before booking.');
   if(!calendars.items.some(calendar=>calendar.id===action.resourceId&&calendar.canWrite))throw new HttpError(403,'calendar_not_owned','This account has not verified write access to the selected calendar.');
   const window={start:action.start,end:action.end,timeZone:action.timeZone};
   const availability=await client.listAvailability(action.resourceId,window);

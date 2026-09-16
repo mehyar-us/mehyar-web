@@ -5,6 +5,7 @@ import { OPERATORS, requireMembership } from '../permissions';
 import { assertConnectionAvailable, connectorCredential } from './credentials';
 import { GoogleCalendarClient, GOOGLE_CALENDAR_OPERATIONS } from './google-calendar';
 import { MicrosoftCalendarClient, MICROSOFT_CALENDAR_OPERATIONS } from './microsoft-calendar';
+import {calendarDirectory} from './calendar-directory';
 
 /** A read-only account picker, not authorization to create or change appointments. */
 export async function connectedCalendars(env:Env,actor:Actor,grantId:string,provider:OAuthProvider,transport:typeof fetch=fetch,isPaused:()=>boolean=()=>false) {
@@ -19,12 +20,10 @@ export async function connectedCalendars(env:Env,actor:Actor,grantId:string,prov
   const client=provider==='google'?new GoogleCalendarClient(credential,{fetch:transport}):new MicrosoftCalendarClient(credential,{fetch:transport});
   // Recheck after token refresh, before the provider read. Business action policy is not
   // needed for the owner's account picker; all eventual writes still require the broker.
-  await requireMembership(env,actor,OPERATORS);
-  await assertConnectionAvailable(env,actor,grantId,provider,operation);
-  if(isPaused())throw new HttpError(409,'agent_paused','Your agent was paused.');
-  const result=await client.listCalendars();
-  await requireMembership(env,actor,OPERATORS);
-  await assertConnectionAvailable(env,actor,grantId,provider,operation);
-  if(isPaused())throw new HttpError(409,'agent_paused','Your agent was paused.');
-  return {calendars:result.items,incomplete:Boolean(result.nextCursor)};
+  const result=await calendarDirectory(client,async()=>{
+    await requireMembership(env,actor,OPERATORS);
+    await assertConnectionAvailable(env,actor,grantId,provider,operation);
+    if(isPaused())throw new HttpError(409,'agent_paused','Your agent was paused.');
+  });
+  return {calendars:result.items,incomplete:result.incomplete};
 }

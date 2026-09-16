@@ -22,6 +22,18 @@ async function fixture(provider:'google'|'microsoft'='google',fresh=false) {
 }
 const response=(extra:Record<string,unknown>={})=>Response.json({access_token:'fixture-new-access',token_type:'Bearer',expires_in:3600,...extra});
 describe('server credential renewal',()=>{
+  it.each(['google','microsoft'] as const)('collects later %s calendar pages without exposing provider cursors',async provider=>{
+    const f=await fixture(provider,true);let calls=0;
+    await storeProviderGrant(e,f.binding,{...f.credential,grantedScopes:provider==='google'?['https://www.googleapis.com/auth/calendar.calendarlist.readonly']:['Calendars.Read']},['calendar_read']);
+    const result=await connectedCalendars({...e,GOOGLE_ENABLED_CAPABILITIES:'calendar_read',MICROSOFT_ENABLED_CAPABILITIES:'calendar_read'},f.actor,f.id,provider,async input=>{
+      calls++;const url=new URL(String(input));
+      if(calls===2)expect(url.searchParams.get(provider==='google'?'pageToken':'$skiptoken')).toBe('private-cursor');
+      return provider==='google'?Response.json({items:[{id:`calendar-${calls}`,summary:'Work',accessRole:'owner'}],...(calls===1?{nextPageToken:'private-cursor'}:{})})
+        :Response.json({value:[{id:`calendar-${calls}`,name:'Work',canEdit:true}],...(calls===1?{'@odata.nextLink':'https://graph.microsoft.com/v1.0/me/calendars?$skiptoken=private-cursor'}:{})});
+    });
+    expect(calls).toBe(2);expect(result.calendars.map(c=>c.id)).toEqual(['calendar-1','calendar-2']);expect(result.incomplete).toBe(false);
+    expect(JSON.stringify(result)).not.toContain('private-cursor');
+  });
   it('treats a crashed refresh lease as uncertain instead of repeating token rotation',async()=>{
     const f=await fixture();
     const row=await e.AGENT_DB.prepare('SELECT ciphertext FROM auth_provider_grants WHERE id=?').bind(f.id).first<{ciphertext:string}>();
