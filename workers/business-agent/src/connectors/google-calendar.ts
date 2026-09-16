@@ -1,4 +1,5 @@
 import { ProviderHTTP, appointmentInput, query, requireEtag, segment, singleLine, stableId, windowInput } from "./http";
+import { requireReschedulable, rescheduleInput, rescheduleReceipt, type RescheduleInput } from './reschedule';
 import { ConnectorError, type AppointmentInput, type AppointmentReceipt, type Availability, type Calendar, type ClientOptions, type ConnectorAuth, type Operation, type Page, type TimeWindow, type WatchReceipt } from "./types";
 
 const scope = (suffix: string) => `https://www.googleapis.com/auth/${suffix}`;
@@ -57,6 +58,17 @@ export class GoogleCalendarClient {
       method: "PATCH", headers: { "if-match": requireEtag(etag) }, body: this.body(input),
     });
     return this.receipt(event, calendarId, input);
+  }
+  async rescheduleAppointment(calendarId: string, eventId: string, etag: string, input: RescheduleInput): Promise<AppointmentReceipt> {
+    this.http.authorize(GOOGLE_CALENDAR_OPERATIONS.update);
+    rescheduleInput(input, etag);
+    const original = await this.readAppointment(calendarId, eventId);
+    requireReschedulable('google', original, eventId, etag);
+    const event = await this.http.request<unknown>(GOOGLE_CALENDAR_OPERATIONS.update, `calendars/${segment(calendarId)}/events/${segment(eventId)}?sendUpdates=all`, {
+      method: 'PATCH', headers: { 'if-match': etag },
+      body: { start: { dateTime: input.start, timeZone: input.timeZone }, end: { dateTime: input.end, timeZone: input.timeZone } },
+    });
+    return rescheduleReceipt('google', event, calendarId, eventId, input);
   }
   async cancelAppointment(calendarId: string, eventId: string, etag: string, timeZone: string): Promise<AppointmentReceipt> {
     singleLine(timeZone, "time_zone");

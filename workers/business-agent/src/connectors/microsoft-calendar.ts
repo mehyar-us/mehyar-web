@@ -1,4 +1,5 @@
 import { ProviderHTTP, appointmentInput, cursorURL, query, requireEtag, segment, singleLine, windowInput } from "./http";
+import { requireReschedulable, rescheduleInput, rescheduleReceipt, type RescheduleInput } from './reschedule';
 import { ConnectorError, type AppointmentInput, type AppointmentReceipt, type Availability, type Calendar, type ClientOptions, type ConnectorAuth, type Operation, type Page, type TimeWindow } from "./types";
 export const GRAPH_BASE = "https://graph.microsoft.com/v1.0/";
 const read = ["Calendars.Read", "Calendars.ReadWrite"];
@@ -69,6 +70,17 @@ export class MicrosoftCalendarClient {
   async updateAppointment(calendarId: string, eventId: string, etag: string, input: AppointmentInput): Promise<AppointmentReceipt> {
     const data = await this.http.request<GraphEvent>(MICROSOFT_CALENDAR_OPERATIONS.update, `me/calendars/${segment(calendarId)}/events/${segment(eventId)}`, { method: "PATCH", body: this.body(input), headers: { "if-match": requireEtag(etag), Prefer: `outlook.timezone="${input.timeZone}"` } });
     return this.receipt(data, calendarId, input);
+  }
+  async rescheduleAppointment(calendarId: string, eventId: string, etag: string, input: RescheduleInput): Promise<AppointmentReceipt> {
+    this.http.authorize(MICROSOFT_CALENDAR_OPERATIONS.update);
+    rescheduleInput(input, etag);
+    const original = await this.readAppointment(calendarId, eventId);
+    requireReschedulable('microsoft', original, eventId, etag);
+    const event = await this.http.request<unknown>(MICROSOFT_CALENDAR_OPERATIONS.update, `me/calendars/${segment(calendarId)}/events/${segment(eventId)}`, {
+      method: 'PATCH', headers: { 'if-match': etag, Prefer: 'outlook.timezone="UTC"' },
+      body: { start: absoluteTime(input.start), end: absoluteTime(input.end) },
+    });
+    return rescheduleReceipt('microsoft', event, calendarId, eventId, input);
   }
   // Organizer deletion sends cancellation notices; attendees only remove their own copy.
   async cancelAppointment(calendarId: string, eventId: string, etag: string, timeZone: string): Promise<AppointmentReceipt> {
