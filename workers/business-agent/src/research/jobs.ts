@@ -49,10 +49,11 @@ export class ResearchJobs {
     const rows=this.storage.sql.exec<{id:string}>('SELECT id FROM research_jobs ORDER BY rowid DESC LIMIT 21 OFFSET ?',offset).toArray();
     return {jobs:rows.slice(0,20).map(row=>this.summary(row.id)),nextOffset:rows.length>20?offset+20:null};
   }
-  reserve(input:{key:string;url:string;period:string;allowance:number;pages:number;depth:number;deadline:number},now=Date.now()):Job {
+  reserve(input:{key:string;url:string;period:string;allowance:number;pages:number;depth:number;deadline:number;maxJobs?:number},now=Date.now()):Job {
     const source=normalizeWebsite(input.url);
     if(!source||!input.key||input.key.length>128||!input.period||input.period.length>128||
       !Number.isSafeInteger(input.allowance)||input.allowance<1||input.allowance>100_000||
+      (input.maxJobs!==undefined&&(!Number.isSafeInteger(input.maxJobs)||input.maxJobs<1||input.maxJobs>100_000))||
       !Number.isInteger(input.pages)||input.pages<1||input.pages>1000||
       !Number.isInteger(input.depth)||input.depth<0||input.depth>5||
       !Number.isSafeInteger(input.deadline)||input.deadline<=now||input.deadline>now+3_600_000)
@@ -65,6 +66,10 @@ export class ResearchJobs {
         return prior;
       }
       const usage=this.storage.sql.exec<{total:number}>('SELECT COALESCE(SUM(used+reserved),0) AS total FROM research_jobs WHERE period=?',input.period).one();
+      if(input.maxJobs!==undefined){
+        const jobs=this.storage.sql.exec<{total:number}>("SELECT COUNT(*) AS total FROM research_jobs WHERE period=? AND NOT(status='cancelled' AND provider_id IS NULL)",input.period).one().total;
+        if(jobs>=input.maxJobs)throw new HttpError(429,'research_job_limit','The included website crawl has already been reserved or used.');
+      }
       if(usage.total+input.pages>input.allowance)throw new HttpError(429,'research_page_limit','The website research page allowance is reserved or consumed.');
       const id=crypto.randomUUID();
       this.storage.sql.exec("INSERT INTO research_jobs(id,request_key,source,period,page_limit,depth,deadline,status,reserved) VALUES(?,?,?,?,?,?,?,'reserved',?)",

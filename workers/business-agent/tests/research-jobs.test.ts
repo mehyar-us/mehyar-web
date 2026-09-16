@@ -12,6 +12,12 @@ async function ledger(work:(jobs:ResearchJobs)=>void|Promise<void>){
   await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs);});
 }
 describe('durable research reservations',()=>{
+  it('allows only one trial dispatch even when it used fewer than twenty pages',async()=>ledger(jobs=>{
+    const request={...input(),maxJobs:1,pages:5},cancelled=jobs.reserve(request);jobs.cancel(cancelled.id);
+    const job=jobs.reserve({...request,key:crypto.randomUUID()});jobs.begin(job.id);jobs.submitted(job.id,provider);jobs.settle(job.id,'completed',1);
+    expect(()=>jobs.reserve({...request,key:crypto.randomUUID()})).toThrow('already been reserved or used');
+    expect(jobs.reserve({...request,key:job.request_key}).id).toBe(job.id);
+  }));
   it('reserves one allowance atomically and replays only the same request',async()=>ledger(jobs=>{
     const request=input(),job=jobs.reserve(request);
     expect(jobs.reserve(request)).toEqual(job);
