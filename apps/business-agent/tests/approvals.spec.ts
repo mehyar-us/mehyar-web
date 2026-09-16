@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 // Browser contract fixtures. No email, booking or live authorization occurs.
-async function fixture(page:Page,role='owner',paused=false,execution:false|'ready'|'uncertain'=false) {
+async function fixture(page:Page,role='owner',paused=false,execution:false|'ready'|'uncertain'=false,calendarSetup=false) {
   const calls:{path:string;body:any}[]=[];
   let status=execution?'approved':'pending';
   let receipt:unknown=null;
@@ -17,7 +17,9 @@ async function fixture(page:Page,role='owner',paused=false,execution:false|'read
     calls.push({path,body});const reply=(json:unknown)=>route.fulfill({json});
     if(path==='/api/session') return reply({user:{id:'fixture-user',name:'Sam',email:'sam@example.test'}});
     if(path==='/api/auth/capabilities') return reply({providers:{google:{configured:false,capabilities:[]},microsoft:{configured:false,capabilities:[]}}});
-    if(path==='/api/auth/grants')return reply({grants:[]});
+    if(path==='/api/auth/grants')return reply({grants:calendarSetup?[{id:'22222222-2222-4222-8222-222222222222',provider:'google',tenantId:'business-a',status:'authorized',grantedCapabilities:['calendar_manage'],grantedScopes:[],selectedCapabilities:[]}]:[]});
+    if(path.endsWith('/calendars'))return reply({calendars:[{id:'read-only',name:'Reference',canWrite:false},{id:'work-calendar',name:'Work appointments',canWrite:true}],incomplete:false});
+    if(path.endsWith('/action-policies'))return reply({policy:{...body,version:1}});
     if(path==='/api/catalog')return reply({version:'fixture',currency:'USD',plans:[],addons:[]});
     if(path==='/api/tenants')return reply({tenants});
     if(path.endsWith('/messages'))return reply({messages:[]});
@@ -36,6 +38,67 @@ async function fixture(page:Page,role='owner',paused=false,execution:false|'read
   await page.getByRole('button',{name:'Approvals',exact:true}).click();
   return calls;
 }
+
+test('owner selects a writable calendar and saves an exact appointment policy without booking',async({page})=>{
+  const calls=await fixture(page,'owner',false,false,true);
+  await page.getByRole('button',{name:'Set up appointments',exact:true}).click();
+  await page.getByRole('combobox',{name:'Connected account',exact:true}).selectOption('22222222-2222-4222-8222-222222222222');
+  await expect(page.getByRole('combobox',{name:'Appointment calendar',exact:true})).toBeEnabled();
+  await expect(page.getByRole('option',{name:'Reference (read only)'})).toHaveJSProperty('disabled',true);
+  await page.getByRole('combobox',{name:'Appointment calendar',exact:true}).selectOption('work-calendar');
+  await page.getByLabel('Allowed attendee emails',{exact:true}).fill('Client@example.com\nclient@example.com');
+  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations).toEqual([]);
+  await page.getByRole('button',{name:'Save appointment policy',exact:true}).click();
+  await expect(page.getByText('Appointment policy saved. Each appointment still requires its own review. No booking was made.',{exact:true})).toBeVisible();
+  expect(calls.find(c=>c.path.endsWith('/action-policies'))?.body).toMatchObject({expectedVersion:0,operation:'calendar.create',provider:'google',resources:['work-calendar'],recipients:['client@example.com'],mode:'approve',maxActionsPerDay:10,maxCostMicrosPerDay:0});
+  expect(calls.some(c=>c.path.endsWith('/execute'))).toBe(false);
+});
+
+test('policy retries preserve the request after an uncertain save response',async({page})=>{
+  await fixture(page,'owner',false,false,true);const bodies:any[]=[];
+  await page.route('**/action-policies',async route=>{
+    const body=route.request().postDataJSON();bodies.push(body);
+    return bodies.length===1?route.abort():route.fulfill({json:{policy:{...body,version:1}}});
+  });
+  await page.getByRole('button',{name:'Set up appointments',exact:true}).click();
+  await page.getByRole('combobox',{name:'Connected account',exact:true}).selectOption('22222222-2222-4222-8222-222222222222');
+  await expect(page.getByRole('combobox',{name:'Appointment calendar',exact:true})).toBeEnabled();
+  await page.getByRole('combobox',{name:'Appointment calendar',exact:true}).selectOption('work-calendar');
+  await page.getByLabel('Allowed attendee emails',{exact:true}).fill('client@example.com');
+  await page.getByRole('button',{name:'Save appointment policy',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText("couldn't reach");
+  await page.getByRole('button',{name:'Save appointment policy',exact:true}).click();
+  await expect(page.getByText(/Appointment policy saved/)).toBeVisible();expect(bodies).toHaveLength(2);expect(bodies[1]).toEqual(bodies[0]);
+});
+
+test('incomplete calendars cannot be selected and managers cannot open policy creation',async({page})=>{
+  await fixture(page,'owner',false,false,true);
+  await page.route('**/calendars?*',route=>route.fulfill({json:{calendars:[{id:'work-calendar',name:'Work',canWrite:true}],incomplete:true}}));
+  await page.getByRole('button',{name:'Set up appointments',exact:true}).click();
+  await page.getByRole('combobox',{name:'Connected account',exact:true}).selectOption('22222222-2222-4222-8222-222222222222');
+  await expect(page.getByRole('alert')).toContainText('incomplete');
+  await expect(page.getByRole('combobox',{name:'Appointment calendar',exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Save appointment policy',exact:true})).toBeDisabled();
+  await fixture(page,'manager',false,false,true);
+  await expect(page.getByRole('button',{name:'Set up appointments',exact:true})).toHaveCount(0);
+});
+
+test('mobile appointment setup clears calendar access on pause and workspace change',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await fixture(page,'owner',false,false,true);
+  await page.getByRole('button',{name:'Set up appointments',exact:true}).click();
+  await page.getByRole('combobox',{name:'Connected account',exact:true}).selectOption('22222222-2222-4222-8222-222222222222');
+  await expect(page.getByRole('combobox',{name:'Appointment calendar',exact:true})).toBeEnabled();
+  await page.getByRole('combobox',{name:'Appointment calendar',exact:true}).selectOption('work-calendar');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.screenshot({path:'test-results/calendar-policy-fixture-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'Open navigation'}).click();
+  await page.getByRole('combobox',{name:'YOUR WORKSPACE',exact:true}).selectOption('business-b');
+  await expect(page.getByRole('region',{name:'Appointment policy setup'})).toHaveCount(0);
+  await fixture(page,'owner',true,false,true);
+  await page.getByRole('button',{name:'Set up appointments',exact:true}).click();
+  await expect(page.getByRole('combobox',{name:'Connected account',exact:true})).toBeDisabled();
+});
 test('reviews exact content and immutable hash, then shows permission without a delivery claim',async({page})=>{
   const calls=await fixture(page);
   await expect(page.getByText('customer@example.com',{exact:true})).toBeVisible();

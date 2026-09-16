@@ -1471,7 +1471,7 @@ export default function App() {
               )}
               {tab === "approvals" && (
                 <ApprovalsPanel key={`${tenantId}:${snapshot.membership.role}`} tenantId={tenantId}
-                  role={snapshot.membership.role} online={online} paused={snapshot.usage?.paused === true} onUnauthorized={fail}/>
+                  role={snapshot.membership.role} grants={grants} online={online} paused={snapshot.usage?.paused === true} onUnauthorized={fail}/>
               )}
               {tab === "knowledge" && (
                 <div className="page">

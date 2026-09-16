@@ -239,6 +239,16 @@ button svg {
   font-weight: 600;
   margin-bottom: 20px;
 }
+.calendar-policy .field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid #d8dfd8;
+  border-radius: 9px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
 .field input,
 .field textarea {
   width: 100%;

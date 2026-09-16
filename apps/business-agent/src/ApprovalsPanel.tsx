@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, RefreshCw, ShieldCheck, X } from 'lucide-react';
-import { api, ApiError, post } from './api';
+import { api, ApiError, post,type Grant } from './api';
+import CalendarPolicyForm from './CalendarPolicyForm';
 
 type Review = {
   id:string; requestedBy:string; policyId:string; policyVersion:number; actionHash:string;
@@ -10,9 +11,10 @@ type Review = {
   action: {operation:'mail.reply';resourceId:string;messageId:string;recipient:string;text:string}
     | {operation:'calendar.create';resourceId:string;title:string;description?:string;attendees:string[];start:string;end:string;timeZone:string};
 };
-export default function ApprovalsPanel({tenantId,role,online,paused,onUnauthorized}:{
-  tenantId:string;role:string;online:boolean;paused:boolean;onUnauthorized:(error:unknown)=>void;
+export default function ApprovalsPanel({tenantId,role,online,paused,onUnauthorized,grants=[]}:{
+  tenantId:string;role:string;online:boolean;paused:boolean;onUnauthorized:(error:unknown)=>void;grants?:Grant[];
 }) {
+  const [setup,setSetup]=useState(false);
   const [reviews,setReviews]=useState<Review[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState('');
   const [loading,setLoading]=useState(true),[notice,setNotice]=useState('');
   const mounted=useRef(true),request=useRef<AbortController|null>(null),inFlight=useRef(false);
@@ -65,6 +67,8 @@ export default function ApprovalsPanel({tenantId,role,online,paused,onUnauthoriz
   return <div className="page approvals-page">
     <div className="page-heading"><span className="eyebrow">YOU HAVE THE FINAL SAY</span><h1>Approvals.</h1>
       <p>Review the exact recipient, content and destination before granting permission.</p></div>
+    {role==='owner'&&<><button className="button secondary" onClick={()=>setSetup(value=>!value)} aria-expanded={setup}>{setup?'Close appointment setup':'Set up appointments'}</button>
+      {setup&&<CalendarPolicyForm tenantId={tenantId} grants={grants} online={online} paused={paused} onUnauthorized={onUnauthorized}/>}</>}
     {!canRead?<section className="panel"><h2>Review access is limited</h2><p>Your role cannot view customer action reviews.</p></section>:<>
       <div className="billing-toolbar"><p className="small muted">Staff see their own proposals. Owners and managers can decide.</p>
         <button className="button secondary" disabled={!online||loading||!!busy} onClick={()=>void refresh()}><RefreshCw size={16}/> Refresh reviews</button></div>
