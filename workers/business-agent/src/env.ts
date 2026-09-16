@@ -20,6 +20,9 @@ export interface Env {
   COMMERCE_ENABLED?: string;
   EXTERNAL_ACTIONS_ENABLED?: string;
   RESEARCH_ENABLED?: string;
+  RESEARCH_RECOVERY_ENABLED?: string;
+  RESEARCH_ACCOUNT_ID?: string;
+  RESEARCH_API_TOKEN?: string;
   AGENT_STRIPE_SECRET_KEY?: string;
   AGENT_STRIPE_WEBHOOK_SECRET?: string;
   AGENT_STRIPE_ACCOUNT_ID?: string;

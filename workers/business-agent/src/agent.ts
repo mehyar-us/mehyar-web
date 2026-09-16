@@ -9,6 +9,7 @@ import {textAccess} from './billing/text-access';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
 import {researchAccess,requireResearchReady} from './research/access';
+import {runResearchWork} from './research/service';
 import {z} from 'zod';
 
 type AgentState = { tenantId: string | null; paused: boolean };
@@ -40,15 +41,20 @@ export class BusinessAgent extends Agent<Env,AgentState> {
     await this.maintainResearch();
   }
 
-  /** Local maintenance only: does not fetch websites or dispatch provider calls. */
+  /** Persisted maintenance; provider operations require independent release gates. */
   async maintainResearch(){
     const jobs=new ResearchJobs(this.ctx.storage);jobs.expire();
-    if(jobs.hasDeadlines())await this.scheduleEvery(60,'maintainResearch');
+    if(this.state.tenantId===this.name){
+      try{await runResearchWork(this.env,this.name,jobs,()=>this.state.paused);}
+      catch(error){console.warn('research_scheduler_unavailable',{code:error instanceof HttpError?error.code:'research_work_failed'});}
+    }
+    const needed=()=>jobs.hasDeadlines()||(this.env.RESEARCH_RECOVERY_ENABLED==='true'&&jobs.hasRecoveryWork());
+    if(needed())await this.scheduleEvery(60,'maintainResearch');
     else for(const schedule of await this.listSchedules({type:'interval'})){
-      if(schedule.callback==='maintainResearch'&&!jobs.hasDeadlines())await this.cancelSchedule(schedule.id);
+      if(schedule.callback==='maintainResearch'&&!needed())await this.cancelSchedule(schedule.id);
     }
     // A reservation may arrive while cancelling an idle schedule.
-    if(jobs.hasDeadlines())await this.scheduleEvery(60,'maintainResearch');
+    if(needed())await this.scheduleEvery(60,'maintainResearch');
   }
 
   async onRequest() { return new Response('Not found',{status:404}); }

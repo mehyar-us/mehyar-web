@@ -4,6 +4,7 @@ import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
 import {researchAccess,researchJobAccess,RESEARCH_GATES} from '../src/research/access';
 import {ResearchJobs} from '../src/research/jobs';
+import {runResearchWork,RECOVERY_GATES} from '../src/research/service';
 import {runInDurableObject} from 'cloudflare:test';
 import {getAgentByName} from 'agents';
 import {BusinessAgent,unwrap} from '../src/agent';
@@ -20,6 +21,28 @@ async function paid(actor:{tenantId:string},plan:string,interval:string){
       .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
 }
 describe('server-derived research allowances',()=>{
+  it('runs gated stop recovery after revocation while execution remains disabled',async()=>{
+    const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId),account='a'.repeat(32);
+    await runInDurableObject(stub,async(_instance,ctx)=>{
+      const jobs=new ResearchJobs(ctx.storage);jobs.initialize();
+      const job=jobs.reserveFor(actor,{key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
+      jobs.bindProviderAccount(job.id,account);jobs.begin(job.id);jobs.submitted(job.id,'11111111-1111-4111-8111-111111111111');jobs.cancel(job.id);
+      let calls=0;const transport=(async()=>{calls++;return Response.json({success:true,result:{}});}) as typeof fetch;
+      expect(await runResearchWork(e,actor.tenantId,jobs,()=>true,transport)).toEqual([]);
+      const recovery={...e,RESEARCH_ENABLED:'false',RESEARCH_RECOVERY_ENABLED:'true',RESEARCH_ACCOUNT_ID:account,RESEARCH_API_TOKEN:'fixture-token'};
+      expect(await runResearchWork(recovery,actor.tenantId,jobs,()=>true,transport)).toMatchObject([{ok:false}]);expect(calls).toBe(0);
+      const scope=`research:recovery:${account}`;
+      for(const gate of RECOVERY_GATES)await e.AGENT_DB.prepare("INSERT OR REPLACE INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture-only','test',?,?)")
+        .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
+      try{
+        await e.AGENT_DB.prepare('DELETE FROM agent_memberships WHERE tenant_id=? AND user_id=?').bind(actor.tenantId,actor.userId).run();
+        await e.AGENT_DB.prepare("UPDATE agent_tenants SET status='deleted' WHERE id=?").bind(actor.tenantId).run();
+        expect(await runResearchWork(recovery,actor.tenantId,jobs,()=>true,transport)).toMatchObject([{operation:'stop',ok:true}]);
+        expect(calls).toBe(1);expect(jobs.get(job.id)).toMatchObject({status:'cancel_requested',reserved:20});
+        expect(jobs.hasRecoveryWork()).toBe(true);
+      }finally{await e.AGENT_DB.prepare('DELETE FROM agent_billing_readiness WHERE scope_id=?').bind(scope).run();}
+    });
+  });
   it('reauthorizes the stored requester and refuses missing or foreign attribution',async()=>{
     const actor=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,actor.tenantId);
     for(const gate of RESEARCH_GATES)await e.AGENT_DB.prepare("INSERT OR REPLACE INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES ('research:crawl',?,?,'verified','fixture-only','test',?,?)")

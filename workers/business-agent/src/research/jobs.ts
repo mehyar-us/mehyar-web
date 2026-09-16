@@ -54,6 +54,13 @@ export class ResearchJobs {
     });
   }
   hasDeadlines(){return this.storage.sql.exec<{count:number}>("SELECT COUNT(*) AS count FROM research_jobs WHERE status IN ('reserved','submitting','running')").one().count>0;}
+  hasRecoveryWork(){
+    return this.storage.sql.exec<{count:number}>(`SELECT COUNT(*) AS count FROM research_jobs j
+      LEFT JOIN research_poll_work p ON p.job_id=j.id LEFT JOIN research_stop_work s ON s.job_id=j.id
+      WHERE j.status='cancel_requested' AND j.provider_id IS NOT NULL AND
+      ((s.acknowledged_at IS NULL AND COALESCE(s.attempts,0)<8) OR
+       (COALESCE(p.attempts,0)<j.page_limit+120 AND COALESCE(p.failures,0)<8))`).one().count>0;
+  }
   providerAccount(id:string){this.get(id);return this.storage.sql.exec<{account_id:string}>('SELECT account_id FROM research_provider_accounts WHERE job_id=?',id).toArray()[0]?.account_id??null;}
   bindProviderAccount(id:string,accountId:string){
     if(!/^[a-f0-9]{32}$/.test(accountId))throw conflict('A valid research provider account is required.');
