@@ -3,6 +3,7 @@ import {HttpError} from '../http';
 import {sourceSchema,type MailTriageSource} from './mail-triage';
 import {validateMailTriageCoverage} from './mail-triage-coverage';
 import {estimateStandardText} from '../billing/text-meter';
+import {calibratedTextReservation} from '../billing/text-calibration';
 
 const reply=z.object({category:z.enum(['inquiry','appointment','billing','complaint','other','unknown']),
   priority:z.enum(['routine','urgent','unknown']),summary:z.string().trim().min(1).max(1500),
@@ -35,9 +36,8 @@ export function mailTriageAggregationRequest(input:MailTriageSource,values:unkno
 
 /** Larger-work prices are token-based in the commercial contract. Byte counts
  * may bound a standard request but must never determine a multi-credit charge. */
-export function aggregationTextCredits(plan:ReturnType<typeof mailTriageAggregationRequest>){
-  if(!plan.fitsStandardRequest)throw new HttpError(422,'triage_aggregation_metering_required','This aggregation requires token-based cost metering before execution.');
-  return 1;
+export function aggregationTextCredits(plan:ReturnType<typeof mailTriageAggregationRequest>,gateway?:string,now=Date.now()){
+  return plan.fitsStandardRequest?1:calibratedTextReservation(plan.request,gateway,now).credits;
 }
 
 export function parseMailTriageAggregation(raw:string,input:MailTriageSource,values:unknown[]){

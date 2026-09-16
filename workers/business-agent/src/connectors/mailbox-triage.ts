@@ -4,6 +4,7 @@ import {requireTenant} from '../permissions';
 import {textAccess} from '../billing/text-access';
 import {TextUsage} from '../billing/text-usage';
 import {estimateStandardText} from '../billing/text-meter';
+import {verifyCalibratedTextReceipt} from '../billing/text-calibration';
 import {MailboxSync} from './mailbox-sync';
 import {requireMailboxAccess} from './mailbox-runner';
 import {mailTriageRequest,parseMailTriage,type MailTriageResult} from './mail-triage';
@@ -150,7 +151,7 @@ export class MailboxTriage {
     const request=aggregation?.request??mailTriageRequest(source),access=await textAccess(env,actor,await requireTenant(env,actor));
     const id=section?await mailTriageSectionId(actor.userId,section):await digest(JSON.stringify([aggregate?'mailbox-triage-aggregation-v1':'mailbox-triage-v2',actor.userId,streamId,messageId,receipt,businessContext]));
     const payloadHash=await digest(JSON.stringify(aggregation?{source,request}:source));
-    const usage=new TextUsage(this.storage),reservation=usage.reserve(id,actor.userId,payloadHash,access,aggregation?aggregationTextCredits(aggregation):1);
+    const usage=new TextUsage(this.storage),reservation=usage.reserve(id,actor.userId,payloadHash,access,aggregation?aggregationTextCredits(aggregation,env.AI_GATEWAY_ID):1);
     if(reservation.state==='complete'){
       await guard();await ledger.readText(streamId,messageId,receipt);
       checkContext();
@@ -169,6 +170,7 @@ export class MailboxTriage {
       const response=await env.AI!.run('@cf/openai/gpt-oss-120b',request,
         {gateway:{id:env.AI_GATEWAY_ID!,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent',workload:aggregate?'mailbox_triage_aggregation':section?'mailbox_triage_section':'mailbox_triage'}},signal:AbortSignal.timeout(60_000)});
       usage.recordReceipt(attemptId,response,estimate);
+      if(aggregation&&!aggregation.fitsStandardRequest)verifyCalibratedTextReceipt(request,env.AI_GATEWAY_ID,response);
       const raw=typeof response==='object'&&response&&'choices' in response?response.choices?.[0]?.message?.content:null;
       let result:MailTriageResult;
       try{

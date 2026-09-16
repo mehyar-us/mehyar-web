@@ -12,12 +12,14 @@ function fixture(repetitions=500){
 }
 const output=(evidenceIds=[0])=>JSON.stringify({category:'appointment',priority:'unknown',summary:'Booking discussed; review timing and omitted attachments.',evidenceIds});
 describe('review-only aggregation of validated mailbox sections',()=>{
-  it('blocks larger aggregation charges until token-based metering exists',()=>{
+  it('requires scoped token calibration for larger aggregation charges',()=>{
     const {source,values}=fixture(1000);
     for(const value of values)value.summary='😀'.repeat(750);
     const planned=mailTriageAggregationRequest(source,values);
     expect(planned.inputBytes).toBeGreaterThan(9000);expect(planned.fitsStandardRequest).toBe(false);
-    expect(()=>aggregationTextCredits(planned)).toThrow('token-based cost metering');
+    expect(()=>aggregationTextCredits(planned)).toThrow('calibration');
+    const credits=aggregationTextCredits(planned,'mehyar-business-agent-dev',Date.parse('2026-09-17T00:00:00Z'));
+    expect(credits).toBe(Math.max(1,Math.ceil((planned.tokenEstimate.inputTokens+57)/12000)));
   });
   it('includes every section and preserves uncertainty and omissions',()=>{
     const {source,values}=fixture(),planned=mailTriageAggregationRequest(source,[...values].reverse());
