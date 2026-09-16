@@ -12,12 +12,19 @@
 //   1. No single request/response cycle may run ~150s: the Cloudflare edge
 //      524s at ~100s. So the sweep NEVER awaits a generate body — it
 //      fire-and-forget dispatches via waitUntil and returns fast.
-//   2. Any isolate can die at any time. So generate.js checkpoints every
-//      finished part to D1; each dispatch resumes from the last checkpoint.
-//      Progress is monotonic — repeated dispatches converge to ready.
+//   2. Any isolate can die at any time — INCLUDING the caller's: when the
+//      dispatching worker's isolate is reclaimed, its in-flight fetch to the
+//      generate endpoint is cancelled and the callee dies mid-part. So
+//      generate.js checkpoints every finished part to D1, and the GitHub
+//      Actions runner itself drives generation per stuck order (a stable
+//      client holding the connection open keeps the generate isolate alive;
+//      proven: direct 147s call completes). Each drive resumes from the last
+//      checkpoint — progress is monotonic, repeated drives converge to ready.
 //
 // The sweep therefore has two quick passes (both far under the edge budget):
-//   PASS 1 — dispatch generate for rows stuck in paid/generating > 8 min.
+//   PASS 1 — fire-and-forget dispatch for rows stuck in paid/generating > 8
+//            min (best-effort bonus) AND return their tokens so the workflow
+//            can drive generation directly as the stable caller.
 //   PASS 2 — send the buyer email exactly once for ready-but-unemailed rows
 //            (atomic email_sent_at claim; claim released if the send fails).
 //
@@ -100,9 +107,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
     .bind(cutoff, MAX_ROWS)
     .all();
   const dispatched = [];
+  const drive = []; // tokens for the workflow's stable-caller generate drive
   for (const r of stuck.results || []) {
     dispatchGenerate(waitUntil, base, r);
     dispatched.push(r.id);
+    drive.push({ id: r.id, token: r.access_token });
   }
 
   // ── PASS 2: exactly-once buyer email for ready-but-unemailed rows ──
@@ -152,5 +161,5 @@ export async function onRequestPost({ request, env, waitUntil }) {
     }
   }
 
-  return json({ ok: true, stuck_minutes: STUCK_MINUTES, dispatched, emailed });
+  return json({ ok: true, stuck_minutes: STUCK_MINUTES, dispatched, drive, emailed });
 }

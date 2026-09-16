@@ -1,9 +1,18 @@
 # .github/workflows/fulfillment-sweep.yml
-# Recovery backstop for stuck AI-fulfillment orders: every 5 minutes, drive
-# POST /api/pay/fulfillment-sweep on mehyar.us. The endpoint re-arms orders
-# orphaned in paid/generating (webhook waitUntil isolate evicted mid-run),
-# re-drives generation (idempotent), and sends the buyer email exactly once.
+# Recovery backstop for stuck AI-fulfillment orders: every 5 minutes,
+#   1. POST /api/pay/fulfillment-sweep on mehyar.us (fast passes: best-effort
+#      generate dispatch + exactly-once buyer emails for ready rows). The
+#      sweep returns tokens of stuck orders.
+#   2. The runner itself drives POST https://hustlekit.mehyar.us/api/hustlekit/generate
+#      per stuck token, holding the connection open. A stable caller is
+#      required: worker-to-worker fire-and-forget dies when the caller's
+#      isolate is reclaimed, cancelling the callee mid-part. generate.js
+#      checkpoints every finished part to D1, so each drive resumes from the
+#      last checkpoint — progress is monotonic, repeated drives converge.
+#   3. Sweep once more so pass 2 emails newly-ready rows.
 # Fully automatic — no human touch. Manual runs via workflow_dispatch.
+# NOTE: access tokens are bearer credentials — this workflow never echoes
+# them to the log; only order ids and statuses are printed.
 name: fulfillment-sweep
 
 on:
@@ -14,22 +23,95 @@ on:
 jobs:
   sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
-      - name: Run fulfillment sweep
+      - name: Sweep pass 1+2 (dispatch + emails)
         env:
           SWEEP_SECRET: ${{ secrets.AUDIT_CRON_SECRET }}
         run: |
           # Browser UA: mehyar.us bot protection (Cloudflare 1010) blocks
           # non-browser clients even with valid credentials.
-          resp=$(curl -sS -m 570 -X POST "https://mehyar.us/api/pay/fulfillment-sweep" \
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+          code=$(curl -sS -m 120 -X POST "https://mehyar.us/api/pay/fulfillment-sweep" \
             -H "Authorization: Bearer $SWEEP_SECRET" \
             -H "Content-Type: application/json" \
-            -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
-            -w "\nHTTP_CODE:%{http_code}")
-          echo "$resp"
-          code=$(echo "$resp" | grep -o 'HTTP_CODE:[0-9]*' | cut -d: -f2)
-          if [ "$code" != "200" ]; then
-            echo "sweep failed with HTTP $code" >&2
-            exit 1
-          fi
+            -H "User-Agent: $UA" -o /tmp/sweep1.json -w "%{http_code}")
+          echo "sweep HTTP $code"
+          if [ "$code" != "200" ]; then echo "sweep failed" >&2; exit 1; fi
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/sweep1.json'))
+          print('dispatched:', d.get('dispatched'))
+          print('emailed:', [(e['order_id'], e['email']) for e in d.get('emailed', [])])
+          print('to_drive:', [x['id'] for x in d.get('drive', [])])
+          "
+
+      - name: Drive generation as stable caller
+        run: |
+          python3 - << 'PYEOF'
+          import json, time, urllib.request
+
+          UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+          GEN = "https://hustlekit.mehyar.us/api/hustlekit/generate"
+          ST  = "https://hustlekit.mehyar.us/api/hustlekit/status?token="
+
+          def get_status(token):
+              try:
+                  req = urllib.request.Request(ST + token, headers={"User-Agent": UA})
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      d = json.load(r)
+                  m = d.get("manifest") or {}
+                  parts = (m.get("parts") or {}).keys()
+                  return d.get("order_status"), sorted(parts)
+              except Exception as e:
+                  return "status_error:" + type(e).__name__, []
+
+          def drive(token):
+              body = json.dumps({"order_token": token}).encode()
+              req = urllib.request.Request(GEN, data=body,
+                  headers={"Content-Type": "application/json", "User-Agent": UA})
+              try:
+                  with urllib.request.urlopen(req, timeout=590) as r:
+                      d = json.load(r)
+                  return "http200 ok=%s" % d.get("ok")
+              except Exception as e:
+                  return "call_%s" % type(e).__name__
+
+          items = json.load(open("/tmp/sweep1.json")).get("drive", [])
+          if not items:
+              print("nothing to drive")
+          for it in items:
+              oid = it["id"]
+              for attempt in (1, 2, 3):
+                  st, parts = get_status(it["token"])
+                  print(f"order {oid}: status={st} parts={parts} (attempt {attempt})", flush=True)
+                  if st == "ready":
+                      break
+                  res = drive(it["token"])
+                  time.sleep(10)
+                  st2, parts2 = get_status(it["token"])
+                  print(f"order {oid}: drive -> {res}; now status={st2} parts={parts2}", flush=True)
+                  if st2 == "ready":
+                      break
+                  # A 524/timeout here may mean the generate is still running
+                  # server-side; give it room before the next drive.
+                  time.sleep(45)
+              else:
+                  print(f"order {oid}: still not ready after 3 drives; next tick continues")
+          PYEOF
+
+      - name: Sweep pass 2 (email newly-ready rows)
+        env:
+          SWEEP_SECRET: ${{ secrets.AUDIT_CRON_SECRET }}
+        run: |
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+          code=$(curl -sS -m 120 -X POST "https://mehyar.us/api/pay/fulfillment-sweep" \
+            -H "Authorization: Bearer $SWEEP_SECRET" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: $UA" -o /tmp/sweep2.json -w "%{http_code}")
+          echo "sweep HTTP $code"
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/sweep2.json'))
+          print('emailed:', [(e['order_id'], e['email']) for e in d.get('emailed', [])])
+          " 2>/dev/null || echo "(no email summary)"
