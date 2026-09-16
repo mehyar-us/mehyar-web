@@ -11,6 +11,7 @@ import {confirmResearch} from './research/confirm';
 import {researchAccess,requireResearchReady} from './research/access';
 import {runResearchWork} from './research/service';
 import {BusinessBrief} from './business-brief';
+import {briefSources} from './brief-sources';
 import {z} from 'zod';
 
 type AgentState = { tenantId: string | null; paused: boolean };
@@ -84,7 +85,9 @@ export class BusinessAgent extends Agent<Env,AgentState> {
 
   private controls() { return new ActionControls(this.ctx.storage.sql,this.env,()=>this.state.paused); }
   async businessBrief(actor:Actor){
-    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);return new BusinessBrief(this.ctx.storage).present();});
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+      const sources=await briefSources(this.env,actor);return {...new BusinessBrief(this.ctx.storage).present(),sources};
+    });
   }
   async saveBusinessBrief(actor:Actor,input:unknown,key:string){
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,['owner']);

@@ -495,6 +495,23 @@ test("workspace creation retries keep the same idempotency key", async ({
   expect(keys[2]).not.toBe(keys[1]);
 });
 
+test('confirmed research fills only empty brief drafts and requires a separate save',async({page})=>{
+  await fixture(page);let writes=0;
+  const data={...briefFixture(),sources:[{id:'source-name',field:'businessName',value:'Owner confirmed salon',sourceUrl:'https://salon.example.com/',retrievedAt:'2026-09-16T12:00:00Z',confirmedAt:'2026-09-16T13:00:00Z',confidence:'high'}]};
+  await page.route('**/api/tenants/business-a/business-brief',route=>{if(route.request().method()==='POST')writes++;return route.fulfill({json:data});});
+  await page.goto('/');await page.getByRole('button',{name:'Knowledge',exact:true}).click();const panel=page.getByRole('region',{name:'Business brief'});
+  await panel.getByText('Confirmed research suggestions (1)',{exact:true}).click();
+  await expect(panel.getByRole('link',{name:'View confirmed source'})).toHaveAttribute('href','https://salon.example.com/');
+  await panel.getByRole('button',{name:'Copy into empty field'}).click();
+  await expect(panel.getByLabel('Business name',{exact:true})).toHaveValue('Owner confirmed salon');
+  await expect(panel.getByRole('button',{name:'Copy into empty field'})).toBeDisabled();
+  await expect(panel.getByRole('button',{name:'Save reviewed brief'})).toBeDisabled();expect(writes).toBe(0);
+  await panel.getByLabel('Business name',{exact:true}).fill('My existing name');
+  await expect(panel.getByRole('button',{name:'Copy into empty field'})).toBeDisabled();
+  await panel.getByRole('button',{name:'Reload saved brief'}).click();
+  await expect(panel.getByLabel('Business name',{exact:true})).toHaveValue('');expect(writes).toBe(0);
+});
+
 test('business brief requires review, preserves retries and displays proposed plan pricing',async({page})=>{
   await fixture(page);let data=briefFixture();const requests:{body:any;key:string|undefined}[]=[];
   await page.route('**/api/tenants/business-a/business-brief',route=>{

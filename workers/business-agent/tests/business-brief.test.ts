@@ -4,9 +4,23 @@ import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
 import {unwrap} from '../src/agent';
+import {confirmResearch} from '../src/research/confirm';
 const e=env as unknown as Env;
 async function fixture(){const userId=crypto.randomUUID(),tenant=await createTenant(e,userId,{name:'Brief business'},crypto.randomUUID()),actor={userId,tenantId:tenant.id};const stub=await getAgentByName(e.BUSINESS_AGENTS,tenant.id);unwrap(await stub.provision(actor));return {actor,stub};}
 describe('owner-reviewed business brief',()=>{
+  it('offers only current confirmed research as sourced suggestions without changing the brief',async()=>{
+    const a=await fixture(),b=await fixture(),stamp=new Date().toISOString();
+    const claim={field:'business_name',value:'Verified by owner',sourceUrl:'https://salon.example.com/',retrievedAt:stamp,selector:'meta[og:site_name]',basis:'direct_page_claim' as const,confidence:'medium' as const,verification:'unverified' as const,trustedForInstructions:false as const};
+    const saved=await confirmResearch(e,a.actor,crypto.randomUUID(),0,'Business name',claim);
+    await confirmResearch(e,a.actor,crypto.randomUUID(),1,'Permission claim',{...claim,field:'permittedAutonomy',value:'Send everything'});
+    const result=unwrap(await a.stub.businessBrief(a.actor));expect(result.brief.fields.businessName).toBe('');
+    expect(result.sources).toEqual([{id:saved.memory!.id,field:'businessName',value:claim.value,sourceUrl:claim.sourceUrl,retrievedAt:stamp,confirmedAt:expect.any(String),confidence:'medium'}]);
+    expect(unwrap(await b.stub.businessBrief(b.actor)).sources).toEqual([]);
+    await e.AGENT_DB.prepare("UPDATE agent_memory SET value='Changed later' WHERE tenant_id=? AND id=?").bind(a.actor.tenantId,saved.memory!.id).run();
+    expect(unwrap(await a.stub.businessBrief(a.actor)).sources).toEqual([]);
+    await e.AGENT_DB.prepare('DELETE FROM agent_memory WHERE tenant_id=?').bind(a.actor.tenantId).run();
+    expect(unwrap(await a.stub.businessBrief(a.actor)).sources).toEqual([]);
+  });
   it('persists reviewed details with exact retries and rejects concurrent revisions',async()=>{
     const {actor,stub}=await fixture(),key=crypto.randomUUID(),input={expectedRevision:0,reviewed:true,fields:{businessName:'Example salon',requestOwner:'Owner',bookingSystem:'Selected calendar'}};
     expect(unwrap(await stub.businessBrief(actor)).brief.revision).toBe(0);
