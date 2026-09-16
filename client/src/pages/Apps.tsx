@@ -155,6 +155,23 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
   },
   {
+    id: "hustlekit",
+    name: "HustleKit",
+    url: "https://hustlekit.mehyar.us",
+    tagline: "Your AI side-hustle starter kit — a personalized 15-page playbook for $27.",
+    description:
+      "Pick one of three tracks — AI freelance writing, AI video editing, or AI social-media management — answer five quick questions, and get a personalized 15-page playbook: your niche, your offer and pricing, where to find your first clients, word-for-word outreach scripts, and a 30-day action plan. Free sample page before you pay; one-time $27, no subscription.",
+    audience: "Beginners who want a concrete, skill-plus-AI plan for landing their first paying clients.",
+    highlights: [
+      "Three tracks: AI freelance writing, AI video editing, AI social-media management",
+      "Personalized 15-page PDF playbook — niche, offer, pricing, outreach scripts, 30-day plan",
+      "Free sample playbook page before you pay anything",
+      "One-time $27 with a 7-day redo-or-refund guarantee — no account needed",
+    ],
+    logo: "/assets/hustlekit-logo.png",
+    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
+  },
+  {
     id: "sprint30",
     name: "Sprint30",
     url: "https://sprint30.mehyar.us",
@@ -446,7 +463,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit), and the request form.
           </p>
         </div>
       </section>

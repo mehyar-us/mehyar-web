@@ -13,6 +13,7 @@
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
+import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
 import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
@@ -143,6 +144,15 @@ const fulfillHooks = {
   async designful({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillDesignful({ db, env, waitUntil, sendEmail }, payment);
+  },
+
+  // HustleKit AI side-hustle playbooks. Creates the hustlekit_orders row
+  // (idempotent on payment_id's UNIQUE constraint), unifies the access
+  // token onto the billing_payments row, then hands off to the standalone
+  // module for background generation + buyer email.
+  async hustlekit({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillHustlekit({ db, env, waitUntil, sendEmail }, payment);
   },
 
   // Sprint30 30-day challenge. Creates the sprint30_enrollments row

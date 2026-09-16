@@ -213,6 +213,10 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">AI design studio — fixed-price design jobs.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">HustleKit — <a className="text-brand-700 underline dark:text-brand-100" href="https://hustlekit.mehyar.us" target="_blank" rel="noreferrer">hustlekit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI side-hustle starter kit — personalized playbook PDFs.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Sprint30 — <a className="text-brand-700 underline dark:text-brand-100" href="https://sprint30.mehyar.us" target="_blank" rel="noreferrer">sprint30.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">30-day side-income challenge — daily missions by email.</div>
           </li>

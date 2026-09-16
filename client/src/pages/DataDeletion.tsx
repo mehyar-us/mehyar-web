@@ -19,6 +19,7 @@
 //   9. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
 //  10. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
 //  11. CreditFix Kit — https://creditfixkit.mehyar.us (DIY credit repair kit: dispute letters + rebuild plan)
+//  12. HustleKit — https://hustlekit.mehyar.us (AI side-hustle starter kits: personalized playbook PDFs)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -29,7 +30,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target } from "lucide-react";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -141,6 +142,18 @@ const apps: AppInfo[] = [
       "Email address (to deliver your purchase and send download links), the business name / website URL / logo you submit for each design job, the generated design deliverables, and checkout records.",
     whatWeDelete:
       "Email address, submitted business assets, generated deliverables, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "hustlekit",
+    name: "HustleKit",
+    url: "https://hustlekit.mehyar.us",
+    tagline: "AI side-hustle starter kit: personalized playbook PDFs.",
+    icon: Target,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase and send the download link), the track and five intake answers you submit (skills, hours per week, income goal, experience level, niche interest), the generated playbook PDF, and checkout records.",
+    whatWeDelete:
+      "Email address, intake answers, generated playbook, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
     id: "sprint30",
