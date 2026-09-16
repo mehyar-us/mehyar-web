@@ -20,6 +20,9 @@ export class ResearchJobs {
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_pages (
       job_id TEXT NOT NULL,url TEXT NOT NULL,content_hash TEXT NOT NULL,evidence TEXT NOT NULL,
       PRIMARY KEY(job_id,url))`);
+    this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_poll (
+      job_id TEXT PRIMARY KEY,cursor INTEGER NOT NULL,steps INTEGER NOT NULL,
+      outcome TEXT NOT NULL,done INTEGER NOT NULL)`);
     // An interrupted POST may have created a billable provider job. Keep its reservation.
     this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting'");
     this.expire();
@@ -67,8 +70,10 @@ export class ResearchJobs {
     const job=this.get(id);
     if(!/^[a-zA-Z0-9_-]{16,128}$/.test(providerId))throw conflict('A verified provider identifier is required.');
     if(job.provider_id===providerId)return job;
-    if(job.status!=='submitting'||job.provider_id)throw conflict('Research submission no longer matches.');
-    this.storage.sql.exec("UPDATE research_jobs SET status='running',provider_id=? WHERE id=?",providerId,id);return this.get(id);
+    if(!['submitting','uncertain'].includes(job.status)||job.provider_id)throw conflict('Research submission no longer matches.');
+    // A late verified POST receipt resolves the identity but does not renew permission.
+    const status=job.status==='uncertain'||job.deadline<=Date.now()?'cancel_requested':'running';
+    this.storage.sql.exec('UPDATE research_jobs SET status=?,provider_id=? WHERE id=?',status,providerId,id);return this.get(id);
   }
   uncertain(id:string):Job {
     const job=this.get(id);if(job.status==='uncertain')return job;
@@ -109,6 +114,32 @@ export class ResearchJobs {
     this.get(id);
     if(!Number.isSafeInteger(offset)||offset<0)throw conflict('Invalid research page offset.');
     return this.storage.sql.exec<{evidence:string}>('SELECT evidence FROM research_pages WHERE job_id=? ORDER BY url LIMIT 20 OFFSET ?',id,offset).toArray().map(row=>JSON.parse(row.evidence) as ExtractedPage);
+  }
+  checkpoint(id:string) {
+    this.get(id);
+    return this.storage.sql.exec<{cursor:number;steps:number;outcome:string;done:number}>('SELECT cursor,steps,outcome,done FROM research_poll WHERE job_id=?',id).toArray()[0]
+      ??{cursor:0,steps:0,outcome:'',done:0};
+  }
+  advance(id:string,expectedCursor:number,outcome:string,nextCursor?:number) {
+    return this.storage.transactionSync(()=>{
+      const job=this.get(id),prior=this.checkpoint(id);
+      if(!['running','cancel_requested'].includes(job.status)||prior.done||prior.cursor!==expectedCursor||prior.steps>job.page_limit)
+        throw conflict('Research polling checkpoint changed or exceeded its bound.');
+      if(!['completed','cancelled_due_to_timeout','cancelled_due_to_limits','cancelled_by_user','errored'].includes(outcome)||prior.outcome&&prior.outcome!==outcome)
+        throw conflict('The provider completion snapshot changed.');
+      if(nextCursor!==undefined&&(!Number.isSafeInteger(nextCursor)||nextCursor<=prior.cursor||prior.steps>=job.page_limit))
+        throw conflict('The provider returned a looping or excessive result cursor.');
+      this.storage.sql.exec(`INSERT INTO research_poll(job_id,cursor,steps,outcome,done) VALUES(?,?,?,?,?)
+        ON CONFLICT(job_id) DO UPDATE SET cursor=excluded.cursor,steps=excluded.steps,outcome=excluded.outcome,done=excluded.done`,
+        id,nextCursor??prior.cursor,prior.steps+1,outcome,nextCursor===undefined?1:0);
+      return this.checkpoint(id);
+    });
+  }
+  finish(id:string) {
+    const checkpoint=this.checkpoint(id);
+    if(!checkpoint.done)throw conflict('All provider result pages must be traversed before settlement.');
+    const count=this.storage.sql.exec<{total:number}>('SELECT COUNT(*) AS total FROM research_pages WHERE job_id=?',id).one().total;
+    return this.settle(id,checkpoint.outcome==='completed'?'completed':checkpoint.outcome==='errored'?'failed':'cancelled',count);
   }
   settle(id:string,status:'completed'|'cancelled'|'failed',successfulPages:number):Job {
     const job=this.get(id);
