@@ -12,7 +12,7 @@ import { addMemory, createTenant, deleteMemory, getMemory, listTenants, presentT
 import {renameAgent} from './agent-settings';
 import {runBillingReconciliation} from './billing/reconciliation';
 import {runEmailRecovery} from './email/recovery';
-import {queueInvitationEmail} from './email/customer';
+import {queueInvitationEmail,cancelInvitationEmail} from './email/customer';
 import {platformEmailUsage} from './email/usage';
 import {handleEmailWebhook} from './email/webhook';
 import {teamDirectory,inviteMember,revokeInvitation,revokeMember,myInvitations,acceptInvitation} from './team';
@@ -69,6 +69,8 @@ async function route(request:Request,env:Env) {
   if(invitation&&request.method==='POST'){z.object({}).strict().parse(await readJson(request));return json(await revokeInvitation(env,actor,invitation[1]));}
   const invitationEmail=section.match(/^team\/invitations\/([a-f0-9]{64})\/email$/);
   if(invitationEmail&&request.method==='POST'){z.object({}).strict().parse(await readJson(request));return json(await queueInvitationEmail(env,actor,invitationEmail[1]),202);}
+  const cancelEmail=section.match(/^team\/invitations\/([a-f0-9]{64})\/email\/cancel$/);
+  if(cancelEmail&&request.method==='POST'){z.object({}).strict().parse(await readJson(request));return json(await cancelInvitationEmail(env,actor,cancelEmail[1]));}
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   if(section==='business-brief'&&request.method==='GET')return json(unwrap(await agent.businessBrief(actor)));

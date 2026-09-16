@@ -5,7 +5,8 @@ import {platformSenderConfiguration,requirePlatformSender,PLATFORM_EMAIL_GATES} 
 import {VerifiedInvitationOutbox} from '../src/email/verified-outbox';
 import {createTenant} from '../src/tenants';
 import {inviteMember,revokeInvitation,teamDirectory} from '../src/team';
-import {queueInvitationEmail} from '../src/email/customer';
+import {queueInvitationEmail,cancelInvitationEmail} from '../src/email/customer';
+import {PlatformEmailAllowance} from '../src/email/allowance';
 import {platformEmailUsage,emailUsageWarning} from '../src/email/usage';
 import {handleEmailWebhook,linkEmailWebhookHints} from '../src/email/webhook';
 import {PlatformEmailSupplierBudget} from '../src/email/supplier-budget';
@@ -34,6 +35,32 @@ async function evidence(e:Env){
   return config;
 }
 describe('dedicated platform sender readiness',()=>{
+  it('cancels unattempted email while delivery is disabled and preserves the invitation and releases capacity',async()=>{
+    const e=fixture(),invite=await invitation(e),config=await evidence(e),box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id);
+    await new PlatformEmailAllowance(e).reserve(invite.actor.tenantId,job.id,await platformEmailAccess(e,invite.actor.tenantId));
+    await new PlatformEmailSupplierBudget(e).reserve(invite.actor.tenantId,job.id,config.configurationHash);
+    e.AGENT_PLATFORM_EMAIL_ENABLED='false';await e.AGENT_DB.prepare("UPDATE agent_tenants SET status='paused' WHERE id=?").bind(invite.actor.tenantId).run();
+    expect(await cancelInvitationEmail(e,invite.actor,invite.id)).toEqual({email:{state:'cancelled',checkedAt:null}});
+    expect(await cancelInvitationEmail(e,invite.actor,invite.id)).toEqual({email:{state:'cancelled',checkedAt:null}});
+    expect(await e.AGENT_DB.prepare('SELECT status FROM agent_team_invitations WHERE id=?').bind(invite.id).first()).toEqual({status:'pending'});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_platform_email_reservations WHERE job_id=?').bind(job.id).first()).toEqual({state:'released'});
+    expect(await e.AGENT_DB.prepare('SELECT status FROM agent_email_supplier_commitments WHERE job_id=?').bind(job.id).first()).toEqual({status:'released'});
+    expect(await e.AGENT_DB.prepare("SELECT count(*) AS count FROM agent_activity WHERE tenant_id=? AND action='invitation_email_cancel_requested'").bind(invite.actor.tenantId).first()).toEqual({count:1});
+    const other=await invitation(e);await expect(cancelInvitationEmail(e,other.actor,invite.id)).rejects.toMatchObject({code:'invitation_email_unavailable'});
+    await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='manager' WHERE tenant_id=? AND user_id=?").bind(invite.actor.tenantId,invite.actor.userId).run();await expect(cancelInvitationEmail(e,invite.actor,invite.id)).rejects.toMatchObject({code:'permission_denied'});
+  });
+  it('blocks dispatch after cancellation but preserves uncertainty and earlier provider acceptance',async()=>{
+    const e=fixture(),invite=await invitation(e);await evidence(e);const box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id),claim=(await box.claim(invite.actor.tenantId,job.id))!;
+    expect(await cancelInvitationEmail(e,invite.actor,invite.id)).toEqual({email:{state:'cancellation_requested',checkedAt:null}});
+    expect(await box.mayDispatch(claim)).toBe(false);
+    await box.settle(claim,{state:'uncertain',code:'email_transport_uncertain'});await box.reconcileAuthority(invite.actor.tenantId,job.id);
+    expect((await teamDirectory(e,invite.actor)).invitations[0].emailDelivery.state).toBe('cancelled_unconfirmed');
+    expect(await box.claim(invite.actor.tenantId,job.id)).toBeNull();
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_platform_email_reservations WHERE job_id=?').bind(job.id).first()).toEqual({state:'held'});
+    const second=await invitation(e),secondJob=await box.prepare(second.actor,second.id);
+    expect(await dispatchInvitationEmail(e,second.actor.tenantId,secondJob.id,async()=>{expect((await cancelInvitationEmail(e,second.actor,second.id)).email.state).toBe('cancellation_requested');return Response.json({id:'4ef9a417-02e9-4d39-ad75-9611e0fcc33c'});})).toEqual({state:'recorded',outcome:'accepted'});
+    expect((await teamDirectory(e,second.actor)).invitations[0].emailDelivery.state).toBe('accepted');
+  });
   async function notification(e:Env,providerId:string,id=crypto.randomUUID(),type='email.complained'){
     e.AGENT_PLATFORM_EMAIL_WEBHOOK_ENABLED='true';e.AGENT_PLATFORM_EMAIL_WEBHOOK_SECRET='whsec_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
     const raw=JSON.stringify({type,created_at:new Date().toISOString(),data:{email_id:providerId}}),stamp=String(Math.floor(Date.now()/1000));

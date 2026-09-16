@@ -141,3 +141,16 @@ test('delivery history distinguishes provider acceptance and delivery while disa
   state='delivered';await team.getByRole('button',{name:'Refresh team',exact:true}).click();await expect(team.getByText('Email: Delivered to recipient mail server',{exact:true})).toBeVisible();
   state='__proto__';await team.getByRole('button',{name:'Refresh team',exact:true}).click();await expect(team.getByText('Email: Delivery status unavailable',{exact:true})).toBeVisible();
 });
+
+test('queued email cancellation retries without revoking the invitation while delivery is disabled',async({page})=>{
+  await fixture(page);const id='d'.repeat(64);let state='queued',requests=0;
+  await page.route('**/api/tenants/business-a/team',route=>route.fulfill({json:{seatLimit:3,emailQueueEnabled:false,moreMembers:false,moreInvitations:false,members:[],invitations:[{id,email:'pat@example.test',role:'staff',status:'pending',expiresAt:'2026-09-23T00:00:00Z',emailDelivery:{state,checkedAt:null}}]}}));
+  await page.route(`**/api/tenants/business-a/team/invitations/${id}/email/cancel`,route=>{
+    expect(route.request().postDataJSON()).toEqual({});requests++;state='cancellation_requested';return requests===1?route.fulfill({status:503,json:{error:{message:'Cancellation confirmation unavailable. Retry the same request.'}}}):route.fulfill({json:{email:{state,checkedAt:null}}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Team',exact:true}).click();const team=page.getByRole('region',{name:'Manage team'}),cancel=team.getByRole('button',{name:'Cancel queued email to pat@example.test'});
+  await expect(team).toContainText('It cannot recall submitted mail or revoke the invitation.');await cancel.click();await expect(team.getByRole('alert')).toContainText('confirmation unavailable');await cancel.click();
+  await expect(team).toContainText('Cancellation requested; an in-flight submission may still complete');await expect(cancel).toHaveCount(0);await expect(team.getByRole('button',{name:'Revoke invitation for pat@example.test'})).toBeVisible();expect(requests).toBe(2);
+  state='cancelled_unconfirmed';await team.getByRole('button',{name:'Refresh team'}).click();await expect(team).toContainText('Future attempts stopped; earlier delivery remains unconfirmed');
+  expect((await new AxeBuilder({page}).include('[aria-label="Manage team"]').analyze()).violations).toEqual([]);
+});
