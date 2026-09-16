@@ -124,11 +124,29 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
       if (!genResp.ok || !genData.ok) {
         throw new Error("generate:" + String((genData && genData.error) || genResp.status));
       }
-      await db
-        .prepare(`UPDATE tiktokgrowth_orders SET status='ready', output_json=?, ready_at=${nowSql} WHERE id=? AND status!='ready'`)
-        .bind(JSON.stringify(genData.manifest || {}), orderId)
-        .run();
-
+      // generate.js is async: HTTP 202 {status:"generating"} means the
+      // playbook is still building in the background; 200 + manifest means
+      // a replay of an already-ready order. Poll the order row until the
+      // background generation writes the manifest (generate.js owns the
+      // status/output_json writes — we must NOT mark ready here, or the
+      // background UPDATE's WHERE status!='ready' guard drops the manifest.
+      let manifest = genData.manifest || null;
+      if (!manifest) {
+        const deadline = Date.now() + 8 * 60 * 1000;
+        for (;;) {
+          await new Promise((r) => setTimeout(r, 10000));
+          const orow = await db.prepare(
+            "SELECT status, output_json FROM tiktokgrowth_orders WHERE id = ?"
+          ).bind(orderId).first();
+          if (orow && orow.status === "ready") {
+            try { manifest = JSON.parse(orow.output_json || "null"); } catch {}
+            break;
+          }
+          if (orow && orow.status === "failed") throw new Error("generate:background_failed");
+          if (Date.now() >= deadline) throw new Error("generate:timeout");
+        }
+      }
+      if (!manifest || typeof manifest !== "object") throw new Error("generate:empty_manifest");
       const deliverUrl = `${baseUrl(env)}/deliverable.html?token=${accessToken}`;
       const subject = `Your TikTok Growth System playbook is ready`;
       const text =
