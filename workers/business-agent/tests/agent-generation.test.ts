@@ -9,6 +9,7 @@ import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
 import {conversationContext} from '../src/conversation-context';
 import {parseBriefReply} from '../src/brief-suggestions';
+import {TextUsage} from '../src/billing/text-usage';
 
 const e=env as unknown as Env;
 async function fixture() {
@@ -30,6 +31,22 @@ async function activatePaid(actor:{tenantId:string;userId:string},interval="mont
 }
 
 describe('durable generation accounting',()=>{
+  it('includes background reservations in chat admission and customer usage',async()=>{
+    const {actor,stub}=await fixture();
+    await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+      const original=(instance as any).env;let calls=0;
+      (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async()=>{calls++;return {choices:[{message:{content:'Ready'}}]};}}};
+      try{
+        const usage=new TextUsage(ctx.storage),tokens:string[]=[];
+        for(let i=0;i<50;i++)tokens.push(usage.reserve(`job-${i}`,actor.userId,'a'.repeat(64),{period:'trial',limit:50,attemptLimit:60}).token);
+        expect(unwrap(await instance.usage(actor)).textCredits).toEqual({used:0,reserved:50,limit:50});
+        expect(await instance.chat(actor,'Hello',crypto.randomUUID())).toMatchObject({ok:false,error:{code:'usage_limit'}});expect(calls).toBe(0);
+        usage.finish(tokens[0],false);
+        unwrap(await instance.chat(actor,'Hello',crypto.randomUUID()));expect(calls).toBe(1);
+        expect(unwrap(await instance.usage(actor)).textCredits).toEqual({used:1,reserved:49,limit:50});
+      }finally{(instance as any).env=original;}
+    });
+  });
   it('binds industry suggestions to the pack used for inference even when the brief changes',async()=>{
     const {actor,stub}=await fixture();
     unwrap(await stub.saveBusinessBrief(actor,{expectedRevision:0,reviewed:true,fields:{industryPack:'barbershops-salons'}},crypto.randomUUID()));

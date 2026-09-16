@@ -16,6 +16,7 @@ import {stopMailbox,resumeMailbox} from './connectors/mailbox-control';
 import {restartMailbox} from './connectors/mailbox-restart';
 import {MailboxRecoveryOffers} from './connectors/mailbox-recovery-offers';
 import {textAccess} from './billing/text-access';
+import {TextUsage} from './billing/text-usage';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
 import {researchAccess,requireResearchReady} from './research/access';
@@ -55,6 +56,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       period TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(user_id,request_key))`;
     this.sql`CREATE TABLE IF NOT EXISTS provider_attempts (id TEXT PRIMARY KEY,user_id TEXT NOT NULL,
       request_key TEXT NOT NULL,period TEXT NOT NULL,status TEXT NOT NULL,started_at TEXT NOT NULL)`;
+    const textUsage=new TextUsage(this.ctx.storage);textUsage.initialize();textUsage.interrupt();
     // Generation has no external effect; interrupted generation is released for a safe retry.
     this.sql`UPDATE turns SET status = 'failed' WHERE status = 'running'`;
     this.sql`UPDATE provider_attempts SET status = 'interrupted' WHERE status = 'started'`;
@@ -280,8 +282,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       await this.bind(actor);
       const tenant=await requireTenant(this.env,actor);
       const access=await textAccess(this.env,actor,tenant,false),period=access.period;
-      const [row]=this.sql<{used:number;reserved:number}>`SELECT COALESCE(SUM(status = 'complete'),0) AS used,
-        COALESCE(SUM(status = 'running'),0) AS reserved FROM turns WHERE period = ${period}`;
+      const row=new TextUsage(this.ctx.storage).usage(period);
       return {textCredits:{used:row.used,reserved:row.reserved,limit:access.limit},period,resetsAt:access.resetsAt,paused:this.state.paused};
     });
   }
@@ -322,8 +323,8 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       if(!this.env.AI || this.env.AI_ENABLED!=='true'||!this.env.AI_GATEWAY_ID) throw new HttpError(503,'ai_not_configured','Chat will be available when your agent connection is configured.');
       const [latest]=this.sql<{status:string}>`SELECT status FROM turns WHERE user_id=${actor.userId} AND request_key=${key}`;
       if(latest?.status==='complete')return unwrap(await this.chat(actor,content,key));
-      const [used]=this.sql<{count:number}>`SELECT COUNT(*) AS count FROM turns WHERE period = ${access.period} AND status IN ('running','complete')`;
-      if(used.count>=access.limit) throw new HttpError(429,'usage_limit','Your included text allowance for this period has been reached.');
+      const used=new TextUsage(this.ctx.storage).usage(access.period);
+      if(used.used+used.reserved>=access.limit) throw new HttpError(429,'usage_limit','Your included text allowance for this period has been reached.');
       const [running]=this.sql<{count:number}>`SELECT COUNT(*) AS count FROM turns WHERE user_id = ${actor.userId} AND status = 'running'`;
       if(running.count) throw new HttpError(409,'conversation_busy','Wait for the current response before sending another message.');
       const message:Message={id:prior?.message_id||crypto.randomUUID(),role:'user',content,createdAt:new Date().toISOString()};
