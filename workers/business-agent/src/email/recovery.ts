@@ -3,6 +3,7 @@ import {requirePlatformSender} from './readiness';
 import {dispatchInvitationEmail} from './dispatch';
 import {reconcileInvitationDelivery} from './delivery';
 import type {EmailTransport} from './resend';
+import {linkEmailWebhookHints} from './webhook';
 
 /** Bounded cron worker, independently disabled. Per-job leases remain the
  * authority for duplicate exclusion; scheduling never creates replacement jobs. */
@@ -10,6 +11,7 @@ export async function runEmailRecovery(env:Env,transport:EmailTransport=fetch,cl
   if(env.AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED!=='true'||env.AGENT_PLATFORM_EMAIL_ENABLED!=='true')return {disabled:true,sent:0,checked:0,deferred:0};
   const snapshot={...env},sender=await requirePlatformSender(snapshot,new Date(clock())),route=`resend:${sender.configurationHash}`,now=new Date(clock()).toISOString();
   let sent=0,checked=0,deferred=0;
+  await linkEmailWebhookHints(snapshot,route,clock);
   // Read existing receipts first: a newly observed complaint can suppress a send
   // later in this invocation. One candidate per tenant prevents a single backlog
   // from occupying the whole batch.

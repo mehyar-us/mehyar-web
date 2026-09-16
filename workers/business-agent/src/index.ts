@@ -14,6 +14,7 @@ import {runBillingReconciliation} from './billing/reconciliation';
 import {runEmailRecovery} from './email/recovery';
 import {queueInvitationEmail} from './email/customer';
 import {platformEmailUsage} from './email/usage';
+import {handleEmailWebhook} from './email/webhook';
 import {teamDirectory,inviteMember,revokeInvitation,revokeMember,myInvitations,acceptInvitation} from './team';
 import {changeMemberRole} from './team-roles';
 
@@ -26,6 +27,7 @@ async function route(request:Request,env:Env) {
   if(path.startsWith('/api/auth/')) return handleAuthRequest(request,env);
   if(path==='/api/catalog'&&request.method==='GET') return json(publicCatalog());
   if(path==='/api/agent-billing/webhook') return handleBillingRequest(request,env);
+  if(path==='/api/platform-email/webhook')return handleEmailWebhook(request,env);
   // This Worker never accepts or forwards legacy payment traffic.
   if(path.startsWith('/api/pay/')||path.startsWith('/api/audit/')) throw new HttpError(404,'not_found','This address is not available.');
   if(!['GET','HEAD'].includes(request.method)) requireOrigin(request,env.APP_ORIGIN);

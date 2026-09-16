@@ -7,6 +7,7 @@ import {createTenant} from '../src/tenants';
 import {inviteMember,revokeInvitation,teamDirectory} from '../src/team';
 import {queueInvitationEmail} from '../src/email/customer';
 import {platformEmailUsage,emailUsageWarning} from '../src/email/usage';
+import {handleEmailWebhook,linkEmailWebhookHints} from '../src/email/webhook';
 import {PlatformEmailSupplierBudget} from '../src/email/supplier-budget';
 import {platformEmailAccess} from '../src/email/access';
 import {CATALOG_VERSION} from '../src/catalog';
@@ -33,6 +34,37 @@ async function evidence(e:Env){
   return config;
 }
 describe('dedicated platform sender readiness',()=>{
+  async function notification(e:Env,providerId:string,id=crypto.randomUUID(),type='email.complained'){
+    e.AGENT_PLATFORM_EMAIL_WEBHOOK_ENABLED='true';e.AGENT_PLATFORM_EMAIL_WEBHOOK_SECRET='whsec_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+    const raw=JSON.stringify({type,created_at:new Date().toISOString(),data:{email_id:providerId}}),stamp=String(Math.floor(Date.now()/1000));
+    const key=await crypto.subtle.importKey('raw',new Uint8Array(32),{name:'HMAC',hash:'SHA-256'},false,['sign']),signed=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(`${id}.${stamp}.${raw}`)));
+    const signature=btoa(String.fromCharCode(...signed));return new Request('https://app.mehyar.us/api/platform-email/webhook',{method:'POST',body:raw,headers:{'svix-id':id,'svix-timestamp':stamp,'svix-signature':`v1,${signature}`}});
+  }
+  it('deduplicates signed receipt hints and wakes exhausted polling without trusting the event as delivery',async()=>{
+    const f=await accepted(),config=await platformSenderConfiguration(f.e),request=await notification(f.e,'4ef9a417-02e9-4d39-ad75-9611e0fcc33c');
+    await f.e.AGENT_DB.prepare('INSERT INTO agent_platform_email_delivery(job_id,tenant_id,next_check_at,checks) VALUES (?,?,?,48)').bind(f.job.id,f.invite.actor.tenantId,new Date(Date.now()+86400000).toISOString()).run();
+    expect((await handleEmailWebhook(request.clone(),f.e)).status).toBe(202);expect((await handleEmailWebhook(request.clone(),f.e)).status).toBe(202);
+    await linkEmailWebhookHints(f.e,`resend:${config.configurationHash}`);
+    expect(await f.e.AGENT_DB.prepare('SELECT checks,complained_seen FROM agent_platform_email_delivery WHERE job_id=?').bind(f.job.id).first()).toEqual({checks:47,complained_seen:0});
+    expect(await f.e.AGENT_DB.prepare('SELECT recipient FROM agent_platform_email_suppressions WHERE recipient=?').bind(f.message.to[0]).first()).toBeNull();
+    await f.e.AGENT_DB.prepare('UPDATE agent_platform_email_delivery SET checks=48 WHERE job_id=?').bind(f.job.id).run();
+    await handleEmailWebhook(request.clone(),f.e);await linkEmailWebhookHints(f.e,`resend:${config.configurationHash}`);
+    expect(await f.e.AGENT_DB.prepare('SELECT checks FROM agent_platform_email_delivery WHERE job_id=?').bind(f.job.id).first()).toEqual({checks:48});
+  });
+  it('retains early events for reconciliation and rejects signed event-ID payload changes',async()=>{
+    const e=fixture();await evidence(e);const providerId=crypto.randomUUID(),id=crypto.randomUUID(),request=await notification(e,providerId,id);
+    await handleEmailWebhook(request,e);const config=await platformSenderConfiguration(e);await linkEmailWebhookHints(e,`resend:${config.configurationHash}`);
+    expect(await e.AGENT_DB.prepare('SELECT state,attempts FROM agent_platform_email_events WHERE event_id=?').bind(id).first()).toEqual({state:'pending',attempts:1});
+    await expect(handleEmailWebhook(await notification(e,providerId,id,'email.bounced'),e)).rejects.toMatchObject({code:'email_webhook_conflict'});
+    const invite=await invitation(e),box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id),claim=(await box.claim(invite.actor.tenantId,job.id))!;
+    await box.settle(claim,{state:'accepted',providerId});
+    await linkEmailWebhookHints(e,`resend:${config.configurationHash}`,()=>Date.now()+3600001);
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_platform_email_events WHERE event_id=?').bind(id).first()).toEqual({state:'linked'});
+    expect(await e.AGENT_DB.prepare('SELECT job_id FROM agent_platform_email_delivery WHERE job_id=? AND tenant_id=?').bind(job.id,invite.actor.tenantId).first()).toEqual({job_id:job.id});
+  });
+  it('keeps webhook intake disabled before database access',async()=>{
+    await expect(handleEmailWebhook(new Request('https://example.test',{method:'POST',body:'{}'}),{} as Env)).rejects.toMatchObject({code:'email_webhook_disabled'});
+  });
   it.each([[699,'normal'],[700,'70'],[900,'90'],[1000,'100'],[1001,'100']] as const)('warns at email capacity thresholds %s', (used,expected)=>{expect(emailUsageWarning(used,1000)).toBe(expected);});
   it('reports held versus accepted capacity privately and denies non-billing roles',async()=>{
     const e=fixture(),invite=await invitation(e);await evidence(e);const box=new VerifiedInvitationOutbox(e),job=await box.prepare(invite.actor,invite.id),claim=(await box.claim(invite.actor.tenantId,job.id))!;
