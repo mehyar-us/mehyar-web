@@ -495,6 +495,23 @@ test("workspace creation retries keep the same idempotency key", async ({
   expect(keys[2]).not.toBe(keys[1]);
 });
 
+test('assistant rename preserves uncertain retry and refreshes the conversation identity',async({page})=>{
+  await fixture(page);let name='Mayor';const attempts:{body:any;key:string|undefined}[]=[];
+  await page.route('**/api/tenants/business-a',route=>route.fulfill({json:{tenant:{...tenant,agentName:name},membership:{role:'owner'},activity:[],memory:[],connections:[],usage:{}}}));
+  await page.route('**/api/tenants/business-a/agent-name',route=>{
+    attempts.push({body:route.request().postDataJSON(),key:route.request().headers()['x-idempotency-key']});
+    if(attempts.length===1)return route.fulfill({status:503,json:{error:{message:'Unconfirmed name change'}}});
+    name=attempts[0].body.agentName;return route.fulfill({json:{agentName:name}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const form=page.getByRole('form',{name:'Assistant name settings'});await form.getByLabel('Assistant display name').fill('Maya');await form.getByRole('button',{name:'Save assistant name'}).click();
+  await expect(form.getByRole('alert')).toContainText('Unconfirmed name change');await expect(form.getByLabel('Assistant display name')).toBeDisabled();
+  await form.getByRole('button',{name:'Retry same name change'}).click();await expect(form.getByRole('status')).toHaveText('Assistant name saved.');
+  expect(attempts[0]).toEqual(attempts[1]);expect(attempts[0].body).toEqual({expectedName:'Mayor',agentName:'Maya'});
+  expect((await new AxeBuilder({page}).include('[aria-label="Assistant name settings"]').analyze()).violations).toEqual([]);
+  await page.getByRole('button',{name:'Conversation',exact:true}).click();await expect(page.getByText("I'm Maya, your business assistant.",{exact:false})).toBeVisible();
+});
+
 for(const changed of [false,true])test(`industry suggestion ${changed?'blocks a changed pack':'copies a reviewed industry answer'}`,async({page})=>{
   const requests=await fixture(page),data={...briefFixture(),brief:{...briefFixture().brief,fields:{...briefFixture().brief.fields,industryPack:changed?'clinics-dentists':'barbershops-salons'}},industryQuestions:changed?[]:[{field:'deposits',question:'What deposit rules should be explained?',answer:'',answered:false,fromBrief:false}]};
   await page.route('**/api/tenants/business-a/business-brief',route=>route.fulfill({json:data}));

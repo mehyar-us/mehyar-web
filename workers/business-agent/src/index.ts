@@ -9,6 +9,7 @@ import { handleBillingRequest } from './billing';
 import { HttpError, json, readJson, requestKey, requireOrigin } from './http';
 import { KNOWLEDGE_ROLES, OPERATORS, requireMembership, requireTenant } from './permissions';
 import { addMemory, createTenant, deleteMemory, getMemory, listTenants, presentTenant } from './tenants';
+import {renameAgent} from './agent-settings';
 
 export { BusinessAgent };
 
@@ -47,6 +48,7 @@ async function route(request:Request,env:Env) {
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   if(section==='business-brief'&&request.method==='GET')return json(unwrap(await agent.businessBrief(actor)));
+  if(section==='agent-name'&&request.method==='POST')return json(await renameAgent(env,actor,await readJson(request),requestKey(request)));
   if(section==='business-brief'&&request.method==='POST')return json(unwrap(await agent.saveBusinessBrief(actor,await readJson(request),requestKey(request))));
   const research=section.match(/^research(?:\/([a-f0-9-]{36}))?$/);
   if(section==='research'&&request.method==='POST')return json(unwrap(await agent.requestResearch(actor,await readJson(request),requestKey(request))),202);

@@ -60,6 +60,7 @@ import BillingPanel from "./BillingPanel";
 import ApprovalsPanel from "./ApprovalsPanel";
 import ResearchPanel from "./ResearchPanel";
 import BusinessBriefPanel,{businessDetailLabel} from "./BusinessBriefPanel";
+import AgentNamePanel from './AgentNamePanel';
 import googleLogo from "./assets/google-g.svg?raw";
 
 type Tab =
@@ -1836,6 +1837,7 @@ export default function App() {
                     description="Your business identity and execution controls."
                   />
                   <section className="panel settings-panel">
+                    {snapshot.membership.role==='owner'&&<AgentNamePanel key={`agent-name:${tenantId}:${snapshot.membership.role}`} tenantId={tenantId} agentName={tenant?.agentName||'Mayor'} online={online} onSaved={()=>refreshWorkspace(tenantId)} onUnauthorized={fail}/>}
                     <dl className="details-list">
                       <div>
                         <dt>Business</dt>

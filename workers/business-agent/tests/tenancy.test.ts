@@ -8,6 +8,7 @@ import { createTenant,addMemory,deleteMemory,getMemory,listTenants,normalizeWebs
 import { requireMembership } from '../src/permissions';
 import { unwrap } from '../src/agent';
 import worker from '../src';
+import {renameAgent} from '../src/agent-settings';
 
 const e=env as unknown as Env;
 let alice:string,bob:string,viewerId:string,supportId:string;
@@ -17,6 +18,26 @@ async function make(userId=alice,key=crypto.randomUUID()) {
 }
 
 describe('dedicated business isolation',()=>{
+  it('renames only the owner workspace and preserves receipt replay without undoing later edits',async()=>{
+    const a=await make(alice),b=await make(bob),actor={tenantId:a.id,userId:alice},key=crypto.randomUUID();
+    const input={expectedName:'Mayor',agentName:'Maya'};
+    expect(await renameAgent(e,actor,input,key)).toEqual({agentName:'Maya'});
+    await renameAgent(e,actor,{expectedName:'Maya',agentName:'Sam'},crypto.randomUUID());
+    expect(await renameAgent(e,actor,input,key)).toEqual({agentName:'Maya'});
+    expect((await listTenants(e,alice))[0].agentName).toBe('Sam');expect((await listTenants(e,bob))[0].agentName).toBe('Mayor');
+    await expect(renameAgent(e,actor,{...input,agentName:'Changed'},key)).rejects.toMatchObject({code:'request_key_reused'});
+    await expect(renameAgent(e,actor,input,crypto.randomUUID())).rejects.toMatchObject({code:'agent_name_changed'});
+    const log=await e.AGENT_DB.prepare("SELECT COUNT(*) AS count FROM agent_activity WHERE tenant_id=? AND action='agent.renamed'").bind(a.id).first<{count:number}>();expect(log?.count).toBe(2);
+    await expect(renameAgent(e,{tenantId:b.id,userId:alice},input,crypto.randomUUID())).rejects.toMatchObject({code:'workspace_not_found'});
+  });
+  it('serializes conflicting names and rejects managers and control characters',async()=>{
+    const a=await make(alice),actor={tenantId:a.id,userId:alice};
+    const changes=await Promise.allSettled(['Maya','Sam'].map(agentName=>renameAgent(e,actor,{expectedName:'Mayor',agentName},crypto.randomUUID())));
+    expect(changes.filter(result=>result.status==='fulfilled')).toHaveLength(1);
+    await expect(renameAgent(e,actor,{expectedName:'Mayor',agentName:'Bad\nname'},crypto.randomUUID())).rejects.toMatchObject({code:'invalid_agent_name'});
+    await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='manager' WHERE tenant_id=? AND user_id=?").bind(a.id,alice).run();
+    await expect(renameAgent(e,actor,{expectedName:'Mayor',agentName:'Other'},crypto.randomUUID())).rejects.toMatchObject({code:'permission_denied'});
+  });
   it('limits research reads to current business operators and hides provider billing internals',async()=>{
     const a=await make(alice),b=await make(bob),actor={tenantId:a.id,userId:alice};
     const agent=await getAgentByName(e.BUSINESS_AGENTS,a.id),other=await getAgentByName(e.BUSINESS_AGENTS,b.id);
