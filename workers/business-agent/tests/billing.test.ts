@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CATALOG_VERSION, getPlan } from "../src/catalog";
 import { handleBillingRequest } from "../src/billing";
 import { processBillingEvent } from "../src/billing/events";
+import {auditSubscription,runBillingReconciliation} from '../src/billing/reconciliation';
 import { RELEASE_GATES, createCheckout, enforceExpiredBillingGrace, parsePriceMap, type CheckoutInput } from "../src/billing/service";
 import { AGENT_BILLING_DOMAIN, STRIPE_API_VERSION, StripeClient, agentMetadata, assertNoLegacyMetadata, encodeParameters, verifyStripeSignature, type BillingEnv, type StripeEvent, type StripeObject } from "../src/billing/stripe";
 import type { Actor } from "../src/env";
@@ -196,6 +197,34 @@ describe("new-agent two-stage checkout", () => {
 });
 
 describe("new-agent verified lifecycle and recovery", () => {
+  it('audits mapped subscriptions and latest invoices without changing entitlements or Stripe',async()=>{
+    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});
+    const before=await f.env.AGENT_DB.prepare('SELECT * FROM agent_billing_subscriptions WHERE tenant_id=?').bind(f.actor.tenantId).first();const callStart=f.stripe.calls.length;
+    expect(await auditSubscription(f.env,f.actor.tenantId,f.stripe.client)).toEqual([]);
+    Object.assign(a.sub,{status:'canceled',cancel_at_period_end:true});Object.assign(a.invoice,{amount_paid:100});
+    expect(await auditSubscription(f.env,f.actor.tenantId,f.stripe.client)).toEqual(['subscription_status_mismatch','cancellation_mismatch','invoice_snapshot_mismatch']);
+    expect(await f.env.AGENT_DB.prepare('SELECT * FROM agent_billing_subscriptions WHERE tenant_id=?').bind(f.actor.tenantId).first()).toEqual(before);
+    expect(f.stripe.calls.slice(callStart).every(call=>call.method==='GET')).toBe(true);
+    Object.assign(a.sub.metadata,{payment_id:'legacy'});await expect(auditSubscription(f.env,f.actor.tenantId,f.stripe.client)).rejects.toMatchObject({code:'legacy_metadata_forbidden'});
+  });
+  it('schedules gated daily comparisons and stores sanitized failures with backoff',async()=>{
+    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});
+    const before=f.stripe.calls.length;expect(await runBillingReconciliation(f.env,f.stripe.client)).toEqual({checked:0,disabled:true});expect(f.stripe.calls).toHaveLength(before);
+    f.env.AGENT_BILLING_RECONCILIATION_ENABLED='true';await expect(runBillingReconciliation(f.env,f.stripe.client)).rejects.toMatchObject({code:'activation_not_ready'});
+    const stamp=new Date().toISOString();for(const gate of ['stripe_account_verified','billing_reconciliation_tests'])await f.env.AGENT_DB.prepare("INSERT INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture','fixture',?,?)")
+      .bind('billing:reconciliation:acct_fixture',gate,CATALOG_VERSION,stamp,new Date(Date.now()+86400000).toISOString()).run();
+    expect(await runBillingReconciliation(f.env,f.stripe.client)).toEqual({checked:1,disabled:false});
+    const report=await f.env.AGENT_DB.prepare('SELECT * FROM agent_billing_reconciliation WHERE tenant_id=?').bind(f.actor.tenantId).first<StripeObject>();expect(report).toMatchObject({status:'checked',findings_json:'[]',lease_token:null});expect(Date.parse(report!.next_check_at)-Date.now()).toBeGreaterThan(23*3600000);
+    expect(await runBillingReconciliation(f.env,f.stripe.client)).toEqual({checked:0,disabled:false});
+    await f.env.AGENT_DB.prepare("UPDATE agent_billing_reconciliation SET next_check_at='2000-01-01' WHERE tenant_id=?").bind(f.actor.tenantId).run();Object.assign(a.sub,{customer:'cus_foreign'});
+    expect(await runBillingReconciliation(f.env,f.stripe.client)).toEqual({checked:0,disabled:false});
+    expect(await f.env.AGENT_DB.prepare('SELECT status,last_error_code FROM agent_billing_reconciliation WHERE tenant_id=?').bind(f.actor.tenantId).first()).toEqual({status:'failed',last_error_code:'subscription_contract_mismatch'});
+  });
+  it('rejects a comparison when a webhook changes the local subscription mid-read',async()=>{
+    const f=await fixture(),a=await activated(f);Object.assign(a.sub,{livemode:false});Object.assign(a.sub.items,{has_more:false});Object.assign(a.invoice,{livemode:false});
+    f.stripe.beforeRequest=async path=>{if(path.startsWith('/v1/invoices/'))await f.env.AGENT_DB.prepare("UPDATE agent_billing_subscriptions SET access_state='paused' WHERE tenant_id=?").bind(f.actor.tenantId).run();};
+    await expect(auditSubscription(f.env,f.actor.tenantId,f.stripe.client)).rejects.toMatchObject({code:'billing_snapshot_changed'});
+  });
   it("deduplicates setup events without activating the subscription or duplicate notices", async () => {
     const f = await fixture(); const paid = await paidSetup(f);
     expect(await processBillingEvent(f.env, paid.delivered, f.stripe.client)).toMatchObject({ outcome: "duplicate" });

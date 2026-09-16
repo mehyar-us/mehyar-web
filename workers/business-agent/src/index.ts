@@ -10,6 +10,7 @@ import { HttpError, json, readJson, requestKey, requireOrigin } from './http';
 import { KNOWLEDGE_ROLES, OPERATORS, requireMembership, requireTenant } from './permissions';
 import { addMemory, createTenant, deleteMemory, getMemory, listTenants, presentTenant } from './tenants';
 import {renameAgent} from './agent-settings';
+import {runBillingReconciliation} from './billing/reconciliation';
 
 export { BusinessAgent };
 
@@ -99,6 +100,9 @@ async function route(request:Request,env:Env) {
 }
 
 export default {
+  async scheduled(_controller,env){
+    try{await runBillingReconciliation(env);}catch{console.error(JSON.stringify({event:'agent_billing_reconciliation_unavailable'}));}
+  },
   async fetch(request:Request,env:Env):Promise<Response> {
     const requestId=crypto.randomUUID();
     try {const response=await route(request,env);response.headers.set('x-request-id',requestId);return response;}

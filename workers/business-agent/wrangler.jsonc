@@ -11,10 +11,12 @@
     "ENVIRONMENT": "local",
     "AI_ENABLED": "false",
     "COMMERCE_ENABLED": "false",
+    "AGENT_BILLING_RECONCILIATION_ENABLED": "false",
     "EXTERNAL_ACTIONS_ENABLED": "false",
     "RESEARCH_ENABLED": "false",
     "RESEARCH_RECOVERY_ENABLED": "false"
   },
+  "triggers": {"crons": ["*/15 * * * *"]},
   "d1_databases": [{
     "binding": "AGENT_DB",
     "database_name": "mehyar-business-agent-local",

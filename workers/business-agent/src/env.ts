@@ -18,6 +18,7 @@ export interface Env {
   AI_ENABLED?: string;
   AI_GATEWAY_ID?: string;
   COMMERCE_ENABLED?: string;
+  AGENT_BILLING_RECONCILIATION_ENABLED?:string;
   EXTERNAL_ACTIONS_ENABLED?: string;
   RESEARCH_ENABLED?: string;
   RESEARCH_RECOVERY_ENABLED?: string;
