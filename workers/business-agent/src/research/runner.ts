@@ -9,7 +9,7 @@ export class ResearchRunner {
   constructor(private jobs:ResearchJobs,private provider:Provider,private gate:()=>Promise<void>){}
   async submit(id:string) {
     await this.gate();
-    const job=this.jobs.begin(id);
+    const job=this.jobs.beginFunded(id);
     try {
       const result=await this.provider.start({url:job.source,limit:job.page_limit,depth:job.depth});
       return this.jobs.submitted(id,result.id);

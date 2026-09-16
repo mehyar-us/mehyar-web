@@ -2,6 +2,7 @@ import {HttpError} from '../http';
 import {normalizeWebsite} from '../tenants';
 import {extractSiteEvidence,type ExtractedPage} from './extract';
 import type {CrawlRecord} from './cloudflare-crawl';
+import {ResearchSpend} from './spend';
 
 type Status='reserved'|'submitting'|'uncertain'|'running'|'cancel_requested'|'completed'|'cancelled'|'failed';
 type Job={id:string;request_key:string;source:string;period:string;page_limit:number;depth:number;deadline:number;
@@ -13,6 +14,7 @@ const conflict=(message:string)=>new HttpError(409,'research_job_conflict',messa
 export class ResearchJobs {
   constructor(private storage:DurableObjectStorage){}
   initialize(){
+    new ResearchSpend(this.storage).initialize();
     this.storage.sql.exec(`CREATE TABLE IF NOT EXISTS research_jobs (
       id TEXT PRIMARY KEY,request_key TEXT NOT NULL UNIQUE,source TEXT NOT NULL,period TEXT NOT NULL,
       page_limit INTEGER NOT NULL,depth INTEGER NOT NULL,deadline INTEGER NOT NULL,status TEXT NOT NULL,
@@ -37,6 +39,7 @@ export class ResearchJobs {
       this.storage.sql.exec("UPDATE research_jobs SET status='cancelled',reserved=0 WHERE status='reserved' AND deadline<=?",now);
       this.storage.sql.exec("UPDATE research_jobs SET status='cancel_requested' WHERE status='running' AND deadline<=?",now);
       this.storage.sql.exec("UPDATE research_jobs SET status='uncertain' WHERE status='submitting' AND deadline<=?",now);
+      this.storage.sql.exec("UPDATE research_spend SET status='released' WHERE status='reserved' AND job_id IN (SELECT id FROM research_jobs WHERE status='cancelled' AND provider_id IS NULL)");
     });
   }
   get(id:string):Job {
@@ -107,6 +110,11 @@ export class ResearchJobs {
     if(job.status!=='reserved'||job.deadline<=now)throw conflict('This research cannot be submitted.');
     this.storage.sql.exec("UPDATE research_jobs SET status='submitting' WHERE id=?",id);return this.get(id);
   }
+  beginFunded(id:string){return this.storage.transactionSync(()=>{const job=this.begin(id);new ResearchSpend(this.storage).dispatch(id);return job;});}
+  reserveSpend(id:string,micros:number,budget:number,quoteRef:string){
+    const job=this.get(id);if(job.status!=='reserved')throw conflict('Only queued research can reserve supplier spending.');
+    return new ResearchSpend(this.storage).reserve(id,job.period,micros,budget,quoteRef);
+  }
   submitted(id:string,providerId:string):Job {
     const job=this.get(id);
     if(!/^[a-zA-Z0-9_-]{16,128}$/.test(providerId))throw conflict('A verified provider identifier is required.');
@@ -127,6 +135,7 @@ export class ResearchJobs {
     else if(job.status==='running')this.storage.sql.exec("UPDATE research_jobs SET status='cancel_requested' WHERE id=?",id);
     // Unknown submissions remain uncertain; cancellation cannot prove no provider effect.
     else if(job.status==='submitting')return this.uncertain(id);
+    if(job.status==='reserved')new ResearchSpend(this.storage).release(id);
     return this.get(id);
   }
   withdraw(id:string,userId:string){

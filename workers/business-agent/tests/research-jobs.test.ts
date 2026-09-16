@@ -5,13 +5,40 @@ import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {ResearchJobs} from '../src/research/jobs';
 import {ResearchRunner} from '../src/research/runner';
+import {ResearchSpend} from '../src/research/spend';
 const input=()=>({key:crypto.randomUUID(),url:'https://salon.example.com/',period:'trial',allowance:20,pages:20,depth:2,deadline:Date.now()+60_000});
 const provider='11111111-1111-4111-8111-111111111111';
-async function ledger(work:(jobs:ResearchJobs)=>void|Promise<void>){
+async function ledger(work:(jobs:ResearchJobs,spend:ResearchSpend)=>void|Promise<void>){
   const stub=await getAgentByName((env as unknown as Env).BUSINESS_AGENTS,crypto.randomUUID());
-  await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs);});
+  await runInDurableObject(stub,async(_instance,ctx)=>{const jobs=new ResearchJobs(ctx.storage);jobs.initialize();await work(jobs,new ResearchSpend(ctx.storage));});
 }
 describe('durable research reservations',()=>{
+  it('requires supplier funding atomically before provider dispatch',async()=>ledger(async jobs=>{
+    const job=jobs.reserve(input());let calls=0;
+    const runner=new ResearchRunner(jobs,{start:async()=>{calls++;return {id:provider};},results:async()=>({id:provider,status:'running',records:[]}),cancel:async()=>({requested:true})},async()=>{});
+    await expect(runner.submit(job.id)).rejects.toThrow('reserved before dispatch');
+    expect(calls).toBe(0);expect(jobs.get(job.id).status).toBe('reserved');
+    jobs.reserveSpend(job.id,100,100,'fixture-quote');await runner.submit(job.id);expect(calls).toBe(1);
+  }));
+  it('bounds commitments and accounts for reconciled overruns without masking expense',async()=>ledger((jobs,spend)=>{
+    const a=jobs.reserve({...input(),pages:5}),b=jobs.reserve({...input(),pages:5});
+    jobs.reserveSpend(a.id,100,150,'fixture');expect(()=>jobs.reserveSpend(b.id,100,150,'fixture')).toThrow('budget');
+    expect(jobs.reserveSpend(a.id,100,150,'fixture').reserved_micros).toBe(100);
+    expect(()=>jobs.reserveSpend(a.id,50,150,'changed')).toThrow('different terms');
+    jobs.beginFunded(a.id);jobs.uncertain(a.id);expect(spend.release(a.id)?.status).toBe('dispatched');
+    expect(spend.settle(a.id,200)).toMatchObject({actual_micros:200,status:'settled'});
+    expect(spend.settle(a.id,200).actual_micros).toBe(200);
+    expect(()=>spend.settle(a.id,100)).toThrow('dispatched');
+    expect(()=>jobs.reserveSpend(b.id,1,150,'fixture')).toThrow('budget');
+  }));
+  it('releases only unsubmitted commitments on cancellation or expiry',async()=>ledger((jobs,spend)=>{
+    const a=jobs.reserve({...input(),pages:5}),b=jobs.reserve({...input(),pages:5}),c=jobs.reserve({...input(),pages:5});
+    for(const job of [a,b,c])jobs.reserveSpend(job.id,100,300,'fixture');
+    jobs.cancel(a.id);expect(spend.get(a.id)?.status).toBe('released');
+    jobs.beginFunded(c.id);jobs.expire(Date.now()+3_600_000);jobs.initialize();
+    expect(spend.get(b.id)?.status).toBe('released');expect(spend.get(c.id)?.status).toBe('dispatched');
+    expect(()=>spend.settle(b.id,0)).toThrow('dispatched');
+  }));
   it('keeps missing provider usage unknown and explicit zero distinct across restarts',async()=>ledger(jobs=>{
     const job=jobs.reserve(input());jobs.begin(job.id);jobs.submitted(job.id,provider);
     expect(jobs.providerUsage(job.id)).toBeNull();
@@ -133,7 +160,7 @@ describe('durable research reservations',()=>{
     const api={start:async()=>{starts++;return {id:provider};},cancel:async()=>({requested:true}),results:async(_id:string,_url:string,cursor?:number)=>({id:provider,status:'completed' as const,browserSecondsUsed:15.5,
       records:[{url:job.source+(cursor?'contact':''),status:'completed' as const,httpStatus:200,html:'<title>Salon</title>'}],...(cursor?{}:{cursor:1})})};
     const runner=new ResearchRunner(jobs,api,async()=>{});
-    await runner.submit(job.id);await expect(runner.submit(job.id)).rejects.toThrow('cannot be submitted');expect(starts).toBe(1);
+    jobs.reserveSpend(job.id,100,100,'fixture');await runner.submit(job.id);await expect(runner.submit(job.id)).rejects.toThrow('cannot be submitted');expect(starts).toBe(1);
     expect((await runner.poll(job.id)).status).toBe('running');expect(jobs.checkpoint(job.id).cursor).toBe(1);
     jobs.initialize();
     expect(await new ResearchRunner(jobs,api,async()=>{}).poll(job.id)).toMatchObject({status:'completed',used:2,reserved:0});
@@ -144,7 +171,7 @@ describe('durable research reservations',()=>{
     const job=jobs.reserve({...input(),pages:5});let calls=0;
     const api={start:async()=>{calls++;throw new Error('network lost');},cancel:async()=>({requested:true}),results:async()=>({id:provider,status:'running' as const,records:[]})};
     const runner=new ResearchRunner(jobs,api,async()=>{});
-    await expect(runner.submit(job.id)).rejects.toThrow('network lost');await expect(runner.submit(job.id)).rejects.toThrow('cannot be submitted');
+    jobs.reserveSpend(job.id,100,100,'fixture');await expect(runner.submit(job.id)).rejects.toThrow('network lost');await expect(runner.submit(job.id)).rejects.toThrow('cannot be submitted');
     expect(calls).toBe(1);expect(jobs.get(job.id)).toMatchObject({status:'uncertain',reserved:5});
     expect(jobs.submitted(job.id,provider)).toMatchObject({status:'cancel_requested',provider_id:provider});
   }));
