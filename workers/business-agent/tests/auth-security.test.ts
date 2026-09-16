@@ -6,6 +6,7 @@ import type { Env } from "../src/env";
 import { handleAuthRequest, getSession, createAuth } from "../src/auth";
 import { capabilityStatus, grantedCapabilities, scopesForSelection, type AuthEnv } from "../src/auth/capabilities";
 import { decryptCredential, encryptCredential, mergeCredential, attachUnassignedGrant, storeProviderGrant, type CredentialBinding } from "../src/auth/vault";
+import {grantAccountEmail} from '../src/auth/grant-label';
 
 const origin = "https://agent.example.test";
 const key = btoa("12345678901234567890123456789012"); // Test fixture, never deployment configuration.
@@ -75,6 +76,15 @@ describe("explicit provider scope selection", () => {
 });
 
 describe("tenant-bound encrypted token custody", () => {
+  it('exposes only the bound provider email and hides invalid, swapped or revoked labels',async()=>{
+    const scoped={...binding,tenantId:null};
+    const ciphertext=await encryptCredential({accountEmail:'business@example.test',accessToken:'never-expose-access',refreshToken:'never-expose-refresh',grantedScopes:[]},scoped,key);
+    expect(await grantAccountEmail(env,scoped,ciphertext,'authorized')).toBe('business@example.test');
+    expect(await grantAccountEmail(env,{...scoped,accountId:'other-account'},ciphertext,'authorized')).toBeNull();
+    expect(await grantAccountEmail(env,scoped,ciphertext,'revoked')).toBeNull();
+    const invalid=await encryptCredential({accountEmail:'invalid\nlabel',accessToken:'private',grantedScopes:[]},scoped,key);
+    expect(await grantAccountEmail(env,scoped,invalid,'authorized')).toBeNull();
+  });
   it("encrypts tokens and authenticates tenant, owner, provider and account identity", async () => {
     const credential = { accountEmail: "mailbox@example.test", accessToken: "secret-access", refreshToken: "secret-refresh", grantedScopes: ["scope-a"] };
     const encrypted = await encryptCredential(credential, binding, key);
@@ -169,8 +179,11 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     const metadataText = await metadata.text();
     expect(metadataText).not.toContain("ciphertext");
     expect(metadataText).not.toContain("provider-refresh-private");
+    expect(JSON.parse(metadataText).grants.every((item:{accountEmail:string})=>item.accountEmail==='owner@example.test')).toBe(true);
     expect(JSON.parse(metadataText).grants.every((item: { status: string }) => item.status === "authorized")).toBe(true);
     await env.AGENT_DB.prepare("UPDATE agent_memberships SET expires_at = '2000-01-01T00:00:00.000Z' WHERE tenant_id = 'owned-tenant'").run();
+    const restricted=await handleAuthRequest(request('/api/auth/grants',undefined,sessionCookie),env);
+    expect((await restricted.json() as {grants:{id:string;accountEmail:string|null}[]}).grants.find(item=>item.id===attached.id)?.accountEmail).toBeNull();
     await expect(attachUnassignedGrant(env, session!.user.id, grant!.id, "owned-tenant")).rejects.toThrow("tenant_connection_forbidden");
     await env.AGENT_DB.prepare("UPDATE agent_memberships SET expires_at = NULL WHERE tenant_id = 'owned-tenant'").run();
     await env.AGENT_DB.prepare("UPDATE agent_tenants SET status = 'deleted' WHERE id = 'owned-tenant'").run();
@@ -248,6 +261,8 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     refreshToken = "provider-work-refresh-private";
     const linked = await authorize(sessionCookie, ["gmail_read", "gmail_send"], { email: "work@example.test", subject: "google-work-fixture" });
     expect(linked.headers.get("location")).toBe(origin + "/?connected=google");
+    const labels=await handleAuthRequest(request('/api/auth/grants',undefined,sessionCookie),env);
+    const labelsText=await labels.text();expect(labelsText).toContain('work@example.test');expect(labelsText).not.toContain('owner@example.test');expect(labelsText).not.toContain('provider-work-refresh-private');
     const workGrant = await env.AGENT_DB.prepare("SELECT ciphertext FROM auth_provider_grants WHERE user_id = ? AND account_id = ? AND tenant_scope = ''")
       .bind(session!.user.id, "google-work-fixture").first<{ ciphertext: string }>();
     expect(await decryptCredential(workGrant!.ciphertext, { userId: session!.user.id, provider: "google", accountId: "google-work-fixture", tenantId: null }, key))

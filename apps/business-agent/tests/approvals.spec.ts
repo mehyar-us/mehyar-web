@@ -96,6 +96,15 @@ test('calendar continuation enables selection only after the complete inventory 
   await page.getByRole('combobox',{name:'Appointment calendar',exact:true}).selectOption('last-calendar');expect(queries[1]).toContain(`continuation=${token}`);
 });
 
+test('calendar account choice identifies separate provider mailboxes',async({page})=>{
+  await fixture(page,'owner',false,false,true);
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[['22222222-2222-4222-8222-222222222222','appointments@example.test'],['33333333-3333-4333-8333-333333333333','sales@example.test']].map(([id,accountEmail])=>({id,accountEmail,provider:'google',tenantId:'business-a',status:'authorized',grantedCapabilities:['calendar_manage'],grantedScopes:[],selectedCapabilities:[]}))}}));
+  await page.reload();await page.getByRole('button',{name:'Approvals',exact:true}).click();await page.getByRole('button',{name:'Set up appointments',exact:true}).click();
+  const account=page.getByRole('combobox',{name:'Connected account',exact:true});
+  await expect(account.getByRole('option',{name:'Google — appointments@example.test'})).toHaveCount(1);await expect(account.getByRole('option',{name:'Google — sales@example.test'})).toHaveCount(1);
+  await account.selectOption({label:'Google — sales@example.test'});await expect(account).toHaveValue('33333333-3333-4333-8333-333333333333');
+});
+
 test('mobile appointment setup clears calendar access on pause and workspace change',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await fixture(page,'owner',false,false,true);

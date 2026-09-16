@@ -119,6 +119,7 @@ export type AuthCapabilities = {
   providers: { google: Provider; microsoft: Provider };
 };
 export type Grant = {
+  accountEmail?:string|null;
   id: string;
   provider: string;
   tenantId: string | null;

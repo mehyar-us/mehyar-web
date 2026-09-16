@@ -6,6 +6,7 @@ import { z } from "zod";
 import { capabilityStatus, grantedCapabilities, providerConfigured, scopesForSelection, type AuthEnv, type OAuthProvider } from "./capabilities";
 import { attachUnassignedGrant, requireConnectorManager, revokeProviderGrant, storeProviderGrant } from "./vault";
 import { HttpError, readJson } from "../http";
+import {grantAccountEmail} from './grant-label';
 
 export type { AuthEnv } from "./capabilities";
 export { attachUnassignedGrant } from "./vault";
@@ -192,17 +193,18 @@ export async function handleAuthRequest(request: Request, env: AuthEnv): Promise
   if (path === "/api/auth/grants" && request.method === "GET") {
     const session = await getSession(request, env);
     if (!session) return json({ error: "authentication_required" }, 401);
-    const rows = await env.AGENT_DB.prepare(`SELECT id, provider, tenant_scope, granted_scopes,
+    const rows = await env.AGENT_DB.prepare(`SELECT id, provider, account_id, ciphertext, tenant_scope, granted_scopes,
       selected_capabilities, status, updated_at FROM auth_provider_grants WHERE user_id = ? ORDER BY updated_at DESC`)
-      .bind(session.user.id).all<{ id: string; provider: OAuthProvider; tenant_scope: string; granted_scopes: string; selected_capabilities: string; status: string; updated_at: string }>();
-    return json({ grants: rows.results.map((row) => {
+      .bind(session.user.id).all<{ id: string; provider: OAuthProvider; account_id:string;ciphertext:string;tenant_scope: string; granted_scopes: string; selected_capabilities: string; status: string; updated_at: string }>();
+    return json({ grants: await Promise.all(rows.results.map(async(row) => {
       const grantedScopes: string[] = JSON.parse(row.granted_scopes);
       const selectedCapabilities: string[] = JSON.parse(row.selected_capabilities);
       return { id: row.id, provider: row.provider, tenantId: row.tenant_scope || null,
+        accountEmail:await grantAccountEmail(env,{userId:session.user.id,provider:row.provider,accountId:row.account_id,tenantId:row.tenant_scope||null},row.ciphertext,row.status),
         grantedScopes, selectedCapabilities,
         grantedCapabilities: grantedCapabilities(row.provider, grantedScopes, selectedCapabilities),
         status: row.status, lastAuthorizedAt: row.updated_at };
-    }) });
+    })) });
   }
   if (["/api/auth/grants/attach", "/api/auth/grants/revoke"].includes(path) && request.method === "POST") {
     if (request.headers.get("origin") !== new URL(env.APP_ORIGIN).origin) return json({ error: "invalid_origin" }, 403);

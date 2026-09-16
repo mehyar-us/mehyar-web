@@ -55,7 +55,7 @@ export default function CalendarPolicyForm({tenantId,grants,online,paused,onUnau
     {!eligible.length?<p>Connect an account with calendar management access in Connections first.</p>:<form onSubmit={event=>void save(event)}>
       <fieldset disabled={saving||!online||paused} style={{border:0,padding:0,minWidth:0}}>
         <label className="field">Connected account<select value={grantId} onChange={event=>{setCursor(null);setGrantId(event.target.value);}} required>
-          <option value="">Choose an account</option>{eligible.map((g,i)=><option key={g.id} value={g.id}>{g.provider==='google'?'Google':'Microsoft'} authorization {i+1}</option>)}
+          <option value="">Choose an account</option>{eligible.map((g,i)=><option key={g.id} value={g.id}>{g.provider==='google'?'Google':'Microsoft'}{g.accountEmail?` — ${g.accountEmail}`:` authorization ${i+1} (identity unavailable)`}</option>)}
         </select></label>
         {loading&&<p role="status">Loading calendars…</p>}
         {nextCursor&&<button type="button" className="button secondary" disabled={loading} onClick={()=>setCursor({tenantId,grantId,token:nextCursor})}>Load remaining calendars</button>}

@@ -1622,6 +1622,7 @@ export default function App() {
                               : "Microsoft"}{" "}
                             authorization
                           </strong>
+                          <p>{grant.accountEmail||'Account identity unavailable'}</p>
                           <p>
                             You approved access during sign-in. Confirm which
                             business can use it.
@@ -1661,6 +1662,7 @@ export default function App() {
                               <span className="subtle-pill">
                                 {labelStatus(grant.status)}
                               </span>
+                              <p>{grant.accountEmail||'Account identity unavailable'}</p>
                               <p>
                                 {grant.grantedCapabilities
                                   .map(labelStatus)
@@ -1994,6 +1996,7 @@ export default function App() {
             Allow <strong>{tenant?.name}</strong> to use your previously
             approved {attachGrant.provider} access?
           </p>
+          <p>Account: {attachGrant.accountEmail||'Identity unavailable'}</p>
           <p className="small muted">
             {attachGrant.grantedCapabilities.map(labelStatus).join(" · ")}. This
             does not authorize new message sending or automatic actions.
@@ -2026,6 +2029,7 @@ export default function App() {
             <strong>{tenant?.name}</strong>. Work depending on it will need a
             new connection.
           </p>
+          <p>Account: {revokeGrant.accountEmail||'Identity unavailable'}</p>
           <p className="small muted">
             This removes this workspace's saved access. It does not remove the
             app's consent from your provider account, disconnect another
