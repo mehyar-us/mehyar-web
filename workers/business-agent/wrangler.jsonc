@@ -19,6 +19,7 @@
     "MAILBOX_SYNC_ENABLED": "false",
     "MAILBOX_RECOVERY_ENABLED": "false",
     "MAILBOX_PROCESSING_ENABLED": "false",
+    "MAILBOX_TRIAGE_ENABLED": "false",
     "RESEARCH_ENABLED": "false",
     "RESEARCH_RECOVERY_ENABLED": "false"
   },

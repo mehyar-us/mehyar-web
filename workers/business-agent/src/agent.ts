@@ -17,6 +17,7 @@ import {restartMailbox} from './connectors/mailbox-restart';
 import {MailboxRecoveryOffers} from './connectors/mailbox-recovery-offers';
 import {textAccess} from './billing/text-access';
 import {TextUsage} from './billing/text-usage';
+import {MailboxTriage} from './connectors/mailbox-triage';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
 import {researchAccess,requireResearchReady} from './research/access';
@@ -57,6 +58,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
     this.sql`CREATE TABLE IF NOT EXISTS provider_attempts (id TEXT PRIMARY KEY,user_id TEXT NOT NULL,
       request_key TEXT NOT NULL,period TEXT NOT NULL,status TEXT NOT NULL,started_at TEXT NOT NULL)`;
     const textUsage=new TextUsage(this.ctx.storage);textUsage.initialize();textUsage.interrupt();
+    new MailboxTriage(this.ctx.storage).initialize();
     // Generation has no external effect; interrupted generation is released for a safe retry.
     this.sql`UPDATE turns SET status = 'failed' WHERE status = 'running'`;
     this.sql`UPDATE provider_attempts SET status = 'interrupted' WHERE status = 'started'`;
@@ -112,6 +114,16 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       };
       await guard();
       return runMailboxPage(this.env,actor,streamId,guard);
+    });
+  }
+  async analyzeMailbox(actor:Actor,streamId:string,messageId:string,receipt:string){
+    return this.result(async()=>{
+      const guard=async()=>{
+        await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused)throw new HttpError(409,'agent_paused','Mailbox analysis is paused.');
+      };
+      await guard();
+      return new MailboxTriage(this.ctx.storage).run(this.env,actor,streamId,messageId,receipt,guard);
     });
   }
   async initializeMailbox(actor:Actor,grantId:string) {

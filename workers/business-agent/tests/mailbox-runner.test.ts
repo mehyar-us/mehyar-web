@@ -17,6 +17,7 @@ import {connectedMailboxFolders,initializeMicrosoftFolders} from '../src/connect
 import {stopMailbox,resumeMailbox} from '../src/connectors/mailbox-control';
 import {restartMailbox} from '../src/connectors/mailbox-restart';
 import {MailboxRecoveryOffers} from '../src/connectors/mailbox-recovery-offers';
+import {BusinessAgent,unwrap} from '../src/agent';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -39,6 +40,37 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it.each(['success','malformed','stopped','invalidated'] as const)('runs guarded budgeted triage with %s model completion',async(mode)=>{
+    const f=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'message',kind:'upsert'}],syncCursor:'300'});
+    const claim=(await f.ledger.claimChange(f.streamId))!;
+    await f.ledger.saveChange(claim,{provider:'google',id:'message',content:{id:'message',threadId:'thread',payload:{mimeType:'text/plain',body:{size:5,data:'SGVsbG8'}}}});
+    const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+      const original=(instance as any).env;let calls=0;
+      (instance as any).env={...e,MAILBOX_PROCESSING_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any,options:any)=>{
+        calls++;expect(input.messages).toHaveLength(2);expect(options.gateway).toMatchObject({skipCache:true,collectLog:false,metadata:{tenant_id:f.actor.tenantId,workload:'mailbox_triage'}});
+        if(mode==='stopped')await stopMailbox(e,f.actor,f.grantId);
+        if(mode==='invalidated')await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
+        return {choices:[{message:{content:mode==='malformed'?'invalid':JSON.stringify({category:'unknown',priority:'unknown',summary:'A greeting with no clear request.',evidence:[{excerpt:'Hello'}]})}}]};
+      }}};
+      try{
+        const result=await instance.analyzeMailbox(f.actor,f.streamId,'message',claim.token);
+        expect(calls).toBe(1);
+        if(mode==='success'){
+          expect(unwrap(result)).toMatchObject({requiresReview:true,authorizesActions:false,source:{receipt:claim.token},category:'unknown'});
+          expect(await instance.analyzeMailbox(f.actor,f.streamId,'message',claim.token)).toEqual(result);expect(calls).toBe(1);
+        }else expect(result.ok).toBe(false);
+        expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:mode==='success'?1:0,reserved:0});
+        expect(ctx.storage.sql.exec<{n:number}>('SELECT COUNT(*) AS n FROM provider_attempts').toArray()[0].n).toBe(1);
+        expect(ctx.storage.sql.exec<{n:number}>('SELECT COUNT(*) AS n FROM mailbox_triage_results').toArray()[0].n).toBe(mode==='success'?1:0);
+      }finally{(instance as any).env=original;}
+    });
+  });
+  it('keeps triage inert without its own release flag',async()=>{
+    const f=await fixture(),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+    expect(await stub.analyzeMailbox(f.actor,f.streamId,'message',crypto.randomUUID())).toMatchObject({ok:false,error:{code:'mailbox_triage_disabled'}});
+  });
   it('reports the oldest completed current-consent folder scan and withholds freshness until every folder completes',async()=>{
     const f=await fixture('microsoft');const second=await f.ledger.open(f.grantId,'microsoft','other-folder');
     await e.AGENT_DB.prepare('UPDATE agent_mailbox_sync SET last_completed_at=? WHERE id=?').bind('2026-09-16T10:00:00.000Z',f.streamId).run();
