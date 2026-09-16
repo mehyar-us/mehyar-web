@@ -1,6 +1,7 @@
 import { ProviderHTTP, query, segment } from "./http";
 import { base64, buildReply } from "./mail";
 import { gmailHistoryPage, gmailMessagePage, gmailProfileHistory } from "./mail-pages";
+import {mailSnapshot} from './mail-snapshot';
 import { ConnectorError, type ClientOptions, type ConnectorAuth, type MailMessage, type MailReceipt, type Operation, type Page, type ReplyInput, type WatchReceipt } from "./types";
 const prefix = "https://www.googleapis.com/auth/";
 const read = [prefix + "gmail.readonly", prefix + "gmail.modify", "https://mail.google.com/"];
@@ -23,6 +24,9 @@ export class GoogleMailClient {
   constructor(auth: ConnectorAuth, options?: ClientOptions) { this.http = new ProviderHTTP(auth, "https://gmail.googleapis.com/gmail/v1/users/me/", options); }
   async profileHistory():Promise<string> {
     return gmailProfileHistory(await this.http.request<unknown>(GOOGLE_MAIL_OPERATIONS.read,'profile'),this.http.accountEmail);
+  }
+  async readSnapshot(messageId:string) {
+    return mailSnapshot('google',await this.http.request<unknown>(GOOGLE_MAIL_OPERATIONS.read,`messages/${segment(messageId)}?format=full`),messageId);
   }
   async listMessages(pageToken?: string): Promise<Page<{ id: string; threadId: string }>> {
     const data = await this.http.request<{ messages?: { id: string; threadId: string }[]; nextPageToken?: string }>(GOOGLE_MAIL_OPERATIONS.read, query("messages", { maxResults: "100", includeSpamTrash: "true", pageToken }));

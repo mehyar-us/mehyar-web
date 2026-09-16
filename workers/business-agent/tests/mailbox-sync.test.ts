@@ -20,6 +20,35 @@ async function fixture(provider:'google'|'microsoft'='google') {
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
+  it('fences concurrent consumers and callbacks from an expired processing lease',async()=>{
+    const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'300'});
+    const claims=await Promise.all([f.ledger.claimChange(f.streamId),f.ledger.claimChange(f.streamId)]);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    f.advance();const current=(await f.ledger.claimChange(f.streamId))!;
+    await expect(f.ledger.saveChange(claims.find(Boolean)!,null)).rejects.toMatchObject({code:'mailbox_sync_unavailable'});
+    expect(await f.ledger.saveChange(current,null)).toBe(true);
+    expect(await f.ledger.claimChange(f.streamId)).toBeNull();
+  });
+  it('rolls back the message snapshot if acknowledging the queue fails',async()=>{
+    const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'300'});
+    const claim=(await f.ledger.claimChange(f.streamId))!;
+    await e.AGENT_DB.prepare("CREATE TRIGGER mailbox_ack_failure BEFORE UPDATE OF state ON agent_mailbox_changes BEGIN SELECT RAISE(ABORT,'fixture acknowledgment failure'); END").run();
+    try {await expect(f.ledger.saveChange(claim,null)).rejects.toBeDefined();}
+    finally {await e.AGENT_DB.prepare('DROP TRIGGER mailbox_ack_failure').run();}
+    expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({n:0});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+    expect(await f.ledger.saveChange(claim,null)).toBe(true);
+  });
+  it('blocks foreign consumer access and refuses an exhausted tenant snapshot budget without acknowledging',async()=>{
+    const f=await fixture(),other=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'300'});
+    await expect(other.ledger.claimChange(f.streamId)).rejects.toMatchObject({code:'mailbox_sync_unavailable'});
+    const claim=(await f.ledger.claimChange(f.streamId))!;
+    await e.AGENT_DB.prepare("INSERT INTO agent_mailbox_messages(stream_id,message_id,state,content_json,content_bytes,source_mode,observed_at,receipt_token) VALUES (?,'existing','present','{}',10000000,'unknown',?,'fixture-budget')")
+      .bind(f.streamId,new Date().toISOString()).run();
+    expect(await f.ledger.saveChange(claim,{provider:'google',id:'a',content:{id:'a',threadId:'t',payload:{}}})).toBe(false);
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+  });
   it('bounds abandoned attempts and never advances their checkpoint',async()=>{
     const f=await fixture();
     for(let i=0;i<12;i++){expect(await f.ledger.claim(f.streamId)).not.toBeNull();f.advance();}

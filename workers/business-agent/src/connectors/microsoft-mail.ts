@@ -1,6 +1,7 @@
 import { ProviderHTTP, cursorURL, query, segment, singleLine } from "./http";
 import { base64, buildReply } from "./mail";
 import { graphMailPage } from "./mail-pages";
+import {mailSnapshot} from './mail-snapshot';
 import { ConnectorError, type ClientOptions, type ConnectorAuth, type MailMessage, type MailReceipt, type Operation, type Page, type ReplyInput } from "./types";
 import { GRAPH_BASE } from "./microsoft-calendar";
 const read = ["Mail.Read", "Mail.ReadWrite"];
@@ -26,6 +27,11 @@ function normalize(message: GraphMessage): MailMessage {
 export class MicrosoftMailClient {
   private readonly http: ProviderHTTP;
   constructor(auth: ConnectorAuth, options?: ClientOptions) { this.http = new ProviderHTTP(auth, GRAPH_BASE, options); }
+  async readSnapshot(folderId:string,messageId:string) {
+    const value=await this.http.request<unknown>(MICROSOFT_MAIL_OPERATIONS.read,query(`me/mailFolders/${segment(folderId)}/messages/${segment(messageId)}`,{'$select':fields}),
+      {headers:{Prefer:'IdType="ImmutableId", outlook.body-content-type="text"'}});
+    return mailSnapshot('microsoft',value,messageId);
+  }
   async readThread(conversationId: string, cursor?: string): Promise<Page<MailMessage>> {
     singleLine(conversationId, "conversation_id", 2048);
     const initial = query("me/messages", { "$filter": `conversationId eq '${conversationId.replace(/'/g, "''")}'`, "$select": fields, "$top": "100" });

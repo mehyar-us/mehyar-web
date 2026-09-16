@@ -6,6 +6,7 @@ import { GOOGLE_MAIL_OPERATIONS } from './google-mail';
 import { MICROSOFT_MAIL_OPERATIONS } from './microsoft-mail';
 import { cursorURL, segment } from './http';
 import type { Provider } from './types';
+import {mailSnapshot,type MailSnapshot} from './mail-snapshot';
 
 const id = z.string().min(1).max(2048).regex(/^[^\u0000-\u001f\u007f]+$/);
 const pageSchema = z.object({
@@ -17,6 +18,7 @@ type SyncPage = z.infer<typeof pageSchema>;
 type Stream = { id:string; tenant_id:string; grant_id:string; provider:Provider; resource:string; authorization:string;
   checkpoint:string|null; page_cursor:string|null; round_id:string; page_number:number; state:string; lease_token:string|null; lease_until:string|null; consecutive_attempts:number; sync_mode:'bootstrap'|'incremental' };
 export type MailboxClaim = { streamId:string; token:string; checkpoint:string|null; pageCursor:string|null };
+export type MailboxChangeClaim = {streamId:string;token:string};
 const unavailable = () => new HttpError(409,'mailbox_sync_unavailable','Mailbox synchronization must be restarted with current authorization.');
 
 /** Internal storage boundary. Not a public RPC and not permission to send mail.
@@ -153,5 +155,54 @@ export class MailboxSync {
       WHERE id=? AND tenant_id=? AND lease_token=? AND lease_until>? AND ${this.fence}`)
       .bind(this.now(),row.id,this.actor.tenantId,claim.token,this.now(),...this.args(row.grant_id,grant)).run();
     return result.meta.changes===1;
+  }
+  async claimChange(streamId:string):Promise<MailboxChangeClaim|null> {
+    const {row,grant}=await this.stream(streamId),now=this.now(),token=crypto.randomUUID();
+    await this.env.AGENT_DB.prepare('INSERT OR IGNORE INTO agent_mailbox_consumers(stream_id) VALUES (?)').bind(streamId).run();
+    await this.env.AGENT_DB.prepare("UPDATE agent_mailbox_consumers SET state='review_required' WHERE stream_id=? AND attempts>=12 AND (lease_until IS NULL OR lease_until<=?)").bind(streamId,now).run();
+    const next=`SELECT c.PAGE FROM agent_mailbox_changes c WHERE c.stream_id=? AND c.state='pending' ORDER BY c.created_at,c.rowid LIMIT 1`;
+    const result=await this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_consumers SET page_token=(${next.replace('PAGE','page_token')}),ordinal=(${next.replace('PAGE','ordinal')}),
+      lease_token=?,lease_until=?,attempts=attempts+1 WHERE stream_id=? AND state='ready' AND next_attempt_at<=? AND (lease_until IS NULL OR lease_until<=?)
+      AND EXISTS(SELECT 1 FROM agent_mailbox_changes WHERE stream_id=? AND state='pending') AND ${this.fence}`)
+      .bind(streamId,streamId,token,new Date(this.clock()+90000).toISOString(),streamId,now,now,streamId,...this.args(row.grant_id,grant)).run();
+    return result.meta.changes===1?{streamId,token}:null;
+  }
+  async changeContext(claim:MailboxChangeClaim) {
+    const {row}=await this.stream(claim.streamId);
+    const change=await this.env.AGENT_DB.prepare(`SELECT c.message_id,c.page_token,c.ordinal,p.source_mode,w.attempts FROM agent_mailbox_consumers w
+      JOIN agent_mailbox_changes c ON c.stream_id=w.stream_id AND c.page_token=w.page_token AND c.ordinal=w.ordinal
+      JOIN agent_mailbox_sync_pages p ON p.stream_id=c.stream_id AND p.token=c.page_token
+      WHERE w.stream_id=? AND w.lease_token=? AND w.lease_until>? AND w.state='ready' AND c.state='pending'`)
+      .bind(row.id,claim.token,this.now()).first<{message_id:string;page_token:string;ordinal:number;source_mode:string;attempts:number}>();
+    if(!change)throw unavailable();
+    return {...change,grantId:row.grant_id,provider:row.provider,resource:row.resource};
+  }
+  async deferChange(claim:MailboxChangeClaim,seconds=300,review=false) {
+    const context=await this.changeContext(claim);
+    if(!Number.isFinite(seconds)||seconds<60||seconds>86400)throw unavailable();
+    return this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_consumers SET lease_token=NULL,lease_until=NULL,next_attempt_at=?,state=?
+      WHERE stream_id=? AND lease_token=? AND lease_until>?`)
+      .bind(new Date(this.clock()+seconds*1000).toISOString(),review||context.attempts>=12?'review_required':'ready',claim.streamId,claim.token,this.now()).run();
+  }
+  async saveChange(claim:MailboxChangeClaim,snapshot:MailSnapshot|null):Promise<boolean> {
+    const context=await this.changeContext(claim),{row,grant}=await this.stream(claim.streamId),now=this.now();
+    if(snapshot&&(snapshot.provider!==row.provider||snapshot.id!==context.message_id))throw unavailable();
+    const content=snapshot?JSON.stringify(mailSnapshot(row.provider,snapshot.content,context.message_id).content):null;
+    const bytes=content?new TextEncoder().encode(content).length:0;
+    const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_messages(stream_id,message_id,state,content_json,content_bytes,source_mode,observed_at,receipt_token)
+      SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM agent_mailbox_consumers WHERE stream_id=? AND lease_token=? AND lease_until>?) AND ${this.fence}
+      AND (SELECT COALESCE(SUM(m.content_bytes),0) FROM agent_mailbox_messages m JOIN agent_mailbox_sync s ON s.id=m.stream_id WHERE s.tenant_id=? AND NOT(m.stream_id=? AND m.message_id=?))+?<=10000000
+      AND (SELECT COUNT(*) FROM agent_mailbox_messages m JOIN agent_mailbox_sync s ON s.id=m.stream_id WHERE s.tenant_id=? AND NOT(m.stream_id=? AND m.message_id=?))<10000
+      ON CONFLICT(stream_id,message_id) DO UPDATE SET state=excluded.state,content_json=excluded.content_json,content_bytes=excluded.content_bytes,
+        source_mode=excluded.source_mode,observed_at=excluded.observed_at,receipt_token=excluded.receipt_token`)
+      .bind(row.id,context.message_id,snapshot?'present':'missing',content,bytes,context.source_mode,now,claim.token,row.id,claim.token,now,...this.args(row.grant_id,grant),this.actor.tenantId,row.id,context.message_id,bytes,this.actor.tenantId,row.id,context.message_id);
+    const acknowledge=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_changes SET state='applied' WHERE stream_id=? AND page_token=? AND ordinal=? AND state='pending'
+      AND EXISTS(SELECT 1 FROM agent_mailbox_messages WHERE stream_id=? AND message_id=? AND receipt_token=?)`)
+      .bind(row.id,context.page_token,context.ordinal,row.id,context.message_id,claim.token);
+    const release=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_consumers SET lease_token=NULL,lease_until=NULL,attempts=0,next_attempt_at=? WHERE stream_id=? AND lease_token=?
+      AND EXISTS(SELECT 1 FROM agent_mailbox_messages WHERE stream_id=? AND message_id=? AND receipt_token=?)`)
+      .bind(now,row.id,claim.token,row.id,context.message_id,claim.token);
+    const results=await this.env.AGENT_DB.batch([receipt,acknowledge,release]);
+    return results[1].meta.changes===1;
   }
 }

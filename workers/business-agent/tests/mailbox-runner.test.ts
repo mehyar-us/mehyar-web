@@ -8,6 +8,7 @@ import {RELEASE_GATES} from '../src/billing/service';
 import {MailboxSync} from '../src/connectors/mailbox-sync';
 import {runMailboxPage} from '../src/connectors/mailbox-runner';
 import {initializeGoogleMailbox} from '../src/connectors/mailbox-bootstrap';
+import {consumeMailboxChange} from '../src/connectors/mailbox-consumer';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -30,6 +31,43 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('processes queued Gmail references from current state and atomically acknowledges them',async()=>{
+    const f=await fixture();
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'delete'}],syncCursor:'300'});
+    const snapshot={id:'a',threadId:'t',payload:{mimeType:'text/plain',headers:[{name:'Subject',value:'Private inquiry'}],body:{data:'aGVsbG8'}}};
+    expect(await consumeMailboxChange({...e,MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.streamId,guard,async input=>{
+      expect(String(input)).toContain('/messages/a?format=full');return Response.json(snapshot);
+    })).toEqual({state:'processed'});
+    const cached=await e.AGENT_DB.prepare('SELECT state,content_json,source_mode FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first<{state:string;content_json:string;source_mode:string}>();
+    expect(cached).toMatchObject({state:'present',source_mode:'incremental'});expect(JSON.parse(cached!.content_json)).toEqual(snapshot);
+    expect(await f.ledger.claimChange(f.streamId)).toBeNull();
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'applied'});
+  });
+  it('reconciles Outlook absence only within the selected folder',async()=>{
+    const f=await fixture('microsoft');
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'delete'}],syncCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=x'});
+    expect(await consumeMailboxChange({...e,MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.streamId,guard,async input=>{
+      expect(new URL(String(input)).pathname).toBe('/v1.0/me/mailFolders/inbox/messages/a');return Response.json({}, {status:404});
+    })).toEqual({state:'processed'});
+    expect(await e.AGENT_DB.prepare('SELECT state,content_json,source_mode FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first())
+      .toEqual({state:'missing',content_json:null,source_mode:'bootstrap'});
+  });
+  it('keeps a reference pending on a mismatched provider receipt and requires review',async()=>{
+    const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'300'});
+    expect(await consumeMailboxChange({...e,MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.streamId,guard,async()=>Response.json({id:'wrong',threadId:'t',payload:{}})))
+      .toEqual({state:'review_required'});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+    expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({n:0});
+  });
+  it('withholds a message and its acknowledgment if the agent is paused during retrieval',async()=>{
+    const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'300'});
+    let paused=false;
+    await expect(consumeMailboxChange({...e,MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.streamId,async()=>{if(paused)throw new Error('paused');},async()=>{
+      paused=true;return Response.json({id:'a',threadId:'t',payload:{}});
+    })).rejects.toBeDefined();
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+    expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({n:0});
+  });
   it('finishes an empty Gmail bootstrap without inventing a newer baseline',async()=>{
     const f=await fixture('google',false);
     const {streamId}=await initializeGoogleMailbox(e,f.actor,f.grantId,guard,async()=>Response.json({emailAddress:'owner@example.test',historyId:'200'}));
