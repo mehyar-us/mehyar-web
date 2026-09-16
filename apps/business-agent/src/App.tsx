@@ -1677,7 +1677,8 @@ export default function App() {
                               {canManage&&grant.provider==='google'&&grant.status!=='revoked'&&grant.grantedCapabilities.includes('gmail_read')&&
                                 <MailboxPanel tenantId={tenantId} grantId={grant.id} online={online} onUnauthorized={fail}/>}
                               {canManage&&grant.provider==='microsoft'&&grant.status!=='revoked'&&grant.grantedCapabilities.includes('mail_read')&&
-                                <OutlookFolders tenantId={tenantId} grantId={grant.id} online={online} onUnauthorized={fail}/>}
+                                <><MailboxPanel tenantId={tenantId} grantId={grant.id} online={online} onUnauthorized={fail} provider="microsoft"/>
+                                <OutlookFolders tenantId={tenantId} grantId={grant.id} online={online} onUnauthorized={fail}/></>}
                             </div>
                             {grant.status !== "revoked" && (
                               <button

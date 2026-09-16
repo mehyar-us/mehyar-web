@@ -110,6 +110,7 @@ async function fixture(page: Page, options: Fixtures = {}) {
         currency: "USD",
       });
     if (path === "/api/auth/grants") return reply({ grants: [] });
+    if(path.endsWith('/mailbox/folders/status'))return reply({state:'not_started',setupEnabled:false,pending:0,lastObservedAt:null,configuredFolders:0});
     if(path.endsWith('/mailbox'))return reply({state:'not_started',setupEnabled:false,pending:0,lastObservedAt:null});
     if (path === "/api/invitations") return reply({invitations:[],more:false});
     if(path.endsWith('/business-brief'))return reply(briefFixture());
@@ -819,6 +820,25 @@ test('exhausted research checks show needs attention without claiming continued 
   await expect(panel.getByRole('status')).toContainText('Research needs review before status checks can resume');
   await expect(panel.getByText('Researching',{exact:true})).toHaveCount(0);
   await expect(panel.getByRole('button',{name:'Cancel research'})).toBeEnabled();
+});
+
+test('reads saved Outlook monitoring status and clears unverifiable counts',async({page})=>{
+  await fixture(page);
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:'11111111-1111-4111-8111-111111111111',provider:'microsoft',tenantId:tenant.id,status:'authorized',grantedCapabilities:['mail_read'],grantedScopes:[],selectedCapabilities:['mail_read']}]}}));
+  let invalid=false;
+  await page.route('**/mailbox/folders/status',route=>route.fulfill({json:{state:'needs_attention',setupEnabled:false,pending:5,lastObservedAt:null,configuredFolders:invalid?-1:3}}));
+  await page.goto('/?connected=microsoft');const panel=page.locator('[aria-label="Mailbox monitoring"]');
+  await expect(panel.getByText('3 folders configured under current account permission.')).toBeVisible();
+  await expect(panel.getByText('Needs attention',{exact:true})).toBeVisible();
+  await expect(panel.getByRole('button',{name:'Set up mailbox monitoring'})).toHaveCount(0);
+  invalid=true;await panel.getByRole('button',{name:'Refresh mailbox status'}).click();
+  await expect(panel.getByRole('alert')).toContainText('Mailbox status could not be verified');
+  await expect(panel.getByText('3 folders configured under current account permission.')).toHaveCount(0);
+  invalid=false;await panel.getByRole('button',{name:'Refresh mailbox status'}).click();
+  await expect(panel.getByText('3 folders configured under current account permission.')).toBeVisible();
+  await page.context().setOffline(true);
+  await expect(panel.getByText('Reconnect to check mailbox status.')).toBeVisible();
+  await expect(panel.getByText('5 message references awaiting processing.')).toHaveCount(0);
 });
 
 test('discovers Outlook folders across batches and clears them offline',async({page})=>{

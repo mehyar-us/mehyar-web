@@ -9,7 +9,7 @@ import {MailboxSync} from '../src/connectors/mailbox-sync';
 import {runMailboxPage} from '../src/connectors/mailbox-runner';
 import {initializeGoogleMailbox} from '../src/connectors/mailbox-bootstrap';
 import {consumeMailboxChange} from '../src/connectors/mailbox-consumer';
-import {googleMailboxStatus} from '../src/connectors/mailbox-status';
+import {googleMailboxStatus,microsoftMailboxStatus} from '../src/connectors/mailbox-status';
 import {runInDurableObject} from 'cloudflare:test';
 import {getAgentByName} from 'agents';
 import {FolderSessions} from '../src/connectors/folder-sessions';
@@ -36,6 +36,28 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('summarizes current Outlook folders, bootstrap, pending work and recovery without private identifiers',async()=>{
+    const f=await fixture('microsoft'),ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};
+    const second=await f.ledger.open(f.grantId,'microsoft','private-folder');
+    expect(await microsoftMailboxStatus(ready,f.actor,f.grantId,()=>false)).toEqual({state:'initializing',setupEnabled:false,pending:0,lastObservedAt:null,configuredFolders:2});
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'private-message',kind:'upsert'}],syncCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=secret'});
+    await f.ledger.commit((await f.ledger.claim(second))!,{changes:[],syncCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/private-folder/messages/delta?$deltatoken=secret'});
+    const status=await microsoftMailboxStatus(ready,f.actor,f.grantId,()=>false);
+    expect(status).toEqual({state:'monitoring',setupEnabled:false,pending:1,lastObservedAt:null,configuredFolders:2});
+    expect(JSON.stringify(status)).not.toContain('private');expect(JSON.stringify(status)).not.toContain('secret');
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(second).run();
+    expect(await microsoftMailboxStatus(ready,f.actor,f.grantId,()=>false)).toMatchObject({state:'needs_attention'});
+    expect(await microsoftMailboxStatus(ready,f.actor,f.grantId,()=>true)).toMatchObject({state:'paused'});
+  });
+  it('excludes old-consent Outlook progress and rejects foreign status requests',async()=>{
+    const f=await fixture('microsoft'),other=await fixture('microsoft');
+    await expect(microsoftMailboxStatus(e,other.actor,f.grantId,()=>false)).rejects.toMatchObject({code:'mailbox_not_found'});
+    expect(await microsoftMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({state:'disabled',configuredFolders:1});
+    await storeProviderGrant(e,f.binding,f.credential,[]);
+    expect(await microsoftMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({state:'not_started',configuredFolders:0,pending:0});
+    await e.AGENT_DB.prepare("UPDATE auth_provider_grants SET status='revoked' WHERE id=?").bind(f.grantId).run();
+    expect(await microsoftMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({state:'reconnect_required'});
+  });
   it('configures only verified Outlook folders and preserves existing progress on repeated setup',async()=>{
     const f=await fixture('microsoft',false),stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
     const ready={...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'};

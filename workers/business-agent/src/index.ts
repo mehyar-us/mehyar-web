@@ -78,6 +78,8 @@ async function route(request:Request,env:Env) {
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   const mailbox=section.match(/^connections\/([a-f0-9-]{36})\/mailbox$/);
   const mailboxFolders=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/folders$/);
+  const outlookStatus=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/folders\/status$/);
+  if(outlookStatus&&request.method==='GET')return json(unwrap(await agent.outlookMailboxStatus(actor,outlookStatus[1])));
   const mailboxSetup=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/setup$/);
   if(mailboxSetup&&request.method==='POST'){
     const input=z.object({inventoryId:z.string().uuid(),folderIds:z.array(z.string().min(1).max(2048)).min(1).max(100)}).strict().parse(await readJson(request));
