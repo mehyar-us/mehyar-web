@@ -81,6 +81,21 @@ export class MailboxSync {
     if(!acquired)return null;
     return {streamId,token,checkpoint:acquired.checkpoint,pageCursor:acquired.page_cursor};
   }
+  async context(claim:MailboxClaim) {
+    const {row}=await this.stream(claim.streamId);
+    if(row.state!=='ready'||row.lease_token!==claim.token||!row.lease_until||row.lease_until<=this.now()
+      ||row.checkpoint!==claim.checkpoint||row.page_cursor!==claim.pageCursor)throw unavailable();
+    return {grantId:row.grant_id,provider:row.provider,resource:row.resource};
+  }
+  /** Read failures retain the same checkpoint, with durable retry delay. */
+  async defer(claim:MailboxClaim,seconds:number):Promise<boolean> {
+    if(!Number.isFinite(seconds)||seconds<60||seconds>86400)throw unavailable();
+    const {row,grant}=await this.stream(claim.streamId);
+    const result=await this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET lease_token=NULL,lease_until=?,updated_at=?
+      WHERE id=? AND tenant_id=? AND lease_token=? AND lease_until>? AND ${this.fence}`)
+      .bind(new Date(this.clock()+Math.ceil(seconds)*1000).toISOString(),this.now(),row.id,this.actor.tenantId,claim.token,this.now(),...this.args(row.grant_id,grant)).run();
+    return result.meta.changes===1;
+  }
   async commit(claim:MailboxClaim,input:SyncPage):Promise<boolean> {
     const page=pageSchema.parse(input),{row,grant}=await this.stream(claim.streamId);
     this.cursor(row.provider,row.resource,(page.nextCursor??page.syncCursor)!,Boolean(page.syncCursor));

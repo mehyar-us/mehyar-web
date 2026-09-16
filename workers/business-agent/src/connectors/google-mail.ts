@@ -10,7 +10,8 @@ export const GOOGLE_MAIL_OPERATIONS = {
   watch: { name: "google.mail.watch", effect: "write", scopes: [read] },
 } as const satisfies Record<string, Operation>;
 interface GmailMessage { id: string; threadId: string; payload?: { headers?: { name: string; value: string }[]; [key: string]: unknown }; }
-export interface GmailHistory { id: string; messagesAdded?: { message: { id: string; threadId: string } }[]; messagesDeleted?: { message: { id: string; threadId: string } }[]; labelsAdded?: unknown[]; labelsRemoved?: unknown[]; }
+type GmailReference = { id: string; threadId: string };
+export interface GmailHistory { id: string; messages?: GmailReference[]; messagesAdded?: { message: GmailReference }[]; messagesDeleted?: { message: GmailReference }[]; labelsAdded?: { message: GmailReference; labelIds: string[] }[]; labelsRemoved?: { message: GmailReference; labelIds: string[] }[]; }
 function normalize(message: GmailMessage): MailMessage {
   const header = (name: string) => message.payload?.headers?.find((item) => item.name.toLowerCase() === name)?.value ?? "";
   return { id: message.id, threadId: message.threadId, subject: header("subject"), from: header("from"), replyTo: header("reply-to") || undefined, internetMessageId: header("message-id") || undefined, references: header("references") || undefined, body: message.payload };
