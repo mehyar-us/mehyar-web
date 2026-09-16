@@ -21,6 +21,18 @@ async function fixture(provider:'google'|'microsoft'='google') {
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
+  it('stores extracted text with its source receipt and budget, and clears it on a confirmed missing message',async()=>{
+    const f=await fixture('microsoft');
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'m',kind:'upsert'}],nextCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$skiptoken=one'});
+    const snapshot={provider:'microsoft' as const,id:'m',content:{id:'m',conversationId:'t',body:{contentType:'html',content:'<p>Hello &amp; welcome</p>'}}};
+    expect(await f.ledger.saveChange((await f.ledger.claimChange(f.streamId))!,snapshot)).toBe(true);
+    const row=(await e.AGENT_DB.prepare('SELECT content_json,text_json,content_bytes FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first<{content_json:string;text_json:string;content_bytes:number}>())!;
+    expect(JSON.parse(row.text_json)).toMatchObject({version:1,text:'Hello & welcome',trustedForInstructions:false,omissions:[]});
+    expect(row.content_bytes).toBe(new TextEncoder().encode(row.content_json+row.text_json).length);
+    await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'m',kind:'delete'}],syncCursor:'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=done'});
+    expect(await f.ledger.saveChange((await f.ledger.claimChange(f.streamId))!,null)).toBe(true);
+    expect(await e.AGENT_DB.prepare('SELECT text_json,content_bytes FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({text_json:null,content_bytes:0});
+  });
   it('records only completed scans, including empty scans, and clears freshness on restart',async()=>{
     const f=await fixture();
     const read=()=>e.AGENT_DB.prepare('SELECT last_completed_at FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first();
@@ -137,12 +149,15 @@ describe('durable mailbox synchronization',()=>{
   it('rolls back the message snapshot if acknowledging the queue fails',async()=>{
     const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'300'});
     const claim=(await f.ledger.claimChange(f.streamId))!;
+    const snapshot={provider:'google' as const,id:'a',content:{id:'a',threadId:'t',payload:{mimeType:'text/plain',body:{size:5,data:'SGVsbG8'}}}};
     await e.AGENT_DB.prepare("CREATE TRIGGER mailbox_ack_failure BEFORE UPDATE OF state ON agent_mailbox_changes BEGIN SELECT RAISE(ABORT,'fixture acknowledgment failure'); END").run();
-    try {await expect(f.ledger.saveChange(claim,null)).rejects.toBeDefined();}
+    try {await expect(f.ledger.saveChange(claim,snapshot)).rejects.toBeDefined();}
     finally {await e.AGENT_DB.prepare('DROP TRIGGER mailbox_ack_failure').run();}
     expect(await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first()).toEqual({n:0});
     expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
-    expect(await f.ledger.saveChange(claim,null)).toBe(true);
+    expect(await f.ledger.saveChange(claim,snapshot)).toBe(true);
+    const stored=await e.AGENT_DB.prepare('SELECT text_json FROM agent_mailbox_messages WHERE stream_id=?').bind(f.streamId).first<{text_json:string}>();
+    expect(JSON.parse(stored!.text_json).text).toBe('Hello');
   });
   it('blocks foreign consumer access and refuses an exhausted tenant snapshot budget without acknowledging',async()=>{
     const f=await fixture(),other=await fixture();

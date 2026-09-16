@@ -7,6 +7,7 @@ import { MICROSOFT_MAIL_OPERATIONS } from './microsoft-mail';
 import { cursorURL, segment } from './http';
 import type { Provider } from './types';
 import {mailSnapshot,type MailSnapshot} from './mail-snapshot';
+import {extractMailText} from './mail-text';
 
 const id = z.string().min(1).max(2048).regex(/^[^\u0000-\u001f\u007f]+$/);
 const pageSchema = z.object({
@@ -263,15 +264,17 @@ export class MailboxSync {
   async saveChange(claim:MailboxChangeClaim,snapshot:MailSnapshot|null):Promise<boolean> {
     const context=await this.changeContext(claim),{row,grant}=await this.stream(claim.streamId),now=this.now();
     if(snapshot&&(snapshot.provider!==row.provider||snapshot.id!==context.message_id))throw unavailable();
-    const content=snapshot?JSON.stringify(mailSnapshot(row.provider,snapshot.content,context.message_id).content):null;
-    const bytes=content?new TextEncoder().encode(content).length:0;
-    const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_messages(stream_id,message_id,state,content_json,content_bytes,source_mode,observed_at,receipt_token)
-      SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM agent_mailbox_consumers WHERE stream_id=? AND lease_token=? AND lease_until>?) AND ${this.fence}
+    const validated=snapshot?mailSnapshot(row.provider,snapshot.content,context.message_id):null;
+    const content=validated?JSON.stringify(validated.content):null;
+    const projection=validated?JSON.stringify(extractMailText(validated)):null;
+    const bytes=new TextEncoder().encode((content??'')+(projection??'')).length;
+    const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_messages(stream_id,message_id,state,content_json,text_json,content_bytes,source_mode,observed_at,receipt_token)
+      SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM agent_mailbox_consumers WHERE stream_id=? AND lease_token=? AND lease_until>?) AND ${this.fence}
       AND (SELECT COALESCE(SUM(m.content_bytes),0) FROM agent_mailbox_messages m JOIN agent_mailbox_sync s ON s.id=m.stream_id WHERE s.tenant_id=? AND NOT(m.stream_id=? AND m.message_id=?))+?<=10000000
       AND (SELECT COUNT(*) FROM agent_mailbox_messages m JOIN agent_mailbox_sync s ON s.id=m.stream_id WHERE s.tenant_id=? AND NOT(m.stream_id=? AND m.message_id=?))<10000
-      ON CONFLICT(stream_id,message_id) DO UPDATE SET state=excluded.state,content_json=excluded.content_json,content_bytes=excluded.content_bytes,
+      ON CONFLICT(stream_id,message_id) DO UPDATE SET state=excluded.state,content_json=excluded.content_json,text_json=excluded.text_json,content_bytes=excluded.content_bytes,
         source_mode=excluded.source_mode,observed_at=excluded.observed_at,receipt_token=excluded.receipt_token,needs_reconciliation=0`)
-      .bind(row.id,context.message_id,snapshot?'present':'missing',content,bytes,context.source_mode,now,claim.token,row.id,claim.token,now,...this.args(row.grant_id,grant),this.actor.tenantId,row.id,context.message_id,bytes,this.actor.tenantId,row.id,context.message_id);
+      .bind(row.id,context.message_id,snapshot?'present':'missing',content,projection,bytes,context.source_mode,now,claim.token,row.id,claim.token,now,...this.args(row.grant_id,grant),this.actor.tenantId,row.id,context.message_id,bytes,this.actor.tenantId,row.id,context.message_id);
     const acknowledge=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_changes SET state='applied' WHERE stream_id=? AND page_token=? AND ordinal=? AND state='pending'
       AND EXISTS(SELECT 1 FROM agent_mailbox_messages WHERE stream_id=? AND message_id=? AND receipt_token=?)`)
       .bind(row.id,context.page_token,context.ordinal,row.id,context.message_id,claim.token);
