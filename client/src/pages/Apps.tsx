@@ -307,7 +307,8 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/freelanceros-logo.png",
     accentClass: "from-slate-100 to-white dark:from-slate-900 dark:to-slate-950",
   },
-id: "promptpack",
+  {
+    id: "promptpack",
     name: "PromptPack Pro",
     url: "https://promptpack.mehyar.us",
     tagline: "50 AI prompts + 10 swipe files, written for your trade.",

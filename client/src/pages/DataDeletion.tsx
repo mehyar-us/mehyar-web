@@ -244,7 +244,8 @@ id: "hustlekit",
     whatWeDelete:
       "Email address, dashboard data, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
-id: "promptpack",
+  {
+    id: "promptpack",
     name: "PromptPack Pro",
     url: "https://promptpack.mehyar.us",
     tagline: "Niche AI prompt packs + swipe files.",
@@ -254,7 +255,8 @@ id: "promptpack",
       "Email address (to deliver your purchase and send your pack link), the profession you pick at checkout, the generated prompt pack, and checkout records.",
     whatWeDelete:
       "Email address, profession choice, generated prompt pack, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },  {
+  },
+  {
     id: "prepguide",
     name: "PrepGuide",
     url: "https://prepguide.mehyar.us",
