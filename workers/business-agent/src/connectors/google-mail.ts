@@ -1,6 +1,6 @@
 import { ProviderHTTP, query, segment } from "./http";
 import { base64, buildReply } from "./mail";
-import { gmailHistoryPage } from "./mail-pages";
+import { gmailHistoryPage, gmailMessagePage, gmailProfileHistory } from "./mail-pages";
 import { ConnectorError, type ClientOptions, type ConnectorAuth, type MailMessage, type MailReceipt, type Operation, type Page, type ReplyInput, type WatchReceipt } from "./types";
 const prefix = "https://www.googleapis.com/auth/";
 const read = [prefix + "gmail.readonly", prefix + "gmail.modify", "https://mail.google.com/"];
@@ -21,9 +21,12 @@ function normalize(message: GmailMessage): MailMessage {
 export class GoogleMailClient {
   private readonly http: ProviderHTTP;
   constructor(auth: ConnectorAuth, options?: ClientOptions) { this.http = new ProviderHTTP(auth, "https://gmail.googleapis.com/gmail/v1/users/me/", options); }
+  async profileHistory():Promise<string> {
+    return gmailProfileHistory(await this.http.request<unknown>(GOOGLE_MAIL_OPERATIONS.read,'profile'),this.http.accountEmail);
+  }
   async listMessages(pageToken?: string): Promise<Page<{ id: string; threadId: string }>> {
-    const data = await this.http.request<{ messages?: { id: string; threadId: string }[]; nextPageToken?: string }>(GOOGLE_MAIL_OPERATIONS.read, query("messages", { maxResults: "100", pageToken }));
-    return { items: data.messages ?? [], nextCursor: data.nextPageToken };
+    const data = await this.http.request<{ messages?: { id: string; threadId: string }[]; nextPageToken?: string }>(GOOGLE_MAIL_OPERATIONS.read, query("messages", { maxResults: "100", includeSpamTrash: "true", pageToken }));
+    return gmailMessagePage(data);
   }
   async readThread(threadId: string): Promise<MailMessage[]> {
     const data = await this.http.request<{ messages?: GmailMessage[] }>(GOOGLE_MAIL_OPERATIONS.read, `threads/${segment(threadId)}?format=full`);

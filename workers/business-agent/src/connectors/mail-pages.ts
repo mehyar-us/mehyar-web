@@ -6,6 +6,18 @@ const identifier = z.string().min(1).max(2048).regex(/^[^\u0000-\u001f\u007f]+$/
 const token = z.string().min(1).max(16384).regex(/^[^\u0000-\u0020\u007f]+$/);
 const historyId = z.string().regex(/^\d{1,20}$/);
 const message = z.object({ id: identifier, threadId: identifier }).passthrough();
+const gmailList = z.object({messages:z.array(message).optional(),nextPageToken:token.optional()});
+export function gmailMessagePage(value:unknown) {
+  const parsed=gmailList.safeParse(value);
+  if(!parsed.success)throw new ConnectorError('invalid_response','google.mail.list');
+  return {items:parsed.data.messages??[],nextCursor:parsed.data.nextPageToken};
+}
+export function gmailProfileHistory(value:unknown,accountEmail:string) {
+  const parsed=z.object({emailAddress:z.email(),historyId}).safeParse(value);
+  if(!parsed.success||parsed.data.emailAddress.toLowerCase()!==accountEmail.toLowerCase())
+    throw new ConnectorError('invalid_response','google.mail.profile');
+  return parsed.data.historyId;
+}
 const change = z.object({ message }).passthrough();
 const labelChange = change.extend({ labelIds: z.array(identifier) });
 const gmailPage = z.object({

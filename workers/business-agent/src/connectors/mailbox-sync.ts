@@ -15,7 +15,7 @@ const pageSchema = z.object({
 }).strict().refine(p => Boolean(p.nextCursor) !== Boolean(p.syncCursor));
 type SyncPage = z.infer<typeof pageSchema>;
 type Stream = { id:string; tenant_id:string; grant_id:string; provider:Provider; resource:string; authorization:string;
-  checkpoint:string|null; page_cursor:string|null; round_id:string; page_number:number; state:string; lease_token:string|null; lease_until:string|null; consecutive_attempts:number };
+  checkpoint:string|null; page_cursor:string|null; round_id:string; page_number:number; state:string; lease_token:string|null; lease_until:string|null; consecutive_attempts:number; sync_mode:'bootstrap'|'incremental' };
 export type MailboxClaim = { streamId:string; token:string; checkpoint:string|null; pageCursor:string|null };
 const unavailable = () => new HttpError(409,'mailbox_sync_unavailable','Mailbox synchronization must be restarted with current authorization.');
 
@@ -59,16 +59,26 @@ export class MailboxSync {
     if(provider==='google') { if(checkpoint&&!/^\d{1,20}$/.test(value))throw unavailable(); }
     else cursorURL(value,'','https://graph.microsoft.com/v1.0/',`/v1.0/me/mailFolders/${segment(resource)}/messages/delta`);
   }
-  /** Google initial history comes from a completed bootstrap; Graph starts with no delta link. */
-  async open(grantId:string,provider:Provider,resource:string,initialCheckpoint?:string) {
+  /** Look up existing progress without changing its baseline or recovery state. */
+  async existing(grantId:string,provider:Provider,resource:string):Promise<string|null> {
+    const {authorization}=await this.authority(grantId,provider);
+    const streamId=await digest(JSON.stringify(['mailbox-sync-v1',this.actor.tenantId,grantId,provider,resource,authorization]));
+    const row=await this.env.AGENT_DB.prepare('SELECT id FROM agent_mailbox_sync WHERE id=? AND tenant_id=?').bind(streamId,this.actor.tenantId).first<{id:string}>();
+    if(row)await this.stream(streamId);
+    return row?.id??null;
+  }
+  /** Without bootstrapAuthorization, Google history must come from an already
+   * completed bootstrap; Graph can start enumeration with no delta link. */
+  async open(grantId:string,provider:Provider,resource:string,initialCheckpoint?:string,bootstrapAuthorization?:string) {
     if(!['google','microsoft'].includes(provider)||!id.safeParse(resource).success||(provider==='google'&&resource!=='mailbox'))throw unavailable();
     if(provider==='google'&&!initialCheckpoint)throw unavailable();
     if(initialCheckpoint)this.cursor(provider,resource,initialCheckpoint,true);
     const {authorization,grant}=await this.authority(grantId,provider);
+    if(bootstrapAuthorization&&(provider!=='google'||bootstrapAuthorization!==authorization))throw unavailable();
     const streamId=await digest(JSON.stringify(['mailbox-sync-v1',this.actor.tenantId,grantId,provider,resource,authorization]));
-    await this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_sync(id,tenant_id,grant_id,provider,resource,authorization,checkpoint,round_id,updated_at)
-      SELECT ?,?,?,?,?,?,?,?,? WHERE ${this.fence} ON CONFLICT(id) DO NOTHING`)
-      .bind(streamId,this.actor.tenantId,grantId,provider,resource,authorization,initialCheckpoint??null,crypto.randomUUID(),this.now(),...this.args(grantId,grant)).run();
+    await this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_sync(id,tenant_id,grant_id,provider,resource,authorization,checkpoint,round_id,updated_at,sync_mode)
+      SELECT ?,?,?,?,?,?,?,?,?,? WHERE ${this.fence} ON CONFLICT(id) DO NOTHING`)
+      .bind(streamId,this.actor.tenantId,grantId,provider,resource,authorization,initialCheckpoint??null,crypto.randomUUID(),this.now(),bootstrapAuthorization?'bootstrap':'incremental',...this.args(grantId,grant)).run();
     await this.stream(streamId);
     return streamId;
   }
@@ -91,7 +101,7 @@ export class MailboxSync {
     const {row}=await this.stream(claim.streamId);
     if(row.state!=='ready'||row.lease_token!==claim.token||!row.lease_until||row.lease_until<=this.now()
       ||row.checkpoint!==claim.checkpoint||row.page_cursor!==claim.pageCursor)throw unavailable();
-    return {grantId:row.grant_id,provider:row.provider,resource:row.resource,attempts:row.consecutive_attempts};
+    return {grantId:row.grant_id,provider:row.provider,resource:row.resource,attempts:row.consecutive_attempts,syncMode:row.sync_mode};
   }
   /** Read failures retain the same checkpoint, with durable retry delay. */
   async defer(claim:MailboxClaim,seconds:number):Promise<boolean> {
@@ -107,6 +117,7 @@ export class MailboxSync {
     const page=pageSchema.parse(input),{row,grant}=await this.stream(claim.streamId);
     this.cursor(row.provider,row.resource,(page.nextCursor??page.syncCursor)!,Boolean(page.syncCursor));
     if(row.provider==='google'&&page.syncCursor&&row.checkpoint&&BigInt(page.syncCursor)<BigInt(row.checkpoint))throw unavailable();
+    if(row.sync_mode==='bootstrap'&&page.syncCursor&&page.syncCursor!==row.checkpoint)throw unavailable();
     const hash=await digest(JSON.stringify(page));
     const prior=await this.env.AGENT_DB.prepare('SELECT payload_hash FROM agent_mailbox_sync_pages WHERE stream_id=? AND token=?').bind(row.id,claim.token).first<{payload_hash:string}>();
     if(prior){if(prior.payload_hash!==hash)throw unavailable();return true;}
@@ -121,17 +132,18 @@ export class MailboxSync {
     const now=this.now();
     // The receipt gates both changes and checkpoint. D1 batch is one transaction;
     // a stale token inserts nothing, and any statement failure rolls back everything.
-    const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_sync_pages(stream_id,token,payload_hash,round_id,next_hash,created_at)
-      SELECT id,?,?,round_id,?,? FROM agent_mailbox_sync WHERE id=? AND tenant_id=? AND lease_token=? AND lease_until>? AND ${this.fence}
+    const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_sync_pages(stream_id,token,payload_hash,round_id,next_hash,created_at,source_mode)
+      SELECT id,?,?,round_id,?,?,CASE WHEN provider='microsoft' AND checkpoint IS NULL THEN 'bootstrap' ELSE sync_mode END
+      FROM agent_mailbox_sync WHERE id=? AND tenant_id=? AND lease_token=? AND lease_until>? AND ${this.fence}
       AND (SELECT COUNT(*) FROM agent_mailbox_changes c JOIN agent_mailbox_sync s ON s.id=c.stream_id WHERE s.tenant_id=? AND c.state='pending')+?<=10000
       ON CONFLICT(stream_id,token) DO NOTHING`).bind(claim.token,hash,nextHash,now,row.id,this.actor.tenantId,claim.token,now,...this.args(row.grant_id,grant),this.actor.tenantId,page.changes.length);
     const changes=this.env.AGENT_DB.prepare(`INSERT OR IGNORE INTO agent_mailbox_changes(stream_id,page_token,ordinal,message_id,kind,created_at)
       SELECT ?,?,CAST(j.key AS INTEGER),json_extract(j.value,'$.messageId'),json_extract(j.value,'$.kind'),? FROM json_each(?) j
       WHERE EXISTS(SELECT 1 FROM agent_mailbox_sync_pages WHERE stream_id=? AND token=? AND payload_hash=?)`)
       .bind(row.id,claim.token,now,JSON.stringify(page.changes),row.id,claim.token,hash);
-    const advance=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET checkpoint=?,page_cursor=?,round_id=?,page_number=?,state=?,lease_token=NULL,lease_until=NULL,updated_at=?,consecutive_attempts=0,next_poll_at=?
+    const advance=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET checkpoint=?,page_cursor=?,round_id=?,page_number=?,state=?,lease_token=NULL,lease_until=NULL,updated_at=?,consecutive_attempts=0,next_poll_at=?,sync_mode=?
       WHERE id=? AND tenant_id=? AND lease_token=? AND EXISTS(SELECT 1 FROM agent_mailbox_sync_pages WHERE stream_id=? AND token=? AND payload_hash=?)`)
-      .bind(page.syncCursor??row.checkpoint,page.nextCursor??null,page.syncCursor?crypto.randomUUID():row.round_id,page.syncCursor?0:row.page_number+1,page.nextCursor&&row.page_number>=499?'resync_required':'ready',now,new Date(this.clock()+(page.syncCursor?300000:0)).toISOString(),row.id,this.actor.tenantId,claim.token,row.id,claim.token,hash);
+      .bind(page.syncCursor??row.checkpoint,page.nextCursor??null,page.syncCursor?crypto.randomUUID():row.round_id,page.syncCursor?0:row.page_number+1,page.nextCursor&&row.page_number>=499?'resync_required':'ready',now,new Date(this.clock()+(page.syncCursor&&row.sync_mode!=='bootstrap'?300000:0)).toISOString(),page.syncCursor?'incremental':row.sync_mode,row.id,this.actor.tenantId,claim.token,row.id,claim.token,hash);
     const result=await this.env.AGENT_DB.batch([receipt,changes,advance]);
     return result[2].meta.changes===1;
   }

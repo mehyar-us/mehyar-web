@@ -7,9 +7,10 @@ import {CATALOG_VERSION} from '../src/catalog';
 import {RELEASE_GATES} from '../src/billing/service';
 import {MailboxSync} from '../src/connectors/mailbox-sync';
 import {runMailboxPage} from '../src/connectors/mailbox-runner';
+import {initializeGoogleMailbox} from '../src/connectors/mailbox-bootstrap';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
-async function fixture(provider:'google'|'microsoft'='google') {
+async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
   const userId=crypto.randomUUID();
   await e.AGENT_DB.prepare('INSERT INTO auth_user(id,name,email,createdAt,updatedAt) VALUES (?,?,?,?,?)')
     .bind(userId,'Fixture',`${userId}@example.test`,Date.now(),Date.now()).run();
@@ -24,11 +25,66 @@ async function fixture(provider:'google'|'microsoft'='google') {
   for(const [scope,gates] of [['catalog',RELEASE_GATES],[tenant.id,['activation_approved']],[`connector:${provider}.mail.read`,['provider_approval','live_acceptance']]] as const)
     for(const gate of gates)await e.AGENT_DB.prepare("INSERT OR REPLACE INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture-only','test',?,?)")
       .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
-  const ledger=new MailboxSync(e,actor),streamId=await ledger.open(grantId,provider,provider==='google'?'mailbox':'inbox',provider==='google'?'200':undefined);
+  const ledger=new MailboxSync(e,actor),streamId=createStream?await ledger.open(grantId,provider,provider==='google'?'mailbox':'inbox',provider==='google'?'200':undefined):'';
   return {actor,streamId,ledger,grantId,binding,credential};
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('finishes an empty Gmail bootstrap without inventing a newer baseline',async()=>{
+    const f=await fixture('google',false);
+    const {streamId}=await initializeGoogleMailbox(e,f.actor,f.grantId,guard,async()=>Response.json({emailAddress:'owner@example.test',historyId:'200'}));
+    expect(await runMailboxPage(e,f.actor,streamId,guard,async()=>Response.json({resultSizeEstimate:0}))).toEqual({state:'saved',changes:0,hasMore:false});
+    expect(await e.AGENT_DB.prepare('SELECT sync_mode,checkpoint FROM agent_mailbox_sync WHERE id=?').bind(streamId).first()).toEqual({sync_mode:'incremental',checkpoint:'200'});
+    expect(await f.ledger.claim(streamId)).not.toBeNull();
+  });
+  it('rejects a bootstrap commit that tries to skip the captured baseline',async()=>{
+    const f=await fixture('google',false);
+    const {streamId}=await initializeGoogleMailbox(e,f.actor,f.grantId,guard,async()=>Response.json({emailAddress:'owner@example.test',historyId:'200'}));
+    const claim=(await f.ledger.claim(streamId))!;
+    await expect(f.ledger.commit(claim,{changes:[],syncCursor:'300'})).rejects.toMatchObject({code:'mailbox_sync_unavailable'});
+    expect(await f.ledger.commit(claim,{changes:[],syncCursor:'200'})).toBe(true);
+  });
+  it('initializes Gmail before enumeration, resumes its pages and catches up from the original baseline',async()=>{
+    const f=await fixture('google',false);let calls=0;
+    const transport:typeof fetch=async input=>{
+      const url=new URL(String(input));calls++;
+      if(calls===1){expect(url.pathname.endsWith('/profile')).toBe(true);return Response.json({emailAddress:'owner@example.test',historyId:'200'});}
+      if(calls===2){expect(url.pathname.endsWith('/messages')).toBe(true);expect(url.searchParams.get('includeSpamTrash')).toBe('true');return Response.json({messages:[{id:'a',threadId:'t'}],nextPageToken:'page-two'});}
+      if(calls===3){expect(url.searchParams.get('pageToken')).toBe('page-two');return Response.json({messages:[{id:'b',threadId:'t'}]});}
+      expect(url.pathname.endsWith('/history')).toBe(true);expect(url.searchParams.get('startHistoryId')).toBe('200');
+      return Response.json({historyId:'300',history:[{id:'250',messagesDeleted:[{message:{id:'a',threadId:'t'}}]}]});
+    };
+    const {streamId}=await initializeGoogleMailbox(e,f.actor,f.grantId,guard,transport);
+    expect(await initializeGoogleMailbox(e,f.actor,f.grantId,guard,transport)).toEqual({streamId});expect(calls).toBe(1);
+    expect(await runMailboxPage(e,f.actor,streamId,guard,transport)).toEqual({state:'saved',changes:1,hasMore:true});
+    expect(await e.AGENT_DB.prepare('SELECT sync_mode,checkpoint,page_cursor FROM agent_mailbox_sync WHERE id=?').bind(streamId).first())
+      .toEqual({sync_mode:'bootstrap',checkpoint:'200',page_cursor:'page-two'});
+    expect(await runMailboxPage(e,f.actor,streamId,guard,transport)).toEqual({state:'saved',changes:1,hasMore:false});
+    expect(await e.AGENT_DB.prepare('SELECT sync_mode,checkpoint FROM agent_mailbox_sync WHERE id=?').bind(streamId).first()).toEqual({sync_mode:'incremental',checkpoint:'200'});
+    expect(await runMailboxPage(e,f.actor,streamId,guard,transport)).toEqual({state:'saved',changes:1,hasMore:false});
+    expect(calls).toBe(4);expect(await changes(streamId)).toContainEqual({message_id:'a',kind:'delete'});
+    const origins=(await e.AGENT_DB.prepare('SELECT source_mode,COUNT(*) AS n FROM agent_mailbox_sync_pages WHERE stream_id=? GROUP BY source_mode ORDER BY source_mode').bind(streamId).all()).results;
+    expect(origins).toEqual([{source_mode:'bootstrap',n:2},{source_mode:'incremental',n:1}]);
+  });
+  it.each([{emailAddress:'other@example.test',historyId:'200'},{emailAddress:'owner@example.test',historyId:200},null])('rejects an invalid or mismatched Gmail profile: %j',async profile=>{
+    const f=await fixture('google',false);
+    await expect(initializeGoogleMailbox(e,f.actor,f.grantId,guard,async()=>Response.json(profile))).rejects.toMatchObject({kind:'invalid_response'});
+    expect(await f.ledger.existing(f.grantId,'google','mailbox')).toBeNull();
+  });
+  it('withholds initialization after consent changes during the profile request',async()=>{
+    const f=await fixture('google',false);
+    await expect(initializeGoogleMailbox(e,f.actor,f.grantId,guard,async()=>{
+      await storeProviderGrant(e,f.binding,f.credential,[]);return Response.json({emailAddress:'owner@example.test',historyId:'200'});
+    })).rejects.toMatchObject({code:'mailbox_authorization_changed'});
+    expect(await f.ledger.existing(f.grantId,'google','mailbox')).toBeNull();
+  });
+  it('keeps the baseline and requires recovery when a bootstrap page is malformed',async()=>{
+    const f=await fixture('google',false);
+    const {streamId}=await initializeGoogleMailbox(e,f.actor,f.grantId,guard,async()=>Response.json({emailAddress:'owner@example.test',historyId:'200'}));
+    expect(await runMailboxPage(e,f.actor,streamId,guard,async()=>Response.json({messages:[{}]}))).toEqual({state:'resync_required'});
+    expect(await changes(streamId)).toEqual([]);
+    expect(await e.AGENT_DB.prepare('SELECT sync_mode,checkpoint FROM agent_mailbox_sync WHERE id=?').bind(streamId).first()).toEqual({sync_mode:'bootstrap',checkpoint:'200'});
+  });
   it('stops the twelfth transient failure for recovery rather than scheduling another retry',async()=>{
     const f=await fixture();
     await e.AGENT_DB.prepare('UPDATE agent_mailbox_sync SET consecutive_attempts=11 WHERE id=?').bind(f.streamId).run();
@@ -56,6 +112,8 @@ describe('one-page mailbox provider runner',()=>{
     expect(result).toEqual({state:'saved',changes:2,hasMore:false});
     expect(JSON.stringify(result)).not.toContain('private');
     expect(await changes(f.streamId)).toEqual([{message_id:'a',kind:'upsert'},{message_id:'b',kind:'delete'}]);
+    expect((await e.AGENT_DB.prepare('SELECT source_mode FROM agent_mailbox_sync_pages WHERE stream_id=?').bind(f.streamId).all()).results)
+      .toEqual([{source_mode:'bootstrap'}]);
   });
   it.each(['disabled','capability','billing','readiness','pause'] as const)('does not contact the provider when %s is unavailable',async condition=>{
     const f=await fixture();let calls=0;

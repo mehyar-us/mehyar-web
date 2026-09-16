@@ -7,7 +7,20 @@ import { connectorCredential } from './credentials';
 import { GoogleMailClient, GOOGLE_MAIL_OPERATIONS, type GmailHistory } from './google-mail';
 import { MicrosoftMailClient, MICROSOFT_MAIL_OPERATIONS } from './microsoft-mail';
 import { MailboxSync } from './mailbox-sync';
-import { ConnectorError } from './types';
+import { ConnectorError, type Provider } from './types';
+
+export async function requireMailboxAccess(env:Env,actor:Actor,agentGuard:()=>Promise<void>,provider?:Provider) {
+  if(env.MAILBOX_SYNC_ENABLED!=='true')throw new HttpError(503,'mailbox_sync_disabled','Mailbox monitoring is not enabled.');
+  await agentGuard();
+  const tenant=await requireTenant(env,actor);
+  if(tenant.plan_id==='trial')throw new HttpError(403,'paid_execution_required','An activated subscription is required for mailbox monitoring.');
+  await textAccess(env,actor,tenant);
+  if(provider) {
+    const capabilities=(provider==='google'?env.GOOGLE_ENABLED_CAPABILITIES:env.MICROSOFT_ENABLED_CAPABILITIES)?.split(',').map(s=>s.trim())??[];
+    if(!capabilities.includes(provider==='google'?'gmail_read':'mail_read'))throw new HttpError(503,'mailbox_not_ready','Mailbox monitoring is awaiting provider approval.');
+    await requireVerifiedGates(env,`connector:${provider}.mail.read`,['provider_approval','live_acceptance']);
+  }
+}
 
 type Change = {messageId:string;kind:'upsert'|'delete'};
 function gmailChanges(records:GmailHistory[]):Change[] {
@@ -27,23 +40,13 @@ function gmailChanges(records:GmailHistory[]):Change[] {
  */
 export async function runMailboxPage(env:Env,actor:Actor,streamId:string,
   agentGuard:()=>Promise<void>,transport:typeof fetch=fetch) {
-  const access=async()=>{
-    if(env.MAILBOX_SYNC_ENABLED!=='true')throw new HttpError(503,'mailbox_sync_disabled','Mailbox monitoring is not enabled.');
-    await agentGuard();
-    const tenant=await requireTenant(env,actor);
-    if(tenant.plan_id==='trial')throw new HttpError(403,'paid_execution_required','An activated subscription is required for mailbox monitoring.');
-    await textAccess(env,actor,tenant);
-  };
-  await access();
+  await requireMailboxAccess(env,actor,agentGuard);
   const ledger=new MailboxSync(env,actor),claim=await ledger.claim(streamId);
   if(!claim)return {state:'not_claimed' as const};
   const context=await ledger.context(claim);
   const guard=async()=>{
-    await access();
+    await requireMailboxAccess(env,actor,agentGuard,context.provider);
     await ledger.context(claim);
-    const capabilities=(context.provider==='google'?env.GOOGLE_ENABLED_CAPABILITIES:env.MICROSOFT_ENABLED_CAPABILITIES)?.split(',').map(s=>s.trim())??[];
-    if(!capabilities.includes(context.provider==='google'?'gmail_read':'mail_read'))throw new HttpError(503,'mailbox_not_ready','Mailbox monitoring is awaiting provider approval.');
-    await requireVerifiedGates(env,`connector:${context.provider}.mail.read`,['provider_approval','live_acceptance']);
   };
   try {
     await guard();
@@ -55,8 +58,15 @@ export async function runMailboxPage(env:Env,actor:Actor,streamId:string,
     let changes:Change[],nextCursor:string|undefined,syncCursor:string|undefined;
     if(context.provider==='google') {
       if(!claim.checkpoint)throw new HttpError(409,'mailbox_bootstrap_required','Complete mailbox initialization first.');
-      const page=await new GoogleMailClient(auth,{fetch:controlled}).listHistory(claim.checkpoint,claim.pageCursor??undefined);
-      changes=gmailChanges(page.items);nextCursor=page.nextCursor;syncCursor=page.syncCursor;
+      const client=new GoogleMailClient(auth,{fetch:controlled});
+      if(context.syncMode==='bootstrap') {
+        const page=await client.listMessages(claim.pageCursor??undefined);
+        changes=page.items.map(item=>({messageId:item.id,kind:'upsert'}));nextCursor=page.nextCursor;
+        syncCursor=nextCursor?undefined:claim.checkpoint;
+      } else {
+        const page=await client.listHistory(claim.checkpoint,claim.pageCursor??undefined);
+        changes=gmailChanges(page.items);nextCursor=page.nextCursor;syncCursor=page.syncCursor;
+      }
     } else {
       const page=await new MicrosoftMailClient(auth,{fetch:controlled}).listChanges(context.resource,claim.pageCursor??claim.checkpoint??undefined);
       changes=page.items.map(item=>({messageId:item.id,kind:item['@removed']?'delete':'upsert'}));
