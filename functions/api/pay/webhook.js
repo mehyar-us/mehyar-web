@@ -13,6 +13,7 @@
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
+import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
 import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
 
@@ -161,6 +162,15 @@ const fulfillHooks = {
   async bizbuilder({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillBizbuilder({ db, env, waitUntil, sendEmail }, payment);
+  },
+
+  // CreditFix Kit — DIY credit repair kit. Creates the creditfixkit_orders row
+  // (idempotent on payment_id via idx_creditfixkit_orders_payment), unifies the
+  // access token onto the billing_payments row, then hands off to the
+  // standalone module for background generation + buyer email.
+  async creditfixkit({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillCreditfixkit({ db, env, waitUntil, sendEmail }, payment);
   },
 };
 

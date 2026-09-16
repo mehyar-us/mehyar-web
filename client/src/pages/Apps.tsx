@@ -188,6 +188,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/bizbuilder-logo.png",
     accentClass: "from-slate-100 to-white dark:from-slate-900 dark:to-slate-950",
   },
+  {
+    id: "creditfixkit",
+    name: "CreditFix Kit",
+    url: "https://creditfixkit.mehyar.us",
+    tagline: "Fix your credit yourself — the letters, the plan, the knowledge.",
+    description:
+      "A DIY credit repair kit: personalized dispute letter templates, a 12-month rebuild plan, and a plain-English score-factor explainer — delivered as a PDF for a one-time $47. General information only, never legal advice, no guaranteed outcomes.",
+    audience: "Anyone with collections, late payments, or a thin file who wants to do credit repair themselves instead of paying a monthly service.",
+    highlights: [
+      "Personalized dispute letters with your details merged in",
+      "12-month month-by-month rebuild plan for your situation",
+      "Plain-English explainer of what actually moves a score",
+      "Free score-factor preview before you pay anything",
+    ],
+    logo: "/assets/creditfixkit-logo.png",
+    accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
+  },
 ];
 
 const buildPillars = [
@@ -429,7 +446,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit), and the request form.
           </p>
         </div>
       </section>
