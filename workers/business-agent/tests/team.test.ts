@@ -9,6 +9,18 @@ const e=env as unknown as Env,uuid=()=>crypto.randomUUID();
 async function user(verified=true){const id=uuid(),email=`${id}@example.test`;await e.AGENT_DB.prepare('INSERT INTO auth_user(id,name,email,emailVerified,createdAt,updatedAt) VALUES (?,?,?,?,?,?)').bind(id,'Team member',email,verified?1:0,Date.now(),Date.now()).run();return {id,email};}
 async function fixture(){const u=await user(),tenant=await createTenant(e,u.id,{name:'Studio',website:'https://studio.com',goal:'Manage appointments'},uuid());await e.AGENT_DB.prepare("UPDATE agent_tenants SET plan_id='business' WHERE id=?").bind(tenant.id).run();return {actor:{userId:u.id,tenantId:tenant.id},u};}
 describe('verified team invitations',()=>{
+  it('continues recipient invitations after accepting the anchor and rejects another verified identity',async()=>{
+    const recipient=await user(),stranger=await user(),businesses=await Promise.all(Array.from({length:52},()=>fixture()));
+    await Promise.all(businesses.map(f=>inviteMember(e,f.actor,{email:recipient.email,role:'viewer'},uuid())));
+    const first=await myInvitations(e,recipient.id);expect(first.invitations).toHaveLength(50);expect(first.nextCursor).toBeTruthy();
+    await acceptInvitation(e,recipient.id,first.nextCursor!);
+    const last=await myInvitations(e,recipient.id,first.nextCursor);expect(last.invitations).toHaveLength(2);expect(last.nextCursor).toBeNull();
+    expect(new Set([...first.invitations,...last.invitations].map(i=>i.id)).size).toBe(52);
+    await expect(myInvitations(e,stranger.id,first.nextCursor)).rejects.toMatchObject({code:'invalid_invitation_cursor'});
+    await expect(myInvitations(e,recipient.id,'invalid')).rejects.toMatchObject({code:'invalid_invitation_cursor'});
+    await e.AGENT_DB.prepare('UPDATE auth_user SET emailVerified=0 WHERE id=?').bind(recipient.id).run();
+    await expect(myInvitations(e,recipient.id,first.nextCursor)).rejects.toMatchObject({code:'verified_email_required'});
+  });
   it('pages the full team history with tied timestamps and rejects foreign continuation anchors',async()=>{
     const f=await fixture(),other=await fixture(),stamp=new Date().toISOString();
     await e.AGENT_DB.batch(Array.from({length:105},()=>e.AGENT_DB.prepare("INSERT INTO agent_memberships(tenant_id,user_id,role,status,created_at) VALUES (?,?,'staff','revoked',?)").bind(f.actor.tenantId,uuid(),stamp)));

@@ -103,3 +103,18 @@ test('team lists load independently and discard private pages when continuation 
   await team.getByRole('button',{name:'Refresh team',exact:true}).click();await expect(team.getByText('older-member',{exact:true})).toHaveCount(0);
   failure=true;await team.getByRole('button',{name:'Load more members'}).click();await expect(team.getByRole('alert')).toHaveText('Team access is unavailable.');await expect(team.getByText('first-member',{exact:true})).toHaveCount(0);
 });
+
+test('recipient invitation pages append and clear on denied continuation',async({page})=>{
+  await fixture(page,{empty:true});const first='a'.repeat(64),second='b'.repeat(64);let denied=false;
+  await page.route('**/api/invitations*',route=>{
+    const cursor=new URL(route.request().url()).searchParams.get('cursor');
+    if(denied)return route.fulfill({status:403,json:{error:{message:'Verify your current email before continuing.'}}});
+    return route.fulfill({json:{invitations:[{id:cursor?second:first,businessName:cursor?'Second business':'First business',role:'viewer',expiresAt:'2026-09-23T00:00:00Z'}],more:!cursor,nextCursor:cursor?null:first}});
+  });
+  await page.goto('/');const inbox=page.getByRole('region',{name:'Your invitations'});
+  await inbox.getByRole('button',{name:'Load older invitations'}).click();await expect(inbox.getByRole('listitem')).toHaveCount(2);
+  await expect(inbox.getByRole('button',{name:'Accept invitation to First business'})).toBeVisible();await expect(inbox.getByRole('button',{name:'Accept invitation to Second business'})).toBeVisible();await expect(inbox.getByRole('button',{name:'Load older invitations'})).toHaveCount(0);
+  expect((await new AxeBuilder({page}).include('[aria-label="Your invitations"]').analyze()).violations).toEqual([]);
+  await inbox.getByRole('button',{name:'Refresh invitations'}).click();await expect(inbox.getByRole('listitem')).toHaveCount(1);
+  denied=true;await inbox.getByRole('button',{name:'Load older invitations'}).click();await expect(inbox.getByRole('alert')).toHaveText('Verify your current email before continuing.');await expect(inbox.getByRole('listitem')).toHaveCount(0);
+});

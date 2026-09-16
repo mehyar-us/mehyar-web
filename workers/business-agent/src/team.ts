@@ -55,14 +55,20 @@ async function verifiedEmail(env:Env,userId:string){
   if(!user||user.emailVerified!==1)throw new HttpError(403,'verified_email_required','Sign in with a verified email address to view or accept invitations.');
   return user.email.toLowerCase();
 }
-export async function myInvitations(env:Env,userId:string){
+export async function myInvitations(env:Env,userId:string,cursor?:string|null){
   const email=await verifiedEmail(env,userId),now=new Date().toISOString();
+  if(cursor&&!/^[a-f0-9]{64}$/.test(cursor))throw new HttpError(400,'invalid_invitation_cursor','Refresh invitations to continue.');
+  // An accepted/revoked anchor remains valid for its recipient: it is only a position.
+  const anchor=cursor?await env.AGENT_DB.prepare('SELECT id,created_at FROM agent_team_invitations WHERE id=? AND invited_email=?').bind(cursor,email).first<{id:string;created_at:string}>():null;
+  if(cursor&&!anchor)throw new HttpError(400,'invalid_invitation_cursor','Refresh invitations to continue.');
   const rows=await env.AGENT_DB.prepare(`SELECT i.id,i.role,i.expires_at AS expiresAt,t.name AS businessName FROM agent_team_invitations i JOIN agent_tenants t ON t.id=i.tenant_id
     JOIN agent_memberships m ON m.tenant_id=i.tenant_id AND m.user_id=i.invited_by
     WHERE i.invited_email=? AND i.status='pending' AND i.expires_at>? AND t.status NOT IN ('deleted','offboarding')
-    AND m.role='owner' AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?) ORDER BY i.created_at DESC,i.id DESC LIMIT 51`).bind(email,now,now).all();
+    AND m.role='owner' AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?)
+    ${anchor?'AND (i.created_at<? OR (i.created_at=? AND i.id<?))':''}
+    ORDER BY i.created_at DESC,i.id DESC LIMIT 51`).bind(email,now,now,...(anchor?[anchor.created_at,anchor.created_at,anchor.id]:[])).all();
   if(await verifiedEmail(env,userId)!==email)throw new HttpError(409,'identity_changed','Your account changed. Sign in again.');
-  return {invitations:rows.results.slice(0,50),more:rows.results.length>50};
+  return {invitations:rows.results.slice(0,50),more:rows.results.length>50,nextCursor:rows.results.length>50?String(rows.results[49].id):null};
 }
 export async function acceptInvitation(env:Env,userId:string,id:string){
   const email=await verifiedEmail(env,userId),now=new Date().toISOString(),operation=crypto.randomUUID();

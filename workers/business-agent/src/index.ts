@@ -30,7 +30,7 @@ async function route(request:Request,env:Env) {
   if(path==='/api/session'&&request.method==='GET') return json({user:session?.user?{id:session.user.id,name:session.user.name,email:session.user.email}:null});
   if(!session?.user) throw new HttpError(401,'sign_in_required','Sign in to continue.');
   const userId=session.user.id;
-  if(path==='/api/invitations'&&request.method==='GET')return json(await myInvitations(env,userId));
+  if(path==='/api/invitations'&&request.method==='GET')return json(await myInvitations(env,userId,url.searchParams.get('cursor')));
   if(path==='/api/invitations/accept'&&request.method==='POST'){
     const {id}=z.object({id:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(await readJson(request));
     return json(await acceptInvitation(env,userId,id));
