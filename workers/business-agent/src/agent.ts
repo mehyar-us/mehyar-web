@@ -10,6 +10,7 @@ import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
 import {researchAccess,requireResearchReady} from './research/access';
 import {runResearchWork} from './research/service';
+import {BusinessBrief} from './business-brief';
 import {z} from 'zod';
 
 type AgentState = { tenantId: string | null; paused: boolean };
@@ -25,6 +26,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   initialState: AgentState = {tenantId:null,paused:false};
 
   async onStart() {
+    new BusinessBrief(this.ctx.storage).initialize();
     new ResearchJobs(this.ctx.storage).initialize();
     this.controls().initialize();
     this.sql`CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
@@ -81,6 +83,14 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   }
 
   private controls() { return new ActionControls(this.ctx.storage.sql,this.env,()=>this.state.paused); }
+  async businessBrief(actor:Actor){
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);return new BusinessBrief(this.ctx.storage).present();});
+  }
+  async saveBusinessBrief(actor:Actor,input:unknown,key:string){
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,['owner']);
+      return {brief:new BusinessBrief(this.ctx.storage).save(actor.userId,key,input)};
+    });
+  }
   async researchJobs(actor:Actor,offset=0) {
     return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
       return new ResearchJobs(this.ctx.storage).list(offset);
