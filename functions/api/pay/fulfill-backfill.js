@@ -11,17 +11,20 @@
 // Supported products (by billing_products.fulfillment):
 //   designful -> fulfillDesignful / designful_orders
 //   hustlekit -> fulfillHustlekit / hustlekit_orders
+//   creditfixkit -> fulfillCreditfixkit / creditfixkit_orders
 //
 // This is a safety net, not the primary path. The webhook remains the
 // primary fulfillment trigger.
 
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
 import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
+import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 
 const PRODUCTS = {
   designful: { fulfill: fulfillDesignful, ordersTable: "designful_orders" },
   hustlekit: { fulfill: fulfillHustlekit, ordersTable: "hustlekit_orders" },
+  creditfixkit: { fulfill: fulfillCreditfixkit, ordersTable: "creditfixkit_orders" },
 };
 
 function json(data, status = 200) {
