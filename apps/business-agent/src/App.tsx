@@ -57,6 +57,7 @@ import {
 } from "./api";
 
 import BillingPanel from "./BillingPanel";
+import ApprovalsPanel from "./ApprovalsPanel";
 import googleLogo from "./assets/google-g.svg?raw";
 
 type Tab =
@@ -1469,24 +1470,8 @@ export default function App() {
                 </div>
               )}
               {tab === "approvals" && (
-                <div className="page">
-                  <PageHeading
-                    eyebrow="YOU HAVE THE FINAL SAY"
-                    title="Approvals."
-                    description="Review actions that need your permission before they happen."
-                  />
-                  <section className="panel">
-                    <Empty
-                      icon={ShieldCheck}
-                      title="No actionable approvals available"
-                    >
-                      Actions requiring approval will appear here when an
-                      approval workflow is connected. Your assistant cannot
-                      treat a chat message or document as permission to change
-                      its own rules.
-                    </Empty>
-                  </section>
-                </div>
+                <ApprovalsPanel key={`${tenantId}:${snapshot.membership.role}`} tenantId={tenantId}
+                  role={snapshot.membership.role} online={online} paused={snapshot.usage?.paused === true} onUnauthorized={fail}/>
               )}
               {tab === "knowledge" && (
                 <div className="page">

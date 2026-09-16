@@ -48,7 +48,24 @@ Billing tests use signed synthetic events and mocked Stripe responses. Reconcili
 - New Stripe billing is a separately named shared destination. It never attaches legacy `payment_id` or `report_id` metadata, forwards old events, or invokes old fulfillment.
 - Catalog definitions, automation templates and provider authorization are not evidence that external automations are running. Unavailable capabilities remain unavailable and unbilled.
 
-## Verification
+## Action reviews and owner policies
+
+The business Durable Object now stores versioned owner policies, immutable mail-reply/calendar-create proposals, approval reservations and append-only decision records. All routes below are under `/api/tenants/:tenantId`; the public Worker derives the actor from the verified session and every RPC rechecks current membership and business ownership.
+
+| Route | Behavior |
+| --- | --- |
+| `GET /action-policies` | Owners/managers read saved policy configurations |
+| `POST /action-policies` | Owner-only create/update, UUID ID and expected version; stale writes fail |
+| `GET /actions` | Owners/managers read reviews; staff read only their own proposals |
+| `POST /actions` | Typed proposal plus `X-Idempotency-Key`; exact saved resources/recipients and actual provider grants required |
+| `GET /actions/:id` | Authorized action detail with decision history |
+| `POST /actions/:id/decision` | Owner/manager approve/reject the exact `actionHash`; current policy, requester, grant, pause and limits rechecked |
+
+Policy changes cancel pending approvals; expiry and rejection release review reservations. Approval reserves one operation against that policy's UTC-day action limit. This is **not** completed usage or a customer charge. A future dispatch must revalidate the execution-day budget, current paid entitlement, actor, policy, scope, resource ownership and provider readiness before committing an external effect. Existing provider adapters perform final API-level resource checks but are not yet wired to dispatch.
+
+The app's Approvals screen uses these real review endpoints. Policy editing/proposal creation currently have API contracts; the owner policy editor, model proposal tool, token-refresh broker, automatic workflow executor and dispatch/receipt lifecycle remain unfinished. Saved `automatic` mode currently queues a review and does not execute. Review responses explicitly return `executionAvailable: false`. No send/book endpoint is exposed. Preview-only policies cannot be elevated by an approval click. Automatic mail policies require an exact owner-authored template until a separately bounded template system is implemented.
+
+## Verification commands
 
 ```powershell
 npm run verify

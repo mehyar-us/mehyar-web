@@ -3,6 +3,7 @@ import type { Actor, Env } from './env';
 import { HttpError } from './http';
 import { CHAT_ROLES, OPERATORS, requireMembership, requireTenant } from './permissions';
 import { appendActivity } from './tenants';
+import { ActionControls } from './actions';
 
 type AgentState = { tenantId: string | null; paused: boolean };
 type Message = {id:string;role:'user'|'assistant';content:string;createdAt:string;};
@@ -17,6 +18,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   initialState: AgentState = {tenantId:null,paused:false};
 
   async onStart() {
+    this.controls().initialize();
     this.sql`CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
       role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL)`;
     this.sql`CREATE INDEX IF NOT EXISTS conversations_user ON conversations(user_id,created_at)`;
@@ -51,6 +53,14 @@ export class BusinessAgent extends Agent<Env,AgentState> {
   async provision(actor:Actor) {
     return this.result(async()=>{await this.bind(actor); return {agentId:actor.tenantId};});
   }
+
+  private controls() { return new ActionControls(this.ctx.storage.sql,this.env,()=>this.state.paused); }
+  async actionPolicies(actor:Actor) { return this.result(async()=>{await this.bind(actor);return this.controls().policies(actor);}); }
+  async saveActionPolicy(actor:Actor,input:unknown) { return this.result(async()=>{await this.bind(actor);return this.controls().savePolicy(actor,input);}); }
+  async actionReviews(actor:Actor) { return this.result(async()=>{await this.bind(actor);return this.controls().list(actor);}); }
+  async actionReview(actor:Actor,id:string) { return this.result(async()=>{await this.bind(actor);return this.controls().detail(actor,id);}); }
+  async proposeAction(actor:Actor,input:unknown,key:string) { return this.result(async()=>{await this.bind(actor);return this.controls().propose(actor,input,key);}); }
+  async decideAction(actor:Actor,id:string,input:unknown) { return this.result(async()=>{await this.bind(actor);return this.controls().decide(actor,id,input);}); }
 
   async messages(actor:Actor) {
     return this.result(async()=>{

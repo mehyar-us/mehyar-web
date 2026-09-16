@@ -46,6 +46,14 @@ async function route(request:Request,env:Env) {
   const section=match[2]||'';
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
+  if(section==='action-policies'&&request.method==='GET') return json({policies:unwrap(await agent.actionPolicies(actor))});
+  if(section==='action-policies'&&request.method==='POST') return json({policy:unwrap(await agent.saveActionPolicy(actor,await readJson(request)))});
+  if(section==='actions'&&request.method==='GET') return json({actions:unwrap(await agent.actionReviews(actor))});
+  if(section==='actions'&&request.method==='POST') return json({action:unwrap(await agent.proposeAction(actor,await readJson(request),requestKey(request)))},201);
+  const decision=section.match(/^actions\/([a-f0-9-]{36})\/decision$/);
+  if(decision&&request.method==='POST') return json({action:unwrap(await agent.decideAction(actor,decision[1],await readJson(request)))});
+  const review=section.match(/^actions\/([a-f0-9-]{36})$/);
+  if(review&&request.method==='GET') return json({action:unwrap(await agent.actionReview(actor,review[1]))});
   if(!section&&request.method==='GET') {
     const canKnow=KNOWLEDGE_ROLES.includes(membership.role);
     const connections=OPERATORS.includes(membership.role)?(await env.AGENT_DB.prepare('SELECT id,provider,account_label AS accountLabel,status,last_sync_at AS lastSyncAt FROM agent_connections WHERE tenant_id = ?').bind(actor.tenantId).all()).results:[];

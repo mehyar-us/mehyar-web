@@ -2492,3 +2492,9 @@ button svg {
     scroll-behavior: auto !important;
   }
 }
+.action-review { margin-top: 16px; }
+.action-review > p, .action-review > .dialog-actions { margin: 20px 24px; }
+.approvals-page > .panel { padding: 24px; }
+.approvals-page .muted { color: #526159; }
+.action-review dd { overflow-wrap: anywhere; }
+.action-preview { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border: 1px solid var(--border, #ddd); border-radius: 10px; }

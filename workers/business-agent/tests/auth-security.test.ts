@@ -5,7 +5,7 @@ import worker from "../src";
 import type { Env } from "../src/env";
 import { handleAuthRequest, getSession, createAuth } from "../src/auth";
 import { capabilityStatus, grantedCapabilities, scopesForSelection, type AuthEnv } from "../src/auth/capabilities";
-import { decryptCredential, encryptCredential, mergeCredential, attachUnassignedGrant, type CredentialBinding } from "../src/auth/vault";
+import { decryptCredential, encryptCredential, mergeCredential, attachUnassignedGrant, storeProviderGrant, type CredentialBinding } from "../src/auth/vault";
 
 const origin = "https://agent.example.test";
 const key = btoa("12345678901234567890123456789012"); // Test fixture, never deployment configuration.
@@ -198,6 +198,29 @@ describe("Better Auth 1.7.5 with real local D1 and signed provider fixtures", ()
     expect(await snapshot.json()).toMatchObject({ membership: { role: "owner" }, memory: [] });
     const memory = await worker.fetch(request(tenantPath + "/memory", { key: "Hours", value: "Monday through Friday" }, sessionCookie), workerEnv);
     expect(memory.status).toBe(201);
+    const actionGrant = await storeProviderGrant(env,{userId:session!.user.id,tenantId:created.tenant.id,provider:'google',accountId:'review-fixture'},
+      {accountEmail:'owner@example.test',accessToken:'private-action-fixture',refreshToken:'private-refresh-fixture',
+        grantedScopes:['https://www.googleapis.com/auth/gmail.readonly','https://www.googleapis.com/auth/gmail.send']},['gmail_read','gmail_send']);
+    const policyRequest={id:crypto.randomUUID(),expectedVersion:0,name:'Customer reply',trigger:'Owner request',operation:'mail.reply',provider:'google',grantId:actionGrant,
+      mode:'approve',resources:['fixture-thread'],recipients:['customer@example.test'],startsAt:new Date(Date.now()-60000).toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString(),
+      maxActionsPerDay:3,maxCostMicrosPerDay:0,escalation:'Ask the owner',enabled:true};
+    const savedPolicy=await worker.fetch(request(tenantPath+'/action-policies',policyRequest,sessionCookie),workerEnv);
+    expect(savedPolicy.status).toBe(200);
+    const proposalRequest=request(tenantPath+'/actions',{policyId:policyRequest.id,policyVersion:1,
+      action:{operation:'mail.reply',resourceId:'fixture-thread',messageId:'fixture-message',recipient:'customer@example.test',text:'Here is the reviewed draft.'}},sessionCookie);
+    proposalRequest.headers.set('x-idempotency-key',crypto.randomUUID());
+    const proposalResponse=await worker.fetch(proposalRequest,workerEnv);
+    expect(proposalResponse.status).toBe(201);
+    const {action}=await proposalResponse.json() as {action:{id:string;actionHash:string}};
+    const decisionPath=tenantPath+'/actions/'+action.id+'/decision';
+    const wrongOrigin=request(decisionPath,{decision:'approve',actionHash:action.actionHash},sessionCookie);
+    wrongOrigin.headers.set('origin','https://unrelated.example');
+    expect((await worker.fetch(wrongOrigin,workerEnv)).status).toBe(403);
+    const accepted=await worker.fetch(request(decisionPath,{decision:'approve',actionHash:action.actionHash},sessionCookie),workerEnv);
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toMatchObject({action:{status:'approved',executionAvailable:false}});
+    const reviewed=await worker.fetch(request(tenantPath+'/actions/'+action.id,undefined,sessionCookie),workerEnv);
+    expect(await reviewed.json()).toMatchObject({action:{decisions:[{decision:'approved'}]}});
     const paused = await worker.fetch(request(tenantPath + "/pause", { paused: true }, sessionCookie), workerEnv);
     expect(paused.status).toBe(200);
     expect(await (await worker.fetch(request(tenantPath, undefined, sessionCookie), workerEnv)).json()).toMatchObject({ usage: { paused: true }, memory: [{ key: "Hours" }] });
