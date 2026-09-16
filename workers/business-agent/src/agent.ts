@@ -20,6 +20,8 @@ import {TextUsage} from './billing/text-usage';
 import {MailboxTriage} from './connectors/mailbox-triage';
 import {MailboxAggregationOffers} from './connectors/mailbox-aggregation-offers';
 import {MailboxSectionOffers} from './connectors/mailbox-section-offers';
+import {MailboxSectionJobs} from './connectors/mailbox-section-jobs';
+import type {SectionTerms} from './connectors/mailbox-section-offers';
 import {mailboxReviewDirectory} from './connectors/mailbox-review-directory';
 import {ResearchJobs} from './research/jobs';
 import {confirmResearch} from './research/confirm';
@@ -64,10 +66,46 @@ export class BusinessAgent extends Agent<Env,AgentState> {
     new MailboxTriage(this.ctx.storage).initialize();
     new MailboxAggregationOffers(this.ctx.storage).initialize();
     new MailboxSectionOffers(this.ctx.storage).initialize();
+    const sectionJobs=new MailboxSectionJobs(this.ctx.storage);sectionJobs.initialize();sectionJobs.recover();
     // Generation has no external effect; interrupted generation is released for a safe retry.
     this.sql`UPDATE turns SET status = 'failed' WHERE status = 'running'`;
     this.sql`UPDATE provider_attempts SET status = 'interrupted' WHERE status = 'started'`;
     await this.maintainResearch();
+    await this.scheduleMailboxSections();
+  }
+
+  private async scheduleMailboxSections(){
+    const jobs=new MailboxSectionJobs(this.ctx.storage);
+    if(this.state.paused)jobs.stopAll();
+    if(this.env.MAILBOX_EXTENDED_JOBS_ENABLED!=='true')jobs.stopAll('background_analysis_disabled');
+    if(jobs.hasWork())await this.scheduleEvery(60,'maintainMailboxSections');
+    else for(const schedule of await this.listSchedules({type:'interval'})){
+      if(schedule.callback==='maintainMailboxSections'&&!jobs.hasWork())await this.cancelSchedule(schedule.id);
+    }
+    if(jobs.hasWork())await this.scheduleEvery(60,'maintainMailboxSections');
+  }
+  /** One bounded section per durable scheduler tick; aggregation needs another approval. */
+  async maintainMailboxSections(){
+    const jobs=new MailboxSectionJobs(this.ctx.storage);
+    if(this.state.paused||this.env.MAILBOX_EXTENDED_JOBS_ENABLED!=='true'){
+      await this.scheduleMailboxSections();return;
+    }
+    if(this.state.tenantId!==this.name)return;
+    const job=jobs.claim();
+    if(job){
+      const actor={tenantId:this.name,userId:job.user_id},terms=JSON.parse(job.terms) as SectionTerms;
+      const guard=async()=>{
+        await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused||this.env.MAILBOX_EXTENDED_JOBS_ENABLED!=='true')throw new HttpError(409,'section_job_stopped','Background analysis stopped.');
+        jobs.guard(job);
+      };
+      try{
+        await guard();
+        await new MailboxTriage(this.ctx.storage).run(this.env,actor,terms.streamId,terms.messageId,terms.receipt,guard,terms.indices[job.completed],false,undefined,terms);
+        jobs.finish(job);
+      }catch(error){jobs.finish(job,{error});}
+    }
+    await this.scheduleMailboxSections();
   }
 
   /** Persisted maintenance; provider operations require independent release gates. */
@@ -183,6 +221,30 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       await guard();const terms=offers.read(actor,offerId);
       return new MailboxTriage(this.ctx.storage).run(this.env,actor,terms.streamId,terms.messageId,terms.receipt,guard,sectionIndex,false,undefined,terms);
     });
+  }
+  /** Internal acceptance boundary: callers must explicitly approve up to 24 hours of background section work. */
+  async startMailboxSectionJob(actor:Actor,offerId:string){
+    return this.result(async()=>{
+      const guard=async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+        if(this.state.paused)throw new HttpError(409,'agent_paused','Mailbox analysis is paused.');
+        if(this.env.MAILBOX_EXTENDED_JOBS_ENABLED!=='true')throw new HttpError(503,'background_analysis_disabled','Background analysis is not enabled.');};
+      await guard();const jobs=new MailboxSectionJobs(this.ctx.storage),prior=jobs.byOffer(actor,offerId);
+      if(prior){await this.scheduleMailboxSections();return jobs.present(jobs.get(actor,prior.id));}
+      const offers=new MailboxSectionOffers(this.ctx.storage),terms=offers.read(actor,offerId);
+      const current=await new MailboxTriage(this.ctx.storage).quoteSections(this.env,actor,terms.streamId,terms.messageId,terms.receipt,guard);
+      if(current.sourceHash!==terms.sourceHash||current.period!==terms.period||current.sectionCount!==terms.sectionCount||current.indices.some(i=>!terms.indices.includes(i)))
+        throw new HttpError(409,'section_offer_changed','The reviewed message or cost changed. Review again.');
+      await guard();offers.read(actor,offerId);
+      const job=jobs.start(actor,offerId,terms);await this.scheduleMailboxSections();return jobs.present(jobs.get(actor,job.id));
+    });
+  }
+  async mailboxSectionJob(actor:Actor,id:string){
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+      const jobs=new MailboxSectionJobs(this.ctx.storage);return jobs.present(jobs.get(actor,id));});
+  }
+  async cancelMailboxSectionJob(actor:Actor,id:string){
+    return this.result(async()=>{await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+      const jobs=new MailboxSectionJobs(this.ctx.storage),job=jobs.cancel(actor,id);await this.scheduleMailboxSections();return jobs.present(job);});
   }
   async reviewMailboxAggregation(actor:Actor,streamId:string,messageId:string,receipt:string){
     return this.result(async()=>{
@@ -380,6 +442,8 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       await requireMembership(this.env,actor,OPERATORS);
       this.setState({...this.state,paused});
       if(paused){
+        new MailboxSectionJobs(this.ctx.storage).stopAll();
+        await this.scheduleMailboxSections();
         const jobs=new ResearchJobs(this.ctx.storage);jobs.stopActive();
         if(this.env.RESEARCH_RECOVERY_ENABLED==='true'&&jobs.hasRecoveryWork())await this.scheduleEvery(60,'maintainResearch');
       }

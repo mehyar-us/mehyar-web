@@ -21,6 +21,7 @@ import {BusinessAgent,unwrap} from '../src/agent';
 import {runMailboxTriageDispatch} from '../src/connectors/mailbox-triage-dispatch';
 import {calibratedTextReservation} from '../src/billing/text-calibration';
 import {mailboxAnalysisRequest} from '../src/connectors/mailbox-analysis-api';
+import {MailboxSectionJobs} from '../src/connectors/mailbox-section-jobs';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -43,6 +44,86 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('persists approved background sections, recovers a restart and completes after the offer expires',async()=>{
+    vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-09-17T00:00:00Z'));
+    try{
+      const f=await fixture(),text='Please book Friday. '.repeat(500);
+      await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'background',kind:'upsert'}],syncCursor:'300'});
+      const claim=(await f.ledger.claimChange(f.streamId))!;
+      await f.ledger.saveChange(claim,{provider:'google',id:'background',content:{id:'background',threadId:'thread-fixture',payload:{mimeType:'text/plain',body:{size:text.length,data:btoa(text).replace(/=+$/,'')}}}});
+      const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+      await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+        const original=(instance as any).env;let calls=0;
+        (instance as any).env={...e,MAILBOX_EXTENDED_JOBS_ENABLED:'true',MAILBOX_EXTENDED_TRIAGE_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true',AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any)=>{
+          calls++;const data=JSON.parse(input.messages[1].content);expect(data.sections).toBeUndefined();
+          return {choices:[{message:{content:JSON.stringify({category:'appointment',priority:'routine',summary:'Review the requested time.',evidence:[{excerpt:data.emailText.slice(0,20)}]})}}]};
+        }}};
+        try{
+          const offer=unwrap(await instance.reviewMailboxSections(f.actor,f.streamId,'background',claim.token));
+          const job=unwrap(await instance.startMailboxSectionJob(f.actor,offer.offerId));
+          expect(job).toMatchObject({status:'queued',completedSections:0,totalSections:2,maximumTextCredits:2,includesAggregation:false,authorizesExternalActions:false});expect(calls).toBe(0);
+          expect(unwrap(await instance.startMailboxSectionJob(f.actor,offer.offerId)).id).toBe(job.id);
+          expect((await instance.mailboxSectionJob({...f.actor,userId:crypto.randomUUID()},job.id)).ok).toBe(false);
+          expect((await instance.listSchedules({type:'interval'})).filter(s=>s.callback==='maintainMailboxSections')).toHaveLength(1);
+          // Simulate interruption after claim but before provider dispatch, then run startup recovery.
+          expect(new MailboxSectionJobs(ctx.storage).claim()?.id).toBe(job.id);await instance.onStart();
+          expect(unwrap(await instance.mailboxSectionJob(f.actor,job.id)).status).toBe('queued');
+          await instance.maintainMailboxSections();expect(calls).toBe(1);
+          expect(unwrap(await instance.mailboxSectionJob(f.actor,job.id))).toMatchObject({status:'queued',completedSections:1});
+          // A successful inference can commit before the job acknowledgement. Recovery must replay that result.
+          vi.setSystemTime(new Date(Date.now()+60001));
+          expect(new MailboxSectionJobs(ctx.storage).claim()?.id).toBe(job.id);
+          unwrap(await instance.confirmMailboxSection(f.actor,offer.offerId,1));expect(calls).toBe(2);
+          await instance.onStart();
+          vi.setSystemTime(new Date(Date.now()+600001));
+          expect(await instance.confirmMailboxSection(f.actor,offer.offerId,1)).toMatchObject({ok:false,error:{code:'section_offer_expired'}});
+          await instance.maintainMailboxSections();expect(calls).toBe(2);
+          expect(unwrap(await instance.mailboxSectionJob(f.actor,job.id))).toMatchObject({status:'completed',completedSections:2});
+          expect(unwrap(await instance.startMailboxSectionJob(f.actor,offer.offerId)).id).toBe(job.id);
+          expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:2,reserved:0});
+          expect((await instance.listSchedules({type:'interval'})).filter(s=>s.callback==='maintainMailboxSections')).toHaveLength(0);
+          expect(ctx.storage.sql.exec('SELECT id FROM mailbox_triage_aggregations').toArray()).toHaveLength(0);
+          await instance.maintainMailboxSections();expect(calls).toBe(2);
+        }finally{(instance as any).env=original;}
+      });
+    }finally{vi.useRealTimers();}
+  });
+  it.each(['cancel','pause','source','revoke','retry','expiry','disabled'] as const)('bounds background analysis when %s interrupts progress',async(mode)=>{
+    vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-09-17T00:00:00Z'));
+    try{
+      const f=await fixture(),text='Please book Friday. '.repeat(500);
+      await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'background',kind:'upsert'}],syncCursor:'300'});
+      const claim=(await f.ledger.claimChange(f.streamId))!;
+      await f.ledger.saveChange(claim,{provider:'google',id:'background',content:{id:'background',threadId:'thread-fixture',payload:{mimeType:'text/plain',body:{size:text.length,data:btoa(text).replace(/=+$/,'')}}}});
+      const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
+      await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+        const original=(instance as any).env;let calls=0,jobId='';
+        (instance as any).env={...e,MAILBOX_EXTENDED_JOBS_ENABLED:'true',MAILBOX_EXTENDED_TRIAGE_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true',AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any)=>{
+          calls++;const data=JSON.parse(input.messages[1].content);
+          if(mode==='retry')throw new Error('Temporary provider failure');
+          if(mode==='cancel')unwrap(await instance.cancelMailboxSectionJob(f.actor,jobId));
+          if(mode==='pause')unwrap(await instance.pause(f.actor,true));
+          if(mode==='source')await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
+          if(mode==='revoke')await e.AGENT_DB.prepare("UPDATE auth_provider_grants SET status='revoked' WHERE id=?").bind(f.grantId).run();
+          return {choices:[{message:{content:JSON.stringify({category:'appointment',priority:'routine',summary:'Review the requested time.',evidence:[{excerpt:data.emailText.slice(0,20)}]})}}]};
+        }}};
+        try{
+          const offer=unwrap(await instance.reviewMailboxSections(f.actor,f.streamId,'background',claim.token));
+          jobId=unwrap(await instance.startMailboxSectionJob(f.actor,offer.offerId)).id;
+          if(mode==='expiry')vi.setSystemTime(new Date(Date.now()+86400001));
+          if(mode==='disabled')(instance as any).env.MAILBOX_EXTENDED_JOBS_ENABLED='false';
+          await instance.maintainMailboxSections();
+          if(mode==='retry')for(let i=0;i<3;i++){vi.setSystemTime(new Date(Date.now()+180001));await instance.maintainMailboxSections();}
+          expect(calls).toBe(mode==='expiry'||mode==='disabled'?0:mode==='retry'?3:1);
+          const job=unwrap(await instance.mailboxSectionJob(f.actor,jobId));
+          expect(job.status).toBe(mode==='expiry'?'expired':mode==='cancel'||mode==='pause'||mode==='disabled'?'cancelled':'review_required');expect(job.completedSections).toBe(0);
+          expect(ctx.storage.sql.exec("SELECT id FROM background_text_usage WHERE status IN ('running','complete')").toArray()).toHaveLength(0);
+          expect(ctx.storage.sql.exec('SELECT id FROM mailbox_triage_sections').toArray()).toHaveLength(0);
+          expect((await instance.listSchedules({type:'interval'})).filter(s=>s.callback==='maintainMailboxSections')).toHaveLength(0);
+        }finally{(instance as any).env=original;}
+      });
+    }finally{vi.useRealTimers();}
+  });
   it('pages authorized long-message review sources without inference or private raw payloads',async()=>{
     const f=await fixture(),text='Please review this long inquiry. '.repeat(400);
     const ids=Array.from({length:12},(_,i)=>`review-${String(i).padStart(2,'0')}`);
