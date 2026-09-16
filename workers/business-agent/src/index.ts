@@ -11,6 +11,7 @@ import { KNOWLEDGE_ROLES, OPERATORS, requireMembership, requireTenant } from './
 import { addMemory, createTenant, deleteMemory, getMemory, listTenants, presentTenant } from './tenants';
 import {renameAgent} from './agent-settings';
 import {runBillingReconciliation} from './billing/reconciliation';
+import {teamDirectory,inviteMember,revokeInvitation,revokeMember,myInvitations,acceptInvitation} from './team';
 
 export { BusinessAgent };
 
@@ -28,6 +29,11 @@ async function route(request:Request,env:Env) {
   if(path==='/api/session'&&request.method==='GET') return json({user:session?.user?{id:session.user.id,name:session.user.name,email:session.user.email}:null});
   if(!session?.user) throw new HttpError(401,'sign_in_required','Sign in to continue.');
   const userId=session.user.id;
+  if(path==='/api/invitations'&&request.method==='GET')return json(await myInvitations(env,userId));
+  if(path==='/api/invitations/accept'&&request.method==='POST'){
+    const {id}=z.object({id:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(await readJson(request));
+    return json(await acceptInvitation(env,userId,id));
+  }
   if(path.startsWith('/api/agent-billing/')) {
     const tenantId=url.searchParams.get('tenantId');
     if(!tenantId) throw new HttpError(400,'workspace_required','Select a business workspace.');
@@ -46,6 +52,13 @@ async function route(request:Request,env:Env) {
   const tenant=await requireTenant(env,actor);
   const membership=await requireMembership(env,actor);
   const section=match[2]||'';
+  if(section==='team'&&request.method==='GET')return json(await teamDirectory(env,actor));
+  if(section==='team/invitations'&&request.method==='POST')return json(await inviteMember(env,actor,await readJson(request),requestKey(request)),201);
+  if(section==='team/revoke-member'&&request.method==='POST'){
+    const {userId}=z.object({userId:z.string().min(1).max(128)}).strict().parse(await readJson(request));return json(await revokeMember(env,actor,userId));
+  }
+  const invitation=section.match(/^team\/invitations\/([a-f0-9]{64})\/revoke$/);
+  if(invitation&&request.method==='POST'){z.object({}).strict().parse(await readJson(request));return json(await revokeInvitation(env,actor,invitation[1]));}
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   if(section==='business-brief'&&request.method==='GET')return json(unwrap(await agent.businessBrief(actor)));

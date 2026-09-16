@@ -1,3 +1,5 @@
+import TeamPanel from './TeamPanel';
+import InvitationInbox from './InvitationInbox';
 import {
   FormEvent,
   ReactNode,
@@ -1019,6 +1021,7 @@ export default function App() {
             the details together.
           </p>
           {feedback}
+          <InvitationInbox key={user.id} online={online} onAccepted={async id=>{await loadTenants();setTenantId(id);}}/>
           <WorkspaceForm
             busy={busy === "create"}
             initial={{ website, goal }}
@@ -1796,6 +1799,8 @@ export default function App() {
                     title="Your team."
                     description="People and permissions for this business."
                   />
+                  <InvitationInbox key={user.id} online={online} onAccepted={async id=>{await loadTenants();setTenantId(id);}}/>
+                  {snapshot.membership.role==='owner'?<TeamPanel key={tenantId} tenantId={tenantId} online={online}/>:<>
                   <section className="panel">
                     <div className="team-member">
                       <div className="avatar">
@@ -1813,12 +1818,11 @@ export default function App() {
                     <div className="inline-empty">
                       <Users size={20} />
                       <p>
-                        This view shows your verified membership. Team
-                        invitations and a complete member directory will be
-                        available when team management is enabled.
+                        This is your verified membership. The business owner manages team invitations and access.
                       </p>
                     </div>
                   </section>
+                  </>}
                 </div>
               )}
               {tab === "billing" && (

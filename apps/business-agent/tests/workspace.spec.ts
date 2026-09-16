@@ -110,6 +110,7 @@ async function fixture(page: Page, options: Fixtures = {}) {
         currency: "USD",
       });
     if (path === "/api/auth/grants") return reply({ grants: [] });
+    if (path === "/api/invitations") return reply({invitations:[],more:false});
     if(path.endsWith('/business-brief'))return reply(briefFixture());
     if (path === "/api/auth/sign-out") return reply({ ok: true });
     if (path === "/api/tenants" && method === "POST")
