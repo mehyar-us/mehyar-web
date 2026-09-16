@@ -2,7 +2,7 @@ import {env} from 'cloudflare:workers';
 import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {createTenant} from '../src/tenants';
-import {storeProviderGrant} from '../src/auth/vault';
+import {storeProviderGrant,revokeProviderGrant} from '../src/auth/vault';
 import {MailboxSync} from '../src/connectors/mailbox-sync';
 const e=env as unknown as Env;
 async function fixture(provider:'google'|'microsoft'='google') {
@@ -20,6 +20,40 @@ async function fixture(provider:'google'|'microsoft'='google') {
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
+  it('retires queued work and leases atomically on new consent without touching other accounts',async()=>{
+    const f=await fixture(),other=await fixture();
+    for(const item of [f,other])await item.ledger.commit((await item.ledger.claim(item.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'next'});
+    const page=(await f.ledger.claim(f.streamId))!,consumer=(await f.ledger.claimChange(f.streamId))!;
+    await storeProviderGrant(e,f.binding,f.credential,[]);
+    expect(await e.AGENT_DB.prepare('SELECT state,checkpoint,page_cursor,lease_token FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first())
+      .toEqual({state:'resync_required',checkpoint:'200',page_cursor:'next',lease_token:null});
+    expect(await e.AGENT_DB.prepare('SELECT state,lease_token FROM agent_mailbox_consumers WHERE stream_id=?').bind(f.streamId).first())
+      .toEqual({state:'review_required',lease_token:null});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'discarded'});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(other.streamId).first()).toEqual({state:'pending'});
+    await expect(f.ledger.commit(page,{changes:[],syncCursor:'300'})).rejects.toMatchObject({code:'mailbox_sync_unavailable'});
+    await expect(f.ledger.saveChange(consumer,null)).rejects.toMatchObject({code:'mailbox_sync_unavailable'});
+    const current=await f.ledger.open(f.grantId,'google','mailbox','400');
+    expect(current).not.toBe(f.streamId);expect(await f.ledger.claim(current)).not.toBeNull();
+  });
+  it('preserves pending work during token refresh but retires it on local revocation',async()=>{
+    const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'next'});
+    await e.AGENT_DB.prepare('UPDATE auth_provider_grants SET ciphertext=ciphertext,updated_at=? WHERE id=?').bind(new Date().toISOString(),f.grantId).run();
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+    await revokeProviderGrant(e,f.actor.userId,f.grantId,f.actor.tenantId);
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'discarded'});
+    expect(await count(f.streamId)).toBe(1);
+  });
+  it('rolls back consent replacement if retiring obsolete work fails',async()=>{
+    const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'pending',kind:'upsert'}],nextCursor:'next'});
+    const prior=await e.AGENT_DB.prepare('SELECT authorization_revision,ciphertext FROM auth_provider_grants WHERE id=?').bind(f.grantId).first();
+    await e.AGENT_DB.prepare("CREATE TRIGGER reject_retirement BEFORE UPDATE OF state ON agent_mailbox_changes WHEN NEW.state='discarded' BEGIN SELECT RAISE(ABORT,'fixture retirement failure'); END").run();
+    try{await expect(storeProviderGrant(e,f.binding,f.credential,[])).rejects.toBeDefined();}
+    finally{await e.AGENT_DB.prepare('DROP TRIGGER reject_retirement').run();}
+    expect(await e.AGENT_DB.prepare('SELECT authorization_revision,ciphertext FROM auth_provider_grants WHERE id=?').bind(f.grantId).first()).toEqual(prior);
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({state:'ready'});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+  });
   it('fences concurrent consumers and callbacks from an expired processing lease',async()=>{
     const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'upsert'}],syncCursor:'300'});
     const claims=await Promise.all([f.ledger.claimChange(f.streamId),f.ledger.claimChange(f.streamId)]);
