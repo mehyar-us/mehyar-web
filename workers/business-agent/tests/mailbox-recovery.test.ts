@@ -7,6 +7,7 @@ import {storeProviderGrant} from '../src/auth/vault';
 import {MailboxSync} from '../src/connectors/mailbox-sync';
 import {runMailboxRecovery} from '../src/connectors/mailbox-recovery';
 import {runMailboxProcessing} from '../src/connectors/mailbox-processing';
+import {runMailboxMaintenance} from '../src/connectors/mailbox-maintenance';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',MAILBOX_RECOVERY_ENABLED:'true'} as unknown as Env;
 async function fixture() {
   const userId=crypto.randomUUID();
@@ -34,6 +35,31 @@ describe('bounded recurring mailbox dispatch',()=>{
     return {...f,ledger,pageToken:claim.token};
   }
   const processing={...e,MAILBOX_PROCESSING_ENABLED:'true'};
+  it('retires expired membership work with provider execution disabled while preserving paused accounts',async()=>{
+    const f=await queued(),paused=await queued();
+    const claim=(await f.ledger.claimChange(f.streamId))!;
+    await e.AGENT_DB.prepare('UPDATE agent_memberships SET expires_at=? WHERE tenant_id=? AND user_id=?')
+      .bind(new Date(Date.now()-1000).toISOString(),f.actor.tenantId,f.actor.userId).run();
+    await e.AGENT_DB.prepare("UPDATE agent_tenants SET status='paused' WHERE id=?").bind(paused.actor.tenantId).run();
+    expect(await runMailboxMaintenance({...e,MAILBOX_SYNC_ENABLED:'false'})).toMatchObject({retired:1,failed:0});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'discarded'});
+    expect(await e.AGENT_DB.prepare('SELECT state,lease_token FROM agent_mailbox_consumers WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'review_required',lease_token:null});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(paused.streamId).first()).toEqual({state:'pending'});
+    await expect(f.ledger.saveChange(claim,null)).rejects.toBeDefined();
+    expect(await runMailboxMaintenance(e)).toMatchObject({selected:0});
+  });
+  it('rolls back failed retirement and continues other withdrawn mailboxes',async()=>{
+    const f=await queued(),other=await queued();
+    await e.AGENT_DB.prepare("UPDATE agent_tenants SET status='offboarding' WHERE id IN (?,?)").bind(f.actor.tenantId,other.actor.tenantId).run();
+    await e.AGENT_DB.prepare(`CREATE TRIGGER mailbox_maintenance_failure BEFORE UPDATE OF state ON agent_mailbox_changes
+      WHEN NEW.stream_id='${f.streamId}' AND NEW.state='discarded' BEGIN SELECT RAISE(ABORT,'fixture maintenance failure'); END`).run();
+    try{expect(await runMailboxMaintenance(e)).toMatchObject({selected:2,retired:1,failed:1});}
+    finally{await e.AGENT_DB.prepare('DROP TRIGGER mailbox_maintenance_failure').run();}
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({state:'ready'});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(f.streamId).first()).toEqual({state:'pending'});
+    expect(await e.AGENT_DB.prepare('SELECT state FROM agent_mailbox_changes WHERE stream_id=?').bind(other.streamId).first()).toEqual({state:'discarded'});
+    expect(await runMailboxMaintenance(e)).toMatchObject({selected:1,retired:1,failed:0});
+  });
   it('gates message processing before database access on all three flags',async()=>{
     const db={prepare(){throw new Error('must not read');}} as unknown as D1Database;
     for(const flag of ['MAILBOX_SYNC_ENABLED','MAILBOX_RECOVERY_ENABLED','MAILBOX_PROCESSING_ENABLED'])

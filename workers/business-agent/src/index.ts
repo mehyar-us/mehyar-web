@@ -14,6 +14,7 @@ import {runBillingReconciliation} from './billing/reconciliation';
 import {runEmailRecovery} from './email/recovery';
 import {runMailboxRecovery} from './connectors/mailbox-recovery';
 import {runMailboxProcessing} from './connectors/mailbox-processing';
+import {runMailboxMaintenance} from './connectors/mailbox-maintenance';
 import {runEmailMaintenance} from './email/maintenance';
 import {queueInvitationEmail,cancelInvitationEmail} from './email/customer';
 import {platformEmailUsage} from './email/usage';
@@ -150,6 +151,7 @@ async function route(request:Request,env:Env) {
 
 export default {
   async scheduled(_controller,env){
+    try{await runMailboxMaintenance(env);}catch{console.error(JSON.stringify({event:'agent_mailbox_maintenance_unavailable'}));}
     try{await runEmailMaintenance(env);}catch{console.error(JSON.stringify({event:'agent_email_maintenance_unavailable'}));}
     try{await runBillingReconciliation(env);}catch{console.error(JSON.stringify({event:'agent_billing_reconciliation_unavailable'}));}
     try{await runEmailRecovery(env);}catch{console.error(JSON.stringify({event:'agent_email_recovery_unavailable'}));}
