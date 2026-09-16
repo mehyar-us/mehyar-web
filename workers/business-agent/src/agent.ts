@@ -1,6 +1,7 @@
 import { Agent } from 'agents';
 import type { Actor, Env } from './env';
 import { HttpError } from './http';
+import {withInferenceTimeout} from './inference-timeout';
 import { CHAT_ROLES, OPERATORS, requireMembership, requireTenant } from './permissions';
 import { appendActivity,normalizeWebsite } from './tenants';
 import { ActionControls } from './actions';
@@ -517,9 +518,9 @@ export class BusinessAgent extends Agent<Env,AgentState> {
         providerAttemptId=crypto.randomUUID();
         this.sql`INSERT INTO provider_attempts (id,user_id,request_key,period,status,started_at)
           VALUES (${providerAttemptId},${actor.userId},${key},${access.period},'started',${new Date().toISOString()})`;
-        const response=await this.env.AI.run('@cf/openai/gpt-oss-120b',{
+        const response=await withInferenceTimeout(signal=>this.env.AI!.run('@cf/openai/gpt-oss-120b',{
           messages:[{role:'system',content:currentMembership.role==='owner'?`${suggestionInstruction(suggestionPack)}\n${system}`:system},...bounded],max_tokens:2000,
-        },{gateway:{id:this.env.AI_GATEWAY_ID,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent'}},signal:AbortSignal.timeout(60_000)});
+        },{gateway:{id:this.env.AI_GATEWAY_ID!,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent'}},signal}));
         const answer=typeof response==='object'&&response&&'choices' in response
           ? response.choices?.[0]?.message?.content : null;
         if(typeof answer!=='string'||!answer.trim()) throw new Error('Invalid model response');

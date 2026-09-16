@@ -1,4 +1,5 @@
 import type {Actor,Env} from '../env';
+import {withInferenceTimeout} from '../inference-timeout';
 import {digest,HttpError} from '../http';
 import {requireTenant} from '../permissions';
 import {textAccess} from '../billing/text-access';
@@ -203,12 +204,8 @@ export class MailboxTriage {
       checkContext();
       const estimate=aggregation?.tokenEstimate??estimateStandardText(request);
       const attemptId=usage.startAttempt(reservation.token,current);
-      const response=await (async()=>{
-        const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(new DOMException('Analysis timed out.','TimeoutError')),60_000);
-        try{return await env.AI!.run('@cf/openai/gpt-oss-120b',request,
-          {gateway:{id:env.AI_GATEWAY_ID!,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent',workload:aggregate?'mailbox_triage_aggregation':section?'mailbox_triage_section':'mailbox_triage'}},signal:controller.signal});}
-        finally{clearTimeout(timeout);}
-      })();
+      const response=await withInferenceTimeout(signal=>env.AI!.run('@cf/openai/gpt-oss-120b',request,
+        {gateway:{id:env.AI_GATEWAY_ID!,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent',workload:aggregate?'mailbox_triage_aggregation':section?'mailbox_triage_section':'mailbox_triage'}},signal}));
       usage.recordReceipt(attemptId,response,estimate);
       if(aggregation&&!aggregation.fitsStandardRequest)verifyCalibratedTextReceipt(request,env.AI_GATEWAY_ID,response);
       const raw=typeof response==='object'&&response&&'choices' in response?response.choices?.[0]?.message?.content:null;

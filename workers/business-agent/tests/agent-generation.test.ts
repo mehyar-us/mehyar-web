@@ -1,7 +1,8 @@
 import {env} from 'cloudflare:workers';
-import {runInDurableObject} from 'cloudflare:test';
+import {runInDurableObject,evictDurableObject} from 'cloudflare:test';
 import {getAgentByName} from 'agents';
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
+import {withInferenceTimeout} from '../src/inference-timeout';
 import type {Env} from '../src/env';
 import {BusinessAgent,unwrap} from '../src/agent';
 import {createTenant} from '../src/tenants';
@@ -31,6 +32,38 @@ async function activatePaid(actor:{tenantId:string;userId:string},interval="mont
 }
 
 describe('durable generation accounting',()=>{
+  it('aborts inference at sixty seconds and releases the deadline on every settled outcome',async()=>{
+    vi.useFakeTimers();
+    try{
+      expect(await withInferenceTimeout(async()=>42)).toBe(42);expect(vi.getTimerCount()).toBe(0);
+      const failure=new Error('Provider failed');
+      await expect(withInferenceTimeout(async()=>{throw failure;})).rejects.toBe(failure);expect(vi.getTimerCount()).toBe(0);
+      let aborted=false;
+      const work=withInferenceTimeout(signal=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>{aborted=true;reject(signal.reason);},{once:true})));
+      const rejected=expect(work).rejects.toMatchObject({name:'TimeoutError'});
+      await vi.advanceTimersByTimeAsync(59999);expect(aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);await rejected;expect(aborted).toBe(true);expect(vi.getTimerCount()).toBe(0);
+    }finally{vi.useRealTimers();}
+  });
+  it.each([false,true])('releases chat resources for eviction after provider failure=%s',async(failed)=>{
+    const {actor,stub}=await fixture();let calls=0;
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;
+      (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async()=>{
+        calls++;if(failed)throw new Error('Provider failed');return {choices:[{message:{content:'Ready to review your business.'}}]};
+      }}};
+      try{
+        expect((await instance.chat(actor,'Hello',crypto.randomUUID())).ok).toBe(!failed);
+        expect(unwrap(await instance.usage(actor)).textCredits).toMatchObject({used:failed?0:1,reserved:0});
+      }finally{(instance as any).env=original;}
+    });
+    await evictDurableObject(stub);
+    await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
+      expect(unwrap(await instance.usage(actor)).textCredits).toMatchObject({used:failed?0:1,reserved:0});
+      expect(ctx.storage.sql.exec<{status:string}>('SELECT status FROM provider_attempts').toArray()).toEqual([{status:failed?'failed':'succeeded'}]);
+      expect(unwrap(await instance.messages(actor)).filter(m=>m.role==='assistant')).toHaveLength(failed?0:1);
+    });expect(calls).toBe(1);
+  });
   it('includes background reservations in chat admission and customer usage',async()=>{
     const {actor,stub}=await fixture();
     await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
