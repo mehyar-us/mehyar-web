@@ -40,7 +40,7 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
-  it.each(['success','malformed','stopped','invalidated'] as const)('runs guarded budgeted triage with %s model completion',async(mode)=>{
+  it.each(['success','malformed','stopped','invalidated','brief_changed'] as const)('runs guarded budgeted triage with %s model completion',async(mode)=>{
     const f=await fixture();
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'message',kind:'upsert'}],syncCursor:'300'});
     const claim=(await f.ledger.claimChange(f.streamId))!;
@@ -48,8 +48,13 @@ describe('one-page mailbox provider runner',()=>{
     const stub=await getAgentByName(e.BUSINESS_AGENTS,f.actor.tenantId);
     await runInDurableObject(stub,async(instance:BusinessAgent,ctx)=>{
       const original=(instance as any).env;let calls=0;
+      unwrap(await instance.saveBusinessBrief(f.actor,{expectedRevision:0,reviewed:true,fields:{businessName:'Reviewed salon',services:'Haircuts'}},crypto.randomUUID()));
       (instance as any).env={...e,MAILBOX_PROCESSING_ENABLED:'true',MAILBOX_TRIAGE_ENABLED:'true',AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async(_model:string,input:any,options:any)=>{
         calls++;expect(input.messages).toHaveLength(2);expect(options.gateway).toMatchObject({skipCache:true,collectLog:false,metadata:{tenant_id:f.actor.tenantId,workload:'mailbox_triage'}});
+        const context=JSON.parse(input.messages[1].content).businessContext;
+        expect(context).toMatchObject({briefRevision:calls===2&&mode==='brief_changed'?2:1,reviewed:true});
+        expect(context.details).toContain('Reviewed salon');
+        if(mode==='brief_changed'&&calls===1)unwrap(await instance.saveBusinessBrief(f.actor,{expectedRevision:1,reviewed:true,fields:{businessName:'Reviewed salon',services:'Haircuts and styling'}},crypto.randomUUID()));
         if(mode==='stopped')await stopMailbox(e,f.actor,f.grantId);
         if(mode==='invalidated')await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
         return {choices:[{message:{content:mode==='malformed'?'invalid':JSON.stringify({category:'unknown',priority:'unknown',summary:'A greeting with no clear request.',evidence:[{excerpt:'Hello'}]})}}]};
@@ -64,6 +69,12 @@ describe('one-page mailbox provider runner',()=>{
         expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:mode==='success'?1:0,reserved:0});
         expect(ctx.storage.sql.exec<{n:number}>('SELECT COUNT(*) AS n FROM provider_attempts').toArray()[0].n).toBe(1);
         expect(ctx.storage.sql.exec<{n:number}>('SELECT COUNT(*) AS n FROM mailbox_triage_results').toArray()[0].n).toBe(mode==='success'?1:0);
+        if(mode==='brief_changed'){
+          expect(result).toMatchObject({ok:false,error:{code:'triage_context_changed'}});
+          const fresh=unwrap(await instance.analyzeMailbox(f.actor,f.streamId,'message',claim.token));
+          expect(fresh.source.businessContext?.briefRevision).toBe(2);expect(calls).toBe(2);
+          expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:1,reserved:0});
+        }
       }finally{(instance as any).env=original;}
     });
   });
