@@ -47,10 +47,14 @@ export async function assertConnectionAvailable(env:Env,actor:Actor,grantId:stri
 }
 
 /** Internal authorization identity, stable across token refresh but not renewed consent. */
+export async function credentialAuthorizationStamp(row:Pick<Grant,'user_id'|'account_id'|'authorization_revision'|'granted_scopes'>):Promise<string>{
+  if(!Number.isSafeInteger(row.authorization_revision)||row.authorization_revision<1)throw failure('invalid_credential','Reconnect this account to restore secure access.');
+  return digest(JSON.stringify([row.user_id,row.account_id,row.authorization_revision,scopes(JSON.parse(row.granted_scopes)).sort()]));
+}
 export async function connectionAuthorizationStamp(env:Env,actor:Actor,grantId:string,provider:OAuthProvider,operation:Operation):Promise<string>{
   const row=await readGrant(env,actor,grantId,provider),granted=scopes(JSON.parse(row.granted_scopes));permitted(granted,operation);
   if(!Number.isSafeInteger(row.authorization_revision)||row.authorization_revision<1)throw failure('invalid_credential','Reconnect this account to restore secure access.');
-  return digest(JSON.stringify([row.user_id,row.account_id,row.authorization_revision,granted.sort()]));
+  return credentialAuthorizationStamp(row);
 }
 
 /** SERVER MODULE ONLY: never expose this return value through Agent RPC or HTTP.

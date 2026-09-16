@@ -1,4 +1,5 @@
 import TeamPanel from './TeamPanel';
+import MailboxPanel from './MailboxPanel';
 import InvitationInbox from './InvitationInbox';
 import {
   FormEvent,
@@ -1672,6 +1673,8 @@ export default function App() {
                                   .join(" · ") ||
                                   "No tool capabilities granted"}
                               </p>
+                              {canManage&&grant.provider==='google'&&grant.status!=='revoked'&&grant.grantedCapabilities.includes('gmail_read')&&
+                                <MailboxPanel tenantId={tenantId} grantId={grant.id} online={online} onUnauthorized={fail}/>}
                             </div>
                             {grant.status !== "revoked" && (
                               <button

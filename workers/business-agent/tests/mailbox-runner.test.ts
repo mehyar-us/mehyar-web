@@ -9,6 +9,7 @@ import {MailboxSync} from '../src/connectors/mailbox-sync';
 import {runMailboxPage} from '../src/connectors/mailbox-runner';
 import {initializeGoogleMailbox} from '../src/connectors/mailbox-bootstrap';
 import {consumeMailboxChange} from '../src/connectors/mailbox-consumer';
+import {googleMailboxStatus} from '../src/connectors/mailbox-status';
 const e={...env,MAILBOX_SYNC_ENABLED:'true',GOOGLE_ENABLED_CAPABILITIES:'gmail_read',MICROSOFT_ENABLED_CAPABILITIES:'mail_read'} as unknown as Env;
 const guard=async()=>{};
 async function fixture(provider:'google'|'microsoft'='google',createStream=true) {
@@ -31,6 +32,34 @@ async function fixture(provider:'google'|'microsoft'='google',createStream=true)
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('reports setup eligibility only after activation and all mailbox gates',async()=>{
+    const f=await fixture('google',false);
+    expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>false)).toEqual({state:'not_started',setupEnabled:false,pending:0,lastObservedAt:null});
+    expect(await googleMailboxStatus({...e,MAILBOX_RECOVERY_ENABLED:'true',MAILBOX_PROCESSING_ENABLED:'true'},f.actor,f.grantId,()=>false))
+      .toEqual({state:'not_started',setupEnabled:true,pending:0,lastObservedAt:null});
+    expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>true)).toMatchObject({state:'paused',setupEnabled:false});
+  });
+  it('reports pending work without exposing cursors, message content or provider identifiers',async()=>{
+    const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'private-message',kind:'upsert'}],nextCursor:'private-cursor'});
+    const status=await googleMailboxStatus(e,f.actor,f.grantId,()=>false);
+    expect(status).toEqual({state:'disabled',setupEnabled:false,pending:1,lastObservedAt:null});
+    expect(JSON.stringify(status)).not.toContain('private');expect(JSON.stringify(status)).not.toContain(f.streamId);
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_sync SET state='resync_required' WHERE id=?").bind(f.streamId).run();
+    expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({state:'needs_attention'});
+  });
+  it('does not show old-consent progress as the current mailbox and reports revocation',async()=>{
+    const f=await fixture();await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'old',kind:'upsert'}],syncCursor:'300'});
+    await storeProviderGrant(e,f.binding,f.credential,[]);
+    expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({state:'not_started',pending:0});
+    await e.AGENT_DB.prepare("UPDATE auth_provider_grants SET status='revoked' WHERE id=?").bind(f.grantId).run();
+    expect(await googleMailboxStatus(e,f.actor,f.grantId,()=>false)).toMatchObject({state:'reconnect_required',setupEnabled:false});
+  });
+  it('rejects foreign accounts and nonoperator mailbox status reads',async()=>{
+    const f=await fixture(),other=await fixture();
+    await expect(googleMailboxStatus(e,other.actor,f.grantId,()=>false)).rejects.toMatchObject({code:'mailbox_not_found'});
+    await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='billing' WHERE tenant_id=? AND user_id=?").bind(f.actor.tenantId,f.actor.userId).run();
+    await expect(googleMailboxStatus(e,f.actor,f.grantId,()=>false)).rejects.toMatchObject({code:'permission_denied'});
+  });
   it('processes queued Gmail references from current state and atomically acknowledges them',async()=>{
     const f=await fixture();
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[{messageId:'a',kind:'delete'}],syncCursor:'300'});

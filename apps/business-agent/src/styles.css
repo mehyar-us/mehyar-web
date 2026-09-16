@@ -2509,3 +2509,5 @@ button svg {
 .approvals-page .muted { color: #526159; }
 .action-review dd { overflow-wrap: anywhere; }
 .action-preview { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border: 1px solid var(--border, #ddd); border-radius: 10px; }
+
+.mailbox-panel p { color: #45544b; }

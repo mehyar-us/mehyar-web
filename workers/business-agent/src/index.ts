@@ -76,6 +76,15 @@ async function route(request:Request,env:Env) {
   if(cancelEmail&&request.method==='POST'){z.object({}).strict().parse(await readJson(request));return json(await cancelInvitationEmail(env,actor,cancelEmail[1]));}
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
+  const mailbox=section.match(/^connections\/([a-f0-9-]{36})\/mailbox$/);
+  if(mailbox&&request.method==='GET')return json(unwrap(await agent.mailboxStatus(actor,mailbox[1])));
+  if(mailbox&&request.method==='POST'){
+    z.object({}).strict().parse(await readJson(request));
+    const current=unwrap(await agent.mailboxStatus(actor,mailbox[1]));
+    if(current.state==='not_started'&&!current.setupEnabled)throw new HttpError(503,'mailbox_setup_unavailable','Mailbox setup is awaiting activation.');
+    unwrap(await agent.initializeMailbox(actor,mailbox[1]));
+    return json(unwrap(await agent.mailboxStatus(actor,mailbox[1])),202);
+  }
   if(section==='business-brief'&&request.method==='GET')return json(unwrap(await agent.businessBrief(actor)));
   if(section==='agent-name'&&request.method==='POST')return json(await renameAgent(env,actor,await readJson(request),requestKey(request)));
   if(section==='business-brief'&&request.method==='POST')return json(unwrap(await agent.saveBusinessBrief(actor,await readJson(request),requestKey(request))));

@@ -110,6 +110,7 @@ async function fixture(page: Page, options: Fixtures = {}) {
         currency: "USD",
       });
     if (path === "/api/auth/grants") return reply({ grants: [] });
+    if(path.endsWith('/mailbox'))return reply({state:'not_started',setupEnabled:false,pending:0,lastObservedAt:null});
     if (path === "/api/invitations") return reply({invitations:[],more:false});
     if(path.endsWith('/business-brief'))return reply(briefFixture());
     if (path === "/api/auth/sign-out") return reply({ ok: true });
@@ -818,4 +819,41 @@ test('exhausted research checks show needs attention without claiming continued 
   await expect(panel.getByRole('status')).toContainText('Research needs review before status checks can resume');
   await expect(panel.getByText('Researching',{exact:true})).toHaveCount(0);
   await expect(panel.getByRole('button',{name:'Cancel research'})).toBeEnabled();
+});
+
+test('sets up an eligible Gmail mailbox and clears status offline',async({page})=>{
+  await fixture(page);
+  const grantId='11111111-1111-4111-8111-111111111111';
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:grantId,provider:'google',tenantId:tenant.id,status:'authorized',accountEmail:'work@example.test',grantedCapabilities:['gmail_read'],grantedScopes:[],selectedCapabilities:['gmail_read']}]}}));
+  let started=false,posts=0;
+  await page.route('**/connections/*/mailbox',route=>{
+    expect(new URL(route.request().url()).pathname).toBe(`/api/tenants/${tenant.id}/connections/${grantId}/mailbox`);
+    if(route.request().method()==='POST'){expect(route.request().postDataJSON()).toEqual({});started=true;posts++;}
+    return route.fulfill({json:{state:started?'initializing':'not_started',setupEnabled:!started,pending:started?2:0,lastObservedAt:null}});
+  });
+  await page.goto('/?connected=google');const panel=page.locator('[aria-label="Mailbox monitoring"]');
+  await panel.getByRole('button',{name:'Set up mailbox monitoring'}).click();
+  await expect(panel.getByText('Reading initial mailbox references',{exact:true})).toBeVisible();expect(posts).toBe(1);
+  await expect(panel.getByText('2 message references awaiting processing.',{exact:true})).toBeVisible();
+  await expect(panel.getByRole('button',{name:'Set up mailbox monitoring'})).toHaveCount(0);
+  expect((await new AxeBuilder({page}).include('[aria-label="Mailbox monitoring"]').analyze()).violations).toEqual([]);
+  await page.context().setOffline(true);
+  await expect(panel.getByText('Reconnect to check mailbox status.')).toBeVisible();
+  await expect(panel.getByText('2 message references awaiting processing.',{exact:true})).toHaveCount(0);
+});
+
+test('withholds unverified mailbox status and offers refresh after an uncertain setup response',async({page})=>{
+  await fixture(page);
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:'11111111-1111-4111-8111-111111111111',provider:'google',tenantId:tenant.id,status:'authorized',grantedCapabilities:['gmail_read'],grantedScopes:[],selectedCapabilities:['gmail_read']}]}}));
+  let phase='ready';
+  await page.route('**/connections/*/mailbox',route=>{
+    if(route.request().method()==='POST'){phase='uncertain';return route.abort('failed');}
+    return route.fulfill({json:phase==='ready'?{state:'not_started',setupEnabled:true,pending:0,lastObservedAt:null}:{state:'__proto__',setupEnabled:false,pending:10,lastObservedAt:null}});
+  });
+  await page.goto('/?connected=google');const panel=page.locator('[aria-label="Mailbox monitoring"]');
+  await panel.getByRole('button',{name:'Set up mailbox monitoring'}).click();
+  await expect(panel.getByRole('alert')).toContainText('Refresh status before trying setup again');
+  await panel.getByRole('button',{name:'Refresh mailbox status'}).click();
+  await expect(panel.getByRole('alert')).toContainText('Mailbox status could not be verified');
+  await expect(panel.getByRole('button',{name:'Set up mailbox monitoring'})).toHaveCount(0);
 });
