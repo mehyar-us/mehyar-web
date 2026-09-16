@@ -79,6 +79,8 @@ async function route(request:Request,env:Env) {
   if(section==='automations'&&request.method==='GET') return json(automationCatalog());
   const agent=await getAgentByName(env.BUSINESS_AGENTS,actor.tenantId);
   const mailbox=section.match(/^connections\/([a-f0-9-]{36})\/mailbox$/);
+  const mailboxAnalyses=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/analyses$/);
+  if(mailboxAnalyses&&request.method==='GET')return json(unwrap(await agent.mailboxAnalyses(actor,mailboxAnalyses[1],url.searchParams.get('after')??undefined)));
   const mailboxReview=section.match(/^connections\/([a-f0-9-]{36})\/mailbox\/recovery$/);
   if(mailboxReview&&request.method==='POST'){
     const input=z.object({recoveryId:z.string().uuid().optional()}).strict().parse(await readJson(request));

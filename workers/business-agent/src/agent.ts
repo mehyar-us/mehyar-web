@@ -126,6 +126,11 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       return new MailboxTriage(this.ctx.storage).run(this.env,actor,streamId,messageId,receipt,guard);
     });
   }
+  async mailboxAnalyses(actor:Actor,grantId:string,after?:string){
+    return this.result(async()=>new MailboxTriage(this.ctx.storage).list(this.env,actor,grantId,async()=>{
+      await this.bind(actor);await requireMembership(this.env,actor,OPERATORS);
+    },after));
+  }
   async initializeMailbox(actor:Actor,grantId:string) {
     return this.result(async()=>{
       const guard=async()=>{

@@ -75,6 +75,26 @@ describe('one-page mailbox provider runner',()=>{
           expect(fresh.source.businessContext?.briefRevision).toBe(2);expect(calls).toBe(2);
           expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:1,reserved:0});
         }
+        if(mode==='success'){
+          (instance as any).env.AI_ENABLED='false';
+          const directory=unwrap(await instance.mailboxAnalyses(f.actor,f.grantId));
+          expect(directory).toMatchObject({withheld:0,items:[{summary:'A greeting with no clear request.',evidence:['Hello'],requiresReview:true,authorizesActions:false}]});
+          expect(JSON.stringify(directory)).not.toContain(claim.token);expect(JSON.stringify(directory)).not.toContain(f.streamId);
+          expect(await instance.mailboxAnalyses(f.actor,crypto.randomUUID())).toMatchObject({ok:false,error:{code:'triage_access_unavailable'}});
+          expect(await instance.mailboxAnalyses(f.actor,f.grantId,'invalid')).toMatchObject({ok:false,error:{code:'invalid_triage_cursor'}});
+          const saved=ctx.storage.sql.exec<{value:string}>('SELECT value FROM mailbox_triage_results WHERE id=?',directory.items[0].id).toArray()[0].value;
+          for(let i=0;i<12;i++)ctx.storage.sql.exec('INSERT INTO mailbox_triage_results(id,value,user_id,grant_id) VALUES (?,?,?,?)',String(i).padStart(64,'0'),saved,f.actor.userId,f.grantId);
+          const firstPage=unwrap(await instance.mailboxAnalyses(f.actor,f.grantId));
+          expect(firstPage.items).toHaveLength(10);expect(firstPage.nextCursor).toBeDefined();
+          const lastPage=unwrap(await instance.mailboxAnalyses(f.actor,f.grantId,firstPage.nextCursor));
+          expect(lastPage.items).toHaveLength(3);expect(lastPage.nextCursor).toBeUndefined();
+          expect(new Set([...firstPage.items,...lastPage.items].map(item=>item.id)).size).toBe(13);
+          await e.AGENT_DB.prepare('UPDATE agent_mailbox_messages SET needs_reconciliation=1 WHERE stream_id=?').bind(f.streamId).run();
+          const withheldPage=unwrap(await instance.mailboxAnalyses(f.actor,f.grantId));
+          expect(withheldPage).toMatchObject({items:[],withheld:10});expect(withheldPage.nextCursor).toBeDefined();
+          expect(unwrap(await instance.mailboxAnalyses(f.actor,f.grantId,withheldPage.nextCursor))).toMatchObject({items:[],withheld:3});
+          expect(calls).toBe(1);expect(unwrap(await instance.usage(f.actor)).textCredits).toMatchObject({used:1,reserved:0});
+        }
       }finally{(instance as any).env=original;}
     });
   });

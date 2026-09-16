@@ -8,11 +8,58 @@ import {requireMailboxAccess} from './mailbox-runner';
 import {mailTriageRequest,parseMailTriage,type MailTriageResult} from './mail-triage';
 import {BusinessBrief} from '../business-brief';
 import {conversationContext} from '../conversation-context';
+import {z} from 'zod';
+import {OPERATORS,requireMembership} from '../permissions';
+import {connectionAuthorizationStamp} from './credentials';
+import {GOOGLE_MAIL_OPERATIONS} from './google-mail';
+import {MICROSOFT_MAIL_OPERATIONS} from './microsoft-mail';
 
 /** Internal, review-only analysis. No sender, calendar tool or public route. */
 export class MailboxTriage {
   constructor(private storage:DurableObjectStorage){}
-  initialize(){this.storage.sql.exec('CREATE TABLE IF NOT EXISTS mailbox_triage_results(id TEXT PRIMARY KEY,value TEXT NOT NULL)');}
+  initialize(){
+    this.storage.sql.exec('CREATE TABLE IF NOT EXISTS mailbox_triage_results(id TEXT PRIMARY KEY,value TEXT NOT NULL)');
+    const columns=this.storage.sql.exec<{name:string}>('PRAGMA table_info(mailbox_triage_results)').toArray();
+    for(const column of ['user_id','grant_id'])if(!columns.some(c=>c.name===column))this.storage.sql.exec(`ALTER TABLE mailbox_triage_results ADD COLUMN ${column} TEXT`);
+    this.storage.sql.exec('CREATE INDEX IF NOT EXISTS mailbox_triage_directory ON mailbox_triage_results(user_id,grant_id,id)');
+  }
+  /** Read-only directory. No generation, credit reservation or external calls.
+   * Scan a bounded page; invalidated records are withheld, not silently refreshed. */
+  async list(env:Env,actor:Actor,grantId:string,agentGuard:()=>Promise<void>,after?:string){
+    if(!z.string().uuid().safeParse(grantId).success||(after!==undefined&&!/^[a-f0-9]{64}$/.test(after)))
+      throw new HttpError(400,'invalid_triage_cursor','Reload mailbox analyses.');
+    const guard=async()=>{
+      await agentGuard();await requireMembership(env,actor,OPERATORS);
+      const grant=await env.AGENT_DB.prepare("SELECT provider FROM auth_provider_grants WHERE id=? AND tenant_scope=? AND user_id=? AND status='authorized' AND mailbox_paused=0")
+        .bind(grantId,actor.tenantId,actor.userId).first<{provider:'google'|'microsoft'}>();
+      if(!grant)throw new HttpError(403,'triage_access_unavailable','This mailbox analysis is unavailable.');
+      return connectionAuthorizationStamp(env,actor,grantId,grant.provider,grant.provider==='google'?GOOGLE_MAIL_OPERATIONS.read:MICROSOFT_MAIL_OPERATIONS.read);
+    };
+    const authorization=await guard();
+    const rows=this.storage.sql.exec<{id:string;value:string}>('SELECT id,value FROM mailbox_triage_results WHERE user_id=? AND grant_id=? AND id>? ORDER BY id LIMIT 11',actor.userId,grantId,after??'').toArray();
+    const items=[];let withheld=0;
+    const context=this.businessContext(),ledger=new MailboxSync(env,actor);
+    for(const row of rows.slice(0,10)){
+      try{
+        const saved=JSON.parse(row.value) as MailTriageResult;
+        const belongs=await env.AGENT_DB.prepare('SELECT id FROM agent_mailbox_sync WHERE id=? AND tenant_id=? AND grant_id=?').bind(saved.source.streamId,actor.tenantId,grantId).first();
+        if(!belongs||JSON.stringify(saved.source.businessContext)!==JSON.stringify(context)){withheld++;continue;}
+        const observed=await ledger.readText(saved.source.streamId,saved.source.messageId,saved.source.receipt);
+        const validated=parseMailTriage(JSON.stringify({category:saved.category,priority:saved.priority,summary:saved.summary,evidence:saved.evidence.map(e=>({excerpt:e.excerpt}))}),{...observed,businessContext:context});
+        items.push({id:row.id,category:validated.category,priority:validated.priority,summary:validated.summary,
+          evidence:validated.evidence.map(e=>e.excerpt),observedAt:validated.source.observedAt,
+          historicalContext:validated.historicalContext,extractionOmissions:validated.extractionOmissions,
+          contextTruncated:context.truncated,requiresReview:true,authorizesActions:false});
+      }catch(error){
+        if(error instanceof HttpError&&![403,409].includes(error.status))throw error;
+        if(!(error instanceof HttpError||error instanceof SyntaxError||error instanceof z.ZodError||error instanceof TypeError))throw error;
+        withheld++;
+      }
+    }
+    if(await guard()!==authorization)throw new HttpError(409,'triage_access_changed','Mailbox access changed. Reload analyses.');
+    if(JSON.stringify(this.businessContext())!==JSON.stringify(context))throw new HttpError(409,'triage_context_changed','The business brief changed. Reload analyses.');
+    return {items,withheld,nextCursor:rows.length>10?rows[9].id:undefined};
+  }
   private businessContext(){
     const present=new BusinessBrief(this.storage).present();
     const details=conversationContext('',[],present,2000);
@@ -26,6 +73,8 @@ export class MailboxTriage {
     };
     enabled();await requireMailboxAccess(env,actor,agentGuard);
     const ledger=new MailboxSync(env,actor),observed=await ledger.readText(streamId,messageId,receipt);
+    const stream=await env.AGENT_DB.prepare('SELECT grant_id FROM agent_mailbox_sync WHERE id=? AND tenant_id=?').bind(streamId,actor.tenantId).first<{grant_id:string}>();
+    if(!stream)throw new HttpError(409,'triage_source_unavailable','This mailbox observation is unavailable.');
     const businessContext=this.businessContext(),source={...observed,businessContext};
     const checkContext=()=>{if(JSON.stringify(this.businessContext())!==JSON.stringify(businessContext))
       throw new HttpError(409,'triage_context_changed','The business brief changed. Retry the analysis with current details.');};
@@ -61,7 +110,7 @@ export class MailboxTriage {
       checkContext();
       this.storage.transactionSync(()=>{
         usage.finish(reservation.token,true);
-        this.storage.sql.exec('INSERT INTO mailbox_triage_results(id,value) VALUES (?,?)',id,JSON.stringify(result));
+        this.storage.sql.exec('INSERT INTO mailbox_triage_results(id,value,user_id,grant_id) VALUES (?,?,?,?)',id,JSON.stringify(result),actor.userId,stream.grant_id);
       });
       return result;
     }catch(error){
