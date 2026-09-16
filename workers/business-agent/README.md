@@ -95,3 +95,9 @@ This checks the immutable legacy boundary, TypeScript, local workerd tests, and 
 The separate GitHub Actions workflow runs checks only. It has no production deployment step or production credentials. Deployment of this new service requires a reviewed separate configuration, new resource IDs, scoped deployment access, provider readiness evidence and the release gates in the goal. Existing workflows/configuration remain unchanged.
 
 See `docs/implementation/mayor-ai-progress.md` for the full-scope progress ledger and remaining work.
+
+## Paid conversation allowances
+
+Paid chat uses catalog text-credit limits after current subscription access, matching plan, release readiness and tenant activation checks. Annual plans receive monthly allowances. Usage windows use the first verified subscription anchor, clamp short months without moving later anniversaries, and do not refill on billing-date edits. The source for anchor semantics is [Stripe billing-cycle documentation](https://docs.stripe.com/billing/subscriptions/billing-cycle). Migration 0006 adds usage_anchor only to the new agent subscription table; existing Stripe routes and schemas remain protected.
+
+Delivered generations consume one included credit; running turns reserve it. Provider attempts have a separate 120% ceiling retained after failures and restarts. Failed retries move into the current usage period; completed requests replay without another inference or credit. Paid access is rechecked before provider dispatch. Usage reporting remains available with a zero allowance when access cannot be verified. Missing or future anchors fail closed pending reconciliation. Purchased credit packs, measured supplier-cost accounting, plan-change reconciliation and live usage proofs remain unfinished. AI remains disabled locally and no live inference or charge was performed by this change.

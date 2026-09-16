@@ -5,6 +5,7 @@ import { CHAT_ROLES, OPERATORS, requireMembership, requireTenant } from './permi
 import { appendActivity } from './tenants';
 import { ActionControls } from './actions';
 import { connectedCalendars } from './connectors/calendar-access';
+import {textAccess} from './billing/text-access';
 
 type AgentState = { tenantId: string | null; paused: boolean };
 type Message = {id:string;role:'user'|'assistant';content:string;createdAt:string;};
@@ -84,10 +85,10 @@ export class BusinessAgent extends Agent<Env,AgentState> {
     return this.result(async()=>{
       await this.bind(actor);
       const tenant=await requireTenant(this.env,actor);
-      const period=tenant.plan_id==='trial'?'trial':new Date().toISOString().slice(0,7);
+      const access=await textAccess(this.env,actor,tenant,false),period=access.period;
       const [row]=this.sql<{used:number;reserved:number}>`SELECT COALESCE(SUM(status = 'complete'),0) AS used,
         COALESCE(SUM(status = 'running'),0) AS reserved FROM turns WHERE period = ${period}`;
-      return {textCredits:{used:row.used,reserved:row.reserved,limit:tenant.plan_id==='trial'?50:0},period,paused:this.state.paused};
+      return {textCredits:{used:row.used,reserved:row.reserved,limit:access.limit},period,resetsAt:access.resetsAt,paused:this.state.paused};
     });
   }
 
@@ -101,7 +102,7 @@ export class BusinessAgent extends Agent<Env,AgentState> {
     });
   }
 
-  async chat(actor:Actor,content:string,key:string) {
+  async chat(actor:Actor,content:string,key:string):Promise<Result<{message:Message;reply:Message}>> {
     return this.result(async()=>{
       await this.bind(actor);
       await requireMembership(this.env,actor,CHAT_ROLES);
@@ -117,11 +118,12 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       if(prior?.status==='running') throw new HttpError(409,'turn_running','This message is still being processed.');
       if(this.state.paused) throw new HttpError(409,'agent_paused','Resume your agent before sending a message.');
       const tenant=await requireTenant(this.env,actor);
-      if(tenant.plan_id!=='trial') throw new HttpError(409,'billing_not_ready','Paid execution is awaiting billing activation checks.');
-      if(tenant.trial_expires_at<=new Date().toISOString()) throw new HttpError(403,'trial_expired','Your trial has ended. Your workspace remains available for review.');
+      const access=await textAccess(this.env,actor,tenant);
       if(!this.env.AI || this.env.AI_ENABLED!=='true'||!this.env.AI_GATEWAY_ID) throw new HttpError(503,'ai_not_configured','Chat will be available when your agent connection is configured.');
-      const [used]=this.sql<{count:number}>`SELECT COUNT(*) AS count FROM turns WHERE period = 'trial' AND status IN ('running','complete')`;
-      if(used.count>=50) throw new HttpError(429,'usage_limit','Your trial text allowance has been reached.');
+      const [latest]=this.sql<{status:string}>`SELECT status FROM turns WHERE user_id=${actor.userId} AND request_key=${key}`;
+      if(latest?.status==='complete')return unwrap(await this.chat(actor,content,key));
+      const [used]=this.sql<{count:number}>`SELECT COUNT(*) AS count FROM turns WHERE period = ${access.period} AND status IN ('running','complete')`;
+      if(used.count>=access.limit) throw new HttpError(429,'usage_limit','Your included text allowance for this period has been reached.');
       const [running]=this.sql<{count:number}>`SELECT COUNT(*) AS count FROM turns WHERE user_id = ${actor.userId} AND status = 'running'`;
       if(running.count) throw new HttpError(409,'conversation_busy','Wait for the current response before sending another message.');
       const message:Message={id:prior?.message_id||crypto.randomUUID(),role:'user',content,createdAt:new Date().toISOString()};
@@ -129,13 +131,15 @@ export class BusinessAgent extends Agent<Env,AgentState> {
       this.ctx.storage.transactionSync(()=>{
         this.sql`INSERT OR IGNORE INTO conversations (id,user_id,role,content,created_at) VALUES (${message.id},${actor.userId},'user',${content},${message.createdAt})`;
         this.sql`INSERT INTO turns (request_key,user_id,content,message_id,status,period,created_at)
-          VALUES (${key},${actor.userId},${content},${message.id},'running','trial',${message.createdAt})
-          ON CONFLICT(user_id,request_key) DO UPDATE SET status = 'running'`;
+          VALUES (${key},${actor.userId},${content},${message.id},'running',${access.period},${message.createdAt})
+          ON CONFLICT(user_id,request_key) DO UPDATE SET status = 'running',period = excluded.period`;
       });
       let providerAttemptId:string|null=null;
       try {
         const memory=await this.env.AGENT_DB.prepare('SELECT key,value FROM agent_memory WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT 20').bind(actor.tenantId).all<{key:string;value:string}>();
         await requireMembership(this.env,actor,CHAT_ROLES);
+        const currentAccess=await textAccess(this.env,actor,await requireTenant(this.env,actor));
+        if(currentAccess.period!==access.period||currentAccess.limit!==access.limit)throw new HttpError(409,'usage_period_changed','Your plan or usage period changed. Please retry this message.');
         if(this.state.paused) throw new HttpError(409,'agent_paused','Your agent was paused.');
         const history=this.sql<{role:'user'|'assistant';content:string}>`SELECT role,content FROM conversations WHERE user_id = ${actor.userId} ORDER BY rowid DESC LIMIT 8`.reverse();
         // Bound Unicode input by UTF-8 bytes, conservatively below the standard 12k-token credit.
@@ -147,11 +151,11 @@ export class BusinessAgent extends Agent<Env,AgentState> {
         // Customer credits pay for delivered work. Provider costs can occur on failures too.
         // Reserve against a separate durable attempt ceiling BEFORE every dispatch; never
         // release this reservation on timeout, pause, malformed output or object restart.
-        const [attempts]=this.sql<{count:number}>`SELECT COUNT(*) AS count FROM provider_attempts WHERE period = 'trial'`;
-        if(attempts.count>=60) throw new HttpError(429,'provider_budget_limit','Your agent needs a service review before more requests can run. Failed responses have not used your text credits.');
+        const [attempts]=this.sql<{count:number}>`SELECT COUNT(*) AS count FROM provider_attempts WHERE period = ${access.period}`;
+        if(attempts.count>=access.attemptLimit) throw new HttpError(429,'provider_budget_limit','Your agent needs a service review before more requests can run. Failed responses have not used your text credits.');
         providerAttemptId=crypto.randomUUID();
         this.sql`INSERT INTO provider_attempts (id,user_id,request_key,period,status,started_at)
-          VALUES (${providerAttemptId},${actor.userId},${key},'trial','started',${new Date().toISOString()})`;
+          VALUES (${providerAttemptId},${actor.userId},${key},${access.period},'started',${new Date().toISOString()})`;
         const response=await this.env.AI.run('@cf/openai/gpt-oss-120b',{
           messages:[{role:'system',content:system},...bounded],max_tokens:2000,
         },{gateway:{id:this.env.AI_GATEWAY_ID,skipCache:true,collectLog:false,metadata:{tenant_id:actor.tenantId,billing_domain:'business_agent'}},signal:AbortSignal.timeout(60_000)});

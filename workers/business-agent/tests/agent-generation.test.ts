@@ -5,6 +5,8 @@ import {describe,it,expect} from 'vitest';
 import type {Env} from '../src/env';
 import {BusinessAgent,unwrap} from '../src/agent';
 import {createTenant} from '../src/tenants';
+import {CATALOG_VERSION} from '../src/catalog';
+import {RELEASE_GATES} from '../src/billing/service';
 
 const e=env as unknown as Env;
 async function fixture() {
@@ -17,6 +19,28 @@ async function fixture() {
 }
 
 describe('durable generation accounting',()=>{
+  it.each(['monthly','annual'])('allows paid %s text usage, replays without charging twice, and rejects expired access',async interval=>{
+    const {actor,stub}=await fixture();
+    await e.AGENT_DB.prepare("UPDATE agent_tenants SET plan_id='business',status='active' WHERE id=?").bind(actor.tenantId).run();
+    await e.AGENT_DB.prepare("INSERT INTO agent_billing_subscriptions(tenant_id,stripe_subscription_id,plan_id,status,paid_through,updated_at,access_state,billing_interval,usage_anchor) VALUES (?,?,'business','active',?,?,'active',?,?)")
+      .bind(actor.tenantId,'sub_'+crypto.randomUUID(),new Date(Date.now()+400*86400000).toISOString(),new Date().toISOString(),interval,new Date(Date.now()-86400000).toISOString()).run();
+    for(const [scope,gates] of [['catalog',RELEASE_GATES],[actor.tenantId,['activation_approved']]] as const)for(const gate of gates)
+      await e.AGENT_DB.prepare("INSERT OR REPLACE INTO agent_billing_readiness(scope_id,gate,catalog_version,status,evidence_ref,verified_by,verified_at,valid_until) VALUES (?,?,?,'verified','fixture-only','test',?,?)")
+        .bind(scope,gate,CATALOG_VERSION,new Date().toISOString(),new Date(Date.now()+86400000).toISOString()).run();
+    await runInDurableObject(stub,async(instance:BusinessAgent)=>{
+      const original=(instance as any).env;let calls=0;
+      (instance as any).env={...original,AI_ENABLED:'true',AI_GATEWAY_ID:'fixture',AI:{run:async()=>{calls++;return {choices:[{message:{content:'Paid draft, no action taken.'}}]};}}};
+      try {
+        const key=crypto.randomUUID();const result=unwrap(await instance.chat(actor,'Draft my message',key));
+        expect(unwrap(await instance.chat(actor,'Draft my message',key))).toEqual(result);expect(calls).toBe(1);
+        const usage=unwrap(await instance.usage(actor));expect(usage.textCredits).toEqual({used:1,reserved:0,limit:2000});expect(usage.period).toContain('subscription:');
+        expect(Date.parse(usage.resetsAt!)-Date.now()).toBeLessThan(32*86400000);
+        await e.AGENT_DB.prepare("UPDATE agent_billing_subscriptions SET paid_through='2020-01-01T00:00:00.000Z' WHERE tenant_id=?").bind(actor.tenantId).run();
+        expect(await instance.chat(actor,'Another message',crypto.randomUUID())).toMatchObject({ok:false,error:{code:'subscription_access_expired'}});expect(calls).toBe(1);
+        expect(unwrap(await instance.usage(actor)).textCredits.limit).toBe(0);
+      }finally{(instance as any).env=original;}
+    });
+  });
   it('caps paid provider attempts even when every response fails and customer credits are released',async()=>{
     const {actor,stub}=await fixture();
     await runInDurableObject(stub,async(instance:BusinessAgent)=>{

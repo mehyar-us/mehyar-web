@@ -78,7 +78,7 @@ async function activated(f: Fixture) {
   await paidSetup(f);
   const checkout = await createCheckout(f.env, f.actor, { stage: "activation", planId: "business", interval: "monthly" }, uid(), f.stripe.client);
   const session = f.stripe.session(checkout.orderId); const subId = `sub_${uid()}`; const invoiceId = `in_${uid()}`;
-  const sub = { id: subId, metadata: agentMetadata(f.actor.tenantId, checkout.orderId), customer: session.customer, status: "active", latest_invoice: invoiceId, cancel_at_period_end: false, items: { data: [{ price: { id: priceMap.business.monthly }, quantity: 1 }] } };
+  const sub = { id: subId, billing_cycle_anchor: Math.floor(Date.now() / 1000), metadata: agentMetadata(f.actor.tenantId, checkout.orderId), customer: session.customer, status: "active", latest_invoice: invoiceId, cancel_at_period_end: false, items: { data: [{ price: { id: priceMap.business.monthly }, quantity: 1 }] } };
   f.stripe.subscriptions.set(subId, sub);
   Object.assign(session, { subscription: subId, payment_status: "paid", status: "complete" });
   await processBillingEvent(f.env, event("checkout.session.completed", session), f.stripe.client);
@@ -94,6 +94,14 @@ async function sign(raw: string, secret: string, timestamp = Math.floor(Date.now
 }
 
 describe("Stripe signature and metadata boundary", () => {
+  it('records the verified subscription usage anchor and does not refill credits on a later anchor change',async()=>{
+    const f=await fixture(),a=await activated(f);
+    const expected=new Date(a.sub.billing_cycle_anchor*1000).toISOString();
+    expect(await f.env.AGENT_DB.prepare('SELECT usage_anchor FROM agent_billing_subscriptions WHERE tenant_id=?').bind(f.actor.tenantId).first()).toEqual({usage_anchor:expected});
+    a.sub.billing_cycle_anchor+=86400;
+    await processBillingEvent(f.env,event('customer.subscription.updated',a.sub),f.stripe.client);
+    expect(await f.env.AGENT_DB.prepare('SELECT usage_anchor FROM agent_billing_subscriptions WHERE tenant_id=?').bind(f.actor.tenantId).first()).toEqual({usage_anchor:expected});
+  });
   it("verifies exact raw bytes, rotated multiple v1 signatures and timestamp bounds", async () => {
     const raw = '{ "message": "fixture ✓", "id": 1 }'; const signature = await sign(raw, "whsec_test"); const bytes = new TextEncoder().encode(raw);
     await expect(verifyStripeSignature(bytes, `${signature},v1=${"0".repeat(64)},v0=obsolete`, "whsec_test")).resolves.toBeUndefined();
