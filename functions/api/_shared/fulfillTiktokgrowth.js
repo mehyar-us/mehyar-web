@@ -122,7 +122,11 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
       const step = async (phase) => {
         const r = await fetch(`${baseUrl(env)}/api/tiktok/gen-step`, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            // Cloudflare bot protection 403s non-browser UAs on *.mehyar.us
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+          },
           body: JSON.stringify({ order_token: accessToken, phase, inputs: intakeInputs }),
         });
         const data = await r.json().catch(() => ({}));
@@ -165,8 +169,8 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
     } catch (e) {
       console.error("fulfillTiktokgrowth background generate failed", productId, e && e.message);
       try {
-        await db.prepare("UPDATE tiktokgrowth_orders SET status='failed' WHERE id=? AND status='paid'")
-          .bind(orderId).run();
+        await db.prepare("UPDATE tiktokgrowth_orders SET status='failed', failure_reason=? WHERE id=? AND status='paid'")
+          .bind(String((e && e.message) || "unknown").slice(0, 500), orderId).run();
       } catch {}
       // No email on failure: the buyer lands on success.html?token= from
       // Stripe, which shows live status + a retry button that re-POSTs
