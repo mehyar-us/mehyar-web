@@ -4,7 +4,8 @@ import type {Env} from '../src/env';
 import {platformSenderConfiguration,requirePlatformSender,PLATFORM_EMAIL_GATES} from '../src/email/readiness';
 import {VerifiedInvitationOutbox} from '../src/email/verified-outbox';
 import {createTenant} from '../src/tenants';
-import {inviteMember,revokeInvitation} from '../src/team';
+import {inviteMember,revokeInvitation,teamDirectory} from '../src/team';
+import {queueInvitationEmail} from '../src/email/customer';
 import {PlatformEmailSupplierBudget} from '../src/email/supplier-budget';
 import {platformEmailAccess} from '../src/email/access';
 import {CATALOG_VERSION} from '../src/catalog';
@@ -31,6 +32,28 @@ async function evidence(e:Env){
   return config;
 }
 describe('dedicated platform sender readiness',()=>{
+  it('queues one frozen email only on an authorized explicit owner request and presents private delivery state',async()=>{
+    const e=fixture();e.AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED='true';const invite=await invitation(e);await evidence(e);
+    const before=await teamDirectory(e,invite.actor);expect(before.emailQueueEnabled).toBe(true);expect(before.invitations[0].emailDelivery.state).toBe('not_queued');
+    expect(await queueInvitationEmail(e,invite.actor,invite.id)).toEqual({email:{state:'queued',checkedAt:null}});
+    expect(await queueInvitationEmail(e,invite.actor,invite.id)).toEqual({email:{state:'queued',checkedAt:null}});
+    expect(await e.AGENT_DB.prepare('SELECT count(*) AS count FROM agent_platform_email_outbox WHERE invitation_id=?').bind(invite.id).first()).toEqual({count:1});
+    const directory=await teamDirectory(e,invite.actor);expect(directory.invitations[0].emailDelivery.state).toBe('queued');
+    expect(JSON.stringify(directory)).not.toContain('configurationHash');expect(JSON.stringify(directory)).not.toContain('re_synthetic_fixture');expect(JSON.stringify(directory)).not.toContain('payload_json');
+    const other=await invitation(e);await expect(queueInvitationEmail(e,other.actor,invite.id)).rejects.toMatchObject({code:'invitation_email_unavailable'});
+    await e.AGENT_DB.prepare("UPDATE agent_memberships SET role='manager' WHERE tenant_id=? AND user_id=?").bind(invite.actor.tenantId,invite.actor.userId).run();
+    await expect(queueInvitationEmail(e,invite.actor,invite.id)).rejects.toMatchObject({code:'permission_denied'});
+    await expect(teamDirectory(e,invite.actor)).rejects.toMatchObject({code:'permission_denied'});
+  });
+  it('does not queue an email while recovery is disabled or billing is expired',async()=>{
+    const e=fixture(),invite=await invitation(e);await evidence(e);
+    await expect(queueInvitationEmail(e,invite.actor,invite.id)).rejects.toMatchObject({code:'platform_email_disabled'});
+    expect((await teamDirectory(e,invite.actor)).emailQueueEnabled).toBe(false);
+    e.AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED='true';
+    await e.AGENT_DB.prepare("UPDATE agent_billing_subscriptions SET paid_through='2000-01-01T00:00:00Z' WHERE tenant_id=?").bind(invite.actor.tenantId).run();
+    await expect(queueInvitationEmail(e,invite.actor,invite.id)).rejects.toMatchObject({code:'email_subscription_expired'});
+    expect(await e.AGENT_DB.prepare('SELECT id FROM agent_platform_email_outbox WHERE invitation_id=?').bind(invite.id).first()).toBeNull();
+  });
   it('keeps recovery disabled before database or credential access',async()=>{
     expect(await runEmailRecovery({AGENT_PLATFORM_EMAIL_ENABLED:'true'} as Env)).toEqual({disabled:true,sent:0,checked:0,deferred:0});
     expect(await runEmailRecovery({AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED:'true'} as Env)).toEqual({disabled:true,sent:0,checked:0,deferred:0});

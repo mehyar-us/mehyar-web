@@ -3,6 +3,7 @@ import type {Actor,Env} from './env';
 import {digest,HttpError} from './http';
 import {requireMembership,requireTenant} from './permissions';
 import {getPlan} from './catalog';
+import {presentInvitationDelivery} from './email/customer';
 export {revokeMember} from './team-removal';
 
 const inputSchema=z.object({email:z.email().max(254).transform(value=>value.toLowerCase()),role:z.enum(['manager','staff','billing','viewer'])}).strict();
@@ -21,10 +22,13 @@ export async function teamDirectory(env:Env,actor:Actor,cursors:{membersCursor?:
   const members=await env.AGENT_DB.prepare(`SELECT m.user_id AS id,u.name,u.email,m.role,m.status,m.revision,m.expires_at AS expiresAt FROM agent_memberships m
     LEFT JOIN auth_user u ON u.id=m.user_id WHERE m.tenant_id=? ${memberCursor?'AND (m.created_at>? OR (m.created_at=? AND m.user_id>?))':''}
     ORDER BY m.created_at,m.user_id LIMIT 101`).bind(actor.tenantId,...(memberCursor?[memberCursor.created_at,memberCursor.created_at,memberCursor.user_id]:[])).all();
-  const invitations=await env.AGENT_DB.prepare(`SELECT * FROM agent_team_invitations WHERE tenant_id=? ${invitationCursor?'AND (created_at<? OR (created_at=? AND id<?))':''}
-    ORDER BY created_at DESC,id DESC LIMIT 51`).bind(actor.tenantId,...(invitationCursor?[invitationCursor.created_at,invitationCursor.created_at,invitationCursor.id]:[])).all<Invitation>();
+  const invitations=await env.AGENT_DB.prepare(`SELECT i.*,o.state AS email_state,d.delivered_seen,d.bounced_seen,d.complained_seen,d.checked_at
+    FROM agent_team_invitations i LEFT JOIN agent_platform_email_outbox o ON o.invitation_id=i.id AND o.tenant_id=i.tenant_id
+    LEFT JOIN agent_platform_email_delivery d ON d.job_id=o.id AND d.tenant_id=i.tenant_id
+    WHERE i.tenant_id=? ${invitationCursor?'AND (i.created_at<? OR (i.created_at=? AND i.id<?))':''}
+    ORDER BY i.created_at DESC,i.id DESC LIMIT 51`).bind(actor.tenantId,...(invitationCursor?[invitationCursor.created_at,invitationCursor.created_at,invitationCursor.id]:[])).all<Invitation & Parameters<typeof presentInvitationDelivery>[0]>();
   await owner(env,actor);
-  return {members:members.results.slice(0,100),invitations:invitations.results.slice(0,50).map(present),moreMembers:members.results.length>100,moreInvitations:invitations.results.length>50,nextMembersCursor:members.results.length>100?String(members.results[99].id):null,nextInvitationsCursor:invitations.results.length>50?invitations.results[49].id:null,seatLimit:getPlan(tenant.plan_id)?.allowances.seats??1};
+  return {members:members.results.slice(0,100),invitations:invitations.results.slice(0,50).map(row=>({...present(row),emailDelivery:presentInvitationDelivery(row)})),emailQueueEnabled:env.AGENT_PLATFORM_EMAIL_ENABLED==='true'&&env.AGENT_PLATFORM_EMAIL_RECOVERY_ENABLED==='true',moreMembers:members.results.length>100,moreInvitations:invitations.results.length>50,nextMembersCursor:members.results.length>100?String(members.results[99].id):null,nextInvitationsCursor:invitations.results.length>50?invitations.results[49].id:null,seatLimit:getPlan(tenant.plan_id)?.allowances.seats??1};
 }
 export async function inviteMember(env:Env,actor:Actor,input:unknown,key:string){
   await owner(env,actor);const data=inputSchema.parse(input),hash=await digest(JSON.stringify(data));

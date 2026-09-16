@@ -118,3 +118,26 @@ test('recipient invitation pages append and clear on denied continuation',async(
   await inbox.getByRole('button',{name:'Refresh invitations'}).click();await expect(inbox.getByRole('listitem')).toHaveCount(1);
   denied=true;await inbox.getByRole('button',{name:'Load older invitations'}).click();await expect(inbox.getByRole('alert')).toHaveText('Verify your current email before continuing.');await expect(inbox.getByRole('listitem')).toHaveCount(0);
 });
+
+test('owners can retry the same invitation email request and see its queued state',async({page})=>{
+  await fixture(page);const id='b'.repeat(64);let state='not_queued',requests=0;
+  await page.route('**/api/tenants/business-a/team',route=>route.fulfill({json:{seatLimit:3,emailQueueEnabled:true,moreMembers:false,moreInvitations:false,members:[],invitations:[{id,email:'pat@example.test',role:'staff',status:'pending',expiresAt:'2026-09-23T00:00:00Z',emailDelivery:{state,checkedAt:null}}]}}));
+  await page.route(`**/api/tenants/business-a/team/invitations/${id}/email`,route=>{
+    expect(route.request().method()).toBe('POST');expect(route.request().postDataJSON()).toEqual({});requests++;state='queued';
+    return requests===1?route.fulfill({status:503,json:{error:{message:'Email request could not be confirmed. Retry this invitation.'}}}):route.fulfill({status:202,json:{email:{state:'queued',checkedAt:null}}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Team',exact:true}).click();
+  const team=page.getByRole('region',{name:'Manage team'}),button=team.getByRole('button',{name:'Queue email invitation to pat@example.test'});
+  await button.click();await expect(team.getByRole('alert')).toContainText('could not be confirmed');await button.click();
+  await expect(team.getByText('Email: Queued for delivery checks',{exact:true})).toBeVisible();await expect(button).toHaveCount(0);expect(requests).toBe(2);
+  expect((await new AxeBuilder({page}).include('[aria-label="Manage team"]').analyze()).violations).toEqual([]);
+});
+
+test('delivery history distinguishes provider acceptance and delivery while disabled email offers no send control',async({page})=>{
+  await fixture(page);let state='accepted';
+  await page.route('**/api/tenants/business-a/team',route=>route.fulfill({json:{seatLimit:3,emailQueueEnabled:false,moreMembers:false,moreInvitations:false,members:[],invitations:[{id:'c'.repeat(64),email:'pat@example.test',role:'staff',status:'pending',expiresAt:'2026-09-23T00:00:00Z',emailDelivery:{state,checkedAt:'2026-09-16T10:00:00Z'}}]}}));
+  await page.goto('/');await page.getByRole('button',{name:'Team',exact:true}).click();const team=page.getByRole('region',{name:'Manage team'});
+  await expect(team.getByText('Email: Accepted by email provider; delivery unconfirmed',{exact:true})).toBeVisible();await expect(team.getByRole('button',{name:/Queue email invitation/})).toHaveCount(0);
+  state='delivered';await team.getByRole('button',{name:'Refresh team',exact:true}).click();await expect(team.getByText('Email: Delivered to recipient mail server',{exact:true})).toBeVisible();
+  state='__proto__';await team.getByRole('button',{name:'Refresh team',exact:true}).click();await expect(team.getByText('Email: Delivery status unavailable',{exact:true})).toBeVisible();
+});
