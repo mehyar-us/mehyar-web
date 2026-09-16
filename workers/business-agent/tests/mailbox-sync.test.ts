@@ -16,10 +16,52 @@ async function fixture(provider:'google'|'microsoft'='google') {
   let time=Date.now();
   const ledger=new MailboxSync(e,actor,()=>time);
   const streamId=await ledger.open(grantId,provider,provider==='google'?'mailbox':'inbox',provider==='google'?'200':undefined);
-  return {actor,binding,credential,grantId,ledger,streamId,advance:()=>{time+=91000;}};
+  return {actor,binding,credential,grantId,ledger,streamId,advance:(seconds=91)=>{time+=seconds*1000;}};
 }
 async function count(streamId:string) { return (await e.AGENT_DB.prepare('SELECT COUNT(*) AS n FROM agent_mailbox_changes WHERE stream_id=?').bind(streamId).first<{n:number}>())!.n; }
 describe('durable mailbox synchronization',()=>{
+  it('bounds abandoned attempts and never advances their checkpoint',async()=>{
+    const f=await fixture();
+    for(let i=0;i<12;i++){expect(await f.ledger.claim(f.streamId)).not.toBeNull();f.advance();}
+    expect(await f.ledger.claim(f.streamId)).toBeNull();
+    expect(await e.AGENT_DB.prepare('SELECT state,checkpoint,consecutive_attempts FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first())
+      .toEqual({state:'resync_required',checkpoint:'200',consecutive_attempts:12});
+  });
+  it('resets attempts only on a saved page and preserves durable failure delays',async()=>{
+    const f=await fixture();
+    const first=(await f.ledger.claim(f.streamId))!;
+    expect(await f.ledger.defer(first,3600)).toBe(true);
+    f.advance(3599);expect(await f.ledger.claim(f.streamId)).toBeNull();
+    f.advance(2);const next=(await f.ledger.claim(f.streamId))!;
+    expect((await f.ledger.context(next)).attempts).toBe(2);
+    await f.ledger.commit(next,{changes:[],nextCursor:'next'});
+    const last=(await f.ledger.claim(f.streamId))!;
+    expect((await f.ledger.context(last)).attempts).toBe(1);
+    expect(await f.ledger.defer(first,3600)).toBe(false);
+  });
+  it('atomically caps tenant backlog across streams, preserves rejected cursors and resumes after draining',async()=>{
+    const f=await fixture(),seed=(await f.ledger.claim(f.streamId))!;
+    await f.ledger.commit(seed,{changes:[{messageId:'seed',kind:'upsert'}],nextCursor:'more'});
+    await e.AGENT_DB.prepare(`INSERT INTO agent_mailbox_changes(stream_id,page_token,ordinal,message_id,kind,created_at)
+      SELECT ?,?,CAST(key AS INTEGER)+1,'seed-'||key,'upsert',? FROM json_each(?)`)
+      .bind(f.streamId,seed.token,new Date().toISOString(),JSON.stringify(Array.from({length:8999},(_,i)=>i))).run();
+    const grant=await storeProviderGrant(e,{...f.binding,accountId:crypto.randomUUID()},f.credential,[]);
+    const second=await f.ledger.open(grant,'google','mailbox','200');
+    const a=(await f.ledger.claim(f.streamId))!,b=(await f.ledger.claim(second))!;
+    expect(a).not.toBeNull();expect(b).not.toBeNull();
+    const page={changes:Array.from({length:1000},(_,i)=>({messageId:`new-${i}`,kind:'upsert' as const})),syncCursor:'300'};
+    const results=await Promise.all([f.ledger.commit(a,page),f.ledger.commit(b,page)]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(await count(f.streamId)+await count(second)).toBe(10000);
+    const rejected=results[0]?second:f.streamId;
+    expect(await e.AGENT_DB.prepare('SELECT checkpoint FROM agent_mailbox_sync WHERE id=?').bind(rejected).first()).toEqual({checkpoint:'200'});
+    f.advance(301);expect(await f.ledger.claim(rejected)).toBeNull();
+    const other=await fixture();expect(await other.ledger.claim(other.streamId)).not.toBeNull();
+    // Simulate the future consumer acknowledging work, not deleting queued evidence.
+    await e.AGENT_DB.prepare("UPDATE agent_mailbox_changes SET state='applied' WHERE stream_id=? AND page_token=? AND ordinal<1000")
+      .bind(f.streamId,seed.token).run();
+    expect(await f.ledger.claim(rejected)).toMatchObject({checkpoint:'200'});
+  });
   it('rolls back the receipt and checkpoint when persisting a change fails',async()=>{
     const f=await fixture(),claim=(await f.ledger.claim(f.streamId))!;
     await e.AGENT_DB.prepare("CREATE TRIGGER mailbox_test_failure BEFORE INSERT ON agent_mailbox_changes BEGIN SELECT RAISE(ABORT,'fixture storage failure'); END").run();
@@ -40,7 +82,9 @@ describe('durable mailbox synchronization',()=>{
     expect(next).toMatchObject({checkpoint:'200',pageCursor:'page-two'});
     expect(await restarted.commit(next,{changes:[{messageId:'b',kind:'delete'}],syncCursor:'300'})).toBe(true);
     expect(await count(f.streamId)).toBe(2);
-    expect(await restarted.claim(f.streamId)).toMatchObject({checkpoint:'300',pageCursor:null});
+    expect(await restarted.claim(f.streamId)).toBeNull();
+    f.advance(301);
+    expect(await f.ledger.claim(f.streamId)).toMatchObject({checkpoint:'300',pageCursor:null});
   });
   it('fences concurrent claims and stale callbacks after an expired lease',async()=>{
     const f=await fixture(),claims=await Promise.all([f.ledger.claim(f.streamId),f.ledger.claim(f.streamId)]);
@@ -62,6 +106,7 @@ describe('durable mailbox synchronization',()=>{
     const f=await fixture();
     await f.ledger.commit((await f.ledger.claim(f.streamId))!,{changes:[],syncCursor:'300'});
     expect(await f.ledger.open(f.grantId,'google','mailbox','200')).toBe(f.streamId);
+    f.advance(301);
     await e.AGENT_DB.prepare('UPDATE agent_mailbox_sync SET page_number=499 WHERE id=?').bind(f.streamId).run();
     const claim=(await f.ledger.claim(f.streamId))!;
     expect(claim.checkpoint).toBe('300');
@@ -76,6 +121,8 @@ describe('durable mailbox synchronization',()=>{
     const results=await Promise.all([f.ledger.commit(claim,page),f.ledger.commit(claim,page)]);
     expect(results.some(Boolean)).toBe(true);
     expect(await count(f.streamId)).toBe(1);
+    expect(await f.ledger.claim(f.streamId)).toBeNull();
+    f.advance(301);
     expect(await f.ledger.claim(f.streamId)).toMatchObject({checkpoint:'300',pageCursor:null});
   });
   it.each(['consent','revoke','pause','role'] as const)('withholds changes and checkpoints after %s changes',async change=>{

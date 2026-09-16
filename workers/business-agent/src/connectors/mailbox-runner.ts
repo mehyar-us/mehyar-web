@@ -80,7 +80,7 @@ export async function runMailboxPage(env:Env,actor:Actor,streamId:string,
     if(error instanceof ConnectorError&&['rate_limited','retryable_read'].includes(error.kind)) {
       await guard();
       const delay=Math.max(300,error.retryAfterSeconds??0);
-      if(delay>86400)return {state:await ledger.requireResync(claim)?'resync_required' as const:'stale' as const};
+      if(delay>86400||context.attempts>=12)return {state:await ledger.requireResync(claim)?'resync_required' as const:'stale' as const};
       return {state:await ledger.defer(claim,delay)?'deferred' as const:'stale' as const};
     }
     throw error;

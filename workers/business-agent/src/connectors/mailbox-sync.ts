@@ -15,7 +15,7 @@ const pageSchema = z.object({
 }).strict().refine(p => Boolean(p.nextCursor) !== Boolean(p.syncCursor));
 type SyncPage = z.infer<typeof pageSchema>;
 type Stream = { id:string; tenant_id:string; grant_id:string; provider:Provider; resource:string; authorization:string;
-  checkpoint:string|null; page_cursor:string|null; round_id:string; page_number:number; state:string; lease_token:string|null; lease_until:string|null };
+  checkpoint:string|null; page_cursor:string|null; round_id:string; page_number:number; state:string; lease_token:string|null; lease_until:string|null; consecutive_attempts:number };
 export type MailboxClaim = { streamId:string; token:string; checkpoint:string|null; pageCursor:string|null };
 const unavailable = () => new HttpError(409,'mailbox_sync_unavailable','Mailbox synchronization must be restarted with current authorization.');
 
@@ -74,10 +74,16 @@ export class MailboxSync {
   }
   async claim(streamId:string):Promise<MailboxClaim|null> {
     const {row,grant}=await this.stream(streamId),token=crypto.randomUUID(),now=this.now();
-    const acquired=await this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET lease_token=?,lease_until=?,updated_at=?
-      WHERE id=? AND tenant_id=? AND state='ready' AND page_number<500 AND (lease_until IS NULL OR lease_until<=?) AND ${this.fence}
+    // Crashes also consume attempts. A dead worker cannot cause endless provider reads.
+    await this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET state='resync_required',lease_token=NULL,lease_until=NULL,updated_at=?
+      WHERE id=? AND tenant_id=? AND state='ready' AND consecutive_attempts>=12 AND (lease_until IS NULL OR lease_until<=?) AND ${this.fence}`)
+      .bind(now,streamId,this.actor.tenantId,now,...this.args(row.grant_id,grant)).run();
+    const acquired=await this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET lease_token=?,lease_until=?,updated_at=?,consecutive_attempts=consecutive_attempts+1
+      WHERE id=? AND tenant_id=? AND state='ready' AND page_number<500 AND consecutive_attempts<12 AND next_poll_at<=?
+      AND (SELECT COUNT(*) FROM agent_mailbox_changes c JOIN agent_mailbox_sync s ON s.id=c.stream_id WHERE s.tenant_id=? AND c.state='pending')<=9000
+      AND (lease_until IS NULL OR lease_until<=?) AND ${this.fence}
       RETURNING checkpoint,page_cursor`)
-      .bind(token,new Date(this.clock()+90000).toISOString(),now,streamId,this.actor.tenantId,now,...this.args(row.grant_id,grant)).first<{checkpoint:string|null;page_cursor:string|null}>();
+      .bind(token,new Date(this.clock()+90000).toISOString(),now,streamId,this.actor.tenantId,now,this.actor.tenantId,now,...this.args(row.grant_id,grant)).first<{checkpoint:string|null;page_cursor:string|null}>();
     if(!acquired)return null;
     return {streamId,token,checkpoint:acquired.checkpoint,pageCursor:acquired.page_cursor};
   }
@@ -85,13 +91,14 @@ export class MailboxSync {
     const {row}=await this.stream(claim.streamId);
     if(row.state!=='ready'||row.lease_token!==claim.token||!row.lease_until||row.lease_until<=this.now()
       ||row.checkpoint!==claim.checkpoint||row.page_cursor!==claim.pageCursor)throw unavailable();
-    return {grantId:row.grant_id,provider:row.provider,resource:row.resource};
+    return {grantId:row.grant_id,provider:row.provider,resource:row.resource,attempts:row.consecutive_attempts};
   }
   /** Read failures retain the same checkpoint, with durable retry delay. */
   async defer(claim:MailboxClaim,seconds:number):Promise<boolean> {
     if(!Number.isFinite(seconds)||seconds<60||seconds>86400)throw unavailable();
     const {row,grant}=await this.stream(claim.streamId);
-    const result=await this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET lease_token=NULL,lease_until=?,updated_at=?
+    const result=await this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET lease_token=NULL,lease_until=NULL,next_poll_at=?,updated_at=?,
+      state=CASE WHEN consecutive_attempts>=12 THEN 'resync_required' ELSE state END
       WHERE id=? AND tenant_id=? AND lease_token=? AND lease_until>? AND ${this.fence}`)
       .bind(new Date(this.clock()+Math.ceil(seconds)*1000).toISOString(),this.now(),row.id,this.actor.tenantId,claim.token,this.now(),...this.args(row.grant_id,grant)).run();
     return result.meta.changes===1;
@@ -116,14 +123,15 @@ export class MailboxSync {
     // a stale token inserts nothing, and any statement failure rolls back everything.
     const receipt=this.env.AGENT_DB.prepare(`INSERT INTO agent_mailbox_sync_pages(stream_id,token,payload_hash,round_id,next_hash,created_at)
       SELECT id,?,?,round_id,?,? FROM agent_mailbox_sync WHERE id=? AND tenant_id=? AND lease_token=? AND lease_until>? AND ${this.fence}
-      ON CONFLICT(stream_id,token) DO NOTHING`).bind(claim.token,hash,nextHash,now,row.id,this.actor.tenantId,claim.token,now,...this.args(row.grant_id,grant));
+      AND (SELECT COUNT(*) FROM agent_mailbox_changes c JOIN agent_mailbox_sync s ON s.id=c.stream_id WHERE s.tenant_id=? AND c.state='pending')+?<=10000
+      ON CONFLICT(stream_id,token) DO NOTHING`).bind(claim.token,hash,nextHash,now,row.id,this.actor.tenantId,claim.token,now,...this.args(row.grant_id,grant),this.actor.tenantId,page.changes.length);
     const changes=this.env.AGENT_DB.prepare(`INSERT OR IGNORE INTO agent_mailbox_changes(stream_id,page_token,ordinal,message_id,kind,created_at)
       SELECT ?,?,CAST(j.key AS INTEGER),json_extract(j.value,'$.messageId'),json_extract(j.value,'$.kind'),? FROM json_each(?) j
       WHERE EXISTS(SELECT 1 FROM agent_mailbox_sync_pages WHERE stream_id=? AND token=? AND payload_hash=?)`)
       .bind(row.id,claim.token,now,JSON.stringify(page.changes),row.id,claim.token,hash);
-    const advance=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET checkpoint=?,page_cursor=?,round_id=?,page_number=?,state=?,lease_token=NULL,lease_until=NULL,updated_at=?
+    const advance=this.env.AGENT_DB.prepare(`UPDATE agent_mailbox_sync SET checkpoint=?,page_cursor=?,round_id=?,page_number=?,state=?,lease_token=NULL,lease_until=NULL,updated_at=?,consecutive_attempts=0,next_poll_at=?
       WHERE id=? AND tenant_id=? AND lease_token=? AND EXISTS(SELECT 1 FROM agent_mailbox_sync_pages WHERE stream_id=? AND token=? AND payload_hash=?)`)
-      .bind(page.syncCursor??row.checkpoint,page.nextCursor??null,page.syncCursor?crypto.randomUUID():row.round_id,page.syncCursor?0:row.page_number+1,page.nextCursor&&row.page_number>=499?'resync_required':'ready',now,row.id,this.actor.tenantId,claim.token,row.id,claim.token,hash);
+      .bind(page.syncCursor??row.checkpoint,page.nextCursor??null,page.syncCursor?crypto.randomUUID():row.round_id,page.syncCursor?0:row.page_number+1,page.nextCursor&&row.page_number>=499?'resync_required':'ready',now,new Date(this.clock()+(page.syncCursor?300000:0)).toISOString(),row.id,this.actor.tenantId,claim.token,row.id,claim.token,hash);
     const result=await this.env.AGENT_DB.batch([receipt,changes,advance]);
     return result[2].meta.changes===1;
   }

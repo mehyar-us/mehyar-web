@@ -29,6 +29,13 @@ async function fixture(provider:'google'|'microsoft'='google') {
 }
 async function changes(streamId:string) {return (await e.AGENT_DB.prepare('SELECT message_id,kind FROM agent_mailbox_changes WHERE stream_id=? ORDER BY created_at,ordinal').bind(streamId).all()).results;}
 describe('one-page mailbox provider runner',()=>{
+  it('stops the twelfth transient failure for recovery rather than scheduling another retry',async()=>{
+    const f=await fixture();
+    await e.AGENT_DB.prepare('UPDATE agent_mailbox_sync SET consecutive_attempts=11 WHERE id=?').bind(f.streamId).run();
+    expect(await runMailboxPage(e,f.actor,f.streamId,guard,async()=>Response.json({}, {status:503}))).toEqual({state:'resync_required'});
+    expect(await f.ledger.claim(f.streamId)).toBeNull();
+    expect(await changes(f.streamId)).toEqual([]);
+  });
   it('resumes Gmail pages, preserves deletions and deduplicates general/specific history references',async()=>{
     const f=await fixture();let calls=0;
     const transport:typeof fetch=async(input,init)=>{
@@ -39,7 +46,8 @@ describe('one-page mailbox provider runner',()=>{
     expect(await runMailboxPage(e,f.actor,f.streamId,guard,transport)).toEqual({state:'saved',changes:2,hasMore:true});
     expect(await runMailboxPage(e,f.actor,f.streamId,guard,transport)).toEqual({state:'saved',changes:0,hasMore:false});
     expect(calls).toBe(2);expect(await changes(f.streamId)).toEqual([{message_id:'a',kind:'upsert'},{message_id:'b',kind:'delete'}]);
-    expect(await f.ledger.claim(f.streamId)).toMatchObject({checkpoint:'301',pageCursor:null});
+    expect(await f.ledger.claim(f.streamId)).toBeNull();
+    expect(await e.AGENT_DB.prepare('SELECT checkpoint,page_cursor FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first()).toEqual({checkpoint:'301',page_cursor:null});
   });
   it('reads Graph bootstrap and persists folder removal references without copying bodies',async()=>{
     const f=await fixture('microsoft');
@@ -100,7 +108,7 @@ describe('one-page mailbox provider runner',()=>{
     const before=Date.now();
     expect(await runMailboxPage(e,f.actor,f.streamId,guard,async()=>{calls++;return Response.json({}, {status:429,headers:{'retry-after':'3600'}});})).toEqual({state:'deferred'});
     expect(calls).toBe(1);expect(await f.ledger.claim(f.streamId)).toBeNull();
-    const row=await e.AGENT_DB.prepare('SELECT checkpoint,lease_until,lease_token FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{checkpoint:string;lease_until:string;lease_token:string|null}>();
-    expect(row!.checkpoint).toBe('200');expect(row!.lease_token).toBeNull();expect(Date.parse(row!.lease_until)).toBeGreaterThanOrEqual(before+3600000);
+    const row=await e.AGENT_DB.prepare('SELECT checkpoint,next_poll_at,lease_token FROM agent_mailbox_sync WHERE id=?').bind(f.streamId).first<{checkpoint:string;next_poll_at:string;lease_token:string|null}>();
+    expect(row!.checkpoint).toBe('200');expect(row!.lease_token).toBeNull();expect(Date.parse(row!.next_poll_at)).toBeGreaterThanOrEqual(before+3600000);
   });
 });
