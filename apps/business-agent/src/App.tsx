@@ -1,5 +1,6 @@
 import TeamPanel from './TeamPanel';
 import MailboxPanel from './MailboxPanel';
+import OutlookFolders from './OutlookFolders';
 import InvitationInbox from './InvitationInbox';
 import {
   FormEvent,
@@ -1675,6 +1676,8 @@ export default function App() {
                               </p>
                               {canManage&&grant.provider==='google'&&grant.status!=='revoked'&&grant.grantedCapabilities.includes('gmail_read')&&
                                 <MailboxPanel tenantId={tenantId} grantId={grant.id} online={online} onUnauthorized={fail}/>}
+                              {canManage&&grant.provider==='microsoft'&&grant.status!=='revoked'&&grant.grantedCapabilities.includes('mail_read')&&
+                                <OutlookFolders tenantId={tenantId} grantId={grant.id} online={online} onUnauthorized={fail}/>}
                             </div>
                             {grant.status !== "revoked" && (
                               <button

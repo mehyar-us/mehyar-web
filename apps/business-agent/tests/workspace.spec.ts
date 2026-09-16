@@ -821,6 +821,50 @@ test('exhausted research checks show needs attention without claiming continued 
   await expect(panel.getByRole('button',{name:'Cancel research'})).toBeEnabled();
 });
 
+test('discovers Outlook folders across batches and clears them offline',async({page})=>{
+  await fixture(page);
+  const grantId='11111111-1111-4111-8111-111111111111',handle='22222222-2222-4222-8222-222222222222';
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:grantId,provider:'microsoft',tenantId:tenant.id,status:'authorized',grantedCapabilities:['mail_read'],grantedScopes:[],selectedCapabilities:['mail_read']}]}}));
+  const parent={id:'a',displayName:'Clients',parentFolderId:'root',childFolderCount:1,isHidden:false};let calls=0;
+  await page.route('**/connections/*/mailbox/folders',route=>{
+    expect(new URL(route.request().url()).pathname).toBe(`/api/tenants/${tenant.id}/connections/${grantId}/mailbox/folders`);
+    expect(route.request().method()).toBe('POST');calls++;
+    expect(route.request().postDataJSON()).toEqual(calls===1?{}:{continuation:handle});
+    return route.fulfill({json:calls===1?{items:[parent],incomplete:true,continuation:handle}:{items:[parent,{id:'b',displayName:'Archive',parentFolderId:'a',childFolderCount:0,isHidden:true}],incomplete:false,inventoryId:handle}});
+  });
+  await page.goto('/?connected=microsoft');const panel=page.getByRole('region',{name:'Outlook mailbox folders'});
+  await panel.getByRole('button',{name:'Discover mailbox folders'}).click();
+  await expect(panel.getByRole('status')).toContainText('More folders remain');
+  await panel.getByRole('button',{name:'Load more folders'}).click();
+  await expect(panel.getByText('Archive — in Clients (hidden)',{exact:true})).toBeVisible();
+  await expect(panel.getByRole('status')).toContainText('Folder discovery complete');
+  await expect(panel.getByRole('button',{name:'Load more folders'})).toHaveCount(0);
+  expect((await new AxeBuilder({page}).include('[aria-label="Outlook mailbox folders"]').analyze()).violations).toEqual([]);
+  await page.context().setOffline(true);
+  await expect(panel.getByRole('status')).toContainText('Reconnect');
+  await expect(panel.getByText('Archive — in Clients (hidden)',{exact:true})).toHaveCount(0);
+});
+
+test('rejects malformed Outlook lists and discards expired continuation results',async({page})=>{
+  await fixture(page);
+  await page.route('**/api/auth/grants',route=>route.fulfill({json:{grants:[{id:'11111111-1111-4111-8111-111111111111',provider:'microsoft',tenantId:tenant.id,status:'authorized',grantedCapabilities:['mail_read'],grantedScopes:[],selectedCapabilities:['mail_read']}]}}));
+  let phase=0;
+  await page.route('**/connections/*/mailbox/folders',route=>{
+    phase++;
+    if(phase===1)return route.fulfill({json:{items:[],incomplete:false}});
+    if(phase===2)return route.fulfill({json:{items:[],incomplete:true,continuation:'22222222-2222-4222-8222-222222222222'}});
+    return route.fulfill({status:409,json:{error:{code:'folder_inventory_expired',message:'Reload the mailbox folder list.'}}});
+  });
+  await page.goto('/?connected=microsoft');const panel=page.getByRole('region',{name:'Outlook mailbox folders'});
+  await panel.getByRole('button',{name:'Discover mailbox folders'}).click();
+  await expect(panel.getByRole('alert')).toContainText('could not be verified');
+  await panel.getByRole('button',{name:'Reload folder list'}).click();
+  await panel.getByRole('button',{name:'Load more folders'}).click();
+  await expect(panel.getByRole('alert')).toContainText('Reload the mailbox folder list');
+  await expect(panel.getByRole('button',{name:'Load more folders'})).toHaveCount(0);
+  await expect(panel.getByRole('button',{name:'Reload folder list'})).toBeEnabled();
+});
+
 test('sets up an eligible Gmail mailbox and clears status offline',async({page})=>{
   await fixture(page);
   const grantId='11111111-1111-4111-8111-111111111111';
