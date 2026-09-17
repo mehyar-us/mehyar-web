@@ -5,6 +5,9 @@
 
 import { verifyAdminToken, json, corsHeaders } from "../../_shared/adminAuth.js";
 
+// Re-exported so endpoint modules can import everything from "./_lib.js".
+export { json, corsHeaders };
+
 export function onOptions(request, env) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
 }
