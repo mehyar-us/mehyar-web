@@ -22,15 +22,12 @@ import { BillingCancel, BillingSuccess } from "@/pages/BillingResult";
 import QuoteView from "@/pages/QuoteView";
 import ProposalPublic from "@/pages/ProposalPublic";
 import ProposalsDirectory from "@/pages/ProposalsDirectory";
-import AdminNow from "@/pages/AdminNow";
-import AdminCRM from "@/pages/AdminCRM";
-import AdminMayor from "@/pages/AdminMayor";
-import AdminMoney from "@/pages/AdminMoney";
-import AdminSystem from "@/pages/AdminSystem";
-import AdminSent from "@/pages/AdminSent";
-import AdminJobs from "@/pages/AdminJobs";
-import AdminClients from "@/pages/AdminClients";
-import AdminOpportunityDetail from "@/pages/_deprecated/AdminOpportunityDetail";
+import CenterHome from "@/center/pages/Home";
+import CenterBrandDetail from "@/center/pages/BrandDetail";
+import CenterToday from "@/center/pages/Today";
+import CenterCampaigns from "@/center/pages/Campaigns";
+import CenterHealth from "@/center/pages/Health";
+import CenterRevenue from "@/center/pages/Revenue";
 import Unsubscribe from "@/pages/Unsubscribe";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Terms from "@/pages/Terms";
@@ -98,7 +95,7 @@ function DashboardHostRedirect() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.location.hostname === "dashboard.mehyar.us" && !location.startsWith("/admin")) {
-      setLocation("/admin/clients", { replace: true });
+      setLocation("/admin", { replace: true });
     }
   }, [location, setLocation]);
   return null;
@@ -188,42 +185,48 @@ function App() {
             <Route path="/proposals/:slug" component={ProposalPublic} />
             <Route path="/proposals/:slug/" component={ProposalPublic} />
 
-            {/* ─── Admin ────────────────────────────────────────────────────
-                            /admin  →  AdminNow (the calm landing)
-                            /admin/mayor  →  AdminMayor (the ultra-minimal Mayor view)
-                            /admin/leads  →  AdminCRM (every lead, every deal)
-                            /admin/money  →  AdminMoney (forecast · win · case studies)
-                            /admin/system →  AdminSystem (audit · cron · backups)
-                            Each route ships with both the bare and trailing-slash alias
-                            because CF Pages auto-trailing-slashes every served path. */}
-            <Route path="/admin" component={AdminNow} />
-            <Route path="/admin/" component={AdminNow} />
-            <Route path="/admin/clients" component={AdminClients} />
-            <Route path="/admin/clients/" component={AdminClients} />
-            <Route path="/admin/now" component={AdminNow} />
-            <Route path="/admin/now/" component={AdminNow} />
-            <Route path="/admin/mayor" component={AdminMayor} />
-            <Route path="/admin/mayor/" component={AdminMayor} />
-            <Route path="/admin/leads" component={AdminCRM} />
-            <Route path="/admin/leads/" component={AdminCRM} />
-            <Route
-              path="/admin/leads/:kind/:id"
-              component={AdminOpportunityDetail}
-            />
-            <Route
-              path="/admin/leads/:kind/:id/"
-              component={AdminOpportunityDetail}
-            />
-            <Route path="/admin/money" component={AdminMoney} />
-            <Route path="/admin/money/" component={AdminMoney} />
-            <Route path="/admin/system" component={AdminSystem} />
-            <Route path="/admin/system/" component={AdminSystem} />
-            <Route path="/admin/sent" component={AdminSent} />
-            <Route path="/admin/sent/" component={AdminSent} />
-            <Route path="/admin/jobs" component={AdminJobs} />
-            <Route path="/admin/jobs/" component={AdminJobs} />
+            {/* ─── Command Center ─────────────────────────────────────────
+                /admin            → brand grid landing
+                /admin/brand/:id  → per-brand detail (campaigns, links,
+                                    templates, warmup, health, revenue)
+                /admin/today      → today's campaigns across brands
+                /admin/campaigns  → campaign timeline across brands
+                /admin/health     → alerts, deliverability, learnings
+                /admin/revenue    → revenue overview
+                Each route ships with both the bare and trailing-slash alias
+                because CF Pages auto-trailing-slashes every served path. */}
+            <Route path="/admin" component={CenterHome} />
+            <Route path="/admin/" component={CenterHome} />
+            <Route path="/admin/brand/:id" component={CenterBrandDetail} />
+            <Route path="/admin/brand/:id/" component={CenterBrandDetail} />
+            <Route path="/admin/today" component={CenterToday} />
+            <Route path="/admin/today/" component={CenterToday} />
+            <Route path="/admin/campaigns" component={CenterCampaigns} />
+            <Route path="/admin/campaigns/" component={CenterCampaigns} />
+            <Route path="/admin/health" component={CenterHealth} />
+            <Route path="/admin/health/" component={CenterHealth} />
+            <Route path="/admin/revenue" component={CenterRevenue} />
+            <Route path="/admin/revenue/" component={CenterRevenue} />
 
-            {/* ─── Legal + utility — must come BEFORE the legacy
+            {/* ─── Old agency-dashboard routes → command center ──── */}
+            <Redirect to="/admin" href="/admin/now" />
+            <Redirect to="/admin" href="/admin/now/" />
+            <Redirect to="/admin" href="/admin/mayor" />
+            <Redirect to="/admin" href="/admin/mayor/" />
+            <Redirect to="/admin" href="/admin/clients" />
+            <Redirect to="/admin" href="/admin/clients/" />
+            <Redirect to="/admin" href="/admin/leads" />
+            <Redirect to="/admin" href="/admin/leads/" />
+            <Redirect to="/admin/campaigns" href="/admin/sent" />
+            <Redirect to="/admin/campaigns" href="/admin/sent/" />
+            <Redirect to="/admin/revenue" href="/admin/money" />
+            <Redirect to="/admin/revenue" href="/admin/money/" />
+            <Redirect to="/admin/health" href="/admin/system" />
+            <Redirect to="/admin/health" href="/admin/system/" />
+            <Redirect to="/admin" href="/admin/jobs" />
+            <Redirect to="/admin" href="/admin/jobs/" />
+
+{/* ─── Legal + utility — must come BEFORE the legacy
                  <Redirect> block. The Switch returns the first matching
                  <Route>; if any <Redirect> appears before these, a wouter
                  cache mismatch left them unmatched. ──────────────────── */}

@@ -62,6 +62,16 @@ binding = "LEADS_DB"
 database_name = "mehyar_leads_prod"
 database_id = "e4f22065-e3e8-4772-87a8-51d4976be042"
 
+[[d1_databases]]
+binding = "INTEL_DB"
+database_name = "campaign_intel"
+database_id = "828a4e53-b638-4fce-bc9e-b87107a23212"
+
+[[d1_databases]]
+binding = "JOBS_DB"
+database_name = "mehyar-jobs"
+database_id = "de494f9a-9da2-4123-8bb7-269473cca8a6"
+
 [[kv_namespaces]]
 binding = "INTAKE_KV"
 id = "cd017aca74a64cd48625450432db204e"
