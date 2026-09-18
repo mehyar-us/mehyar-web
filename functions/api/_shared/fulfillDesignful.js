@@ -73,16 +73,6 @@ function fromAddress(env) {
 export async function fulfillDesignful({ db, env, waitUntil, sendEmail }, payment) {
   if (!db || !payment || !payment.id) throw new Error("fulfillDesignful: bad args");
 
-  // Temporary debug trace (webhook_debug table) — remove after diagnosis.
-  const trace = async (step, detail) => {
-    try {
-      await db.prepare(
-        "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, ?, ?)"
-      ).bind(payment.id, step, String(detail || "").slice(0, 300)).run();
-    } catch {}
-  };
-  await trace("fulfill_start", payment.product_id);
-
   const productId = payment.product_id;
   const bundleSlots = BUNDLE_SLOTS[productId] ?? null;
   const feature = SINGLE_FEATURE[productId] || null;
@@ -120,7 +110,6 @@ export async function fulfillDesignful({ db, env, waitUntil, sendEmail }, paymen
     .bind(payment.id, productId, payment.email, inputsJson, bundleSlots, accessToken)
     .run();
   const orderId = ins.meta.last_row_id;
-  await trace("order_inserted", "order_id=" + orderId);
 
   // Token unification: the Stripe success_url_template receives
   // billing_payments.access_token, but every Designful surface (generate.js,
@@ -130,7 +119,6 @@ export async function fulfillDesignful({ db, env, waitUntil, sendEmail }, paymen
     .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
     .bind(accessToken, payment.id)
     .run();
-  await trace("token_unified", "order_id=" + orderId);
 
   const { from, fromName } = fromAddress(env);
 

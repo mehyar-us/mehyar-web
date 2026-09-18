@@ -7,36 +7,8 @@
 // All operations are idempotent: re-running for the same session is safe.
 
 import { sendCloudflareEmail } from "./cloudflareEmail.js";
-import { fulfillDesignful } from "./fulfillDesignful.js";
-import { fulfillFreelanceros } from "./fulfillFreelanceros.js";
-import { fulfillHustlekit } from "./fulfillHustlekit.js";
-import { fulfillSprint30 } from "./fulfillSprint30.js";
-import { fulfillBizbuilder } from "./fulfillBizbuilder.js";
-import { fulfillCreditfixkit } from "./fulfillCreditfixkit.js";
-import { fulfillPrepguide } from "./fulfillPrepguide.js";
-import { fulfillTruesketch } from "./fulfillTruesketch.js";
-import { fulfillTiktokgrowth } from "./fulfillTiktokgrowth.js";
-import { fulfillPromptpack } from "./fulfillPromptpack.js";
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-
-// Order-creating fulfillment hooks, keyed by billing_products.fulfillment.
-// Same modules the dedicated /api/pay/webhook dispatches to. Every module is
-// idempotent on payment_id (returns replay:true when the order row already
-// exists, BEFORE sending any buyer email), so firing from both webhooks is
-// safe — exactly one order and one email per payment.
-const ORDER_FULFILL = {
-  designful: fulfillDesignful,
-  freelanceros: fulfillFreelanceros,
-  hustlekit: fulfillHustlekit,
-  sprint30: fulfillSprint30,
-  bizbuilder: fulfillBizbuilder,
-  creditfixkit: fulfillCreditfixkit,
-  prepguide: fulfillPrepguide,
-  truesketch: fulfillTruesketch,
-  tiktokgrowth: fulfillTiktokgrowth,
-  promptpack: fulfillPromptpack,
-};
 
 /** Mark a billing_payments row paid from a Stripe session. Returns the payment row or null. */
 export async function markBillingPaid(db, sess, paymentId) {
@@ -118,17 +90,12 @@ export async function sendDigitalDownloadEmail(env, payment) {
  *
  * - Marks billing_payments paid when sess.metadata.payment_id is present.
  * - Sends the digital download email for fulfillment='digital' products.
- * - Dispatches order-creating fulfillment for ORDER_FULFILL products
- *   (prepguide, designful, hustlekit, ...). This is the backstop that makes
- *   test-mode (and live) purchases fulfill even if the dedicated webhook's
- *   Stripe endpoint is misconfigured: the modules are idempotent on
- *   payment_id, so a later dedicated-webhook delivery replays harmlessly.
  * - Skips audit_report fulfillment: the legacy webhook already handles the
  *   audit paid-marking + generation trigger itself.
  * Never throws: failures are logged and swallowed so the caller's own
  * webhook logic is never broken by the mirror.
  */
-export async function mirrorPaymentToLedger({ db, env, waitUntil }, sess) {
+export async function mirrorPaymentToLedger({ db, env }, sess) {
   try {
     const paymentId = Number(sess.metadata && sess.metadata.payment_id);
     if (!paymentId) return { mirrored: false };
@@ -144,16 +111,6 @@ export async function mirrorPaymentToLedger({ db, env, waitUntil }, sess) {
     } catch { /* default none */ }
     if (fulfillment === "digital") {
       await sendDigitalDownloadEmail(env, payment);
-    } else {
-      const hook = ORDER_FULFILL[fulfillment];
-      if (hook) {
-        const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-        try {
-          await hook({ db, env, waitUntil, sendEmail }, payment);
-        } catch (e) {
-          console.error("mirror order fulfillment failed", payment.product_id, e && e.message);
-        }
-      }
     }
     return { mirrored: true, fulfillment };
   } catch (e) {

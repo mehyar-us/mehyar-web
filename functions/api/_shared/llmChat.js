@@ -116,7 +116,6 @@ export async function chatJson({
   temperature = 0.2,
   json_mode = true,
   stream = false,
-  timeout_ms = 45000,
 }) {
   const cfg = resolveLlmConfig(env);
   if (model) cfg.model = model;
@@ -155,7 +154,7 @@ export async function chatJson({
       method: "POST",
       headers,
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeout_ms),
+      signal: AbortSignal.timeout(45_000),
     });
     if (!resp.ok) {
       const errBody = await resp.text().catch(() => "");
@@ -210,4 +209,3 @@ export function safeJsonParse(text, fallback = {}) {
   if (m) { try { return JSON.parse(m[0]); } catch {} }
   return fallback;
 }
-

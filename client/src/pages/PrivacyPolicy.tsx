@@ -25,8 +25,8 @@ const sections: Section[] = [
           for local and regulated businesses.
         </p>
         <p className="mt-2">
-          MehyarSoft also runs and helps manage a small portfolio of internal sites and products —
-          see the <a className="text-brand-700 underline dark:text-brand-100" href="/apps">Products</a>{" "}
+          MehyarSoft also runs and helps manage a small portfolio of internal sites and apps —
+          see the <a className="text-brand-700 underline dark:text-brand-100" href="/apps">Apps</a>{" "}
           and <a className="text-brand-700 underline dark:text-brand-100" href="/services">Services</a>{" "}
           pages. This notice covers all of them under one consistent policy.
         </p>
@@ -168,11 +168,11 @@ const sections: Section[] = [
   },
   {
     icon: ServerCog,
-    title: "Products and sites we operate",
+    title: "Apps and sites we operate",
     body: (
       <>
         <p>
-          {company} operates or directly manages the following sites and products. The same data-handling
+          {company} operates or directly manages the following sites and apps. The same data-handling
           rules apply to all of them; each may have its own end-user terms linked from its footer.
         </p>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -189,69 +189,28 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">AI mechanic for everyday car owners.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Crayon Kid — <a className="text-brand-700 underline dark:text-brand-100" href="https://crayonkid.mehyar.us" target="_blank" rel="noreferrer">crayonkid.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Personalized AI coloring books for kids.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">RoastMe — <a className="text-brand-700 underline dark:text-brand-100" href="https://roast.mehyar.us" target="_blank" rel="noreferrer">roast.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI photo roasts as shareable image cards.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">BabyPeek — <a className="text-brand-700 underline dark:text-brand-100" href="https://baby.mehyar.us" target="_blank" rel="noreferrer">baby.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">AI future-baby portraits.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">RoastMe — <a className="text-brand-700 underline dark:text-brand-100" href="https://roast.mehyar.us" target="_blank" rel="noreferrer">roast.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI roast cards from your photo.</div>
+            <div className="font-semibold">StuffPrettyGood — <a className="text-brand-700 underline dark:text-brand-100" href="https://stuffprettygood.com" target="_blank" rel="noreferrer">stuffprettygood.com <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI-assisted shopping guides and digital playbooks.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Crayon Kid — <a className="text-brand-700 underline dark:text-brand-100" href="https://crayonkid.mehyar.us" target="_blank" rel="noreferrer">crayonkid.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Personalized coloring books.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">mehyar.jobs — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Fit-scored career listings.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Stuff Pretty Good — <a className="text-brand-700 underline dark:text-brand-100" href="https://stuffprettygood.com" target="_blank" rel="noreferrer">stuffprettygood.com <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Curated gifts, kits, and digital guides.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Designful — <a className="text-brand-700 underline dark:text-brand-100" href="https://designful.mehyar.us" target="_blank" rel="noreferrer">designful.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI design studio — fixed-price design jobs.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-<div className="font-semibold">HustleKit — <a className="text-brand-700 underline dark:text-brand-100" href="https://hustlekit.mehyar.us" target="_blank" rel="noreferrer">hustlekit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI side-hustle starter kit — personalized playbook PDFs.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Sprint30 — <a className="text-brand-700 underline dark:text-brand-100" href="https://sprint30.mehyar.us" target="_blank" rel="noreferrer">sprint30.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">30-day side-income challenge — daily missions by email.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">BizBuilder — <a className="text-brand-700 underline dark:text-brand-100" href="https://bizbuilder.mehyar.us" target="_blank" rel="noreferrer">bizbuilder.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI business builder — idea to launch-ready plan.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">CreditFix Kit — <a className="text-brand-700 underline dark:text-brand-100" href="https://creditfixkit.mehyar.us" target="_blank" rel="noreferrer">creditfixkit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">DIY credit repair kit — dispute letters and rebuild plan.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">TikTok Growth System — <a className="text-brand-700 underline dark:text-brand-100" href="https://tiktokgrowth.mehyar.us" target="_blank" rel="noreferrer">tiktokgrowth.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI-generated organic short-form growth playbook.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">PLR Vault — <a className="text-brand-700 underline dark:text-brand-100" href="https://plrvault.mehyar.us" target="_blank" rel="noreferrer">plrvault.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Private-label-rights digital product vault — planner pack, content calendar, email swipes, course outlines.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">TrueSketch — <a className="text-brand-700 underline dark:text-brand-100" href="https://truesketch.mehyar.us" target="_blank" rel="noreferrer">truesketch.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Personalized AI portrait sketch + 2-page reading — entertainment only.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">FreelancerOS — <a className="text-brand-700 underline dark:text-brand-100" href="https://freelanceros.mehyar.us" target="_blank" rel="noreferrer">freelanceros.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Freelancer operating system — clients, invoices, content pipeline, templates.</div>
-<div className="font-semibold">PromptPack Pro — <a className="text-brand-700 underline dark:text-brand-100" href="https://promptpack.mehyar.us" target="_blank" rel="noreferrer">promptpack.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Niche AI prompt packs + swipe files — 50 prompts, 10 swipes, $19 one-time.</div>          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">PrepGuide — <a className="text-brand-700 underline dark:text-brand-100" href="https://prepguide.mehyar.us" target="_blank" rel="noreferrer">prepguide.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Personalized household preparedness playbook — calm, practical, no fear-mongering.</div>
+            <div className="font-semibold">Mehyar Jobs — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Automated personal jobs dashboard.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites (white-label)</div>
-            <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
+            <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>
         </ul>
         <p className="mt-3">
@@ -375,4 +334,3 @@ const PrivacyPolicy = () => {
 };
 
 export default PrivacyPolicy;
-

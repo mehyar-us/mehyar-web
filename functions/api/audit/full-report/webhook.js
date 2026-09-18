@@ -105,7 +105,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
     // receive the event too, double-processing is harmless.
     // mirrorPaymentToLedger never throws; the audit path above is unaffected.
     const sess = (event.data && event.data.object) ? event.data.object : {};
-    await mirrorPaymentToLedger({ db: env.LEADS_DB, env, waitUntil }, sess);
+    await mirrorPaymentToLedger({ db: env.LEADS_DB, env }, sess);
     return json({ ok: true });
   } catch (e) {
     console.error("stripe webhook error", e && e.message);

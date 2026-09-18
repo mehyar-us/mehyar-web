@@ -13,16 +13,6 @@
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
-import { fulfillFreelanceros } from "../_shared/fulfillFreelanceros.js";
-import { fulfillHustlekit } from "../_shared/fulfillHustlekit.js";
-import { fulfillCreditfixkit } from "../_shared/fulfillCreditfixkit.js";
-import { fulfillSprint30 } from "../_shared/fulfillSprint30.js";
-import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
-import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
-import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
-import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
-import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
-import { fulfillUnlockLink } from "../_shared/fulfillUnlockLink.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -142,105 +132,6 @@ const fulfillHooks = {
       console.error("pay/webhook digital email failed", payment.product_id, result.error);
     }
   },
-
-  // Token-unlock products (BabyPeek, RoastMe): no generated file — the buyer
-  // unlocks on the product site with their per-purchase access token. Emails
-  // the transactional receipt + unlock link (idempotent per payment via
-  // unlock_receipts), then hands off to the standalone module.
-  async unlock_link({ db, env }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillUnlockLink({ db, env, sendEmail }, payment);
-  },
-
-  // Designful AI design deliverables. Creates the designful_orders row
-  // (idempotent on payment_id via idx_designful_orders_payment), unifies the
-  // access token onto the billing_payments row, then hands off to the
-  // standalone module for background generation + buyer email.
-  async designful({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillDesignful({ db, env, waitUntil, sendEmail }, payment);
-  },
-  // FreelancerOS dashboard. Creates the freelanceros_orders row (idempotent on
-  // payment_id via idx_freelanceros_orders_payment), unifies the access token
-  // onto the billing_payments row, then emails the buyer their dashboard link.
-  async freelanceros({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillFreelanceros({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // HustleKit AI side-hustle playbooks. Creates the hustlekit_orders row
-  // (idempotent on payment_id's UNIQUE constraint), unifies the access
-  // token onto the billing_payments row, then hands off to the standalone
-  // module for background generation + buyer email.
-  async hustlekit({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillHustlekit({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // Sprint30 30-day challenge. Creates the sprint30_enrollments row
-  // (idempotent on payment_id via idx_sprint30_enrollments_payment), unifies
-  // the access token onto the billing_payments row, and sends the Day-1
-  // challenge email immediately. Days 2-30 go out via the daily scheduler.
-  async sprint30({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillSprint30({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // BizBuilder AI business builder ($17 one-time). Creates the
-  // bizbuilder_orders row (idempotent on payment_id via
-  // idx_bizbuilder_orders_payment), unifies the access token onto the
-  // billing_payments row, then hands off to the standalone module for
-  // background generation + buyer email.
-  async bizbuilder({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillBizbuilder({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // CreditFix Kit — DIY credit repair kit. Creates the creditfixkit_orders row
-  // (idempotent on payment_id via idx_creditfixkit_orders_payment), unifies the
-  // access token onto the billing_payments row, then hands off to the
-  // standalone module for background generation + buyer email.
-  async creditfixkit({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillCreditfixkit({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // PrepGuide personalized preparedness playbook ($37 one-time). Creates the
-  // prepguide_orders row (idempotent on payment_id via the UNIQUE payment
-  // index), reuses the payment access_token as the order token, then hands
-  // off to the standalone module for background generation + buyer email.
-  async prepguide({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillPrepguide({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // TrueSketch AI portrait sketch + reading ($37 one-time). Hands off to the
-  // standalone module: POSTs the paid trigger to the TrueSketch backend
-  // (idempotent on payment_id via the PWA's /api/generate, which owns the
-  // order row), then emails the buyer the token-gated gallery link.
-  async truesketch({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillTruesketch({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // TikTok Growth System playbook. Creates the tiktokgrowth_orders row
-  // (idempotent on payment_id via idx_tiktokgrowth_orders_payment), unifies
-  // the access token onto the billing_payments row, then hands off to the
-  // standalone module for background generation + buyer email.
-  async tiktokgrowth({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // PromptPack Pro — niche AI prompt packs + swipe files. Creates the
-  // promptpack_orders row (idempotent on payment_id via
-  // idx_promptpack_orders_payment), unifies the access token onto the
-  // billing_payments row, then hands off to the standalone module for
-  // background generation + buyer email.
-  async promptpack({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillPromptpack({ db, env, waitUntil, sendEmail }, payment);
-  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -258,7 +149,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       if (await verifyStripeSignature(rawBody, sig, s)) { verified = true; break; }
     }
     if (!verified) {
-      return json({ ok: false, error: "bad_signature", v: "20250915-fulfill" }, 400);
+      return json({ ok: false, error: "bad_signature" }, 400);
     }
 
     const event = JSON.parse(rawBody);
@@ -271,43 +162,22 @@ export async function onRequestPost({ request, env, waitUntil }) {
         ).bind(paymentId).first();
         if (payment) {
           // Duplicate guard: same session id seen and row already out of
-          // pending → skip the paid-marking re-processing, still answer 200.
-          // NOTE: the legacy audit webhook's ledger mirror marks billing paid
-          // too, but it never dispatches product fulfillment. Hooks that
-          // create their own order row are idempotent on payment_id, so they
-          // must run even on a "duplicate" hit — otherwise the buyer is paid
-          // with no order, no generation, no email. digital/none/audit_report
-          // keep the old skip-on-duplicate behavior (avoids double emails).
+          // pending → skip re-processing, still answer 200.
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch"]);
           if (!duplicate) {
             await db.prepare(
               "UPDATE billing_payments SET stripe_payment_intent=?, stripe_session_id=?, status='paid', paid_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') " +
               "WHERE id=? AND status != 'paid'"
             ).bind(sess.payment_intent || null, sess.id || null, paymentId).run();
-          }
-          // Fulfillment dispatch by product.
-          const product = await db.prepare(
-            "SELECT * FROM billing_products WHERE id = ?"
-          ).bind(payment.product_id).first();
-          const fulfillment = (product && product.fulfillment) || "none";
-          const runFulfillment = !duplicate || ORDER_HOOKS.has(fulfillment);
-          if (runFulfillment) {
-            try {
-              await db.prepare(
-                "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'product_lookup', ?)"
-              ).bind(payment.id, JSON.stringify({pid: payment.product_id, found: !!product, fulfillment: fulfillment, duplicate: !!duplicate}).slice(0,300)).run();
-            } catch {}
-            const hook = fulfillHooks[fulfillment] || fulfillHooks.none;
+            // Fulfillment dispatch by product.
+            const product = await db.prepare(
+              "SELECT * FROM billing_products WHERE id = ?"
+            ).bind(payment.product_id).first();
+            const hook = fulfillHooks[(product && product.fulfillment) || "none"] || fulfillHooks.none;
             try {
               await hook({ db, request, env, waitUntil }, payment, sess);
             } catch (e) {
               console.error("pay/webhook fulfillment failed", payment.product_id, e && e.message);
-              try {
-                await db.prepare(
-                  "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'fulfill_hook', ?)"
-                ).bind(payment.id, String((e && e.message) || e).slice(0, 500)).run();
-              } catch {}
             }
           }
         }

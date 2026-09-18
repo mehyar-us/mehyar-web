@@ -11,7 +11,7 @@ const coreRoutes = [
   { label: "Book a Call", href: "/booking", description: "Service-specific booking request with safe manual scheduling fallback." },
   { label: "Engagement Patterns", href: "/portfolio", description: "Problem patterns MehyarSoft can diagnose, fix, and automate." },
   { label: "Founder Story", href: "/about", description: "MehyarSoft credibility, values, and founder-led operating context." },
-    { label: "Products we own", href: "/apps", description: "Live products MehyarSoft builds and operates — Rizza, AiMech, Designful, and more — plus the product-launch playbook behind them." },
+    { label: "Apps we manage", href: "/apps", description: "Live apps MehyarSoft builds and operates — Rizza and AiMech — plus the app-launch playbook behind them." },
     { label: "Blog", href: "/blog", description: "Practical notes on follow-up, CRM, automation, and consulting decisions." },
   { label: "Free AI Automation Checklist", href: "/newsletter", description: "Newsletter/signup funnel for the free checklist and practical automation updates." },
   { label: "Contact", href: "/contact", description: "Send a leak — audits, cleanup, automations, and systems consulting." },
