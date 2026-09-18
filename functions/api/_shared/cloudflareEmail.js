@@ -8,6 +8,22 @@ export async function sendCloudflareEmail(env, message) {
     return { ok: false, status: "not_configured", error: "cloudflare_email_credentials_missing" };
   }
 
+  const emailPayload = {
+    to: message.to,
+    from: {
+      address: message.from || env.CONTACT_FROM_EMAIL || "info@mehyar.us",
+      name: message.fromName || "MehyarSoft",
+    },
+    reply_to: message.replyTo || "info@mehyar.us",
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+  };
+  // Optional custom headers (e.g. List-Unsubscribe). Only sent when provided.
+  if (message.headers && typeof message.headers === "object") {
+    emailPayload.headers = message.headers;
+  }
+
   const response = await fetch(`${EMAIL_API}/${encodeURIComponent(accountId)}/email/sending/send`, {
     method: "POST",
     headers: {
@@ -15,17 +31,7 @@ export async function sendCloudflareEmail(env, message) {
       "x-auth-email": authEmail,
       "x-auth-key": authKey,
     },
-    body: JSON.stringify({
-      to: message.to,
-      from: {
-        address: message.from || env.CONTACT_FROM_EMAIL || "info@mehyar.us",
-        name: message.fromName || "MehyarSoft",
-      },
-      reply_to: message.replyTo || "info@mehyar.us",
-      subject: message.subject,
-      text: message.text,
-      html: message.html,
-    }),
+    body: JSON.stringify(emailPayload),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {

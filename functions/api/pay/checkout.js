@@ -182,12 +182,21 @@ export async function onRequestPost({ request, env }) {
 
     // Return URLs: template defaults, caller overrides only for allowlisted hosts.
     const vars = { access_token: accessToken, payment_id: paymentId };
-    const successUrl = resolveReturnUrl(
+    let successUrl = resolveReturnUrl(
       body.success_url,
       fillTemplate(product.success_url_template, vars) ||
         "https://mehyar.us/",
       product.allowed_return_hosts
     );
+    // Token unification: the success page always receives ?token=. If a
+    // caller-supplied success_url lacks it, append the payment access token.
+    try {
+      const su = new URL(successUrl);
+      if (!su.searchParams.get("token")) {
+        su.searchParams.set("token", vars.access_token);
+        successUrl = su.toString();
+      }
+    } catch { /* keep the resolved URL as-is */ }
     const cancelUrl = resolveReturnUrl(
       body.cancel_url,
       product.cancel_url || "https://mehyar.us/",

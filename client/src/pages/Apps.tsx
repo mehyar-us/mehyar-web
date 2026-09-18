@@ -13,8 +13,7 @@ interface ManagedApp {
   description: string;
   audience: string;
   highlights: string[];
-  logo?: string;
-  launchNoteSlug?: string;
+  logo: string;
   accentClass: string;
 }
 
@@ -34,7 +33,6 @@ const managedApps: ManagedApp[] = [
       "Designed for the moment of \"what do I say next,\" not enterprise workflows",
     ],
     logo: "/assets/rizza-logo.png",
-    launchNoteSlug: "rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
     accentClass: "from-brand-100 to-white dark:from-brand-900 dark:to-brand-950",
   },
   {
@@ -52,40 +50,7 @@ const managedApps: ManagedApp[] = [
       "Helpful before, during, and after the shop visit",
     ],
     logo: "/assets/aimech-logo.png",
-    launchNoteSlug: "aimech-app-launch-ai-mechanic-for-everyday-car-owners",
     accentClass: "from-zinc-900 to-zinc-700 dark:from-zinc-800 dark:to-zinc-900",
-  },
-  {
-    id: "crayonkid",
-    name: "Crayon Kid",
-    url: "https://crayonkid.mehyar.us",
-    tagline: "A coloring book with your kid's name on every page.",
-    description:
-      "A personalized AI coloring book for kids. Pick a theme, enter the child's first name, and get a free page in twenty seconds — then unlock a twelve-page printable PDF for a one-time $6.",
-    audience: "Parents of kids ages 3–8 who want a gift that feels made for their child.",
-    highlights: [
-      "Free personalized first page in twenty seconds, no account needed",
-      "Twelve personalized pages as a printable US Letter PDF",
-      "$6 one-time — pay once, print forever, no subscription",
-      "Eight themes: dinosaurs, space, ocean, jungle, unicorns, vehicles, farm, princess",
-    ],
-    accentClass: "from-amber-100 to-white dark:from-amber-900 dark:to-amber-950",
-  },
-  {
-    id: "roastme",
-    name: "RoastMe",
-    url: "https://roast.mehyar.us",
-    tagline: "Upload a photo, get a savage-but-funny AI roast.",
-    description:
-      "AI roasts your photo into a shareable image card. A free blurred teaser shows what the roast looks like; a $5 one-time unlock reveals the full roast as an HD share card plus PNG download.",
-    audience: "Anyone with thick skin and a sense of humor who lives for group-chat fuel.",
-    highlights: [
-      "Savage-but-funny AI roasts generated from your photo",
-      "Free blurred teaser before you pay anything",
-      "$5 one-time unlocks the full HD share card",
-      "PNG download built for stories, group chats, and comebacks",
-    ],
-    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
   },
   {
     id: "babypeek",
@@ -93,47 +58,271 @@ const managedApps: ManagedApp[] = [
     url: "https://baby.mehyar.us",
     tagline: "Peek at your future baby.",
     description:
-      "Upload two parent photos and AI generates a future-baby portrait. A faceless teaser (tiny hand) is free to share; a $5 one-time unlock reveals the full portrait plus download.",
-    audience: "Couples, expecting parents, and the hopelessly curious.",
+      "Upload two photos and let AI dream up your future baby. Get a free sneak peek — unlock the full portrait for $5.",
+    audience: "Expecting couples and curious parents who want a fun, shareable glimpse of what's coming.",
     highlights: [
-      "AI future-baby portrait from two parent photos",
-      "Free faceless teaser to share with friends and family",
-      "$5 one-time unlocks the full portrait",
-      "High-resolution download yours to keep",
+      "AI-generated future-baby portrait from two parent photos",
+      "Free teaser with a $5 unlock for the full portrait",
+      "Shareable reveal cards built for virality",
+      "Private by design — your photos stay yours",
     ],
+    logo: "/assets/babypeek-logo.png",
     accentClass: "from-sky-100 to-white dark:from-sky-900 dark:to-sky-950",
   },
   {
-    id: "stuffprettygood",
-    name: "StuffPrettyGood",
-    url: "https://stuffprettygood.com",
-    tagline: "AI-assisted shopping guides worth your money.",
+    id: "roastme",
+    name: "RoastMe",
+    url: "https://roast.mehyar.us",
+    tagline: "Upload a photo. Get destroyed. (Lovingly.)",
     description:
-      "Our own-domain shopping guide: AI researches and recommends products worth buying, monetized through Amazon Associates — plus digital playbooks (a home-office guide and a gift-proof playbook) sold through our central checkout.",
-    audience: "Deal-seekers and gift buyers who want a researched answer, not a sponsored list.",
+      "RoastMe turns your photo into a savage-but-playful AI roast card you can share. See samples, read the reviews, then take the heat.",
+    audience: "Anyone with thick skin and a group chat that needs new material.",
     highlights: [
-      "AI-researched product guides on our own domain",
-      "Amazon Associates deals, vetted before they're listed",
-      "Digital playbooks from $7 with instant download",
-      "Checkout through MehyarSoft's central Stripe flow",
+      "AI roast cards from a single photo upload",
+      "Savage but playful — built to share, not to wound",
+      "Sample roasts and reviews before you commit",
+      "One-tap share cards for social",
     ],
-    accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+    logo: "/assets/roastme-logo.png",
+    accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
+  },
+  {
+    id: "crayonkid",
+    name: "Crayon Kid",
+    url: "https://crayonkid.mehyar.us",
+    tagline: "A coloring book with YOUR kid's name on every page.",
+    description:
+      "Type your kid's name and get a personalized coloring book with their name on every page. AI-generated line art, printable at home.",
+    audience: "Parents and gift-givers who want something personal, not another plastic toy.",
+    highlights: [
+      "Personalized with your child's name on every page",
+      "AI-generated coloring pages, printable at home",
+      "Makes a great gift — personal without the price tag",
+      "New pages generated on demand",
+    ],
+    logo: "/assets/crayonkid-logo.png",
+    accentClass: "from-amber-100 to-white dark:from-amber-900 dark:to-amber-950",
   },
   {
     id: "mehyarjobs",
-    name: "Mehyar Jobs",
+    name: "mehyar.jobs",
     url: "https://jobs.mehyar.us",
-    tagline: "Your personal jobs dashboard.",
+    tagline: "7,000+ careers, fit-scored.",
     description:
-      "A personal jobs dashboard that auto-scrapes job postings, scores them against your resume, and surfaces the best fits — the job hunt watched for you, daily.",
-    audience: "Job seekers who want the market scanned for them instead of doing it manually.",
+      "Daily scan of Fortune 500, Forbes Global 2000, Inc 5000, and S&P 500 career pages — ranked by fit to your profile, not by who paid to promote.",
+    audience: "Job seekers who are tired of scrolling the same 50 listings on every board.",
     highlights: [
-      "Automatic job-posting scans across the market",
-      "Resume-match scoring on every posting",
-      "Daily shortlists of the best fits",
-      "Email engine keeps you posted on new matches",
+      "7,000+ careers scanned daily from top employer career pages",
+      "Fit-scored against your profile, not keyword-matched",
+      "Covers Fortune 500, Forbes Global 2000, Inc 5000, and S&P 500",
+      "Fresh every morning — no stale reposts",
     ],
+    logo: "/assets/jobs-logo.png",
+    accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+  },
+  {
+    id: "stuffprettygood",
+    name: "Stuff Pretty Good",
+    url: "https://stuffprettygood.com",
+    tagline: "Useful gifts, starter kits & budget finds.",
+    description:
+      "Stuff Pretty Good helps you find useful gifts, starter kits, travel gear, kitchen helpers, and budget finds — curated, honestly reviewed, no markup games.",
+    audience: "Shoppers who want the good stuff without the affiliate-site fluff.",
+    highlights: [
+      "Curated gifts, starter kits, and budget finds",
+      "Digital guides: home-office setup and gift-proof playbooks",
+      "Honest picks — useful first, commission second",
+      "New finds added regularly",
+    ],
+    logo: "/assets/spg-logo.png",
+    accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
+  },
+  {
+    id: "designful",
+    name: "Designful",
+    url: "https://designful.mehyar.us",
+    tagline: "Agency-grade design jobs at $49, delivered in minutes.",
+    description:
+      "An AI design studio that ships real design work at fixed prices: homepage teardowns, logo refreshes, ad creative packs, social launch kits, and hero rewrites — each a one-time $49 with a free watermarked preview before you pay.",
+    audience: "Founders and small businesses that need real design output today, not an agency retainer.",
+    highlights: [
+      "Five fixed-price products at $49 each — teardown, logo, ad creative, social kit, hero rewrite",
+      "Free preview before you pay anything — a watermarked sample of your real output",
+      "Delivered in about 15 minutes with a 7-day redo-or-refund guarantee",
+      "Token-gated download links — no account needed",
+    ],
+    logo: "/assets/designful-logo.png",
+    accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
+  },
+  {
+    id: "hustlekit",
+    name: "HustleKit",
+    url: "https://hustlekit.mehyar.us",
+    tagline: "Your AI side-hustle starter kit — a personalized 15-page playbook for $27.",
+    description:
+      "Pick one of three tracks — AI freelance writing, AI video editing, or AI social-media management — answer five quick questions, and get a personalized 15-page playbook: your niche, your offer and pricing, where to find your first clients, word-for-word outreach scripts, and a 30-day action plan. Free sample page before you pay; one-time $27, no subscription.",
+    audience: "Beginners who want a concrete, skill-plus-AI plan for landing their first paying clients.",
+    highlights: [
+      "Three tracks: AI freelance writing, AI video editing, AI social-media management",
+      "Personalized 15-page PDF playbook — niche, offer, pricing, outreach scripts, 30-day plan",
+      "Free sample playbook page before you pay anything",
+      "One-time $27 with a 7-day redo-or-refund guarantee — no account needed",
+    ],
+    logo: "/assets/hustlekit-logo.png",
+    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
+  },
+  {
+    id: "sprint30",
+    name: "Sprint30",
+    url: "https://sprint30.mehyar.us",
+    tagline: "30 days. 30 missions. One real side-income stream.",
+    description:
+      "A 30-day challenge that builds a real side-income stream: pick a lane, ship an offer, land your first customers. One specific, skill-framed mission a day by email, plus a personal dashboard with your current day and progress checklist — $37 one-time, with days 1–3 free to preview.",
+    audience: "Builders and freelancers who want a concrete 30-day plan to launch paid work, not another course.",
+    highlights: [
+      "30 daily missions — specific steps, real tools, zero hype",
+      "Days 1–3 free to preview before you pay anything",
+      "Personal dashboard with your current day + progress checklist",
+      "Reply-driven emails — every mission pulls a real response",
+    ],
+    logo: "/assets/sprint30-logo.png",
+    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
+  },
+  {
+    id: "bizbuilder",
+    name: "BizBuilder",
+    url: "https://bizbuilder.mehyar.us",
+    tagline: "Your business idea becomes a launch-ready plan for $17.",
+    description:
+      "An AI business builder that turns a 2-sentence idea into a one-page business plan, full landing-page copy, and a 5-email welcome sequence — delivered as a styled web doc plus PDF, with a free real excerpt before you pay.",
+    audience: "Solo founders and side-hustlers who want a working plan today, not a $2,000 agency engagement.",
+    highlights: [
+      "Free real plan excerpt from your own idea — concept, customer, section, milestones",
+      "One $17 one-time build: 8-section plan, landing copy, 5-email sequence",
+      "Delivered in minutes as a styled web doc + PDF — no account needed",
+      "No income promises, ever — plans on founder actions, not fantasy outcomes",
+    ],
+    logo: "/assets/bizbuilder-logo.png",
+    accentClass: "from-slate-100 to-white dark:from-slate-900 dark:to-slate-950",
+  },
+  {
+    id: "creditfixkit",
+    name: "CreditFix Kit",
+    url: "https://creditfixkit.mehyar.us",
+    tagline: "Fix your credit yourself — the letters, the plan, the knowledge.",
+    description:
+      "A DIY credit repair kit: personalized dispute letter templates, a 12-month rebuild plan, and a plain-English score-factor explainer — delivered as a PDF for a one-time $47. General information only, never legal advice, no guaranteed outcomes.",
+    audience: "Anyone with collections, late payments, or a thin file who wants to do credit repair themselves instead of paying a monthly service.",
+    highlights: [
+      "Personalized dispute letters with your details merged in",
+      "12-month month-by-month rebuild plan for your situation",
+      "Plain-English explainer of what actually moves a score",
+      "Free score-factor preview before you pay anything",
+    ],
+    logo: "/assets/creditfixkit-logo.png",
     accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
+  },
+  {
+    id: "prepguide",
+    name: "PrepGuide",
+    url: "https://prepguide.mehyar.us",
+    tagline: "A preparedness plan built around your actual household.",
+    description:
+      "Answer six questions about your household — adults, kids, pets, home type, region, budget — and get a personalized preparedness playbook: a 72-hour checklist scaled to your people, exact water-storage math, a 30-day food plan, a power-outage playbook, and a prioritized buy list, delivered as a PDF for a one-time $37. Calm, practical, specific — no fear-mongering.",
+    audience: "Households who want calm, practical preparedness built around their actual home — not a generic checklist.",
+    highlights: [
+      "Personalized 72-hour checklist scaled to your household size",
+      "Exact water-storage math for your people, home, and region",
+      "30-day food plan and power-outage playbook for your budget tier",
+      "One-time $37 — free teaser first, PDF download, no account needed",
+    ],
+    logo: "/assets/prepguide-logo.png",
+    accentClass: "from-stone-100 to-white dark:from-stone-900 dark:to-stone-950",
+  },
+  {
+    id: "truesketch",
+    name: "TrueSketch",
+    url: "https://truesketch.mehyar.us",
+    tagline: "Your AI portrait sketch + a 2-page reading about you — for $37.",
+    description:
+      "Tell TrueSketch your name, birthdate, and a few lines about your personality and goals, and get a personalized AI portrait sketch plus a fun, warm 2-page reading about who you are and where you're headed — delivered to a private gallery link. Free sample sketch + reading excerpt before you pay; one-time $37, no subscription. For entertainment purposes only.",
+    audience: "Anyone curious about themselves — a personal keepsake, a gift, or a little mystical fun.",
+    highlights: [
+      "Personalized AI portrait sketch painted from your intake (style reference selfie optional)",
+      "Fun, warm 2-page personalized reading about your personality and path",
+      "Free sample sketch + reading excerpt before you pay anything",
+      "One-time $37 with a token-gated private gallery — no account needed",
+    ],
+    logo: "/assets/truesketch-logo.png",
+    accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
+  },
+  {
+    id: "tiktokgrowth",
+    name: "TikTok Growth System",
+    url: "https://tiktokgrowth.mehyar.us",
+    tagline: "A 30-day organic TikTok playbook, generated for your niche.",
+    description:
+      "An AI playbook builder for organic short-form growth: tell it your niche, camera comfort, and hours per week, and it generates a 30-day posting plan, 30 first-3-second hook scripts, a bio + CTA pack, and a trend-jacking playbook — one-time $27 with 5 free hook scripts before you pay.",
+    audience: "Creators, founders, and small businesses starting or restarting organic TikTok growth.",
+    highlights: [
+      "30-day posting plan built around your niche, schedule, and on-camera comfort",
+      "30 hook scripts for the first 3 seconds, each with why-it-works and delivery tips",
+      "Bio + CTA pack and a trend-jacking playbook — original-content methods only",
+      "5 free hook scripts before you pay — $27 one-time, 7-day redo-or-refund",
+    ],
+    logo: "/assets/tiktokgrowth-logo.png",
+    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
+  },
+  {
+    id: "plrvault",
+    name: "PLR Vault",
+    url: "https://plrvault.mehyar.us",
+    tagline: "Five sellable digital packs you can rebrand and resell — for $9.95.",
+    description:
+      "A private-label-rights vault: a 2026 planner pack with Canva-editable templates, a 30-day content calendar, 50 email swipes, and 8 mini-course blueprints — all rebrandable, all yours to resell and keep 100%. Free teaser on the site; the full vault is a one-time $9.95.",
+    audience: "Creators and side-hustlers who want ready-to-sell digital products without starting from a blank page.",
+    highlights: [
+      "2026 planner pack with Canva-editable SVG templates",
+      "30-day content calendar — hooks, captions, and CTAs done for you",
+      "50-email swipe pack plus 8 mini-course blueprints",
+      "Plain-English PLR license: rebrand, resell as your own, keep 100%",
+    ],
+    logo: "/assets/plrvault-logo.png",
+    accentClass: "from-amber-100 to-white dark:from-amber-900 dark:to-amber-950",
+  },
+  {
+    id: "freelanceros",
+    name: "FreelancerOS",
+    url: "https://freelanceros.mehyar.us",
+    tagline: "Your entire freelance business. One dashboard.",
+    description:
+      "The freelancer operating system: a client tracker with follow-up reminders, a branded invoice generator with PDF export, a content pipeline board, and a downloadable template pack (contract, proposal, client onboarding) — one $29 payment, yours forever.",
+    audience: "Freelancers and solo operators who are done juggling spreadsheets, invoice tools, and sticky notes.",
+    highlights: [
+      "Client tracker with statuses and follow-up reminders so no lead goes cold",
+      "Branded invoice generator with one-click PDF export",
+      "Content pipeline board from idea to published",
+      "Contract, proposal, and onboarding templates included — free interactive demo before you pay",
+    ],
+    logo: "/assets/freelanceros-logo.png",
+    accentClass: "from-slate-100 to-white dark:from-slate-900 dark:to-slate-950",
+  },
+  {
+    id: "promptpack",
+    name: "PromptPack Pro",
+    url: "https://promptpack.mehyar.us",
+    tagline: "50 AI prompts + 10 swipe files, written for your trade.",
+    description:
+      "Pick your profession \u2014 contractor, realtor, coach, or freelancer \u2014 and get 50 outcome-driven AI prompts plus 10 copy-paste swipe files, generated for exactly what you sell. One-time $19, with a free 5-prompt teaser before you pay.",
+    audience: "Contractors, realtors, coaches, and freelancers who want AI output that sounds like their trade, not generic filler.",
+    highlights: [
+      "50 outcome-driven prompts per profession \u2014 quotes, follow-ups, review replies, content",
+      "10 copy-paste swipe files for the messages that close deals",
+      "Try 5 free prompts first \u2014 no email, no signup",
+      "Token-gated private link + PDF download \u2014 no account needed",
+    ],
+    logo: "/assets/promptpack-logo.png",
+    accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
 ];
 
@@ -141,7 +330,7 @@ const buildPillars = [
   {
     icon: Zap,
     title: "Idea → live link in days, not quarters",
-    body: "Marketing site, auth, data model, and dashboard assembled from a working playbook — so the cost of testing a new app is a weekend, not a raise.",
+    body: "Marketing site, auth, data model, and dashboard assembled from a working playbook — so the cost of testing a new product is a weekend, not a raise.",
   },
   {
     icon: Smartphone,
@@ -151,12 +340,12 @@ const buildPillars = [
   {
     icon: Layers,
     title: "One stack, real data, real users",
-    body: "Cloudflare Workers for the edge, D1 for storage, Pages for the front-end. The same stack powers mehyar.us and every app we ship — boring on purpose, fast in practice.",
+    body: "Cloudflare Workers for the edge, D1 for storage, Pages for the front-end. The same stack powers mehyar.us and every product we ship — boring on purpose, fast in practice.",
   },
   {
     icon: Rocket,
     title: "Marketing-grade from day one",
-    body: "SEO shell, structured data, OG cards, RSS, sitemap, and analytics wired before launch — so the app shows up where real people search, not just in a founder's Discord.",
+    body: "SEO shell, structured data, OG cards, RSS, sitemap, and analytics wired before launch — so the product shows up where real people search, not just in a founder's Discord.",
   },
 ];
 
@@ -169,16 +358,16 @@ const Apps = () => {
             Live products
           </p>
           <h1 className="site-display max-w-4xl">
-            Apps we build, ship, and operate.
+            Products we build, ship, and operate.
           </h1>
           <p className="site-lede mt-5 max-w-3xl">
             MehyarSoft doesn't only consult. We ship real products that real users open every day — and we use the same
             playbook to launch yours. Browse the live portfolio below, then read on for what makes the MehyarSoft
-            app-launch process fast, boring, and marketing-grade from day one.
+            product-launch process fast, boring, and marketing-grade from day one.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href="/contact" className={buttonVariants({ variant: "cta" })}>
-              Brief us on your app idea <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              Brief us on your product idea <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
             </Link>
             <Link href="/services" className={buttonVariants({ variant: "outline" })}>
               See consulting offers
@@ -188,10 +377,10 @@ const Apps = () => {
       </section>
 
       <QuickAnswer
-        question="What apps does MehyarSoft operate?"
-        answer="MehyarSoft builds, ships, and operates its own apps — including Rizza (an AI wingman for dating-app replies), AiMech (AI diagnostics for everyday car owners), Crayon Kid (personalized AI coloring books), RoastMe (AI photo roasts), BabyPeek (AI future-baby portraits), StuffPrettyGood (AI-assisted shopping guides), and Mehyar Jobs (an automated jobs dashboard). The same playbook is offered to clients as a custom-app build engagement."
+        question="What products does MehyarSoft operate?"
+        answer="MehyarSoft builds, ships, and operates its own products — including Rizza (an AI wingman for dating-app replies) and AiMech (AI diagnostics for everyday car owners). The same playbook is offered to clients as a custom-product build engagement."
         ctaHref="/contact"
-        ctaLabel="Talk about your app"
+        ctaLabel="Talk about your product"
       />
 
       <section className="bg-background px-4 py-16 md:py-20">
@@ -199,15 +388,15 @@ const Apps = () => {
           <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
-                Managed apps
+                Products we own
               </p>
               <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-4xl">
                 Products we run today.
               </h2>
             </div>
             <p className="max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
-              Each app is a working site with real users, real data, and real follow-up. Click through to see what we
-              shipped — they're all good examples of how small a marketing-grade launch can be when the stack is
+              Each product is a working site with real users, real data, and real follow-up. Click through to see what we
+              shipped — each is a good example of how small a marketing-grade launch can be when the stack is
               standardized.
             </p>
           </div>
@@ -221,24 +410,15 @@ const Apps = () => {
                 <div className={`bg-gradient-to-br ${app.accentClass} px-6 py-8`}>
                   <div className="flex items-center gap-4">
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 p-2 shadow-[0_8px_22px_rgba(8,63,84,0.18)] ring-1 ring-black/5 dark:bg-white/95">
-                      {app.logo ? (
-                        <img
-                          src={app.logo}
-                          alt={`${app.name} logo`}
-                          className="h-full w-full object-contain"
-                          width="64"
-                          height="64"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span
-                          aria-hidden="true"
-                          className="text-2xl font-bold text-brand-700 dark:text-brand-100"
-                        >
-                          {app.name.charAt(0)}
-                        </span>
-                      )}
+                      <img
+                        src={app.logo}
+                        alt={`${app.name} logo`}
+                        className="h-full w-full object-contain"
+                        width="64"
+                        height="64"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     </div>
                     <div className="min-w-0">
                       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-brand-700/80 dark:text-brand-100/80">
@@ -286,14 +466,12 @@ const Apps = () => {
                     >
                       Visit {app.name} <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
                     </a>
-                    {app.launchNoteSlug && (
-                      <Link
-                        href={`/blog/${app.launchNoteSlug}`}
-                        className={buttonVariants({ variant: "outline", size: "sm" })}
-                      >
-                        Read the launch note
-                      </Link>
-                    )}
+                    <Link
+                      href={`/blog/${app.id === "rizza" ? "rizza-app-launch-tracking-and-organizing-work-without-the-overhead" : "aimech-app-launch-ai-mechanic-for-everyday-car-owners"}`}
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
+                      Read the launch note
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
@@ -308,10 +486,10 @@ const Apps = () => {
             How we ship fast
           </p>
           <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-4xl md:leading-[1.05]">
-            Apps and PWAs in a marketing manner — quickly, without theater.
+            Products and PWAs in a marketing manner — quickly, without theater.
           </h2>
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
-            The same process that produced Rizza and AiMech is what MehyarSoft offers clients as a custom-app
+            The same process that produced Rizza and AiMech is what MehyarSoft offers clients as a custom-product
             engagement. No agency drama. No "design phase" before the data model exists. Just a working stack, a tight
             feedback loop, and a launch that shows up in search from day one.
           </p>
@@ -335,14 +513,14 @@ const Apps = () => {
 
           <div className="mt-10 rounded-[1.5rem] border border-border bg-card p-6 shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">
-              The MehyarSoft app playbook
+              The MehyarSoft product playbook
             </p>
             <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground md:text-2xl">
               From napkin sketch to public launch URL in under three weeks.
             </h3>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
               We don't pitch "a discovery phase followed by a build phase." We ship a thin slice on a real domain, see
-              if anyone opens it, and iterate. That means your app gets real users, real analytics, and real SEO
+              if anyone opens it, and iterate. That means your product gets real users, real analytics, and real SEO
               credit while it's still small — not six months later when the marketing window has closed.
             </p>
             <ul className="mt-5 grid grid-cols-1 gap-3 text-sm leading-6 text-foreground md:grid-cols-2">
@@ -365,7 +543,7 @@ const Apps = () => {
             </ul>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/contact" className={buttonVariants({ variant: "cta" })}>
-                Brief us on your app <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                Brief us on your product <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </Link>
               <Link href="/services" className={buttonVariants({ variant: "outline" })}>
                 See how engagements work
@@ -381,14 +559,13 @@ const Apps = () => {
         <div className="mx-auto max-w-5xl rounded-2xl border border-border bg-card/50 p-6 text-sm leading-6 text-muted-foreground md:p-8">
           <p className="font-semibold text-foreground">Your data, your call</p>
           <p className="mt-2">
-            Every MehyarSoft-built app exposes an in-app account deletion path plus an email
+            Every MehyarSoft-built product exposes an in-product account deletion path plus an email
             fallback. We action deletion requests within 14 days and confirm in writing.
             {" "}
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, app-by-app details (Rizza, AiMech, Crayon Kid, RoastMe, BabyPeek, StuffPrettyGood,
-            Mehyar Jobs), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro), and the request form.
           </p>
         </div>
       </section>
@@ -397,3 +574,4 @@ const Apps = () => {
 };
 
 export default Apps;
+
