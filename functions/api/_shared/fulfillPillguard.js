@@ -168,12 +168,20 @@ async function judgeCandidate(env, watchTokens, row) {
 }
 
 // ── Intake parsing ─────────────────────────────────────────────────────
+function medName(x) {
+  // Scan sessions store meds as objects {med, tokens, alias_of}; other
+  // sources store plain strings. Never String() an object ("[object Object]").
+  if (x == null) return "";
+  if (typeof x === "object") return String(x.med || x.name || x.drug || "").trim();
+  return String(x).trim();
+}
+
 function parseMedsList(v) {
   if (!v) return [];
-  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
+  if (Array.isArray(v)) return v.map(medName).filter(Boolean);
   const s = String(v).trim();
   if (!s) return [];
-  if (s.startsWith("[")) { try { const a = JSON.parse(s); if (Array.isArray(a)) return a.map((x) => String(x).trim()).filter(Boolean); } catch {} }
+  if (s.startsWith("[")) { try { const a = JSON.parse(s); if (Array.isArray(a)) return a.map(medName).filter(Boolean); } catch {} }
   return s.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean);
 }
 
@@ -426,7 +434,8 @@ async function medsFromSession(db, sessionId, fallbackMeds) {
       if (s && s.meds_json) {
         let meds = [];
         try { meds = JSON.parse(s.meds_json) || []; } catch {}
-        if (meds.length) return { meds: meds.map(String), persona: s.persona || "mine" };
+        const clean = meds.map(medName).filter(Boolean);
+        if (clean.length) return { meds: clean, persona: s.persona || "mine" };
       }
     } catch (e) { console.error("fulfillPillguard session lookup failed", e && e.message); }
   }
@@ -482,7 +491,7 @@ async function emailWatchConfirmation(sendEmail, env, to, meds) {
 }
 
 // Pure helpers, exported for unit tests and for the product worker's reuse.
-export { normalize, recallTokenSets, classifyPair, setKey, setsEqual, fdaLink };
+export { normalize, recallTokenSets, classifyPair, setKey, setsEqual, fdaLink, medName, parseMedsList };
 
 // ── Main entry ─────────────────────────────────────────────────────────
 export async function fulfillPillguard({ db, env, waitUntil, sendEmail }, payment, sess) {

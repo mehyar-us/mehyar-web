@@ -137,5 +137,27 @@ function insertPayment(db, { id, product, email, token, meds }) {
   check("legacy replay idempotent", r2.replay === true && db.prepare("SELECT COUNT(*) AS n FROM pillguard_orders").first().n === 1);
 }
 
+import { medName, parseMedsList } from "./functions/api/_shared/fulfillPillguard.js";
+
+// ── Regression: object meds from scan sessions (the 2026-09-20 money-path
+// bug — meds.map(String) turned {med:"Metformin 500mg",...} into
+// "[object Object]", so the paid report matched nothing) ──
+{
+  check("medName extracts .med from session object",
+    medName({ med: "Metformin 500mg", tokens: [["metformin"]], alias_of: null }) === "Metformin 500mg");
+  check("medName falls back to .name/.drug", medName({ name: "Lisinopril" }) === "Lisinopril");
+  check("medName passes plain strings through", medName("Atorvastatin 20mg") === "Atorvastatin 20mg");
+  check("medName never yields [object Object]",
+    !/\[object Object\]/.test(medName({ med: "Metformin 500mg" })));
+  check("parseMedsList handles array of session objects",
+    JSON.stringify(parseMedsList([{ med: "Metformin 500mg" }, { med: "Lisinopril 10mg" }])) ===
+    JSON.stringify(["Metformin 500mg", "Lisinopril 10mg"]));
+  check("parseMedsList handles JSON string of session objects",
+    JSON.stringify(parseMedsList('[{"med":"Metformin 500mg"},{"name":"Lisinopril 10mg"}]')) ===
+    JSON.stringify(["Metformin 500mg", "Lisinopril 10mg"]));
+  check("parseMedsList still splits comma strings",
+    JSON.stringify(parseMedsList("Metformin, Lisinopril")) === JSON.stringify(["Metformin", "Lisinopril"]));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0); // node:sqlite teardown segfault workaround
