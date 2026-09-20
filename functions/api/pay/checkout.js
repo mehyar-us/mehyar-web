@@ -204,9 +204,13 @@ export async function onRequestPost({ request, env }) {
     );
 
     // Create the Stripe Checkout Session via REST (no SDK in Workers).
+    // Billing mode is TRUSTED product data (billing_products.billing_mode) —
+    // never from the client. 'subscription' products create a recurring
+    // session; everything else stays one-time (backward compatible).
+    const billingMode = product.billing_mode === "subscription" ? "subscription" : "payment";
     const sp = new URLSearchParams();
     sp.set("payment_method_types[]", "card");
-    sp.set("mode", "payment");
+    sp.set("mode", billingMode);
     sp.set("success_url", successUrl);
     sp.set("cancel_url", cancelUrl);
     sp.set("customer_email", email);
@@ -214,6 +218,13 @@ export async function onRequestPost({ request, env }) {
     sp.set("line_items[0][price_data][product_data][name]", product.name);
     if (product.description) sp.set("line_items[0][price_data][product_data][description]", product.description);
     sp.set("line_items[0][price_data][unit_amount]", String(product.price_cents));
+    if (billingMode === "subscription") {
+      // Trusted interval only: month (default) or year.
+      sp.set("line_items[0][price_data][recurring][interval]", product.billing_interval === "year" ? "year" : "month");
+      // Stamp the subscription object with our payment_id so invoice events
+      // (which only carry the subscription id) can be joined back to the row.
+      sp.set("subscription_data[metadata][payment_id]", String(paymentId));
+    }
     sp.set("line_items[0][quantity]", "1");
     sp.set("metadata[payment_id]", String(paymentId));
     sp.set("metadata[product_id]", productId);

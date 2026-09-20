@@ -324,6 +324,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/promptpack-logo.png",
     accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
+  {
+    id: "openseason",
+    name: "OpenSeason",
+    url: "https://openseason.mehyar.us",
+    tagline: "Every hunting-season date for your state, in plain English.",
+    description:
+      "Pick your state and get the next three verified season openers free — every date traced to the official state wildlife agency and stamped with its verification. The $12 state pack unlocks every season, deadline, bag limit, and license/tag date plus printable pack and reminders all season.",
+    audience: "Weekend deer hunters asking “is muzzleloader open this weekend?” or “did I miss the deadline?”",
+    highlights: [
+      "Next 3 verified season openers free — no signup, no payment",
+      "Every date carries its official state-agency source and verification stamp",
+      "$12 state pack: all seasons, deadlines, bag limits, license/tag dates",
+      "Printable pack + email reminders all season; one-click unsubscribe everywhere",
+    ],
+    logo: "/assets/openseason-logo.png",
+    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
+  },
 ];
 
 const buildPillars = [
@@ -565,7 +582,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason), and the request form.
           </p>
         </div>
       </section>
