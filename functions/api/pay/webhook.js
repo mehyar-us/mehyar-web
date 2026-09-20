@@ -30,6 +30,7 @@ import { fulfillFloodlens } from "../_shared/fulfillFloodlens.js";
 import { fulfillWattwise } from "../_shared/fulfill-wattwise.js";
 import { fulfillTaxtrim } from "../_shared/fulfillTaxtrim.js";
 import { fulfillPillguard } from "../_shared/fulfillPillguard.js";
+import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -287,6 +288,15 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     return fulfillFloodlens({ db, env, waitUntil, sendEmail }, payment);
   },
+
+  // OpenSeason state packs (openseason-state-pack). Creates the order row
+  // (idempotent per payment_id), unifies the access token onto the order,
+  // registers the buyer for deadline reminders, and emails the personal
+  // pack link with a one-click unsubscribe. No pack generation — the
+  // verified packs are already seeded server-side.
+  async openseason(ctx, payment, sess) {
+    return fulfillOpenseason(ctx, payment, sess);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -325,7 +335,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","openseason"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
