@@ -85,15 +85,6 @@ jobs:
               # are now secret_text dashboard vars (set via wrangler pages
               # secret put) — they survive deploys and must NOT be re-injected
               # here as plain_text [vars].
-              # 2026-09-20 incident: an ad-hoc deploy wiped project secrets,
-              # killing checkout (503 stripe_not_configured). STRIPE_TEST_KEY
-              # is re-injected here on every deploy (it exists as a GitHub
-              # Actions secret); absent Actions secrets are skipped via
-              # os.environ.get so the build never breaks. Do NOT add names
-              # that already exist as project secret_text (CARERANK_UNSUB_SECRET
-              # etc.) — the deploy API rejects duplicate binding names and the
-              # deploy FAILS.
-              "STRIPE_TEST_SECRET_KEY": os.environ.get("SECRET_STRIPE_TEST", ""),
           }
           with open("wrangler.toml", "r") as f:
               lines = f.readlines()
@@ -147,7 +138,6 @@ jobs:
           SECRET_TURNSTILE: ${{ secrets.TURNSTILE_SECRET_KEY }}
           SECRET_CRM_ID: ${{ secrets.CRM_ACCESS_CLIENT_ID }}
           SECRET_SESSION: ${{ secrets.ADMIN_SESSION_SECRET }}
-          SECRET_STRIPE_TEST: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
       - name: Verify production runtime client config
         run: |
           CONFIG_JSON="$(curl -fsS https://mehyar.us/api/client-config)"
