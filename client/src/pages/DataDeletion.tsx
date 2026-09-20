@@ -29,6 +29,7 @@
 //  19. OpenSeason — https://openseason.mehyar.us (hunting-season dates, free openers + $12 state packs)
 //  20. BeachCall — https://beachcall.mehyar.us (daily go/no-go beach verdicts + $9 summer pass)
 //  21. CareRank — https://carerank.mehyar.us (nursing-home shortlist: deterministic CMS-data ranking)
+//  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -39,7 +40,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -305,6 +306,18 @@ id: "hustlekit",
       "Email address (to deliver your free matches and paid report), the quiz answers you submit (ZIP, care priorities, needs), the ranked shortlist generated for you, and checkout records.",
     whatWeDelete:
       "Email address, quiz answers, generated shortlist, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "puretap",
+    name: "PureTap",
+    url: "https://puretap.mehyar.us",
+    tagline: "Tap-water safety verdicts from real EPA data.",
+    icon: Droplets,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The ZIP code you enter for your free water-safety verdict, your email address (to deliver your free verdict and paid report), the water report generated for you, and checkout records.",
+    whatWeDelete:
+      "ZIP code, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 
