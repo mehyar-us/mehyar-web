@@ -37,28 +37,22 @@ export async function onRequestGet({ request, env }) {
       t(() => { const z = fema.zone ? zoneInfo(fema.zone.fld_zone, fema.zone.zone_subty) : zoneInfo(null, null); return { val: z, note: z.zone }; }));
     const mapEff = await mark("effDateToIso", () =>
       t(() => effDateToIso(fema.panel && fema.panel.eff_date)).then((r) => ({ ...r, note: String(r.val), val: r.val })));
-    // Raw FEMA introspection: which part of the core URL breaks?
-    await mark("femaRaw", () =>
+    // Field bisection: which outField breaks the layer-28 query?
+    await mark("femaFields", () =>
       t(async () => {
         const UA5 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
         const base = "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer";
+        const fields = ["FLD_ZONE","ZONE_SUBTY","SFHA_TF","DFIRM_ID","STATIC_BFE","DEPTH","VELOCITY","SOURCE_CIT","VERSION_ID"];
         const out = [];
-        const full = "FLD_ZONE,ZONE_SUBTY,SFHA_TF,DFIRM_ID,STATIC_BFE,DEPTH,VELOCITY,SOURCE_CIT,VERSION_ID";
-        const q1 = base + "/28/query?geometry=" + geo.lon + "," + geo.lat + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=" + encodeURIComponent(full) + "&returnGeometry=false&f=json";
-        const r1 = await fetch(q1, { headers: { "user-agent": UA5 }, signal: AbortSignal.timeout(15000) });
-        out.push("fullFields_status=" + r1.status + " body=" + (await r1.text()).slice(0, 160));
-        const u = new URL(base + "/28/query");
-        u.searchParams.set("geometry", geo.lon + "," + geo.lat);
-        u.searchParams.set("geometryType", "esriGeometryPoint");
-        u.searchParams.set("inSR", "4326");
-        u.searchParams.set("spatialRel", "esriSpatialRelIntersects");
-        u.searchParams.set("outFields", full);
-        u.searchParams.set("returnGeometry", "false");
-        u.searchParams.set("f", "json");
-        const r2 = await fetch(u.toString(), { headers: { "user-agent": UA5 }, signal: AbortSignal.timeout(15000) });
-        out.push("urlObj_status=" + r2.status + " body=" + (await r2.text()).slice(0, 160));
-        out.push("url_used=" + u.toString().slice(0, 140));
-        return out.join(" || ");
+        for (const f of fields) {
+          const q = base + "/28/query?geometry=" + geo.lon + "," + geo.lat + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=" + f + "&returnGeometry=false&f=json";
+          try {
+            const r = await fetch(q, { headers: { "user-agent": UA5 }, signal: AbortSignal.timeout(12000) });
+            const j = await r.json().catch(() => null);
+            out.push(f + "=" + (j && j.error ? "ERR400" : "OK"));
+          } catch (e) { out.push(f + "=FETCHFAIL"); }
+        }
+        return out.join(" ");
       }).then((r) => ({ val: null, ms: r.ms, note: r.val })));
     const token = "diag" + randomToken(8);
     await mark("storeLookup", () =>
