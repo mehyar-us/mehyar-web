@@ -124,6 +124,10 @@ const sections: Section[] = [
             <div className="font-semibold">OpenSeason — <a className="text-brand-700 underline dark:text-brand-100" href="https://openseason.mehyar.us" target="_blank" rel="noreferrer">openseason.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Every hunting-season date for your state, in plain English — free next-3 openers, $12 state packs.</div>
           </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">BeachCall — <a className="text-brand-700 underline dark:text-brand-100" href="https://beachcall.mehyar.us" target="_blank" rel="noreferrer">beachcall.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Daily go/no-go beach verdicts with best-hours windows — free for one beach a day, $9 summer pass for all your beaches.</div>
+          </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites</div>

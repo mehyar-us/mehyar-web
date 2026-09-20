@@ -341,6 +341,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/openseason-logo.png",
     accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
   },
+  {
+    id: "beachcall",
+    name: "BeachCall",
+    url: "https://beachcall.mehyar.us",
+    tagline: "Should we go to the beach today — and exactly which hours?",
+    description:
+      "Daily go/no-go beach verdicts with best-hours windows. Free for one beach a day; the $9 summer pass covers all your beaches with morning go/no-go emails all season.",
+    audience: "Families and beachgoers on the US East Coast.",
+    highlights: [
+      "Daily go/no-go verdicts per beach from marine and weather data",
+      "Best-hours windows so you arrive when the water and weather are best",
+      "Free for one beach a day; the $9 summer pass covers all your beaches",
+      "Morning go/no-go emails before the kids wake up, plus a Friday weekend outlook",
+    ],
+    logo: "/assets/beachcall-logo.png",
+    accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",
+  },
 ];
 
 const buildPillars = [
@@ -582,7 +599,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall), and the request form.
           </p>
         </div>
       </section>

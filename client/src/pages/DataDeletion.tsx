@@ -27,6 +27,7 @@
 //  17. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
 //  18. PrepGuide — https://prepguide.mehyar.us (personalized household preparedness playbook)
 //  19. OpenSeason — https://openseason.mehyar.us (hunting-season dates, free openers + $12 state packs)
+//  20. BeachCall — https://beachcall.mehyar.us (daily go/no-go beach verdicts + $9 summer pass)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -37,7 +38,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles, LayoutDashboard, Crosshair} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles, LayoutDashboard, Crosshair, Waves} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -279,6 +280,18 @@ id: "hustlekit",
       "Email address (for the free opener results and, when you buy, the $12 state pack delivery plus season reminders), your chosen state, and checkout records.",
     whatWeDelete:
       "Email address, chosen state, subscription and suppression records, and purchase records tied to your email. Unsubscribe is instant; full deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "beachcall",
+    name: "BeachCall",
+    url: "https://beachcall.mehyar.us",
+    tagline: "Daily go/no-go beach verdicts.",
+    icon: Waves,
+    inAppPath: "Unsubscribe link in any BeachCall email (one click) or email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your pass and send verdict emails), your saved beach list, your free/paid tier, and purchase records.",
+    whatWeDelete:
+      "Email address, saved beach list, tier, and purchase records tied to your email. Unsubscribing adds you to the product's do-not-mail list immediately. Full deletion via the email fallback within 14 days.",
   },
 ];
 
