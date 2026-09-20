@@ -236,6 +236,10 @@ async function resolveFacilities(quizRaw, legacyFacilities) {
       score: isNum(f.score) ? Math.round(f.score) : null,
       distance_miles: isNum(f.distance_miles) ? f.distance_miles : null,
       data_as_of: f.data_as_of || null,
+      city: f.city || null,
+      state: f.state || null,
+      zip: f.zip || null,
+      phone: f.phone || null,
       facts: (f.facts && typeof f.facts === "object") ? f.facts : {},
     }));
   }
@@ -253,6 +257,10 @@ async function resolveFacilities(quizRaw, legacyFacilities) {
     score: t.score,
     distance_miles: t.distance_miles,
     data_as_of: t.data_as_of,
+    city: t.city || null,
+    state: t.state || null,
+    zip: t.zip || null,
+    phone: t.phone || null,
     facts: t.facts || {},
   }));
 }
@@ -372,6 +380,11 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
           ccn: String(f.ccn || ""),
           name: String(f.name || ""),
           score: isNum(f.score) ? Math.round(f.score) : null,
+          city: f.city || null,
+          state: f.state || null,
+          zip: f.zip || null,
+          phone: f.phone || null,
+          distance_miles: isNum(f.distance_miles) ? f.distance_miles : null,
           facts: f.facts && typeof f.facts === "object" ? f.facts : {},
           fit: bullets[i].fit,
           watchout: bullets[i].watchout,

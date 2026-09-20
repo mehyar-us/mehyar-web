@@ -3,8 +3,9 @@
 //
 // Verifies the token against a PAID billing_payments row (SKU
 // carerank-shortlist) or a carerank_orders row, then returns the buyer's
-// report: quiz, top_facilities (ccn+name+score only — the full CMS facts ship
-// in the frontend bundle), bullets, data_as_of, created_at.
+// report: the full `report` object the report.html renderer expects
+// (quiz, data_as_of, matches[] with facility facts + scores + bullets),
+// plus top_facilities / bullets summaries for other consumers.
 //
 // Bogus token → 404. Non-ready orders return their status so the success
 // page can poll (paid/pending/generating) or show retry info (failed).
@@ -50,11 +51,59 @@ export async function onRequestGet({ request, env }) {
         name: String(f.name || ""),
         score: typeof f.score === "number" ? f.score : null,
       }));
+      // Full report object matching the report.html renderer contract:
+      // report.quiz {zip, priorities{staffing,quality,inspection}, needs[], maxDistanceMiles, minOverall},
+      // report.data_as_of, report.matches[] {facility{...CMS facts}, score, factors[], ai_fit, ai_watchouts}.
+      const qNeeds = quiz && quiz.needs && typeof quiz.needs === "object"
+        ? Object.keys(quiz.needs).filter((k) => quiz.needs[k])
+        : [];
+      const report = {
+        quiz: {
+          zip: (quiz && (quiz.zip || quiz.zipcode)) || "",
+          priorities: (quiz && quiz.priorities && typeof quiz.priorities === "object")
+            ? {
+                staffing: Number(quiz.priorities.staffing) || 0,
+                quality: Number(quiz.priorities.quality) || 0,
+                inspection: Number(quiz.priorities.inspection) || 0,
+              }
+            : { staffing: 0, quality: 0, inspection: 0 },
+          needs: qNeeds,
+          maxDistanceMiles: Number(quiz && quiz.maxDistanceMiles) || 25,
+          minOverall: Number(quiz && quiz.minOverall) || 0,
+        },
+        data_as_of: output.data_as_of || null,
+        matches: facilities.map((f) => {
+          const facts = (f.facts && typeof f.facts === "object") ? f.facts : {};
+          return {
+            facility: {
+              name: String(f.name || ""),
+              address: null, // CMS provider data does not publish street addresses
+              city: f.city || null,
+              state: f.state || null,
+              zip: f.zip || null,
+              phone: f.phone || null,
+              ownership: null, // not published in the CMS extract we ship
+              beds: typeof facts.beds === "number" ? facts.beds : null,
+              overall_rating: typeof facts.overall_rating === "number" ? facts.overall_rating : null,
+              staffing_rating: typeof facts.staffing_rating === "number" ? facts.staffing_rating : null,
+              quality_rating: typeof facts.quality_rating === "number" ? facts.quality_rating : null,
+              health_inspection_rating: typeof facts.health_inspection_rating === "number" ? facts.health_inspection_rating : null,
+              _distMiles: typeof facts.distance_miles === "number" ? facts.distance_miles
+                : (typeof f.distance_miles === "number" ? f.distance_miles : null),
+            },
+            score: typeof f.score === "number" ? f.score : null,
+            factors: [],
+            ai_fit: Array.isArray(f.fit) ? f.fit : [],
+            ai_watchouts: Array.isArray(f.watchout) ? f.watchout : [],
+          };
+        }),
+      };
       return json({
         ok: true,
         status: order.status || "pending",
         email: order.email,
         quiz,
+        report,
         top_facilities: top,
         bullets: facilities.map((f) => ({
           ccn: String(f.ccn || ""),
