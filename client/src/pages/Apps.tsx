@@ -426,6 +426,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/floodlens-logo.png",
     accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
   },
+  {
+    id: "taxtrim",
+    name: "TaxTrim",
+    url: "https://taxtrim.mehyar.us",
+    tagline: "NYC says your home is worth $X. They're often wrong.",
+    description:
+      "Enter your NYC address or BBL and get a free verdict on whether your property-tax assessment is too high, checked against real comparable sales — free. $39 one-time gets you the full appeal packet; $49/year covers every appeal season.",
+    audience: "NYC Class 1 homeowners (1–3 family houses) facing the January assessment notice and the March appeal deadline.",
+    highlights: [
+      "Free: real verdict on your assessment vs comparable sales, with sources",
+      "Estimated dollar gap vs the comp median and your block median",
+      "$39 one-time: the full appeal packet with comparables and narrative",
+      "$49/year: coverage for every appeal season",
+    ],
+    logo: "/assets/taxtrim-logo.png",
+    accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+  },
 ];
 
 const buildPillars = [
@@ -667,7 +684,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, TaxTrim), and the request form.
           </p>
         </div>
       </section>
