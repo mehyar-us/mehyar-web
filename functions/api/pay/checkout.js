@@ -251,8 +251,11 @@ export async function onRequestPost({ request, env }) {
         "https://mehyar.us/",
       product.allowed_return_hosts
     );
-    // Token unification: the success page always receives ?token=. If a
-    // caller-supplied success_url lacks it, append the payment access token.
+    // Token unification: the success page always receives ?token=. Fill any
+    // {placeholders} the caller left in their override URL first (e.g.
+    // PillGuard's ?token={access_token}); if the URL still lacks a token,
+    // append the payment access token.
+    successUrl = fillTemplate(successUrl, vars);
     try {
       const su = new URL(successUrl);
       if (!su.searchParams.get("token")) {
