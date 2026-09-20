@@ -16,7 +16,7 @@ function json(data, status = 200) {
 export async function onRequestGet({ request, env }) {
   const stages = {};
   const mark = (name, fn) => Promise.resolve().then(fn).then(
-    (v) => { stages[name] = { ok: true, ms: v && v.ms, note: v && v.note }; return v && v.val; },
+    (v) => { stages[name] = { ok: true, ms: v && v.ms, note: String(v && v.note) }; return v && v.val; },
     (e) => { stages[name] = { ok: false, error: String((e && e.message) || e).slice(0, 200) }; throw e; }
   );
   const t = (fn) => { const t0 = Date.now(); return Promise.resolve().then(fn).then((val) => ({ val, ms: Date.now() - t0 })); };
@@ -26,7 +26,7 @@ export async function onRequestGet({ request, env }) {
     if (!address || address.length < 5) return json({ ok: false, stages, error: "invalid_address" }, 400);
     const db = env.LEADS_DB;
 
-    const geo = await mark("geocode", () => t(() => geocodeAddress(address)).then((r) => ({ ...r, note: `${r.lat},${r.lon}`, val: r.val })));
+    const geo = await mark("geocode", () => t(() => geocodeAddress(address)).then((r) => ({ ...r, note: `${r.val.lat},${r.val.lon}`, val: r.val })));
     const gh = await mark("geohash", () => t(() => geohash(geo.lat, geo.lon, 7)).then((r) => ({ ...r, note: r.val, val: r.val })));
     const cache = await mark("findCache", () =>
       t(() => db.prepare("SELECT * FROM floodlens_lookups WHERE geohash = ? AND degraded = 0 AND queried_at > datetime('now', ?) ORDER BY queried_at DESC LIMIT 1").bind(gh, "-1 days").first())

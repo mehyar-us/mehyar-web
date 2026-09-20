@@ -30,7 +30,6 @@
 //  20. BeachCall — https://beachcall.mehyar.us (daily go/no-go beach verdicts + $9 summer pass)
 //  21. CareRank — https://carerank.mehyar.us (nursing-home shortlist: deterministic CMS-data ranking)
 //  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
-//  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -41,7 +40,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -319,18 +318,6 @@ id: "hustlekit",
       "The ZIP code you enter for your free water-safety verdict, your email address (to deliver your free verdict and paid report), the water report generated for you, and checkout records.",
     whatWeDelete:
       "ZIP code, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "ticketbeat",
-    name: "TicketBeat",
-    url: "https://ticketbeat.mehyar.us",
-    tagline: "NYC parking-ticket odds and dispute letters.",
-    icon: Gavel,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "The ticket details you submit (violation code, summons number, plate, issue date, borough, location, notes, and any ticket photo you upload), your email address (for delivery and receipts), the dispute letter generated for you, and checkout records.",
-    whatWeDelete:
-      "Ticket details and photos, email address, generated letters, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 
