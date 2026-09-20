@@ -77,7 +77,12 @@ export async function onRequestGet() {
   const nevada = await functionalProbe(base, -117.0, 39.3, "empty");
   checks.push({ check: "functional_nevada", base, ...nevada });
 
-  const allOk = checks.every((c) => c.ok);
+  // Service is UP if the selected base (primary, or fallback) is live AND
+  // functional probes pass. A dead fallback base alone is not a degradation
+  // — lookups only need one working base.
+  const baseLive = checks.some((c) => c.check === "liveness" && c.base === base && c.ok);
+  const functionalOk = miami.ok && nevada.ok;
+  const allOk = baseLive && functionalOk;
   const slow = checks.some((c) => (c.ms || 0) > 8000);
   return json({
     ok: allOk,
