@@ -7,7 +7,7 @@
 // drip is never sent from here.
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
-import { randomToken } from "../_shared/floodlensCore.js";
+import { randomToken, isFloodlensSuppressed } from "../_shared/floodlensCore.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,19 +30,21 @@ export async function onRequestPost({ request, env }) {
     if (!lookupToken) return json({ ok: false, error: "missing_lookup_token" }, 400);
 
     const lookup = await db
-      .prepare("SELECT token, address, zone, risk_plain FROM floodlens_lookups WHERE token = ?")
+      .prepare("SELECT token, address, zone, risk_plain FROM floodlens_lookups WHERE token = ? AND zone IS NOT NULL")
       .bind(lookupToken)
       .first();
     if (!lookup) return json({ ok: false, error: "unknown_lookup_token" }, 400);
+
+    // Suppressed (brand or global)? Stay silent — never re-enable, never email.
+    if (await isFloodlensSuppressed(db, email)) {
+      return json({ ok: true, message: "Check your email to confirm." });
+    }
 
     // Already confirmed? Stay quiet and idempotent.
     const existing = await db
       .prepare("SELECT status, confirm_token, unsubscribed FROM floodlens_subscribers WHERE email = ?")
       .bind(email)
       .first();
-    if (existing && Number(existing.unsubscribed) === 1) {
-      return json({ ok: true, message: "Check your email to confirm." });
-    }
     const confirmToken = (existing && existing.confirm_token) || randomToken(32);
 
     await db.prepare(

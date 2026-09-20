@@ -2,9 +2,10 @@
 // GET /api/floodlens/health — the §4 FEMA health probe as an endpoint.
 // Write-free: liveness (MapServer?f=json → 200 + mapName) + a functional
 // layer-28 point query at two control points with known-stable answers:
-//   - downtown Miami (-80.1918, 25.7617): expect SFHA_TF=T, FLD_ZONE starting
+//   - Miami Beach (-80.1300, 25.7907): expect SFHA_TF=T, FLD_ZONE starting
 //     with A or V
-//   - rural Nevada (-117.0000, 39.3000): expect no features
+//   - rural Nevada (-117.0000, 39.3000): expect no features, or only
+//     ZONE_SUBTY=AREA NOT INCLUDED features
 // Always sends a browser UA. Budgets: p50 < 2s, alert > 8s, hard timeout 15s.
 
 import { FEMA_BASES, BROWSER_UA, femaLiveness } from "../_shared/floodlensCore.js";
@@ -45,8 +46,9 @@ async function functionalProbe(base, lon, lat, expect) {
       const pass = a.SFHA_TF === "T" && /^[AV]/.test(zone);
       return { ok: pass, ms, zone, sfha_tf: a.SFHA_TF, features: feats.length, error: pass ? null : "unexpected_zone" };
     }
-    // expect "empty"
-    const pass = feats.length === 0;
+    // expect "empty": no features, or only AREA NOT INCLUDED (unmapped area)
+    const pass = feats.length === 0 ||
+      feats.every((f) => String((f.attributes || {}).ZONE_SUBTY || "").toUpperCase() === "AREA NOT INCLUDED");
     return { ok: pass, ms, features: feats.length, error: pass ? null : "unexpected_features" };
   } catch (e) {
     return { ok: false, ms: Date.now() - t0, error: String((e && e.message) || e).slice(0, 120) };
@@ -70,7 +72,7 @@ export async function onRequestGet() {
     }, 503);
   }
 
-  const miami = await functionalProbe(base, -80.1918, 25.7617, "sfha");
+  const miami = await functionalProbe(base, -80.1300, 25.7907, "sfha");
   checks.push({ check: "functional_miami", base, ...miami });
   const nevada = await functionalProbe(base, -117.0, 39.3, "empty");
   checks.push({ check: "functional_nevada", base, ...nevada });

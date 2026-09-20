@@ -31,6 +31,8 @@ function sanitizeAddress(v) {
 
 async function checkRateLimit(db, ip, env) {
   const limit = Number(env.FLOODLENS_FREE_PER_DAY) || 10;
+  // Counts ALL attempts (successful lookups + failed attempts) so bad
+  // actors can't bypass the limit with invalid addresses or during outages.
   const row = await db
     .prepare("SELECT COUNT(*) AS c FROM floodlens_lookups WHERE ip = ? AND created_at > datetime('now','-1 day')")
     .bind(ip)
@@ -38,11 +40,26 @@ async function checkRateLimit(db, ip, env) {
   return { allowed: (row?.c || 0) < limit, used: row?.c || 0, limit };
 }
 
+// Records a failed attempt (bad address / FEMA outage with no cache) so it
+// counts toward the rate limit. zone stays NULL; findCache excludes these
+// via degraded=1, and checkout requires zone IS NOT NULL.
+async function storeFailedAttempt(db, { address, ip, lat, lon, gh }) {
+  try {
+    await db.prepare(
+      "INSERT INTO floodlens_lookups (token, address, lat, lon, geohash, degraded, ip) " +
+      "VALUES (?, ?, ?, ?, ?, 1, ?)"
+    ).bind(randomToken(16), address, lat || 0, lon || 0, gh || "", ip).run();
+  } catch { /* rate limiting is best-effort */ }
+}
+
 async function findCache(db, gh, maxAgeDays) {
+  // Freshness is measured on the ORIGINAL FEMA query time (queried_at), not
+  // the copy's created_at — otherwise re-cached copies would refresh stale
+  // FEMA data forever.
   return db
     .prepare(
-      "SELECT * FROM floodlens_lookups WHERE geohash = ? AND degraded = 0 AND created_at > datetime('now', ?) " +
-      "ORDER BY created_at DESC LIMIT 1"
+      "SELECT * FROM floodlens_lookups WHERE geohash = ? AND degraded = 0 AND queried_at > datetime('now', ?) " +
+      "ORDER BY queried_at DESC LIMIT 1"
     )
     .bind(gh, `-${maxAgeDays} days`)
     .first();
@@ -118,6 +135,7 @@ export async function onRequestPost({ request, env }) {
     try {
       geo = await geocodeAddress(address);
     } catch (e) {
+      await storeFailedAttempt(db, { address, ip });
       if (e && e.code === "address_not_found") {
         return json({ ok: false, error: "address_not_found", message: "We couldn't find that address. Check the spelling and include city + state." }, 404);
       }
@@ -163,12 +181,15 @@ export async function onRequestPost({ request, env }) {
         res.served_from = "cache_7d_degraded";
         return json(res);
       }
+      await storeFailedAttempt(db, { address, ip, lat: geo.lat, lon: geo.lon, gh });
       return json(
         { ok: false, error: "fema_unavailable", degraded: true, disclaimer: DISCLAIMER_SHORT,
           message: "FEMA lookup is unavailable right now — check back shortly or use FEMA's Map Service Center directly (msc.fema.gov/portal)." },
         502
       );
     }
+    // (storeFailedAttempt intentionally NOT called on the outage path when a
+    // degraded cache was served — that already wrote a row above.)
 
     const zi = fema.zone ? zoneInfo(fema.zone.fld_zone, fema.zone.zone_subty) : zoneInfo(null, null);
     const mapEffective = effDateToIso(fema.panel && fema.panel.eff_date);

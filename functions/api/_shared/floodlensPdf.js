@@ -238,15 +238,15 @@ export function buildFloodReport(props, meta) {
   props.forEach((p, idx) => {
     if (idx > 0) f.pageBreak();
     pageCover(f, p, meta, multi, idx, props.length);   // 1
-    f.pageBreak(); pageZoneDecoded(f, p, multi, idx);   // 2
-    f.pageBreak(); pageNarration(f, p, multi, idx);     // 3
-    f.pageBreak(); pageCost(f, p, multi, idx);          // 4
-    f.pageBreak(); pagePricing(f, p, multi, idx);       // 5
-    f.pageBreak(); pageQuestions(f, p, multi, idx);    // 6
-    f.pageBreak(); pageMapHistory(f, p, multi, idx);   // 7
-    f.pageBreak(); pageChecklist(f, p, multi, idx);    // 8
-    f.pageBreak(); pageMethodology(f, p, multi, idx);  // 9
-    f.pageBreak(); pageDisclaimer(f, p, meta, multi, idx); // 10
+    f.pageBreak(); pageZoneDecoded(f, p, multi, idx, props.length);   // 2
+    f.pageBreak(); pageNarration(f, p, multi, idx, props.length);     // 3
+    f.pageBreak(); pageCost(f, p, multi, idx, props.length);          // 4
+    f.pageBreak(); pagePricing(f, p, multi, idx, props.length);       // 5
+    f.pageBreak(); pageQuestions(f, p, multi, idx, props.length);    // 6
+    f.pageBreak(); pageMapHistory(f, p, multi, idx, props.length);   // 7
+    f.pageBreak(); pageChecklist(f, p, multi, idx, props.length);    // 8
+    f.pageBreak(); pageMethodology(f, p, multi, idx, props.length);  // 9
+    f.pageBreak(); pageDisclaimer(f, p, meta, multi, idx, props.length); // 10
   });
   const bytes = pdf.serialize();
   return { bytes, pages: pdf.pages.length, byteLength: bytes.length };
@@ -297,9 +297,9 @@ function pageCover(f, p, meta, multi, idx, n) {
 }
 
 // ── Page 2: zone decoded ──
-function pageZoneDecoded(f, p, multi, idx) {
+function pageZoneDecoded(f, p, multi, idx, n) {
   f.h1("Your zone, decoded");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   const badge = BADGE[p.risk] || BADGE.unknown;
   f.pdf.rect(MARGIN, f.y - 58, CONTENT_W, 64, 0.96, 0.97, 1);
   f.pdf.text(`FEMA Zone ${p.zone}`, MARGIN + 12, f.y - 24, 16, true, badge.r, badge.g, badge.b);
@@ -327,9 +327,9 @@ function pageZoneDecoded(f, p, multi, idx) {
 }
 
 // ── Page 3: what this means for you (the ONE AI narration) ──
-function pageNarration(f, p, multi, idx) {
+function pageNarration(f, p, multi, idx, n) {
   f.h1("What this means for you");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   const raw = p.narration ? String(p.narration).slice(0, 1400) : fallbackNarration(p);
   const paras = raw.split(/\n{2,}|\n/).map((s) => s.trim()).filter(Boolean).slice(0, 6);
   for (const para of paras) f.para(para, 10.5);
@@ -341,9 +341,9 @@ function pageNarration(f, p, multi, idx) {
 }
 
 // ── Page 4: insurance cost ──
-function pageCost(f, p, multi, idx) {
+function pageCost(f, p, multi, idx, n) {
   f.h1("Flood insurance: what it typically costs");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   if (p.premium_label) {
     f.para(`For Zone ${p.zone}, NFIP policies at $250,000 of building coverage typically run ${p.premium_label} per year (estimate).`, 11, true);
     f.bullets([
@@ -362,9 +362,9 @@ function pageCost(f, p, multi, idx) {
 }
 
 // ── Page 5: how premiums are estimated ──
-function pagePricing(f, p, multi, idx) {
+function pagePricing(f, p, multi, idx, n) {
   f.h1("How your premium is estimated");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   f.para(
     "Since October 2021, FEMA prices NFIP policies under Risk Rating 2.0: your premium follows the property, not just the zone. The biggest inputs are distance to water, replacement cost, elevation relative to the Base Flood Elevation, foundation type, and the property's claims history.",
     10.5
@@ -382,9 +382,9 @@ function pagePricing(f, p, multi, idx) {
 }
 
 // ── Page 6: questions ──
-function pageQuestions(f, p, multi, idx) {
+function pageQuestions(f, p, multi, idx, n) {
   f.h1("5 questions for your agent and insurer");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   f.bullets(questionsFor(p));
   f.gap(6);
   f.para(
@@ -394,9 +394,9 @@ function pageQuestions(f, p, multi, idx) {
 }
 
 // ── Page 7: map history ──
-function pageMapHistory(f, p, multi, idx) {
+function pageMapHistory(f, p, multi, idx, n) {
   f.h1("How your zone changed over time");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   f.para(
     `The map covering this property took effect ${p.map_effective || "on an unknown date"} (FIRM panel ${p.firm_pan || "unknown"}, DFIRM ${p.dfirm_id || "unknown"}). FEMA updates maps continuously as new studies finish — a zone can get better or worse between map versions.`,
     10.5
@@ -410,9 +410,9 @@ function pageMapHistory(f, p, multi, idx) {
 }
 
 // ── Page 8: checklist ──
-function pageChecklist(f, p, multi, idx) {
+function pageChecklist(f, p, multi, idx, n) {
   f.h1("Before you close: checklist");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   f.bullets([
     "Get a real flood insurance quote (floodsmart.gov) before removing contingencies — not after.",
     "Confirm whether the seller's policy is assumable; a grandfathered rate can be worth thousands.",
@@ -424,9 +424,9 @@ function pageChecklist(f, p, multi, idx) {
 }
 
 // ── Page 9: methodology ──
-function pageMethodology(f, p, multi, idx) {
+function pageMethodology(f, p, multi, idx, n) {
   f.h1("Methodology and data sources");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   f.bullets([
     "Zone lookup: FEMA National Flood Hazard Layer (NFHL) ArcGIS REST service, layer S_Fld_Haz_Ar, point query at the geocoded address.",
     "Geocoding: U.S. Census Bureau geocoder (keyless, public).",
@@ -438,9 +438,9 @@ function pageMethodology(f, p, multi, idx) {
 }
 
 // ── Page 10: disclaimer ──
-function pageDisclaimer(f, p, meta, multi, idx) {
+function pageDisclaimer(f, p, meta, multi, idx, n) {
   f.h1("Disclaimer");
-  propTag(f, p, multi, idx);
+  propTag(f, p, multi, idx, n);
   f.para(
     "NOT AN OFFICIAL FLOOD DETERMINATION. This report reads FEMA's National Flood Hazard Layer for informational purposes only. It is not a certified flood zone determination and does not replace the Standard Flood Hazard Determination Form (SFHDF) your lender or insurer requires. Flood-zone boundaries are approximate, maps are updated over time, and recent Letters of Map Change may not yet be reflected.",
     10.5, true

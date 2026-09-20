@@ -1,7 +1,7 @@
 // functions/api/_shared/fulfillFloodlens.js
 // Standalone ES module: Stripe fulfillment for fulfillment='floodlens'.
 // SKUs: floodlens-report ($19 one-time → one 10-page PDF report),
-//       floodlens-3pack ($39 one-time → one combined PDF for 3 properties).
+//       floodlens-3pack ($39 one-time → one combined 30-page PDF, 10 pages per property).
 //
 // Contract: fulfillFloodlens({ db, env, waitUntil, sendEmail }, payment)
 //   payment — billing_payments row (already marked paid by the webhook).
@@ -15,10 +15,13 @@
 //      order token so ONE token gates every buyer surface.
 //   3. Background (waitUntil): EXACTLY ONE Workers AI call narrates the
 //      report from supplied facts (deterministic tables do the rest),
-//      renders the 10-page PDF with the dependency-free builder, stores it
+//      renders the fixed-layout PDF with the dependency-free builder
+//      (10 pages per property: 10 for single, 30 for the 3-pack), stores it
 //      in the FLOODLENS_REPORTS R2 bucket, marks the order ready, marks the
 //      subscriber converted (stops the drip), and emails the buyer the
 //      receipt + token-gated download link (with one-click unsubscribe).
+//      The receipt email is skipped if the buyer is suppressed (the order
+//      itself is still fulfilled; the download link is on the success page).
 //   4. On generation failure: mark failed, do NOT email — the buyer's
 //      success page polls /api/pay/status and shows live status + retry.
 //   5. NEVER throws out of the hook.
@@ -26,7 +29,7 @@
 import { sendCloudflareEmail } from "./cloudflareEmail.js";
 import { chatJson, safeJsonParse } from "./llmChat.js";
 import { buildFloodReport } from "./floodlensPdf.js";
-import { randomToken, PREMIUM_BANDS, PREMIUM_FOOTNOTE } from "./floodlensCore.js";
+import { randomToken, PREMIUM_BANDS, PREMIUM_FOOTNOTE, isFloodlensSuppressed } from "./floodlensCore.js";
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
@@ -52,8 +55,10 @@ function toTokenList(v) {
 async function loadLookups(db, tokens) {
   const rows = [];
   for (const t of tokens) {
+    // zone IS NOT NULL: failed-attempt rows (rate-limiting sentinels) can
+    // never become a purchased report.
     const row = await db
-      .prepare("SELECT * FROM floodlens_lookups WHERE token = ?")
+      .prepare("SELECT * FROM floodlens_lookups WHERE token = ? AND zone IS NOT NULL")
       .bind(t)
       .first();
     if (row) rows.push(row);
@@ -191,10 +196,16 @@ export async function fulfillFloodlens({ db, env, waitUntil, sendEmail }, paymen
       return { ok: false, order_id: ins.meta.last_row_id, error: "missing_lookup_token" };
     }
     const lookups = await loadLookups(db, tokens);
-    if (lookups.length === 0) {
+    // 3-pack requires 3 DISTINCT valid lookups; single requires exactly 1.
+    // Checkout already enforces this, but the webhook must not trust metadata
+    // blindly — malformed or partial paid metadata fails loudly, never
+    // inventing a report.
+    const need = is3Pack ? 3 : 1;
+    const distinct = new Set(lookups.map((l) => l.token)).size;
+    if (lookups.length < need || distinct < need) {
       const ins = await db.prepare(
         "INSERT INTO floodlens_orders (payment_id, token, product_id, email, status, inputs_json) VALUES (?, ?, ?, ?, 'failed', ?)"
-      ).bind(paymentId, randomToken(32), productId, payment.email, JSON.stringify({ error: "lookup_not_found" })).run();
+      ).bind(paymentId, randomToken(32), productId, payment.email, JSON.stringify({ error: "lookup_not_found", need, found: lookups.length })).run();
       return { ok: false, order_id: ins.meta.last_row_id, error: "lookup_not_found" };
     }
 
@@ -264,8 +275,10 @@ export async function fulfillFloodlens({ db, env, waitUntil, sendEmail }, paymen
           sub = { confirm_token: subToken };
         }
 
-        const result = await emailReceipt(env, sendEmail, payment, productName, orderToken, sub.confirm_token);
-        if (!result.ok) console.error("fulfillFloodlens receipt email failed", productId, result.error);
+        const result = (await isFloodlensSuppressed(db, payment.email))
+          ? { ok: false, error: "suppressed" }
+          : await emailReceipt(env, sendEmail, payment, productName, orderToken, sub.confirm_token);
+        if (!result.ok && result.error !== "suppressed") console.error("fulfillFloodlens receipt email failed", productId, result.error);
         return { ok: true, order_id: orderId, pages, email_ok: !!result.ok };
       } catch (e) {
         console.error("fulfillFloodlens background generate failed", productId, e && e.message);

@@ -6,6 +6,7 @@
 // the global table, and the house suppression_list.
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
+import { isFloodlensSuppressed } from "../_shared/floodlensCore.js";
 
 function page(title, heading, bodyHtml, ok) {
   const accent = ok === false ? "#b42318" : "#0a5cc2";
@@ -52,6 +53,13 @@ export async function confirmToken(request, env) {
     .first();
   if (!sub) {
     return page("Confirm", "Something's off", "We couldn't find that subscription. If you keep getting our emails, reply to one and we'll sort it out.", false);
+  }
+  // Suppression: never re-confirm or email an address that unsubscribed.
+  // An old confirm link must not silently re-enable them.
+  if (await isFloodlensSuppressed(db, sub.email)) {
+    return page("Unsubscribed", "You're unsubscribed",
+      "That email address is unsubscribed, so we didn't change anything and won't send emails. " +
+      "If this was a mistake, run a fresh free lookup and subscribe again.", false);
   }
   const now = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
   await db.prepare(`UPDATE floodlens_subscribers SET status='confirmed', confirmed_at=${now} WHERE confirm_token=?`).bind(token).run();

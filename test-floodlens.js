@@ -45,7 +45,7 @@ check("geohash-7 length", gh7.length === 7 && /^[0-9a-z]{7}$/.test(gh7), "got " 
 console.log("== misc core ==");
 check("effDateToIso epoch ms", effDateToIso(1386038400000) === "2013-12-03", String(effDateToIso(1386038400000)));
 check("effDateToIso null", effDateToIso(null) === null);
-check("FEMA bases (2, /gis/nfhl primary)", FEMA_BASES.length === 2 && FEMA_BASES[0].includes("/gis/nfhl/rest/services/public/NFHL/MapServer"), FEMA_BASES[0]);
+check("FEMA bases (2, /arcgis primary)", FEMA_BASES.length === 2 && FEMA_BASES[0].includes("/arcgis/rest/services/public/NFHL/MapServer"), FEMA_BASES[0]);
 check("browser UA", /Mozilla\/5\.0/.test(BROWSER_UA));
 check("randomToken length", randomToken(32).length >= 43);
 

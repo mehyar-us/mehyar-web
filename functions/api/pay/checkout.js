@@ -135,11 +135,13 @@ const orderHooks = {
     if (tokens.length === 0) {
       return { error: is3 ? "missing_input:lookup_tokens" : "missing_input:lookup_token" };
     }
-    if (is3 && tokens.length !== 3) {
+    if (is3 && (tokens.length !== 3 || new Set(tokens).size !== 3)) {
       return { error: "invalid_input:lookup_tokens" };
     }
+    // Only successful lookups (zone IS NOT NULL) qualify — failed-attempt
+    // rows (written for rate limiting) can never be purchased.
     const found = await db
-      .prepare(`SELECT token FROM floodlens_lookups WHERE token IN (${tokens.map(() => "?").join(",")})`)
+      .prepare(`SELECT token FROM floodlens_lookups WHERE zone IS NOT NULL AND token IN (${tokens.map(() => "?").join(",")})`)
       .bind(...tokens)
       .all();
     const have = new Set((found.results || []).map((r) => r.token));

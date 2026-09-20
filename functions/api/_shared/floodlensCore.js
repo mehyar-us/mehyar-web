@@ -4,8 +4,8 @@
 //
 // Endpoint notes (verified 2026-09-20 against multiple Sept-2026 sources,
 // incl. a 2026-09-02 live capture; sandbox/PC could not reach FEMA live):
-//   - Primary base: https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer
-//   - Alternate base: https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer
+//   - Primary base: https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer
+//   - Alternate base: https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer
 //     (the /gis/nfhl path can 404 behind some gateways — try both)
 //   - Layer 28 = S_Fld_Haz_Ar (flood zone polygons)
 //   - FIRM panel layer = 3 (per 2026 consumer docs) or 4 (per older docs) —
@@ -16,8 +16,8 @@ export const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 export const FEMA_BASES = [
-  "https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer",
   "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer",
+  "https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer",
 ];
 
 export const FEMA_TIMEOUT_MS = 15000;
@@ -287,4 +287,26 @@ export function effDateToIso(effDate) {
   const n = Number(effDate);
   if (!Number.isFinite(n) || n <= 0) return null;
   return new Date(n).toISOString().slice(0, 10);
+}
+
+// ── Suppression ────────────────────────────────────────────────────────────
+// Returns true if the email is suppressed on the brand table or the global
+// table. Call before ANY FloodLens email (confirmation, breakdown, receipt).
+// A suppressed address must never be silently re-enabled or emailed.
+export async function isFloodlensSuppressed(db, email) {
+  const lc = String(email || "").toLowerCase().trim();
+  if (!lc || !db) return false;
+  try {
+    const brand = await db
+      .prepare("SELECT unsubscribed FROM floodlens_subscribers WHERE email = ?")
+      .bind(lc)
+      .first();
+    if (brand && Number(brand.unsubscribed) === 1) return true;
+    const glob = await db
+      .prepare("SELECT unsubscribed FROM subscribers_global WHERE email = ? AND brand = 'floodlens'")
+      .bind(lc)
+      .first();
+    if (glob && Number(glob.unsubscribed) === 1) return true;
+  } catch { /* on DB error, treat as not suppressed; the send is the last step anyway */ }
+  return false;
 }
