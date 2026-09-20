@@ -24,6 +24,7 @@ import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
 import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
 import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
+import { fulfillSproutscore } from "../_shared/fulfillSproutscore.js";
 import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
 import { fulfillCarerank } from "../_shared/fulfillCarerank.js";
 import { fulfillUnlockLink } from "../_shared/fulfillUnlockLink.js";
@@ -335,6 +336,16 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillCarerank({ db, env, waitUntil, sendEmail }, payment);
   },
+
+  // SproutScore daycare inspection decoder ($19 report / $29 3-pack).
+  // Creates the sproutscore_orders row (idempotent on payment_id via
+  // idx_sproutscore_orders_payment), reuses the payment access_token so one
+  // token gates every buyer surface, then hands off to the standalone
+  // module for background generation + buyer email.
+  async sproutscore({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillSproutscore({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -373,7 +384,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(

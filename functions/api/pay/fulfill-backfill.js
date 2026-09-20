@@ -24,6 +24,7 @@
 //   bizbuilder -> fulfillBizbuilder / bizbuilder_orders
 //   prepguide -> fulfillPrepguide / prepguide_orders
 //   promptpack -> fulfillPromptpack / promptpack_orders
+//   sproutscore -> fulfillSproutscore / sproutscore_orders
 //
 // This is a safety net, not the primary path. The webhook remains the
 // primary fulfillment trigger.
@@ -36,6 +37,7 @@ import { fulfillFreelanceros } from "../_shared/fulfillFreelanceros.js";
 import { fulfillBizbuilder } from "../_shared/fulfillBizbuilder.js";
 import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
 import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
+import { fulfillSproutscore } from "../_shared/fulfillSproutscore.js";
 import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
@@ -51,6 +53,7 @@ const PRODUCTS = {
   promptpack: { fulfill: fulfillPromptpack, ordersTable: "promptpack_orders" },
   truesketch: { fulfill: fulfillTruesketch, ordersTable: "truesketch_orders" },
   tiktokgrowth: { fulfill: fulfillTiktokgrowth, ordersTable: "tiktokgrowth_orders" },
+  sproutscore: { fulfill: fulfillSproutscore, ordersTable: "sproutscore_orders" },
 };
 
 const PROF_NAMES = {
