@@ -65,6 +65,16 @@ jobs:
           grep -R "/api/client-config" dist/public/assets/*.js >/dev/null || { echo "Runtime client config endpoint path is missing from the client bundle"; exit 1; }
           test -f functions/api/client-config.js || { echo "Runtime client config function is missing"; exit 1; }
           ! grep -R "TURNSTILE_SECRET_KEY" dist/public/assets/*.js >/dev/null || { echo "Secret env name leaked into client bundle"; exit 1; }
+      - name: Restore Stripe test secrets as project secrets (survive deploys)
+        run: |
+          printf '%s' "$SECRET_STRIPE_TEST" | npx wrangler pages secret put STRIPE_TEST_SECRET_KEY --project-name=mehyar-web
+          printf '%s' "$SECRET_WH_TEST2" | npx wrangler pages secret put STRIPE_WEBHOOK_SECRET_TEST2 --project-name=mehyar-web
+        env:
+          SECRET_STRIPE_TEST: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          SECRET_WH_TEST2: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST2 }}
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Deploy Pages site and Functions
         run: |
           echo "Injecting secrets into wrangler.toml [vars] (not committed)..."
