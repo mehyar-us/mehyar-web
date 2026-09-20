@@ -358,7 +358,22 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/beachcall-logo.png",
     accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",
   },
-];
+  {
+    id: "carerank",
+    name: "CareRank",
+    url: "https://carerank.mehyar.us",
+    tagline: "Nursing-home shortlist that works for your family, not the facilities.",
+    description:
+      "A 4-minute quiz about your parent's needs, scored deterministically against real CMS nursing-home data. Free: your match count and blurred top 3. $29 one-time unlocks the full ranked shortlist — per-facility strengths, red flags, decoded CMS ratings, tour questions, and a printable 12-page PDF to share with siblings.",
+    audience: "Adult children who need to pick a nursing home this week under discharge-planner pressure.",
+    highlights: [
+      "Free 4-minute quiz — see how many homes fit, top 3 names blurred",
+      "Deterministic scoring over real CMS data — no invented ratings, ever",
+      "$29 one-time: full ranked shortlist + printable 12-page PDF",
+      "Per-facility strengths, red flags, and what to ask on the tour",
+    ],
+    logo: "/assets/carerank-logo.png",
+    accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",  },];
 
 const buildPillars = [
   {
@@ -599,7 +614,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank), and the request form.
           </p>
         </div>
       </section>

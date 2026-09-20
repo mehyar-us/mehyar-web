@@ -25,6 +25,7 @@ import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
 import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
 import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
+import { fulfillCarerank } from "../_shared/fulfillCarerank.js";
 import { fulfillUnlockLink } from "../_shared/fulfillUnlockLink.js";
 import { fulfillFloodlens } from "../_shared/fulfillFloodlens.js";
 import { fulfillWattwise } from "../_shared/fulfill-wattwise.js";
@@ -279,6 +280,7 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillPillguard({ db, env, waitUntil, sendEmail }, payment, sess);
   },
+
   // FloodLens flood-zone reports (floodlens-report, floodlens-3pack).
   // Creates exactly one floodlens_orders row per payment (idempotent on
   // payment_id), unifies billing_payments.access_token onto the order token,
@@ -306,6 +308,14 @@ const fulfillHooks = {
   // verified packs are already seeded server-side.
   async openseason(ctx, payment, sess) {
     return fulfillOpenseason(ctx, payment, sess);
+  },
+  // CareRank nursing-home shortlist reports. Creates the carerank_orders row
+  // (idempotent on payment_id via idx_carerank_orders_payment), unifies the
+  // access token onto the billing_payments row, then hands off to the
+  // standalone module for bullet generation + buyer email.
+  async carerank({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillCarerank({ db, env, waitUntil, sendEmail }, payment);
   },
 };
 
@@ -345,7 +355,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(

@@ -259,7 +259,11 @@ const sections: Section[] = [
           </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Tenant sites (white-label)</div>
+<div className="font-semibold">CareRank — <a className="text-brand-700 underline dark:text-brand-100" href="https://carerank.mehyar.us" target="_blank" rel="noreferrer">carerank.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Nursing-home shortlist from real CMS data — free quiz with blurred top 3, $29 one-time for the full ranked 12-page PDF.</div>
+          </li>
+
+          <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>
         </ul>
