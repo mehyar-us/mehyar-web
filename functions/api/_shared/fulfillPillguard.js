@@ -503,7 +503,11 @@ export async function fulfillPillguard({ db, env, waitUntil, sendEmail }, paymen
     ).bind(String(payment.id)).first();
     if (existing) return { ok: true, replay: true, order_id: existing.id, status: existing.status };
 
-    const accessToken = randomToken(32);
+    // Token unification: the checkout-time token (already in the success URL
+    // and in billing_payments.access_token) IS the order/report token.
+    // Rotating it here would orphan the success page and the report link.
+    const existingToken = payment.access_token ? String(payment.access_token) : "";
+    const accessToken = existingToken.length >= 16 ? existingToken : randomToken(32);
     const ins = await db.prepare(
       "INSERT INTO pillguard_orders (payment_id, product_id, email, session_id, meds_json, status, access_token, created_at, updated_at) " +
       "VALUES (?, ?, ?, ?, ?, 'paid', ?, " + nowSql + ", " + nowSql + ")"
@@ -511,8 +515,12 @@ export async function fulfillPillguard({ db, env, waitUntil, sendEmail }, paymen
     const orderId = ins.meta.last_row_id;
 
     // Token unification: every PillGuard surface gates on the order token.
-    await db.prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
-      .bind(accessToken, payment.id).run();
+    // Only persist it to the payment row when we had to mint one (legacy
+    // rows pre-dating the checkout-time token); normally it is already there.
+    if (accessToken !== existingToken) {
+      await db.prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
+        .bind(accessToken, payment.id).run();
+    }
 
     const reportUrl = `${baseUrl(env)}/report.html?token=${accessToken}`;
 
