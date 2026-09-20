@@ -507,7 +507,7 @@ export async function fulfillPillguard({ db, env, waitUntil, sendEmail }, paymen
     const ins = await db.prepare(
       "INSERT INTO pillguard_orders (payment_id, product_id, email, session_id, meds_json, status, access_token, created_at, updated_at) " +
       "VALUES (?, ?, ?, ?, ?, 'paid', ?, " + nowSql + ", " + nowSql + ")"
-    ).bind(String(payment.id), productId, payment.email, intake.session_id, JSON.stringify(intake.meds)).run();
+    ).bind(String(payment.id), productId, payment.email, intake.session_id, JSON.stringify(intake.meds), accessToken).run();
     const orderId = ins.meta.last_row_id;
 
     // Token unification: every PillGuard surface gates on the order token.

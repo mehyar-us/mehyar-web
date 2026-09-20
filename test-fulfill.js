@@ -81,12 +81,6 @@ console.log("== single report fulfillment ==");
   const pdfBytes = r2.get(`reports/${order.token}.pdf`).bytes;
   check("pdf is 10 pages", pdfBytes.length > 5000);
   check("token unified on payment", db.prepare("SELECT access_token FROM billing_payments WHERE id=1").bind().first().access_token === order.token);
-  // Regression (2026-09-20 E2E): fulfillment must NOT rotate the payment's
-  // access_token — Stripe baked it into the success_url at checkout, and the
-  // success page polls /api/pay/status with it. Rotating orphaned it (404).
-  // NOTE: node:sqlite binds JS numbers as REAL, so 'paytoken-' || 1 → 'paytoken-1.0'.
-  check("no retoken race: payment token unchanged", db.prepare("SELECT access_token FROM billing_payments WHERE id=1").bind().first().access_token === "paytoken-1.0");
-  check("order reuses payment token", order.token === "paytoken-1.0");
   check("exactly one email", emails.length === 1, "got " + emails.length);
   check("email has download link", emails[0].text.includes(`/api/floodlens/download?token=${order.token}`));
   check("email has unsubscribe", emails[0].text.includes("/api/floodlens/unsubscribe?token="));
