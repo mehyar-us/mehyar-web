@@ -392,6 +392,40 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/puretap-logo.png",
     accentClass: "from-blue-100 to-white dark:from-blue-900 dark:to-blue-950",
   },
+  {
+    id: "ticketbeat",
+    name: "TicketBeat",
+    url: "https://ticketbeat.mehyar.us",
+    tagline: "Photo your ticket. Know your odds. Fight it in two minutes.",
+    description:
+      "Snap a photo of your NYC parking ticket and get your real appeal-stage dismissal odds plus a one-line defense reason — free. $9.99 one-time gets you a tailored dispute letter; $6.99/month covers every ticket you get.",
+    audience: "NYC drivers who get parking tickets and want to know if fighting is worth it — and get help doing it.",
+    highlights: [
+      "Camera-first ticket intake — snap a photo, AI extracts the details",
+      "Free: real DOF appeal-stage dismissal odds for your violation code",
+      "$9.99 one-time: tailored dispute letter ready to submit",
+      "$6.99/month: every ticket covered, letters on demand",
+    ],
+    logo: "/assets/ticketbeat-logo.png",
+    accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
+  },
+  {
+    id: "floodlens",
+    name: "FloodLens",
+    url: "https://floodlens.mehyar.us",
+    tagline: "What flood zone is this address in, and what does it cost you?",
+    description:
+      "Type any US address and get its FEMA flood zone in plain English plus what flood insurance typically costs — free. $19 one-time gets you the full 10-page flood-zone report; $39 covers three properties.",
+    audience: "Homebuyers, homeowners, and renters who want to know a property's real flood risk before they commit.",
+    highlights: [
+      "Free: FEMA flood zone + plain-English risk for any US address",
+      "Typical NFIP insurance cost range for your zone, not a black box",
+      "$19 one-time: the full 10-page flood-zone report",
+      "$39: three-property pack for comparing homes side by side",
+    ],
+    logo: "/assets/floodlens-logo.png",
+    accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
+  },
 ];
 
 const buildPillars = [
@@ -633,7 +667,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens), and the request form.
           </p>
         </div>
       </section>
