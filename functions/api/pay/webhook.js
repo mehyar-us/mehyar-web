@@ -31,6 +31,7 @@ import { fulfillFloodlens } from "../_shared/fulfillFloodlens.js";
 import { fulfillWattwise } from "../_shared/fulfill-wattwise.js";
 import { fulfillTaxtrim } from "../_shared/fulfillTaxtrim.js";
 import { fulfillPillguard } from "../_shared/fulfillPillguard.js";
+import { fulfillPuretap } from "../_shared/fulfillPuretap.js";
 import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
 import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
 
@@ -281,6 +282,15 @@ const fulfillHooks = {
     await fulfillPillguard({ db, env, waitUntil, sendEmail }, payment, sess);
   },
 
+  // PureTap decoded water reports ($19 one-time). Creates the puretap_orders
+  // row (idempotent on payment_id), unifies the access token, then asks the
+  // PureTap site to generate the report in the background and emails the
+  // buyer the token-gated link. No email on generation failure.
+  async puretap({ db, env, waitUntil }, payment, sess) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillPuretap({ db, env, waitUntil, sendEmail }, payment, sess);
+  },
+
   // FloodLens flood-zone reports (floodlens-report, floodlens-3pack).
   // Creates exactly one floodlens_orders row per payment (idempotent on
   // payment_id), unifies billing_payments.access_token onto the order token,
@@ -355,7 +365,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
