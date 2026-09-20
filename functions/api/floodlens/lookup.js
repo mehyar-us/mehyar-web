@@ -150,7 +150,7 @@ export async function onRequestPost({ request, env }) {
       if (e && e.code === "address_not_found") {
         return json({ ok: false, error: "address_not_found", message: "We couldn't find that address. Check the spelling and include city + state." }, 404);
       }
-      return json({ ok: false, error: "geocode_failed", message: "Address lookup is temporarily unavailable — try again shortly." }, 502);
+      return json({ ok: false, error: "geocode_failed", message: "Address lookup is temporarily unavailable — try again shortly." }, 503); // 503, never 502: the edge body-swaps 502s
     }
     const gh = geohash(geo.lat, geo.lon, 7);
 
@@ -196,7 +196,7 @@ export async function onRequestPost({ request, env }) {
       return json(
         { ok: false, error: "fema_unavailable", degraded: true, disclaimer: DISCLAIMER_SHORT,
           message: "FEMA lookup is unavailable right now — check back shortly or use FEMA's Map Service Center directly (msc.fema.gov/portal)." },
-        502
+        503 // 503, never 502: the edge body-swaps 502s
       );
     }
     // (storeFailedAttempt intentionally NOT called on the outage path when a

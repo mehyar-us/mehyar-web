@@ -255,9 +255,19 @@ export async function geocodeAddress(address) {
     throw err;
   }
   const m = matches[0];
+  // The Census geocoder can return a match record without usable coordinates
+  // (observed live 2026-09-20: matches[0] present, coordinates missing).
+  // Treat that as not-found rather than querying FEMA with undefined.
+  const cy = m.coordinates && m.coordinates.y;
+  const cx = m.coordinates && m.coordinates.x;
+  if (!Number.isFinite(cy) || !Number.isFinite(cx)) {
+    const err = new Error("address_not_found");
+    err.code = "address_not_found";
+    throw err;
+  }
   return {
-    lat: m.coordinates.y,
-    lon: m.coordinates.x,
+    lat: cy,
+    lon: cx,
     matched: m.matchedAddress || address,
     tigerLineId: m.tigerLine ? m.tigerLine.tigerLineId : null,
   };
