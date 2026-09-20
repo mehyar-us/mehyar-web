@@ -16,23 +16,38 @@
 // initOrder hook below; the audit_report hook mirrors the legacy
 // /api/audit/full-report/checkout behavior.
 
-// CORS: satellite sites (e.g. puretap.mehyar.us) call this endpoint from
-// the browser, so it must answer preflights and allow cross-origin POSTs.
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "content-type",
-};
-
-function json(data, status = 200) {
+function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store", ...CORS },
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      ...extraHeaders,
+    },
   });
 }
 
-export async function onRequestOptions() {
-  return new Response(null, { status: 204, headers: CORS });
+// CORS for cross-origin brand checkouts (e.g. puretap.mehyar.us -> mehyar.us).
+// Only *.mehyar.us origins are reflected; everything else gets no CORS headers.
+function corsHeaders(request) {
+  const origin = (request.headers.get("Origin") || "").trim();
+  if (/^https:\/\/([a-z0-9-]+\.)?mehyar\.us$/i.test(origin)) {
+    return { "access-control-allow-origin": origin, vary: "Origin" };
+  }
+  return {};
+}
+
+export async function onRequestOptions({ request }) {
+  const cors = corsHeaders(request);
+  return new Response(null, {
+    status: 204,
+    headers: {
+      ...cors,
+      "access-control-allow-methods": "POST, OPTIONS",
+      "access-control-allow-headers": "content-type",
+      "access-control-max-age": "86400",
+    },
+  });
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -119,63 +134,31 @@ const orderHooks = {
   async none() {
     return { orderExtra: { accessToken: randomHex(32) }, metadataExtra: {} };
   },
-
-  // FloodLens reports. params: { lookup_token } for the single report,
-  // { lookup_tokens: "t1,t2,t3" | [t1,t2,t3] } for the 3-pack.
-  // Validates every token exists in floodlens_lookups so fulfillment can
-  // never invent a report. metadata_json keeps the flat params, which the
-  // fulfillment hook reads (flat or nested under inputs).
-  async floodlens(db, product, { params }) {
-    const is3 = product.id === "floodlens-3pack";
-    const raw = is3 ? params.lookup_tokens : params.lookup_token;
-    const tokens = (Array.isArray(raw) ? raw : String(raw || "").split(/[,\s]+/))
-      .map((s) => String(s).trim())
-      .filter((t) => t.length >= 16)
-      .slice(0, 3);
-    if (tokens.length === 0) {
-      return { error: is3 ? "missing_input:lookup_tokens" : "missing_input:lookup_token" };
-    }
-    if (is3 && (tokens.length !== 3 || new Set(tokens).size !== 3)) {
-      return { error: "invalid_input:lookup_tokens" };
-    }
-    // Only successful lookups (zone IS NOT NULL) qualify — failed-attempt
-    // rows (written for rate limiting) can never be purchased.
-    const found = await db
-      .prepare(`SELECT token FROM floodlens_lookups WHERE zone IS NOT NULL AND token IN (${tokens.map(() => "?").join(",")})`)
-      .bind(...tokens)
-      .all();
-    const have = new Set((found.results || []).map((r) => r.token));
-    if (tokens.some((t) => !have.has(t))) {
-      return { error: is3 ? "invalid_input:lookup_tokens" : "invalid_input:lookup_token" };
-    }
-    return {
-      orderExtra: { accessToken: randomHex(32) },
-      metadataExtra: is3 ? { lookup_tokens: tokens.join(",") } : { lookup_token: tokens[0] },
-    };
-  },
 };
 
 export async function onRequestPost({ request, env }) {
+  const cors = corsHeaders(request);
+  const J = (data, status = 200) => json(data, status, cors);
   try {
-    if (!env?.LEADS_DB) return json({ ok: false, error: "service_unavailable" }, 503);
+    if (!env?.LEADS_DB) return J({ ok: false, error: "service_unavailable" }, 503);
     const db = env.LEADS_DB;
     const body = await request.json().catch(() => ({}));
 
     const productId = sanitize(body.product_id, 100);
     const email = sanitize(body.email, 254).toLowerCase();
-    if (!productId) return json({ ok: false, error: "invalid_product" }, 400);
-    if (!EMAIL_RE.test(email)) return json({ ok: false, error: "invalid_email" }, 400);
+    if (!productId) return J({ ok: false, error: "invalid_product" }, 400);
+    if (!EMAIL_RE.test(email)) return J({ ok: false, error: "invalid_email" }, 400);
 
     const product = await db.prepare(
       "SELECT * FROM billing_products WHERE id = ? AND active = 1"
     ).bind(productId).first();
-    if (!product) return json({ ok: false, error: "invalid_product" }, 400);
+    if (!product) return J({ ok: false, error: "invalid_product" }, 400);
 
     // Product-specific params: cap at ~2KB and sanitize strings.
     let params = {};
     if (body.params && typeof body.params === "object" && !Array.isArray(body.params)) {
       const raw = JSON.stringify(body.params);
-      if (raw.length > 2048) return json({ ok: false, error: "params_too_large" }, 400);
+      if (raw.length > 2048) return J({ ok: false, error: "params_too_large" }, 400);
       for (const [k, v] of Object.entries(body.params)) {
         const key = sanitize(k, 64);
         if (!key) continue;
@@ -186,7 +169,7 @@ export async function onRequestPost({ request, env }) {
     const testMode = body.test === true;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
-      return json(
+      return J(
         { ok: false, error: testMode ? "stripe_test_not_configured" : "stripe_not_configured" },
         testMode ? 400 : 503
       );
@@ -195,8 +178,8 @@ export async function onRequestPost({ request, env }) {
     // Order-init hook (fulfillment-specific).
     const hook = orderHooks[product.fulfillment] || orderHooks.none;
     const hookResult = await hook(db, product, { email, params });
-    if (hookResult.error) return json({ ok: false, error: hookResult.error }, 400);
-    if (hookResult.alreadyReady) return json(hookResult.alreadyReady);
+    if (hookResult.error) return J({ ok: false, error: hookResult.error }, 400);
+    if (hookResult.alreadyReady) return J(hookResult.alreadyReady);
 
     const orderExtra = hookResult.orderExtra || {};
     const metadataExtra = hookResult.metadataExtra || {};
@@ -223,7 +206,7 @@ export async function onRequestPost({ request, env }) {
         "VALUES (?, ?, ?, ?, ?, ?, ?)"
       ).bind(productId, product.brand, email, product.price_cents, product.currency || "usd", accessToken, JSON.stringify(params)).run();
       paymentId = (ins && ins.meta && ins.meta.last_row_id) || null;
-      if (!paymentId) return json({ ok: false, error: "checkout_failed" }, 500);
+      if (!paymentId) return J({ ok: false, error: "checkout_failed" }, 500);
     }
 
     // Return URLs: template defaults, caller overrides only for allowlisted hosts.
@@ -267,9 +250,6 @@ export async function onRequestPost({ request, env }) {
     if (billingMode === "subscription") {
       // Trusted interval only: month (default) or year.
       sp.set("line_items[0][price_data][recurring][interval]", product.billing_interval === "year" ? "year" : "month");
-      // Stamp the subscription object with our payment_id so invoice events
-      // (which only carry the subscription id) can be joined back to the row.
-      sp.set("subscription_data[metadata][payment_id]", String(paymentId));
     }
     sp.set("line_items[0][quantity]", "1");
     sp.set("metadata[payment_id]", String(paymentId));
@@ -290,16 +270,16 @@ export async function onRequestPost({ request, env }) {
     const sessData = await sess.json().catch(() => ({}));
     if (!sess.ok || !sessData.id || !sessData.url) {
       console.error("pay/checkout stripe session failed", sessData && sessData.error && sessData.error.message);
-      return json({ ok: false, error: "checkout_failed", message: "Couldn't start checkout — try again." }, 502);
+      return J({ ok: false, error: "checkout_failed", message: "Couldn't start checkout — try again." }, 502);
     }
 
     await db.prepare(
       "UPDATE billing_payments SET stripe_session_id = ? WHERE id = ?"
     ).bind(sessData.id, paymentId).run();
 
-    return json({ ok: true, payment_id: paymentId, token: accessToken, checkout_url: sessData.url });
+    return J({ ok: true, payment_id: paymentId, token: accessToken, checkout_url: sessData.url });
   } catch (e) {
     console.error("pay/checkout error", e && e.message);
-    return json({ ok: false, error: "checkout_failed" }, 500);
+    return J({ ok: false, error: "checkout_failed" }, 500);
   }
 }
