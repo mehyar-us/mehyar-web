@@ -61,6 +61,23 @@ async function verifyStripeSignature(rawBody, sigHeader, secret) {
   return diff === 0;
 }
 
+// ── Invoice → subscription id ────────────────────────────────────────────
+// Stripe API version 2026-08-26.dahlia moved the invoice's subscription
+// association off the top-level `subscription` field: it now lives at
+// parent.subscription_details.subscription (verified 2026-09-20 against a
+// live invoice.payment_succeeded event — the top-level field is absent and
+// the renewal/past-due branches silently no-op'd). Read both locations so
+// the lifecycle branches work on old and new API versions.
+function invoiceSubscriptionId(inv) {
+  if (!inv) return null;
+  if (inv.subscription) return String(inv.subscription);
+  const p = inv.parent;
+  if (p && p.subscription_details && p.subscription_details.subscription) {
+    return String(p.subscription_details.subscription);
+  }
+  return null;
+}
+
 // ── Fulfillment hooks ────────────────────────────────────────────────────
 const fulfillHooks = {
   // Full AI Website Evaluation. Port of the legacy webhook's behavior:
@@ -435,7 +452,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       // products treat paid_at within 40 days + subscription_status active
       // as current; every successful invoice bumps paid_at.
       const inv = (event.data && event.data.object) ? event.data.object : {};
-      const subId = inv.subscription ? String(inv.subscription) : null;
+      const subId = invoiceSubscriptionId(inv);
       if (subId) {
         try {
           await db.prepare(
@@ -464,7 +481,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       // alert cron stops sending until billing is current. Marketing
       // unsubscribe NEVER lands here — only billing state does.
       const inv = (event.data && event.data.object) ? event.data.object : {};
-      const subId = inv.subscription ? String(inv.subscription) : null;
+      const subId = invoiceSubscriptionId(inv);
       if (subId) {
         try {
           await db.prepare(

@@ -32,7 +32,6 @@
 //  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
 //  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
 //  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
-//  25. PillGuard — https://pillguard.mehyar.us (FDA recall watch for your medications: free scan, $9 full report, $2.99/mo alerts)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -345,18 +344,6 @@ id: "hustlekit",
       "The addresses you look up, your email address if you subscribe or buy (for delivery and receipts), the flood reports generated for you, and checkout records.",
     whatWeDelete:
       "Looked-up addresses, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "pillguard",
-    name: "PillGuard",
-    url: "https://pillguard.mehyar.us",
-    tagline: "FDA recall watch for your medications.",
-    icon: ShieldCheck,
-    inAppPath: "/report.html (manage alerts) and /unsubscribe.html",
-    whatWeCollect:
-      "Your email address and the medication list you enter, the FDA recall reports generated for you, watchlist alert preferences, and checkout records.",
-    whatWeDelete:
-      "Email address, medication list, watchlist rows, generated reports, and purchase records tied to your email. Deletion via the in-app unsubscribe page or the email fallback within 14 days.",
   },
 ];
 

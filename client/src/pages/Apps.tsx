@@ -426,23 +426,6 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/floodlens-logo.png",
     accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
   },
-  {
-    id: "pillguard",
-    name: "PillGuard",
-    url: "https://pillguard.mehyar.us",
-    tagline: "Your medications, watched for FDA recalls 24/7.",
-    description:
-      "Enter your medications once and PillGuard watches the FDA recall database around the clock. A $9 one-time report lists every Class I and II recall on record for your meds; a $2.99/month watch plan emails you the moment a new recall hits.",
-    audience: "Anyone who takes daily prescription medications and wants to know about FDA recalls before they become a problem.",
-    highlights: [
-      "Full FDA recall report for your medications — $9 one-time",
-      "24/7 watch plan with instant Class I & II email alerts — $2.99/mo",
-      "Human review holds every Class I alert before it sends",
-      "Free scan shows your recall exposure in seconds",
-    ],
-    logo: "/assets/pillguard-logo.png",
-    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
-  },
 ];
 
 const buildPillars = [
@@ -684,7 +667,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, PillGuard), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens), and the request form.
           </p>
         </div>
       </section>
