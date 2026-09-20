@@ -66,8 +66,11 @@ function pointQueryUrl(base, layer, lon, lat, outFields) {
   return q.toString();
 }
 
+// NOTE: VERSION_ID is NOT in this list — verified live 2026-09-20 that
+// requesting it makes the layer-28 query fail ("Failed to execute query").
+// It was informational only; nothing downstream reads it.
 const ZONE_FIELDS =
-  "FLD_ZONE,ZONE_SUBTY,SFHA_TF,DFIRM_ID,STATIC_BFE,DEPTH,VELOCITY,SOURCE_CIT,VERSION_ID";
+  "FLD_ZONE,ZONE_SUBTY,SFHA_TF,DFIRM_ID,STATIC_BFE,DEPTH,VELOCITY,SOURCE_CIT";
 const PANEL_FIELDS = "FIRM_PAN,DFIRM_ID,EFF_DATE,ST_FIPS,PANEL,SUFFIX";
 
 // Liveness probe against one base. Returns {ok, ms, mapName?, error?}.
@@ -123,7 +126,6 @@ export async function femaZoneLookup(lat, lon) {
           depth: attrs.DEPTH ?? null,
           velocity: attrs.VELOCITY ?? null,
           source_cit: attrs.SOURCE_CIT ?? null,
-          version_id: attrs.VERSION_ID ?? null,
         },
         panel,
       };
