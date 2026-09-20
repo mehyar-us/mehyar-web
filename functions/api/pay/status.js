@@ -90,5 +90,17 @@ export async function onRequestGet({ request, env }) {
       out.ready_at = order.ready_at || null;
     }
   }
+  // PillGuard: surface the order status so the satellite success page
+  // (pillguard.mehyar.us/success?token=) can stop polling and show the
+  // "View my report" link the moment the report is ready.
+  if (row.fulfillment === "pillguard") {
+    let order = null;
+    try {
+      order = await db.prepare(
+        "SELECT status FROM pillguard_orders WHERE access_token = ?"
+      ).bind(token).first();
+    } catch { /* table missing pre-migration */ }
+    if (order) out.order_status = order.status;
+  }
   return json(out);
 }
