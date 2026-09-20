@@ -146,6 +146,10 @@ const sections: Section[] = [
             <div className="font-semibold">FloodLens — <a className="text-brand-700 underline dark:text-brand-100" href="https://floodlens.mehyar.us" target="_blank" rel="noreferrer">floodlens.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Free FEMA flood-zone lookups with plain-English risk and typical insurance costs — $19 one-time for the full 10-page report, $39 for a three-property pack.</div>
           </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">PillGuard — <a className="text-brand-700 underline dark:text-brand-100" href="https://pillguard.mehyar.us" target="_blank" rel="noreferrer">pillguard.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Free FDA recall scan for your medications — $9 one-time for the full recall report, $2.99/month for 24/7 watch alerts on new recalls.</div>
+          </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and white-label hosted PWAs under <code>connectree-*</code> / <code>blue-apple-space-*</code>.</div>
