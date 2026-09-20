@@ -106,7 +106,18 @@ async function storeLookup(db, { token, address, normalized, lat, lon, gh, zi, b
     zi.zone, zi.zone_subtype, zi.sfha, zi.risk, zi.risk_plain, zi.band,
     bfe, dfirm_id, firm_pan, mapEffective, queriedAt, degraded ? 1 : 0, ip
   ).run();
-  return db.prepare("SELECT * FROM floodlens_lookups WHERE token = ?").bind(token).first();
+  // D1 read-after-write can be eventually consistent across connections; if
+  // the SELECT misses, synthesize the row from the inputs we just wrote.
+  const row = await db.prepare("SELECT * FROM floodlens_lookups WHERE token = ?").bind(token).first();
+  if (row) return row;
+  return {
+    token, address, normalized, lat, lon, geohash: gh,
+    zone: zi.zone, zone_subtype: zi.zone_subtype, sfha: zi.sfha,
+    risk: zi.risk, risk_plain: zi.risk_plain, band: zi.band,
+    bfe, dfirm_id, firm_pan, data_as_of: mapEffective,
+    queried_at: queriedAt, degraded: degraded ? 1 : 0, ip,
+    created_at: new Date().toISOString(),
+  };
 }
 
 export async function onRequestPost({ request, env }) {
