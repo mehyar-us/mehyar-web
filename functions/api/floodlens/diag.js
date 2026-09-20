@@ -37,18 +37,6 @@ export async function onRequestGet({ request, env }) {
       t(() => { const z = fema.zone ? zoneInfo(fema.zone.fld_zone, fema.zone.zone_subty) : zoneInfo(null, null); return { val: z, note: z.zone }; }));
     const mapEff = await mark("effDateToIso", () =>
       t(() => effDateToIso(fema.panel && fema.panel.eff_date)).then((r) => ({ ...r, note: String(r.val), val: r.val })));
-    // Raw FEMA layer introspection: what does /28/query actually return?
-    await mark("femaRaw", () =>
-      t(async () => {
-        const base = "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer";
-        const layersR = await fetch(base + "/layers?f=json", { headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }, signal: AbortSignal.timeout(15000) });
-        const layersJ = await layersR.json().catch(() => null);
-        const layers = layersJ && Array.isArray(layersJ.layers) ? layersJ.layers.map((l) => l.id + ":" + l.name).slice(0, 40) : ("layers_status_" + layersR.status);
-        const q = base + "/28/query?geometry=" + geo.lon + "," + geo.lat + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE&returnGeometry=false&f=json";
-        const qr = await fetch(q, { headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }, signal: AbortSignal.timeout(15000) });
-        const qb = await qr.text();
-        return { val: null, note: "q28_status=" + qr.status + " body=" + qb.slice(0, 200) + " | layers=" + JSON.stringify(layers).slice(0, 300) };
-      }));
     const token = "diag" + randomToken(8);
     await mark("storeLookup", () =>
       t(() => db.prepare(
