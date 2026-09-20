@@ -28,7 +28,7 @@ export async function onRequestGet({ request, env }) {
     return json({ ok: false, error: "db_unavailable" }, 500);
   }
   const row = await db.prepare(
-    "SELECT p.status, p.product_id, p.email, p.paid_at, p.metadata_json " +
+    "SELECT p.id, p.status, p.product_id, p.email, p.paid_at, p.metadata_json " +
     "FROM billing_payments p WHERE p.access_token = ? LIMIT 1"
   ).bind(token).first();
   if (!row) {
@@ -38,7 +38,7 @@ export async function onRequestGet({ request, env }) {
   try {
     meta = JSON.parse(row.metadata_json || "{}") || {};
   } catch { /* keep empty */ }
-  return json({
+  const out = {
     ok: true,
     paid: row.status === "paid",
     status: row.status,
@@ -47,5 +47,23 @@ export async function onRequestGet({ request, env }) {
     paid_at: row.paid_at || null,
     kid_name: typeof meta.kid_name === "string" ? meta.kid_name.slice(0, 60) : null,
     theme: typeof meta.theme === "string" ? meta.theme.slice(0, 60) : null,
-  });
+  };
+  // FloodLens: surface fulfillment readiness so the satellite success page
+  // (floodlens.mehyar.us/success.html?token=) can poll and show the download
+  // link the moment the report is ready.
+  if (row.product_id === "floodlens-report" || row.product_id === "floodlens-3pack") {
+    let order = null;
+    try {
+      order = await db
+        .prepare("SELECT status FROM floodlens_orders WHERE payment_id = ?")
+        .bind(String(row.id))
+        .first();
+    } catch { /* table missing pre-migration */ }
+    out.order_status = order ? order.status : "pending";
+    out.report_ready = order && order.status === "ready";
+    out.download_url = out.report_ready
+      ? `https://mehyar.us/api/floodlens/download?token=${encodeURIComponent(token)}`
+      : null;
+  }
+  return json(out);
 }

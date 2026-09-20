@@ -26,6 +26,7 @@ import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
 import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
 import { fulfillUnlockLink } from "../_shared/fulfillUnlockLink.js";
+import { fulfillFloodlens } from "../_shared/fulfillFloodlens.js";
 import { fulfillWattwise } from "../_shared/fulfill-wattwise.js";
 import { fulfillTaxtrim } from "../_shared/fulfillTaxtrim.js";
 import { fulfillPillguard } from "../_shared/fulfillPillguard.js";
@@ -276,6 +277,16 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillPillguard({ db, env, waitUntil, sendEmail }, payment, sess);
   },
+  // FloodLens flood-zone reports (floodlens-report, floodlens-3pack).
+  // Creates exactly one floodlens_orders row per payment (idempotent on
+  // payment_id), unifies billing_payments.access_token onto the order token,
+  // then in the background: one Workers AI narration call, renders the
+  // 10-page PDF, stores it in the FLOODLENS_REPORTS R2 bucket, and emails
+  // the buyer the token-gated download link with one-click unsubscribe.
+  async floodlens({ db, env, waitUntil }, payment, sess) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    return fulfillFloodlens({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -314,7 +325,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(

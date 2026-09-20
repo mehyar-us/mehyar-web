@@ -107,6 +107,38 @@ const orderHooks = {
   async none() {
     return { orderExtra: { accessToken: randomHex(32) }, metadataExtra: {} };
   },
+
+  // FloodLens reports. params: { lookup_token } for the single report,
+  // { lookup_tokens: "t1,t2,t3" | [t1,t2,t3] } for the 3-pack.
+  // Validates every token exists in floodlens_lookups so fulfillment can
+  // never invent a report. metadata_json keeps the flat params, which the
+  // fulfillment hook reads (flat or nested under inputs).
+  async floodlens(db, product, { params }) {
+    const is3 = product.id === "floodlens-3pack";
+    const raw = is3 ? params.lookup_tokens : params.lookup_token;
+    const tokens = (Array.isArray(raw) ? raw : String(raw || "").split(/[,\s]+/))
+      .map((s) => String(s).trim())
+      .filter((t) => t.length >= 16)
+      .slice(0, 3);
+    if (tokens.length === 0) {
+      return { error: is3 ? "missing_input:lookup_tokens" : "missing_input:lookup_token" };
+    }
+    if (is3 && tokens.length !== 3) {
+      return { error: "invalid_input:lookup_tokens" };
+    }
+    const found = await db
+      .prepare(`SELECT token FROM floodlens_lookups WHERE token IN (${tokens.map(() => "?").join(",")})`)
+      .bind(...tokens)
+      .all();
+    const have = new Set((found.results || []).map((r) => r.token));
+    if (tokens.some((t) => !have.has(t))) {
+      return { error: is3 ? "invalid_input:lookup_tokens" : "invalid_input:lookup_token" };
+    }
+    return {
+      orderExtra: { accessToken: randomHex(32) },
+      metadataExtra: is3 ? { lookup_tokens: tokens.join(",") } : { lookup_token: tokens[0] },
+    };
+  },
 };
 
 export async function onRequestPost({ request, env }) {
