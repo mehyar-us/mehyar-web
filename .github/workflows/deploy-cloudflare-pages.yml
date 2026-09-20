@@ -95,6 +95,12 @@ jobs:
               # are now secret_text dashboard vars (set via wrangler pages
               # secret put) — they survive deploys and must NOT be re-injected
               # here as plain_text [vars].
+              # 2026-09-20: CARERANK_UNSUB_SECRET (signed unsubscribe) is
+              # re-injected here on every deploy after the 05:15Z wipe.
+              # (Fresh secret generated 2026-09-20, stored as Actions secret.)
+              # A name must live in ONLY ONE place: project secret_text XOR
+              # toml [vars] — the deploy API rejects duplicate binding names.
+              "CARERANK_UNSUB_SECRET": os.environ.get("SECRET_CARERANK_UNSUB", ""),
           }
           with open("wrangler.toml", "r") as f:
               lines = f.readlines()
@@ -148,6 +154,7 @@ jobs:
           SECRET_TURNSTILE: ${{ secrets.TURNSTILE_SECRET_KEY }}
           SECRET_CRM_ID: ${{ secrets.CRM_ACCESS_CLIENT_ID }}
           SECRET_SESSION: ${{ secrets.ADMIN_SESSION_SECRET }}
+          SECRET_CARERANK_UNSUB: ${{ secrets.CARERANK_UNSUB_SECRET }}
       - name: Verify production runtime client config
         run: |
           CONFIG_JSON="$(curl -fsS https://mehyar.us/api/client-config)"
