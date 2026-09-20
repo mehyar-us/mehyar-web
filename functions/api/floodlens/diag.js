@@ -40,15 +40,21 @@ export async function onRequestGet({ request, env }) {
     // Raw FEMA layer introspection: what does /28/query actually return?
     await mark("femaRaw", () =>
       t(async () => {
+        const UA5 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
         const base = "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer";
-        const layersR = await fetch(base + "/layers?f=json", { headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }, signal: AbortSignal.timeout(15000) });
-        const layersJ = await layersR.json().catch(() => null);
-        const layers = layersJ && Array.isArray(layersJ.layers) ? layersJ.layers.map((l) => l.id + ":" + l.name).slice(0, 40) : ("layers_status_" + layersR.status);
+        const out = [];
+        const lr = await fetch(base + "/layers?f=json", { headers: { "user-agent": UA5 }, signal: AbortSignal.timeout(15000) });
+        const lj = await lr.json().catch(() => null);
+        out.push("layers_status=" + lr.status + " ids=" + (lj && Array.isArray(lj.layers) ? lj.layers.map((l) => l.id + ":" + l.name).slice(0, 12).join(",") : "n/a"));
+        const l28 = await fetch(base + "/28?f=json", { headers: { "user-agent": UA5 }, signal: AbortSignal.timeout(15000) });
+        const l28j = await l28.json().catch(() => null);
+        out.push("layer28_status=" + l28.status + " name=" + (l28j && l28j.name) + " err=" + (l28j && l28j.error ? JSON.stringify(l28j.error).slice(0, 120) : "none"));
         const q = base + "/28/query?geometry=" + geo.lon + "," + geo.lat + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE&returnGeometry=false&f=json";
-        const qr = await fetch(q, { headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }, signal: AbortSignal.timeout(15000) });
+        const qr = await fetch(q, { headers: { "user-agent": UA5 }, signal: AbortSignal.timeout(15000) });
         const qb = await qr.text();
-        return { val: null, note: "q28_status=" + qr.status + " body=" + qb.slice(0, 200) + " | layers=" + JSON.stringify(layers).slice(0, 300) };
-      }));
+        out.push("q28_status=" + qr.status + " body=" + qb.slice(0, 250));
+        return out.join(" || ");
+      }).then((r) => ({ val: null, ms: r.ms, note: r.val })));
     const token = "diag" + randomToken(8);
     await mark("storeLookup", () =>
       t(() => db.prepare(

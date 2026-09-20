@@ -269,8 +269,6 @@ export function rankTop(answers, n = 10) {
     return {
       ccn: String(f.ccn || ""),
       name: String(f.name || ""),
-      address: f.address || null,
-      ownership: f.ownership || null,
       city: f.city || null,
       state: f.state || null,
       zip: f.zip || null,
@@ -278,7 +276,6 @@ export function rankTop(answers, n = 10) {
       score: typeof r.score === "number" ? Math.round(r.score) : null,
       distance_miles: distMi,
       data_as_of: f.data_as_of || null,
-      factors: Array.isArray(r.factors) ? r.factors : [],
       facts: {
         overall_rating: f.overall_rating,
         staffing_rating: f.staffing_rating,

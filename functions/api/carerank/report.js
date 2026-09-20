@@ -85,12 +85,12 @@ export async function onRequestGet({ request, env }) {
           return {
             facility: {
               name: String(f.name || ""),
-              address: f.address || null,
+              address: null, // CMS provider data does not publish street addresses
               city: f.city || null,
               state: f.state || null,
               zip: f.zip || null,
               phone: f.phone || null,
-              ownership: f.ownership || null,
+              ownership: null, // not published in the CMS extract we ship
               beds: typeof facts.beds === "number" ? facts.beds : null,
               overall_rating: typeof facts.overall_rating === "number" ? facts.overall_rating : null,
               staffing_rating: typeof facts.staffing_rating === "number" ? facts.staffing_rating : null,
@@ -100,7 +100,7 @@ export async function onRequestGet({ request, env }) {
                 : (typeof f.distance_miles === "number" ? f.distance_miles : null),
             },
             score: typeof f.score === "number" ? f.score : null,
-            factors: Array.isArray(f.factors) ? f.factors : [],
+            factors: [],
             ai_fit: Array.isArray(f.fit) ? f.fit : [],
             ai_watchouts: Array.isArray(f.watchout) ? f.watchout : [],
           };
