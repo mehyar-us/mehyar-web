@@ -16,11 +16,23 @@
 // initOrder hook below; the audit_report hook mirrors the legacy
 // /api/audit/full-report/checkout behavior.
 
+// CORS: satellite sites (e.g. puretap.mehyar.us) call this endpoint from
+// the browser, so it must answer preflights and allow cross-origin POSTs.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "content-type",
+};
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
+    headers: { "content-type": "application/json", "cache-control": "no-store", ...CORS },
   });
+}
+
+export async function onRequestOptions() {
+  return new Response(null, { status: 204, headers: CORS });
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -1,20 +1,30 @@
 // functions/api/pay/status.js
 // GET /api/pay/status?token=... — READ-ONLY payment status check.
 //
-// Lets satellite products (e.g. Crayon Kid on crayonkid.mehyar.us) verify a
+// Lets satellite products (e.g. PureTap on puretap.mehyar.us) verify a
 // purchase server-side before delivering personalized goods. The token is the
 // payment's access_token (unguessable, per-purchase). Returns whether the
 // payment is paid plus the product id, buyer email, and any checkout params
-// (kid_name/theme for Crayon Kid) stored in metadata_json.
+// stored in metadata_json.
+//
+// For fulfillment='puretap' orders, also returns the token-gated report_url
+// and pdf_url once the report is ready, and mirrors the puretap_orders status
+// ('paid' | 'generating' | 'ready' | 'failed') into `status`.
 //
 // This endpoint changes nothing about checkout/webhook/download — it only
-// reads billing_payments.
+// reads billing_payments (+ puretap_orders for the report link).
+
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS" };
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
+    headers: { "content-type": "application/json", "cache-control": "no-store", ...CORS },
   });
+}
+
+export async function onRequestOptions() {
+  return new Response(null, { status: 204, headers: CORS });
 }
 
 export async function onRequestGet({ request, env }) {
@@ -28,8 +38,9 @@ export async function onRequestGet({ request, env }) {
     return json({ ok: false, error: "db_unavailable" }, 500);
   }
   const row = await db.prepare(
-    "SELECT p.status, p.product_id, p.email, p.paid_at, p.metadata_json " +
-    "FROM billing_payments p WHERE p.access_token = ? LIMIT 1"
+    "SELECT p.status, p.product_id, p.email, p.paid_at, p.metadata_json, b.fulfillment " +
+    "FROM billing_payments p LEFT JOIN billing_products b ON b.id = p.product_id " +
+    "WHERE p.access_token = ?"
   ).bind(token).first();
   if (!row) {
     return json({ ok: false, error: "not_found" }, 404);
@@ -38,7 +49,7 @@ export async function onRequestGet({ request, env }) {
   try {
     meta = JSON.parse(row.metadata_json || "{}") || {};
   } catch { /* keep empty */ }
-  return json({
+  const out = {
     ok: true,
     paid: row.status === "paid",
     status: row.status,
@@ -47,5 +58,26 @@ export async function onRequestGet({ request, env }) {
     paid_at: row.paid_at || null,
     kid_name: typeof meta.kid_name === "string" ? meta.kid_name.slice(0, 60) : null,
     theme: typeof meta.theme === "string" ? meta.theme.slice(0, 60) : null,
-  });
+  };
+  // PureTap: surface the report links and the generation status so
+  // success.html can stop polling and show the download buttons.
+  if (row.fulfillment === "puretap") {
+    let order = null;
+    try {
+      order = await db.prepare(
+        "SELECT status, ready_at FROM puretap_orders WHERE access_token = ?"
+      ).bind(token).first();
+    } catch { /* table missing pre-migration */ }
+    const base = "https://puretap.mehyar.us";
+    out.report_url = base + "/api/report?token=" + encodeURIComponent(token);
+    out.pdf_url = base + "/api/report/pdf?token=" + encodeURIComponent(token);
+    if (order) {
+      // 'ready' / 'failed' are the states the buyer's success page acts on;
+      // 'paid'/'generating' keep it polling.
+      out.status = order.status;
+      out.paid = order.status === "ready" || order.status === "generating" || row.status === "paid";
+      out.ready_at = order.ready_at || null;
+    }
+  }
+  return json(out);
 }
