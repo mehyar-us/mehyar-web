@@ -209,7 +209,11 @@ export async function fulfillFloodlens({ db, env, waitUntil, sendEmail }, paymen
       return { ok: false, order_id: ins.meta.last_row_id, error: "lookup_not_found" };
     }
 
-    const orderToken = randomToken(32);
+    // Token unification (TicketBeat pattern): the ORDER reuses the payment's
+    // access_token — it is NEVER rotated. Stripe baked this token into the
+    // success_url at checkout; rotating it orphans the success page's polling
+    // token (404 forever) and the download link.
+    const orderToken = payment.access_token || randomToken(32);
     const first = lookups[0];
     const ins = await db.prepare(
       "INSERT INTO floodlens_orders (payment_id, token, product_id, email, lookup_token, address, zone, status, inputs_json) " +
@@ -220,10 +224,6 @@ export async function fulfillFloodlens({ db, env, waitUntil, sendEmail }, paymen
       JSON.stringify({ lookup_tokens: lookups.map((l) => l.token) })
     ).run();
     const orderId = ins.meta.last_row_id;
-
-    // Token unification: one token gates every buyer surface.
-    await db.prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
-      .bind(orderToken, payment.id).run();
 
     const run = async () => {
       try {
