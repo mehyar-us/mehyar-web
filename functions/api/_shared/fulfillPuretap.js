@@ -47,9 +47,12 @@ export async function fulfillPuretap({ db, env, waitUntil, sendEmail }, payment,
   const paymentId = "pi_" + String(payment.id || "");
   const productId = String(payment.product_id || "puretap-report");
 
+  // checkout.js stores product params FLAT in metadata_json ({"zip":...});
+  // accept a legacy nested .params wrapper too, for robustness.
   let inputs = {};
   try {
-    inputs = JSON.parse(payment.metadata_json || "{}").params || {};
+    const meta = JSON.parse(payment.metadata_json || "{}") || {};
+    inputs = (meta.params && typeof meta.params === "object" ? meta.params : meta) || {};
   } catch { /* keep empty */ }
   const zip = typeof inputs.zip === "string" ? inputs.zip.slice(0, 10) : null;
   const pwsid = typeof inputs.pwsid === "string" ? inputs.pwsid.slice(0, 16) : null;
@@ -111,7 +114,14 @@ export async function fulfillPuretap({ db, env, waitUntil, sendEmail }, payment,
       const res = await fetch(PURETAP_BASE + "/api/report/generate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ order_token: orderToken }),
+        // zip/email ride along as fallbacks: the PureTap generate endpoint
+        // prefers the puretap_orders row but accepts body fields when the
+        // row is missing them (defense against metadata-shape drift).
+        body: JSON.stringify({
+          order_token: orderToken,
+          zip: zip || undefined,
+          email: email || undefined,
+        }),
       });
       genOk = res.ok;
       if (genOk) {
