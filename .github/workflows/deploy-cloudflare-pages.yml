@@ -85,6 +85,20 @@ jobs:
               # are now secret_text dashboard vars (set via wrangler pages
               # secret put) — they survive deploys and must NOT be re-injected
               # here as plain_text [vars].
+              # 2026-09-20: incident — an ad-hoc deploy wiped ALL project
+              # secrets (STRIPE_SECRET_KEY etc.), killing checkout
+              # platform-wide. Self-heal: re-inject every secret we hold as a
+              # GitHub Actions secret on every deploy. Absent Actions secrets
+              # are skipped (os.environ.get), so this never breaks the build.
+              "STRIPE_TEST_SECRET_KEY": os.environ.get("SECRET_STRIPE_TEST", ""),
+              "STRIPE_WEBHOOK_SECRET_TEST2": os.environ.get("SECRET_WH_TEST2", ""),
+              "HUSTLEKIT_RELAY_SECRET": os.environ.get("SECRET_HUSTLEKIT", ""),
+              "CARERANK_UNSUB_SECRET": os.environ.get("SECRET_CARERANK_UNSUB", ""),
+              # Live keys are NOT in Actions secrets (Mayor enters them in the
+              # dashboard). If he adds them as Actions secrets later, deploys
+              # pick them up automatically.
+              "STRIPE_SECRET_KEY": os.environ.get("SECRET_STRIPE_LIVE", ""),
+              "STRIPE_WEBHOOK_SECRET": os.environ.get("SECRET_WH_LIVE", ""),
           }
           with open("wrangler.toml", "r") as f:
               lines = f.readlines()
@@ -138,6 +152,12 @@ jobs:
           SECRET_TURNSTILE: ${{ secrets.TURNSTILE_SECRET_KEY }}
           SECRET_CRM_ID: ${{ secrets.CRM_ACCESS_CLIENT_ID }}
           SECRET_SESSION: ${{ secrets.ADMIN_SESSION_SECRET }}
+          SECRET_STRIPE_TEST: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          SECRET_WH_TEST2: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST2 }}
+          SECRET_HUSTLEKIT: ${{ secrets.HUSTLEKIT_RELAY_SECRET }}
+          SECRET_CARERANK_UNSUB: ${{ secrets.CARERANK_UNSUB_SECRET }}
+          SECRET_STRIPE_LIVE: ${{ secrets.STRIPE_SECRET_KEY }}
+          SECRET_WH_LIVE: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       - name: Verify production runtime client config
         run: |
           CONFIG_JSON="$(curl -fsS https://mehyar.us/api/client-config)"
