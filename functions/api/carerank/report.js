@@ -31,6 +31,14 @@ export async function onRequestGet({ request, env }) {
     if (!db || typeof db.prepare !== "function") {
       return json({ ok: false, error: "db_unavailable" }, 500);
     }
+    // Ensure the orders table exists (created lazily by the webhook on first
+    // paid order; the report endpoint must not 500 before that happens).
+    try {
+      const { ensureCarerankSchema } = await import("../_shared/fulfillCarerank.js");
+      await ensureCarerankSchema(db);
+    } catch (e) {
+      console.error("carerank report ensureSchema failed", e && e.message);
+    }
     const url = new URL(request.url);
     const token = (url.searchParams.get("token") || "").trim();
     if (!token || token.length < 16) {

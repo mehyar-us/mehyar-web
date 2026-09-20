@@ -373,26 +373,7 @@ const managedApps: ManagedApp[] = [
       "Per-facility strengths, red flags, and what to ask on the tour",
     ],
     logo: "/assets/carerank-logo.png",
-    accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",
-  },
-  {
-    id: "puretap",
-    name: "PureTap",
-    url: "https://puretap.mehyar.us",
-    tagline: "Is your tap water safe?",
-    description:
-      "Enter your ZIP and get a free tap-water safety verdict drawn from official EPA data. $19 one-time unlocks the full decoded water report — every contaminant explained in plain English, with what each finding means and what to do about it.",
-    audience: "Homeowners, renters, and parents who want to know what's actually in their tap water.",
-    highlights: [
-      "Free ZIP-based tap-water safety verdict from official EPA data",
-      "$19 one-time: the full decoded report — every contaminant in plain English",
-      "Deterministic, source-backed findings — no invented numbers, ever",
-      "Clear next steps for each finding: what it means and what to do about it",
-    ],
-    logo: "/assets/puretap-logo.png",
-    accentClass: "from-blue-100 to-white dark:from-blue-900 dark:to-blue-950",
-  },
-];
+    accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",  },];
 
 const buildPillars = [
   {
@@ -633,7 +614,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank), and the request form.
           </p>
         </div>
       </section>

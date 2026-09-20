@@ -271,6 +271,10 @@ function fromAddress() {
   return { from: "team@mehyar.us", fromName: "CareRank" };
 }
 
+export async function ensureCarerankSchema(db) {
+  await ensureSchema(db);
+}
+
 async function ensureSchema(db) {
   await db.prepare(
     "CREATE TABLE IF NOT EXISTS carerank_orders (" +
