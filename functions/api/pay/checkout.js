@@ -221,6 +221,9 @@ export async function onRequestPost({ request, env }) {
     if (billingMode === "subscription") {
       // Trusted interval only: month (default) or year.
       sp.set("line_items[0][price_data][recurring][interval]", product.billing_interval === "year" ? "year" : "month");
+      // Stamp the subscription object with our payment_id so invoice events
+      // (which only carry the subscription id) can be joined back to the row.
+      sp.set("subscription_data[metadata][payment_id]", String(paymentId));
     }
     sp.set("line_items[0][quantity]", "1");
     sp.set("metadata[payment_id]", String(paymentId));

@@ -250,10 +250,6 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized household preparedness playbook — calm, practical, no fear-mongering.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">BeachCall — <a className="text-brand-700 underline dark:text-brand-100" href="https://beachcall.mehyar.us" target="_blank" rel="noreferrer">beachcall.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Daily go/no-go beach verdicts with best-hours windows — free for one beach a day, $9 summer pass for all your beaches.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>
