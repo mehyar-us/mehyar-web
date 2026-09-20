@@ -33,16 +33,18 @@
 //      ratings, ever.
 //   4. On generation failure: order marked 'failed', NO email is sent; the
 //      buyer's success page polls /api/carerank/report and shows retry info.
-//   5. On success: the buyer is emailed (from team@mehyar.us until
-//      carerank.mehyar.us is onboarded on both ESPs — standing rule) the
-//      token-gated report link + receipt, with a one-click unsubscribe link
-//      in the footer and RFC 8058 List-Unsubscribe headers.
+//   5. On success: the deliverable email is STAGED (not sent) into
+//      carerank_outbox — the no-send guard in ./carerankNoSend.js — with the
+//      token-gated report link + receipt, one-click unsubscribe link and
+//      RFC 8058 headers. The buyer gets their report in-browser via the
+//      success page, which polls /api/carerank/report.
 
 import {
   carerankUnsubSecret,
   carerankUnsubUrl,
   carerankListUnsubscribeHeaders,
 } from "./carerankUnsub.js";
+import { maybeSendCarerankEmail } from "./carerankNoSend.js";
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
@@ -402,7 +404,7 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
       const reportUrl = `${BASE_URL}/success.html?token=${accessToken}`;
       const apiUrl = `https://mehyar.us/api/carerank/report?token=${accessToken}`;
       const unsubUrl = await carerankUnsubUrl(env, payment.email);
-      if (!unsubUrl) console.error("fulfillCarerank: CARERANK_UNSUB_SECRET missing — email sent without one-click link");
+      if (!unsubUrl) console.error("fulfillCarerank: CARERANK_UNSUB_SECRET missing — email staged without one-click link");
       const receipt = `$${((payment.amount_cents || 2900) / 100).toFixed(2)}`;
       const subject = `Your ${productName} is ready`;
       const text =
@@ -422,7 +424,9 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
         `<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0">` +
         `<p style="color:#9ca3af;font-size:12px;">Don't want CareRank emails? ` +
         (unsubUrl ? `<a href="${unsubUrl}">Unsubscribe in one click</a>.` : `Reply STOP and we'll remove you.`) + `</p>`;
-      const result = await sendEmail(env, {
+      // STAGING GUARD (Mayor's no-send rule): stored in carerank_outbox for
+      // audit; nothing is sent until he explicitly approves.
+      const emailArgs = {
         from,
         fromName,
         to: payment.email,
@@ -431,9 +435,14 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
         text,
         html,
         headers: carerankListUnsubscribeHeaders(unsubUrl),
-      });
+      };
+      const result = await maybeSendCarerankEmail(
+        db,
+        () => sendEmail(env, emailArgs),
+        { kind: "deliverable", unsubUrl, args: emailArgs }
+      );
       if (!result.ok) console.error("fulfillCarerank deliverable email failed", productId, result.error);
-      return { emailed: !!result.ok };
+      return { emailed: !!result.ok, email_staged: !!result.staged };
     } catch (e) {
       // Generation failure: mark failed, do NOT email. The buyer's success
       // page polls /api/carerank/report, sees status=failed, and shows retry

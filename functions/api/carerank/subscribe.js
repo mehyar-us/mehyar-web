@@ -8,15 +8,16 @@
 //   2. If the email is in carerank_suppressions → {ok:false, error:"unsubscribed"}.
 //   3. Rate-limit by IP: max 5/day (D1 table carerank_rate_limits).
 //   4. Upsert carerank_leads (email UNIQUE, brand='carerank', status='active').
-//   5. Email the buyer the free blurred-result link with an unsubscribe footer
-//      (from team@mehyar.us until carerank.mehyar.us is onboarded on both
-//      ESPs — standing rule).
+//   5. STAGE (do NOT send) the free blurred-result link email into
+//      carerank_outbox with an unsubscribe footer. Sending is blocked by the
+//      Mayor's no-send rule — see ../_shared/carerankNoSend.js.
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 import {
   carerankUnsubUrl,
   carerankListUnsubscribeHeaders,
 } from "../_shared/carerankUnsub.js";
+import { maybeSendCarerankEmail } from "../_shared/carerankNoSend.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BASE_URL = "https://carerank.mehyar.us";
@@ -132,10 +133,10 @@ export async function onRequestPost({ request, env }) {
         .run();
     }
 
-    // 4. Email the free blurred-result link.
+    // 4. Stage (do NOT send) the free blurred-result link email.
     const resultsUrl = `${BASE_URL}/results.html?lead=${leadToken}`;
     const unsubUrl = await carerankUnsubUrl(env, email);
-    if (!unsubUrl) console.error("carerank subscribe: CARERANK_UNSUB_SECRET missing — email sent without one-click link");
+    if (!unsubUrl) console.error("carerank subscribe: CARERANK_UNSUB_SECRET missing — email staged without one-click link");
     const subject = "Your free CareRank shortlist preview";
     const text =
       `Thanks for taking the CareRank quiz!\n\n` +
@@ -154,7 +155,9 @@ export async function onRequestPost({ request, env }) {
       `<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0">` +
       `<p style="color:#9ca3af;font-size:12px;">Don't want CareRank emails? ` +
       (unsubUrl ? `<a href="${unsubUrl}">Unsubscribe in one click</a>.` : `Reply STOP and we'll remove you.`) + `</p>`;
-    const result = await sendCloudflareEmail(env, {
+    // STAGING GUARD (Mayor's no-send rule): the payload is stored in
+    // carerank_outbox for audit; nothing is sent until he explicitly approves.
+    const emailArgs = {
       from: "team@mehyar.us",
       fromName: "CareRank",
       to: email,
@@ -163,12 +166,17 @@ export async function onRequestPost({ request, env }) {
       text,
       html,
       headers: carerankListUnsubscribeHeaders(unsubUrl),
-    });
+    };
+    const result = await maybeSendCarerankEmail(
+      db,
+      () => sendCloudflareEmail(env, emailArgs),
+      { kind: "subscribe", unsubUrl, args: emailArgs }
+    );
     if (!result.ok) {
       console.error("carerank subscribe email failed", result.error);
       return json({ ok: true, email_ok: false, lead_token: leadToken });
     }
-    return json({ ok: true, lead_token: leadToken });
+    return json({ ok: true, lead_token: leadToken, email_staged: !!result.staged });
   } catch (e) {
     console.error("carerank subscribe failed", e && e.message);
     return json({ ok: false, error: "server_error" }, 500);
