@@ -40,6 +40,7 @@ import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
 import { fulfillSproutscore } from "../_shared/fulfillSproutscore.js";
 import { fulfillTruesketch } from "../_shared/fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "../_shared/fulfillTiktokgrowth.js";
+import { fulfillPillguard } from "../_shared/fulfillPillguard.js";
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 
 const PRODUCTS = {
@@ -54,6 +55,7 @@ const PRODUCTS = {
   truesketch: { fulfill: fulfillTruesketch, ordersTable: "truesketch_orders" },
   tiktokgrowth: { fulfill: fulfillTiktokgrowth, ordersTable: "tiktokgrowth_orders" },
   sproutscore: { fulfill: fulfillSproutscore, ordersTable: "sproutscore_orders" },
+  pillguard: { fulfill: fulfillPillguard, ordersTable: "pillguard_orders" },
 };
 
 const PROF_NAMES = {

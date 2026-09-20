@@ -408,7 +408,17 @@ export async function onRequestPost({ request, env, waitUntil }) {
             } catch {}
             const hook = fulfillHooks[fulfillment] || fulfillHooks.none;
             try {
-              await hook({ db, request, env, waitUntil }, payment, sess);
+              const result = await hook({ db, request, env, waitUntil }, payment, sess);
+              // Hooks that swallow their own errors return {ok:false} instead
+              // of throwing (silent fulfillment failure — PillGuard 2026-09-20).
+              // Record it in webhook_debug so the failure is queryable.
+              if (result && result.ok === false && !result.replay) {
+                try {
+                  await db.prepare(
+                    "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'fulfill_result', ?)"
+                  ).bind(payment.id, JSON.stringify({ fulfillment, error: result.error || "unknown" }).slice(0, 500)).run();
+                } catch {}
+              }
             } catch (e) {
               console.error("pay/webhook fulfillment failed", payment.product_id, e && e.message);
               try {
