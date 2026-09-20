@@ -28,6 +28,7 @@ import { fulfillPromptpack } from "../_shared/fulfillPromptpack.js";
 import { fulfillUnlockLink } from "../_shared/fulfillUnlockLink.js";
 import { fulfillWattwise } from "../_shared/fulfill-wattwise.js";
 import { fulfillTaxtrim } from "../_shared/fulfillTaxtrim.js";
+import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -265,6 +266,15 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     return fulfillTaxtrim({ db, env, waitUntil, sendEmail }, payment);
   },
+  // BeachCall summer pass. Creates the beachcall_orders row (idempotent on
+  // payment_id via idx_beachcall_orders_payment), unifies the access token
+  // onto the billing_payments row, upgrades the buyer's subscriber tier to
+  // paid, then emails the pass link (skipped when beachcall_suppressions
+  // holds the buyer email — order + token still work).
+  async beachcall({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillBeachCall({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -303,7 +313,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","beachcall"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
