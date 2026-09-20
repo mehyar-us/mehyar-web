@@ -91,7 +91,7 @@ function deterministicBullets(fac) {
     else watchout.push(`CMS overall rating is only ${overall}/5 — ask the admissions team what's changed since the last inspection (${asOf}).`);
   }
 
-  const health = r("health_rating");
+  const health = r("health_inspection_rating");
   if (health != null) {
     if (health >= 4) fit.push(`Health inspection rating of ${health}/5 — recent surveys found few or no serious deficiencies.`);
     else if (health <= 2) watchout.push(`Health inspection rating of ${health}/5 — read the actual CMS deficiency reports before you decide.`);
