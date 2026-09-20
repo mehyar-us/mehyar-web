@@ -30,6 +30,7 @@ import { fulfillUnlockLink } from "../_shared/fulfillUnlockLink.js";
 import { fulfillFloodlens } from "../_shared/fulfillFloodlens.js";
 import { fulfillWattwise } from "../_shared/fulfill-wattwise.js";
 import { fulfillTaxtrim } from "../_shared/fulfillTaxtrim.js";
+import { fulfillTicketBeat } from "../_shared/fulfillTicketBeat.js";
 import { fulfillPillguard } from "../_shared/fulfillPillguard.js";
 import { fulfillPuretap } from "../_shared/fulfillPuretap.js";
 import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
@@ -260,6 +261,13 @@ const fulfillHooks = {
   // meaningful and idempotent.
   async wattwise(ctx, payment, sess) {
     return fulfillWattwise(ctx, payment, sess);
+  },
+
+  // TicketBeat (ticketbeat-letter, ticketbeat-monthly). Creates the order
+  // row (idempotent per payment), and for one-time letters generates the
+  // PDF in the background then emails the buyer their personal link.
+  async ticketbeat(ctx, payment, sess) {
+    return fulfillTicketBeat(ctx, payment, sess);
   },
 
   // TaxTrim products (taxtrim-packet, taxtrim-renewal). Creates a
