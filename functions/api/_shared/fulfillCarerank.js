@@ -254,6 +254,8 @@ async function resolveFacilities(quizRaw, legacyFacilities) {
   return top.map((t) => ({
     ccn: t.ccn,
     name: t.name,
+    address: t.address || null,
+    ownership: t.ownership || null,
     score: t.score,
     distance_miles: t.distance_miles,
     data_as_of: t.data_as_of,
@@ -261,6 +263,7 @@ async function resolveFacilities(quizRaw, legacyFacilities) {
     state: t.state || null,
     zip: t.zip || null,
     phone: t.phone || null,
+    factors: Array.isArray(t.factors) ? t.factors : [],
     facts: t.facts || {},
   }));
 }
