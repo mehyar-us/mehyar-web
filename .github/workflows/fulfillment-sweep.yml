@@ -1,5 +1,8 @@
 # .github/workflows/fulfillment-sweep.yml
-# Recovery backstop for stuck AI-fulfillment orders: every 5 minutes,
+# MANUAL-ONLY fallback for stuck AI-fulfillment orders. The every-5-minute
+# schedule moved to the hustlekit-sweeper Cloudflare Worker (Cron Trigger) on
+# 2026-09-28 — cheaper and more reliable than the GitHub schedule trigger.
+# This workflow now runs only via workflow_dispatch. When run, it does:
 #   1. POST /api/pay/fulfillment-sweep on mehyar.us (fast passes: best-effort
 #      generate dispatch + exactly-once buyer emails for ready rows). The
 #      sweep returns tokens of stuck orders.
@@ -16,8 +19,8 @@
 name: fulfillment-sweep
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
+  # 2026-09-28: schedule removed — the 5-minute cadence now lives on the
+  # hustlekit-sweeper Cloudflare Worker (Cron Trigger). Manual fallback only.
   workflow_dispatch: {}
 
 concurrency:

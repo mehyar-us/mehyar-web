@@ -1,7 +1,7 @@
 // functions/api/pay/fulfillment-sweep.js
 // POST /api/pay/fulfillment-sweep — recovery backstop for stuck AI-fulfillment
-// orders. Runs on a schedule (GitHub Actions cron, every 5 min). Fully
-// automatic: no human touch, no buyer action required.
+// orders. Runs on a schedule (hustlekit-sweeper Cloudflare Worker, Cron Trigger
+// every 5 min). Fully automatic: no human touch, no buyer action required.
 //
 // Why it exists (2026-09-16): the webhook's optimistic fast path drives the
 // ~150s playbook generation inside waitUntil(). If that isolate is evicted
@@ -30,9 +30,10 @@
 //   PASS 2 — send the buyer email exactly once for ready-but-unemailed rows
 //            (atomic email_sent_at claim; claim released if the send fails).
 //
-// Auth: Authorization: Bearer <AUDIT_CRON_SECRET> — the shared internal
-// automation credential already injected into this worker's env by the
-// deploy workflow. No new secrets.
+// Auth: Authorization: Bearer <AUDIT_CRON_SECRET> (shared internal automation
+// credential, injected by the deploy workflow) or Bearer <SWEEP_DRIVER_SECRET>
+// (dedicated credential for the hustlekit-sweeper Cloudflare Worker cron
+// driver; set as a secret_text dashboard var — it survives deploys).
 //
 // Scope: hustlekit_orders today. To cover another product, add its dispatch
 // + email pair next to the HustleKit passes below.
@@ -87,8 +88,12 @@ function dispatchGenerate(waitUntil, base, row) {
 
 export async function onRequestPost({ request, env, waitUntil }) {
   const secret = env.AUDIT_CRON_SECRET || "";
+  const driverSecret = env.SWEEP_DRIVER_SECRET || "";
   const auth = request.headers.get("authorization") || "";
-  if (!secret || auth !== "Bearer " + secret) {
+  const authed =
+    (secret && auth === "Bearer " + secret) ||
+    (driverSecret && auth === "Bearer " + driverSecret);
+  if (!authed) {
     return json({ ok: false, error: "unauthorized" }, 401);
   }
   const db = env.LEADS_DB;
