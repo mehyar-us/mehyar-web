@@ -30,9 +30,7 @@ import { fulfillCarerank } from "../_shared/fulfillCarerank.js";
 import { fulfillUnlockLink } from "../_shared/fulfillUnlockLink.js";
 import { fulfillFloodlens } from "../_shared/fulfillFloodlens.js";
 import { fulfillWattwise } from "../_shared/fulfill-wattwise.js";
-import { fulfillTaxtrim } from "../_shared/fulfillTaxtrim.js";
 import { fulfillTicketBeat } from "../_shared/fulfillTicketBeat.js";
-import { fulfillPillguard } from "../_shared/fulfillPillguard.js";
 import { fulfillPuretap } from "../_shared/fulfillPuretap.js";
 import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
 import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
@@ -288,26 +286,6 @@ const fulfillHooks = {
     return fulfillTicketBeat(ctx, payment, sess);
   },
 
-  // TaxTrim products (taxtrim-packet, taxtrim-renewal). Creates a
-  // taxtrim_orders row, unifies billing_payments.access_token onto the order
-  // token, generates the packet in the background (packet SKU) or activates
-  // the annual watch (renewal SKU), then emails the buyer with a one-click
-  // TaxTrim unsubscribe. Idempotent per payment.
-  async taxtrim({ db, env, waitUntil }, payment, sess) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    return fulfillTaxtrim({ db, env, waitUntil, sendEmail }, payment);
-  },
-
-  // PillGuard recall reports + watch subscriptions. Creates the
-  // pillguard_orders row (idempotent on payment_id) / pillguard_watchlists
-  // row (idempotent on stripe_subscription_id), unifies the access token,
-  // and emails the buyer. Subscription lifecycle (renew / past-due / cancel)
-  // is mirrored in the invoice/subscription event branches below.
-  async pillguard({ db, env, waitUntil }, payment, sess) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillPillguard({ db, env, waitUntil, sendEmail }, payment, sess);
-  },
-
   // PureTap decoded water reports ($19 one-time). Creates the puretap_orders
   // row (idempotent on payment_id), unifies the access token, then asks the
   // PureTap site to generate the report in the background and emails the
@@ -401,7 +379,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","floodlens","beachcall","openseason","carerank","puretap","sproutscore"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
@@ -427,8 +405,8 @@ export async function onRequestPost({ request, env, waitUntil }) {
             try {
               const result = await hook({ db, request, env, waitUntil }, payment, sess);
               // Hooks that swallow their own errors return {ok:false} instead
-              // of throwing (silent fulfillment failure — PillGuard 2026-09-20).
-              // Record it in webhook_debug so the failure is queryable.
+              // of throwing (silent fulfillment failure). Record it in
+              // webhook_debug so the failure is queryable.
               if (result && result.ok === false && !result.replay) {
                 try {
                   await db.prepare(
@@ -462,19 +440,6 @@ export async function onRequestPost({ request, env, waitUntil }) {
         } catch (e) {
           console.error("pay/webhook renewal update failed", e && e.message);
         }
-        try {
-          // PillGuard: mirror the renewed billing window onto the watchlist
-          // so the alert cron keeps sending.
-          const line = inv.lines && inv.lines.data && inv.lines.data[0];
-          const periodEnd = line && line.period && line.period.end
-            ? new Date(line.period.end * 1000).toISOString() : null;
-          await db.prepare(
-            "UPDATE pillguard_watchlists SET status='active', current_period_end=COALESCE(?, current_period_end), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') " +
-            "WHERE stripe_subscription_id = ? AND status != 'cancelled'"
-          ).bind(periodEnd, subId).run();
-        } catch (e) {
-          console.error("pay/webhook pillguard renewal mirror failed", e && e.message);
-        }
       }
     } else if (event.type === "invoice.payment_failed") {
       // Past-due: keep the watchlist row (Stripe may recover it), but the
@@ -490,18 +455,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
         } catch (e) {
           console.error("pay/webhook past_due update failed", e && e.message);
         }
-        try {
-          await db.prepare(
-            "UPDATE pillguard_watchlists SET status='past_due', updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') " +
-            "WHERE stripe_subscription_id = ? AND status = 'active'"
-          ).bind(subId).run();
-        } catch (e) {
-          console.error("pay/webhook pillguard past_due mirror failed", e && e.message);
-        }
       }
     } else if (event.type === "customer.subscription.deleted") {
       // Subscription canceled: satellite products stop granting access.
-      // For PillGuard this is the ONLY thing that stops paid alerts.
       const sub = (event.data && event.data.object) ? event.data.object : {};
       const subId = sub.id ? String(sub.id) : null;
       if (subId) {
@@ -511,14 +467,6 @@ export async function onRequestPost({ request, env, waitUntil }) {
           ).bind(subId).run();
         } catch (e) {
           console.error("pay/webhook cancel update failed", e && e.message);
-        }
-        try {
-          await db.prepare(
-            "UPDATE pillguard_watchlists SET status='cancelled', canceled_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') " +
-            "WHERE stripe_subscription_id = ?"
-          ).bind(subId).run();
-        } catch (e) {
-          console.error("pay/webhook pillguard cancel mirror failed", e && e.message);
         }
       }
     }
