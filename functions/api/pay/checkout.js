@@ -224,7 +224,7 @@ export async function onRequestPost({ request, env }) {
     );
     // Token unification: the success page always receives ?token=. Fill any
     // {placeholders} the caller left in their override URL first (e.g.
-    // PillGuard's ?token={access_token}) using the (possibly reused) payment
+    // a satellite's ?token={access_token}) using the (possibly reused) payment
     // token; if the URL still lacks a token, append it.
     successUrl = fillTemplate(successUrl, vars);
     try {
