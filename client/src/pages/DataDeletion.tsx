@@ -28,7 +28,6 @@
 //  18. PrepGuide — https://prepguide.mehyar.us (personalized household preparedness playbook)
 //  19. OpenSeason — https://openseason.mehyar.us (hunting-season dates, free openers + $12 state packs)
 //  20. BeachCall — https://beachcall.mehyar.us (daily go/no-go beach verdicts + $9 summer pass)
-//  21. CareRank — https://carerank.mehyar.us (nursing-home shortlist: deterministic CMS-data ranking)
 //  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
 //  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
 //  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
@@ -296,18 +295,6 @@ id: "hustlekit",
       "Email address (to deliver your pass and send verdict emails), your saved beach list, your free/paid tier, and purchase records.",
     whatWeDelete:
       "Email address, saved beach list, tier, and purchase records tied to your email. Unsubscribing adds you to the product's do-not-mail list immediately. Full deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "carerank",
-    name: "CareRank",
-    url: "https://carerank.mehyar.us",
-    tagline: "Nursing-home shortlist that works for your family, not the facilities.",
-    icon: HeartHandshake,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "Email address (to deliver your free matches and paid report), the quiz answers you submit (ZIP, care priorities, needs), the ranked shortlist generated for you, and checkout records.",
-    whatWeDelete:
-      "Email address, quiz answers, generated shortlist, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
     id: "puretap",
