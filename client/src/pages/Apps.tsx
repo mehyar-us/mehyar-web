@@ -412,7 +412,7 @@ const Apps = () => {
 
       <QuickAnswer
         question="What products does MehyarSoft operate?"
-        answer="MehyarSoft builds, ships, and operates its own products — including Rizza (an AI wingman for dating-app replies) and AiMech (AI diagnostics for everyday car owners). The same playbook is offered to clients as a custom-product build engagement."
+        answer="MehyarSoft builds, ships, and operates its own portfolio of AI products — the directory below is the current lineup. The same build-and-launch playbook is offered to clients as a custom-product build engagement."
         ctaHref="/contact"
         ctaLabel="Talk about your product"
       />

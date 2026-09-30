@@ -171,7 +171,7 @@ const routeMeta = {
     '/apps': {
       title: 'Apps MehyarSoft Builds and Operates | MehyarSoft',
       description:
-        'Live apps shipped by MehyarSoft: Rizza (AI dating-app wingman) and AiMech (AI mechanic for everyday car owners). See the apps, the launch notes, and the app-launch playbook behind them.',
+        'Live apps shipped by MehyarSoft: browse the products directory, the launch notes, and the app-launch playbook behind them.',
       path: '/apps',
     },
     '/330': {
