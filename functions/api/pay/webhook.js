@@ -32,7 +32,6 @@ import { fulfillWattwise } from "../_shared/fulfill-wattwise.js";
 import { fulfillTicketBeat } from "../_shared/fulfillTicketBeat.js";
 import { fulfillPuretap } from "../_shared/fulfillPuretap.js";
 import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
-import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -314,15 +313,6 @@ const fulfillHooks = {
     await fulfillBeachCall({ db, env, waitUntil, sendEmail }, payment);
   },
 
-  // OpenSeason state packs (openseason-state-pack). Creates the order row
-  // (idempotent per payment_id), unifies the access token onto the order,
-  // registers the buyer for deadline reminders, and emails the personal
-  // pack link with a one-click unsubscribe. No pack generation — the
-  // verified packs are already seeded server-side.
-  async openseason(ctx, payment, sess) {
-    return fulfillOpenseason(ctx, payment, sess);
-  },
-
   // SproutScore daycare inspection decoder ($19 report / $29 3-pack).
   // Creates the sproutscore_orders row (idempotent on payment_id via
   // idx_sproutscore_orders_payment), reuses the payment access_token so one
@@ -370,7 +360,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","floodlens","beachcall","openseason","puretap","sproutscore"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","floodlens","beachcall","puretap","sproutscore"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(

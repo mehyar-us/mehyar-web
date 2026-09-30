@@ -19,40 +19,6 @@ interface ManagedApp {
 
 const managedApps: ManagedApp[] = [
   {
-    id: "rizza",
-    name: "Rizza",
-    url: "https://rizza.app",
-    tagline: "Your AI wingman in your pocket.",
-    description:
-      "Built on a simple idea: everyone deserves a wingman. Rizza reads the dating-app conversation, gets the vibe, and hands you replies that actually land — witty, flirty, and always you, just sharper.",
-    audience: "Anyone staring at a dating-app chat knowing the perfect reply exists but can't quite find it.",
-    highlights: [
-      "Reads the conversation and matches the vibe before it suggests anything",
-      "Witty, flirty replies that still sound like you — not a chatbot",
-      "Hands you options fast so you stop overthinking the text back",
-      "Designed for the moment of \"what do I say next,\" not enterprise workflows",
-    ],
-    logo: "/assets/rizza-logo.png",
-    accentClass: "from-brand-100 to-white dark:from-brand-900 dark:to-brand-950",
-  },
-  {
-    id: "aimech",
-    name: "AiMech",
-    url: "https://aimech.app",
-    tagline: "AI mechanic for everyday car owners.",
-    description:
-      "An intelligent diagnostics and automation platform that combines AI-driven technical analysis with automated workflow optimization — built so an everyday car owner can describe a sound, a symptom, or a dashboard light and get a real answer.",
-    audience: "Everyday car owners who want clear next steps instead of dealership runaround.",
-    highlights: [
-      "AI diagnostics from plain-language descriptions of the problem",
-      "Combines technical analysis with workflow automation",
-      "Plain-English answers, not parts-catalog jargon",
-      "Helpful before, during, and after the shop visit",
-    ],
-    logo: "/assets/aimech-logo.png",
-    accentClass: "from-zinc-900 to-zinc-700 dark:from-zinc-800 dark:to-zinc-900",
-  },
-  {
     id: "babypeek",
     name: "BabyPeek",
     url: "https://baby.mehyar.us",
@@ -325,23 +291,6 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
   {
-    id: "openseason",
-    name: "OpenSeason",
-    url: "https://openseason.mehyar.us",
-    tagline: "Every hunting-season date for your state, in plain English.",
-    description:
-      "Pick your state and get the next three verified season openers free — every date traced to the official state wildlife agency and stamped with its verification. The $12 state pack unlocks every season, deadline, bag limit, and license/tag date plus printable pack and reminders all season.",
-    audience: "Weekend deer hunters asking “is muzzleloader open this weekend?” or “did I miss the deadline?”",
-    highlights: [
-      "Next 3 verified season openers free — no signup, no payment",
-      "Every date carries its official state-agency source and verification stamp",
-      "$12 state pack: all seasons, deadlines, bag limits, license/tag dates",
-      "Printable pack + email reminders all season; one-click unsubscribe everywhere",
-    ],
-    logo: "/assets/openseason-logo.png",
-    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
-  },
-  {
     id: "beachcall",
     name: "BeachCall",
     url: "https://beachcall.mehyar.us",
@@ -551,12 +500,6 @@ const Apps = () => {
                     >
                       Visit {app.name} <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
                     </a>
-                    <Link
-                      href={`/blog/${app.id === "rizza" ? "rizza-app-launch-tracking-and-organizing-work-without-the-overhead" : "aimech-app-launch-ai-mechanic-for-everyday-car-owners"}`}
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      Read the launch note
-                    </Link>
                   </div>
                 </CardContent>
               </Card>
@@ -650,7 +593,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, PureTap, TicketBeat, FloodLens), and the request form.
+            for the full process, product-by-product details (Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens), and the request form.
           </p>
         </div>
       </section>
