@@ -4,6 +4,8 @@ import {chromium} from 'playwright';
 const dir=process.argv[2];if(!dir)throw Error('Pass a recovered public deployment snapshot directory');
 const html=Object.fromEntries(await Promise.all(['index','success','deliverable','app.js'].map(async p=>[p,await readFile(['success','deliverable'].includes(p)?new URL('../sites/promptpack/overrides/'+p+'.html',import.meta.url):dir+'/'+p+(p==='app.js'?'':'.html'),'utf8')])));
 const token='a'.repeat(64);const pack={prompts:Array.from({length:50},(_,i)=>({category:'Fixture',title:'Synthetic prompt '+(i+1),prompt:'Local mock content.'})),swipes:Array.from({length:10},(_,i)=>({category:'Fixture',title:'Synthetic swipe '+(i+1),text:'Local mock message.'}))};
+assert.match(html.success,/Keep the pack page open until it is ready/);
+assert.doesNotMatch(html.success,/being written automatically|No token yet\? It arrives/);
 const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:390,height:844}});let batchCalls=[],ready=false,backfillCalls=0,notifyCalls=0,checkoutPayload=null,externalRequestsBlocked=0;let errors=[], paid=true, privateAnalyticsRequests=0, privatePhase=false;
 await context.addInitScript(()=>{window.print=()=>{window.fixturePrintCalls=(window.fixturePrintCalls||0)+1};const timer=window.setTimeout;window.setTimeout=(f,ms,...args)=>timer(f,ms>=5000?15:ms,...args)});
 await context.route('**/*',async route=>{const u=new URL(route.request().url()),p=u.pathname;

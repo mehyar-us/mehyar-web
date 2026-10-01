@@ -5,10 +5,10 @@
 <!-- Private bearer-token pages intentionally omit third-party analytics. -->
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PromptPack Pro — Order confirmed</title>
+<title>PromptPack Pro — Payment confirmation</title>
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://promptpack.mehyar.us/success">
-<meta name="description" content="Your PromptPack Pro order is confirmed. Your pack is being written.">
+<meta name="description" content="Confirm your payment, then open your private PromptPack Pro pack page to generate your pack.">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0c0a07">
 <link rel="stylesheet" href="styles.css">
@@ -31,7 +31,7 @@
   <section class="centered">
     <div class="check">✓</div>
     <h1>Confirming your payment.</h1>
-    <p class="lede">Receipt and order details are on their way. Your pack is being written automatically — usually within a few minutes — and lands at the email you checked out with.</p>
+    <p class="lede">After payment is confirmed, this page opens your pack and starts generation. Keep the pack page open until it is ready. Your private link will then be emailed to you.</p>
     <p class="status busy" id="pay-status"><span class="spinner"></span>Confirming your payment…</p>
   </section>
 
@@ -45,14 +45,14 @@
       </div>
       <div class="status" id="token-status" style="text-align:center"></div>
     </form>
-    <p class="lede" style="font-size:14px;margin-top:12px;text-align:center;margin-left:auto;margin-right:auto">No token yet? It arrives with your receipt — usually within a minute.</p>
+    <p class="lede" style="font-size:14px;margin-top:12px;text-align:center;margin-left:auto;margin-right:auto">Your private link appears after payment confirmation. Keep this page open while we confirm payment.</p>
   </section>
 
   <section>
     <div class="whatyouget">
       <h3>What happens next</h3>
       <ol class="steps">
-        <li><strong>We start immediately</strong><p>Your profession goes into the pack recipe — 50 prompts and 10 swipe files, generated fresh for your trade.</p></li>
+        <li><strong>Open and generate your pack</strong><p>After payment confirmation, the pack page generates 50 prompts and 10 swipe files for your trade. Keep it open until your pack is ready.</p></li>
         <li><strong>You get a delivered email</strong><p>Once generation finishes, we email your private pack link. You can also save the open pack page link.</p></li>
         <li><strong>It lives at your private link</strong><p>Your deliverable page lets you Print / Save as PDF. The pack stays available there whenever you need it.</p></li>
       </ol>
@@ -121,7 +121,7 @@
           } else if (tries < 20) {
             setTimeout(poll, 8000);
           } else {
-            payStatus.textContent = "Still confirming — your receipt email has the full details.";
+            payStatus.textContent = "Payment is still pending. Refresh this page to check again, or contact info@mehyar.us with your receipt.";
             payStatus.className = "status";
           }
         })

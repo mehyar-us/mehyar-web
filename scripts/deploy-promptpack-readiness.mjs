@@ -34,7 +34,13 @@ if(action==='prepare'){
     const project=await api(`/pages/projects/${name}`);
     const previous=await api(`/pages/projects/${name}/deployments/${project.canonical_deployment.id}`);
     assert.ok(previous.uses_functions,'Previous deployment must include Functions');
-    if(name==='mehyar-web')assert.equal(previous.deployment_trigger.metadata.commit_hash,'d6f742f9d70eb8523d777bfd1b084444815d10ec','Production baseline changed; review before publishing');
+    if(name==='mehyar-web'){
+      const baseline=previous.deployment_trigger.metadata.commit_hash;
+      execFileSync('git',['merge-base','--is-ancestor',baseline,commit],{cwd:root});
+      const changes=execFileSync('git',['diff','--name-only',baseline,commit],{cwd:root,encoding:'utf8'}).trim().split(/\r?\n/).filter(Boolean);
+      const allowed=new Set(['functions/api/pay/webhook.js','functions/api/pay/fulfill-backfill.js','migrations/0033_promptpack_email_delivery.sql','scripts/deploy-promptpack-readiness.mjs','scripts/test-promptpack-browser.mjs','scripts/test-promptpack-payment.mjs','scripts/test-promptpack-readiness.mjs']);
+      assert.ok(changes.every(file=>allowed.has(file)||file.startsWith('sites/promptpack/')),'Production baseline diff contains unrelated changes; review before publishing');
+    }
     const base=path.join(releaseDir,name), assets=path.join(base,'public');
     await fs.mkdir(assets,{recursive:true});
     const names=Object.keys(previous.files);
