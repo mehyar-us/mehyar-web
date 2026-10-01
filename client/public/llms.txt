@@ -1,0 +1,56 @@
+# MehyarSoft LLC
+
+> Founder-led software, systems, and AI automation for businesses worldwide
+> that want more customers, faster follow-up, and less manual work.
+
+## What this site is
+
+- **MehyarSoft** (https://mehyar.us) is the agency site of MehyarSoft LLC,
+  a founder-led software, systems, and AI automation firm headquartered in
+  Brooklyn, New York, serving businesses worldwide through remote-first
+  delivery.
+- Services: websites, customer apps, booking systems, AI follow-up, phone
+  care, CRM cleanup, systems integration, and automation for businesses
+  losing customers to missed calls, weak websites, manual work, and
+  disconnected tools.
+- Typical clients: local service businesses, agencies, clinics, and
+  regulated teams that need a practical technical owner to clean up the
+  path from prospect to paid customer.
+
+## Key pages
+
+- Home: https://mehyar.us/
+- Services: https://mehyar.us/services
+- Pricing: https://mehyar.us/pricing
+- Booking: https://mehyar.us/booking
+- Portfolio: https://mehyar.us/portfolio
+- Blog: https://mehyar.us/blog
+- Apps directory: https://mehyar.us/apps
+- Contact: https://mehyar.us/contact
+- Privacy: https://mehyar.us/privacy-policy
+- Terms: https://mehyar.us/terms
+
+## Pricing (from the site's own FAQ)
+
+- Tech Audit: from $150
+- Website Diagnosis Report: $250
+- Custom builds: $1,000–$25,000
+- Retainers: $500–$3,500/month
+- Hourly advisory: $150/hour
+
+## Contact
+
+- Email: info@mehyar.us
+- Booking: https://mehyar.us/booking
+
+## Products we own
+
+MehyarSoft LLC ships one-time digital products on *.mehyar.us subdomains
+(PureTap, SproutScore, HustleKit, TrueSketch, CreditFix Kit, PLR Vault,
+PromptPack, and others). The full directory is at https://mehyar.us/apps.
+
+## Compliance
+
+- No income guarantees or earnings claims are made anywhere on this site.
+- This is a service business: engagements are scoped, priced, and
+  documented per client.
