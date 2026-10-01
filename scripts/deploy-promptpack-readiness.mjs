@@ -97,18 +97,26 @@ for(const name of ['mehyar-web','promptpack']){
   }
   if(!existingId){
   state[action+'Intent']=new Date().toISOString();await save();
-  if(name==='mehyar-web'){
+  if(name==='mehyar-web'||action==='production'){
     // Route rewrites prevent recovering three original HTML assets via HTTP.
     // Reuse their exact original manifest hashes; the existing asset store
     // already contains them. Upload Wrangler's real multipart Worker bundle,
     // not the legacy ZIP format that can silently omit Functions.
     const form=new FormData();
-    form.append('manifest',JSON.stringify(state.previousFiles));
+    form.append('manifest',JSON.stringify(name==='promptpack'?{...state.previousFiles,...state.previewFiles}:state.previousFiles));
     form.append('branch',branch);form.append('commit_hash',commit);
     form.append('commit_dirty','false');form.append('commit_message','PromptPack-readiness');
-    form.append('_worker.bundle',new Blob([await fs.readFile(path.join(releaseDir,name,'worker.bundle'))]),'_worker.bundle');
-    form.append('_routes.json',new Blob([await fs.readFile(path.join(releaseDir,name,'worker-routes.json'))]),'_routes.json');
-    for(const file of ['_headers','_redirects']){
+    if(name==='mehyar-web'){
+      form.append('_worker.bundle',new Blob([await fs.readFile(path.join(releaseDir,name,'worker.bundle'))]),'_worker.bundle');
+      form.append('_routes.json',new Blob([await fs.readFile(path.join(releaseDir,name,'worker-routes.json'))]),'_routes.json');
+    }else{
+      const bundle=new FormData();
+      bundle.append('metadata',JSON.stringify({main_module:'promptpack-worker.js'}));
+      bundle.append('promptpack-worker.js',new Blob([await fs.readFile(path.join(releaseDir,name,'public/_worker.js'))],{type:'application/javascript+module'}),'promptpack-worker.js');
+      form.append('_worker.bundle',await new Response(bundle).blob(),'_worker.bundle');
+      form.append('_routes.json',new Blob([await fs.readFile(path.join(releaseDir,name,'public/_routes.json'))]),'_routes.json');
+    }
+    for(const file of name==='mehyar-web'?['_headers','_redirects']:[]){
       const contents=await fs.readFile(path.join(root,'client/public',file));
       form.append(file,new Blob([contents]),file);
     }
@@ -130,9 +138,13 @@ for(const name of ['mehyar-web','promptpack']){
   }
   assert.ok(deployed.uses_functions,'Functions missing; do not promote');
   const allowedChanges=name==='promptpack'?new Set(['/success.html','/deliverable.html']):new Set();
-  const drift=Object.entries(state.previousFiles).filter(([file,hash])=>!allowedChanges.has(file)&&deployed.files[file]!==hash).map(([file])=>file);
+  // Wrangler excludes its own temporary build directory from preview asset
+  // uploads. Production merges the original manifest back in so those four
+  // existing public files remain unchanged as well.
+  const previewExcluded=action==='preview'&&name==='promptpack'?Object.keys(state.previousFiles).filter(file=>file.startsWith('/.wrangler/tmp/')):[];
+  const drift=Object.entries(state.previousFiles).filter(([file,hash])=>!allowedChanges.has(file)&&!previewExcluded.includes(file)&&deployed.files[file]!==hash).map(([file])=>file);
   state[action+'AssetDrift']=drift;await save();assert.deepEqual(drift,[],'Existing asset hashes changed; stop');
-  if(action==='preview'){state.previewVerified=true;await save();}
+  if(action==='preview'){state.previewVerified=true;state.previewFiles=deployed.files;state.previewExcludedBuildArtifacts=previewExcluded;await save();}
   console.log(JSON.stringify({project:name,stage:action,deploymentId:deployed.id,url:deployed.url,usesFunctions:deployed.uses_functions,preservedFiles:Object.keys(state.previousFiles).length-allowedChanges.size,assetDrift:drift,rollbackId:state.previousId}));
 }
 console.log(JSON.stringify({journal:recordFile,commit}));
