@@ -343,8 +343,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
     }
 
     const event = JSON.parse(rawBody);
-    if (event.type === "checkout.session.completed") {
+    if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       const sess = (event.data && event.data.object) ? event.data.object : {};
+      // Completion is not proof of collection (delayed payment methods can
+      // complete while unpaid). Do not create paid entitlements in that case.
+      if (sess.payment_status !== "paid") {
+        return json({ ok: true, action: "payment_not_collected" });
+      }
       const paymentId = Number(sess.metadata && sess.metadata.payment_id);
       if (paymentId) {
         const payment = await db.prepare(

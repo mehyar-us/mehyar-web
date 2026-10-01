@@ -85,6 +85,15 @@ async function maybeSendPromptpackEmail(db, env, payment) {
     return { action: order && order.status !== "ready" ? "not_ready" : "already_sent" };
   }
 
+  // The unique order key arbitrates across requests and Worker instances.
+  // Never expire claims automatically: a timeout can occur after acceptance
+  // by the provider, so retrying blindly could send a second buyer email.
+  const claim = await db.prepare(
+    "INSERT INTO promptpack_email_delivery (order_id, state) VALUES (?, 'claimed') " +
+    "ON CONFLICT(order_id) DO NOTHING RETURNING order_id"
+  ).bind(order.id).first();
+  if (!claim) return { action: "email_delivery_pending", order_id: order.id };
+
   let profession = "contractor";
   try {
     const inputs = JSON.parse(order.inputs_json || "{}").inputs || {};
@@ -98,17 +107,19 @@ async function maybeSendPromptpackEmail(db, env, payment) {
   const text =
     `Thanks for your purchase!\n\n` +
     `Your PromptPack Pro pack for ${profName} is ready — 50 prompts + 10 swipe files:\n${deliverUrl}\n\n` +
-    `There's a one-click PDF download on the page. ` +
+    `Use Print / Save as PDF on the page to save your pack. ` +
     `This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.\n\n-- PromptPack Pro`;
   const html =
     `<p>Thanks for your purchase!</p>` +
     `<p>Your <strong>PromptPack Pro</strong> pack for <strong>${profName}</strong> is ready — 50 prompts + 10 swipe files.</p>` +
     `<p><a href="${deliverUrl}" style="display:inline-block;background:#f59e0b;color:#1a1206;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Open your pack</a></p>` +
     `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${deliverUrl}">${deliverUrl}</a></p>` +
-    `<p style="color:#6b7280;font-size:13px;">There's a one-click PDF download on the page. This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.</p>` +
+    `<p style="color:#6b7280;font-size:13px;">Use Print / Save as PDF on the page to save your pack. This link is personal to you - keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.</p>` +
     `<p>-- PromptPack Pro</p>`;
 
-  const result = await sendCloudflareEmail(env, {
+  let result;
+  try {
+    result = await sendCloudflareEmail(env, {
     from: "team@mehyar.us",
     fromName: "PromptPack Pro",
     to: payment.email,
@@ -116,11 +127,24 @@ async function maybeSendPromptpackEmail(db, env, payment) {
     subject,
     text,
     html,
-  });
+    });
+  } catch {
+    await db.prepare("UPDATE promptpack_email_delivery SET state = 'unknown' WHERE order_id = ?")
+      .bind(order.id).run();
+    return { action: "email_delivery_unknown", order_id: order.id };
+  }
   if (!result.ok) {
-    console.error("fulfill-backfill: promptpack email failed", payment.id, result.error);
+    // Missing credentials and explicit client rejection are safe to retry.
+    // Server errors may follow acceptance; hold those for provider review.
+    const retrySafe = result.status === "not_configured" || /^cloudflare_email_4\d\d$/.test(result.status);
+    await db.prepare(retrySafe
+      ? "DELETE FROM promptpack_email_delivery WHERE order_id = ? AND state = 'claimed'"
+      : "UPDATE promptpack_email_delivery SET state = 'unknown' WHERE order_id = ?")
+      .bind(order.id).run();
     return { action: "email_failed", error: result.error };
   }
+  await db.prepare("UPDATE promptpack_email_delivery SET state = 'sent' WHERE order_id = ?")
+    .bind(order.id).run();
   await db
     .prepare("UPDATE promptpack_orders SET email_sent_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?")
     .bind(order.id)
