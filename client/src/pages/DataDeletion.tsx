@@ -28,6 +28,7 @@
 //  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
 //  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
 //  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
+//  25. SproutScore — https://sproutscore.mehyar.us (NYC daycare inspection decoder: free search, $19 full report)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -38,7 +39,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Waves, Droplets, Gavel, House} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Waves, Droplets, Gavel, House, Sprout} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -292,6 +293,18 @@ id: "hustlekit",
       "The addresses you look up, your email address if you subscribe or buy (for delivery and receipts), the flood reports generated for you, and checkout records.",
     whatWeDelete:
       "Looked-up addresses, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "sproutscore",
+    name: "SproutScore",
+    url: "https://sproutscore.mehyar.us",
+    tagline: "NYC daycare inspection decoder: free search, $19 full report.",
+    icon: Sprout,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The daycares you search, your email address if you subscribe or buy (for delivery and receipts), the decoded reports generated for you, and checkout records.",
+    whatWeDelete:
+      "Search history, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

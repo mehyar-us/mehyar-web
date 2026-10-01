@@ -358,6 +358,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/floodlens-logo.png",
     accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
   },
+  {
+    id: "sproutscore",
+    name: "SproutScore",
+    url: "https://sproutscore.mehyar.us",
+    tagline: "Is your daycare actually safe? NYC inspection records, decoded.",
+    description:
+      "Search any licensed NYC daycare free — we decode the city's real inspection record into plain English, with severity ratings, correction status, and the exact questions to ask on your tour. $19 one-time unlocks the full decoded report.",
+    audience: "NYC parents choosing a daycare who refuse to sign a $30k/year contract on vibes and a tour.",
+    highlights: [
+      "Free: search 3,014 licensed NYC centers — inspection and flagged counts, standing vs the NYC average, last inspection date",
+      "Every violation translated from inspector code into plain English, with severity rating and correction status",
+      "Nearby-center comparison plus the exact questions to ask on your tour",
+      "$19 one-time: the full decoded report with printable, screenshot-ready cards",
+    ],
+    logo: "/assets/sproutscore-logo.png",
+    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
+  },
 ];
 
 const buildPillars = [
@@ -593,7 +610,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens), and the request form.
+            for the full process, product-by-product details (Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, SproutScore), and the request form.
           </p>
         </div>
       </section>
