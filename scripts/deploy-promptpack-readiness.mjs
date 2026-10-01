@@ -87,13 +87,15 @@ if(action==='production'){
 }
 for(const name of ['mehyar-web','promptpack']){
   const state=record.projects[name];
-  assert.ok(!state[action+'Intent'],'Prior attempt exists; reconcile it before repeating any deployment');
+  const existingId=state[action+'Id'];
+  assert.ok(!state[action+'Intent']||existingId,'Prior uncertain attempt exists; reconcile it before repeating any deployment');
   const current=await api(`/pages/projects/${name}`);
   assert.equal(current.canonical_deployment.id,state.previousId,'Production changed concurrently; stop');
   const branch=action==='production'?'main':'codex-promptpack-readiness';
-  if(name==='mehyar-web'){
+  if(!existingId&&name==='mehyar-web'){
     await cli(['pages','functions','build','functions','--outfile','worker.bundle','--output-routes-path','worker-routes.json','--compatibility-date',state.compatibilityDate],path.join(releaseDir,name));
   }
+  if(!existingId){
   state[action+'Intent']=new Date().toISOString();await save();
   if(name==='mehyar-web'){
     // Route rewrites prevent recovering three original HTML assets via HTTP.
@@ -115,11 +117,17 @@ for(const name of ['mehyar-web','promptpack']){
   }else{
     await cli(['pages','deploy','public','--project-name='+name,'--branch='+branch,'--commit-hash='+commit,'--commit-dirty=false','--commit-message=PromptPack-readiness'],path.join(releaseDir,name));
   }
+  }
   const deployments=await api(`/pages/projects/${name}/deployments?per_page=10`);
-  const match=deployments.find(d=>d.deployment_trigger?.metadata?.commit_hash===commit&&d.deployment_trigger?.metadata?.branch===branch);
+  const match=existingId?{id:existingId}:deployments.find(d=>d.deployment_trigger?.metadata?.commit_hash===commit&&d.deployment_trigger?.metadata?.branch===branch);
   assert.ok(match,'Deployment response must be reconciled; never retry blindly');
-  const deployed=await api(`/pages/projects/${name}/deployments/${match.id}`);
+  let deployed=await api(`/pages/projects/${name}/deployments/${match.id}`);
   state[action+'Id']=deployed.id;state[action+'Url']=deployed.url;await save();
+  for(let attempts=0;deployed.latest_stage?.name!=='deploy'||deployed.latest_stage?.status!=='success';attempts++){
+    assert.ok(attempts<24&&deployed.latest_stage?.status!=='failure','Deployment not successful; inspect its saved ID before retrying');
+    await new Promise(resolve=>setTimeout(resolve,2000));
+    deployed=await api(`/pages/projects/${name}/deployments/${match.id}`);
+  }
   assert.ok(deployed.uses_functions,'Functions missing; do not promote');
   const allowedChanges=name==='promptpack'?new Set(['/success.html','/deliverable.html']):new Set();
   const drift=Object.entries(state.previousFiles).filter(([file,hash])=>!allowedChanges.has(file)&&deployed.files[file]!==hash).map(([file])=>file);
