@@ -91,8 +91,30 @@ for(const name of ['mehyar-web','promptpack']){
   const current=await api(`/pages/projects/${name}`);
   assert.equal(current.canonical_deployment.id,state.previousId,'Production changed concurrently; stop');
   const branch=action==='production'?'main':'codex-promptpack-readiness';
+  if(name==='mehyar-web'){
+    await cli(['pages','functions','build','functions','--outfile','worker.bundle','--output-routes-path','worker-routes.json','--compatibility-date',state.compatibilityDate],path.join(releaseDir,name));
+  }
   state[action+'Intent']=new Date().toISOString();await save();
-  await cli(['pages','deploy','public','--project-name='+name,'--branch='+branch,'--commit-hash='+commit,'--commit-dirty=false','--commit-message=PromptPack-readiness'],path.join(releaseDir,name));
+  if(name==='mehyar-web'){
+    // Route rewrites prevent recovering three original HTML assets via HTTP.
+    // Reuse their exact original manifest hashes; the existing asset store
+    // already contains them. Upload Wrangler's real multipart Worker bundle,
+    // not the legacy ZIP format that can silently omit Functions.
+    const form=new FormData();
+    form.append('manifest',JSON.stringify(state.previousFiles));
+    form.append('branch',branch);form.append('commit_hash',commit);
+    form.append('commit_dirty','false');form.append('commit_message','PromptPack-readiness');
+    form.append('_worker.bundle',new Blob([await fs.readFile(path.join(releaseDir,name,'worker.bundle'))]),'_worker.bundle');
+    form.append('_routes.json',new Blob([await fs.readFile(path.join(releaseDir,name,'worker-routes.json'))]),'_routes.json');
+    for(const file of ['_headers','_redirects']){
+      const contents=await fs.readFile(path.join(root,'client/public',file));
+      form.append(file,new Blob([contents]),file);
+    }
+    const result=await api(`/pages/projects/${name}/deployments`,{method:'POST',body:form});
+    state[action+'Id']=result.id;state[action+'Url']=result.url;await save();
+  }else{
+    await cli(['pages','deploy','public','--project-name='+name,'--branch='+branch,'--commit-hash='+commit,'--commit-dirty=false','--commit-message=PromptPack-readiness'],path.join(releaseDir,name));
+  }
   const deployments=await api(`/pages/projects/${name}/deployments?per_page=10`);
   const match=deployments.find(d=>d.deployment_trigger?.metadata?.commit_hash===commit&&d.deployment_trigger?.metadata?.branch===branch);
   assert.ok(match,'Deployment response must be reconciled; never retry blindly');

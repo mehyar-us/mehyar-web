@@ -9,7 +9,11 @@ GitHub organization. They are overrides, not a replacement site scaffold.
 `scripts/deploy-promptpack-readiness.mjs` recovers every asset from the pinned
 live deployments into temporary storage, retains PromptPack's existing complete
 Functions bundle and routing, and applies these two overrides. For mehyar-web it
-preserves every live static asset while compiling the committed Functions.
+reuses the complete production asset manifest while compiling the committed
+Functions into Wrangler's multipart Worker bundle. Existing repository header
+and redirect rules remain part of that upload. Live route rewriting makes
+three HTML assets unsuitable for HTTP recovery, so their original hashes are
+reused directly from Cloudflare's existing asset store.
 Preview promotion requires unchanged hashes for every existing static file
 except these two paid pages. It retains a journal of deployment attempts and
 IDs; never repeat an uncertain deployment without reconciling that journal.
