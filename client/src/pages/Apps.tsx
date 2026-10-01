@@ -223,20 +223,20 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
   },
   {
-    id: "tiktokgrowth",
-    name: "TikTok Growth System",
-    url: "https://tiktokgrowth.mehyar.us",
-    tagline: "A 30-day organic TikTok playbook, generated for your niche.",
+    id: "playbook",
+    name: "The 30-Day Content Playbook",
+    url: "https://playbook.mehyar.us",
+    tagline: "A 30-day organic short-form video playbook, generated for your niche.",
     description:
       "An AI playbook builder for organic short-form growth: tell it your niche, camera comfort, and hours per week, and it generates a 30-day posting plan, 30 first-3-second hook scripts, a bio + CTA pack, and a trend-jacking playbook — one-time $27 with 5 free hook scripts before you pay.",
-    audience: "Creators, founders, and small businesses starting or restarting organic TikTok growth.",
+    audience: "Creators, founders, and small businesses starting or restarting organic short-form growth.",
     highlights: [
       "30-day posting plan built around your niche, schedule, and on-camera comfort",
       "30 hook scripts for the first 3 seconds, each with why-it-works and delivery tips",
       "Bio + CTA pack and a trend-jacking playbook — original-content methods only",
       "5 free hook scripts before you pay — $27 one-time, 7-day redo-or-refund",
     ],
-    logo: "/assets/tiktokgrowth-logo.png",
+    logo: "/assets/playbook-logo.png",
     accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
   },
   {
@@ -357,23 +357,6 @@ const managedApps: ManagedApp[] = [
     ],
     logo: "/assets/floodlens-logo.png",
     accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
-  },
-  {
-    id: "sproutscore",
-    name: "SproutScore",
-    url: "https://sproutscore.mehyar.us",
-    tagline: "Is your daycare actually safe? NYC inspection records, decoded.",
-    description:
-      "Search any licensed NYC daycare free — we decode the city's real inspection record into plain English, with severity ratings, correction status, and the exact questions to ask on your tour. $19 one-time unlocks the full decoded report.",
-    audience: "NYC parents choosing a daycare who refuse to sign a $30k/year contract on vibes and a tour.",
-    highlights: [
-      "Free: search 3,014 licensed NYC centers — inspection and flagged counts, standing vs the NYC average, last inspection date",
-      "Every violation translated from inspector code into plain English, with severity rating and correction status",
-      "Nearby-center comparison plus the exact questions to ask on your tour",
-      "$19 one-time: the full decoded report with printable, screenshot-ready cards",
-    ],
-    logo: "/assets/sproutscore-logo.png",
-    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
   },
 ];
 
@@ -610,7 +593,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, SproutScore), and the request form.
+            for the full process, product-by-product details (Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, The 30-Day Content Playbook, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens), and the request form.
           </p>
         </div>
       </section>

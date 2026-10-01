@@ -19,7 +19,7 @@
 //  11. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
 //  12. CreditFix Kit — https://creditfixkit.mehyar.us (DIY credit repair kit: dispute letters + rebuild plan)
 //  13. HustleKit — https://hustlekit.mehyar.us (AI side-hustle starter kits: personalized playbook PDFs)
-//  14. TikTok Growth System — https://tiktokgrowth.mehyar.us (AI-generated organic short-form growth playbook)
+//  14. The 30-Day Content Playbook — https://playbook.mehyar.us (AI-generated organic short-form growth playbook)
 //  15. PLR Vault — https://plrvault.mehyar.us (private-label-rights digital product vault)
 //  16. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
 //  17. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
@@ -28,7 +28,6 @@
 //  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
 //  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
 //  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
-//  25. SproutScore — https://sproutscore.mehyar.us (NYC daycare inspection decoder: free search, $19 full report)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -39,7 +38,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Waves, Droplets, Gavel, House, Sprout} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Waves, Droplets, Gavel, House} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -176,9 +175,9 @@ id: "hustlekit",
       "Email address, submitted intake details, generated kit, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
-    id: "tiktokgrowth",
-    name: "TikTok Growth System",
-    url: "https://tiktokgrowth.mehyar.us",
+    id: "playbook",
+    name: "The 30-Day Content Playbook",
+    url: "https://playbook.mehyar.us",
     tagline: "AI-generated organic short-form growth playbook.",
     icon: TrendingUp,
     inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
@@ -293,18 +292,6 @@ id: "hustlekit",
       "The addresses you look up, your email address if you subscribe or buy (for delivery and receipts), the flood reports generated for you, and checkout records.",
     whatWeDelete:
       "Looked-up addresses, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "sproutscore",
-    name: "SproutScore",
-    url: "https://sproutscore.mehyar.us",
-    tagline: "NYC daycare inspection decoder: free search, $19 full report.",
-    icon: Sprout,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "The daycares you search, your email address if you subscribe or buy (for delivery and receipts), the decoded reports generated for you, and checkout records.",
-    whatWeDelete:
-      "Search history, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

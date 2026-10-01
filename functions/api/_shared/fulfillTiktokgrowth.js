@@ -24,19 +24,24 @@
 //   3. Email idempotency: the deliverable email sends at most once per order.
 //      email_sent_at is read before sending and written only after the
 //      provider accepts the message; sequential replays see it and skip.
-//   4. Single SKU 'tiktokgrowth-system' → create order, then:
+//   4. Single SKU 'content-playbook-30day' (legacy alias 'tiktokgrowth-system')
+//      → create order, then:
 //      POST TIKTOKGROWTH_BASE_URL/api/tiktok/drive (one bounded request
 //      running phases hooks→bio→trends→plan→assemble); on success mark
 //      ready + email the token-gated link; on failure mark failed (buyer
 //      retries from the success page).
 //
-// NOTE: only one SKU exists today (tiktokgrowth-system). The product lookup
-// is still defensive: unknown SKUs abort before creating an order.
+// NOTE: the live SKU is content-playbook-30day ("The 30-Day Content
+// Playbook"). The legacy 'tiktokgrowth-system' alias is kept so any
+// in-flight checkout created before the rebrand still fulfills.
+// The product lookup is still defensive: unknown SKUs abort before
+// creating an order.
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
 const KNOWN_PRODUCTS = {
-  "tiktokgrowth-system": "TikTok Growth System — 30-Day Playbook",
+  "content-playbook-30day": "The 30-Day Content Playbook",
+  "tiktokgrowth-system": "The 30-Day Content Playbook",
 };
 
 function randomToken(bytes = 32) {
@@ -45,15 +50,15 @@ function randomToken(bytes = 32) {
 }
 
 function baseUrl(env) {
-  return String(env.TIKTOKGROWTH_BASE_URL || "https://tiktokgrowth.mehyar.us").replace(/\/+$/, "");
+  return String(env.TIKTOKGROWTH_BASE_URL || "https://playbook.mehyar.us").replace(/\/+$/, "");
 }
 
 function fromAddress(env) {
-  // Until tiktokgrowth.mehyar.us is onboarded on both ESPs (standing rule),
+  // Until playbook.mehyar.us is onboarded on both ESPs (standing rule),
   // send from the proven mehyar.us identity.
   return {
     from: env.TIKTOKGROWTH_FROM_EMAIL || "team@mehyar.us",
-    fromName: "TikTok Growth System",
+    fromName: "The 30-Day Content Playbook",
   };
 }
 
@@ -187,7 +192,7 @@ export async function fulfillTiktokgrowth({ db, env, waitUntil, sendEmail }, pay
         throw new Error("generate:empty_manifest");
       }
       const deliverUrl = `${baseUrl(env)}/deliverable.html?token=${accessToken}`;
-      const subject = `Your TikTok Growth System playbook is ready`;
+      const subject = `Your 30-Day Content Playbook is ready`;
       const text =
         `Thanks for your purchase!\n\n` +
         `Your ${productName} is ready — your personalized 30-day posting plan, 30 hook scripts, bio + CTA pack, and trend-jacking playbook:\n${deliverUrl}\n\n` +
