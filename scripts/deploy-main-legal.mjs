@@ -12,6 +12,7 @@ export function allowRequest(endpoint,method,account,mode){
 }
 export function verifyUpload(payload,hash,content){assert.equal(payload.length,1);assert.deepEqual(payload[0],{key:hash,value:content.toString('base64'),metadata:{contentType:'application/javascript'},base64:true});}
 export function assetHash(content,blake3){return blake3(content.toString('base64')+'js').toString('hex').slice(0,32);}
+export function verifyControlFile(name,bytes,gitBytes){const expected={_headers:'7e98733cc2b53ef8e7c905fc2bde3513605bfcc3e57a2401c07271db6994cb49',_redirects:'d9068c49baad57f824a92c2be71f6f0c902c040d8b29c320a5ca9a3dc0c4ea2a'};assert.equal(sha(bytes),expected[name],'Exact prior release control bytes required');assert.equal(bytes.toString().replaceAll('\r\n','\n'),gitBytes.toString(),'Control file Git source unchanged');}
 // Cloudflare primary implementation: https://github.com/cloudflare/workers-sdk/blob/main/packages/deploy-helpers/src/deploy/helpers/hash.ts
 // Upload protocol: packages/wrangler/src/pages/upload.ts. No package install.
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
@@ -28,7 +29,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const worker=await fs.readFile(path.join(recovered,'mehyar-web/worker.bundle')),routes=await fs.readFile(path.join(recovered,'mehyar-web/worker-routes.json'));assert.equal(sha(worker),'6ff2b03244f4236ca327d90fceca790409396bd3e065ed5ca1513e0aa1725eb8');assert.equal(sha(routes),'a110afa930d69171616e100e830fab2ef4c67dc731006ff48184e26a0876c75c');
  const original=Buffer.from(await(await fetch(dep.url+asset)).arrayBuffer()),content=await fs.readFile(path.join(root,'sites/main-legal/main-4iNuTZT1.js'));assert.equal(sha(original),originalSha);assert.equal(sha(content),patchedSha);
  const require=createRequire(import.meta.url);assert.ok(process.env.PAGES_BLAKE3_MODULE,'Existing cached BLAKE3 module path required');const {hash:blake3}=require(process.env.PAGES_BLAKE3_MODULE);assert.equal(assetHash(original,blake3),dep.files[asset],'Hash implementation must match deployed baseline');const hash=assetHash(content,blake3),manifest={...dep.files,[asset]:hash};manifestDiff(dep.files,manifest);
- const report={commit,branch,mode,baseline,rollbackTarget:baseline,newAssetHash:hash,changedAssets:[asset],unchangedAssets:153,functionsSha256:sha(worker),routesSha256:sha(routes),migrations:0,secretsChanges:0};
+ const controls={};for(const name of ['_headers','_redirects']){const bytes=await fs.readFile(path.join(root,'../promptpack-release-clean/client/public',name));const gitBytes=execFileSync('git',['show','0b7eafc6f353f5296e2445b3193bafce71e393d4:client/public/'+name],{cwd:root});verifyControlFile(name,bytes,gitBytes);controls[name]=bytes;}
+ const report={commit,branch,mode,baseline,rollbackTarget:baseline,newAssetHash:hash,changedAssets:[asset],unchangedAssets:153,functionsSha256:sha(worker),routesSha256:sha(routes),headersSha256:sha(controls._headers),redirectsSha256:sha(controls._redirects),migrations:0,secretsChanges:0};
  if(mode==='dry-run'){console.log(JSON.stringify(report));process.exit();}
  const receipt=path.join(os.tmpdir(),'main-legal-release-'+commit.slice(0,12)+'.json');try{await fs.access(receipt);throw Error('Existing publication journal: inspect outcome; never retry blindly');}catch(e){if(e.code!=='ENOENT')throw e;}
  checkBaseline(await api(prefix),dep); // Before first remote mutation.
@@ -36,7 +38,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const missing=await api('/pages/assets/check-missing','POST',JSON.stringify({hashes:[hash]}),{'Content-Type':'application/json',Authorization:'Bearer '+jwt});assert.ok(Array.isArray(missing)&&missing.every(x=>x===hash));
  if(missing.length){const payload=[{key:hash,value:content.toString('base64'),metadata:{contentType:'application/javascript'},base64:true}];verifyUpload(payload,hash,content);await api('/pages/assets/upload','POST',JSON.stringify(payload),{'Content-Type':'application/json',Authorization:'Bearer '+jwt});}
  const form=new FormData();form.append('manifest',JSON.stringify(manifest));form.append('branch','main');form.append('commit_hash',commit);form.append('commit_dirty','false');form.append('commit_message','Restore existing legal page routing');form.append('_worker.bundle',new Blob([worker]),'_worker.bundle');form.append('_routes.json',new Blob([routes]),'_routes.json');
- for(const name of ['_headers','_redirects']){const old=execFileSync('git',['show','0b7eafc6f353f5296e2445b3193bafce71e393d4:client/public/'+name],{cwd:root});const current=await fs.readFile(path.join(root,'client/public',name));assert.deepEqual(current,old);form.append(name,new Blob([old]),name);}
+ for(const name of ['_headers','_redirects'])form.append(name,new Blob([controls[name]]),name);
  checkBaseline(await api(prefix),dep); // Immediately before publication; abort drift.
  await fs.writeFile(receipt,JSON.stringify({...report,status:'publication-intent; unknown until reconciled'},null,2));
  const created=await api(prefix+'/deployments','POST',form);assert.ok(created.id);report.deploymentId=created.id;await fs.writeFile(receipt,JSON.stringify(report,null,2));
