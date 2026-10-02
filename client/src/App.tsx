@@ -42,7 +42,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 // wouter's built-in <Redirect to="/x" /> does an exact-path match.
 // We need PATTERN-based redirects like /admin/opportunities/:id → /admin/leads/sam/:id
 // so this component matches the `href` pattern and rewrites to `to` with captured params.
-function Redirect({ to, href }: { to: string; href: string }) {
+function Redirect({ to, href }: { to: string; href: string; path: string }) {
   const [location, setLocation] = useLocation();
   useEffect(() => {
     const paramNames: string[] = [];
@@ -209,22 +209,22 @@ function App() {
             <Route path="/admin/revenue/" component={CenterRevenue} />
 
             {/* ─── Old agency-dashboard routes → command center ──── */}
-            <Redirect to="/admin" href="/admin/now" />
-            <Redirect to="/admin" href="/admin/now/" />
-            <Redirect to="/admin" href="/admin/mayor" />
-            <Redirect to="/admin" href="/admin/mayor/" />
-            <Redirect to="/admin" href="/admin/clients" />
-            <Redirect to="/admin" href="/admin/clients/" />
-            <Redirect to="/admin" href="/admin/leads" />
-            <Redirect to="/admin" href="/admin/leads/" />
-            <Redirect to="/admin/campaigns" href="/admin/sent" />
-            <Redirect to="/admin/campaigns" href="/admin/sent/" />
-            <Redirect to="/admin/revenue" href="/admin/money" />
-            <Redirect to="/admin/revenue" href="/admin/money/" />
-            <Redirect to="/admin/health" href="/admin/system" />
-            <Redirect to="/admin/health" href="/admin/system/" />
-            <Redirect to="/admin" href="/admin/jobs" />
-            <Redirect to="/admin" href="/admin/jobs/" />
+            <Redirect path="/admin/now" to="/admin" href="/admin/now" />
+            <Redirect path="/admin/now/" to="/admin" href="/admin/now/" />
+            <Redirect path="/admin/mayor" to="/admin" href="/admin/mayor" />
+            <Redirect path="/admin/mayor/" to="/admin" href="/admin/mayor/" />
+            <Redirect path="/admin/clients" to="/admin" href="/admin/clients" />
+            <Redirect path="/admin/clients/" to="/admin" href="/admin/clients/" />
+            <Redirect path="/admin/leads" to="/admin" href="/admin/leads" />
+            <Redirect path="/admin/leads/" to="/admin" href="/admin/leads/" />
+            <Redirect path="/admin/sent" to="/admin/campaigns" href="/admin/sent" />
+            <Redirect path="/admin/sent/" to="/admin/campaigns" href="/admin/sent/" />
+            <Redirect path="/admin/money" to="/admin/revenue" href="/admin/money" />
+            <Redirect path="/admin/money/" to="/admin/revenue" href="/admin/money/" />
+            <Redirect path="/admin/system" to="/admin/health" href="/admin/system" />
+            <Redirect path="/admin/system/" to="/admin/health" href="/admin/system/" />
+            <Redirect path="/admin/jobs" to="/admin" href="/admin/jobs" />
+            <Redirect path="/admin/jobs/" to="/admin" href="/admin/jobs/" />
 
 {/* ─── Legal + utility — must come BEFORE the legacy
                  <Redirect> block. The Switch returns the first matching
@@ -242,61 +242,61 @@ function App() {
             <Route path="/data-deletion/" component={DataDeletion} />
 
             {/* ─── Legacy admin route redirects (both slash forms) ──── */}
-            <Redirect to="/admin/leads?kind=prospect" href="/admin/prospects" />
-            <Redirect
+            <Redirect path="/admin/prospects" to="/admin/leads?kind=prospect" href="/admin/prospects" />
+            <Redirect path="/admin/prospects/"
               to="/admin/leads?kind=prospect"
               href="/admin/prospects/"
             />
-            <Redirect to="/admin/now" href="/admin/today" />
-            <Redirect to="/admin/now" href="/admin/today/" />
-            <Redirect to="/admin/money" href="/admin/auto-tender" />
-            <Redirect to="/admin/money" href="/admin/auto-tender/" />
-            <Redirect to="/admin/system" href="/admin/audit" />
-            <Redirect to="/admin/system" href="/admin/audit/" />
-            <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities" />
-            <Redirect to="/admin/leads?kind=sam" href="/admin/opportunities/" />
-            <Redirect
+            <Redirect path="/admin/today" to="/admin/now" href="/admin/today" />
+            <Redirect path="/admin/today/" to="/admin/now" href="/admin/today/" />
+            <Redirect path="/admin/auto-tender" to="/admin/money" href="/admin/auto-tender" />
+            <Redirect path="/admin/auto-tender/" to="/admin/money" href="/admin/auto-tender/" />
+            <Redirect path="/admin/audit" to="/admin/system" href="/admin/audit" />
+            <Redirect path="/admin/audit/" to="/admin/system" href="/admin/audit/" />
+            <Redirect path="/admin/opportunities" to="/admin/leads?kind=sam" href="/admin/opportunities" />
+            <Redirect path="/admin/opportunities/" to="/admin/leads?kind=sam" href="/admin/opportunities/" />
+            <Redirect path="/admin/opportunities/:id"
               to="/admin/leads/sam/:id"
               href="/admin/opportunities/:id"
             />
-            <Redirect
+            <Redirect path="/admin/opportunities/:id/"
               to="/admin/leads/sam/:id/"
               href="/admin/opportunities/:id/"
             />
-            <Redirect
+            <Redirect path="/admin/prospect-sources"
               to="/admin/leads?sources=1"
               href="/admin/prospect-sources"
             />
-            <Redirect
+            <Redirect path="/admin/prospect-sources/"
               to="/admin/leads?sources=1"
               href="/admin/prospect-sources/"
             />
-            <Redirect to="/admin/money" href="/admin/outreach" />
-            <Redirect to="/admin/money" href="/admin/outreach/" />
-            <Redirect to="/admin/leads" href="/admin/replies" />
-            <Redirect to="/admin/leads" href="/admin/replies/" />
-            <Redirect to="/admin/system" href="/admin/analytics" />
-            <Redirect to="/admin/system" href="/admin/analytics/" />
-            <Redirect to="/admin/system" href="/admin/newsletter" />
-            <Redirect to="/admin/system" href="/admin/newsletter/" />
-            <Redirect to="/admin/leads?kind=sam" href="/admin/government" />
-            <Redirect to="/admin/leads?kind=sam" href="/admin/government/" />
-            <Redirect
+            <Redirect path="/admin/outreach" to="/admin/money" href="/admin/outreach" />
+            <Redirect path="/admin/outreach/" to="/admin/money" href="/admin/outreach/" />
+            <Redirect path="/admin/replies" to="/admin/leads" href="/admin/replies" />
+            <Redirect path="/admin/replies/" to="/admin/leads" href="/admin/replies/" />
+            <Redirect path="/admin/analytics" to="/admin/system" href="/admin/analytics" />
+            <Redirect path="/admin/analytics/" to="/admin/system" href="/admin/analytics/" />
+            <Redirect path="/admin/newsletter" to="/admin/system" href="/admin/newsletter" />
+            <Redirect path="/admin/newsletter/" to="/admin/system" href="/admin/newsletter/" />
+            <Redirect path="/admin/government" to="/admin/leads?kind=sam" href="/admin/government" />
+            <Redirect path="/admin/government/" to="/admin/leads?kind=sam" href="/admin/government/" />
+            <Redirect path="/admin/government/:opportunityId"
               to="/admin/leads/sam/:opportunityId"
               href="/admin/government/:opportunityId"
             />
-            <Redirect
+            <Redirect path="/admin/government/:opportunityId/"
               to="/admin/leads/sam/:opportunityId/"
               href="/admin/government/:opportunityId/"
             />
-            <Redirect to="/admin/leads" href="/admin/opportunity-scout" />
-            <Redirect to="/admin/leads" href="/admin/opportunity-scout/" />
-            <Redirect to="/admin/money" href="/admin/billing" />
-            <Redirect to="/admin/money" href="/admin/billing/" />
-            <Redirect to="/admin/leads" href="/admin/email" />
-            <Redirect to="/admin/leads" href="/admin/email/" />
-            <Redirect to="/admin/leads" href="/admin/email/thread/:threadId" />
-            <Redirect to="/admin/leads" href="/admin/email/thread/:threadId/" />
+            <Redirect path="/admin/opportunity-scout" to="/admin/leads" href="/admin/opportunity-scout" />
+            <Redirect path="/admin/opportunity-scout/" to="/admin/leads" href="/admin/opportunity-scout/" />
+            <Redirect path="/admin/billing" to="/admin/money" href="/admin/billing" />
+            <Redirect path="/admin/billing/" to="/admin/money" href="/admin/billing/" />
+            <Redirect path="/admin/email" to="/admin/leads" href="/admin/email" />
+            <Redirect path="/admin/email/" to="/admin/leads" href="/admin/email/" />
+            <Redirect path="/admin/email/thread/:threadId" to="/admin/leads" href="/admin/email/thread/:threadId" />
+            <Redirect path="/admin/email/thread/:threadId/" to="/admin/leads" href="/admin/email/thread/:threadId/" />
 
             <Route component={NotFound} />
           </Switch>
