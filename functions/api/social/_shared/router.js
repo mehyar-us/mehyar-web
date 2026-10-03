@@ -29,7 +29,7 @@ function affiliateReply(name, productName, url, keyword) {
 // rizza entry is a placeholder until Mayor confirms the IG handle.
 const ACCOUNTS = {
   aimechanicapp: {
-    ig_id: null, // Meta IG user ID — fill when the Meta app is wired
+    ig_id: "17841427856386597", // Meta IG user ID for @aimechanicapp
     keywords: ["SCAN", "BOOST", "CAM", "AIR", "VAC", "MOUNT", "GEL", "BEAM", "HEAD", "FIX", "JOBS"],
     products: {
       SCAN:  { product_id: "aff-bluedriver", name: "BlueDriver Bluetooth OBD2 Scanner", url: "https://www.amazon.com/dp/B00652G4TS?tag=mehyarus-20" },
@@ -67,7 +67,7 @@ const ACCOUNTS = {
   },
   rizza: {
     ig_username: "rizza.app",
-    ig_id: null, // Meta IG user ID — fill when the Meta app is wired
+    ig_id: "17841442562086872", // Meta IG user ID for @rizza.app
     keywords: ["RIZZ", "REPLY"],
     products: {
       RIZZ:  { product_id: "rizza-app", special: "rizz" },

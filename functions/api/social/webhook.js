@@ -75,6 +75,7 @@ export async function onRequestPost({ request, env }) {
   const results = [];
   for (const entry of body.entry || []) {
     const account = accountForIgId(entry.id);
+    if (account === "unknown") console.log(`[social-inbox] unmapped IG ID ${entry.id} — add to router ACCOUNTS`);
     for (const m of entry.messaging || []) {
       if (!m.message || m.message.is_echo || !m.message.mid) continue;
       results.push(await processInbound(env, {
