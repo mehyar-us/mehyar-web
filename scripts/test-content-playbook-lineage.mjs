@@ -22,9 +22,3 @@ const p=await context.newPage();await p.goto('https://playbook.test/success.html
 const overflow=await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert.equal(overflow,false);await p.screenshot({path:path.join(out,'synthetic-mobile.png'),fullPage:true});await p.evaluate(()=>{window.print=()=>{window.__qaPrintCalled=true}});await p.locator('#pdf-btn').click();assert.equal(await p.evaluate(()=>window.__qaPrintCalled),true);await p.pdf({path:path.join(out,'synthetic-layout.pdf'),format:'A4',printBackground:true,margin:{top:'12mm',right:'12mm',bottom:'12mm',left:'12mm'}});checks.push('actual historical success -> paid status -> ready handler -> viewer -> print button; 30/30/3/3/5 DOM counts; mobile no horizontal overflow');
 const report={at:new Date().toISOString(),satelliteCommit:git(sat),mainCommit:git(main),checks,routes,syntheticOnly:true,fixtureDatabase:true,fixtureCorsHeaders:true,paymentCollectionVerified:false,currentDeploymentEquivalenceVerified:false,generatedContentQualityVerified:false,liveNetwork:0,liveOrders:0,emails:0,charges:0};
 await fs.writeFile(path.join(out,'source-test-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));await b.close();
-
-
-
-
-
-
