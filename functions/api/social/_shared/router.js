@@ -68,9 +68,10 @@ const ACCOUNTS = {
   rizza: {
     ig_username: "rizza.app",
     ig_id: "17841442562086872", // Meta IG user ID for @rizza.app
-    keywords: ["RIZZ", "REPLY"],
+    keywords: ["RIZZ", "RIZZA", "REPLY"],
     products: {
       RIZZ:  { product_id: "rizza-app", special: "rizz" },
+      RIZZA: { product_id: "rizza-app", special: "rizz" },
       REPLY: { product_id: "rizza-app", special: "rizz" },
     },
   },
