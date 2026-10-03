@@ -16,7 +16,9 @@ export async function onRequestGet({ request, env }) {
   if (q.get("hub.mode") === "subscribe" && q.get("hub.verify_token") === env.META_VERIFY_TOKEN) {
     return new Response(q.get("hub.challenge") || "", { status: 200 });
   }
-  return new Response("forbidden", { status: 403 });
+  // diagnostic: unconfigured vs mismatch (never leaks the value)
+  const hint = env.META_VERIFY_TOKEN ? "mismatch" : "unconfigured";
+  return new Response(`forbidden:${hint}`, { status: 403 });
 }
 
 export async function onRequestOptions() {
