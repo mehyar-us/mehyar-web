@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';import fs from 'node:fs/promises';import {execFileSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
+export const ids=['content-playbook-30day','tiktokgrowth-system'];
+export const expected=[{id:ids[0],name:'The 30-Day Content Playbook',price_cents:2700,active:1,fulfillment:'tiktokgrowth',success_url_template:'https://playbook.mehyar.us/success?token={access_token}',cancel_url:null,allowed_return_hosts:null},{id:ids[1],name:'TikTok Growth System — 30-Day Playbook',price_cents:2700,active:1,fulfillment:'tiktokgrowth',success_url_template:'https://tiktokgrowth.mehyar.us/success?token={access_token}',cancel_url:'https://tiktokgrowth.mehyar.us/#pricing',allowed_return_hosts:'tiktokgrowth.mehyar.us'}];
+export const desired=expected.map(p=>({...p,success_url_template:'https://playbook.mehyar.us/success?token={access_token}',cancel_url:'https://playbook.mehyar.us/#pricing',allowed_return_hosts:'playbook.mehyar.us'}));
+export function verify(rows,want){assert.deepEqual([...rows].sort((a,b)=>a.id.localeCompare(b.id)),[...want].sort((a,b)=>a.id.localeCompare(b.id)));}
+if(process.argv[1]===fileURLToPath(import.meta.url)){
+ const mode=process.argv[2];assert.ok(['check','apply'].includes(mode));const root=fileURLToPath(new URL('../',import.meta.url));const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
+ assert.equal(git('status','--porcelain'),'');const commit=git('rev-parse','HEAD');assert.equal(git('branch','--show-current'),'codex/content-playbook-returns-2026-10-03');if(mode==='apply')assert.equal(git('rev-parse','origin/codex/content-playbook-returns-2026-10-03'),commit);
+ const a=process.env.CF_ACCOUNT_ID,headers={'X-Auth-Email':process.env.CF_API_EMAIL,'X-Auth-Key':process.env.CF_API_KEY,'content-type':'application/json'};assert.ok(a&&headers['X-Auth-Key']&&headers['X-Auth-Email']);
+ async function api(path,body){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});const j=await r.json();assert.ok(r.ok&&j.success,'Cloudflare request failed; inspect before retry');return j.result}
+ const p=await api('/pages/projects/mehyar-web');const baseline='b1c72b99-ce99-4196-948b-e86b9541781a';assert.equal(p.canonical_deployment.id,baseline,'Production drift: stop');assert.ok(!p.deployment_configs.production.env_vars.TIKTOKGROWTH_BASE_URL,'Unexpected generation override: stop');const db=p.deployment_configs.production.d1_databases.LEADS_DB.id;assert.equal(db,'e4f22065-e3e8-4772-87a8-51d4976be042');
+ const select="SELECT id,name,price_cents,active,fulfillment,success_url_template,cancel_url,allowed_return_hosts FROM billing_products WHERE id IN ('content-playbook-30day','tiktokgrowth-system')";
+ const query=sql=>api('/d1/database/'+db+'/query',{sql});const before=(await query(select))[0].results;verify(before,expected);
+ const sql=await fs.readFile(new URL('../migrations/0034_content_playbook_returns.sql',import.meta.url),'utf8');
+ assert.equal(sql.trim(),"-- Content Playbook return configuration only. Price, entitlement and orders unchanged.\nUPDATE billing_products\nSET success_url_template='https://playbook.mehyar.us/success?token={access_token}',\n    cancel_url='https://playbook.mehyar.us/#pricing',\n    allowed_return_hosts='playbook.mehyar.us'\nWHERE id IN ('content-playbook-30day','tiktokgrowth-system');");
+ let after=before;if(mode==='apply'){const result=await query(sql);assert.equal(result[0].meta.changes,2);after=(await query(select))[0].results;verify(after,desired);}
+ assert.equal((await api('/pages/projects/mehyar-web')).canonical_deployment.id,baseline);
+ console.log(JSON.stringify({at:new Date().toISOString(),mode,commit,baseline,rowsChanged:mode==='apply'?2:0,before,after,workerDeployment:false,ordersTouched:false,pricesChanged:false,secretsChanged:false}));
+}
