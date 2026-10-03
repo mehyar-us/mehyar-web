@@ -247,7 +247,99 @@ export const PREMIUM_FOOTNOTE =
   "quote at floodsmart.gov.";
 
 // ── US Census geocoder (keyless) ───────────────────────────────────────────
+// Primary: Census TIGER. Fallback (Texas only): TxGIO StratMap 911 address
+// points — free, CC0, keyless, and fresher than TIGER for new subdivisions
+// (verified 2026-10-03: resolves "1522 Esmeralda Grv, San Antonio" which
+// Census + Nominatim both miss). Only runs when Census finds nothing, so
+// the hot path is untouched.
 export async function geocodeAddress(address) {
+  try {
+    return await geocodeCensus(address);
+  } catch (e) {
+    if (e && e.code === "address_not_found") {
+      const sm = await geocodeStratMapTx(address).catch(() => null);
+      if (sm) return sm;
+    }
+    throw e;
+  }
+}
+
+// Street-suffix abbreviations expanded for candidate scoring.
+const SUFFIX_ABBR = {
+  grv: "grove", dr: "drive", drv: "drive", st: "street", str: "street",
+  ave: "avenue", av: "avenue", avenu: "avenue", blvd: "boulevard",
+  ln: "lane", la: "lane", ct: "court", cir: "circle", crc: "circle",
+  pl: "place", ter: "terrace", pkwy: "parkway", pky: "parkway",
+  hwy: "highway", rd: "road", trl: "trail", sq: "square", xing: "crossing",
+  ext: "extension", mnr: "manor",
+};
+
+function streetTokens(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
+    .filter(Boolean).map((t) => SUFFIX_ABBR[t] || t);
+}
+
+// Texas smell-test: StratMap only covers TX, so skip the network call fast
+// for anything that isn't plausibly Texan (state, TX zip 75xxx–79xxx, or a
+// major TX city name).
+const TX_CITY_RE = /\b(houston|dallas|austin|san antonio|fort worth|el paso|arlington|corpus christi|plano|laredo|lubbock|garland|irving|amarillo|grand prairie|brownsville|mckinney|frisco|pasadena|mesquite|midland|killeen|denton|waco|carrollton|abilene|beaumont|odessa|round rock|richardson|lewisville|tyler|college station|pearland|allen|sugar land|league city|longview|baytown|bryan|victoria|harlingen|new braunfels|mansfield|georgetown|san marcos|conroe|pflugerville|euless|grapevine|bedford|hurst|keller|coppell|waxahachie|cedar park|schertz|converse|universal city|helotes|live oak|alamo heights|terrell hills|castle hills|shavano park)\b/i;
+
+async function geocodeStratMapTx(address) {
+  const input = String(address || "");
+  if (!/\b(TX|Texas)\b/i.test(input) && !/\b7[5-9]\d{3}\b/.test(input) && !TX_CITY_RE.test(input)) return null;
+  const m = input.match(/^\s*(\d+)[A-Za-z]?\s+(.+?)\s*$/);
+  if (!m) return null;
+  const num = m[1];
+  const rest = m[2]
+    .replace(/[,#\s]*(apt|apartment|suite|ste|unit|floor|fl|#)\s*[\w-]*$/i, "")
+    .replace(/,?\s*\bTX\b\.?\s*\d{5}(-\d{4})?\s*$/i, "")
+    .replace(/,?\s*\bTexas\b\s*\d{5}(-\d{4})?\s*$/i, "").trim();
+  const firstWord = (rest.split(/[\s.,-]+/).filter(Boolean)[0] || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  if (firstWord.length < 3) return null;
+
+  const q = new URL("https://feature.geographic.texas.gov/arcgis/rest/services/Address_Points/stratmap_address_points_48_most_recent/MapServer/0/query");
+  // num is digits-only and firstWord is alnum-only by construction — no SQL injection.
+  q.searchParams.set("where", `add_number='${num}' AND UPPER(st_name) LIKE '%${firstWord}%'`);
+  q.searchParams.set("outFields", "add_number,st_predir,st_name,st_postyp,st_posdir,full_addr,post_comm,post_code");
+  q.searchParams.set("returnGeometry", "true");
+  q.searchParams.set("outSR", "4326");
+  q.searchParams.set("resultRecordCount", "25");
+  q.searchParams.set("f", "json");
+  const r = await fetch(q.toString(), {
+    headers: { "user-agent": BROWSER_UA, accept: "application/json" },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!r.ok) return null;
+  const j = await r.json().catch(() => null);
+  const feats = (j && j.features) || [];
+  if (!feats.length) return null;
+
+  const inputToks = new Set(streetTokens(rest));
+  let best = null, bestScore = 0;
+  for (const f of feats) {
+    const a = (f && f.attributes) || {};
+    const streetToks = streetTokens([a.st_predir, a.st_name, a.st_postyp, a.st_posdir].filter(Boolean).join(" "));
+    if (!streetToks.length) continue;
+    let hit = 0;
+    for (const t of streetToks) if (inputToks.has(t)) hit++;
+    // Precision: the candidate's street must be covered by the input tokens.
+    // "1522 esmeralda grove san antonio" vs "ESMERALDA GROVE" → 2/2 = 1.0.
+    const score = hit / streetToks.length;
+    if (score > bestScore) { bestScore = score; best = f; }
+  }
+  if (!best || bestScore < 0.5) return null;
+  const g = best.geometry || {};
+  if (!Number.isFinite(g.y) || !Number.isFinite(g.x)) return null;
+  return {
+    lat: g.y,
+    lon: g.x,
+    matched: best.attributes.full_addr || input,
+    tigerLineId: null,
+    geocode_source: "stratmap-tx",
+  };
+}
+
+async function geocodeCensus(address) {
   const q = new URL("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress");
   q.searchParams.set("address", address);
   q.searchParams.set("benchmark", "Public_AR_Current");
