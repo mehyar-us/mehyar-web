@@ -33,6 +33,25 @@ import { fulfillTicketBeat } from "../_shared/fulfillTicketBeat.js";
 import { fulfillPuretap } from "../_shared/fulfillPuretap.js";
 import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
 
+// Mirror a paying buyer into the centralized marketable list
+// (subscribers_global, mehyar_leads_prod). Best-effort: never throws, never
+// blocks fulfillment. On conflict the existing row's opt-out state is
+// preserved — a suppressed address is never silently re-enabled.
+async function mirrorBuyerToList(db, email, brand) {
+  try {
+    const em = String(email || "").toLowerCase().trim();
+    const br = String(brand || "").toLowerCase().trim() || "unknown";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return;
+    await db.prepare(
+      "INSERT INTO subscribers_global (email, brand, status, unsubscribed) VALUES (?, ?, 'active', 0) " +
+      "ON CONFLICT(email, brand) DO UPDATE SET status='active', " +
+      "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')"
+    ).bind(em, br).run();
+  } catch (e) {
+    console.error("pay/webhook mirrorBuyerToList failed", e && e.message);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -369,6 +388,8 @@ export async function onRequestPost({ request, env, waitUntil }) {
               "subscription_status=CASE WHEN ? IS NOT NULL THEN 'active' ELSE subscription_status END " +
               "WHERE id=? AND status != 'paid'"
             ).bind(sess.payment_intent || null, sess.id || null, isSub ? String(sess.subscription) : null, isSub ? 1 : null, paymentId).run();
+            // Buyer → centralized CRM list (best-effort; respects opt-outs).
+            await mirrorBuyerToList(db, payment.email, payment.brand);
           }
           // Fulfillment dispatch by product.
           const product = await db.prepare(
@@ -418,6 +439,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
             "UPDATE billing_payments SET status='paid', paid_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'), subscription_status='active' " +
             "WHERE stripe_subscription_id = ?"
           ).bind(subId).run();
+          const row = await db.prepare(
+            "SELECT email, brand FROM billing_payments WHERE stripe_subscription_id = ? LIMIT 1"
+          ).bind(subId).first();
+          if (row) await mirrorBuyerToList(db, row.email, row.brand);
         } catch (e) {
           console.error("pay/webhook renewal update failed", e && e.message);
         }
