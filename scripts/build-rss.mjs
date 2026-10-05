@@ -29,97 +29,15 @@ import { dirname, join } from "node:path";
 const SITE_ORIGIN = "https://mehyar.us";
 const SITE_TITLE = "MehyarSoft LLC";
 const SITE_DESCRIPTION =
-  "Founder-led software, systems, and AI automation consulting for local businesses and regulated teams.";
+  "Practical notes on custom business AI, workflows and software from MehyarSoft.";
 const SITE_LANGUAGE = "en-US";
 const FEED_PATH = "/rss.xml";
 
-// KEEP IN SYNC with client/src/data/blog-posts.ts.
-// Newest first. Only the fields below are needed for the feed.
-const posts = [
-  {
-    title:
-      "The Barber's Booking System Should Build a Client List, Not a Marketplace Dependency",
-    slug: "barber-booking-client-list-not-marketplace-dependency",
-    date: "2026-08-26",
-    author: "Mehyar Swelim",
-    category: "Local Growth",
-    excerpt:
-      "A practical way for barbers and beauty pros to use a QR code, direct booking, reminders, and rebooking without treating a marketplace profile as their business.",
-  },
-  {
-    title: "A Restaurant Website Has One Job Before It Has Ten Features",
-    slug: "restaurant-website-menu-reservations-private-events",
-    date: "2026-08-26",
-    author: "Mehyar Swelim",
-    category: "Hospitality",
-    excerpt:
-      "Make the next action obvious: view the menu, get directions, reserve, order, or ask about a private event—then connect that signal to someone who can respond.",
-  },
-  {
-    title: "What a Clinic Can Automate Without Putting Patient Trust at Risk",
-    slug: "clinic-automation-minimum-data-patient-trust",
-    date: "2026-08-26",
-    author: "Mehyar Swelim",
-    category: "Trust & Safety",
-    excerpt:
-      "A safer clinic automation strategy starts with minimum-data request routing, clear staff handoffs, and vendor review—not a public AI bot collecting patient history.",
-  },
-  {
-    title: "Why a Real Estate Landing Page Needs a Follow-Up Owner",
-    slug: "real-estate-landing-page-follow-up-owner",
-    date: "2026-08-26",
-    author: "Mehyar Swelim",
-    category: "Sales Operations",
-    excerpt:
-      "An open-house QR code or listing page is only valuable when every inquiry has an owner, a next action, and a respectful follow-up timeline.",
-  },
-  {
-    title: "Rizza App Is Live: A World-Class AI Wingman in Your Pocket",
-    slug: "rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
-    date: "2026-07-17",
-    author: "Mehyar Swelim",
-    category: "Apps",
-    excerpt:
-      "Rizza is an AI wingman that reads the dating-app conversation, gets the vibe, and suggests replies while keeping the user in control.",
-  },
-  {
-    title: "AiMech Is Live: An AI Mechanic for Everyday Car Owners",
-    slug: "aimech-app-launch-ai-mechanic-for-everyday-car-owners",
-    date: "2026-07-17",
-    author: "Mehyar Swelim",
-    category: "Apps",
-    excerpt:
-      "AiMech combines AI-assisted technical analysis with workflow automation so everyday car owners can describe a symptom and get a clearer next step.",
-  },
-  {
-    title:
-      "The Small Business Tech Audit: Find Revenue Leaks Before Buying More Software",
-    slug: "small-business-tech-audit-revenue-leaks",
-    date: "2026-05-11",
-    author: "Mehyar Swelim",
-    category: "Operations",
-    excerpt:
-      "A practical framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.",
-  },
-  {
-    title: "Missed Calls Are a CRM Problem, Not Just a Phone Problem",
-    slug: "missed-calls-crm-follow-up",
-    date: "2026-05-11",
-    author: "Mehyar Swelim",
-    category: "Automation",
-    excerpt:
-      "If a prospect calls and nobody follows up, the business needs an intake and response system: consent-safe SMS, email, routing, and owner visibility.",
-  },
-  {
-    title: "When to Build Custom Software Instead of Forcing Another SaaS Tool",
-    slug: "when-to-build-custom-software",
-    date: "2026-05-11",
-    author: "Mehyar Swelim",
-    category: "Strategy",
-    excerpt:
-      "Custom software makes sense when the workflow is proven, the handoffs are clear, and off-the-shelf tools create more manual work than they remove.",
-  },
-];
+import { createServer } from "vite";
+const server=await createServer({server:{middlewareMode:true},appType:"custom"});
+let posts;
+try { posts=(await server.ssrLoadModule("/src/data/blog-posts.ts")).blogPosts; }
+finally { await server.close(); }
 
 const escapeXml = (s) =>
   String(s)

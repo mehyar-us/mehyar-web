@@ -1,7 +1,8 @@
 // Terms.tsx — MehyarSoft LLC website terms of service
-// Last updated: 2026-07-18. Plain language. Separates web browsing from paid engagements.
+// Last updated: 2026-10-03. Plain language. Separates web browsing from paid engagements.
 
 import { FileText, AlertTriangle, Handshake, ScrollText, Gavel, Mail, ExternalLink } from "lucide-react";
+import { MayorAutomaticAuditTerms } from "@/components/MayorAutomaticAudit";
 
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
@@ -50,6 +51,10 @@ const sections: Section[] = [
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">mehyar.us</div>
             <div className="text-sm text-muted-foreground">Marketing site and operator console for this brand.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">The Mayor — <a className="text-brand-700 underline dark:text-brand-100" href="https://mayor.mehyar.us" target="_blank" rel="noreferrer">mayor.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">A separate signed-in business workspace. Its account, billing and usage terms are published in the product. Public website conversations do not access or sync to that account.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Rizza — <a className="text-brand-700 underline dark:text-brand-100" href="https://rizza.app" target="_blank" rel="noreferrer">rizza.app <ExternalLink className="inline h-3 w-3" /></a></div>
@@ -114,40 +119,17 @@ const sections: Section[] = [
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">FreelancerOS — <a className="text-brand-700 underline dark:text-brand-100" href="https://freelanceros.mehyar.us" target="_blank" rel="noreferrer">freelanceros.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Freelancer operating system — clients, invoices, content pipeline, templates.</div>
-<div className="font-semibold">PromptPack Pro — <a className="text-brand-700 underline dark:text-brand-100" href="https://promptpack.mehyar.us" target="_blank" rel="noreferrer">promptpack.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Niche AI prompt packs + swipe files — 50 prompts, 10 swipes, $19 one-time.</div>          </li>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">PromptPack Pro — <a className="text-brand-700 underline dark:text-brand-100" href="https://promptpack.mehyar.us" target="_blank" rel="noreferrer">promptpack.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Niche AI prompt packs and swipe files. Confirm current products and prices on the product site.</div>
+          </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">PrepGuide — <a className="text-brand-700 underline dark:text-brand-100" href="https://prepguide.mehyar.us" target="_blank" rel="noreferrer">prepguide.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Personalized household preparedness playbook — calm, practical, no fear-mongering.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">OpenSeason — <a className="text-brand-700 underline dark:text-brand-100" href="https://openseason.mehyar.us" target="_blank" rel="noreferrer">openseason.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Every hunting-season date for your state, in plain English — free next-3 openers, $12 state packs.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">BeachCall — <a className="text-brand-700 underline dark:text-brand-100" href="https://beachcall.mehyar.us" target="_blank" rel="noreferrer">beachcall.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Daily go/no-go beach verdicts with best-hours windows — free for one beach a day, $9 summer pass for all your beaches.</div>
-          </li>
-
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-<div className="font-semibold">CareRank — <a className="text-brand-700 underline dark:text-brand-100" href="https://carerank.mehyar.us" target="_blank" rel="noreferrer">carerank.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Nursing-home shortlist from real CMS data — free quiz with blurred top 3, $29 one-time for the full ranked 12-page PDF.</div>
-          </li>
-
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">PureTap — <a className="text-brand-700 underline dark:text-brand-100" href="https://puretap.mehyar.us" target="_blank" rel="noreferrer">puretap.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Free tap-water safety verdict from EPA data by ZIP — $19 one-time for the full decoded contaminant report.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">TicketBeat — <a className="text-brand-700 underline dark:text-brand-100" href="https://ticketbeat.mehyar.us" target="_blank" rel="noreferrer">ticketbeat.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Free NYC parking-ticket dismissal odds from real DOF appeal data — $9.99 one-time for a tailored dispute letter, $6.99/month covering every ticket.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">FloodLens — <a className="text-brand-700 underline dark:text-brand-100" href="https://floodlens.mehyar.us" target="_blank" rel="noreferrer">floodlens.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Free FEMA flood-zone lookups with plain-English risk and typical insurance costs — $19 one-time for the full 10-page report, $39 for a three-property pack.</div>
-          </li>
-
-          <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites</div>
+            <div className="font-semibold">Tenant sites</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and white-label hosted PWAs under <code>connectree-*</code> / <code>blue-apple-space-*</code>.</div>
           </li>
         </ul>
@@ -160,19 +142,49 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          MehyarSoft offers the following categories of services. Pricing ranges below are
-          consultative estimates from the public <a className="text-brand-700 underline dark:text-brand-100" href="/services">services page</a>{" "}
-          and are not binding offers.
+          MehyarSoft builds custom AI, software and connected workflows around each business.
+          Custom project pricing, delivery and ongoing costs require an agreed scope and written
+          statement of work. See the current <a className="text-brand-700 underline dark:text-brand-100" href="/pricing">pricing page</a>{" "}
+          for published product prices and how custom work is scoped.
         </p>
         <ul className="mt-3 space-y-2">
-          <li><strong>Tech Audit</strong> — focused review of website, booking path, CRM, call flow, and admin bottlenecks. Typical range: <em>$750&ndash;$2,500</em>.</li>
-          <li><strong>Website and Booking Cleanup</strong> — typography, copy, CTAs, booking widget, and trust signals. Typical range: <em>$750&ndash;$2,500</em>.</li>
-          <li><strong>AI Missed-Call, SMS &amp; Email Follow-Up Flow</strong> — consent-safe response automation. Typical range: <em>$1,500&ndash;$5,000</em>.</li>
-          <li><strong>Internal Automation Sprint</strong> — replace repetitive spreadsheet, inbox, and reporting work. Typical range: <em>$3,000&ndash;$12,000</em>.</li>
-          <li><strong>System Architecture &amp; Integration Consulting</strong> — senior engineering support for SaaS, agencies, healthcare, and regulated teams. Typical range: <em>$100&ndash;$175/hr</em> or <em>$5k&ndash;$25k/project</em>.</li>
-          <li><strong>Monthly Support Retainer</strong> — ongoing owner support queue. Typical range: <em>$500&ndash;$3,500/mo</em>.</li>
+          <li><strong>Website review</strong> — a $330 founder-led audit or a $5 automated report, with the scope and delivery described on the relevant product page.</li>
+          <li><strong>Website and booking experience</strong> — content, navigation, booking and installable web apps.</li>
+          <li><strong>Custom business AI</strong> — approved knowledge, response drafts and connected workflows with agreed permissions and human review.</li>
+          <li><strong>Internal automation</strong> — spreadsheet, inbox, reporting and operational handoffs, scoped around the team's existing tools.</li>
+          <li><strong>System architecture and integrations</strong> — engineering support for local businesses, technology and enterprise teams.</li>
+          <li><strong>Ongoing support</strong> — monitoring, maintenance and improvements under an agreed support scope.</li>
           <li><strong>Custom Software Builds</strong> — internal dashboards, portals, admin tools, and integration layers. Scoped after a discovery or architecture review.</li>
         </ul>
+        <p className="mt-3">
+          The Mayor's Free plan is $0 USD/month with 100 assistant reply attempts and 10 app microphone
+          minutes per business per calendar month. Pro is $14 USD/month with 1,000 attempts and
+          120 app microphone minutes per verified paid period. Allowances are shared by the business;
+          failed attempts and reserved microphone time may count. There are no automatic overage charges.
+          Phone-provider charges, third-party services and custom implementation are separate.
+          Choose a plan in the private workspace after signing in; paid access requires verified payment.
+        </p>
+        <p className="mt-3">
+          Authorized owners and managers can configure the Business agent. Goals, reusable skills and
+          working-style instructions belong to the business; review schedules and reports belong to
+          the operator. Goal measurements are entered manually; progress is calculated from them.
+          Custom skills are instructions with selected
+          read permissions. Scheduled reviews start paused and require an explicit opt-in. Each manual
+          or scheduled AI planning attempt uses one shared business reply attempt; a report produced
+          within an authorized chat turn uses that already-counted turn. Reports are draft recommendations;
+          saving a suggested task requires separate review and confirmation. Planning reports do not send
+          messages, publish content, take payments or change calendars.
+        </p>
+        <p className="mt-3">
+          Optional one-time usage packs add 200 reply attempts and 15 app microphone minutes for $4,
+          500 and 45 for $8, or 800 and 90 for $12. Extra usage belongs to the selected business and
+          expires when its current usage period ends or changes, including a plan upgrade or downgrade:
+          the UTC calendar month for Free or the verified paid period for Pro. Packs do not transfer to
+          a new period or plan, roll over, or renew automatically. A refund or payment dispute removes
+          the pack allowance; past usage remains counted. Buy a pack
+          in the signed-in workspace; credits are available only after payment is verified.
+        </p>
+        <MayorAutomaticAuditTerms/>
         <p className="mt-3 text-sm text-muted-foreground">
           See <a className="text-brand-700 underline dark:text-brand-100" href="/portfolio">Portfolio</a>{" "}
           for representative engagement patterns.
@@ -322,7 +334,7 @@ const sections: Section[] = [
           <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}`}>{contactEmail}</a>.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Operated by <strong>{company}</strong>. Effective July 18, 2026.
+          Operated by <strong>{company}</strong>. Effective October 3, 2026.
         </p>
       </>
     ),
@@ -341,7 +353,7 @@ const Terms = () => {
             Terms of Service
           </h1>
           <p className="site-lede mt-4">
-            Last updated July 18, 2026. These terms keep website browsing and paid consulting
+            Last updated October 3, 2026. These terms keep website browsing and paid consulting
             engagement boundaries separate. Reading this website is not a client relationship.
           </p>
         </div>

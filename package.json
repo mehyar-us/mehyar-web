@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "npm run build:client",
-    "build:client": "vite build && node scripts/copy-route-shells.mjs && node scripts/inject-route-jsonld.mjs && node scripts/build-rss.mjs",
+    "build:client": "vite build && node scripts/copy-route-shells.mjs && node scripts/build-mayor-knowledge.mjs && node scripts/build-rss.mjs && node scripts/finalize-discovery-pwa.mjs",
     "check": "tsc",
     "deploy:pages": "tsx scripts/deploy-pages.ts",
     "deploy:pages:local": "npm run build:client && tsx scripts/deploy-pages.ts",
@@ -17,7 +17,10 @@
     "test:offers": "node scripts/test-offer-fulfillment.mjs",
     "test:prospects": "node tests/test_prospect_pipeline.mjs",
     "test:gov-opportunities": "node scripts/test-gov-opportunities.mjs",
-    "test:gov-drafts": "tsx scripts/test-gov-drafting-assist.mjs"
+    "test:gov-drafts": "tsx scripts/test-gov-drafting-assist.mjs",
+    "test:visual-ai": "node scripts/test-visual-explorer.mjs && tsx scripts/test-visual-client.ts",
+    "test:pwa": "node scripts/test-discovery-pwa.mjs",
+    "test:mayor": "tsx scripts/test-mayor.ts && tsx scripts/test-mayor-voice.ts && tsx scripts/test-mayor-recorder.ts && node scripts/test-mayor-business-prompts.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

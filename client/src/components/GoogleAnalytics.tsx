@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 
 const googleTagId = import.meta.env.MEHYAR_PUBLIC_GOOGLE_TAG_ID?.trim() || "";
-const ga4MeasurementId = import.meta.env.MEHYAR_PUBLIC_GOOGLE_GA4_MEASUREMENT_ID?.trim() || "";
+// Public measurement identity verified on mehyar.us, 2026-10-03.
+const ga4MeasurementId = import.meta.env.MEHYAR_PUBLIC_GOOGLE_GA4_MEASUREMENT_ID?.trim() || "G-25N8E18944";
 const dryRun = import.meta.env.MEHYAR_PUBLIC_ANALYTICS_DRY_RUN === "true";
 const forceEnable = import.meta.env.MEHYAR_PUBLIC_ANALYTICS_FORCE_ENABLE === "true";
 
@@ -12,7 +13,7 @@ const trackedCheckoutEvents = new Set<string>();
 const trackedOfferViews = new Set<string>();
 
 function isPublicPath(pathname: string) {
-  return !pathname.startsWith("/admin");
+  return !/^\/(admin|dashboard|private|q|billing|proposals|audit\/report|client-template|unsubscribe)(\/|$)/.test(pathname);
 }
 
 function canLoadAnalytics(pathname = typeof window === "undefined" ? "" : window.location.pathname) {
@@ -42,7 +43,7 @@ function installGoogleTag() {
       continue;
     }
 
-    if (loadedScriptIds.has(id) || document.querySelector(`script[data-mehyar-google-tag="${id}"]`)) {
+    if (loadedScriptIds.has(id) || document.querySelector(`script[data-mehyar-google-tag="${id}"]`) || Array.from(document.scripts).some(script => script.src.includes("googletagmanager.com/gtag/js") && new URL(script.src).searchParams.get("id") === id)) {
       continue;
     }
 
@@ -105,6 +106,8 @@ function installCtaTracking() {
     if (!canLoadAnalytics()) return;
     const target = event.target instanceof Element ? event.target.closest("a,button") : null;
     if (!target) return;
+    // Model-written labels and conversation exports must never become CTA telemetry.
+    if(target.closest('.mayor-dialog,.mayor-actions-menu'))return;
 
     const label = (target.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120);
     const href = target instanceof HTMLAnchorElement ? target.getAttribute("href") : null;
