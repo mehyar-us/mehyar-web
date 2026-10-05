@@ -1,0 +1,27 @@
+{
+  "id": "mayor-automatic-business-audit",
+  "publication": "unpublished",
+  "name": "Mayor automatic business audit",
+  "priceUsd": 330,
+  "payment": "one-time",
+  "href": "https://mayor.mehyar.us/business-audit",
+  "headline": "A clearer plan for your next 90 days.",
+  "summary": "Automatic analysis of your public website and the business goals you supply, with cited findings, a separate automated review and a practical 30/60/90-day roadmap.",
+  "scope": [
+    {"name": "Offer", "detail": "How clearly the captured pages explain your products or services."},
+    {"name": "Journey", "detail": "The inquiry and booking paths described in the captured public pages."},
+    {"name": "Trust", "detail": "Trust information and evidence present in the captured pages."},
+    {"name": "Conversion", "detail": "Proposed improvements to the public inquiry path, with unknown outcomes made explicit."},
+    {"name": "Operations", "detail": "Practical workflow recommendations grounded in your supplied goals and public sources."},
+    {"name": "Measurement", "detail": "What to measure next and how to establish a baseline."}
+  ],
+  "roadmap": [
+    {"period": "First 30 days", "detail": "Establish a baseline, verify existing tools and prioritize the first changes."},
+    {"period": "Days 31–60", "detail": "Work through the next improvements and collect measurements."},
+    {"period": "Days 61–90", "detail": "Review what you measured and decide what to do next."}
+  ],
+  "delivery": "Verified payment queues an audit. A report becomes available only after automatic analysis passes a separate automated review; payment does not mean a report is complete.",
+  "boundaries": "Research uses captured public static webpages and owner-supplied information. It does not access private systems, verify revenue, traffic or retention, capture screenshots or test performance. Recommendations require your judgment; results and delivery dates are not guaranteed. The audit does not send customer messages or perform business actions.",
+  "separateOffers": "Separate from MehyarSoft’s $330 founder-led Website Audit and the $5 automated website report. This purchase does not include human consulting or implementation.",
+  "cta": "View the automatic audit"
+}

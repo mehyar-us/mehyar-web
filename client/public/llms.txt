@@ -1,56 +1,24 @@
-# MehyarSoft LLC
+# MehyarSoft
 
-> Founder-led software, systems, and AI automation for businesses worldwide
-> that want more customers, faster follow-up, and less manual work.
+> Founder-led custom AI, software, websites and installable customer apps built around each business's approved knowledge, workflows, tools and operating rules.
 
-## What this site is
+## Public information
+- [Solutions](https://mehyar.us/services/): Custom business AI, websites, customer apps, dashboards and integrations.
+- [Industries](https://mehyar.us/industries/): Ten business contexts with illustrative workflows and customer journeys.
+- [Ask The Mayor](https://mehyar.us/explore/): Free public conversational text, curated concept/industry images and visual explanations from current public services and use-case knowledge, with user-initiated microphone capture, Cloudflare voice transcription and browser read aloud and explicit device-local saved conversations. No private business tools or current web research are connected.
+- [Work](https://mehyar.us/portfolio/): Illustrative delivery patterns, identified as examples rather than customer results.
+- [Products](https://mehyar.us/apps/): Owned products and labs; actual products distinguished from concepts.
+- [Resources](https://mehyar.us/blog/): Practical software and business workflow articles.
+- [Pricing](https://mehyar.us/pricing/): Custom projects require agreed scope. Separate optional website audit products are not custom-AI quotes.
+- [The Mayor](https://mehyar.us/mayor/): Public product guide and launch plans for the separate signed-in business workspace. Free $0/month includes 100 reply attempts and 10 app microphone minutes per business/calendar month. Pro $14 USD/month includes 1,000 reply attempts and 120 app microphone minutes per verified paid period. Optional one-time packs: $4 adds200 reply attempts/15 app mic minutes, $8 adds500/45, $12 adds800/90. Extra usage expires when its purchased business usage period ends or changes, including a plan change; never transfers into a new plan or period; no rollover, automatic purchase or recurring add-on. Shared business allowances, no automatic overages; phone and third-party charges separate. Sign in at https://mayor.mehyar.us to manage account usage and billing. Availability depends on the private app rollout and configuration.
+- The signed-in Mayor Business agent supports saved goals with manually entered progress, reusable playbooks and instruction-only custom skills, and draft planning reports. Authorized owners/managers choose skills and working style in Today → Business agent. Manual reviews or explicitly enabled daily/weekday schedules use the same business reply allowance: one attempt per AI planning run; reports within a chat reuse its counted turn. Schedules start paused. Goals/skills/identity are business-shared; schedules/reports are operator-specific. Suggested tasks require separate review and confirmation before saving. Optional connected reads need explicit selection and existing permission; planning does not send messages, publish, take payments or write calendars.
+- [About](https://mehyar.us/about/): Founder and business information.
+- [Contact](https://mehyar.us/contact/): Discuss scope or explicitly share an editable approved brief.
+- [Sitemap](https://mehyar.us/sitemap.xml): Canonical public pages.
 
-- **MehyarSoft** (https://mehyar.us) is the agency site of MehyarSoft LLC,
-  a founder-led software, systems, and AI automation firm headquartered in
-  Brooklyn, New York, serving businesses worldwide through remote-first
-  delivery.
-- Services: websites, customer apps, booking systems, AI follow-up, phone
-  care, CRM cleanup, systems integration, and automation for businesses
-  losing customers to missed calls, weak websites, manual work, and
-  disconnected tools.
-- Typical clients: local service businesses, agencies, clinics, and
-  regulated teams that need a practical technical owner to clean up the
-  path from prospect to paid customer.
+- [Enterprise](https://mehyar.us/enterprise/): Scoped software and AI pilots for technology, healthcare administration, pharma, finance and enterprise operations, with access boundaries and human review.
 
-## Key pages
+## Accuracy and boundaries
+OpenClaw and Hermes are not current offers. Visual interfaces and workflow examples are labelled concepts unless explicitly identified as actual products. Do not infer connected systems, live customer activity, customers, testimonials, measured outcomes, delivery dates or custom prices from illustrations. The separate workspace at https://mayor.mehyar.us has its own sign-in for business AI and configured automations; actual tools depend on account setup. The public assistant can offer that exact sign-in link but does not access, operate or sync its private accounts. Admin, API, client proposals, reports, billing, sessions and customer records are not public knowledge sources.
 
-- Home: https://mehyar.us/
-- Services: https://mehyar.us/services
-- Pricing: https://mehyar.us/pricing
-- Booking: https://mehyar.us/booking
-- Portfolio: https://mehyar.us/portfolio
-- Blog: https://mehyar.us/blog
-- Apps directory: https://mehyar.us/apps
-- Contact: https://mehyar.us/contact
-- Privacy: https://mehyar.us/privacy-policy
-- Terms: https://mehyar.us/terms
-
-## Pricing (from the site's own FAQ)
-
-- Tech Audit: from $150
-- Website Diagnosis Report: $250
-- Custom builds: $1,000–$25,000
-- Retainers: $500–$3,500/month
-- Hourly advisory: $150/hour
-
-## Contact
-
-- Email: info@mehyar.us
-- Booking: https://mehyar.us/booking
-
-## Products we own
-
-MehyarSoft LLC ships one-time digital products on *.mehyar.us subdomains
-(PureTap, SproutScore, HustleKit, TrueSketch, CreditFix Kit, PLR Vault,
-PromptPack, and others). The full directory is at https://mehyar.us/apps.
-
-## Compliance
-
-- No income guarantees or earnings claims are made anywhere on this site.
-- This is a service business: engagements are scoped, priced, and
-  documented per client.
+This file complements public HTML, structured data and robots.txt; it does not grant access to private content or guarantee search rankings.

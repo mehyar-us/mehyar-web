@@ -70,10 +70,10 @@ const BlogSection = () => {
                   <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
                 </Link>
                 <Link
-                  href="/micro-offer#intake"
+                  href="/contact"
                   className="inline-flex items-center text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100"
                 >
-                  Request the $330 audit{" "}
+                  Discuss your business{" "}
                   <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
@@ -139,10 +139,10 @@ const BlogSection = () => {
             </Button>
           </Link>
           <Link
-            href="/micro-offer#intake"
+            href="/contact"
             className="inline-flex items-center text-sm font-semibold text-brand-800 hover:text-brand-700 dark:text-brand-100"
           >
-            Or send the leak and request the $330 audit{" "}
+            Discuss your business{" "}
             <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
           </Link>
         </div>

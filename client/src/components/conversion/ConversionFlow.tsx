@@ -129,27 +129,26 @@ const modeCopy: Record<
   }
 > = {
   contact_general: {
-    eyebrow: "Founder-led intake",
-    title: "Request a practical next step.",
-    description:
-      "Tell us what is leaking: website clarity, missed calls, booking friction, manual work, or disconnected systems.",
+    eyebrow: "Your business",
+    title: "Discuss your business.",
+    description: "Tell us about one workflow and what you want to improve.",
     success: "Got it — we’ll review and respond with the next practical step.",
-    submit: "Request practical next step",
+    submit: "Send your inquiry",
   },
   newsletter_signup: {
     eyebrow: "Free checklist",
     title: "Get the free AI automation checklist.",
     description:
-      "One focused email path for practical updates, with easy unsubscribe controls.",
+      "Request the checklist by email. Ongoing updates are a separate, optional choice.",
     success:
       "Checklist request received. You can update preferences or unsubscribe anytime.",
-    submit: "Send me the checklist",
+    submit: "Request a copy by email",
   },
   offer_330_missed_lead_rescue: {
-    eyebrow: "$330 rescue intake",
-    title: "Request the $330 AI missed-lead rescue path.",
+    eyebrow: "$330 founder-led audit",
+    title: "Request the $330 founder-led audit.",
     description:
-      "Tell us where calls, forms, emails, booking, or follow-up are slipping so Boss can route the smallest useful first step.",
+      "Describe your website, customer journey and current tools so Mehyar can review the fit for a written action plan.",
     success:
       "Request received. We’ll review your missed-lead setup and reply with the next best step.",
     submit: "Request the $330 review",
@@ -158,7 +157,7 @@ const modeCopy: Record<
     eyebrow: "Book a call",
     title: "Request a MehyarSoft booking call.",
     description:
-      "Choose the closest service. If live calendar auth is unavailable, this captures a manual scheduling request without faking availability.",
+      "Share your preferred time window. We will confirm availability with you.",
     success:
       "Booking request received. If a confirmed slot is not available, we’ll send available times manually.",
     submit: "Request booking time",
@@ -168,14 +167,15 @@ const modeCopy: Record<
     title: "Create a support ticket.",
     description:
       "Tell us who you are, which business and system need attention, what changed, and how urgent it is. Do not include passwords or private customer data.",
-    success: "Support ticket received. We’ll review the affected system and reply with the next step.",
+    success:
+      "Support ticket received. We’ll review the affected system and reply with the next step.",
     submit: "Create support ticket",
   },
   unsubscribe: {
-    eyebrow: "Suppression request",
+    eyebrow: "Email preferences",
     title: "Unsubscribe from MehyarSoft updates.",
     description:
-      "One clear unsubscribe path. The optional reason appears only after the unsubscribe action and is never required.",
+      "Unsubscribe this email without signing in or completing a survey.",
     success: "You’re unsubscribed. The suppression request was recorded.",
     submit: "Unsubscribe",
   },
@@ -206,14 +206,14 @@ const serviceOptions = [
   },
   {
     value: "industry_package",
-    label: "Industry-specific starting package",
-    publicLabel: "A package I selected",
+    label: "Business workflow inquiry",
+    publicLabel: "A workflow I selected",
     formType: "contact" as IntakeFormType,
   },
   {
     value: "ai_missed_lead_rescue_330",
-    label: "$330 AI Missed-Lead Rescue",
-    publicLabel: "Fix missed calls or missed leads",
+    label: "$330 founder-led audit",
+    publicLabel: "Founder-led audit ($330)",
     formType: "micro_offer" as IntakeFormType,
   },
   {
@@ -236,8 +236,8 @@ const serviceOptions = [
   },
   {
     value: "automation_sprint",
-    label: "Internal automation sprint",
-    publicLabel: "Automate internal work",
+    label: "Custom business AI / internal automation",
+    publicLabel: "Custom AI for my business",
     formType: "contact" as IntakeFormType,
   },
   {
@@ -404,13 +404,14 @@ function getUrlDefaults(
       zip_code: params.get("zip") || params.get("zip_code") || "",
       service_category: serviceDefault,
       budget_range: is330
-        ? "$330 setup deposit / audit path"
+        ? "$330 founder-led audit"
         : defaultFormState.budget_range,
       urgency: is330 ? "this_week" : defaultFormState.urgency,
       requested_time_window: params.get("time") || "",
+      current_tools: params.get("tools") || defaultFormState.current_tools,
       message: [
         requestedIndustry ? `Business type: ${requestedIndustry}.` : "",
-        requestedOffer ? `Interested starting package: ${requestedOffer}.` : "",
+        requestedOffer ? `Interested scope: ${requestedOffer}.` : "",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -718,7 +719,12 @@ export function ConversionFlow({
   const notSureSelected = Boolean(serviceOption.notSure);
   const compact = Boolean(featureFlags?.compact);
   const compactTopics = Boolean(featureFlags?.compactTopics);
-  const sourceValue = source || urlDefaults.source;
+  const sourceValue =
+    (typeof window !== "undefined" &&
+      (new URLSearchParams(window.location.search).get("utm_source") ||
+        new URLSearchParams(window.location.search).get("source"))) ||
+    source ||
+    urlDefaults.source;
   const campaignValue = campaign || urlDefaults.campaign;
   const queryOffer =
     typeof window === "undefined"
@@ -898,6 +904,12 @@ export function ConversionFlow({
           timeline: form.urgency,
           message: [
             form.message.trim(),
+            !isNewsletter &&
+            !isOffer330 &&
+            form.current_tools !== "not_sure" &&
+            form.current_tools
+              ? `Current tools: ${form.current_tools}.`
+              : "",
             isBooking
               ? `Requested time window: ${form.requested_time_window || "manual scheduling needed"}.`
               : "",
@@ -921,7 +933,7 @@ export function ConversionFlow({
             : needsServiceConsent
               ? consentContact
               : true,
-          consent_marketing: isNewsletter || consentMarketing,
+          consent_marketing: consentMarketing,
           turnstile_token: turnstileToken,
           hp_field: form.hp_field,
           conversion_mode: mode,
@@ -939,7 +951,12 @@ export function ConversionFlow({
             : undefined,
           utm: {
             source: sourceValue,
-            medium: "owned_site",
+            medium:
+              (typeof window !== "undefined" &&
+                new URLSearchParams(window.location.search).get(
+                  "utm_medium",
+                )) ||
+              "owned_site",
             campaign: campaignValue,
           },
         });
@@ -993,7 +1010,7 @@ export function ConversionFlow({
       aria-labelledby={`${formId}-title`}
       data-conversion-mode={mode}
     >
-      <div className="mb-5 flex items-start justify-between gap-4">
+      <div className={mode === "contact_general" ? "sr-only" : "mb-5 flex items-start justify-between gap-4"}>
         <div>
           <p
             className={cn(
@@ -1034,42 +1051,12 @@ export function ConversionFlow({
       </div>
       <p
         className={cn(
-          "text-sm leading-6",
+          mode === "contact_general" ? "sr-only" : "text-sm leading-6",
           isFooter ? "text-neutral-300" : "text-muted-foreground",
         )}
       >
         {description || copy.description}
       </p>
-
-      {!isNewsletter && !isUnsubscribe && !isPaymentTest ? (
-        <ol className="mt-5 grid grid-cols-3 gap-2" aria-label="Request steps">
-          {["Choose the need", "Add context", "Consent & send"].map(
-            (step, index) => (
-              <li
-                key={step}
-                className={cn(
-                  "rounded-xl border px-3 py-2 text-center text-[11px] font-semibold leading-4 sm:text-xs",
-                  isFooter
-                    ? "border-white/10 bg-white/[0.04] text-neutral-200"
-                    : "border-border bg-background/70 text-muted-foreground",
-                )}
-              >
-                <span
-                  className={cn(
-                    "mr-1",
-                    isFooter
-                      ? "text-brand-100"
-                      : "text-brand-700 dark:text-brand-100",
-                  )}
-                >
-                  {index + 1}.
-                </span>
-                {step}
-              </li>
-            ),
-          )}
-        </ol>
-      ) : null}
 
       <form className="mt-5 space-y-5" onSubmit={handleSubmit}>
         <div className="hidden" aria-hidden="true">
@@ -1084,7 +1071,7 @@ export function ConversionFlow({
         </div>
 
         {!isNewsletter && !isUnsubscribe ? (
-          <div className="space-y-3 rounded-2xl border border-brand-700/15 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="space-y-2">
             <Label htmlFor={`${formId}-service`}>What do you need?</Label>
             <select
               id={`${formId}-service`}
@@ -1098,21 +1085,6 @@ export function ConversionFlow({
                 </option>
               ))}
             </select>
-            {notSureSelected ? (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm leading-6 text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-100">
-                <Sparkles className="mr-2 inline h-4 w-4" aria-hidden="true" />
-                AI helper mode: send whatever you know. MehyarSoft will triage
-                the request, identify the likely leak, and recommend audit,
-                booking, automation, or consulting next.
-              </div>
-            ) : (
-              <div className="rounded-xl border border-brand-700/15 bg-brand-50/80 p-3 text-sm leading-6 text-brand-950 dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-100">
-                <Sparkles className="mr-2 inline h-4 w-4" aria-hidden="true" />
-                Smart default: {serviceOption.label}. If this is not right,
-                choose “Not sure” and the AI-assisted request audit will route
-                it.
-              </div>
-            )}
           </div>
         ) : null}
 
@@ -1134,49 +1106,6 @@ export function ConversionFlow({
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${formId}-first-name`}>
-                First name{" "}
-                <span className="font-normal text-neutral-500">optional</span>
-              </Label>
-              <Input
-                id={`${formId}-first-name`}
-                value={form.first_name}
-                onChange={(event) => setField("first_name", event.target.value)}
-                className={inputClassName}
-                placeholder="First name"
-                autoComplete="given-name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${formId}-last-name`}>
-                Last name{" "}
-                <span className="font-normal text-neutral-500">optional</span>
-              </Label>
-              <Input
-                id={`${formId}-last-name`}
-                value={form.last_name}
-                onChange={(event) => setField("last_name", event.target.value)}
-                className={inputClassName}
-                placeholder="Last name"
-                autoComplete="family-name"
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor={`${formId}-zip`}>
-                ZIP code{" "}
-                <span className="font-normal text-neutral-500">optional</span>
-              </Label>
-              <Input
-                id={`${formId}-zip`}
-                value={form.zip_code}
-                onChange={(event) => setField("zip_code", event.target.value)}
-                className={inputClassName}
-                placeholder="Optional ZIP code"
-                autoComplete="postal-code"
-                inputMode="numeric"
-              />
-            </div>
           </div>
         ) : (
           <div
@@ -1196,11 +1125,15 @@ export function ConversionFlow({
                   placeholder="Your name"
                   autoComplete="name"
                   aria-required="true"
+                  required
                 />
               </div>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor={`${formId}-email`}>Email <span className="text-red-600 dark:text-red-300">required</span></Label>
+              <Label htmlFor={`${formId}-email`}>
+                Email{" "}
+                <span className="text-red-600 dark:text-red-300">required</span>
+              </Label>
               <Input
                 id={`${formId}-email`}
                 type="email"
@@ -1234,7 +1167,15 @@ export function ConversionFlow({
               <div className="space-y-2">
                 <Label htmlFor={`${formId}-business`}>
                   Business / company{" "}
-                  {isSupport ? <span className="text-red-600 dark:text-red-300">required</span> : <span className="font-normal text-neutral-500">optional</span>}
+                  {isSupport ? (
+                    <span className="text-red-600 dark:text-red-300">
+                      required
+                    </span>
+                  ) : (
+                    <span className="font-normal text-neutral-500">
+                      optional
+                    </span>
+                  )}
                 </Label>
                 <Input
                   id={`${formId}-business`}
@@ -1254,7 +1195,9 @@ export function ConversionFlow({
         {!isNewsletter && !isUnsubscribe ? (
           <div className="space-y-2">
             <Label htmlFor={`${formId}-message`}>
-              {isSupport ? "Describe the problem, when it started, and what you expected to happen" : "What is happening now, and what would a win look like?"}
+              {isSupport
+                ? "Describe the problem, when it started, and what you expected to happen"
+                : "What is happening now, and what would a win look like?"}
             </Label>
             <Textarea
               id={`${formId}-message`}
@@ -1262,12 +1205,17 @@ export function ConversionFlow({
               onChange={(event) => setField("message", event.target.value)}
               rows={5}
               className={textareaClassName}
-              placeholder={isSupport ? "Example: Customers cannot finish booking since this morning. The confirmation button keeps loading on phones." : "Example: We miss after-hours calls, leads do not get followed up, booking is manual, and nobody trusts the CRM data."}
+              placeholder={
+                isSupport
+                  ? "Example: Customers cannot finish booking since this morning. The confirmation button keeps loading on phones."
+                  : "Example: Our team answers the same questions by email. We want drafts based on our approved information, with a person approving each response."
+              }
               required={!isPaymentTest}
             />
             <p className="text-xs leading-5 text-muted-foreground">
-              A few sentences are enough. Do not paste passwords, API keys, health information,
-              payment data, private customer lists, or confidential files.
+              A few sentences are enough. Do not paste passwords, API keys,
+              health information, payment data, private customer lists, or
+              confidential files.
             </p>
           </div>
         ) : null}
@@ -1275,34 +1223,81 @@ export function ConversionFlow({
         {isSupport ? (
           <div className="grid gap-4 rounded-2xl border border-brand-700/15 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04] md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor={`${formId}-existing-client`}>Your relationship with MehyarSoft</Label>
-              <select id={`${formId}-existing-client`} value={form.existing_client} onChange={(event) => setField("existing_client", event.target.value)} className={inputClassName}>
+              <Label htmlFor={`${formId}-existing-client`}>
+                Your relationship with MehyarSoft
+              </Label>
+              <select
+                id={`${formId}-existing-client`}
+                value={form.existing_client}
+                onChange={(event) =>
+                  setField("existing_client", event.target.value)
+                }
+                className={inputClassName}
+              >
                 <option value="existing_client">Existing customer</option>
-                <option value="maintenance_plan">I have a maintenance plan</option>
+                <option value="maintenance_plan">
+                  I have a maintenance plan
+                </option>
                 <option value="new_support_request">New support request</option>
                 <option value="not_sure">Not sure</option>
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`${formId}-support-area`}>What needs attention?</Label>
-              <select id={`${formId}-support-area`} value={form.support_area} onChange={(event) => setField("support_area", event.target.value)} className={inputClassName}>
+              <Label htmlFor={`${formId}-support-area`}>
+                What needs attention?
+              </Label>
+              <select
+                id={`${formId}-support-area`}
+                value={form.support_area}
+                onChange={(event) =>
+                  setField("support_area", event.target.value)
+                }
+                className={inputClassName}
+              >
                 <option value="website_app">Website or customer app</option>
-                <option value="booking_scheduling">Booking or scheduling</option>
+                <option value="booking_scheduling">
+                  Booking or scheduling
+                </option>
                 <option value="account_access">Login or account access</option>
-                <option value="sms_email_voice">Text, email, or phone automation</option>
+                <option value="sms_email_voice">
+                  Text, email, or phone automation
+                </option>
                 <option value="ai_assistant">AI assistant or workflow</option>
-                <option value="social_content">Social content or publishing</option>
+                <option value="social_content">
+                  Social content or publishing
+                </option>
                 <option value="billing_plan">Billing or service plan</option>
                 <option value="other">Something else</option>
               </select>
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor={`${formId}-affected-service`}>Affected site, app, service, or page</Label>
-              <Input id={`${formId}-affected-service`} value={form.affected_service} onChange={(event) => setField("affected_service", event.target.value)} className={inputClassName} placeholder="Example: mysite.com booking page, customer login, SMS reminders" aria-required="true" required />
+              <Label htmlFor={`${formId}-affected-service`}>
+                Affected site, app, service, or page
+              </Label>
+              <Input
+                id={`${formId}-affected-service`}
+                value={form.affected_service}
+                onChange={(event) =>
+                  setField("affected_service", event.target.value)
+                }
+                className={inputClassName}
+                placeholder="Example: mysite.com booking page, customer login, SMS reminders"
+                aria-required="true"
+                required
+              />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor={`${formId}-maintenance-need`}>What kind of help do you need?</Label>
-              <select id={`${formId}-maintenance-need`} value={form.maintenance_need} onChange={(event) => setField("maintenance_need", event.target.value)} className={inputClassName}>
+              <Label htmlFor={`${formId}-maintenance-need`}>
+                What kind of help do you need?
+              </Label>
+              <select
+                id={`${formId}-maintenance-need`}
+                value={form.maintenance_need}
+                onChange={(event) =>
+                  setField("maintenance_need", event.target.value)
+                }
+                className={inputClassName}
+              >
                 <option value="one_time_fix">One-time fix</option>
                 <option value="content_update">Content or photo update</option>
                 <option value="ongoing_maintenance">Ongoing maintenance</option>
@@ -1498,6 +1493,27 @@ export function ConversionFlow({
           </div>
         ) : null}
 
+        {!isNewsletter && !isUnsubscribe && !isOffer330 && showDetails ? (
+          <div className="space-y-2">
+            <Label htmlFor={`${formId}-current-tools`}>
+              Current tools{" "}
+              <span className="font-normal text-muted-foreground">
+                optional
+              </span>
+            </Label>
+            <Input
+              id={`${formId}-current-tools`}
+              value={
+                form.current_tools === "not_sure" ? "" : form.current_tools
+              }
+              onChange={(event) =>
+                setField("current_tools", event.target.value)
+              }
+              placeholder="Email, calendar, CRM or other tools"
+              className={inputClassName}
+            />
+          </div>
+        ) : null}
         {!isNewsletter && !isUnsubscribe && showDetails ? (
           <>
             <div className="grid gap-4 md:grid-cols-3">
@@ -1543,7 +1559,7 @@ export function ConversionFlow({
                   className={inputClassName}
                 >
                   <option value="not_sure">Not sure</option>
-                  <option value="$330 setup deposit / audit path">
+                  <option value="$330 founder-led audit">
                     $330 audit path
                   </option>
                   <option value="$500-$5k">$500–$5k</option>
@@ -1568,31 +1584,6 @@ export function ConversionFlow({
               />
             </div>
           </>
-        ) : null}
-
-        {isUnsubscribe ? (
-          <div className="space-y-4 rounded-2xl border border-border bg-white p-4 dark:bg-white/[0.04]">
-            <p className="text-sm leading-6 text-muted-foreground">
-              Submitting unsubscribes this email first. The survey below is
-              optional and not required.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor={`${formId}-reason`}>
-                Reason after unsubscribe{" "}
-                <span className="font-normal text-neutral-500">optional</span>
-              </Label>
-              <Textarea
-                id={`${formId}-reason`}
-                rows={4}
-                placeholder="Optional: tell us what went wrong."
-                value={form.unsubscribe_reason}
-                onChange={(event) =>
-                  setField("unsubscribe_reason", event.target.value)
-                }
-                className={textareaClassName}
-              />
-            </div>
-          </div>
         ) : null}
 
         {!isUnsubscribe && !isPaymentTest ? (
@@ -1642,10 +1633,26 @@ export function ConversionFlow({
                 </label>
               </>
             ) : (
-              <div className="rounded-xl border border-brand-700/15 bg-brand-50/80 p-3 text-sm leading-6 text-brand-950 dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-100">
-                Entering your email requests the free checklist and practical
-                MehyarSoft updates. Unsubscribe anytime. First name, last name,
-                and ZIP are optional.
+              <div className="space-y-3 text-sm leading-6 text-muted-foreground">
+                <p>
+                  {mode === "subscription_preferences"
+                    ? "Choose your preferences and whether you want ongoing updates. Full unsubscribe is available separately."
+                    : "Submitting requests the checklist by email. It does not subscribe you to ongoing updates."}
+                </p>
+                <label className="flex min-h-11 items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={consentMarketing}
+                    onChange={(event) =>
+                      setConsentMarketing(event.target.checked)
+                    }
+                    className={nativeCheckboxClassName}
+                  />
+                  <span>
+                    Optional: send occasional practical updates. Unsubscribe
+                    anytime.
+                  </span>
+                </label>
               </div>
             )}
           </div>
@@ -1709,7 +1716,13 @@ export function ConversionFlow({
               </p>
               <p className="mt-1 leading-6">
                 {status === "success"
-                  ? "Sent. You'll get one practical next step by email."
+                  ? isUnsubscribe
+                    ? "You do not need to take any further action."
+                    : isNewsletter
+                      ? mode === "subscription_preferences"
+                        ? "Your preferences were recorded."
+                        : "Email copy requested. The checklist is also available to download now; ongoing updates require your optional consent."
+                      : "We will review your request and reply by email."
                   : status === "error"
                     ? "Try again, or email info@mehyar.us."
                     : status === "submitting"

@@ -16,6 +16,10 @@ on:
       - 'wrangler.toml'
       - '.github/workflows/deploy-cloudflare-pages.yml'
 
+concurrency:
+  group: cloudflare-production-main
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -43,6 +47,8 @@ jobs:
       - run: npm run check
       - run: npm run test:intake
       - run: CUSTOM_DOMAIN=true NODE_ENV=production npm run build:client
+      - name: Verify approved public homepage
+        run: node scripts/verify-public-home.mjs
       - name: Probe CF AI Gateway reachability
         run: |
           if [ -n "$CLOUDFLARE_AI_GATEWAY_TOKEN" ]; then
@@ -147,15 +153,9 @@ jobs:
           print("Secrets injected into wrangler.toml")
           PYEOF
           echo "Deploying..."
-          # Stage a clean deploy dir (Designful-style): static files + functions/
-          # at the root, so wrangler picks up Pages Functions reliably.
-          rm -rf /tmp/pages-stage
-          mkdir -p /tmp/pages-stage
-          cp -r dist/public/. /tmp/pages-stage/
-          cp -r functions /tmp/pages-stage/functions
-          echo "=== staging ==="
-          ls /tmp/pages-stage/functions/api/pay/
-          npx wrangler pages deploy /tmp/pages-stage --project-name=mehyar-web --branch=main
+          # Build Functions from the checkout so imports from shared/ resolve.
+          # Static uploads contain only dist/public; backend sources stay private.
+          npx wrangler pages deploy dist/public --project-name=mehyar-web --branch=main
         env:
           SECRET_ADMIN_EMAIL: ${{ secrets.MEHYARSOFT_ADMIN_EMAIL }}
           SECRET_ADMIN_USERNAME: ${{ secrets.MEHYARSOFT_ADMIN_USERNAME }}
@@ -180,3 +180,6 @@ jobs:
               if (/secret|private|token/i.test(JSON.stringify(config))) throw new Error("runtime config exposes a sensitive-looking key");
             });
           '
+
+      - name: Verify published Mayor homepage
+        run: node scripts/verify-public-home.mjs --live
