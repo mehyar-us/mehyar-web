@@ -1,26 +1,15 @@
-import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { projects, PortfolioProject } from "@/data/portfolio-projects";
+import { projects } from "@/data/portfolio-projects";
 import CTASection from "@/components/cta-section";
 import QuickAnswer from "@/components/QuickAnswer";
 
 const PortfolioDetail = () => {
   const [, params] = useRoute("/portfolio/:id");
-  const [project, setProject] = useState<PortfolioProject | null>(null);
-
-  useEffect(() => {
-    // Find project by ID
-    const id = parseInt(params?.id || "0", 10);
-    const foundProject = projects.find((p) => p.id === id);
-    
-    if (foundProject) {
-      setProject(foundProject);
-    }
-  }, [params]);
+  const project = projects.find((p) => p.id === Number(params?.id));
 
   if (!project) {
     return (
@@ -47,12 +36,13 @@ const PortfolioDetail = () => {
       {/* Project Hero */}
       <section className="site-hero">
         <div className="site-shell">
-          <Link href="/portfolio">
-            <a className="inline-flex items-center text-neutral-600 dark:text-neutral-400 hover:text-primary dark:hover:text-primary mb-8 transition-colors">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Portfolio
-            </a>
+          <Link
+            href="/portfolio"
+            className="inline-flex items-center text-neutral-600 dark:text-neutral-400 hover:text-primary dark:hover:text-primary mb-8 transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Portfolio
           </Link>
-          
+
           <div className="flex flex-col md:flex-row gap-8 md:gap-16">
             <div className="md:w-3/5">
               <Badge
@@ -61,16 +51,18 @@ const PortfolioDetail = () => {
               >
                 {project.category}
               </Badge>
-              <h1 className="site-display mb-6">
-                {project.title}
-              </h1>
-              <p className="site-lede mb-8">
-                {project.description}
-              </p>
+              <h1 className="site-display mb-6">{project.title}</h1>
+              <p className="site-lede mb-8">{project.description}</p>
+              <Link
+                className="inline-flex min-h-11 items-center underline mb-5"
+                href={`/explore?topic=${encodeURIComponent(project.title)}`}
+              >
+                Explore this workflow with AI →
+              </Link>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-                    Client
+                    Example type
                   </h3>
                   <p className="text-neutral-900 dark:text-white font-medium">
                     {project.client}
@@ -78,7 +70,7 @@ const PortfolioDetail = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-                    Year
+                    Catalog year
                   </h3>
                   <p className="text-neutral-900 dark:text-white font-medium">
                     {project.year}
@@ -102,11 +94,11 @@ const PortfolioDetail = () => {
       </section>
 
       <QuickAnswer
-              question="What problem does this engagement pattern solve?"
-              answer={`${project.challenge} MehyarSoft approaches it by ${project.solution.charAt(0).toLowerCase()}${project.solution.slice(1)}`}
-              ctaHref="/micro-offer#intake"
-              ctaLabel="Request the $330 audit"
-            />
+        question="What problem does this engagement pattern solve?"
+        answer={`${project.challenge} MehyarSoft approaches it by ${project.solution.charAt(0).toLowerCase()}${project.solution.slice(1)}`}
+        ctaHref="/contact"
+        ctaLabel="Discuss your business"
+      />
 
       {/* Project Details */}
       <section className="py-20 px-4 bg-white dark:bg-neutral-900">
@@ -121,65 +113,83 @@ const PortfolioDetail = () => {
                   {project.challenge}
                 </p>
               </div>
-              
+
               <div>
                 <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
-                  Our Solution
+                  Proposed approach
                 </h2>
                 <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
                   {project.solution}
                 </p>
               </div>
-              
+
               <div>
                 <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
-                  The Results
+                  Expected deliverables
                 </h2>
                 <ul className="space-y-3">
                   {project.results.map((result, index) => (
                     <li key={index} className="flex items-start">
-                      <span className={`mr-3 h-6 w-6 flex-shrink-0 rounded-full ${project.badgeBgClass} flex items-center justify-center`}>
-                        <Check className={`h-4 w-4 ${project.textColorClass}`} />
+                      <span
+                        className={`mr-3 h-6 w-6 flex-shrink-0 rounded-full ${project.badgeBgClass} flex items-center justify-center`}
+                      >
+                        <Check
+                          className={`h-4 w-4 ${project.textColorClass}`}
+                        />
                       </span>
-                      <span className="text-neutral-700 dark:text-neutral-300">{result}</span>
+                      <span className="text-neutral-700 dark:text-neutral-300">
+                        {result}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
-            
+
             <div className="space-y-8">
               <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-6">
                 <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">
-                  Technologies Used
+                  Possible implementation tools
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {project.technologies.map((tech, index) => (
-                    <Badge key={index} variant="secondary" className="text-sm px-3 py-1">
+                    <Badge
+                      key={index}
+                      variant="secondary"
+                      className="text-sm px-3 py-1"
+                    >
                       {tech}
                     </Badge>
                   ))}
                 </div>
               </div>
-              
+
               <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-6">
                 <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">
                   Explore More Projects
                 </h3>
                 <div className="space-y-4">
                   {projects
-                    .filter(p => p.id !== project.id)
+                    .filter((p) => p.id !== project.id)
                     .slice(0, 3)
-                    .map(p => (
+                    .map((p) => (
                       <div key={p.id} className="flex items-center gap-3">
                         <div className="w-16 h-12 rounded-md overflow-hidden flex-shrink-0">
-                          <img src={p.image} alt={p.title} width="160" height="120" loading="lazy" className="w-full h-full object-cover" />
+                          <img
+                            src={p.image}
+                            alt={p.title}
+                            width="160"
+                            height="120"
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         <div>
-                          <Link href={`/portfolio/${p.id}`}>
-                            <a className="font-medium text-neutral-900 dark:text-white hover:text-primary dark:hover:text-primary transition-colors">
-                              {p.title}
-                            </a>
+                          <Link
+                            href={`/portfolio/${p.id}`}
+                            className="font-medium text-neutral-900 dark:text-white hover:text-primary dark:hover:text-primary transition-colors"
+                          >
+                            {p.title}
                           </Link>
                           <p className="text-sm text-neutral-500 dark:text-neutral-400">
                             {p.category}

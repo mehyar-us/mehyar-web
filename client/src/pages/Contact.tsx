@@ -1,8 +1,7 @@
+import { useExplorer } from "@/components/VisualExplorer";
 import ContactSection from "@/components/contact-section";
-import QuickAnswer from "@/components/QuickAnswer";
 import type { ConversionFlowMode } from "@/components/conversion/ConversionFlow";
-import { Link } from "wouter";
-import { buttonVariants } from "@/components/ui/button";
+import { useSearch } from "wouter";
 
 const getContactQueryDefaults = (): {
   mode: ConversionFlowMode;
@@ -36,7 +35,7 @@ const getContactQueryDefaults = (): {
     };
   }
 
-  if (service && !offer) {
+  if (requestType === "booking") {
     return {
       mode: "booking_call",
       serviceCategory: service,
@@ -48,71 +47,50 @@ const getContactQueryDefaults = (): {
 
   return {
     mode: "contact_general",
+    serviceCategory: service,
     selectedOffer: offer,
-    source: "contact_page",
+    source: params.get("source") || params.get("utm_source") || "contact_page",
     campaign,
   };
 };
 
 const Contact = () => {
+  const search = useSearch();
+  const { brief, setBrief } = useExplorer();
   const conversionDefaults = getContactQueryDefaults();
 
   return (
     <>
-      <section className="site-hero">
-        <div className="site-shell text-center">
-          <p className="site-eyebrow mb-3">
-            Send the leak
-          </p>
-          <h1 className="site-display mx-auto mb-6 max-w-4xl">
-            Tell me where the business is leaking.
+      <section className="px-4 pb-4 pt-28">
+        <div className="site-shell">
+          <p className="site-eyebrow">Start a conversation</p>
+          <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight md:text-5xl">
+            Discuss your business.
           </h1>
-          <p className="site-lede mx-auto max-w-3xl">
-            Pick an industry package first if you can; the selected package
-            carries into this one guided request. If you are unsure, send the
-            current problem, tools involved, and what a win looks
-            like—MehyarSoft will recommend the smallest useful next step.
+          <p className="mt-5 max-w-2xl text-muted-foreground">
+            Tell us about one workflow, the tools involved and what you want to
+            improve. We will review the fit and recommend a next step.
           </p>
-          <div className="mx-auto mt-8 flex max-w-3xl flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              href="/pricing"
-              className={buttonVariants({ variant: "cta", size: "lg" })}
-            >
-              Choose industry + price
-            </Link>
-            <Link
-              href="/micro-offer#intake"
-              className={buttonVariants({ variant: "outline", size: "lg" })}
-            >
-              Start the $330 audit
-            </Link>
-            <Link
-              href="/booking"
-              className={buttonVariants({ variant: "outline", size: "lg" })}
-            >
-              Request a call
-            </Link>
-          </div>
-          <div className="mx-auto mt-8 flex max-w-3xl flex-col gap-3 text-sm font-medium text-neutral-700 dark:text-neutral-300 sm:flex-row sm:justify-center">
-            <span className="rounded-full border border-neutral-200 bg-white/80 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-              No passwords or private records
-            </span>
-            <span className="rounded-full border border-neutral-200 bg-white/80 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-              Cloudflare protected
-            </span>
-            <span className="rounded-full border border-neutral-200 bg-white/80 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-              Founder-reviewed next step
-            </span>
-          </div>
         </div>
       </section>
-      <QuickAnswer
-        question="Which path should I choose?"
-        answer="Choose a named package when the result is clear, start with the $330 tech audit when the leak is clear but the fix is not, or use this intake when your business needs a custom combination. Do not send passwords, API keys, PHI, payment data, or confidential files through public channels."
+      {brief && (
+        <div className="site-shell px-4">
+          <p className="text-sm">
+            Your exploration brief is included below. Review and edit it before
+            sending.
+          </p>
+          <button className="min-h-11 underline" onClick={() => setBrief("")}>
+            Remove exploration brief
+          </button>
+        </div>
+      )}
+      <ContactSection
+        key={search + brief}
+        {...conversionDefaults}
+        prefill={brief ? { message: brief } : undefined}
+        showIntro={false}
       />
-      <ContactSection {...conversionDefaults} showIntro={false} />
     </>
   );
 };
-
 export default Contact;

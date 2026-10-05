@@ -12,3 +12,18 @@
 
 /api/*
   X-Robots-Tag: noindex, nofollow, noarchive
+
+/q/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/proposals
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/proposals/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/billing/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/audit/report*
+  X-Robots-Tag: noindex, follow

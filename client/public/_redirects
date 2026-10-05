@@ -1,3 +1,7 @@
+/newsletter /free-checklist 301
+/newsletter/ /free-checklist/ 301
+/book /booking 301
+/book/ /booking/ 301
 # 1) Legacy /330 short-URL alias for the $330 audit offer — 308 to canonical /micro-offer.
 #    /330 → /micro-offer.
 #    Both with and without trailing slash so any external / short-URL link lands on canonical.
@@ -21,10 +25,10 @@
 # 2) Dynamic client pages must be listed before the general fallback.
 #    Hosted quote pages (/q/<slug>) are rendered by Wouter.
 #     the dynamic slug. The explicit rule avoids static 404 resolution.
-/q/*    /index.html   200
+/q/*    /client-template/index.html   200
 
 # Public AI-generated client proposal pages use dynamic slugs.
-/proposals/*    /index.html   200
+/proposals/*    /client-template/index.html   200
 
 # 3) Cloudflare Pages SPA fallback: preserve clean direct routes for Wouter client routing.
 #    The Router hook (useStrippedLocation) handles trailing slashes before matching.

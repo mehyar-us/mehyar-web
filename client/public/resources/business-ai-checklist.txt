@@ -1,0 +1,42 @@
+MEHYARSOFT — BUSINESS AI WORKFLOW CHECKLIST
+
+1. Choose one task
+What task repeats? Who does it? What causes delays or mistakes?
+Record baseline volume and handling time before estimating savings.
+
+2. Locate the knowledge
+Which approved documents, policies or records should the system use?
+Who owns them, updates them and approves an answer?
+Do not put sensitive customer records into a public inquiry form.
+
+3. Review the tools
+List email, calendars, CRM, documents and other systems involved.
+Check API access, permissions, vendor terms and integration costs.
+
+4. Define human control
+Which actions may be prepared as drafts? Which need explicit approval?
+How should missing information, exceptions and urgent requests reach a person?
+
+5. Agree scope and costs
+Separate discovery, build, hosting, model usage, messaging and vendor costs.
+Define ownership, acceptance checks, support and changes in the agreement.
+
+6. Test before launch
+Try normal cases, incomplete requests, conflicting information and denied access.
+Check that the system follows approved information and escalation rules.
+Never treat an illustrative demo as proof of measured business results.
+
+7. Make the handoff clear
+Name the operator. Document access, fallback, monitoring and maintenance.
+Make sure staff can pause automation and handle requests manually.
+
+8. Improve using evidence
+Compare actual use with the baseline. Review errors and staff feedback.
+Expand scope only after confirming the workflow is useful.
+
+Ready to discuss one workflow?
+https://mehyar.us/contact
+info@mehyar.us
+
+This is a planning checklist. Actual integrations, data handling and commercial
+terms are confirmed for each project; it is not a quote or compliance certification.

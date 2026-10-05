@@ -35,16 +35,13 @@ const Blog = () => {
       <section className="site-hero">
         <div className="site-shell grid gap-8 lg:grid-cols-[1fr_0.75fr] lg:items-end">
           <div>
-            <p className="site-eyebrow mb-3">
-              Blog and insights
-            </p>
+            <p className="site-eyebrow mb-3">Insights</p>
             <h1 className="site-display max-w-4xl">
-              Practical notes for owners who need fewer leaks.
+              Practical notes for better business workflows.
             </h1>
             <p className="site-lede mt-5 max-w-3xl">
-              Local business tech audits, CRM follow-up, automation, and when
-              custom software is worth it — written to move readers toward a
-              practical next step.
+              Practical thinking on customer experience, software and AI — from
+              a local business workflow to a larger team's systems and controls.
             </p>
           </div>
           <div className="site-panel-flat p-4">
@@ -62,6 +59,14 @@ const Blog = () => {
               onChange={(event) => setSearchTerm(event.target.value)}
             />
           </div>
+        </div>
+        <div className="site-shell">
+          <Link
+            href="/explore?topic=AI%20and%20software%20for%20business"
+            className="mt-5 inline-flex min-h-11 items-center underline"
+          >
+            Ask The Mayor about these ideas →
+          </Link>
         </div>
       </section>
 
@@ -201,13 +206,13 @@ const Blog = () => {
                   support conversation.
                 </p>
                 <Link
-                  href="/micro-offer#intake"
+                  href="/contact"
                   className={buttonVariants({
                     variant: "cta",
                     className: "mt-5 w-full",
                   })}
                 >
-                  Book a Tech Audit
+                  Discuss your business
                 </Link>
               </CardContent>
             </Card>

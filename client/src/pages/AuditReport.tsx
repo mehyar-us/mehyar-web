@@ -25,7 +25,7 @@ type FullReport = {
 };
 
 function useQuery() {
-  return new URLSearchParams(window.location.search);
+  return new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
 }
 
 function hostnameOf(raw?: string | null) {
@@ -104,11 +104,11 @@ function gradeColor(g?: string) {
 }
 
 const WHATS_INSIDE = [
-  "Leak map — every leak priced in dollars",
+  "Leak map — potential gaps and scenario estimates in dollars",
   "Page-by-page grades (A–F)",
   "How you stack up vs typical sites in your industry",
   "AI automation blueprint for your business type",
-  "The 500% capacity math, shown step by step",
+  "Illustrative capacity estimates and assumptions",
   "Your 90-day action plan",
   "The one thing to fix first",
 ];
@@ -184,9 +184,9 @@ export default function AuditReport() {
         window.location.href = `/audit/report?token=${data.token}`;
         return;
       }
-      if (!data.ok) {
+      if (!data.ok || (!data.already_ready && !data.checkout_url)) {
         if (data.error === "stripe_not_configured") {
-          throw new Error("Checkout opens very soon — we saved your spot. Check back in a bit!");
+          throw new Error("Checkout is unavailable. No payment was taken. Please try again later or email info@mehyar.us.");
         }
         throw new Error(data.message || "Couldn't start checkout.");
       }
@@ -203,7 +203,7 @@ export default function AuditReport() {
       return (
         <section className="site-hero px-4"><div className="site-shell max-w-2xl text-center">
           <AlertTriangle className="mx-auto h-10 w-10 text-amber-500" />
-          <h1 className="site-display mt-4">Hmm.</h1>
+          <h1 className="site-display mt-4">Report unavailable</h1>
           <p className="site-lede mt-4">{loadError}</p>
           <Link href="/audit" className={buttonVariants({ variant: "cta", className: "mt-6" })}>Back to free audit</Link>
         </div></section>
@@ -216,7 +216,7 @@ export default function AuditReport() {
           <h1 className="site-display mt-4 text-3xl">{justPaid ? "Payment received — building your report…" : "Loading your report…"}</h1>
           <p className="site-lede mx-auto mt-4 max-w-xl">
             {justPaid
-              ? "Our AI is analyzing your site and writing your full evaluation. This takes about a minute — it's also being emailed to you."
+              ? "The automated evaluation is being prepared. Processing time varies; the report will be available here and delivery will be attempted by email."
               : "Fetching your full evaluation…"}
           </p>
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
@@ -279,7 +279,7 @@ export default function AuditReport() {
             {hasLeaks && (
               <div className="report-print-section mt-10">
                 <h2 className="flex items-center gap-2 text-2xl font-semibold text-[#0B1B33] dark:text-foreground">
-                  <TrendingDown className="h-6 w-6 text-[#DC2626]" /> Leak map — every leak priced
+                  <TrendingDown className="h-6 w-6 text-[#DC2626]" /> Leak map — potential gaps and scenario estimates
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                   What's quietly costing you money, and what each fix is worth. Losses hurt more than gains feel good — that's why we price the pain first.
@@ -385,7 +385,7 @@ export default function AuditReport() {
             {/* ── 500% MATH ── */}
             {hasMath && (
               <div className="report-print-section mt-10 overflow-hidden rounded-3xl bg-[#0B1B33] p-6 text-white md:p-10">
-                <h2 className="text-2xl font-semibold">The 500% math — step by step</h2>
+                <h2 className="text-2xl font-semibold">Scenario estimates — review the assumptions</h2>
                 <p className="mt-2 text-sm text-slate-300">
                   Capacity arithmetic: what your operation handles today vs. with these AI systems in place.
                 </p>
@@ -454,7 +454,7 @@ export default function AuditReport() {
             {/* ── BOTTOM DOWNLOAD ── */}
             <div className="no-print mt-12 flex flex-col items-center gap-3 rounded-3xl bg-[#0B1B33] p-8 text-center text-white">
               <ShieldCheck className="h-8 w-8 text-emerald-400" />
-              <p className="text-lg font-semibold">Keep this evaluation forever</p>
+              <p className="text-lg font-semibold">Save a copy of your evaluation</p>
               <p className="max-w-md text-sm text-slate-300">Download it as a PDF for your files, your team, or your next agency conversation.</p>
               <DownloadPdfButton className="mt-2" />
               <p className="mt-2 text-xs text-slate-400">Prepared by MehyarSoft · {dateStr || "today"}{host ? ` · ${host}` : ""}</p>
@@ -471,9 +471,9 @@ export default function AuditReport() {
     <section className="site-hero px-4">
       <div className="site-shell max-w-4xl">
         <p className="site-eyebrow mb-4 text-center">The full evaluation</p>
-        <h1 className="site-display mx-auto max-w-2xl text-balance text-center">The free audit is the trailer — this is the movie.</h1>
+        <h1 className="site-display mx-auto max-w-2xl text-balance text-center">A fuller automated website report.</h1>
         <p className="site-lede mx-auto mt-4 max-w-xl text-balance text-center">
-          The complete professional evaluation of <em>your</em> site — every leak priced, page-by-page grades, how you compare, the 500% AI blueprint with the math shown step by step, and your 90-day plan.
+          An automated evaluation of <em>your</em> site — potential gaps and scenario estimates, page-by-page grades, how you compare, a suggested AI workflow blueprint with scenario estimates, and your 90-day plan.
         </p>
 
         <div className="mx-auto mt-10 grid max-w-3xl items-start gap-8 md:grid-cols-2">
@@ -482,7 +482,7 @@ export default function AuditReport() {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="rounded-xl bg-[#F59E0B] px-3 py-1 text-4xl font-extrabold text-[#0B1B33]">$5</span>
-              <span className="text-sm text-muted-foreground">one-time · yours forever</span>
+              <span className="text-sm text-muted-foreground">one-time · automated analysis</span>
             </div>
 
             <h2 className="mt-6 flex items-center gap-2 font-semibold text-foreground">
@@ -507,11 +507,11 @@ export default function AuditReport() {
                     <Label htmlFor="r-email">Email for delivery</Label>
                     <Input id="r-email" type="email" autoComplete="email" required placeholder="you@youremail.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
                   </div>
-                  {buyError && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">{buyError}</p>}
+                  {buyError && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">{buyError}</p>}
                   <Button type="submit" variant="cta" size="lg" className="h-13 w-full bg-emerald-500 py-4 text-base text-emerald-950 hover:bg-emerald-400" disabled={buying}>
                     {buying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting checkout…</> : <>Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>
-                  <p className="text-center text-xs text-muted-foreground">One-time · Instant delivery · Less than a coffee</p>
+                  <p className="text-center text-xs text-muted-foreground">One-time $5 · Automated analysis · Delivery depends on processing</p>
                 </form>
               </CardContent>
             </Card>
@@ -521,7 +521,7 @@ export default function AuditReport() {
         <div className="mx-auto mt-10 flex max-w-2xl items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left">
           <Search className="mt-0.5 h-5 w-5 shrink-0 text-[#0B1B33] dark:text-sky-300" />
           <p className="text-sm leading-6 text-muted-foreground">
-            <strong className="text-foreground">How it works:</strong> pay $5 once, our AI writes the full evaluation for your site in about a minute, and it's emailed to you with a permanent link. No subscription, no upsell required to get value.
+            <strong className="text-foreground">How it works:</strong> pay $5 once to start the automated evaluation. Processing time varies. You receive a report link by email; custom implementation is a separate discussion.
           </p>
         </div>
       </div>
