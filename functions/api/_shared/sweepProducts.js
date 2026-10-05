@@ -218,6 +218,22 @@ export const SWEEP_PRODUCTS = [
     deliverableUrl: (env, row) =>
       `${stripSlash(env.TAXTRIM_BASE_URL || "https://taxtrim.mehyar.us")}/success.html?token=${row.access_token}`,
   },
+  {
+    key: "floodlens",
+    table: "floodlens_orders",
+    fulfillment: "floodlens",
+    displayName: "FloodLens Flood Zone Report",
+    fromName: "FloodLens",
+    base: (env) => "https://mehyar.us",
+    stuckStatuses: ["paid", "generating", "failed"],
+    // In-worker generation (exported by fulfillFloodlens.js): narrates via
+    // Workers AI, builds the 10-page PDF, stores to R2, marks ready, and
+    // sends the branded receipt email exactly-once. Added 2026-10-05 after
+    // floodlens_orders row 5 sat in 'generating' 3+ hours (isolate eviction).
+    localRedrive: "floodlens",
+    deliverableUrl: (env, row) =>
+      `https://mehyar.us/api/floodlens/download?token=${row.token}`,
+  },
 ];
 
 /** Generic backstop buyer email: "your deliverable is ready" with the

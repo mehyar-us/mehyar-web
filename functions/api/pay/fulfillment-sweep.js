@@ -30,6 +30,7 @@ import {
 } from "../_shared/sweepProducts.js";
 import { runSproutscoreGeneration } from "../_shared/fulfillSproutscore.js";
 import { generateTaxTrimPacket } from "../_shared/fulfillTaxtrim.js";
+import { generateFloodlensOrder, fulfillFloodlens } from "../_shared/fulfillFloodlens.js";
 // PASS 0 orphan-replay modules (all idempotent on payment_id).
 import { fulfillDesignful } from "../_shared/fulfillDesignful.js";
 import { fulfillPrepguide } from "../_shared/fulfillPrepguide.js";
@@ -72,6 +73,7 @@ const FULFILL_MODULES = {
   puretap: fulfillPuretap,
   ticketbeat: fulfillTicketBeat,
   taxtrim: fulfillTaxtrim,
+  floodlens: fulfillFloodlens,
 };
 
 function json(data, status = 200) {
@@ -200,6 +202,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
         if (spec.localRedrive === "sproutscore") {
           const run = runSproutscoreGeneration(db, env, sendEmail, row.id);
           if (typeof waitUntil === "function") waitUntil(run.catch((e) => console.error("sweep sproutscore redrive threw", row.id, e && e.message)));
+          else await run.catch(() => {});
+        } else if (spec.localRedrive === "floodlens") {
+          const run = (async () => {
+            const r = await generateFloodlensOrder({ db, env, sendEmail }, row.id);
+            if (!r.ok) console.error("sweep floodlens redrive failed", row.id, r.error);
+          })();
+          if (typeof waitUntil === "function") waitUntil(run);
           else await run.catch(() => {});
         } else if (spec.localRedrive === "taxtrim") {
           const run = (async () => {
