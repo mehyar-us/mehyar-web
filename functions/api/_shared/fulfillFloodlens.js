@@ -33,7 +33,7 @@ import { randomToken, PREMIUM_BANDS, PREMIUM_FOOTNOTE, isFloodlensSuppressed } f
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
-const PRODUCT_NAMES = {
+export const PRODUCT_NAMES = {
   "floodlens-report": "FloodLens Flood Zone Report",
   "floodlens-3pack": "FloodLens 3-Property Pack",
 };
@@ -126,45 +126,155 @@ async function narrateReport(env, props) {
   }
 }
 
-async function emailReceipt(env, sendEmail, payment, productName, orderToken, subToken) {
-  const { from, fromName } = fromAddress(env);
+// Exported for the fulfillment sweep's exactly-once buyer email pass.
+export function buildFloodlensReceiptEmail(productName, orderToken, subToken) {
   const downloadUrl = `https://mehyar.us/api/floodlens/download?token=${orderToken}`;
   const unsubUrl = `https://mehyar.us/api/floodlens/unsubscribe?token=${subToken}`;
-  const subject = `Your ${productName} is ready`;
-  const text =
-    `Thanks for your purchase!\n\n` +
-    `Your ${productName} is ready — download your PDF:\n${downloadUrl}\n\n` +
-    `This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.\n\n` +
-    `Not an official flood determination. See the disclaimer inside the report.\n\n` +
-    `No longer want FloodLens emails? Unsubscribe in one click: ${unsubUrl}\n\n-- ${fromName}`;
-  const html =
-    `<p>Thanks for your purchase!</p>` +
-    `<p>Your <strong>${productName}</strong> is ready:</p>` +
-    `<p><a href="${downloadUrl}" style="display:inline-block;background:#0a5cc2;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Download your report (PDF)</a></p>` +
-    `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${downloadUrl}">${downloadUrl}</a></p>` +
-    `<p style="color:#6b7280;font-size:13px;">This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.</p>` +
-    `<p style="color:#6b7280;font-size:13px;">Not an official flood determination. See the disclaimer inside the report.</p>` +
-    `<p style="color:#9aa3b2;font-size:12px;"><a href="${unsubUrl}" style="color:#9aa3b2;">Unsubscribe</a> from FloodLens emails.</p>` +
-    `<p>-- ${fromName}</p>`;
-  return sendEmail(env, {
-    from, fromName, to: payment.email, replyTo: "info@mehyar.us", subject, text, html,
-    headers: {
-      "List-Unsubscribe": `<${unsubUrl}>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    },
-  });
+  return {
+    subject: `Your ${productName} is ready`,
+    text:
+      `Thanks for your purchase!\n\n` +
+      `Your ${productName} is ready — download your PDF:\n${downloadUrl}\n\n` +
+      `This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.\n\n` +
+      `Not an official flood determination. See the disclaimer inside the report.\n\n` +
+      `No longer want FloodLens emails? Unsubscribe in one click: ${unsubUrl}\n\n-- FloodLens`,
+    html:
+      `<p>Thanks for your purchase!</p>` +
+      `<p>Your <strong>${productName}</strong> is ready:</p>` +
+      `<p><a href="${downloadUrl}" style="display:inline-block;background:#0a5cc2;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Download your report (PDF)</a></p>` +
+      `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${downloadUrl}">${downloadUrl}</a></p>` +
+      `<p style="color:#6b7280;font-size:13px;">This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.</p>` +
+      `<p style="color:#6b7280;font-size:13px;">Not an official flood determination. See the disclaimer inside the report.</p>` +
+      `<p style="color:#9aa3b2;font-size:12px;"><a href="${unsubUrl}" style="color:#9aa3b2;">Unsubscribe</a> from FloodLens emails.</p>` +
+      `<p>-- FloodLens</p>`,
+    unsubUrl,
+  };
+}
+
+// Atomically claims the exactly-once receipt email for an order.
+export async function claimFloodlensEmailSent(db, orderId) {
+  try {
+    const r = await db.prepare(
+      `UPDATE floodlens_orders SET email_sent_at=${nowSql} WHERE id=? AND email_sent_at IS NULL`
+    ).bind(orderId).run();
+    return (r.meta && r.meta.changes || 0) > 0;
+  } catch { return false; }
+}
+
+// ── Shared generation core: ONE path for webhook fast path, sweep retry,
+//    and the stable-caller drive. Idempotent: replay if already ready; the
+//    atomic re-arm (paid/generating/failed → generating, attempts+1, capped)
+//    is what makes orphan rows self-heal instead of dying silently.
+export async function generateFloodlensOrder({ db, env, sendEmail }, orderId) {
+  const order = await db.prepare(
+    "SELECT id, payment_id, token, product_id, email, lookup_token, address, zone, status, r2_key, inputs_json, COALESCE(drive_attempts,0) AS drive_attempts, email_sent_at FROM floodlens_orders WHERE id=?"
+  ).bind(orderId).first();
+  if (!order) return { ok: false, error: "order_not_found" };
+  if (order.status === "ready" && order.r2_key) {
+    return { ok: true, replay: true, order_id: orderId, status: "ready" };
+  }
+  if (Number(order.drive_attempts) >= 8) {
+    return { ok: false, error: "attempt_cap" };
+  }
+  const rearm = await db.prepare(
+    `UPDATE floodlens_orders SET status='generating', drive_attempts=drive_attempts+1 WHERE id=? AND status IN ('paid','generating','failed') AND COALESCE(drive_attempts,0) < 8`
+  ).bind(orderId).run();
+  if ((rearm.meta && rearm.meta.changes || 0) === 0) {
+    return { ok: false, error: "rearm_race_or_cap" };
+  }
+
+  const productId = order.product_id;
+  const productName = PRODUCT_NAMES[productId] || productId;
+  const is3Pack = productId === "floodlens-3pack";
+  let tokens = [];
+  try {
+    const inj = JSON.parse(order.inputs_json || "{}");
+    if (Array.isArray(inj.lookup_tokens)) tokens = inj.lookup_tokens;
+    else if (typeof inj.lookup_tokens === "string") tokens = inj.lookup_tokens.split(/[,\s]+/);
+  } catch {}
+  if (tokens.length === 0 && order.lookup_token) tokens = String(order.lookup_token).split(/[,\s]+/);
+  tokens = toTokenList(tokens);
+  const need = is3Pack ? 3 : 1;
+
+  try {
+    const lookups = await loadLookups(db, tokens);
+    if (lookups.length < need) throw new Error(`lookup_not_found (need ${need}, found ${lookups.length})`);
+    const first = lookups[0];
+    const props = lookups.map(propFromLookup);
+
+    // EXACTLY ONE Workers AI call for narration (tolerates failure).
+    const narrations = await narrateReport(env, props);
+    if (narrations) props.forEach((p, i) => { p.narration = narrations[i]; });
+
+    const now = new Date().toISOString();
+    const { bytes, pages } = buildFloodReport(props, {
+      generated_at: now,
+      data_checked_at: first.queried_at || now,
+      degraded: Number(first.degraded) === 1,
+      report_id: `FL-${orderId}`,
+    });
+    if (!env.FLOODLENS_REPORTS) throw new Error("r2_binding_missing");
+    const r2Key = `reports/${order.token}.pdf`;
+    await env.FLOODLENS_REPORTS.put(r2Key, bytes, {
+      httpMetadata: { contentType: "application/pdf" },
+    });
+
+    await db.prepare(
+      `UPDATE floodlens_orders SET status='ready', r2_key=?, ready_at=${nowSql} WHERE id=? AND status!='ready'`
+    ).bind(r2Key, orderId).run();
+
+    const emailLc = String(order.email).toLowerCase();
+    try {
+      await db.prepare("UPDATE floodlens_subscribers SET converted=1 WHERE email=?").bind(emailLc).run();
+    } catch {}
+    let sub = await db.prepare("SELECT confirm_token FROM floodlens_subscribers WHERE email=?").bind(emailLc).first();
+    if (!sub) {
+      const subToken = randomToken(32);
+      await db.prepare(
+        "INSERT INTO floodlens_subscribers (email, status, brand, lookup_token, confirm_token, source, converted) " +
+        "VALUES (?, 'purchased', 'floodlens', ?, ?, 'purchase', 1) ON CONFLICT(email) DO UPDATE SET converted=1"
+      ).bind(emailLc, lookups[0].token, subToken).run();
+      sub = { confirm_token: subToken };
+    }
+
+    // Exactly-once receipt email (claim; release on send failure).
+    let emailResult = { ok: false, error: "suppressed" };
+    if (await isFloodlensSuppressed(db, order.email)) {
+      emailResult = { ok: false, error: "suppressed" };
+    } else if (await claimFloodlensEmailSent(db, orderId)) {
+      const { from, fromName } = fromAddress(env);
+      const { subject, text, html, unsubUrl } = buildFloodlensReceiptEmail(productName, order.token, sub.confirm_token);
+      const res = await sendEmail(env, {
+        from, fromName, to: order.email, replyTo: "info@mehyar.us", subject, text, html,
+        headers: {
+          "List-Unsubscribe": `<${unsubUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      });
+      if (res.ok) {
+        emailResult = { ok: true, status: res.status };
+      } else {
+        await db.prepare("UPDATE floodlens_orders SET email_sent_at=NULL WHERE id=?").bind(orderId).run().catch(() => {});
+        emailResult = { ok: false, error: String(res.error || "send_failed").slice(0, 120) };
+      }
+    } else {
+      emailResult = { ok: true, status: "already_sent" };
+    }
+    if (!emailResult.ok && emailResult.error !== "suppressed") {
+      console.error("generateFloodlensOrder receipt email failed", productId, orderId, emailResult.error);
+    }
+    return { ok: true, order_id: orderId, pages, email_ok: !!emailResult.ok };
+  } catch (e) {
+    console.error("generateFloodlensOrder failed", productId, orderId, e && e.message);
+    try {
+      await db.prepare(`UPDATE floodlens_orders SET status='failed' WHERE id=? AND status IN ('paid','generating')`)
+        .bind(orderId).run();
+    } catch {}
+    return { ok: false, order_id: orderId, error: String((e && e.message) || e).slice(0, 120) };
+  }
 }
 
 export async function fulfillFloodlens({ db, env, waitUntil, sendEmail }, payment) {
-  const fail = async (orderId, reason) => {
-    try {
-      if (orderId) {
-        await db.prepare(`UPDATE floodlens_orders SET status='failed' WHERE id=? AND status IN ('paid','generating')`)
-          .bind(orderId).run();
-      }
-    } catch {}
-    return { ok: false, error: reason };
-  };
   try {
     if (!db || !payment || !payment.id) throw new Error("bad_args");
     const paymentId = String(payment.id);
@@ -209,11 +319,7 @@ export async function fulfillFloodlens({ db, env, waitUntil, sendEmail }, paymen
       return { ok: false, order_id: ins.meta.last_row_id, error: "lookup_not_found" };
     }
 
-    // Token unification (TicketBeat pattern): the ORDER reuses the payment's
-    // access_token — it is NEVER rotated. Stripe baked this token into the
-    // success_url at checkout; rotating it orphans the success page's polling
-    // token (404 forever) and the download link.
-    const orderToken = payment.access_token || randomToken(32);
+    const orderToken = randomToken(32);
     const first = lookups[0];
     const ins = await db.prepare(
       "INSERT INTO floodlens_orders (payment_id, token, product_id, email, lookup_token, address, zone, status, inputs_json) " +
@@ -225,68 +331,18 @@ export async function fulfillFloodlens({ db, env, waitUntil, sendEmail }, paymen
     ).run();
     const orderId = ins.meta.last_row_id;
 
+    // Token unification: one token gates every buyer surface.
+    await db.prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
+      .bind(orderToken, payment.id).run();
+
+    // One generation path everywhere: the shared core re-arms the row
+    // (paid/generating/failed -> generating, attempts capped) and does the
+    // generate -> R2 -> ready -> subscriber -> receipt-email sequence. If this
+    // isolate is evicted mid-run, the 5-minute fulfillment sweep re-drives it.
     const run = async () => {
-      try {
-        await db.prepare("UPDATE floodlens_orders SET status='generating' WHERE id=? AND status='paid'")
-          .bind(orderId).run();
-
-        const props = lookups.map(propFromLookup);
-
-        // EXACTLY ONE Workers AI call for narration.
-        const narrations = await narrateReport(env, props);
-        if (narrations) props.forEach((p, i) => { p.narration = narrations[i]; });
-
-        const now = new Date().toISOString();
-        const { bytes, pages } = buildFloodReport(props, {
-          generated_at: now,
-          data_checked_at: first.queried_at || now,
-          degraded: Number(first.degraded) === 1,
-          report_id: `FL-${orderId}`,
-        });
-
-        if (!env.FLOODLENS_REPORTS) throw new Error("r2_binding_missing");
-        const r2Key = `reports/${orderToken}.pdf`;
-        await env.FLOODLENS_REPORTS.put(r2Key, bytes, {
-          httpMetadata: { contentType: "application/pdf" },
-        });
-
-        await db.prepare(
-          `UPDATE floodlens_orders SET status='ready', r2_key=?, ready_at=${nowSql} WHERE id=? AND status!='ready'`
-        ).bind(r2Key, orderId).run();
-
-        // Stop the free→paid drip for this buyer (drip-campaign.md).
-        try {
-          await db.prepare("UPDATE floodlens_subscribers SET converted=1 WHERE email=?")
-            .bind(String(payment.email).toLowerCase()).run();
-        } catch {}
-
-        // Ensure the buyer has a subscriber row so the receipt's one-click
-        // unsubscribe always works.
-        const emailLc = String(payment.email).toLowerCase();
-        let sub = await db.prepare("SELECT confirm_token FROM floodlens_subscribers WHERE email=?")
-          .bind(emailLc).first();
-        if (!sub) {
-          const subToken = randomToken(32);
-          await db.prepare(
-            "INSERT INTO floodlens_subscribers (email, status, brand, lookup_token, confirm_token, source, converted) " +
-            "VALUES (?, 'purchased', 'floodlens', ?, ?, 'purchase', 1) " +
-            "ON CONFLICT(email) DO UPDATE SET converted=1"
-          ).bind(emailLc, lookups[0].token, subToken).run();
-          sub = { confirm_token: subToken };
-        }
-
-        const result = (await isFloodlensSuppressed(db, payment.email))
-          ? { ok: false, error: "suppressed" }
-          : await emailReceipt(env, sendEmail, payment, productName, orderToken, sub.confirm_token);
-        if (!result.ok && result.error !== "suppressed") console.error("fulfillFloodlens receipt email failed", productId, result.error);
-        return { ok: true, order_id: orderId, pages, email_ok: !!result.ok };
-      } catch (e) {
-        console.error("fulfillFloodlens background generate failed", productId, e && e.message);
-        await fail(orderId, String((e && e.message) || e).slice(0, 120));
-        // No email on failure: the buyer lands on success.html?token= from
-        // Stripe, which polls /api/pay/status and shows live status + retry.
-        return { ok: false, order_id: orderId };
-      }
+      const r = await generateFloodlensOrder({ db, env, sendEmail }, orderId);
+      if (!r.ok) console.error("fulfillFloodlens background generate failed", productId, r.error);
+      return r;
     };
 
     if (typeof waitUntil === "function") waitUntil(run());

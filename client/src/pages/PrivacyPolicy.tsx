@@ -181,6 +181,14 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Marketing site and operator console for this brand.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Rizza — <a className="text-brand-700 underline dark:text-brand-100" href="https://rizza.app" target="_blank" rel="noreferrer">rizza.app <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI wingman for dating-app conversations.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">AiMech — <a className="text-brand-700 underline dark:text-brand-100" href="https://aimech.app" target="_blank" rel="noreferrer">aimech.app <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI mechanic for everyday car owners.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">BabyPeek — <a className="text-brand-700 underline dark:text-brand-100" href="https://baby.mehyar.us" target="_blank" rel="noreferrer">baby.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">AI future-baby portraits.</div>
           </li>
@@ -221,7 +229,7 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">DIY credit repair kit — dispute letters and rebuild plan.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">The 30-Day Content Playbook — <a className="text-brand-700 underline dark:text-brand-100" href="https://playbook.mehyar.us" target="_blank" rel="noreferrer">playbook.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="font-semibold">TikTok Growth System — <a className="text-brand-700 underline dark:text-brand-100" href="https://tiktokgrowth.mehyar.us" target="_blank" rel="noreferrer">tiktokgrowth.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">AI-generated organic short-form growth playbook.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
@@ -242,8 +250,17 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized household preparedness playbook — calm, practical, no fear-mongering.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">OpenSeason — <a className="text-brand-700 underline dark:text-brand-100" href="https://openseason.mehyar.us" target="_blank" rel="noreferrer">openseason.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Every hunting-season date for your state, in plain English — free next-3 openers, $12 state packs.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">BeachCall — <a className="text-brand-700 underline dark:text-brand-100" href="https://beachcall.mehyar.us" target="_blank" rel="noreferrer">beachcall.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Daily go/no-go beach verdicts with best-hours windows — free for one beach a day, $9 summer pass for all your beaches.</div>
+          </li>
+
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+<div className="font-semibold">CareRank — <a className="text-brand-700 underline dark:text-brand-100" href="https://carerank.mehyar.us" target="_blank" rel="noreferrer">carerank.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Nursing-home shortlist from real CMS data — free quiz with blurred top 3, $29 one-time for the full ranked 12-page PDF.</div>
           </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">

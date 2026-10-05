@@ -129,12 +129,46 @@ const orderHooks = {
     };
   },
 
+  // FloodLens flood-zone reports. params: { lookup_token } for the single
+  // SKU, { lookup_tokens: [t1,t2,t3] } (or a comma-joined string) for the
+  // 3-pack. Validates the lookup token(s) BEFORE the Stripe session is
+  // created, so a buyer can never pay for a report that fulfillment would
+  // fail loudly on (missing/invalid lookup → no invented content, ever).
+  async floodlens(db, product, { params }) {
+    const is3Pack = product.id === "floodlens-3pack";
+    let tokens = [];
+    if (is3Pack) {
+      const raw = params.lookup_tokens;
+      tokens = Array.isArray(raw) ? raw : String(raw || "").split(",");
+    } else if (params.lookup_token) {
+      tokens = [params.lookup_token];
+    }
+    tokens = [...new Set(tokens.map((t) => String(t || "").trim()).filter(Boolean))];
+    const need = is3Pack ? 3 : 1;
+    if (tokens.length !== need) {
+      return { error: is3Pack ? "need_three_lookups" : "missing_lookup_token" };
+    }
+    // Every token must resolve to a real stored lookup.
+    for (const t of tokens) {
+      const row = await db
+        .prepare("SELECT token FROM floodlens_lookups WHERE token = ?")
+        .bind(t)
+        .first();
+      if (!row) return { error: "invalid_lookup_token" };
+    }
+    return { orderExtra: { accessToken: randomHex(32) }, metadataExtra: {} };
+  },
+
   // Default: no order hook — payment is just recorded. Access token minted
   // anyway so future per-product delivery can gate on it.
   async none() {
     return { orderExtra: { accessToken: randomHex(32) }, metadataExtra: {} };
   },
 };
+
+// Exported for local tests (test-floodlens.js). Pages Functions only honors
+// onRequest* exports; this is inert in production.
+export { orderHooks };
 
 export async function onRequestPost({ request, env }) {
   const cors = corsHeaders(request);
@@ -183,7 +217,7 @@ export async function onRequestPost({ request, env }) {
 
     const orderExtra = hookResult.orderExtra || {};
     const metadataExtra = hookResult.metadataExtra || {};
-    let accessToken = orderExtra.accessToken || randomHex(32);
+    const accessToken = orderExtra.accessToken || randomHex(32);
     const reportId = orderExtra.report_id || null;
 
     // Idempotency: reuse a pending payment row for the same product+email
@@ -197,14 +231,9 @@ export async function onRequestPost({ request, env }) {
     let paymentId;
     if (payment) {
       paymentId = payment.id;
-      // Never rotate the access token on reuse: an earlier Stripe session for
-      // this payment already baked the original token into its success_url;
-      // rotating would orphan that success page (404 on status poll) and its
-      // download link.
-      if (payment.access_token) accessToken = payment.access_token;
       await db.prepare(
-        "UPDATE billing_payments SET metadata_json = ? WHERE id = ?"
-      ).bind(JSON.stringify(params), paymentId).run();
+        "UPDATE billing_payments SET access_token = ?, metadata_json = ? WHERE id = ?"
+      ).bind(accessToken, JSON.stringify(params), paymentId).run();
     } else {
       const ins = await db.prepare(
         "INSERT INTO billing_payments (product_id, brand, email, amount_cents, currency, access_token, metadata_json) " +
@@ -222,11 +251,8 @@ export async function onRequestPost({ request, env }) {
         "https://mehyar.us/",
       product.allowed_return_hosts
     );
-    // Token unification: the success page always receives ?token=. Fill any
-    // {placeholders} the caller left in their override URL first (e.g.
-    // a satellite's ?token={access_token}) using the (possibly reused) payment
-    // token; if the URL still lacks a token, append it.
-    successUrl = fillTemplate(successUrl, vars);
+    // Token unification: the success page always receives ?token=. If a
+    // caller-supplied success_url lacks it, append the payment access token.
     try {
       const su = new URL(successUrl);
       if (!su.searchParams.get("token")) {
@@ -291,3 +317,4 @@ export async function onRequestPost({ request, env }) {
     return J({ ok: false, error: "checkout_failed" }, 500);
   }
 }
+

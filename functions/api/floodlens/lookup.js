@@ -29,15 +29,6 @@ function sanitizeAddress(v) {
   return String(v || "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
 }
 
-/* Attribution (2026-10-03, sprint race day 3) — which funnel surface produced
-   the lookup: site-index / storm-page / page-insurance-quote / page-firmette /
-   page-nfip-vs-private / instagram / paid-search. Allowlist-sanitized; every
-   other value becomes 'unknown'. Old clients send nothing → 'unknown'. */
-function sanitizeSrc(v) {
-  const s = String(v || "").toLowerCase().slice(0, 40);
-  return /^[a-z0-9][a-z0-9\-_.]*$/.test(s) ? s : "unknown";
-}
-
 async function checkRateLimit(db, ip, env) {
   const limit = Number(env.FLOODLENS_FREE_PER_DAY) || 10;
   // Counts ALL attempts (successful lookups + failed attempts) so bad
@@ -52,12 +43,12 @@ async function checkRateLimit(db, ip, env) {
 // Records a failed attempt (bad address / FEMA outage with no cache) so it
 // counts toward the rate limit. zone stays NULL; findCache excludes these
 // via degraded=1, and checkout requires zone IS NOT NULL.
-async function storeFailedAttempt(db, { address, ip, lat, lon, gh, src }) {
+async function storeFailedAttempt(db, { address, ip, lat, lon, gh }) {
   try {
     await db.prepare(
-      "INSERT INTO floodlens_lookups (token, address, lat, lon, geohash, degraded, ip, src) " +
-      "VALUES (?, ?, ?, ?, ?, 1, ?, ?)"
-    ).bind(randomToken(16), address, lat || 0, lon || 0, gh || "", ip, src || "unknown").run();
+      "INSERT INTO floodlens_lookups (token, address, lat, lon, geohash, degraded, ip) " +
+      "VALUES (?, ?, ?, ?, ?, 1, ?)"
+    ).bind(randomToken(16), address, lat || 0, lon || 0, gh || "", ip).run();
   } catch { /* rate limiting is best-effort */ }
 }
 
@@ -106,14 +97,14 @@ function rowToResult(row, { cached = false, degraded = false, banner = null } = 
   };
 }
 
-async function storeLookup(db, { token, address, normalized, lat, lon, gh, zi, band, bfe, dfirm_id, firm_pan, mapEffective, degraded, ip, queriedAt, src }) {
+async function storeLookup(db, { token, address, normalized, lat, lon, gh, zi, band, bfe, dfirm_id, firm_pan, mapEffective, degraded, ip, queriedAt }) {
   await db.prepare(
-    "INSERT INTO floodlens_lookups (token, address, normalized, lat, lon, geohash, zone, zone_subtype, sfha, risk, risk_plain, band, bfe, dfirm_id, firm_pan, data_as_of, queried_at, degraded, ip, src) " +
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO floodlens_lookups (token, address, normalized, lat, lon, geohash, zone, zone_subtype, sfha, risk, risk_plain, band, bfe, dfirm_id, firm_pan, data_as_of, queried_at, degraded, ip) " +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(
     token, address, normalized, lat, lon, gh,
     zi.zone, zi.zone_subtype, zi.sfha, zi.risk, zi.risk_plain, zi.band,
-    bfe, dfirm_id, firm_pan, mapEffective, queriedAt, degraded ? 1 : 0, ip, src || "unknown"
+    bfe, dfirm_id, firm_pan, mapEffective, queriedAt, degraded ? 1 : 0, ip
   ).run();
   // D1 read-after-write can be eventually consistent across connections; if
   // the SELECT misses, synthesize the row from the inputs we just wrote.
@@ -125,7 +116,6 @@ async function storeLookup(db, { token, address, normalized, lat, lon, gh, zi, b
     risk: zi.risk, risk_plain: zi.risk_plain, band: zi.band,
     bfe, dfirm_id, firm_pan, data_as_of: mapEffective,
     queried_at: queriedAt, degraded: degraded ? 1 : 0, ip,
-    src: src || "unknown",
     created_at: new Date().toISOString(),
   };
 }
@@ -137,7 +127,6 @@ export async function onRequestPost({ request, env }) {
 
     const body = await request.json().catch(() => ({}));
     const address = sanitizeAddress(body.address);
-    const src = sanitizeSrc(body.src);
     if (!address || address.length < 5) {
       return json({ ok: false, error: "invalid_address" }, 400);
     }
@@ -157,7 +146,7 @@ export async function onRequestPost({ request, env }) {
     try {
       geo = await geocodeAddress(address);
     } catch (e) {
-      await storeFailedAttempt(db, { address, ip, src });
+      await storeFailedAttempt(db, { address, ip });
       if (e && e.code === "address_not_found") {
         return json({ ok: false, error: "address_not_found", message: "We couldn't find that address. Check the spelling and include city + state." }, 404);
       }
@@ -174,7 +163,7 @@ export async function onRequestPost({ request, env }) {
         token, address, normalized: fresh.normalized, lat: fresh.lat, lon: fresh.lon, gh,
         zi: { zone: fresh.zone, zone_subtype: fresh.zone_subtype, sfha: Number(fresh.sfha), risk: fresh.risk, risk_plain: fresh.risk_plain, band: fresh.band },
         bfe: fresh.bfe, dfirm_id: fresh.dfirm_id, firm_pan: fresh.firm_pan,
-        mapEffective: fresh.data_as_of, degraded: false, ip, queriedAt: fresh.queried_at, src,
+        mapEffective: fresh.data_as_of, degraded: false, ip, queriedAt: fresh.queried_at,
       });
       const res = rowToResult(row, { cached: true });
       res.served_from = "cache_24h";
@@ -194,7 +183,7 @@ export async function onRequestPost({ request, env }) {
           token, address, normalized: stale.normalized, lat: stale.lat, lon: stale.lon, gh,
           zi: { zone: stale.zone, zone_subtype: stale.zone_subtype, sfha: Number(stale.sfha), risk: stale.risk, risk_plain: stale.risk_plain, band: stale.band },
           bfe: stale.bfe, dfirm_id: stale.dfirm_id, firm_pan: stale.firm_pan,
-          mapEffective: stale.data_as_of, degraded: true, ip, queriedAt: stale.queried_at, src,
+          mapEffective: stale.data_as_of, degraded: true, ip, queriedAt: stale.queried_at,
         });
         const res = rowToResult(row, {
           cached: true, degraded: true,
@@ -203,7 +192,7 @@ export async function onRequestPost({ request, env }) {
         res.served_from = "cache_7d_degraded";
         return json(res);
       }
-      await storeFailedAttempt(db, { address, ip, lat: geo.lat, lon: geo.lon, gh, src });
+      await storeFailedAttempt(db, { address, ip, lat: geo.lat, lon: geo.lon, gh });
       return json(
         { ok: false, error: "fema_unavailable", degraded: true, disclaimer: DISCLAIMER_SHORT,
           message: "FEMA lookup is unavailable right now — check back shortly or use FEMA's Map Service Center directly (msc.fema.gov/portal)." },
@@ -221,7 +210,7 @@ export async function onRequestPost({ request, env }) {
       bfe: fema.zone ? fema.zone.static_bfe : null,
       dfirm_id: (fema.zone && fema.zone.dfirm_id) || (fema.panel && fema.panel.dfirm_id) || null,
       firm_pan: (fema.panel && fema.panel.firm_pan) || null,
-      mapEffective, degraded: false, ip, queriedAt, src,
+      mapEffective, degraded: false, ip, queriedAt,
     });
     const res = rowToResult(row, { cached: false });
     res.served_from = "live";

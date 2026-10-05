@@ -15,7 +15,7 @@ export const BRANDS: BrandMeta[] = [
   { id: "plrvault", name: "PLR Vault", domain: "plrvault.mehyar.us", url: "https://plrvault.mehyar.us", kind: "digital-product", status: "live" },
   { id: "prepguide", name: "PrepGuide", domain: "prepguide.mehyar.us", url: "https://prepguide.mehyar.us", kind: "digital-product", status: "live" },
   { id: "sprint30", name: "Sprint30", domain: "sprint30.mehyar.us", url: "https://sprint30.mehyar.us", kind: "digital-product", status: "live" },
-  { id: "playbook", name: "Content Playbook", domain: "playbook.mehyar.us", url: "https://playbook.mehyar.us", kind: "digital-product", status: "live" },
+  { id: "tiktokgrowth", name: "TikTokGrowth", domain: "tiktokgrowth.mehyar.us", url: "https://tiktokgrowth.mehyar.us", kind: "digital-product", status: "live" },
   { id: "bizbuilder", name: "BizBuilder", domain: "bizbuilder.mehyar.us", url: "https://bizbuilder.mehyar.us", kind: "digital-product", status: "live" },
   { id: "creditfix", name: "CreditFix Kit", domain: "creditfix.mehyar.us", url: "https://creditfix.mehyar.us", kind: "digital-product", status: "live" },
   { id: "freelanceros", name: "FreelancerOS", domain: "freelanceros.mehyar.us", url: "https://freelanceros.mehyar.us", kind: "digital-product", status: "live" },

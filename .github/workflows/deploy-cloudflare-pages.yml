@@ -72,15 +72,6 @@ jobs:
         env:
           SECRET_STRIPE_TEST: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
           SECRET_WH_TEST2: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST2 }}
-      - name: Restore Stripe live secret as project secret (survives deploys)
-        run: |
-          if [ -z "$SECRET_STRIPE_LIVE" ]; then
-            echo "STRIPE_SECRET_KEY repo secret not set — skipping live secret restore"
-            exit 0
-          fi
-          printf '%s' "$SECRET_STRIPE_LIVE" | npx wrangler pages secret put STRIPE_SECRET_KEY --project-name=mehyar-web
-        env:
-          SECRET_STRIPE_LIVE: ${{ secrets.STRIPE_SECRET_KEY }}
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

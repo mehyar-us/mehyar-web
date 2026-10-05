@@ -1,8 +1,5 @@
 # .github/workflows/fulfillment-sweep.yml
-# MANUAL-ONLY fallback for stuck AI-fulfillment orders. The every-5-minute
-# schedule moved to the hustlekit-sweeper Cloudflare Worker (Cron Trigger) on
-# 2026-09-28 — cheaper and more reliable than the GitHub schedule trigger.
-# This workflow now runs only via workflow_dispatch. When run, it does:
+# Recovery backstop for stuck AI-fulfillment orders: every 5 minutes,
 #   1. POST /api/pay/fulfillment-sweep on mehyar.us (fast passes: best-effort
 #      generate dispatch + exactly-once buyer emails for ready rows). The
 #      sweep returns tokens of stuck orders.
@@ -19,8 +16,8 @@
 name: fulfillment-sweep
 
 on:
-  # 2026-09-28: schedule removed — the 5-minute cadence now lives on the
-  # hustlekit-sweeper Cloudflare Worker (Cron Trigger). Manual fallback only.
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -107,7 +104,31 @@ jobs:
                   print(f"order {oid}: still not ready after 3 drives; next tick continues")
           PYEOF
 
-      - name: Sweep pass 2 (email newly-ready rows)
+      - name: Drive FloodLens generation as stable caller
+        env:
+          SWEEP_SECRET: ${{ secrets.AUDIT_CRON_SECRET }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, urllib.request
+
+          UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+          RETRY = "https://mehyar.us/api/floodlens/retry"
+          SECRET = os.environ.get("SWEEP_SECRET", "")
+          items = json.load(open("/tmp/sweep1.json")).get("drive_floodlens", [])
+          if not items:
+              print("floodlens: nothing to drive")
+          for it in items:
+              body = json.dumps({"order_id": it["id"]}).encode()
+              req = urllib.request.Request(RETRY, data=body,
+                  headers={"Content-Type": "application/json", "User-Agent": UA,
+                           "Authorization": "Bearer " + SECRET})
+              try:
+                  with urllib.request.urlopen(req, timeout=300) as r:
+                      d = json.load(r)
+                  print(f"floodlens order {it['id']}: ok={d.get('ok')} error={d.get('error')} replay={d.get('replay')} pages={d.get('pages')}")
+              except Exception as e:
+                  print(f"floodlens order {it['id']}: call_{type(e).__name__}")
+          PYEOF
         env:
           SWEEP_SECRET: ${{ secrets.AUDIT_CRON_SECRET }}
         run: |

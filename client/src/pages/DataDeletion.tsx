@@ -8,7 +8,9 @@
 //
 // This page is part of the Mehyar.us "Products that access user data" compliance
 // set (see /privacy-policy, /terms). It applies to:
-//   1. Crayon Kid — https://crayonkid.mehyar.us (personalized AI coloring books)
+//   1. Rizza — https://rizza.app (conversational AI for dating-app replies)
+//   2. AiMech — https://aimech.app (AI car diagnostics for everyday drivers)
+//   3. Crayon Kid — https://crayonkid.mehyar.us (personalized AI coloring books)
 //   4. RoastMe — https://roast.mehyar.us (AI photo roasts)
 //   5. BabyPeek — https://baby.mehyar.us (AI future-baby portraits)
 //   6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
@@ -19,12 +21,14 @@
 //  11. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
 //  12. CreditFix Kit — https://creditfixkit.mehyar.us (DIY credit repair kit: dispute letters + rebuild plan)
 //  13. HustleKit — https://hustlekit.mehyar.us (AI side-hustle starter kits: personalized playbook PDFs)
-//  14. The 30-Day Content Playbook — https://playbook.mehyar.us (AI-generated organic short-form growth playbook)
+//  14. TikTok Growth System — https://tiktokgrowth.mehyar.us (AI-generated organic short-form growth playbook)
 //  15. PLR Vault — https://plrvault.mehyar.us (private-label-rights digital product vault)
 //  16. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
 //  17. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
 //  18. PrepGuide — https://prepguide.mehyar.us (personalized household preparedness playbook)
+//  19. OpenSeason — https://openseason.mehyar.us (hunting-season dates, free openers + $12 state packs)
 //  20. BeachCall — https://beachcall.mehyar.us (daily go/no-go beach verdicts + $9 summer pass)
+//  21. CareRank — https://carerank.mehyar.us (nursing-home shortlist: deterministic CMS-data ranking)
 //  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
 //  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
 //  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
@@ -38,7 +42,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Waves, Droplets, Gavel, House} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -54,6 +58,30 @@ interface AppInfo {
 }
 
 const apps: AppInfo[] = [
+  {
+    id: "rizza",
+    name: "Rizza",
+    url: "https://rizza.app",
+    tagline: "Your AI wingman for dating-app replies.",
+    icon: MessageSquare,
+    inAppPath: "Settings → Account → Delete my account",
+    whatWeCollect:
+      "Email address (if you sign in), account handle, optional profile fields you fill in, and the conversation snippets you submit to Rizza so it can suggest a reply. We do not read your messages outside the moments you paste them in.",
+    whatWeDelete:
+      "Account record, profile fields, every conversation snippet and suggestion stored against your account, push-notification tokens, and any aggregated analytics rows that can be tied back to your account id.",
+  },
+  {
+    id: "aimech",
+    name: "AiMech",
+    url: "https://aimech.app",
+    tagline: "AI mechanic for everyday car owners.",
+    icon: Car,
+    inAppPath: "Settings → Account → Delete my account",
+    whatWeCollect:
+      "Email address (if you sign in), the vehicle make / model / year you set up, the symptom descriptions and diagnostic answers you submit, and your saved history of past diagnoses.",
+    whatWeDelete:
+      "Account record, vehicle profile, full diagnostic history, symptom logs, and any rows tied to your account id in our logs. The diagnostic model itself does not retain your individual inputs after the session — only the rows we explicitly stored.",
+  },
   {
     id: "crayonkid",
     name: "Crayon Kid",
@@ -175,9 +203,9 @@ id: "hustlekit",
       "Email address, submitted intake details, generated kit, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
-    id: "playbook",
-    name: "The 30-Day Content Playbook",
-    url: "https://playbook.mehyar.us",
+    id: "tiktokgrowth",
+    name: "TikTok Growth System",
+    url: "https://tiktokgrowth.mehyar.us",
     tagline: "AI-generated organic short-form growth playbook.",
     icon: TrendingUp,
     inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
@@ -246,6 +274,18 @@ id: "hustlekit",
       "Email address, household intake answers, generated playbook, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
+    id: "openseason",
+    name: "OpenSeason",
+    url: "https://openseason.mehyar.us",
+    tagline: "Every hunting-season date for your state, in plain English.",
+    icon: Crosshair,
+    inAppPath: "One-click unsubscribe on every email (immediate product-level suppression); deletion via email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (for the free opener results and, when you buy, the $12 state pack delivery plus season reminders), your chosen state, and checkout records.",
+    whatWeDelete:
+      "Email address, chosen state, subscription and suppression records, and purchase records tied to your email. Unsubscribe is instant; full deletion via the email fallback within 14 days.",
+  },
+  {
     id: "beachcall",
     name: "BeachCall",
     url: "https://beachcall.mehyar.us",
@@ -256,6 +296,18 @@ id: "hustlekit",
       "Email address (to deliver your pass and send verdict emails), your saved beach list, your free/paid tier, and purchase records.",
     whatWeDelete:
       "Email address, saved beach list, tier, and purchase records tied to your email. Unsubscribing adds you to the product's do-not-mail list immediately. Full deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "carerank",
+    name: "CareRank",
+    url: "https://carerank.mehyar.us",
+    tagline: "Nursing-home shortlist that works for your family, not the facilities.",
+    icon: HeartHandshake,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your free matches and paid report), the quiz answers you submit (ZIP, care priorities, needs), the ranked shortlist generated for you, and checkout records.",
+    whatWeDelete:
+      "Email address, quiz answers, generated shortlist, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
     id: "puretap",
@@ -484,8 +536,8 @@ const DataDeletion = () => {
             Data Deletion
           </h1>
           <p className="site-lede mt-4 max-w-3xl">
-            Request deletion of your data from any MehyarSoft product we ship.
-            Use the in-product control or email us. Either way, your account and every
+            Request deletion of your data from any MehyarSoft product — Rizza, AiMech, or anything
+            else we ship. Use the in-product control or email us. Either way, your account and every
             row tied to it are purged, and we confirm in writing.
           </p>
         </div>
