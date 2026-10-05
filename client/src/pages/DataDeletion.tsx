@@ -26,6 +26,13 @@
 //  16. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
 //  17. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
 //  18. PrepGuide — https://prepguide.mehyar.us (personalized household preparedness playbook)
+//  19. PureTap — https://puretap.mehyar.us (free tap-water safety verdict + decoded EPA report)
+//  20. WattWise — https://wattwise.mehyar.us (electric-bill overpay verdict from a bill photo)
+//  21. SproutScore — https://sproutscore.mehyar.us (NYC daycare inspection decoder)
+//  22. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket dismissal odds + dispute letter)
+//  23. FloodLens — https://floodlens.mehyar.us (free FEMA flood zone lookup + risk report)
+//  24. BeachCall — https://beachcall.mehyar.us (daily beach GO/SKIP verdict + summer pass)
+//  25. Legit — https://legit.mehyar.us (conversational LLC formation agent)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -34,9 +41,9 @@
 //   - Email fallback: anyone can write to info@mehyar.us and we'll action
 //     within 14 days. The 14-day window matches the Privacy Policy.
 //
-// Last updated: 2026-09-14.
+// Last updated: 2026-10-05.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles, LayoutDashboard} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles, LayoutDashboard, Droplets, Lightbulb, Sprout, Receipt, Waves, Umbrella, Scale} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -276,6 +283,90 @@ id: "hustlekit",
       "Email address (to deliver your purchase), the household intake answers you submit (adults, kids, pets, home type, region, budget tier), the generated playbook PDF, and checkout records.",
     whatWeDelete:
       "Email address, household intake answers, generated playbook, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "puretap",
+    name: "PureTap",
+    url: "https://puretap.mehyar.us",
+    tagline: "Is your tap water safe? Free 60-second verdict.",
+    icon: Droplets,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The ZIP code you enter for the water-quality lookup, email address (if you provide one for the decoded report), your lookup history, and checkout records for the $19 full report.",
+    whatWeDelete:
+      "ZIP code, email address, lookup history, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "wattwise",
+    name: "WattWise",
+    url: "https://wattwise.mehyar.us",
+    tagline: "Is your electric bill ripping you off? Free 30-second verdict.",
+    icon: Lightbulb,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The electric-bill photo you upload, email address (if you provide one for the verdict), your bill analysis history, and checkout records.",
+    whatWeDelete:
+      "Uploaded bill photo, email address, analysis history, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "sproutscore",
+    name: "SproutScore",
+    url: "https://sproutscore.mehyar.us",
+    tagline: "NYC daycare inspection decoder — know before you sign.",
+    icon: Sprout,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The daycare names you search, email address (if you provide one), your search history, and checkout records.",
+    whatWeDelete:
+      "Email address, search history, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "ticketbeat",
+    name: "TicketBeat",
+    url: "https://ticketbeat.mehyar.us",
+    tagline: "Fight your NYC parking ticket — dismissal odds + dispute letter.",
+    icon: Receipt,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The parking-ticket photo you upload, ticket details used to draft the dispute letter, email address (if you provide one), the generated dispute letter, and checkout records for the $9.99 one-time unlock.",
+    whatWeDelete:
+      "Uploaded ticket photo, ticket details, generated dispute letter, email address, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "floodlens",
+    name: "FloodLens",
+    url: "https://floodlens.mehyar.us",
+    tagline: "Free FEMA flood zone lookup with plain-words risk.",
+    icon: Waves,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The addresses you enter for flood-zone lookups, email address (if you provide one for the report), your lookup history, and checkout records for the $9 FloodLens report.",
+    whatWeDelete:
+      "Entered addresses, email address, lookup history, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "beachcall",
+    name: "BeachCall",
+    url: "https://beachcall.mehyar.us",
+    tagline: "Daily beach GO/SKIP verdict — free.",
+    icon: Umbrella,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (for the free daily verdict and the $9 Summer Pass), your beach preferences, and checkout records.",
+    whatWeDelete:
+      "Email address, beach preferences, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "legit",
+    name: "Legit",
+    url: "https://legit.mehyar.us",
+    tagline: "Conversational LLC formation agent — self-help, not a law firm.",
+    icon: Scale,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The conversation you have with the Legit agent (LLC name checks, filing answers you provide), email address (if you provide one), and checkout records for the $39 kit plus state fee.",
+    whatWeDelete:
+      "Conversation history, email address, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

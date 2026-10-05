@@ -254,6 +254,34 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized household preparedness playbook — calm, practical, no fear-mongering.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">PureTap — <a className="text-brand-700 underline dark:text-brand-100" href="https://puretap.mehyar.us" target="_blank" rel="noreferrer">puretap.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Free tap-water safety verdict from your ZIP — decoded EPA violations.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">WattWise — <a className="text-brand-700 underline dark:text-brand-100" href="https://wattwise.mehyar.us" target="_blank" rel="noreferrer">wattwise.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Free electric-bill verdict — overpaying, fair, or good, from a bill photo.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">SproutScore — <a className="text-brand-700 underline dark:text-brand-100" href="https://sproutscore.mehyar.us" target="_blank" rel="noreferrer">sproutscore.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">NYC daycare inspection decoder — plain-English violation records.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">TicketBeat — <a className="text-brand-700 underline dark:text-brand-100" href="https://ticketbeat.mehyar.us" target="_blank" rel="noreferrer">ticketbeat.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">NYC parking-ticket dismissal odds + dispute letter — $9.99 one-time.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">FloodLens — <a className="text-brand-700 underline dark:text-brand-100" href="https://floodlens.mehyar.us" target="_blank" rel="noreferrer">floodlens.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Free FEMA flood zone lookup with plain-words risk.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">BeachCall — <a className="text-brand-700 underline dark:text-brand-100" href="https://beachcall.mehyar.us" target="_blank" rel="noreferrer">beachcall.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Daily beach GO/SKIP verdict — free, with a $9 Summer Pass option.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Legit — <a className="text-brand-700 underline dark:text-brand-100" href="https://legit.mehyar.us" target="_blank" rel="noreferrer">legit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Conversational LLC formation agent — self-help software, not a law firm.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>

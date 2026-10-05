@@ -371,6 +371,139 @@ const managedApps: ManagedApp[] = [
     accentClass:
       "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
+  {
+    id: "puretap",
+    name: "PureTap",
+    url: "https://puretap.mehyar.us",
+    tagline: "Is your tap water safe? Free 60-second verdict.",
+    description:
+      "Type your ZIP and PureTap decodes the EPA drinking-water violations for your water system into a plain-English verdict in about 60 seconds — free. The $19 full report breaks down every violation with action steps. Skip the $189 lab kit.",
+    audience:
+      "Homeowners and renters who want to know what's actually in their tap water.",
+    highlights: [
+      "Free 60-second tap-water safety verdict from your ZIP code",
+      "Decodes EPA drinking-water violations into plain English",
+      "$19 full report with exact action steps for your water system",
+      "No account needed — free verdict first, email only for the report",
+    ],
+    logo: "/assets/puretap-logo.png",
+    accentClass:
+      "from-sky-100 to-white dark:from-sky-900 dark:to-sky-950",
+  },
+  {
+    id: "wattwise",
+    name: "WattWise",
+    url: "https://wattwise.mehyar.us",
+    tagline: "Is your electric bill ripping you off? Free 30-second verdict.",
+    description:
+      "Photo your electric bill and get a free 30-second verdict — overpaying, fair, or good — measured against real rate data. Know whether your utility or supplier is the problem before you call anyone.",
+    audience:
+      "Anyone who suspects their electric bill is too high and wants proof.",
+    highlights: [
+      "Free 30-second verdict from a photo of your electric bill",
+      "Overpaying, fair, or good — measured against real rate data",
+      "Plain-English breakdown of what each line on the bill means",
+      "No account needed — free verdict first",
+    ],
+    logo: "/assets/wattwise-logo.png",
+    accentClass:
+      "from-amber-100 to-white dark:from-amber-900 dark:to-amber-950",
+  },
+  {
+    id: "sproutscore",
+    name: "SproutScore",
+    url: "https://sproutscore.mehyar.us",
+    tagline: "NYC daycare inspection decoder — know before you sign.",
+    description:
+      "Every NYC daycare violation the city published, decoded in plain English. Search your center's name free and read what the inspector actually found — before you sign that $30k/year contract based on vibes and a tour.",
+    audience:
+      "NYC parents choosing a daycare and refusing to decide on vibes alone.",
+    highlights: [
+      "Free search of your daycare's published city violations",
+      "Violations decoded into plain English — no bureaucrat-speak",
+      "Know the real record before signing a $30k/year contract",
+      "No account needed — search free",
+    ],
+    logo: "/assets/sproutscore-logo.png",
+    accentClass:
+      "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
+  },
+  {
+    id: "ticketbeat",
+    name: "TicketBeat",
+    url: "https://ticketbeat.mehyar.us",
+    tagline: "Fight your NYC parking ticket — dismissal odds + dispute letter.",
+    description:
+      "Photo your NYC parking ticket and get free dismissal odds from real city data, then a dispute letter drafted for your ticket in two minutes. $9.99 one-time — pay it only if the odds say fight.",
+    audience:
+      "NYC drivers holding a parking ticket and wondering if it's worth fighting.",
+    highlights: [
+      "Free dismissal odds from real NYC parking-ticket data",
+      "Dispute letter drafted for your exact ticket in two minutes",
+      "$9.99 one-time — free odds first, pay only to fight",
+      "No account needed — photo the ticket, get the odds",
+    ],
+    logo: "/assets/ticketbeat-logo.png",
+    accentClass:
+      "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
+  },
+  {
+    id: "floodlens",
+    name: "FloodLens",
+    url: "https://floodlens.mehyar.us",
+    tagline: "Free FEMA flood zone lookup with plain-words risk.",
+    description:
+      "Type any U.S. address for a free FEMA flood zone lookup with plain-words risk — what the zone means and what it costs you. The $9 FloodLens report decodes the zone, the typical insurance cost, and what to do about it.",
+    audience:
+      "Homebuyers, homeowners, and renters who want the truth about flood risk.",
+    highlights: [
+      "Free FEMA flood zone lookup for any U.S. address",
+      "Plain-words risk — what the zone means and what it costs you",
+      "$9 report with zone decode and typical insurance cost",
+      "No account needed — free lookup first",
+    ],
+    logo: "/assets/floodlens-logo.png",
+    accentClass:
+      "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
+  },
+  {
+    id: "beachcall",
+    name: "BeachCall",
+    url: "https://beachcall.mehyar.us",
+    tagline: "Should we go to the beach today? Free verdict.",
+    description:
+      "Today's beach verdict, free: GO or SKIP for one NYC-area beach, best hours, and one honest reason why. The $9 Summer Pass unlocks all 8 beaches plus morning emails so you never check three apps at 8 AM again.",
+    audience:
+      "NYC-area beachgoers tired of guessing whether it's worth the trip.",
+    highlights: [
+      "Free daily GO or SKIP verdict for one NYC-area beach",
+      "Best hours plus one honest reason why",
+      "$9 Summer Pass unlocks all 8 beaches and morning emails",
+      "No account needed — free verdict first",
+    ],
+    logo: "/assets/beachcall-logo.png",
+    accentClass:
+      "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+  },
+  {
+    id: "legit",
+    name: "Legit",
+    url: "https://legit.mehyar.us",
+    tagline: "Conversational LLC formation agent — self-help, not a law firm.",
+    description:
+      "Chat with Legit to check your LLC name and get step-by-step filing guidance — a conversational agent that walks you through formation like a checklist that talks back. $39 kit plus the state fee, after human review. Self-help software, not a law firm.",
+    audience:
+      "Founders who want to form an LLC without drowning in state paperwork.",
+    highlights: [
+      "Conversational agent — chat through LLC name check and filing steps",
+      "Step-by-step guidance for your state's formation process",
+      "$39 kit plus state fee, after human review",
+      "Self-help software — plain-English, no legalese",
+    ],
+    logo: "/assets/legit-logo.png",
+    accentClass:
+      "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
+  },
 ];
 
 const selectedIds = ["designful", "freelanceros", "bizbuilder"];
