@@ -129,6 +129,8 @@ jobs:
               except Exception as e:
                   print(f"floodlens order {it['id']}: call_{type(e).__name__}")
           PYEOF
+
+      - name: Sweep pass 2 (email newly-ready rows)
         env:
           SWEEP_SECRET: ${{ secrets.AUDIT_CRON_SECRET }}
         run: |
