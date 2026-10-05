@@ -56,6 +56,7 @@ import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
 // + buyers_rollup are the guaranteed stores).
 const BRAND_DRIP_TABLES = {
   floodlens: "floodlens_subscribers",
+  babypeek: "babypeek_subscribers",
   puretap: "puretap_subscribers",
   sproutscore: "sproutscore_subscribers",
   beachcall: "beachcall_subscribers",
