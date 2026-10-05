@@ -199,6 +199,43 @@ class Flow {
     });
     this.y -= 2;
   }
+  divider() {
+    this.need(12);
+    this.pdf.rect(MARGIN, this.y - 6, CONTENT_W, 1, 0.85, 0.87, 0.9);
+    this.y -= 12;
+  }
+  // Tinted callout box with a colored left border.
+  callout(title, body, accent) {
+    const a = accent || BRAND;
+    const lines = wrap(body, CONTENT_W - 28, 10.5, false);
+    const h = 26 + lines.length * 15.5;
+    this.need(h + 6);
+    const top = this.y;
+    this.pdf.rect(MARGIN, top - h, CONTENT_W, h, 0.95, 0.97, 1);
+    this.pdf.rect(MARGIN, top - h, 5, h, a.r, a.g, a.b);
+    this.pdf.text(title, MARGIN + 14, top - 18, 11, true, INK.r, INK.g, INK.b);
+    let yy = top - 36;
+    for (const ln of lines) {
+      this.pdf.text(ln, MARGIN + 14, yy, 10.5, false, INK.r, INK.g, INK.b);
+      yy -= 15.5;
+    }
+    this.y = top - h - 8;
+  }
+  // 2-column grid of small fact cards.
+  factGrid(items) {
+    const cols = 2, gw = 10, cw = (CONTENT_W - gw) / cols, ch = 44;
+    const rows = Math.ceil(items.length / cols);
+    this.need(rows * (ch + 8));
+    items.forEach((it, i) => {
+      const c = i % cols, r = Math.floor(i / cols);
+      const x = MARGIN + c * (cw + gw);
+      const top = this.y - r * (ch + 8);
+      this.pdf.rect(x, top - ch, cw, ch, 0.96, 0.97, 1);
+      this.pdf.text(truncate(it.label, 30), x + 10, top - 16, 8.5, true, MUTED.r, MUTED.g, MUTED.b);
+      this.pdf.text(truncate(it.value, 34), x + 10, top - 32, 10.5, true, INK.r, INK.g, INK.b);
+    });
+    this.y -= rows * (ch + 8) + 4;
+  }
 }
 
 function wrap(text, maxW, size, bold) {
@@ -237,16 +274,16 @@ export function buildFloodReport(props, meta) {
   const multi = props.length > 1;
   props.forEach((p, idx) => {
     if (idx > 0) f.pageBreak();
-    pageCover(f, p, meta, multi, idx, props.length);   // 1
-    f.pageBreak(); pageZoneDecoded(f, p, multi, idx, props.length);   // 2
-    f.pageBreak(); pageNarration(f, p, multi, idx, props.length);     // 3
-    f.pageBreak(); pageCost(f, p, multi, idx, props.length);          // 4
-    f.pageBreak(); pagePricing(f, p, multi, idx, props.length);       // 5
-    f.pageBreak(); pageQuestions(f, p, multi, idx, props.length);    // 6
-    f.pageBreak(); pageMapHistory(f, p, multi, idx, props.length);   // 7
-    f.pageBreak(); pageChecklist(f, p, multi, idx, props.length);    // 8
-    f.pageBreak(); pageMethodology(f, p, multi, idx, props.length);  // 9
-    f.pageBreak(); pageDisclaimer(f, p, meta, multi, idx, props.length); // 10
+    pageCover(f, p, meta, multi, idx, props.length);        // 1 verdict cover
+    f.pageBreak(); pageZoneDecoded(f, p, multi, idx, props.length);   // 2 zone decoded
+    f.pageBreak(); pageNarration(f, p, multi, idx, props.length);      // 3 what it means
+    f.pageBreak(); pageRequirements(f, p, multi, idx, props.length);  // 4 insurance requirements
+    f.pageBreak(); pageCost(f, p, multi, idx, props.length);           // 5 cost + how estimated
+    f.pageBreak(); pageQuestions(f, p, multi, idx, props.length);     // 6 questions
+    f.pageBreak(); pageMapHistory(f, p, multi, idx, props.length);    // 7 map history
+    f.pageBreak(); pageChecklist(f, p, multi, idx, props.length);     // 8 checklist
+    f.pageBreak(); pageMethodology(f, p, multi, idx, props.length);   // 9 methodology
+    f.pageBreak(); pageDisclaimer(f, p, meta, multi, idx, props.length); // 10 disclaimer
   });
   const bytes = pdf.serialize();
   return { bytes, pages: pdf.pages.length, byteLength: bytes.length };
@@ -261,38 +298,65 @@ function propTag(f, p, multi, idx, n) {
   f.y -= 16;
 }
 
-// ── Page 1: cover ──
+// ── Page 1: cover — verdict header ──
 function pageCover(f, p, meta, multi, idx, n) {
-  f.pdf.text("FLOODLENS", MARGIN, PAGE_H - 120, 26, true, BRAND.r, BRAND.g, BRAND.b);
+  f.pdf.text("FLOODLENS", MARGIN, PAGE_H - 110, 26, true, BRAND.r, BRAND.g, BRAND.b);
   f.pdf.text(
     multi ? "Multi-Property Flood Zone Report" : "Flood Zone Report",
-    MARGIN, PAGE_H - 150, 15, false, MUTED.r, MUTED.g, MUTED.b
+    MARGIN, PAGE_H - 140, 15, false, MUTED.r, MUTED.g, MUTED.b
   );
   if (multi) {
-    f.pdf.text(`Property ${idx + 1} of ${n}`, MARGIN, PAGE_H - 172, 11, true, INK.r, INK.g, INK.b);
+    f.pdf.text(`Property ${idx + 1} of ${n}`, MARGIN, PAGE_H - 162, 11, true, INK.r, INK.g, INK.b);
   }
-  const cy = PAGE_H - 240;
   const badge = BADGE[p.risk] || BADGE.unknown;
+  const vtop = PAGE_H - 220;
+  // Verdict card
+  f.pdf.rect(MARGIN, vtop - 96, CONTENT_W, 96, 0.95, 0.97, 1);
+  f.pdf.rect(MARGIN, vtop - 96, 6, 96, badge.r, badge.g, badge.b);
+  f.pdf.text(truncate(p.address, 58), MARGIN + 18, vtop - 28, 13, true, INK.r, INK.g, INK.b);
   const zl = `ZONE ${p.zone}`;
-  f.pdf.rect(MARGIN, cy - 66, CONTENT_W, 76, 0.96, 0.97, 1);
-  f.pdf.text(truncate(p.address, 60), MARGIN + 12, cy - 22, 12, true, INK.r, INK.g, INK.b);
-  f.pdf.rect(MARGIN + 12, cy - 56, textWidth(zl, 13, true) + 20, 24, badge.r, badge.g, badge.b);
-  f.pdf.text(zl, MARGIN + 22, cy - 50, 13, true, 1, 1, 1);
-  f.pdf.text(truncate(p.risk_plain, 90), MARGIN + 12 + textWidth(zl, 13, true) + 30, cy - 50, 10, false, MUTED.r, MUTED.g, MUTED.b);
+  const bw = Math.max(textWidth(zl, 14, true) + 24, 120);
+  f.pdf.rect(MARGIN + 18, vtop - 62, bw, 28, badge.r, badge.g, badge.b);
+  f.pdf.text(zl, MARGIN + 30, vtop - 55, 14, true, 1, 1, 1);
+  f.pdf.text(truncate(p.risk_plain, 95), MARGIN + 18, vtop - 76, 10.5, true, badge.r, badge.g, badge.b);
   f.pdf.text(
-    "What flood zone is this address in, and what does it cost you?",
-    MARGIN, cy - 96, 11, false, MUTED.r, MUTED.g, MUTED.b
+    p.sfha
+      ? "Inside the Special Flood Hazard Area — insurance will likely be required."
+      : "Outside the Special Flood Hazard Area — no lender can require insurance.",
+    MARGIN + 18, vtop - 91, 10, false, MUTED.r, MUTED.g, MUTED.b
   );
+  f.y = vtop - 110; // flow cursor starts below the verdict card
+  // Key facts grid
+  f.factGrid([
+    { label: "SPECIAL FLOOD HAZARD AREA", value: p.sfha ? "YES — high risk" : "No" },
+    { label: "ZONE SUBTYPE", value: truncate(p.zone_subtype || "—", 34) },
+    { label: "BASE FLOOD ELEVATION", value: p.bfe != null ? `${p.bfe} ft` : "—" },
+    { label: "MAP EFFECTIVE DATE", value: p.map_effective || "—" },
+  ]);
+  f.divider();
+  // Next 3 moves
+  f.pdf.text("Your next 3 moves", MARGIN, f.y - 14, 13, true, BRAND.r, BRAND.g, BRAND.b);
+  f.y -= 26;
+  const moves = nextMoves(p);
+  moves.forEach((m, i) => {
+    const lines = wrap(`${i + 1}. ${m}`, CONTENT_W - 16, 10.5, false);
+    lines.forEach((ln, li) => {
+      f.pdf.text(ln, MARGIN + 4, f.y - 10.5, 10.5, false, INK.r, INK.g, INK.b);
+      f.y -= 15.5;
+    });
+    f.y -= 4;
+  });
+  f.y -= 6;
   f.pdf.text(
-    `Generated ${meta.generated_at || "—"} · FEMA data checked ${meta.data_checked_at || "—"}`,
-    MARGIN, cy - 116, 10, false, MUTED.r, MUTED.g, MUTED.b
+    `Report generated ${fmtDate(meta.generated_at)} · FEMA data checked ${meta.data_checked_at || "—"}`,
+    MARGIN, 92, 9.5, false, MUTED.r, MUTED.g, MUTED.b
   );
   if (meta.degraded) {
-    f.pdf.text("Served from cached data — FEMA was unreachable at generation time.", MARGIN, cy - 134, 10, true, 0.7, 0.35, 0.05);
+    f.pdf.text("Served from cached data — FEMA was unreachable at generation time.", MARGIN, 78, 9.5, true, 0.7, 0.35, 0.05);
   }
   f.pdf.text(
-    "Not an official flood determination. See the disclaimer on the last page.",
-    MARGIN, 70, 9, true, 0.7, 0.16, 0.16
+    "Informational only — not an official flood determination. See the disclaimer on the last page.",
+    MARGIN, 62, 9, true, 0.7, 0.16, 0.16
   );
 }
 
@@ -305,21 +369,18 @@ function pageZoneDecoded(f, p, multi, idx, n) {
   f.pdf.text(`FEMA Zone ${p.zone}`, MARGIN + 12, f.y - 24, 16, true, badge.r, badge.g, badge.b);
   f.pdf.text(truncate(p.risk_plain, 100), MARGIN + 12, f.y - 42, 10.5, false, INK.r, INK.g, INK.b);
   f.y -= 76;
+  const ex = zoneExplainer(p);
+  f.callout(ex.title, ex.body, badge);
+  f.h2("FEMA identifiers for this property");
   f.kv("Special Flood Hazard Area (SFHA)", p.sfha ? "YES — high-risk area" : "No");
   f.kv("Zone subtype", p.zone_subtype || "—");
-  if (p.bfe != null) f.kv("Base Flood Elevation (BFE)", `${p.bfe} ft`);
+  if (p.bfe != null) f.kv("Base Flood Elevation (BFE)", `${p.bfe} ft — the level water is expected to reach in a base flood`);
   if (p.depth != null) f.kv("Flood depth", `${p.depth} ft`);
   f.kv("FIRM panel", p.firm_pan || "—");
   f.kv("DFIRM ID", p.dfirm_id || "—");
   f.kv("Map effective date", p.map_effective || "—");
   f.gap(6);
-  f.para(
-    p.sfha
-      ? "SFHA means this property sits in FEMA's high-risk flood area. If you buy with a federally backed mortgage, your lender will require flood insurance. That requirement — not the zone letter alone — is what usually surprises buyers at closing."
-      : "Outside the SFHA, no lender will force flood insurance on you — but more than 20% of NFIP claims come from outside high-risk zones. The question isn't whether insurance is required; it's whether the risk is worth the premium.",
-    10.5
-  );
-  f.gap(4);
+  f.divider();
   f.para(
     "FEMA's rule of thumb: zones starting with A or V are the high-risk Special Flood Hazard Area. Shaded X is moderate risk (between the 1% and 0.2% flood limits); unshaded X is minimal. D means the area was never studied.",
     10, false, MUTED
@@ -340,18 +401,59 @@ function pageNarration(f, p, multi, idx, n) {
   );
 }
 
-// ── Page 4: insurance cost ──
+// ── Page 4: insurance requirements ──
+function pageRequirements(f, p, multi, idx, n) {
+  f.h1("Do you have to buy flood insurance?");
+  propTag(f, p, multi, idx, n);
+  if (p.sfha) {
+    f.callout(
+      "YES — almost certainly, if you finance the purchase",
+      "When a property sits in the Special Flood Hazard Area and the mortgage is federally backed (FHA, VA, USDA, Fannie Mae, or Freddie Mac), the lender is legally required to make you carry flood insurance for the life of the loan. This is the cost surprise that hits buyers at the closing table — put the premium in your monthly payment math now.",
+      BADGE.high
+    );
+  } else {
+    f.callout(
+      "NO — no lender can require it for this property",
+      "Outside the Special Flood Hazard Area, flood insurance is entirely your choice. No lender requirement attaches to this zone. The question is whether the risk justifies an optional policy — and in this zone, preferred-risk pricing is usually a few hundred dollars a year.",
+      BADGE.minimal
+    );
+  }
+  f.h2("What 'required' and 'optional' actually mean");
+  f.bullets([
+    "Required (SFHA + federally backed loan): the lender escrows the premium with your mortgage payment. Let the policy lapse and the lender force-places coverage at a much higher price.",
+    "Optional (outside SFHA): you can still buy an NFIP preferred-risk policy or a private flood policy. Over 20% of NFIP claims come from outside high-risk zones.",
+    "Paying cash? No lender means no requirement anywhere — but the flood risk doesn't care how you paid.",
+    "Grandfathering: if a map update ever moves this property into a higher-risk zone, keeping continuous coverage can lock in the cheaper rate class. A LOMA (Letter of Map Amendment) can remove the requirement entirely if the structure is shown above the base flood level.",
+  ]);
+  f.gap(4);
+  f.para(
+    "The requirement follows the loan, not the owner: sell to a cash buyer and the requirement disappears; refinance into a federally backed loan and it comes back.",
+    10, false, MUTED
+  );
+}
+
+// ── Page 5: insurance cost + how it is estimated ──
 function pageCost(f, p, multi, idx, n) {
   f.h1("Flood insurance: what it typically costs");
   propTag(f, p, multi, idx, n);
   if (p.premium_label) {
-    f.para(`For Zone ${p.zone}, NFIP policies at $250,000 of building coverage typically run ${p.premium_label} per year (estimate).`, 11, true);
+    f.callout(
+      `Zone ${p.zone}: ${p.premium_label} / year (estimate)`,
+      "Typical NFIP cost at $250,000 of building coverage. Your property's number moves with elevation, distance to water, foundation type, replacement cost, and claims history — the zone letter is no longer the main price driver under FEMA's Risk Rating 2.0.",
+      BADGE[p.risk] || BADGE.unknown
+    );
     f.bullets([
-      "Your actual premium is property-specific: elevation, distance to water, foundation type, replacement cost, and claims history all move the number.",
-      "Under FEMA's Risk Rating 2.0, the zone letter is no longer the main price driver — two houses in the same zone can differ by thousands per year.",
-      "42% of policyholders still pay below full-risk rates on a glidepath, with increases capped at about 18% per year for most policies.",
+      "Elevation is the lever you control: a house 3 feet above the Base Flood Elevation can cost half as much to insure as the identical house at the BFE. An Elevation Certificate documents this.",
+      "Replacement cost matters more than market price — $250,000 of building coverage is the benchmark used throughout this report.",
+      "Claims history follows the property: a house that flooded twice prices higher than its dry neighbor in the same zone.",
+      "The glidepath: most existing policyholders move toward full-risk rates at up to 18% per year — budget for the increase, not just today's number.",
     ]);
     f.para(p.premium_footnote, 9, false, MUTED);
+    f.gap(2);
+    f.para(
+      "Estimates are scaled from published FEMA NFIP policy data (2025–2026). They are not quotes. Get a real quote at floodsmart.gov before you remove contingencies.",
+      10, false, MUTED
+    );
   } else {
     f.para("No premium range applies — this location has no FEMA zone classification to price against. Talk to an agent about private flood options if the property sits near water.", 10.5);
     f.bullets([
@@ -359,26 +461,6 @@ function pageCost(f, p, multi, idx, n) {
       "Ask specifically about preferred-risk pricing — outside the SFHA you may qualify for the cheapest tier.",
     ]);
   }
-}
-
-// ── Page 5: how premiums are estimated ──
-function pagePricing(f, p, multi, idx, n) {
-  f.h1("How your premium is estimated");
-  propTag(f, p, multi, idx, n);
-  f.para(
-    "Since October 2021, FEMA prices NFIP policies under Risk Rating 2.0: your premium follows the property, not just the zone. The biggest inputs are distance to water, replacement cost, elevation relative to the Base Flood Elevation, foundation type, and the property's claims history.",
-    10.5
-  );
-  f.bullets([
-    "Elevation is the lever you control: a house 3 feet above the BFE can cost half as much to insure as the identical house at the BFE. An Elevation Certificate documents this.",
-    "Replacement cost matters more than market price — a $250,000 building-coverage limit is the benchmark used throughout this report.",
-    "Claims history follows the property: a house that flooded twice will price higher than its dry neighbor in the same zone.",
-    "The glidepath: most existing policyholders move toward full-risk rates at up to 18% per year — budget for the increase, not just today's number.",
-  ]);
-  f.para(
-    "Estimates in this report are scaled from published FEMA NFIP policy data (2025–2026). They are not quotes. Get a real quote at floodsmart.gov before you remove contingencies.",
-    10, false, MUTED
-  );
 }
 
 // ── Page 6: questions ──
@@ -446,7 +528,7 @@ function pageDisclaimer(f, p, meta, multi, idx, n) {
     10.5, true
   );
   f.para(
-    "For insurance, lending, or building decisions, consult your local floodplain administrator, your insurance agent, or a licensed flood-determination provider. Premium ranges shown are estimates, not quotes — get a real quote at floodsmart.gov. FloodLens and MehyarSoft LLC accept no liability for decisions made using this report.",
+    "For insurance, lending, or building decisions, consult your local floodplain administrator, your insurance agent, or a licensed flood-determination provider. Premium ranges shown are estimates, not quotes — get a real quote at floodsmart.gov. This report is informational only and is not insurance advice or legal advice. FloodLens and MehyarSoft LLC accept no liability for decisions made using this report.",
     10.5
   );
   f.gap(10);
@@ -487,5 +569,62 @@ function questionsFor(p) {
 function truncate(s, n) {
   s = String(s || "");
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+function fmtDate(iso) {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return "—";
+    return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  } catch { return "—"; }
+}
+
+// Plain-language zone explanation from lookup fields only.
+function zoneExplainer(p) {
+  const sub = String(p.zone_subtype || "").toUpperCase();
+  if (p.zone === "X" && sub.includes("MINIMAL")) {
+    return {
+      title: "Zone X (unshaded): FEMA's lowest-risk classification",
+      body: "This property sits outside both the 1%-annual-chance (100-year) and 0.2%-annual-chance (500-year) floodplains. Lenders cannot require flood insurance here, and NFIP policies — if you want one — price at the cheapest preferred-risk tier.",
+    };
+  }
+  if (p.zone === "X" && (sub.includes("SHADED") || sub.includes("0.2"))) {
+    return {
+      title: "Zone X (shaded): moderate risk",
+      body: "This property sits between the 100-year and 500-year flood limits. Insurance is not lender-required, but this is the zone where 'it never floods here' gets tested — price a policy before you decide you don't need one.",
+    };
+  }
+  if (p.sfha) {
+    return {
+      title: `Zone ${p.zone}: inside the Special Flood Hazard Area`,
+      body: "This property sits in FEMA's high-risk flood area (1% or greater annual chance). With a federally backed mortgage, flood insurance is not optional — your lender will require it, and the premium belongs in your monthly payment math from day one.",
+    };
+  }
+  if (p.zone === "D") {
+    return {
+      title: "Zone D: never studied",
+      body: "FEMA has not studied flood risk for this area, so no zone — and no NFIP price — exists. Near water, talk to an agent about private flood options; the absence of a zone is not the absence of risk.",
+    };
+  }
+  return {
+    title: `FEMA Zone ${p.zone}`,
+    body: p.risk_plain || "See the zone details below.",
+  };
+}
+
+// The three moves that matter most, personalized by risk band.
+function nextMoves(p) {
+  if (p.sfha) {
+    return [
+      "Get a real flood insurance quote (floodsmart.gov) BEFORE removing contingencies — in the SFHA this number can move your monthly payment by hundreds.",
+      "Ask the seller for the Elevation Certificate and any LOMA/LOMR on file — both can cut the premium dramatically.",
+      "Pull the free FIRMette for this address at msc.fema.gov/portal to see the exact flood boundary line.",
+    ];
+  }
+  return [
+    "Get an optional flood quote anyway (floodsmart.gov) — preferred-risk pricing in Zone X is often a few hundred dollars a year.",
+    "Ask the seller for any Elevation Certificate, LOMA, or flood-claim history before the inspection period ends.",
+    "Pull the free FIRMette for this address at msc.fema.gov/portal to see the exact flood boundary line.",
+  ];
 }
 
