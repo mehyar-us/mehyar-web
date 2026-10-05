@@ -37,6 +37,110 @@ import { fulfillPuretap } from "../_shared/fulfillPuretap.js";
 import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
 import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
 
+// Buyer CRM hardening (tracking-crm-fix, 2026-10-05).
+//
+// On EVERY paid session (not just successful fulfillments), the webhook now:
+//   (a) captures Stripe customer_details (name + billing address) onto the
+//       billing_payments row — needs migration 0033 columns;
+//   (b) upserts the buyer into subscribers_global (brand CRM list) with
+//       converted=1, running totals, first-touch attribution — the
+//       permanent "every buyer lands in the CRM" habit. Idempotent and
+//       suppression-safe: never re-activates an unsubscribed row, never
+//       sends anything (marketing sends stay behind Mayor's word);
+//   (c) upserts the per-brand drip list (floodlens_subscribers etc.) with
+//       converted=1 when the table exists — best-effort, never throws;
+//   (d) upserts buyers_rollup for the sprint dashboard.
+
+// Brand -> drip-list table. Extend as new brands ship. Missing tables are
+// skipped silently (per-brand drip lists are optional; subscribers_global
+// + buyers_rollup are the guaranteed stores).
+const BRAND_DRIP_TABLES = {
+  floodlens: "floodlens_subscribers",
+  puretap: "puretap_subscribers",
+  sproutscore: "sproutscore_subscribers",
+  beachcall: "beachcall_subscribers",
+  hustlekit: "hustlekit_subscribers",
+  prepguide: "prepguide_subscribers",
+};
+
+const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
+
+// The permanent habit: every paid buyer lands in the brand CRM list.
+// Idempotent on (email, brand). Suppression-safe: an 'opted_out' or
+// unsubscribed=1 row keeps its opt-out state — we only add purchase facts.
+async function recordBuyerCRM(db, { email, brand, amountCents, attributionJson }) {
+  const em = String(email || "").toLowerCase().trim();
+  const br = String(brand || "mehyar.us").toLowerCase().trim() || "mehyar.us";
+  if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(em)) return;
+  try {
+    await db.prepare(
+      "INSERT INTO subscribers_global (email, brand, status, converted, " +
+      "first_order_at, last_order_at, total_spent_cents, attribution_json, updated_at) " +
+      "VALUES (?, ?, 'active', 1, " + nowSql + ", " + nowSql + ", ?, ?, " + nowSql + ") " +
+      "ON CONFLICT(email, brand) DO UPDATE SET " +
+      "status=CASE WHEN subscribers_global.status='opted_out' THEN 'opted_out' ELSE 'active' END, " +
+      "converted=1, last_order_at=" + nowSql + ", " +
+      "total_spent_cents=subscribers_global.total_spent_cents+excluded.total_spent_cents, " +
+      "attribution_json=COALESCE(subscribers_global.attribution_json, excluded.attribution_json), " +
+      "updated_at=" + nowSql
+    ).bind(em, br, Number(amountCents) || 0, attributionJson || null).run();
+  } catch (e) {
+    console.error("recordBuyerCRM subscribers_global failed", e && e.message);
+  }
+  // Dashboard rollup.
+  try {
+    await db.prepare(
+      "INSERT INTO buyers_rollup (email, brand, total_cents, first_attribution_json) " +
+      "VALUES (?, ?, ?, ?) " +
+      "ON CONFLICT(email, brand) DO UPDATE SET " +
+      "last_seen_at=" + nowSql + ", orders_count=buyers_rollup.orders_count+1, " +
+      "total_cents=buyers_rollup.total_cents+excluded.total_cents"
+    ).bind(em, br, Number(amountCents) || 0, attributionJson || null).run();
+  } catch (e) {
+    console.error("recordBuyerCRM buyers_rollup failed", e && e.message);
+  }
+  // Per-brand drip list: converted=1 stops pre-purchase drips. Insert only
+  // when the table exists; never touch unsubscribed rows.
+  const dripTable = BRAND_DRIP_TABLES[br];
+  if (dripTable) {
+    try {
+      await db.prepare(
+        "INSERT INTO " + dripTable + " (email, status, brand, source, converted) " +
+        "VALUES (?, 'purchased', ?, 'purchase', 1) " +
+        "ON CONFLICT(email) DO UPDATE SET converted=1"
+      ).bind(em, br).run();
+    } catch (e) {
+      // Missing table or different shape — the global stores already have it.
+    }
+  }
+}
+
+// Stripe customer_details -> billing_payments customer fields.
+async function recordCustomerDetails(db, paymentId, sess) {
+  try {
+    const cd = (sess && sess.customer_details) || {};
+    const addr = cd.address || {};
+    await db.prepare(
+      "UPDATE billing_payments SET " +
+      "customer_name=COALESCE(?, customer_name), " +
+      "billing_city=COALESCE(?, billing_city), " +
+      "billing_state=COALESCE(?, billing_state), " +
+      "billing_country=COALESCE(?, billing_country), " +
+      "stripe_customer_id=COALESCE(?, stripe_customer_id) " +
+      "WHERE id=?"
+    ).bind(
+      (cd.name || "").slice(0, 160) || null,
+      (addr.city || "").slice(0, 120) || null,
+      (addr.state || "").slice(0, 120) || null,
+      (addr.country || "").slice(0, 8) || null,
+      (sess.customer && typeof sess.customer === "string" ? sess.customer : null),
+      paymentId
+    ).run();
+  } catch (e) {
+    console.error("recordCustomerDetails failed", e && e.message);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -393,6 +497,25 @@ export async function onRequestPost({ request, env, waitUntil }) {
               "subscription_status=CASE WHEN ? IS NOT NULL THEN 'active' ELSE subscription_status END " +
               "WHERE id=? AND status != 'paid'"
             ).bind(sess.payment_intent || null, sess.id || null, isSub ? String(sess.subscription) : null, isSub ? 1 : null, paymentId).run();
+          }
+          // Attribution + CRM hardening: runs on EVERY paid session —
+          // even if product fulfillment fails downstream, the buyer is
+          // captured with full attribution. Idempotent on replay.
+          try {
+            const payRow = await db.prepare(
+              "SELECT email, brand, amount_cents, attribution_json FROM billing_payments WHERE id=?"
+            ).bind(paymentId).first();
+            if (payRow && payRow.email) {
+              await recordCustomerDetails(db, paymentId, sess);
+              await recordBuyerCRM(db, {
+                email: payRow.email,
+                brand: payRow.brand,
+                amountCents: payRow.amount_cents,
+                attributionJson: payRow.attribution_json || (sess.metadata && sess.metadata.attribution) || null,
+              });
+            }
+          } catch (e) {
+            console.error("pay/webhook buyer CRM hardening failed", e && e.message);
           }
           // Fulfillment dispatch by product.
           const product = await db.prepare(

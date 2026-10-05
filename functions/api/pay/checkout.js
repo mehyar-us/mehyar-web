@@ -16,6 +16,35 @@
 // initOrder hook below; the audit_report hook mirrors the legacy
 // /api/audit/full-report/checkout behavior.
 
+// Attribution threading (tracking-crm-fix, 2026-10-05). Product pages
+// forward MSRC.get() as params.attribution; we store it on
+// billing_payments.attribution_json and mirror marketing fields into
+// Stripe session metadata so the channel is visible in the Dashboard too.
+
+// Allowlisted attribution keys only; everything else is dropped.
+const ATTR_KEYS = [
+  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+  "gclid", "fbclid", "msclkid", "ttclid", "wbraid", "gbraid",
+  "referrer", "landing_page", "landing_ts", "click_ids",
+];
+
+function sanitizeAttribution(raw) {
+  // raw comes from the already-sanitized `params` object in onRequestPost.
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out = {};
+  for (const k of ATTR_KEYS) {
+    const v = String(raw[k] || "").slice(0, 300);
+    if (v) out[k] = v;
+  }
+  const keys = Object.keys(out);
+  if (!keys.length) return null;
+  try {
+    const json = JSON.stringify(out);
+    if (json.length > 1500) return null; // hard cap
+    return out;
+  } catch { return null; }
+}
+
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -200,6 +229,12 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
+    // Attribution threading: product pages forward MSRC.get() as
+    // params.attribution. Store on the payment row; mirror marketing keys
+    // into Stripe session metadata for Dashboard visibility.
+    const attribution = sanitizeAttribution(params.attribution);
+    const attributionJson = attribution ? JSON.stringify(attribution) : null;
+
     const testMode = body.test === true;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
@@ -232,13 +267,13 @@ export async function onRequestPost({ request, env }) {
     if (payment) {
       paymentId = payment.id;
       await db.prepare(
-        "UPDATE billing_payments SET access_token = ?, metadata_json = ? WHERE id = ?"
-      ).bind(accessToken, JSON.stringify(params), paymentId).run();
+        "UPDATE billing_payments SET access_token = ?, metadata_json = ?, attribution_json = COALESCE(attribution_json, ?) WHERE id = ?"
+      ).bind(accessToken, JSON.stringify(params), attributionJson, paymentId).run();
     } else {
       const ins = await db.prepare(
-        "INSERT INTO billing_payments (product_id, brand, email, amount_cents, currency, access_token, metadata_json) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?)"
-      ).bind(productId, product.brand, email, product.price_cents, product.currency || "usd", accessToken, JSON.stringify(params)).run();
+        "INSERT INTO billing_payments (product_id, brand, email, amount_cents, currency, access_token, metadata_json, attribution_json) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      ).bind(productId, product.brand, email, product.price_cents, product.currency || "usd", accessToken, JSON.stringify(params), attributionJson).run();
       paymentId = (ins && ins.meta && ins.meta.last_row_id) || null;
       if (!paymentId) return J({ ok: false, error: "checkout_failed" }, 500);
     }
@@ -290,6 +325,11 @@ export async function onRequestPost({ request, env }) {
     sp.set("metadata[product_id]", productId);
     sp.set("metadata[brand]", product.brand || "");
     sp.set("metadata[email]", email);
+    if (attribution) {
+      for (const k of ["utm_source", "utm_medium", "utm_campaign", "landing_page", "referrer"]) {
+        if (attribution[k]) sp.set("metadata[" + k + "]", String(attribution[k]).slice(0, 200));
+      }
+    }
     for (const [k, v] of Object.entries(metadataExtra)) sp.set("metadata[" + k + "]", String(v));
 
     const sess = await fetch("https://api.stripe.com/v1/checkout/sessions", {

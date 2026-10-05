@@ -16,44 +16,6 @@ import {
   PREMIUM_BANDS, PREMIUM_FOOTNOTE,
 } from "../_shared/floodlensCore.js";
 
-// Entry attribution capture (tracking-crm-fix, deployed 2026-10-05).
-// The lookup POST body may carry { src, attribution } (sent by the
-// storm page / index via MSRC.get()). Both are stored on the
-// floodlens_lookups row (migration 0033 columns). The checkout
-// orderHooks.floodlens hook validates the lookup token and copies
-// the row's attribution into metadataExtra.
-const ATTR_COL_KEYS = [
-  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-];
-
-function sanitizeAttr(v, max) {
-  return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s+/g, " ").trim().slice(0, max || 200);
-}
-
-function pickAttribution(body) {
-  // Accepts the flat MSRC object: { utm_source, ..., gclid, fbclid,
-  // referrer, landing_page, landing_ts }.
-  const a = body && body.attribution;
-  if (!a || typeof a !== "object") return null;
-  const out = {};
-  for (const k of ATTR_COL_KEYS) {
-    const v = sanitizeAttr(a[k]);
-    if (v) out[k] = v;
-  }
-  const ref = sanitizeAttr(a.referrer, 300);
-  if (ref) out.referrer = ref;
-  const lp = sanitizeAttr(a.landing_page, 200);
-  if (lp) out.landing_page = lp;
-  const clicks = {};
-  for (const k of ["gclid", "fbclid", "msclkid", "ttclid", "wbraid", "gbraid"]) {
-    const v = sanitizeAttr(a[k], 120);
-    if (v) clicks[k] = v;
-  }
-  if (Object.keys(clicks).length) out.click_ids = JSON.stringify(clicks);
-  return Object.keys(out).length ? out : null;
-}
-
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
 function json(data, status = 200) {
@@ -135,24 +97,14 @@ function rowToResult(row, { cached = false, degraded = false, banner = null } = 
   };
 }
 
-async function storeLookup(db, { token, address, normalized, lat, lon, gh, zi, band, bfe, dfirm_id, firm_pan, mapEffective, degraded, ip, queriedAt, src, attribution }) {
+async function storeLookup(db, { token, address, normalized, lat, lon, gh, zi, band, bfe, dfirm_id, firm_pan, mapEffective, degraded, ip, queriedAt }) {
   await db.prepare(
-    "INSERT INTO floodlens_lookups (token, address, normalized, lat, lon, geohash, zone, zone_subtype, sfha, risk, risk_plain, band, bfe, dfirm_id, firm_pan, data_as_of, queried_at, degraded, ip, src, " +
-    "utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer, landing_page, click_ids) " +
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO floodlens_lookups (token, address, normalized, lat, lon, geohash, zone, zone_subtype, sfha, risk, risk_plain, band, bfe, dfirm_id, firm_pan, data_as_of, queried_at, degraded, ip) " +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(
     token, address, normalized, lat, lon, gh,
     zi.zone, zi.zone_subtype, zi.sfha, zi.risk, zi.risk_plain, zi.band,
-    bfe, dfirm_id, firm_pan, mapEffective, queriedAt, degraded ? 1 : 0, ip,
-    sanitizeAttr(src, 60) || "unknown",
-    attribution ? attribution.utm_source || null : null,
-    attribution ? attribution.utm_medium || null : null,
-    attribution ? attribution.utm_campaign || null : null,
-    attribution ? attribution.utm_term || null : null,
-    attribution ? attribution.utm_content || null : null,
-    attribution ? attribution.referrer || null : null,
-    attribution ? attribution.landing_page || null : null,
-    attribution ? attribution.click_ids || null : null
+    bfe, dfirm_id, firm_pan, mapEffective, queriedAt, degraded ? 1 : 0, ip
   ).run();
   // D1 read-after-write can be eventually consistent across connections; if
   // the SELECT misses, synthesize the row from the inputs we just wrote.
@@ -175,9 +127,7 @@ export async function onRequestPost({ request, env }) {
 
     const body = await request.json().catch(() => ({}));
     const address = sanitizeAddress(body.address);
-    // Entry attribution: page-level src + full MSRC blob, stored on the row.
-    const lookupSrc = sanitizeAttr(body.src, 60) || "unknown";
-    const lookupAttribution = pickAttribution(body);    if (!address || address.length < 5) {
+    if (!address || address.length < 5) {
       return json({ ok: false, error: "invalid_address" }, 400);
     }
     const ip = clientIp(request);
@@ -214,7 +164,6 @@ export async function onRequestPost({ request, env }) {
         zi: { zone: fresh.zone, zone_subtype: fresh.zone_subtype, sfha: Number(fresh.sfha), risk: fresh.risk, risk_plain: fresh.risk_plain, band: fresh.band },
         bfe: fresh.bfe, dfirm_id: fresh.dfirm_id, firm_pan: fresh.firm_pan,
         mapEffective: fresh.data_as_of, degraded: false, ip, queriedAt: fresh.queried_at,
-        src: lookupSrc, attribution: lookupAttribution,
       });
       const res = rowToResult(row, { cached: true });
       res.served_from = "cache_24h";
@@ -235,7 +184,6 @@ export async function onRequestPost({ request, env }) {
           zi: { zone: stale.zone, zone_subtype: stale.zone_subtype, sfha: Number(stale.sfha), risk: stale.risk, risk_plain: stale.risk_plain, band: stale.band },
           bfe: stale.bfe, dfirm_id: stale.dfirm_id, firm_pan: stale.firm_pan,
           mapEffective: stale.data_as_of, degraded: true, ip, queriedAt: stale.queried_at,
-          src: lookupSrc, attribution: lookupAttribution,
         });
         const res = rowToResult(row, {
           cached: true, degraded: true,
@@ -263,7 +211,6 @@ export async function onRequestPost({ request, env }) {
       dfirm_id: (fema.zone && fema.zone.dfirm_id) || (fema.panel && fema.panel.dfirm_id) || null,
       firm_pan: (fema.panel && fema.panel.firm_pan) || null,
       mapEffective, degraded: false, ip, queriedAt,
-      src: lookupSrc, attribution: lookupAttribution,
     });
     const res = rowToResult(row, { cached: false });
     res.served_from = "live";

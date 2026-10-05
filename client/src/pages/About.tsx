@@ -1,85 +1,145 @@
 import { Link } from "wouter";
+import { ArrowRight, Award, CheckCircle, Clock, Users } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import CTASection from "@/components/cta-section";
-export default function About() {
+import QuickAnswer from "@/components/QuickAnswer";
+
+const values = [
+  { title: "Practicality", description: "Find the leak that costs the most, fix it first, and stop adding tools before the case is clear.", icon: Award },
+  { title: "Reliability", description: "Build systems that owners can trust, monitor, and hand off without mystery.", icon: CheckCircle },
+  { title: "Operator empathy", description: "Design around the people answering phones, booking customers, updating records, and serving clients.", icon: Users },
+  { title: "Speed with control", description: "Move fast, but keep consent, audit trails, access, and suppression lists ahead of scale.", icon: Clock },
+];
+
+const timeline = [
+  { year: "15 years ago", title: "From Syria to New York City", description: "Mehyar came to NYC and built a life and career through software, systems thinking, and persistence." },
+  { year: "10+ years", title: "Professional software engineering", description: "Hands-on work across application development, systems, integrations, and business technology delivery." },
+  { year: "Now", title: "MehyarSoft LLC", description: "A consulting brand focused on software, systems engineering, AI automation, and practical tech support for local and regulated businesses." },
+];
+
+const credentials = ["Syrian founder in NYC", "10+ years professional software engineering", "Current regulated systems-engineering work", "Founder-led LLC with direct technical accountability"];
+
+const About = () => {
   return (
     <>
       <section className="site-hero">
-        <div className="site-shell grid gap-10 lg:grid-cols-[1.2fr_.8fr]">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center">
           <div>
-            <p className="site-eyebrow">Founder-led engineering</p>
-            <h1 className="site-display mt-4">Meet Mehyar Swelim.</h1>
-            <p className="site-lede mt-5">
-              A Syrian founder in New York City with 10+ years of professional
-              software engineering experience. MehyarSoft brings that experience
-              to custom AI systems shaped around each business.
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Founder-led consulting</p>
+            <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
+              Built by an engineer who understands both survival and systems.
+            </h1>
+            <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+              Mehyar Swelim is a Syrian founder in New York City with 10+ years of professional software engineering experience. MehyarSoft exists to help businesses stop losing customers, time, and money through weak websites, missed calls, manual work, and disconnected systems.
             </p>
-            <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
-              My work spans applications, systems and integrations. The starting
-              point is how your team actually works: the information you trust,
-              the tools you already use and the decisions that need a person.
-            </p>
-            <Link
-              href="/contact"
-              className={
-                buttonVariants({ variant: "cta", size: "lg" }) + " mt-7"
-              }
-            >
-              Discuss your business
-            </Link>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg" })}>
+                Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+              <Link href="/services" className={buttonVariants({ variant: "outline", size: "lg" })}>
+                See consulting offers
+              </Link>
+            </div>
           </div>
-          <aside className="border-t border-border pt-6 lg:mt-4">
-            <img
-              src="/assets/mehyarsoft-mark-new-192.png"
-              alt="MehyarSoft"
-              width="96"
-              height="96"
-              className="h-24 w-24 object-contain"
-            />
-            <h2 className="mt-6 text-2xl font-semibold">
-              Direct technical accountability
-            </h2>
-            <p className="mt-4 leading-7 text-muted-foreground">
-              You discuss the workflow with the person responsible for the
-              implementation. Scope, integration boundaries and support
-              responsibilities are explained before the build.
-            </p>
-          </aside>
+
+          <div className="rounded-[1.75rem] border border-border bg-card/88 p-4 shadow-[0_24px_80px_rgba(8,63,84,0.12)] dark:bg-card/80 dark:shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+            <div className="rounded-[1.35rem] border border-border bg-background/70 p-5 dark:bg-white dark:bg-zinc-900/[0.03]">
+              <div className="mb-6 flex items-center gap-4" aria-label="MehyarSoft">
+                <span className="grid h-20 w-20 place-items-center rounded-3xl border border-brand-700/15 bg-white p-2 shadow-lg dark:bg-brand-950">
+                  <img src="/assets/mehyarsoft-mark-new-192.png" alt="" aria-hidden="true" className="h-full w-full object-contain" width="192" height="192" />
+                </span>
+                <span>
+                  <span className="block text-4xl font-semibold tracking-[-0.06em] text-brand-950 dark:text-white">Mehyar<span className="font-light">Soft</span></span>
+                  <span className="mt-2 block text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-brand-800/75 dark:text-brand-100">Software • Systems • AI</span>
+                </span>
+              </div>
+              <div className="grid gap-3">
+                {credentials.map((item) => (
+                  <div key={item} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-sm font-semibold text-foreground">
+                    <CheckCircle className="h-4 w-4 flex-none text-brand-700 dark:text-brand-100" aria-hidden="true" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
-      <section className="border-t px-4 py-14">
-        <div className="site-shell">
-          <h2 className="text-3xl font-semibold">How I approach the work</h2>
-          <div className="mt-8 grid gap-8 md:grid-cols-3">
-            {[
-              [
-                "Start with the task",
-                "Define one useful workflow, the people involved and what a successful handoff looks like.",
-              ],
-              [
-                "Build with control",
-                "Use approved information and appropriate permissions. Test the workflow and keep human review where it matters.",
-              ],
-              [
-                "Make it maintainable",
-                "Explain how the system operates, what it costs to run and which changes or support need an agreed scope.",
-              ],
-            ].map(([title, copy]) => (
-              <article key={title} className="border-t pt-5">
-                <h3 className="text-xl font-semibold">{title}</h3>
-                <p className="mt-4 leading-7 text-muted-foreground">{copy}</p>
-              </article>
+
+      <QuickAnswer
+        question="Who founded MehyarSoft?"
+        answer="MehyarSoft LLC was founded by Mehyar Swelim, a Syrian founder in New York City and professional software engineer focused on practical software, systems, and automation consulting."
+        ctaHref="/services"
+        ctaLabel="See what MehyarSoft fixes"
+      />
+
+      <section className="bg-background px-4 py-16 md:py-20">
+        <div className="mx-auto max-w-5xl rounded-[2rem] border border-border bg-card p-6 text-center shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:p-10">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Mission</p>
+          <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-4xl">Diagnose the workflow first. Ship a small reliable fix. Expand only when the case is clear.</h2>
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg">
+            The work is scoped around commercially visible leaks: slow response, confusing websites, manual handoffs, CRM gaps, disconnected tools, and systems that operators cannot trust.
+          </p>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-secondary/55 px-4 py-16 dark:bg-brand-950 md:py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto mb-10 max-w-3xl text-center">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Operating values</p>
+            <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-5xl">Premium work without theater.</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {values.map(({ title, description, icon: Icon }) => (
+              <Card key={title} className="h-full border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)]">
+                <CardContent className="p-6">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
+                    <Icon className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <h3 className="text-xl font-semibold tracking-[-0.02em] text-foreground">{title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
-          <Link
-            href="/portfolio"
-            className="mt-8 inline-flex min-h-11 items-center font-semibold underline"
-          >
-            Explore illustrative work patterns
+        </div>
+      </section>
+
+      <section className="bg-background px-4 py-16 md:py-20">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-10 text-center">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Story</p>
+            <h2 className="text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-5xl">A reality-based founder story.</h2>
+          </div>
+          <div className="space-y-4">
+            {timeline.map((item) => (
+              <div key={item.title} className="grid gap-4 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(10,20,24,0.06)] md:grid-cols-[150px_1fr] md:p-6">
+                <div className="inline-flex h-fit w-fit rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground dark:bg-white/10 dark:text-brand-100">
+                  {item.year}
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold tracking-[-0.02em] text-foreground">{item.title}</h3>
+                  <p className="mt-2 leading-7 text-muted-foreground">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-brand-950 px-4 py-16 text-white md:py-20">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6 rounded-[2rem] border border-white/10 bg-white dark:bg-zinc-900/[0.04] p-6 md:flex-row md:items-center md:justify-between md:p-10">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-100">Next step</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] md:text-4xl">Bring one leak. Leave with one practical path.</h2>
+          </div>
+          <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg", className: "shrink-0" })}>
+            Book a Tech Audit
           </Link>
         </div>
       </section>
-      <CTASection />
     </>
   );
-}
+};
+
+export default About;

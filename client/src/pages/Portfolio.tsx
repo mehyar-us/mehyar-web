@@ -23,30 +23,24 @@ const Portfolio = () => {
     <>
       <section className="site-hero">
         <div className="site-shell">
-          <p className="site-eyebrow mb-3">Engagement patterns</p>
+          <p className="site-eyebrow mb-3">
+            Engagement patterns
+          </p>
           <h1 className="site-display max-w-4xl">
-            Explore what a business workflow can become.
+            Practical ways we improve customer flow and daily operations.
           </h1>
           <p className="site-lede mt-5 max-w-3xl">
             Explore focused work for audits, missed-call follow-up, automations,
             integrations, website improvements, and ongoing support.
           </p>
         </div>
-        <div className="site-shell">
-          <Link
-            href="/explore?topic=business%20workflow%20patterns"
-            className="mt-5 inline-flex min-h-11 items-center underline"
-          >
-            Explore these ideas with AI →
-          </Link>
-        </div>
       </section>
 
       <QuickAnswer
         question="Are these MehyarSoft client case studies?"
-        answer="These are illustrative engagement patterns, not client case studies or measured results. They describe possible scope and expected deliverables."
+        answer="These examples show the kinds of problems, deliverables, and working relationships MehyarSoft supports. Results and scope are confirmed for each business before work begins."
         ctaHref="/contact"
-        ctaLabel="Discuss your business"
+        ctaLabel="Discuss your real workflow"
       />
 
       <section className="bg-background px-4 py-16 md:py-20">
@@ -57,7 +51,6 @@ const Portfolio = () => {
                 key={category}
                 variant={filter === category ? "default" : "outline"}
                 className="capitalize"
-                aria-pressed={filter === category}
                 onClick={() => setFilter(category)}
               >
                 {category}
@@ -74,14 +67,6 @@ const Portfolio = () => {
                   className="group h-full border-border bg-card shadow-[0_1px_2px_rgba(10,20,24,0.06)] transition hover:border-brand-700/35"
                 >
                   <CardContent className="flex h-full flex-col p-6">
-                    <img
-                      src={project.image}
-                      alt={`${project.title} illustrative concept; not client work`}
-                      width="800"
-                      height="600"
-                      loading="lazy"
-                      className="mb-5 aspect-[16/10] w-full rounded-xl object-cover"
-                    />
                     <div className="mb-5 flex items-center justify-between gap-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-brand-800 dark:bg-white/10 dark:text-brand-100">
                         {Icon ? <Icon aria-hidden="true" size={22} /> : null}

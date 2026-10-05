@@ -130,7 +130,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     id: 4,
-    title: "Rizza: An AI Reply-Drafting Product",
+    title: "Rizza App Is Live: A World-Class AI Wingman in Your Pocket",
     slug: "rizza-app-launch-tracking-and-organizing-work-without-the-overhead",
     date: "2026-07-17",
     author: "Mehyar Swelim",
@@ -140,8 +140,8 @@ export const blogPosts: BlogPost[] = [
     readTime: 3,
     image: "/assets/rizza-logo.png",
     content: [
-      "Rizza is an owned MehyarSoft product designed to suggest reply drafts. Public access was unavailable during our October 2026 review; this article describes the product concept, not current availability.",
-      "Staring at a dating-app chat, knowing the perfect reply exists but not being able to find it — we've all been there. Rizza puts a AI drafting assistant in your pocket that reads the conversation, gets the vibe, and hands you replies that actually land. Witty, flirty, and always you — just sharper.",
+      "Rizza.app is live. It is the first app we are publicly operating under the MehyarSoft umbrella — and it was built on a simple idea: everyone deserves a wingman.",
+      "Staring at a dating-app chat, knowing the perfect reply exists but not being able to find it — we've all been there. Rizza puts a world-class AI wingman in your pocket that reads the conversation, gets the vibe, and hands you replies that actually land. Witty, flirty, and always you — just sharper.",
       "Rizza is also a working example of what MehyarSoft ships for clients: a small, focused consumer app on a boring infrastructure stack (Cloudflare Workers, D1, Pages), launched with a real SEO shell and a real PWA install path from day one.",
     ],
     sections: [
@@ -156,7 +156,7 @@ export const blogPosts: BlogPost[] = [
         title: "Why MehyarSoft operates it",
         content: [
           "Building and operating our own consumer product keeps us honest about the MehyarSoft app playbook. Every friction we hit shipping Rizza — from real-time latency to a clean install flow — is a friction we know how to remove for clients.",
-          "Its reply-drafting flow illustrates a focused AI interface. Check the product directory for current availability.",
+          "If you are considering a custom-app or PWA build, Rizza is a live reference you can click through end-to-end.",
         ],
       },
     ],
@@ -168,7 +168,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     id: 5,
-    title: "AiMech: A Car-Question Interface Experiment",
+    title: "AiMech Is Live: An AI Mechanic for Everyday Car Owners",
     slug: "aimech-app-launch-ai-mechanic-for-everyday-car-owners",
     date: "2026-07-17",
     author: "Mehyar Swelim",
@@ -178,9 +178,9 @@ export const blogPosts: BlogPost[] = [
     readTime: 5,
     image: "/assets/aimech-logo.png",
     content: [
-      "AiMech is an owned MehyarSoft product concept for organizing car questions. Public access was unavailable during our October 2026 review. This article is a product note, not a verified diagnostic capability or current availability claim.",
-      'Most car problems start with a sentence, not a code: "There is a clicking sound when I turn left," "The check-engine light came back," "My brakes feel spongy this week." AiMech takes that sentence, runs it through a structured question workflow, and returns a plain-English answer plus a workflow for what to do next — book a shop, watch and wait, or stop driving immediately.',
-      "The goal is not to replace a trusted mechanic. The goal is to make sure you walk into that conversation already knowing the symptoms you want to describe and the questions you want to ask.",
+      "AiMech.app is live. It is an intelligent diagnostics and automation platform built for everyday car owners, not for professional technicians who already own an OBD-II scanner and a Snap-on subscription.",
+      'Most car problems start with a sentence, not a code: "There is a clicking sound when I turn left," "The check-engine light came back," "My brakes feel spongy this week." AiMech takes that sentence, runs it through AI diagnostics backed by real automotive data, and returns a plain-English answer plus a workflow for what to do next — book a shop, watch and wait, or stop driving immediately.',
+      "The goal is not to replace a trusted mechanic. The goal is to make sure you walk into that conversation already knowing what is probably wrong, what it usually costs, and what questions to ask.",
     ],
     sections: [
       {
@@ -194,7 +194,7 @@ export const blogPosts: BlogPost[] = [
         title: "Why this matters for everyday drivers",
         content: [
           "Car ownership is full of asymmetric information. A shop knows what is wrong; you know what you heard. AiMech narrows that gap so you can make a confident decision before paying for diagnostics.",
-          "The interface explores plain-language intake and structured next steps. Product availability and implementation scope should be checked separately.",
+          "It is also the second live example of MehyarSoft's app-launch playbook: real domain, real PWA, real SEO shell, real analytics — shipped in days, not quarters.",
         ],
       },
     ],

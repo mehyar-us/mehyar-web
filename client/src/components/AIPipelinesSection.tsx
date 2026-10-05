@@ -8,9 +8,9 @@ const TABS = [
     label: "Local services",
     icon: PhoneCall,
     pipelines: [
-      { name: "AI Voice Receptionist", desc: "Answer approved questions and route booking requests, with human handoff and outage handling defined before launch." },
+      { name: "AI Voice Receptionist", desc: "Answers every call 24/7, books jobs, quotes prices. Never miss a 2am emergency call again." },
       { name: "Smart Dispatch & Scheduling", desc: "Fills your calendar, clusters jobs by route, sends arrival texts, follows up on unsold quotes." },
-      { name: "Review Follow-Up", desc: "Invite customers to leave honest feedback with the same review options for everyone, regardless of sentiment." },
+      { name: "Review Engine", desc: "Texts happy customers for Google reviews; routes unhappy ones to you privately first." },
     ],
   },
   {
@@ -18,7 +18,7 @@ const TABS = [
     label: "Clinics & dental",
     icon: CalendarClock,
     pipelines: [
-      { name: "AI Appointment Scheduler", desc: "Handle approved booking and reminder workflows, subject to supported integrations, consent, and staff review." },
+      { name: "AI Appointment Scheduler", desc: "Books, confirms, reschedules, fills cancellations — voice + SMS, 24/7, any language." },
       { name: "Patient Intake Automation", desc: "Forms, insurance verification, reminders — handled before the patient walks in." },
       { name: "Recall Engine", desc: "Finds patients who haven't booked in 6+ months and brings them back automatically." },
     ],
@@ -28,7 +28,7 @@ const TABS = [
     label: "Enterprise & pharma",
     icon: Users,
     pipelines: [
-      { name: "Recruiting Workflow Support", desc: "Organize applications against agreed criteria. Hiring decisions remain with your team." },
+      { name: "ATS Resume Screener", desc: "Reads every resume, scores against the role, surfaces the top 5%. Hiring in days, not months." },
       { name: "Document Intelligence", desc: "Scans invoices, contracts, reports at scale — extracts data, flags anomalies, routes approvals." },
       { name: "Meeting-to-Action Engine", desc: "Every call transcribed, summarized, action items assigned and tracked." },
     ],
@@ -50,7 +50,7 @@ const TABS = [
     pipelines: [
       { name: "Document Scanner", desc: "Reads contracts, disclosures, discovery — flags risks and deadlines in minutes, not days." },
       { name: "AI Lead Qualifier", desc: "Chats with every new lead in seconds, scores intent, books consultations on your calendar." },
-      { name: "Deadline Reminders", desc: "Track recorded deadlines and escalate reminders. Your team verifies dates and remains responsible for filings." },
+      { name: "Deadline Guard", desc: "Tracks every matter's calendar and escalates early. Never miss a filing." },
     ],
   },
 ];
@@ -64,10 +64,10 @@ export default function AIPipelinesSection() {
       <div className="site-shell">
         <p className="site-eyebrow mb-4 text-center">AI pipelines by industry</p>
         <h2 className="mx-auto max-w-3xl text-center text-3xl font-bold tracking-tight text-foreground md:text-4xl text-balance">
-          Automation options to review for your business
+          The same AI systems that multiply output up to 5x
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-muted-foreground">
-          Your free audit suggests possible systems. Scope, costs, data permissions, and expected benefits need validation before implementation.
+          Your free audit detects your business type and shows which of these systems fit you — with honest math on the upside.
         </p>
 
         <div className="mt-8 flex flex-wrap justify-center gap-2">
@@ -102,7 +102,7 @@ export default function AIPipelinesSection() {
         <div className="mx-auto mt-8 flex max-w-2xl items-center justify-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
           <TrendingUp className="h-8 w-8 shrink-0 text-emerald-500" />
           <p className="text-sm leading-6 text-foreground">
-            <strong>Check the economics:</strong> compare your actual request volume, staff time, software costs, and exception handling. Savings estimates are scenarios until measured in your workflow.
+            <strong>The 500% math:</strong> one AI voice agent handles the call volume of 3–5 receptionists, 24/7, at a fraction of one salary. The full $5 report shows your exact numbers.
           </p>
         </div>
       </div>

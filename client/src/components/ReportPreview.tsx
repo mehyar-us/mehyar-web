@@ -57,7 +57,7 @@ export default function ReportPreview({ className = "" }: { className?: string }
         $5
       </div>
 
-      <p className="border-t border-slate-100 px-5 py-2.5 text-center text-xs uppercase tracking-widest text-slate-600">
+      <p className="border-t border-slate-100 px-5 py-2.5 text-center text-[10px] uppercase tracking-widest text-slate-400">
         Sample illustration — your report is built for your site
       </p>
     </div>
