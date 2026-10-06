@@ -58,11 +58,11 @@ const managedApps: ManagedApp[] = [
     url: "https://baby.mehyar.us",
     tagline: "Peek at your future baby.",
     description:
-      "Upload two photos and let AI dream up your future baby. Get a free sneak peek — unlock the full portrait for $5.",
+      "Upload two parent photos and let AI dream up your future baby — your first portrait is FREE, no card needed. Unlock the $5 Deluxe Pack for 2 bonus variations, age-5/15 progression, and the HD download.",
     audience: "Expecting couples and curious parents who want a fun, shareable glimpse of what's coming.",
     highlights: [
       "AI-generated future-baby portrait from two parent photos",
-      "Free teaser with a $5 unlock for the full portrait",
+      "First portrait free; $5 Deluxe unlocks bonus variations, age progression, and HD download",
       "Shareable reveal cards built for virality",
       "Private by design — your photos stay yours",
     ],
