@@ -100,8 +100,11 @@ export async function onRequestPost({ request, env }) {
     const subs = list.data?.data || [];
     // TEMP DEBUG (remove after verification)
     if (body.debug === true) {
+      const sub = subs[0];
+      const c = sub ? await stripeCall(key, "POST", "subscriptions/" + encodeURIComponent(sub.id) + "/cancel") : null;
       return json({ ok: true, debug: true, key_is_live: key === env.STRIPE_SECRET_KEY,
-        sub_count: subs.length, subs: subs.map((s) => ({ id: s.id, status: s.status })) });
+        sub_count: subs.length, subs: subs.map((s) => ({ id: s.id, status: s.status })),
+        cancel_ok: c?.ok, cancel_status: c?.status, cancel_error: c?.data?.error || null });
     }
     let canceled = 0;
     for (const sub of list.data?.data || []) {
