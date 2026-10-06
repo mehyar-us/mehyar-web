@@ -90,3 +90,21 @@ export const managedAgentOffers = [
     includes: ["Isolated OpenClaw and Hermes environments", "Up to eight approved business workflows", "Mobile commands, scheduled reports, and human approval gates", "Priority monitoring, backups, maintenance, and one monthly improvement"],
   },
 ] as const;
+
+export type ExtendedUseCase = { title: string; detail: string };
+
+const FALLBACK_INDUSTRY_ID = "professional-services";
+
+/**
+ * Extended use cases for the CapabilityExplorer component: the standard
+ * agent use cases reshaped to { title, detail }, with an optional industry
+ * (falls back to a neutral default when the component renders standalone).
+ */
+export function getExtendedUseCases(industry?: IndustryOffer): ExtendedUseCase[] {
+  const resolved: IndustryOffer =
+    industry ?? ({ id: FALLBACK_INDUSTRY_ID } as IndustryOffer);
+  return getAgentUseCases(resolved).map((u) => ({
+    title: u.title,
+    detail: u.example,
+  }));
+}
