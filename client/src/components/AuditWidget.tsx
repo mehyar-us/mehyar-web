@@ -246,11 +246,11 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
             {report.score}<span className="text-3xl text-muted-foreground">/100</span>
           </div>
           <p className="site-lede mx-auto mt-3 max-w-xl text-balance">"{report.verdict}"</p>
-          <p className="mt-2 text-sm text-muted-foreground">Report ready. Delivery status depends on the email service.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Full report sent to {email} ✓</p>
         </div>
 
         <h2 className="mt-10 flex items-center gap-2 text-xl font-semibold text-foreground">
-          <TrendingDown className="h-5 w-5 text-red-500" /> Potential website gaps
+          <TrendingDown className="h-5 w-5 text-red-500" /> Where you're leaking money
         </h2>
         <div className="mt-4 space-y-4">
           {report.leaks.map((l, i) => (
@@ -258,7 +258,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               <CardContent className="p-5 md:p-6">
                 <p className="font-semibold text-foreground">{i + 1}. {l.title}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{l.what}</p>
-                <p className="mt-2 text-sm font-medium text-amber-600 dark:text-amber-400">Scenario estimate: {l.money}</p>
+                <p className="mt-2 text-sm font-medium text-amber-600 dark:text-amber-400">💸 {l.money}</p>
               </CardContent>
             </Card>
           ))}
@@ -279,7 +279,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
         {report.ai_pipelines && report.ai_pipelines.length > 0 && (
           <>
             <h2 className="mt-10 flex items-center gap-2 text-xl font-semibold text-foreground">
-              <Bot className="h-5 w-5 text-brand-700" /> Illustrative workflow opportunities
+              <Bot className="h-5 w-5 text-brand-700" /> Your AI upside — up to 5x capacity
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               AI doesn't just fix your site — it multiplies what your business can handle without hiring.
@@ -306,10 +306,10 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               <span className="text-xs text-sky-300">The free audit is the trailer — this is the movie</span>
               <h2 className="mt-3 text-2xl font-semibold md:text-3xl">Get the complete professional evaluation — just $5</h2>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-                  A personalized website evaluation, suggested automation options, and a 90-day action plan, delivered as a PDF. Financial estimates depend on assumptions and are not guaranteed results.
+                Every page graded. How you compare. The 500% AI automation blueprint with the math shown step by step. Your 90-day plan. Written for YOUR site, delivered as a beautiful PDF.
               </p>
               <ul className="mt-4 space-y-2 text-sm text-slate-200">
-                {["The complete evaluation, written for YOUR site", "Scenario estimates — possible capacity before and after automation", "AI automation blueprint tailored to your business type", "Suggested action plan ordered by priority"].map((f) => (
+                {["The complete evaluation, written for YOUR site", "The 500% upside math — capacity before vs after AI", "AI automation blueprint tailored to your business type", "90-day action plan ordered by revenue impact"].map((f) => (
                   <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{f}</li>
                 ))}
               </ul>
@@ -317,7 +317,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
                 <Link href={`/audit/report?email=${encodeURIComponent(email)}&url=${encodeURIComponent(url)}`} className={buttonVariants({ variant: "cta", size: "lg", className: "bg-[#F59E0B] text-[#0B1B33] hover:bg-amber-400" })}>
                   Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
-                <span className="text-xs text-slate-400">One-time $5 · Automated processing</span>
+                <span className="text-xs text-slate-400">One-time · Instant delivery · Less than a coffee</span>
               </div>
             </div>
           </div>
@@ -389,7 +389,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               Run my free audit <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-              <Lock className="h-3 w-3" /> Free scan. No card. Website review + automation suggestions.
+              <Lock className="h-3 w-3" /> Free forever. No card. Your report + the 500% AI blueprint preview.
             </p>
           </form>
         )}

@@ -26,13 +26,12 @@
 //  16. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
 //  17. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
 //  18. PrepGuide — https://prepguide.mehyar.us (personalized household preparedness playbook)
-//  19. PureTap — https://puretap.mehyar.us (free tap-water safety verdict + decoded EPA report)
-//  20. WattWise — https://wattwise.mehyar.us (electric-bill overpay verdict from a bill photo)
-//  21. SproutScore — https://sproutscore.mehyar.us (NYC daycare inspection decoder)
-//  22. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket dismissal odds + dispute letter)
-//  23. FloodLens — https://floodlens.mehyar.us (free FEMA flood zone lookup + risk report)
-//  24. BeachCall — https://beachcall.mehyar.us (daily beach GO/SKIP verdict + summer pass)
-//  25. Legit — https://legit.mehyar.us (conversational LLC formation agent)
+//  19. OpenSeason — https://openseason.mehyar.us (hunting-season dates, free openers + $12 state packs)
+//  20. BeachCall — https://beachcall.mehyar.us (daily go/no-go beach verdicts + $9 summer pass)
+//  21. CareRank — https://carerank.mehyar.us (nursing-home shortlist: deterministic CMS-data ranking)
+//  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
+//  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
+//  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -41,9 +40,9 @@
 //   - Email fallback: anyone can write to info@mehyar.us and we'll action
 //     within 14 days. The 14-day window matches the Privacy Policy.
 //
-// Last updated: 2026-10-05.
+// Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, Archive , Sparkles, LayoutDashboard, Droplets, Lightbulb, Sprout, Receipt, Waves, Umbrella, Scale} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -59,16 +58,6 @@ interface AppInfo {
 }
 
 const apps: AppInfo[] = [
-  {
-    id: "public-mayor",
-    name: "The Mayor — public website chats",
-    url: "https://mehyar.us/explore",
-    tagline: "Free visual exploration, with device-only saved conversations.",
-    icon: MessageSquare,
-    inAppPath: "Ask The Mayor → History → Delete saved chat. Clear this site’s browser data to remove all local saved conversations and offline storage.",
-    whatWeCollect: "Questions and limited recent context go to our AI provider to create an answer. Voice recordings go to Cloudflare for transcription. The public AI endpoints do not store audio or conversations in our server database; abuse controls use temporary hashed IP counters. Chats are saved in this browser only when you choose Save chat.",
-    whatWeDelete: "Deleting a saved conversation removes its local stored copy. An open copy remains in this visit until you start a new conversation or close/reload the page. This does not delete account data in the separate private Mayor workspace; use that workspace’s account controls or contact us for help with account data.",
-  },
   {
     id: "rizza",
     name: "Rizza",
@@ -285,88 +274,76 @@ id: "hustlekit",
       "Email address, household intake answers, generated playbook, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
-    id: "puretap",
-    name: "PureTap",
-    url: "https://puretap.mehyar.us",
-    tagline: "Is your tap water safe? Free 60-second verdict.",
-    icon: Droplets,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    id: "openseason",
+    name: "OpenSeason",
+    url: "https://openseason.mehyar.us",
+    tagline: "Every hunting-season date for your state, in plain English.",
+    icon: Crosshair,
+    inAppPath: "One-click unsubscribe on every email (immediate product-level suppression); deletion via email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
-      "The ZIP code you enter for the water-quality lookup, email address (if you provide one for the decoded report), your lookup history, and checkout records for the $19 full report.",
+      "Email address (for the free opener results and, when you buy, the $12 state pack delivery plus season reminders), your chosen state, and checkout records.",
     whatWeDelete:
-      "ZIP code, email address, lookup history, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "wattwise",
-    name: "WattWise",
-    url: "https://wattwise.mehyar.us",
-    tagline: "Is your electric bill ripping you off? Free 30-second verdict.",
-    icon: Lightbulb,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "The electric-bill photo you upload, email address (if you provide one for the verdict), your bill analysis history, and checkout records.",
-    whatWeDelete:
-      "Uploaded bill photo, email address, analysis history, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "sproutscore",
-    name: "SproutScore",
-    url: "https://sproutscore.mehyar.us",
-    tagline: "NYC daycare inspection decoder — know before you sign.",
-    icon: Sprout,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "The daycare names you search, email address (if you provide one), your search history, and checkout records.",
-    whatWeDelete:
-      "Email address, search history, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "ticketbeat",
-    name: "TicketBeat",
-    url: "https://ticketbeat.mehyar.us",
-    tagline: "Fight your NYC parking ticket — dismissal odds + dispute letter.",
-    icon: Receipt,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "The parking-ticket photo you upload, ticket details used to draft the dispute letter, email address (if you provide one), the generated dispute letter, and checkout records for the $9.99 one-time unlock.",
-    whatWeDelete:
-      "Uploaded ticket photo, ticket details, generated dispute letter, email address, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "floodlens",
-    name: "FloodLens",
-    url: "https://floodlens.mehyar.us",
-    tagline: "Free FEMA flood zone lookup with plain-words risk.",
-    icon: Waves,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "The addresses you enter for flood-zone lookups, email address (if you provide one for the report), your lookup history, and checkout records for the $9 FloodLens report.",
-    whatWeDelete:
-      "Entered addresses, email address, lookup history, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+      "Email address, chosen state, subscription and suppression records, and purchase records tied to your email. Unsubscribe is instant; full deletion via the email fallback within 14 days.",
   },
   {
     id: "beachcall",
     name: "BeachCall",
     url: "https://beachcall.mehyar.us",
-    tagline: "Daily beach GO/SKIP verdict — free.",
-    icon: Umbrella,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    tagline: "Daily go/no-go beach verdicts.",
+    icon: Waves,
+    inAppPath: "Unsubscribe link in any BeachCall email (one click) or email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
-      "Email address (for the free daily verdict and the $9 Summer Pass), your beach preferences, and checkout records.",
+      "Email address (to deliver your pass and send verdict emails), your saved beach list, your free/paid tier, and purchase records.",
     whatWeDelete:
-      "Email address, beach preferences, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+      "Email address, saved beach list, tier, and purchase records tied to your email. Unsubscribing adds you to the product's do-not-mail list immediately. Full deletion via the email fallback within 14 days.",
   },
   {
-    id: "legit",
-    name: "Legit",
-    url: "https://legit.mehyar.us",
-    tagline: "Conversational LLC formation agent — self-help, not a law firm.",
-    icon: Scale,
+    id: "carerank",
+    name: "CareRank",
+    url: "https://carerank.mehyar.us",
+    tagline: "Nursing-home shortlist that works for your family, not the facilities.",
+    icon: HeartHandshake,
     inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
-      "The conversation you have with the Legit agent (LLC name checks, filing answers you provide), email address (if you provide one), and checkout records for the $39 kit plus state fee.",
+      "Email address (to deliver your free matches and paid report), the quiz answers you submit (ZIP, care priorities, needs), the ranked shortlist generated for you, and checkout records.",
     whatWeDelete:
-      "Conversation history, email address, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+      "Email address, quiz answers, generated shortlist, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "puretap",
+    name: "PureTap",
+    url: "https://puretap.mehyar.us",
+    tagline: "Tap-water safety verdicts from real EPA data.",
+    icon: Droplets,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The ZIP code you enter for your free water-safety verdict, your email address (to deliver your free verdict and paid report), the water report generated for you, and checkout records.",
+    whatWeDelete:
+      "ZIP code, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "ticketbeat",
+    name: "TicketBeat",
+    url: "https://ticketbeat.mehyar.us",
+    tagline: "NYC parking-ticket odds and dispute letters.",
+    icon: Gavel,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The ticket details you submit (violation code, summons number, plate, issue date, borough, location, notes, and any ticket photo you upload), your email address (for delivery and receipts), the dispute letter generated for you, and checkout records.",
+    whatWeDelete:
+      "Ticket details and photos, email address, generated letters, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "floodlens",
+    name: "FloodLens",
+    url: "https://floodlens.mehyar.us",
+    tagline: "FEMA flood-zone lookups and plain-English flood reports.",
+    icon: House,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "The addresses you look up, your email address if you subscribe or buy (for delivery and receipts), the flood reports generated for you, and checkout records.",
+    whatWeDelete:
+      "Looked-up addresses, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
 ];
 

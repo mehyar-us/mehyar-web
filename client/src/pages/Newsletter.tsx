@@ -18,19 +18,19 @@ const Newsletter = () => {
           <div className="max-w-4xl">
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-brand-700 dark:text-brand-100">Free AI automation checklist</p>
             <h1 className="text-4xl font-semibold tracking-[-0.05em] text-ink dark:text-white md:text-6xl md:leading-[0.96]">
-              Find a useful starting point for business AI.
+              Stop guessing where your website, calls, and follow-up are leaking customers.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
-              Read a practical checklist for selecting a useful workflow, reviewing data and tools, and defining human control before a custom AI build. You can read it now or request a copy by email.
+              Get a practical checklist for local businesses and regulated teams that want cleaner intake, fewer missed leads, and safer automation ideas before committing to software work.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a href="/resources/business-ai-checklist.txt" download className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Download the free checklist</a>
-              <a href="/micro-offer?utm_campaign=newsletter_hero#intake" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "rounded-full px-7")}>Skip to the $330 audit</a>
+              <a href="#signup" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Get the free checklist</a>
+              <a href="/micro-offer#intake&utm_campaign=newsletter_hero" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "rounded-full px-7")}>Skip to the $330 audit</a>
             </div>
           </div>
 
           <div id="signup" className="scroll-mt-24">
-            <NewsletterSignup source="newsletter_landing" title="Request a copy by email." description="Request an emailed copy, or download it now above. Ongoing updates are optional." />
+            <NewsletterSignup source="newsletter_landing" title="Send me the checklist." description="Receive the checklist and occasional practical updates, with an easy unsubscribe link." />
           </div>
         </div>
       </section>
@@ -63,10 +63,10 @@ const Newsletter = () => {
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-100">After the checklist</p>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] md:text-4xl">Want a founder-led review?</h2>
+            <h2 className="text-3xl font-semibold tracking-[-0.04em] md:text-4xl">Want Boss to diagnose the leaks?</h2>
             <p className="mt-3 max-w-2xl leading-7 text-white/72">The $330 audit turns the checklist into a practical owner-level review of website, booking, missed-call, and follow-up gaps.</p>
           </div>
-          <a href="/micro-offer?utm_campaign=newsletter_bottom#intake" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Request the $330 audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></a>
+          <a href="/micro-offer#intake&utm_campaign=newsletter_bottom" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "rounded-full px-7")}>Request the $330 audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></a>
         </div>
       </section>
     </>

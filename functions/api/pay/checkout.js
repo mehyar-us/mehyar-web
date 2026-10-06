@@ -278,6 +278,37 @@ export async function onRequestPost({ request, env }) {
       if (!paymentId) return J({ ok: false, error: "checkout_failed" }, 500);
     }
 
+    // Checkout-lead capture (2026-10-05): the buyer gave us their email at
+    // checkout-open, paid or not. Save it to the brand CRM immediately so
+    // abandoned checkouts are recoverable. Suppression-safe: never touches
+    // an opted_out row, never sends anything, converted stays 0 until the
+    // webhook upgrades it on paid.
+    try {
+      const leadEm = String(email || "").toLowerCase().trim();
+      const leadBr = String(product.brand || "mehyar.us").toLowerCase().trim() || "mehyar.us";
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEm)) {
+        await db.prepare(
+          "INSERT INTO subscribers_global (email, brand, status, converted, first_order_at, last_order_at, total_spent_cents, attribution_json, updated_at) " +
+          "VALUES (?, ?, 'active', 0, " + "strftime('%Y-%m-%dT%H:%M:%fZ','now')" + ", " + "strftime('%Y-%m-%dT%H:%M:%fZ','now')" + ", 0, ?, " + "strftime('%Y-%m-%dT%H:%M:%fZ','now')" + ") " +
+          "ON CONFLICT(email, brand) DO UPDATE SET " +
+          "status=CASE WHEN subscribers_global.status='opted_out' THEN 'opted_out' ELSE subscribers_global.status END, " +
+          "attribution_json=COALESCE(subscribers_global.attribution_json, excluded.attribution_json), " +
+          "updated_at=" + "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
+        ).bind(leadEm, leadBr, attributionJson || null).run();
+        const dripTables = { floodlens: "floodlens_subscribers", puretap: "puretap_subscribers", sproutscore: "sproutscore_subscribers", beachcall: "beachcall_subscribers", hustlekit: "hustlekit_subscribers", prepguide: "prepguide_subscribers", babypeek: "babypeek_subscribers" };
+        const dripTable = dripTables[leadBr];
+        if (dripTable) {
+          try {
+            await db.prepare(
+              "INSERT INTO " + dripTable + " (email, status, brand, source, converted) " +
+              "VALUES (?, 'checkout_open', ?, 'checkout', 0) " +
+              "ON CONFLICT(email) DO NOTHING"
+            ).bind(leadEm, leadBr).run();
+          } catch (e) { /* table shape differs — global store already has it */ }
+        }
+      }
+    } catch (e) { /* lead capture never blocks checkout */ }
+
     // Return URLs: template defaults, caller overrides only for allowlisted hosts.
     const vars = { access_token: accessToken, payment_id: paymentId };
     let successUrl = resolveReturnUrl(

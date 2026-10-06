@@ -1,81 +1,54 @@
 {
-  "name": "MehyarSoft — The Mayor",
+  "name": "MehyarSoft LLC",
   "short_name": "MehyarSoft",
-  "description": "Talk to The Mayor, explore business ideas visually and return to conversations you choose to save on your device.",
-  "start_url": "/explore/",
+  "description": "Global software, systems, and AI automation for businesses that want more customers and less manual work.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f6fbfb",
-  "theme_color": "#f6fbfb",
+  "background_color": "#0b0f1a",
+  "theme_color": "#0b0f1a",
   "lang": "en-US",
   "dir": "ltr",
-  "categories": [
-    "business",
-    "productivity",
-    "utilities"
-  ],
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
-    {
-      "src": "/assets/mehyarsoft-mark-new-1024.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/mehyarsoft-mark-new-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/mehyarsoft-mark-new-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/discovery-maskable.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    }
-  ],
+      {
+        "src": "/assets/mehyarsoft-mark-new-1024.png",
+        "sizes": "1024x1024",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/assets/mehyarsoft-mark-new-512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/assets/mehyarsoft-mark-new-192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any maskable"
+      }
+    ],
   "shortcuts": [
     {
-      "name": "Ask The Mayor",
-      "short_name": "The Mayor",
-      "url": "/explore/",
-      "description": "Continue a visual AI conversation"
+      "name": "Book a call",
+      "short_name": "Book",
+      "url": "/booking",
+      "description": "Schedule a free audit call with MehyarSoft"
     },
     {
-      "name": "Business examples",
-      "short_name": "Industries",
-      "url": "/industries/",
-      "description": "Explore custom AI by business"
+      "name": "Free Tech Audit",
+      "short_name": "Audit",
+      "url": "/micro-offer",
+      "description": "Start the $150 leak-finding audit"
     },
     {
-      "name": "Discuss your business",
+      "name": "Contact",
       "short_name": "Contact",
-      "url": "/contact/",
-      "description": "Send a business inquiry"
-    }
-  ],
-  "id": "/",
-  "screenshots": [
-    {
-      "src": "/assets/pwa-discovery-wide.jpg",
-      "sizes": "1425x990",
-      "type": "image/jpeg",
-      "form_factor": "wide",
-      "label": "The Mayor conversation with visual answers"
-    },
-    {
-      "src": "/assets/pwa-discovery-narrow.jpg",
-      "sizes": "375x812",
-      "type": "image/jpeg",
-      "form_factor": "narrow",
-      "label": "The Mayor conversation on a phone"
+      "url": "/contact",
+      "description": "Send MehyarSoft a message"
     }
   ]
 }

@@ -22,7 +22,7 @@ const NewsletterSignup = ({
     source={source}
     title={title}
     description={description}
-    featureFlags={{ compact, compactTopics: true }}
+    featureFlags={{ compact }}
     campaign="free_ai_automation_checklist"
   />
 );

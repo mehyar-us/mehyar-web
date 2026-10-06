@@ -17,7 +17,7 @@ export const BRANDS: BrandMeta[] = [
   { id: "sprint30", name: "Sprint30", domain: "sprint30.mehyar.us", url: "https://sprint30.mehyar.us", kind: "digital-product", status: "live" },
   { id: "tiktokgrowth", name: "TikTokGrowth", domain: "tiktokgrowth.mehyar.us", url: "https://tiktokgrowth.mehyar.us", kind: "digital-product", status: "live" },
   { id: "bizbuilder", name: "BizBuilder", domain: "bizbuilder.mehyar.us", url: "https://bizbuilder.mehyar.us", kind: "digital-product", status: "live" },
-  { id: "creditfix", name: "CreditFix Kit", domain: "creditfixkit.mehyar.us", url: "https://creditfixkit.mehyar.us", kind: "digital-product", status: "live" },
+  { id: "creditfix", name: "CreditFix Kit", domain: "creditfix.mehyar.us", url: "https://creditfix.mehyar.us", kind: "digital-product", status: "live" },
   { id: "freelanceros", name: "FreelancerOS", domain: "freelanceros.mehyar.us", url: "https://freelanceros.mehyar.us", kind: "digital-product", status: "live" },
   { id: "lib", name: "Link in Bio", domain: "lib.mehyar.us", url: "https://lib.mehyar.us", kind: "hub", status: "live" },
 ];

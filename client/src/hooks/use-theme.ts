@@ -9,9 +9,7 @@ export const useTheme = (): UseThemeReturn => {
   // Initialize theme from localStorage or system preference
   const getInitialTheme = (): boolean => {
     // Check if theme preference exists in localStorage
-    if (typeof window === "undefined") return false;
-    let savedTheme: string | null = null;
-    try { savedTheme = localStorage.getItem("darkMode"); } catch { /* Private browsers may deny storage. */ }
+    const savedTheme = localStorage.getItem("darkMode");
     if (savedTheme !== null) {
       return savedTheme === "true";
     }
@@ -32,7 +30,7 @@ export const useTheme = (): UseThemeReturn => {
     }
     
     // Save preference to localStorage
-    try { localStorage.setItem("darkMode", isDarkMode.toString()); } catch { /* Theme still works without persistence. */ }
+    localStorage.setItem("darkMode", isDarkMode.toString());
   }, [isDarkMode]);
 
   const toggleTheme = () => {

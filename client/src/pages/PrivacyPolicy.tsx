@@ -1,5 +1,5 @@
 // PrivacyPolicy.tsx — MehyarSoft LLC public privacy notice
-// Last updated: 2026-10-03. Public assistant, device storage and measurement disclosure.
+// Last updated: 2026-07-18. Plain language, owner-scoped, no tracking by default.
 
 import { Shield, Mail, FileLock2, AlertCircle, ServerCog, ExternalLink } from "lucide-react";
 
@@ -94,7 +94,8 @@ const sections: Section[] = [
         </ul>
         <p className="mt-2">
           <strong>What we do not do:</strong> we do not sell contact submissions, we do not share
-          your inquiry with third-party ad networks. Website measurement is described below.
+          your inquiry with third-party ad networks, and we do not run behavior-tracking scripts
+          on this site. We do not embed Facebook Pixel, Google Ads conversion tags, or similar.
         </p>
       </>
     ),
@@ -105,15 +106,12 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          This site uses browser storage for preferences, saved conversations and selected offline pages:
+          This site is intentionally low-cookie. The only persistent client-side storage in current use is:
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
             <code>localStorage["darkMode"]</code> — remembers your light/dark theme preference. No personal data.
           </li>
-          <li>The Mayor saves up to 10 conversations in this device’s local browser storage only when you choose Save chat. Later replies to that saved chat are also saved. Delete a saved chat in conversation History, or clear this site’s browser data. It does not sync to your private Mayor account.</li>
-          <li>When you choose a website update, your current conversation and unsent draft are temporarily preserved for the reload in this tab. That temporary copy is removed after restoration.</li>
-          <li>The installable website caches selected public pages and assets for offline browsing. It does not cache AI API responses, private account pages, token-bearing URLs or transactions. Live answers require a connection.</li>
           <li>
             <code>sessionStorage["mehyarsoft_admin_token"]</code> — used only by the
             owner-only <code>/admin</code> dashboard so the admin UI does not log you out on every
@@ -125,15 +123,13 @@ const sections: Section[] = [
           </li>
         </ul>
         <p className="mt-2">
-          <strong>Analytics:</strong> Public production pages use Google Analytics, Google Tag Manager and Cloudflare Web Analytics for traffic and website measurement. Google measurement can use cookies and browser identifiers and process page visits and interactions. This site’s page-view and CTA event code excludes private routes. The public assistant’s code does not send message text, audio, saved chats or model-written chat controls to those analytics events.
+          <strong>Analytics:</strong> At the time of this writing there is no third-party analytics
+          script loaded on this site. Aggregate traffic visibility comes from Cloudflare&apos;s
+          server-side request logs, which we can read but do not share. If we ever add an analytics
+          provider we will update this page first.
         </p>
       </>
     ),
-  },
-  {
-    icon: ServerCog,
-    title: "The Mayor: public questions and voice",
-    body: <><p>The public assistant sends your question and a limited amount of recent conversation context to our configured AI provider to produce a reply. The current provider is Cloudflare Workers AI. It uses public website knowledge; it cannot access your private Mayor account or operate business tools. Do not include confidential records, health information, credentials or private financial data.</p><p className="mt-2">Voice starts only when you choose the microphone. Short recordings are transcribed by Cloudflare when you stop, or after the recording limit; review the text before sending a question. Cancel or close the chat to discard an active recording. This website does not save audio. Where recording is unavailable, dictation and read aloud use your browser’s speech services, which may process information through their providers.</p><p className="mt-2">The public AI endpoints do not store conversations or audio in this website’s server database. Abuse controls keep temporary hashed IP identifiers and request counters, with a short retention period. Hosting and AI providers process requests under their own terms. See <a className="underline" href="https://developers.cloudflare.com/workers-ai/platform/data-usage/" target="_blank" rel="noopener noreferrer">Cloudflare’s Workers AI data notice</a>. The private workspace at <a className="underline" href="https://mayor.mehyar.us" target="_blank" rel="noopener noreferrer">mayor.mehyar.us</a> has separate authentication, account data and configured tools.</p></>,
   },
   {
     icon: Shield,
@@ -254,35 +250,33 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized household preparedness playbook — calm, practical, no fear-mongering.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">PureTap — <a className="text-brand-700 underline dark:text-brand-100" href="https://puretap.mehyar.us" target="_blank" rel="noreferrer">puretap.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Free tap-water safety verdict from your ZIP — decoded EPA violations.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">WattWise — <a className="text-brand-700 underline dark:text-brand-100" href="https://wattwise.mehyar.us" target="_blank" rel="noreferrer">wattwise.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Free electric-bill verdict — overpaying, fair, or good, from a bill photo.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">SproutScore — <a className="text-brand-700 underline dark:text-brand-100" href="https://sproutscore.mehyar.us" target="_blank" rel="noreferrer">sproutscore.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">NYC daycare inspection decoder — plain-English violation records.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">TicketBeat — <a className="text-brand-700 underline dark:text-brand-100" href="https://ticketbeat.mehyar.us" target="_blank" rel="noreferrer">ticketbeat.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">NYC parking-ticket dismissal odds + dispute letter — $9.99 one-time.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">FloodLens — <a className="text-brand-700 underline dark:text-brand-100" href="https://floodlens.mehyar.us" target="_blank" rel="noreferrer">floodlens.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Free FEMA flood zone lookup with plain-words risk.</div>
+            <div className="font-semibold">OpenSeason — <a className="text-brand-700 underline dark:text-brand-100" href="https://openseason.mehyar.us" target="_blank" rel="noreferrer">openseason.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Every hunting-season date for your state, in plain English — free next-3 openers, $12 state packs.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">BeachCall — <a className="text-brand-700 underline dark:text-brand-100" href="https://beachcall.mehyar.us" target="_blank" rel="noreferrer">beachcall.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Daily beach GO/SKIP verdict — free, with a $9 Summer Pass option.</div>
+            <div className="text-sm text-muted-foreground">Daily go/no-go beach verdicts with best-hours windows — free for one beach a day, $9 summer pass for all your beaches.</div>
+          </li>
+
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+<div className="font-semibold">CareRank — <a className="text-brand-700 underline dark:text-brand-100" href="https://carerank.mehyar.us" target="_blank" rel="noreferrer">carerank.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Nursing-home shortlist from real CMS data — free quiz with blurred top 3, $29 one-time for the full ranked 12-page PDF.</div>
+          </li>
+
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">PureTap — <a className="text-brand-700 underline dark:text-brand-100" href="https://puretap.mehyar.us" target="_blank" rel="noreferrer">puretap.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Free tap-water safety verdict from EPA data by ZIP — $19 one-time for the full decoded contaminant report.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Legit — <a className="text-brand-700 underline dark:text-brand-100" href="https://legit.mehyar.us" target="_blank" rel="noreferrer">legit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Conversational LLC formation agent — self-help software, not a law firm.</div>
+            <div className="font-semibold">TicketBeat — <a className="text-brand-700 underline dark:text-brand-100" href="https://ticketbeat.mehyar.us" target="_blank" rel="noreferrer">ticketbeat.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Free NYC parking-ticket dismissal odds from real DOF appeal data — $9.99 one-time for a tailored dispute letter, $6.99/month covering every ticket.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Tenant sites (white-label)</div>
+            <div className="font-semibold">FloodLens — <a className="text-brand-700 underline dark:text-brand-100" href="https://floodlens.mehyar.us" target="_blank" rel="noreferrer">floodlens.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Free FEMA flood-zone lookups with plain-English risk and typical insurance costs — $19 one-time for the full 10-page report, $39 for a three-property pack.</div>
+          </li>
+
+          <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>
         </ul>
@@ -375,7 +369,8 @@ const PrivacyPolicy = () => {
             Privacy Policy
           </h1>
           <p className="site-lede mt-4">
-            Last updated October 3, 2026. How we handle inquiries, public AI questions, voice, saved chats and website measurement.
+            Last updated July 18, 2026. This page is intentionally plain-language and owner-safe —
+            no behavior tracking, no third-party ad scripts, no surveillance by default.
           </p>
         </div>
         <div className="space-y-4">
