@@ -193,6 +193,17 @@ const orderHooks = {
   async none() {
     return { orderExtra: { accessToken: randomHex(32) }, metadataExtra: {} };
   },
+
+  // AI Mechanic subscriptions (aimech-diy-*, aimech-mechanic-*).
+  // params: { user_id } — the aimech.app user id starting checkout.
+  // Links the subscription to the user two ways: flat in metadata_json
+  // (the aimech worker reads it from the shared DB) and in the Stripe
+  // session metadata for dashboard visibility.
+  async aimech(db, product, { params }) {
+    const userId = sanitize(params.user_id, 128);
+    if (!userId) return { error: "missing_user_id" };
+    return { orderExtra: {}, metadataExtra: { aimech_user_id: userId } };
+  },
 };
 
 // Exported for local tests (test-floodlens.js). Pages Functions only honors
@@ -350,6 +361,10 @@ export async function onRequestPost({ request, env }) {
     if (billingMode === "subscription") {
       // Trusted interval only: month (default) or year.
       sp.set("line_items[0][price_data][recurring][interval]", product.billing_interval === "year" ? "year" : "month");
+      // Trusted trial only (days, from the product row — never the client).
+      // Used by AI Mechanic SKUs (7-day trial, matches the historic offer).
+      const trialDays = Math.min(Math.max(Number(product.trial_days) || 0, 0), 365);
+      if (trialDays > 0) sp.set("subscription_data[trial_period_days]", String(trialDays));
     }
     sp.set("line_items[0][quantity]", "1");
     sp.set("metadata[payment_id]", String(paymentId));

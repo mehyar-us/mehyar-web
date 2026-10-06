@@ -451,6 +451,15 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillSproutscore({ db, env, waitUntil, sendEmail }, payment);
   },
+
+  // AI Mechanic subscriptions (aimech-diy-*, aimech-mechanic-*).
+  // No-op by design: entitlement is derived from the billing_payments row
+  // itself (stripe_subscription_id + subscription_status + metadata_json
+  // user_id), which the aimech worker reads via its shared-DB binding.
+  // Stripe sends the buyer its own receipt; no extra email from here.
+  async aimech() {
+    return { ok: true };
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -489,7 +498,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
