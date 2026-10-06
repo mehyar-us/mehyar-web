@@ -97,19 +97,10 @@ export async function onRequestPost({ request, env }) {
     // mode === "cancel": end every non-ended subscription on the customer.
     const list = await stripeCall(key, "GET", "subscriptions?customer=" + encodeURIComponent(customerId) + "&status=all&limit=100");
     if (!list.ok) return json({ ok: false, error: "cancel_failed" }, 502);
-    const subs = list.data?.data || [];
-    // TEMP DEBUG (remove after verification)
-    if (body.debug === true) {
-      const sub = subs[0];
-      const c = sub ? await stripeCall(key, "POST", "subscriptions/" + encodeURIComponent(sub.id) + "/cancel") : null;
-      return json({ ok: true, debug: true, key_is_live: key === env.STRIPE_SECRET_KEY,
-        sub_count: subs.length, subs: subs.map((s) => ({ id: s.id, status: s.status })),
-        cancel_ok: c?.ok, cancel_status: c?.status, cancel_error: c?.data?.error || null });
-    }
     let canceled = 0;
     for (const sub of list.data?.data || []) {
       if (["canceled", "incomplete_expired"].includes(sub.status)) continue;
-      const c = await stripeCall(key, "POST", "subscriptions/" + encodeURIComponent(sub.id) + "/cancel");
+      const c = await stripeCall(key, "DELETE", "subscriptions/" + encodeURIComponent(sub.id));
       if (c.ok) canceled++;
     }
     return json({ ok: true, canceled });
