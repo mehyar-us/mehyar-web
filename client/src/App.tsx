@@ -101,7 +101,7 @@ function DashboardHostRedirect() {
   return null;
 }
 
-function App({ ssrPath }: { ssrPath?: string }) {
+function App() {
   // Initialize theme from localStorage.
   // The useTheme hook (used by ThemeToggle component) also manages the .dark
   // class, but we apply it here once on mount so the first paint is correct
@@ -114,7 +114,7 @@ function App({ ssrPath }: { ssrPath?: string }) {
 
   return (
     <>
-      <Router ssrPath={ssrPath}>
+      <Router>
         <ScrollToTop />
         <DashboardHostRedirect />
         <SeoManager />

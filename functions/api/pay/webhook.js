@@ -605,6 +605,31 @@ export async function onRequestPost({ request, env, waitUntil }) {
           console.error("pay/webhook pillguard past_due mirror failed", e && e.message);
         }
       }
+    } else if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
+      // Lifecycle mirror for satellite products (AI Mechanic trial banner,
+      // cancel-at-period-end notice). Runs on the shared webhook so products
+      // need no Stripe keys of their own. If the subscription.created event
+      // lands before checkout.session.completed, no billing row exists yet —
+      // the completed handler creates it and later updated events fill these.
+      const sub = (event.data && event.data.object) ? event.data.object : {};
+      const subId = sub.id ? String(sub.id) : null;
+      if (subId) {
+        try {
+          await db.prepare(
+            "UPDATE billing_payments SET subscription_status=COALESCE(?, subscription_status), " +
+            "cancel_at_period_end=?, current_period_end=?, trial_start=? " +
+            "WHERE stripe_subscription_id = ?"
+          ).bind(
+            sub.status || null,
+            sub.cancel_at_period_end ? 1 : 0,
+            sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+            sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null,
+            subId
+          ).run();
+        } catch (e) {
+          console.error("pay/webhook subscription lifecycle mirror failed", e && e.message);
+        }
+      }
     } else if (event.type === "customer.subscription.deleted") {
       // Subscription canceled: satellite products stop granting access.
       // For PillGuard this is the ONLY thing that stops paid alerts.
