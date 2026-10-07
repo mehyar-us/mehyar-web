@@ -1,8 +1,8 @@
 import {expect,it} from 'vitest';
 import {assistantGreeting,assistantName,assistantNameChoice,assistantNameWasChosen,assistantPersonaPrompt,validAssistantName} from '../src/assistant-persona';
 import {profileSchema} from '../src/memory';
-it('introduces AI first and offers a name without making it a business onboarding requirement',()=>{
- const greeting=assistantGreeting();expect(greeting).toMatch(/^Hey, I’m Mayor, your AI business assistant\./);expect(greeting).toContain('Mayor Michael');expect(greeting).toContain('What would you like to call me?');
+it('offers a name without making it a business onboarding requirement',()=>{
+ const greeting=assistantGreeting();expect(greeting).toMatch(/^Hey — I’m Mayor\./);expect(greeting).toContain('What’ll it be?');
  expect(assistantGreeting({},false)).not.toContain('call me');expect(assistantGreeting({assistantName:'Mayor Michael'})).toContain('I’m Mayor Michael');expect(assistantGreeting({assistantName:'Mayor'})).not.toContain('give me a name');
 });
 it('recognizes explicit assistant choices without confusing business/user names or mixed work',()=>{
