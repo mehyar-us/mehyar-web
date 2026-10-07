@@ -221,7 +221,8 @@ const phoneTitle=document.createElement('summary');phoneTitle.textContent='Busin
 const phoneIntro=document.createElement('p');phoneIntro.textContent='You can onboard your business, connect a calendar and use attention alerts without a phone provider. When you are ready, The Mayor can help you connect an existing provider or get started with a new one.';
 const phoneChoices=document.createElement('div');phoneChoices.className='phone-choices';
 const phoneGuide=document.createElement('div');phoneGuide.id='phone-guide';phoneGuide.setAttribute('aria-live','polite');
-phoneCard.append(phoneTitle,phoneIntro,phoneChoices,phoneGuide);$('logout').before(phoneCard);
+const consentSection=document.createElement('div');consentSection.id='recording-consent';consentSection.setAttribute('aria-live','polite');
+phoneCard.append(phoneTitle,phoneIntro,phoneChoices,phoneGuide,consentSection);$('logout').before(phoneCard);
 const phoneControls=document.createElement('div');phoneCard.append(phoneControls);
 let phoneLoading=false;
 async function loadPhoneAccount(){
@@ -231,12 +232,43 @@ async function loadPhoneAccount(){
     await renderPhoneConnection();
     const setup=await api(`/api/businesses/${tenantId}/phone-setup`);
     if(setup.setup)renderPhoneGuide(setup.setup,phoneGuide);
+    await loadRecordingConsent();
   }catch{
     const message=document.createElement('p'),retry=document.createElement('button');
     message.setAttribute('role','status');message.textContent='Phone setup could not load. Your other business connections are still available.';
     retry.type='button';retry.className='secondary';retry.textContent='Retry phone setup';retry.onclick=()=>void loadPhoneAccount();
     phoneControls.replaceChildren(message,retry);
   }finally{phoneLoading=false;}
+}
+async function loadRecordingConsent(){
+  consentSection.replaceChildren();
+  try{
+    const status=await api(`/api/businesses/${tenantId}/phone-connections/recording-consent`);
+    const title=document.createElement('h4');title.textContent='Call recording consent';
+    const text=document.createElement('p');text.textContent=status.text;
+    consentSection.append(title,text);
+    if(status.acknowledged){
+      const done=document.createElement('p');done.setAttribute('role','status');
+      done.textContent=`Acknowledged${status.acknowledgedAt?' on '+new Date(status.acknowledgedAt).toLocaleDateString():''}. Calls can be handled.`;
+      consentSection.append(done);
+    }else{
+      const label=document.createElement('label');
+      const box=document.createElement('input');box.type='checkbox';
+      label.append(box,document.createTextNode(' I acknowledge the above.'));
+      const btn=document.createElement('button');btn.type='button';btn.className='secondary';
+      btn.textContent='Acknowledge recording consent';btn.disabled=true;
+      const note=document.createElement('p');note.textContent='Calls cannot be handled until this is acknowledged.';
+      box.onchange=()=>{btn.disabled=!box.checked;};
+      btn.onclick=async()=>{
+        btn.disabled=true;
+        try{await api(`/api/businesses/${tenantId}/phone-connections/recording-consent`,{acknowledged:true});await loadRecordingConsent();}
+        catch{btn.disabled=false;notice('Could not save the acknowledgement. Please try again.');}
+      };
+      consentSection.append(label,btn,note);
+    }
+  }catch{
+    // Consent status unavailable — the backend gate still blocks calls without acknowledgement.
+  }
 }
 phoneCard.addEventListener('toggle',()=>{if(phoneCard.open)void loadPhoneAccount();});
 function renderVoiceManagement(target:HTMLElement,provider:'telnyx'|'twilio'){
