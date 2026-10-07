@@ -266,6 +266,26 @@ export async function onRequestPost({ request, env }) {
     const accessToken = orderExtra.accessToken || randomHex(32);
     const reportId = orderExtra.report_id || null;
 
+    // Order bump (BabyPeek funnel, 2026-10-06): params.bump === true is set
+    // SERVER-SIDE by the product worker (never forwarded from the browser —
+    // BabyPeek's /api/checkout only maps its own checkbox). The bump SKU is
+    // the trusted "<product_id>-bump" billing_products row: it must be
+    // active and on the same brand. Price always comes from the DB row.
+    let bumpProduct = null;
+    if (params.bump === true) {
+      try {
+        const cand = await db.prepare(
+          "SELECT * FROM billing_products WHERE id = ? AND active = 1"
+        ).bind(productId + "-bump").first();
+        if (cand && cand.brand === product.brand) bumpProduct = cand;
+      } catch (e) {
+        console.error("pay/checkout bump lookup failed", e && e.message);
+      }
+    }
+    const totalCents =
+      Number(product.price_cents) +
+      (bumpProduct ? Number(bumpProduct.price_cents) : 0);
+
     // Idempotency: reuse a pending payment row for the same product+email
     // created within the last hour. A fresh Stripe session is attached to it.
     let payment = await db.prepare(
@@ -278,13 +298,13 @@ export async function onRequestPost({ request, env }) {
     if (payment) {
       paymentId = payment.id;
       await db.prepare(
-        "UPDATE billing_payments SET access_token = ?, metadata_json = ?, attribution_json = COALESCE(attribution_json, ?) WHERE id = ?"
-      ).bind(accessToken, JSON.stringify(params), attributionJson, paymentId).run();
+        "UPDATE billing_payments SET access_token = ?, metadata_json = ?, amount_cents = ?, attribution_json = COALESCE(attribution_json, ?) WHERE id = ?"
+      ).bind(accessToken, JSON.stringify(params), totalCents, attributionJson, paymentId).run();
     } else {
       const ins = await db.prepare(
         "INSERT INTO billing_payments (product_id, brand, email, amount_cents, currency, access_token, metadata_json, attribution_json) " +
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-      ).bind(productId, product.brand, email, product.price_cents, product.currency || "usd", accessToken, JSON.stringify(params), attributionJson).run();
+      ).bind(productId, product.brand, email, totalCents, product.currency || "usd", accessToken, JSON.stringify(params), attributionJson).run();
       paymentId = (ins && ins.meta && ins.meta.last_row_id) || null;
       if (!paymentId) return J({ ok: false, error: "checkout_failed" }, 500);
     }
@@ -367,6 +387,24 @@ export async function onRequestPost({ request, env }) {
       if (trialDays > 0) sp.set("subscription_data[trial_period_days]", String(trialDays));
     }
     sp.set("line_items[0][quantity]", "1");
+    if (bumpProduct) {
+      // Order-bump second line item (BabyPeek $9 Couple Pack). The buyer
+      // opted in on the product page (unchecked by default); the Stripe
+      // receipt shows both lines so the total matches the page copy.
+      sp.set("line_items[1][price_data][currency]", bumpProduct.currency || "usd");
+      sp.set("line_items[1][price_data][product_data][name]", bumpProduct.name);
+      if (bumpProduct.description) sp.set("line_items[1][price_data][product_data][description]", bumpProduct.description);
+      sp.set("line_items[1][price_data][unit_amount]", String(bumpProduct.price_cents));
+      sp.set("line_items[1][quantity]", "1");
+      sp.set("metadata[bump]", "1");
+    }
+    // One-click upsell support (BabyPeek, 2026-10-06): params.save_card is
+    // set server-side by the product worker when the base purchase should
+    // keep the card on file, so the post-purchase upsell can charge
+    // off-session in one tap (see /api/pay/upsell-charge).
+    if (params.save_card === true) {
+      sp.set("payment_intent_data[setup_future_usage]", "off_session");
+    }
     sp.set("metadata[payment_id]", String(paymentId));
     sp.set("metadata[product_id]", productId);
     sp.set("metadata[brand]", product.brand || "");
