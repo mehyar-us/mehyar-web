@@ -12,6 +12,7 @@ import { requireMembership,CHAT_ROLES } from './permissions';
 import { readMemory } from './memory';
 import {calendarGuide} from './calendar-guide';
 import {getPhoneSetup,savePhoneSetup,phoneSetupSchema,phoneSetupGuide} from './phone-setup';
+import {getRecordingConsent,acknowledgeRecordingConsent,RECORDING_CONSENT_TEXT,RECORDING_CONSENT_VERSION} from './phone-recording-consent';
 import type { Env } from './env';
 import {calendarConnectionSchema,calendarSelectionSchema,discoverCalendars,selectCalendar,selectedCalendar} from './calendars';
 import {ConnectorError} from './connectors/types';
@@ -180,6 +181,12 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       if(action==='select'){const input=z.object({id:z.string().max(64)}).strict().parse(await readJson(request,1024));return json(await (provider==='telnyx'?selectTelnyxNumber:selectTwilioNumber)(env,actor,input.id));}
       if(action==='disconnect')return json(await (provider==='telnyx'?disconnectTelnyx:disconnectTwilio)(env,actor));
     }
+  }
+  const recordingConsent=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-connections\/recording-consent$/);
+  if(recordingConsent){
+    const actor={tenantId:recordingConsent[1],userId:session.user.id};
+    if(request.method==='GET')return json({text:RECORDING_CONSENT_TEXT,version:RECORDING_CONSENT_VERSION,...await getRecordingConsent(env,actor)});
+    if(request.method==='POST'){z.object({acknowledged:z.literal(true)}).strict().parse(await readJson(request,256));return json(await acknowledgeRecordingConsent(env,actor));}
   }
   const appointments=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/appointments$/);
   if(appointments&&request.method==='GET')return json({appointments:await listAppointments(env,{tenantId:appointments[1],userId:session.user.id},url.searchParams.has('customerId')?z.uuid().parse(url.searchParams.get('customerId')):undefined)});

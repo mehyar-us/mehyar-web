@@ -426,6 +426,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/floodlens-logo.png",
     accentClass: "from-cyan-100 to-white dark:from-cyan-900 dark:to-cyan-950",
   },
+  {
+    id: "mayor",
+    name: "The Mayor",
+    url: "https://mayor.mehyar.us",
+    tagline: "The AI built for each business.",
+    description:
+      "AI business workspace for Main Street: customers, appointments, playbooks, and voice — with a $14/mo Pro plan and one-time credit packs.",
+    audience: "Local service businesses (salons, restaurants, trades, retail) that want an AI assistant with real memory of their business.",
+    highlights: [
+      "AI assistant with business memory — it knows your services, hours, and customers",
+      "Missed-call voice capture answers when you can't pick up",
+      "Appointments, customers, and playbooks in one workspace",
+      "Review-gated actions — nothing sends or books without your approval",
+    ],
+    logo: "/assets/mayor-logo.png",
+    accentClass: "from-neutral-100 to-white dark:from-neutral-900 dark:to-neutral-950",
+  },
 ];
 
 const buildPillars = [
@@ -667,7 +684,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor), and the request form.
           </p>
         </div>
       </section>

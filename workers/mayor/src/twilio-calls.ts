@@ -5,6 +5,7 @@ import {HttpError,readJson} from './http';
 import {twilioWebhookConnection} from './phone-connections';
 import {phoneVerification,type VerificationStep} from './phone-verification';
 import {readPendingTwilioAssistantName} from './phone-assistant-persona';
+import {requireRecordingConsent} from './phone-recording-consent';
 
 export async function validTwilioSignature(token:string,url:string,params:URLSearchParams,signature:string){
  if(!/^[A-Za-z0-9+/]{27}=$/.test(signature))return false;
@@ -26,6 +27,7 @@ async function boundedForm(request:Request){
 }
 export async function receiveTwilioCall(request:Request,env:Env,tenantId:string,transport:typeof fetch=fetch,verificationStep?:VerificationStep){
  if(env.PHONE_TEST_ENABLED!=='true')throw new HttpError(503,'phone_tests_disabled','Phone tests are disabled.');
+ await requireRecordingConsent(env,tenantId);
  const {row,credential}=await twilioWebhookConnection(env,tenantId),params=await boundedForm(request);
  const url=env.APP_ORIGIN+new URL(request.url).pathname;
  if(new URL(request.url).search||!await validTwilioSignature(credential.authToken!,url,params,request.headers.get('x-twilio-signature')??''))throw new HttpError(403,'invalid_signature','Invalid signature.');
