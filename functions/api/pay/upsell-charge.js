@@ -136,7 +136,10 @@ export async function onRequestPost({ request, env }) {
     const gid = String(baseMeta.gid || "");
     if (!/^[0-9a-f]{32}$/.test(gid))
       return J({ ok: false, error: "base_not_paid" }, 402);
-    if (!base.stripe_customer_id || !base.stripe_payment_intent)
+    // The customer id is resolved from the PaymentIntent below when the
+    // row doesn't carry it (the webhook backfills it best-effort). Only
+    // the payment intent is strictly required here.
+    if (!base.stripe_payment_intent)
       return J({ ok: false, error: "no_saved_card" }, 409);
 
     // Idempotency: one upsell per generation. A paid upsell row for this
