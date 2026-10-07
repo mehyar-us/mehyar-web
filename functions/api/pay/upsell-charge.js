@@ -170,7 +170,11 @@ export async function onRequestPost({ request, env }) {
     const savedPm = piGet.ok && piGet.data && piGet.data.payment_method;
     const customer = (piGet.ok && piGet.data && piGet.data.customer) || base.stripe_customer_id;
     if (!piGet.ok || !savedPm || !customer) {
-      return J({ ok: false, error: "no_saved_card" }, 409);
+      // TEMP-DIAG 2026-10-06: remove after root-causing the verify failure.
+      return J({ ok: false, error: "no_saved_card",
+        diag: { piOk: !!piGet.ok, piStatus: piGet.status || null,
+                hasPm: !!savedPm, hasCustomer: !!customer,
+                piId: String(base.stripe_payment_intent || "").slice(0, 12) + "…" } }, 409);
     }
 
     // One-tap off-session charge. Idempotency key = one charge per
