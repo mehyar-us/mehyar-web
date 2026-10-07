@@ -168,13 +168,28 @@ export async function onRequestPost({ request, env }) {
       "/v1/payment_intents/" + encodeURIComponent(base.stripe_payment_intent)
     );
     const savedPm = piGet.ok && piGet.data && piGet.data.payment_method;
-    const customer = (piGet.ok && piGet.data && piGet.data.customer) || base.stripe_customer_id;
+    let customer = (piGet.ok && piGet.data && piGet.data.customer) || base.stripe_customer_id;
+    // Resilience (2026-10-06): some base purchases reach us with a saved
+    // card on the PaymentIntent but no customer object (observed live on a
+    // real test purchase). Stripe requires a customer for off-session
+    // charges, so create one now, attach the saved card, and backfill the
+    // row — the one-click upsell then works for old and edge-case rows too.
+    if (piGet.ok && savedPm && !customer) {
+      const cs = new URLSearchParams();
+      cs.set("email", base.email || "");
+      cs.set("payment_method", String(savedPm));
+      cs.set("description", "BabyPeek one-click upsell buyer");
+      const cRes = await stripeCall(stripeKey, "POST", "/v1/customers", cs);
+      if (cRes.ok && cRes.data && cRes.data.id) {
+        customer = cRes.data.id;
+        try {
+          await db.prepare("UPDATE billing_payments SET stripe_customer_id=? WHERE id=?")
+            .bind(String(customer), base.id).run();
+        } catch (e) { console.error("pay/upsell-charge customer backfill failed", e && e.message); }
+      }
+    }
     if (!piGet.ok || !savedPm || !customer) {
-      // TEMP-DIAG 2026-10-06: remove after root-causing the verify failure.
-      return J({ ok: false, error: "no_saved_card",
-        diag: { piOk: !!piGet.ok, piStatus: piGet.status || null,
-                hasPm: !!savedPm, hasCustomer: !!customer,
-                piId: String(base.stripe_payment_intent || "").slice(0, 12) + "…" } }, 409);
+      return J({ ok: false, error: "no_saved_card" }, 409);
     }
 
     // One-tap off-session charge. Idempotency key = one charge per
