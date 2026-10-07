@@ -32,6 +32,7 @@
 //  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
 //  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
 //  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
+//  25. The Mayor — https://mayor.mehyar.us (AI business assistant for local service businesses)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -344,6 +345,18 @@ id: "hustlekit",
       "The addresses you look up, your email address if you subscribe or buy (for delivery and receipts), the flood reports generated for you, and checkout records.",
     whatWeDelete:
       "Looked-up addresses, email address, generated reports, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "mayor",
+    name: "The Mayor",
+    url: "https://mayor.mehyar.us",
+    tagline: "The AI built for each business.",
+    icon: Store,
+    inAppPath: "Email fallback (info@mehyar.us) — contact us to request deletion",
+    whatWeCollect:
+      "Business profile (name, services, hours, location), customer records you save (name, email/phone), appointments, call metadata from voice calls you enable, and usage records for billing. All records are scoped to your business.",
+    whatWeDelete:
+      "Business profile, customer records, appointments, call records, and usage data tied to your business. Deletion via the email fallback within 14 days.",
   },
 ];
 

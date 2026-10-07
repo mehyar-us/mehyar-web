@@ -29,11 +29,13 @@ export function phoneSetupGuide(input:PhoneSetupInput){
       'Choose a provider and open its signup page. The account will belong to your business.',
       'Complete email, phone, and any required business verification with the provider.',
       'Review current number and usage charges before ordering a number or upgrading.',
+      'Acknowledge your call-recording consent duties: review the recording-consent notice in phone setup and confirm before calls can be handled.',
       'Return to The Mayor to connect the account, choose a number, and verify a test call before routing customers.',
     ]:[
       'Sign in to the provider that already holds your business number.',
       'Authorize a supported connection or use the secure credential setup when available. Never speak or paste secrets into chat.',
       'Choose the number you own. Review any routing change before applying it.',
+      'Acknowledge your call-recording consent duties: review the recording-consent notice in phone setup and confirm before calls can be handled.',
       'Verify a test call before routing customer calls to The Mayor.',
     ],
     providers:selected?[{id:input.provider,...selected}]:Object.entries(phoneProviders).map(([id,provider])=>({id,...provider})),
