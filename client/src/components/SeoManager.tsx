@@ -20,7 +20,7 @@ interface SeoMeta {
 }
 
 const absoluteUrl = (path: string) =>
-  `${SITE_ORIGIN}${path === "/" ? "/" : path}`;
+  path === "/" ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}${path.replace(/\/$/, "")}/`;
 
 const organization = {
   "@type": "Organization",
