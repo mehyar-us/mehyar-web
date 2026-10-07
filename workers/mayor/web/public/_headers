@@ -1,0 +1,26 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Permissions-Policy: microphone=(self), camera=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' wss://mayor.mehyar.us; media-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+/sw.js
+  Cache-Control: no-cache
+/
+  Cache-Control: no-store
+/index.html
+  Cache-Control: no-store
+
+/terms
+  Cache-Control: no-store
+/terms.html
+  Cache-Control: no-store
+/business-audit
+  Cache-Control: no-store
+/business-audit/*
+  Cache-Control: no-store
+/business-audit.html
+  Cache-Control: no-store
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

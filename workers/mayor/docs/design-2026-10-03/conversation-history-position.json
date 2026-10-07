@@ -1,0 +1,31 @@
+{
+  "synthetic": true,
+  "newInference": false,
+  "assets": [
+    "main-Da9uwLQv.js",
+    "main-CuwO-cxe.css"
+  ],
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "initial": {
+    "messages": 12,
+    "scrollTop": 2218,
+    "scrollHeight": 2784,
+    "height": 566,
+    "bottomGap": 0,
+    "outerScroll": 0,
+    "memoryVisible": false
+  },
+  "earlierReading": {
+    "action": "Conversation PageUp, then Today and Assistant",
+    "scrollTop": 1723,
+    "bottomGap": 495,
+    "height": 566,
+    "outerScroll": 0,
+    "documentWidth": 390
+  },
+  "screenshot": "chat-latest-history-mobile.jpg",
+  "method": "Actual CUA browser UI actions and read-only DOM geometry; synthetic history and disabled fixture voice. No production messages, inference or payment."
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "label": "Populated booking form",
+    "checked": 51,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 305,
+    "view": "appointments-view",
+    "viewport": 320
+  },
+  {
+    "label": "Populated booking form",
+    "checked": 51,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 375,
+    "view": "appointments-view",
+    "viewport": 390
+  },
+  {
+    "label": "Populated booking form",
+    "checked": 54,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 753,
+    "view": "appointments-view",
+    "viewport": 768
+  },
+  {
+    "label": "Populated booking form",
+    "checked": 54,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 1009,
+    "view": "appointments-view",
+    "viewport": 1024
+  },
+  {
+    "label": "Populated booking form",
+    "checked": 54,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 1472,
+    "view": "appointments-view",
+    "viewport": 1487
+  },
+  {
+    "label": "Populated booking form",
+    "checked": 54,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 1905,
+    "view": "appointments-view",
+    "viewport": 1920
+  }
+]

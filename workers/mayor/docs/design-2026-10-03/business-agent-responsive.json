@@ -1,0 +1,242 @@
+{
+  "date": "2026-10-03",
+  "fixture": "http://127.0.0.1:51838",
+  "bundle": "main-BLuPuMqu.js",
+  "synthetic": true,
+  "expandedReport": [
+    {
+      "requestedWidth": 320,
+      "checked": 235,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "viewport": 320
+    },
+    {
+      "requestedWidth": 390,
+      "checked": 235,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "viewport": 390
+    },
+    {
+      "requestedWidth": 768,
+      "checked": 260,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "viewport": 768
+    },
+    {
+      "requestedWidth": 1024,
+      "checked": 260,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "viewport": 1024
+    },
+    {
+      "requestedWidth": 1440,
+      "checked": 259,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1425,
+      "viewport": 1440
+    },
+    {
+      "requestedWidth": 1920,
+      "checked": 259,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "viewport": 1920
+    }
+  ],
+  "skillDialog": [
+    {
+      "requestedWidth": 320,
+      "checked": 274,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "viewport": 320
+    },
+    {
+      "requestedWidth": 390,
+      "checked": 274,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "viewport": 390
+    },
+    {
+      "requestedWidth": 768,
+      "checked": 299,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "viewport": 768
+    },
+    {
+      "requestedWidth": 1024,
+      "checked": 299,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "viewport": 1024
+    },
+    {
+      "requestedWidth": 1440,
+      "checked": 298,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1425,
+      "viewport": 1440
+    },
+    {
+      "requestedWidth": 1920,
+      "checked": 298,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "viewport": 1920
+    }
+  ],
+  "conversation": [
+    {
+      "requestedWidth": 320,
+      "checked": 57,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "viewport": 320,
+      "composer": {
+        "fontSize": "16px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "whiteSpace": "pre-wrap",
+        "width": 150
+      },
+      "conversation": {
+        "bottom": 321.375,
+        "height": 185.375,
+        "top": 136
+      }
+    },
+    {
+      "requestedWidth": 390,
+      "checked": 57,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "viewport": 390,
+      "composer": {
+        "fontSize": "16px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "whiteSpace": "pre-wrap",
+        "width": 220
+      },
+      "conversation": {
+        "bottom": 298.28125,
+        "height": 162.28125,
+        "top": 136
+      }
+    },
+    {
+      "requestedWidth": 768,
+      "checked": 87,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "viewport": 768,
+      "composer": {
+        "fontSize": "14px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "whiteSpace": "pre-wrap",
+        "width": 295
+      },
+      "conversation": {
+        "bottom": 632.328125,
+        "height": 180.390625,
+        "top": 451.9375
+      }
+    },
+    {
+      "requestedWidth": 1024,
+      "checked": 87,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "viewport": 1024,
+      "composer": {
+        "fontSize": "14px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "whiteSpace": "pre-wrap",
+        "width": 551
+      },
+      "conversation": {
+        "bottom": 585.734375,
+        "height": 156.59375,
+        "top": 429.140625
+      }
+    },
+    {
+      "requestedWidth": 1440,
+      "checked": 88,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1425,
+      "viewport": 1440,
+      "composer": {
+        "fontSize": "14px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "whiteSpace": "pre-wrap",
+        "width": 905
+      },
+      "conversation": {
+        "bottom": 570.609375,
+        "height": 132.796875,
+        "top": 437.8125
+      }
+    },
+    {
+      "requestedWidth": 1920,
+      "checked": 88,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "viewport": 1920,
+      "composer": {
+        "fontSize": "14px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "whiteSpace": "pre-wrap",
+        "width": 1254
+      },
+      "conversation": {
+        "bottom": 570.609375,
+        "height": 132.796875,
+        "top": 437.8125
+      }
+    }
+  ],
+  "verifiedInteractions": [
+    "Goal archive and reviewed restore preserve title, description and metric",
+    "Skill archive and reviewed restore preserve instructions and selected read tools",
+    "Save waits for native dialog close and focuses Business agent H2",
+    "Escape closes dialog and restores Add skill focus",
+    "Edited reviewed internal task updates overview and Tasks count from3to4",
+    "Same-report Plan disclosure stays open and displays Saved as an internal task",
+    "New phone review Plan starts closed",
+    "Manual review cost readback explicitly says one shared reply attempt"
+  ],
+  "limits": [
+    "Preview uses in-memory synthetic fixtures, not real AI, cron, payment or provider calls",
+    "Viewport inspection does not certify physical device keyboard, safe area or touch gestures"
+  ]
+}

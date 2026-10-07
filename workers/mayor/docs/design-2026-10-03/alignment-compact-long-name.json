@@ -1,0 +1,35 @@
+{
+  "source": "Synthetic UI with maximum160characterbusinessname",
+  "checks": [
+    {
+      "brandNameOverlap": false,
+      "businessName": 160,
+      "nameHeaderOverlap": false,
+      "viewport": 320,
+      "checked": 102,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305
+    },
+    {
+      "brandNameOverlap": false,
+      "businessName": 160,
+      "nameHeaderOverlap": false,
+      "viewport": 390,
+      "checked": 102,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375
+    },
+    {
+      "brandNameOverlap": false,
+      "businessName": 160,
+      "nameHeaderOverlap": false,
+      "viewport": 1920,
+      "checked": 126,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1920
+    }
+  ]
+}

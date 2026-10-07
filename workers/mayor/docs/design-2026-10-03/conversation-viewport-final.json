@@ -1,0 +1,309 @@
+{
+  "bundle": "main-DbRUzYA2.js",
+  "css": "main-Bj7C6Ev2.css",
+  "desktop": [
+    {
+      "requested": {
+        "width": 768,
+        "height": 844
+      },
+      "checked": 73,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 768,
+      "viewport": 768,
+      "layout": {
+        "composer": {
+          "bottom": 826,
+          "height": 62,
+          "left": 250,
+          "right": 738,
+          "top": 764,
+          "width": 488,
+          "x": 250,
+          "y": 764
+        },
+        "scrollHeight": 844,
+        "transcript": {
+          "bottom": 744,
+          "height": 616,
+          "left": 250,
+          "right": 738,
+          "top": 128,
+          "width": 488,
+          "x": 250,
+          "y": 128
+        },
+        "viewportHeight": 844
+      },
+      "intentionalScreenReaderClipping": [
+        {
+          "class": null,
+          "id": "greeting",
+          "scroll": 132,
+          "tag": "H1",
+          "text": "Assistant",
+          "width": 1
+        }
+      ]
+    },
+    {
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "checked": 73,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1024,
+      "viewport": 1024,
+      "layout": {
+        "composer": {
+          "bottom": 750,
+          "height": 62,
+          "left": 250,
+          "right": 994,
+          "top": 688,
+          "width": 744,
+          "x": 250,
+          "y": 688
+        },
+        "scrollHeight": 768,
+        "transcript": {
+          "bottom": 668,
+          "height": 540,
+          "left": 250,
+          "right": 994,
+          "top": 128,
+          "width": 744,
+          "x": 250,
+          "y": 128
+        },
+        "viewportHeight": 768
+      },
+      "intentionalScreenReaderClipping": [
+        {
+          "class": null,
+          "id": "greeting",
+          "scroll": 133,
+          "tag": "H1",
+          "text": "Assistant",
+          "width": 1
+        }
+      ]
+    },
+    {
+      "requested": {
+        "width": 1440,
+        "height": 900
+      },
+      "checked": 73,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "layout": {
+        "composer": {
+          "bottom": 882,
+          "height": 62,
+          "left": 447,
+          "right": 1267,
+          "top": 820,
+          "width": 820,
+          "x": 447,
+          "y": 820
+        },
+        "scrollHeight": 900,
+        "transcript": {
+          "bottom": 800,
+          "height": 672,
+          "left": 447,
+          "right": 1267,
+          "top": 128,
+          "width": 820,
+          "x": 447,
+          "y": 128
+        },
+        "viewportHeight": 900
+      },
+      "intentionalScreenReaderClipping": [
+        {
+          "class": null,
+          "id": "greeting",
+          "scroll": 235,
+          "tag": "H1",
+          "text": "Assistant",
+          "width": 1
+        }
+      ]
+    },
+    {
+      "requested": {
+        "width": 1920,
+        "height": 1080
+      },
+      "checked": 73,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "layout": {
+        "composer": {
+          "bottom": 1062,
+          "height": 62,
+          "left": 687,
+          "right": 1507,
+          "top": 1000,
+          "width": 820,
+          "x": 687,
+          "y": 1000
+        },
+        "scrollHeight": 1080,
+        "transcript": {
+          "bottom": 980,
+          "height": 852,
+          "left": 687,
+          "right": 1507,
+          "top": 128,
+          "width": 820,
+          "x": 687,
+          "y": 128
+        },
+        "viewportHeight": 1080
+      },
+      "intentionalScreenReaderClipping": [
+        {
+          "class": null,
+          "id": "greeting",
+          "scroll": 235,
+          "tag": "H1",
+          "text": "Assistant",
+          "width": 1
+        }
+      ]
+    }
+  ],
+  "smallAndLandscape": [
+    {
+      "requested": {
+        "width": 320,
+        "height": 568
+      },
+      "checked": 57,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "viewport": 320,
+      "layout": {
+        "composer": {
+          "bottom": 502,
+          "height": 58,
+          "left": 16,
+          "right": 289,
+          "top": 444,
+          "width": 273,
+          "x": 16,
+          "y": 444
+        },
+        "scrollHeight": 626,
+        "transcript": {
+          "bottom": 321.375,
+          "height": 185.375,
+          "left": 16,
+          "right": 289,
+          "top": 136,
+          "width": 273,
+          "x": 16,
+          "y": 136
+        },
+        "viewportHeight": 568
+      },
+      "intentionalScreenReaderClipping": []
+    },
+    {
+      "requested": {
+        "width": 390,
+        "height": 667
+      },
+      "checked": 57,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "viewport": 390,
+      "layout": {
+        "composer": {
+          "bottom": 601,
+          "height": 58,
+          "left": 16,
+          "right": 359,
+          "top": 543,
+          "width": 343,
+          "x": 16,
+          "y": 543
+        },
+        "scrollHeight": 725,
+        "transcript": {
+          "bottom": 298.28125,
+          "height": 162.28125,
+          "left": 16,
+          "right": 359,
+          "top": 136,
+          "width": 343,
+          "x": 16,
+          "y": 136
+        },
+        "viewportHeight": 667
+      },
+      "intentionalScreenReaderClipping": []
+    },
+    {
+      "requested": {
+        "width": 844,
+        "height": 390
+      },
+      "checked": 73,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 844,
+      "viewport": 844,
+      "layout": {
+        "composer": {
+          "bottom": 372,
+          "height": 62,
+          "left": 250,
+          "right": 814,
+          "top": 310,
+          "width": 564,
+          "x": 250,
+          "y": 310
+        },
+        "scrollHeight": 390,
+        "transcript": {
+          "bottom": 290,
+          "height": 162,
+          "left": 250,
+          "right": 814,
+          "top": 128,
+          "width": 564,
+          "x": 250,
+          "y": 128
+        },
+        "viewportHeight": 390
+      },
+      "intentionalScreenReaderClipping": [
+        {
+          "class": null,
+          "id": "greeting",
+          "scroll": 132,
+          "tag": "H1",
+          "text": "Assistant",
+          "width": 1
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Synthetic browser fixture; no physical keyboard/safe-area/device certification",
+    "Screen reader Assistant heading is intentionally visually clipped; other measured elements fit"
+  ]
+}

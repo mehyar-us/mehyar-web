@@ -1,0 +1,568 @@
+{
+  "kind": "Synthetic fixture browser layout verification",
+  "widths": [
+    {
+      "label": "Today",
+      "checked": 47,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "today-view",
+      "viewport": 320
+    },
+    {
+      "label": "Assistant",
+      "checked": 27,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "viewport": 320
+    },
+    {
+      "label": "Appointments",
+      "checked": 29,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "appointments-view",
+      "viewport": 320
+    },
+    {
+      "label": "Customers",
+      "checked": 28,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "customers-view",
+      "viewport": 320
+    },
+    {
+      "label": "Tasks",
+      "checked": 88,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "tasks-view",
+      "viewport": 320
+    },
+    {
+      "label": "Plan & usage",
+      "checked": 37,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "billing-view",
+      "viewport": 320
+    },
+    {
+      "label": "Settings",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "viewport": 320
+    },
+    {
+      "label": "Help",
+      "checked": 30,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "help-view",
+      "viewport": 320
+    },
+    {
+      "label": "Today",
+      "checked": 47,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "today-view",
+      "viewport": 390
+    },
+    {
+      "label": "Assistant",
+      "checked": 27,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "viewport": 390
+    },
+    {
+      "label": "Appointments",
+      "checked": 29,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "appointments-view",
+      "viewport": 390
+    },
+    {
+      "label": "Customers",
+      "checked": 28,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "customers-view",
+      "viewport": 390
+    },
+    {
+      "label": "Tasks",
+      "checked": 88,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "tasks-view",
+      "viewport": 390
+    },
+    {
+      "label": "Plan & usage",
+      "checked": 37,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "billing-view",
+      "viewport": 390
+    },
+    {
+      "label": "Settings",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "viewport": 390
+    },
+    {
+      "label": "Help",
+      "checked": 30,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "help-view",
+      "viewport": 390
+    },
+    {
+      "label": "Today",
+      "checked": 50,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "today-view",
+      "viewport": 768
+    },
+    {
+      "label": "Assistant",
+      "checked": 30,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "viewport": 768
+    },
+    {
+      "label": "Appointments",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "appointments-view",
+      "viewport": 768
+    },
+    {
+      "label": "Customers",
+      "checked": 31,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "customers-view",
+      "viewport": 768
+    },
+    {
+      "label": "Tasks",
+      "checked": 91,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "tasks-view",
+      "viewport": 768
+    },
+    {
+      "label": "Plan & usage",
+      "checked": 40,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "billing-view",
+      "viewport": 768
+    },
+    {
+      "label": "Settings",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "viewport": 768
+    },
+    {
+      "label": "Help",
+      "checked": 33,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "help-view",
+      "viewport": 768
+    },
+    {
+      "label": "Today",
+      "checked": 50,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "view": "today-view",
+      "viewport": 1024
+    },
+    {
+      "label": "Assistant",
+      "checked": 30,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "viewport": 1024
+    },
+    {
+      "label": "Appointments",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "view": "appointments-view",
+      "viewport": 1024
+    },
+    {
+      "label": "Customers",
+      "checked": 31,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "view": "customers-view",
+      "viewport": 1024
+    },
+    {
+      "label": "Tasks",
+      "checked": 91,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "view": "tasks-view",
+      "viewport": 1024
+    },
+    {
+      "label": "Plan & usage",
+      "checked": 40,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "view": "billing-view",
+      "viewport": 1024
+    },
+    {
+      "label": "Settings",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "viewport": 1024
+    },
+    {
+      "label": "Help",
+      "checked": 33,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1009,
+      "view": "help-view",
+      "viewport": 1024
+    },
+    {
+      "label": "Today",
+      "checked": 50,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1265,
+      "view": "today-view",
+      "viewport": 1280
+    },
+    {
+      "label": "Assistant",
+      "checked": 30,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1265,
+      "viewport": 1280
+    },
+    {
+      "label": "Appointments",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1265,
+      "view": "appointments-view",
+      "viewport": 1280
+    },
+    {
+      "label": "Customers",
+      "checked": 31,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1280,
+      "view": "customers-view",
+      "viewport": 1280
+    },
+    {
+      "label": "Tasks",
+      "checked": 91,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1265,
+      "view": "tasks-view",
+      "viewport": 1280
+    },
+    {
+      "label": "Plan & usage",
+      "checked": 40,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1265,
+      "view": "billing-view",
+      "viewport": 1280
+    },
+    {
+      "label": "Settings",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1265,
+      "viewport": 1280
+    },
+    {
+      "label": "Help",
+      "checked": 33,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1265,
+      "view": "help-view",
+      "viewport": 1280
+    },
+    {
+      "label": "Today",
+      "checked": 50,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "view": "today-view",
+      "viewport": 1920
+    },
+    {
+      "label": "Assistant",
+      "checked": 30,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "viewport": 1920
+    },
+    {
+      "label": "Appointments",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "view": "appointments-view",
+      "viewport": 1920
+    },
+    {
+      "label": "Customers",
+      "checked": 31,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1920,
+      "view": "customers-view",
+      "viewport": 1920
+    },
+    {
+      "label": "Tasks",
+      "checked": 91,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "view": "tasks-view",
+      "viewport": 1920
+    },
+    {
+      "label": "Plan & usage",
+      "checked": 40,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "view": "billing-view",
+      "viewport": 1920
+    },
+    {
+      "label": "Settings",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "viewport": 1920
+    },
+    {
+      "label": "Help",
+      "checked": 33,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1905,
+      "view": "help-view",
+      "viewport": 1920
+    }
+  ],
+  "expandedPlaybooks": [
+    {
+      "label": "Expanded playbook",
+      "checked": 91,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1472,
+      "view": "tasks-view",
+      "viewport": 1487
+    },
+    {
+      "label": "Expanded playbook",
+      "checked": 91,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "tasks-view",
+      "viewport": 768
+    },
+    {
+      "label": "Expanded playbook",
+      "checked": 88,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "tasks-view",
+      "viewport": 390
+    },
+    {
+      "label": "Expanded playbook",
+      "checked": 88,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "tasks-view",
+      "viewport": 320
+    }
+  ],
+  "dialogs": [
+    {
+      "label": "Task with selected customer",
+      "checked": 108,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1472,
+      "view": "tasks-view",
+      "viewport": 1487
+    },
+    {
+      "label": "Task with selected customer",
+      "checked": 108,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "tasks-view",
+      "viewport": 768
+    },
+    {
+      "label": "Task with selected customer",
+      "checked": 105,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "tasks-view",
+      "viewport": 390
+    },
+    {
+      "label": "Task with selected customer",
+      "checked": 105,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "tasks-view",
+      "viewport": 320
+    },
+    {
+      "label": "Customer details",
+      "checked": 38,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "customers-view",
+      "viewport": 320
+    },
+    {
+      "label": "Customer details",
+      "checked": 41,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "customers-view",
+      "viewport": 768
+    },
+    {
+      "label": "Customer details",
+      "checked": 41,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1472,
+      "view": "customers-view",
+      "viewport": 1487
+    },
+    {
+      "label": "Long customer review",
+      "checked": 35,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 1472,
+      "view": "customers-view",
+      "viewport": 1487
+    },
+    {
+      "label": "Long customer review",
+      "checked": 35,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 753,
+      "view": "customers-view",
+      "viewport": 768
+    },
+    {
+      "label": "Long customer review",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 375,
+      "view": "customers-view",
+      "viewport": 390
+    },
+    {
+      "label": "Long customer review",
+      "checked": 32,
+      "clipped": [],
+      "outside": [],
+      "pageWidth": 305,
+      "view": "customers-view",
+      "viewport": 320
+    }
+  ],
+  "notes": [
+    "Measurements cover visible element boxes and scroll clipping; they do not prove every possible user datum or native device behavior.",
+    "Long customer review Back issue was found and fixed; heading and Close were verified after fix."
+  ]
+}

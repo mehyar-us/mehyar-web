@@ -1,0 +1,20 @@
+import {env} from 'cloudflare:workers';
+import {applyD1Migrations} from 'cloudflare:test';
+import {it,expect} from 'vitest';
+it('preserves existing grants, selections and uncertain refresh leases during the Zoho migration',async()=>{
+ const db=(env as any).MIGRATION_TEST_DB as D1Database,migrations=(env as any).TEST_MIGRATIONS;
+ await applyD1Migrations(db,migrations.filter((m:any)=>!m.name.startsWith('0032')));
+ await db.prepare("INSERT INTO auth_user(id,name,email,createdAt,updatedAt) VALUES('user','Fixture','fixture@example.test',1,1)").run();
+ await db.prepare("INSERT INTO agent_tenants(id,name,created_at) VALUES('tenant','Fixture','2026-01-01')").run();
+ await db.prepare("INSERT INTO auth_provider_grants(id,user_id,provider,account_id,tenant_scope,ciphertext,granted_scopes,selected_capabilities,status,updated_at,authorization_revision) VALUES('grant','user','google','account','tenant','encrypted-fixture','[]','[]','reconnect_required','2026-01-01',7)").run();
+ await db.prepare("INSERT INTO agent_credential_refreshes VALUES('grant','hash','lease','uncertain','2026-01-01','2026-01-02')").run();
+ await db.prepare("INSERT INTO mayor_calendar_selection VALUES('tenant','grant','google','calendar','Appointments','stamp','user','2026-01-01')").run();
+ const tables=['auth_provider_grants','agent_credential_refreshes','mayor_calendar_selection'];
+ const before=await Promise.all(tables.map(t=>db.prepare('SELECT * FROM '+t).all()));
+ await applyD1Migrations(db,migrations);
+ const after=await Promise.all(tables.map(t=>db.prepare('SELECT * FROM '+t).all()));
+ expect(after.map(r=>r.results)).toEqual(before.map(r=>r.results));
+ expect((await db.prepare('PRAGMA foreign_key_check').all()).results).toEqual([]);
+ await db.prepare("UPDATE auth_provider_grants SET provider='zoho' WHERE id='grant'").run();
+ await db.prepare("UPDATE mayor_calendar_selection SET provider='zoho' WHERE tenant_id='tenant'").run();
+});

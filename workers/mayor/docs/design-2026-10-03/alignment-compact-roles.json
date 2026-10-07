@@ -1,0 +1,72 @@
+{
+  "source": "Synthetic UI role fixtures",
+  "checks": [
+    {
+      "role": "staff",
+      "menu": [
+        "",
+        "Assistant",
+        "Plan & usage",
+        "Settings",
+        "Help"
+      ],
+      "fit": {
+        "checked": 52,
+        "clipped": [],
+        "outside": [],
+        "pageWidth": 375,
+        "viewport": 390
+      }
+    },
+    {
+      "role": "viewer",
+      "menu": [
+        "",
+        "Plan & usage",
+        "Settings",
+        "Help"
+      ],
+      "fit": {
+        "checked": 72,
+        "clipped": [],
+        "outside": [],
+        "pageWidth": 375,
+        "viewport": 390
+      }
+    },
+    {
+      "role": "billing",
+      "menu": [
+        "",
+        "Plan & usage",
+        "Help"
+      ],
+      "fit": {
+        "checked": 109,
+        "clipped": [],
+        "outside": [],
+        "pageWidth": 375,
+        "viewport": 390
+      },
+      "purchaseReadiness": "Fixture checkout unavailable; controls correctly disabled. No checkout attempted."
+    },
+    {
+      "role": "signed-out",
+      "menu": [
+        "",
+        "Help"
+      ],
+      "fit": {
+        "checked": 40,
+        "clipped": [],
+        "outside": [],
+        "pageWidth": 375,
+        "viewport": 390
+      }
+    }
+  ],
+  "escapeFocus": "Open workspace menu",
+  "escapeExpanded": "false",
+  "viewerReturnedFromHelpToSettings": true,
+  "signedOutHelpAndTermsReachable": true
+}

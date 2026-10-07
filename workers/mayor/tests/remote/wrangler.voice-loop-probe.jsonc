@@ -1,0 +1,8 @@
+{
+ "name":"mayor-voice-loop-probe","main":"voice-loop-probe.ts",
+ "workers_dev":true,"preview_urls":false,
+ "compatibility_date":"2026-09-22","compatibility_flags":["nodejs_compat"],
+ "ai":{"binding":"AI"},
+ "durable_objects":{"bindings":[{"name":"ProbeVoice","class_name":"ProbeVoice"}]},
+ "migrations":[{"tag":"v1","new_sqlite_classes":["ProbeVoice"]}]
+}
