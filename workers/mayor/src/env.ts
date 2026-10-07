@@ -3,6 +3,9 @@ import type { MayorVoice } from './voice';
 import type {MayorPhone} from './phone-voice';
 export interface Env extends AuthEnv {
   AI: Ai;
+  AI_GATEWAY_ACCOUNT_ID?: string;
+  AI_GATEWAY_ID?: string;
+  AI_GATEWAY_TOKEN?: string;
   MAYOR_VOICE: DurableObjectNamespace<MayorVoice>;
   MAYOR_PHONE: DurableObjectNamespace<MayorPhone>;
   PHONE_TEST_ENABLED?:string;
