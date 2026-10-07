@@ -300,7 +300,8 @@ function applyRouteMeta(html, route) {
   if (!meta) return html;
 
   const canonicalPath = meta.path || route;
-  const canonicalUrl = `${SITE_ORIGIN}${canonicalPath}`;
+  const normalizedPath = canonicalPath === "/" ? "/" : `${canonicalPath.replace(/\/$/, "")}/`;
+  const canonicalUrl = `${SITE_ORIGIN}${normalizedPath}`;
   const title = meta.title;
   const description = meta.description;
   const robots = meta.robots || 'index,follow';
@@ -466,10 +467,10 @@ function adminShell(route) {
     .replace(/<meta name="description" content="[^"]*" \/>/, '<meta name="description" content="Owner-only MehyarSoft admin area." />')
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
     .replace(/<meta property="og:description" content="[^"]*" \/>/, '<meta property="og:description" content="Owner-only MehyarSoft admin area." />')
-    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${SITE_ORIGIN}/${route}" />`)
+    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${SITE_ORIGIN}/${route.replace(/\/$/, "")}/" />`)
     .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${title}" />`)
     .replace(/<meta name="twitter:description" content="[^"]*" \/>/, '<meta name="twitter:description" content="Owner-only MehyarSoft admin area." />')
-    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${SITE_ORIGIN}/${route}" />`);
+    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${SITE_ORIGIN}/${route.replace(/\/$/, "")}/" />`);
 }
 
 // Build a 404-themed noindex app shell so static hosts (Cloudflare Pages) that
