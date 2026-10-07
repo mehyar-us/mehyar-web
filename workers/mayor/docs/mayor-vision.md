@@ -60,19 +60,35 @@ one hand.
 
 ## Visual direction
 
-Mobile-first, app-like. The owner runs the business from their phone.
+It's The Mayor — not a generic assistant, not a Jarvis clone. It *behaves*
+with that Jarvis-like capability (proactive, precise, always a step ahead)
+and Muse-like ease (talk naturally, it handles the rest), but the identity,
+the voice, the character is The Mayor: the one who runs the front.
 
-- **Chat-first home:** the agent is the interface. Cards and buttons appear
-  inside the conversation, not in a separate dashboard maze.
+Mobile-first, app-like, browser-fast. The owner runs the business from their
+phone, and every animation has to earn its milliseconds.
+
+- **Speak, and it shows:** voice and visual are one experience. The Mayor
+  talks, and the interface animates around the words — a booking timeline
+  builds as it's mentioned, a revenue number counts up as it's spoken, a
+  missed-call card slides in with its one-tap actions. Never decoration;
+  every animation carries information.
+- **Revolutionary, not flashy:** the interface should feel like the business
+  has a living front desk, not a dashboard. One conversation canvas replaces
+  tabbed views. Cards materialize in the flow of talk; they don't live in a
+  separate "dashboard maze."
 - **Glanceable cards:** today's bookings, missed calls needing follow-up,
-  money in this week. Each card is one thumb-tap deep.
+  money in this week. Each card is one thumb-tap deep, each with at most
+  three one-tap actions.
 - **Connection cards:** every integration is a card with a logo, one line on
   what it unlocks, and a Connect button. Connected cards show status, not
   settings.
 - **Proactive feed:** the agent surfaces things — slow day Thursday, regular
   hasn't booked in 6 weeks, 3 unanswered leads. Each item has a one-tap action
-  (approve, edit, dismiss).
-- **No desktop-only flows.** If it can't be done on a phone, it doesn't ship.
+  (approve, edit, dismiss). Max three nudges a day, never overnight.
+- **Fast in the browser:** animations under a second, interruption under
+  200ms, text-only by default for simple answers. If it can't be done fast
+  on a phone, it doesn't ship. No desktop-only flows.
 
 ## The verticals
 
