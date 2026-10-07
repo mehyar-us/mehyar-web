@@ -1,0 +1,81 @@
+{
+  "synthetic": true,
+  "newInference": false,
+  "assets": [
+    "main-Wqltm-Zb.js",
+    "main-Dh6sOIrA.css"
+  ],
+  "checks": [
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "initialVisible": true,
+      "messages": 12,
+      "bottomGap": 0,
+      "transcriptHeight": 566,
+      "outerScroll": 0,
+      "documentWidth": 390
+    },
+    {
+      "viewport": [
+        320,
+        568
+      ],
+      "afterResize": true,
+      "bottomGap": 0,
+      "transcriptHeight": 290,
+      "outerScroll": 0,
+      "documentWidth": 320
+    },
+    {
+      "viewport": [
+        320,
+        568
+      ],
+      "longDraft": true,
+      "bottomGap": 0,
+      "transcriptHeight": 214,
+      "inputHeight": 120,
+      "outerScroll": 0
+    },
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "afterResize": true,
+      "bottomGap": 0,
+      "transcriptHeight": 672,
+      "outerScroll": 0,
+      "documentWidth": 1440,
+      "memoryVisible": false
+    }
+  ],
+  "earlierReading": {
+    "method": "PageUp twice at390, resize to320, then Today and Assistant",
+    "afterResize": {
+      "scrollTop": 1436,
+      "bottomGap": 1612
+    },
+    "afterTabSwitch": {
+      "scrollTop": 1390,
+      "bottomGap": 1658
+    },
+    "meaning": "Reading remained above the latest messages; pixel positions can change with text reflow and browser scroll anchoring.",
+    "assets": [
+      "main-CB-KTiCM.js",
+      "main-CuwO-cxe.css"
+    ]
+  },
+  "screenshot": "chat-latest-history-mobile.jpg",
+  "method": "Actual CUA browser actions and read-only DOM geometry with twelve synthetic messages. No claim about physical microphone, touch or installed PWA keyboard behavior.",
+  "memoryLocation": {
+    "checkedView": "chat",
+    "parent": "account-view",
+    "clientRects": 0,
+    "height": 0,
+    "method": "Read-only DOM geometry of #business-context, not a heading text match."
+  }
+}

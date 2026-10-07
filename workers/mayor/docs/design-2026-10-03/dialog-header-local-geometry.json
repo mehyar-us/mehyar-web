@@ -1,0 +1,91 @@
+{
+  "createdAt": "2026-10-04T23:28:50.708Z",
+  "fixture": "synthetic current UI preview; no business writes or model calls",
+  "task320": {
+    "close": {
+      "bottom": 73.40625,
+      "height": 44,
+      "left": 217,
+      "right": 261,
+      "top": 29.40625,
+      "width": 44,
+      "x": 217,
+      "y": 29.40625
+    },
+    "header": {
+      "bottom": 73.40625,
+      "height": 44,
+      "left": 29,
+      "right": 261,
+      "top": 29.40625,
+      "width": 232,
+      "x": 29,
+      "y": 29.40625
+    },
+    "scrollTop": 232,
+    "submit": {
+      "bottom": 522.6875,
+      "height": 45,
+      "left": 29,
+      "right": 137.484375,
+      "top": 477.6875,
+      "width": 108.484375,
+      "x": 29,
+      "y": 477.6875
+    }
+  },
+  "goal320": {
+    "close": {
+      "bottom": 73.40625,
+      "top": 29.40625
+    },
+    "dialogScrollWidth": 264,
+    "dialogWidth": 264,
+    "header": {
+      "bottom": 85.40625,
+      "top": 29.40625
+    },
+    "review": {
+      "bottom": 523.28125,
+      "height": 44,
+      "left": 29,
+      "right": 160.9375,
+      "top": 479.28125,
+      "width": 131.9375,
+      "x": 29,
+      "y": 479.28125
+    },
+    "scrollTop": 470,
+    "viewport": {
+      "height": 568,
+      "width": 320
+    }
+  },
+  "goal900": {
+    "close": {
+      "bottom": 87.59375,
+      "top": 43.59375
+    },
+    "dialogScrollWidth": 563,
+    "dialogWidth": 563,
+    "header": {
+      "bottom": 87.59375,
+      "top": 43.59375
+    },
+    "review": {
+      "bottom": 496.28125,
+      "height": 45,
+      "left": 181.5,
+      "right": 344.078125,
+      "top": 451.28125,
+      "width": 162.578125,
+      "x": 181.5,
+      "y": 451.28125
+    },
+    "scrollTop": 282,
+    "viewport": {
+      "height": 568,
+      "width": 900
+    }
+  }
+}

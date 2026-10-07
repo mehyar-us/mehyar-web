@@ -1,0 +1,61 @@
+{
+  "createdAt": "2026-10-04T23:34:40.894Z",
+  "production": true,
+  "version": "440dec3f-7df7-414f-b6cb-22c6a053b996",
+  "beforeReload": {
+    "draft": "",
+    "scripts": [
+      "https://mayor.mehyar.us/assets/main-BYh5S6kS.js"
+    ],
+    "transcriptChildren": 53
+  },
+  "afterReload": {
+    "conversationHeight": 578,
+    "documentWidth": 565,
+    "draft": "",
+    "placeholder": "Ask Mayor…",
+    "scripts": [
+      "https://mayor.mehyar.us/assets/main-8WKxS8bE.js"
+    ],
+    "scrollWidth": 565,
+    "styles": [
+      "https://mayor.mehyar.us/assets/main-Cs-OnUJG.css"
+    ],
+    "transcriptChildren": 50,
+    "viewport": {
+      "height": 784,
+      "width": 565
+    }
+  },
+  "liveTaskDialog": {
+    "close": {
+      "bottom": 85.203125,
+      "top": 41.203125
+    },
+    "dialogScrollWidth": 509,
+    "dialogWidth": 509,
+    "draft": "",
+    "header": {
+      "bottom": 85.203125,
+      "top": 41.203125
+    },
+    "scripts": [
+      "https://mayor.mehyar.us/assets/main-8WKxS8bE.js"
+    ],
+    "scrollTop": 15,
+    "submit": {
+      "bottom": 728.390625,
+      "top": 683.390625
+    },
+    "transcriptChildren": 50,
+    "viewport": {
+      "height": 784,
+      "width": 565
+    }
+  },
+  "localQa": "dialog-header-local-geometry.json",
+  "formsClosedUnsaved": true,
+  "voiceConnectionsStartedDuringReleaseQa": 0,
+  "businessWritesDuringReleaseQa": 0,
+  "viewportReset": true
+}

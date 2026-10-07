@@ -1,0 +1,74 @@
+[
+  {
+    "brandOverlap": false,
+    "calendarOverlap": false,
+    "fullNameInTitle": true,
+    "nameLength": 160,
+    "checked": 44,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 305,
+    "view": "today-view",
+    "viewport": 320
+  },
+  {
+    "brandOverlap": false,
+    "calendarOverlap": false,
+    "fullNameInTitle": true,
+    "nameLength": 160,
+    "checked": 44,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 375,
+    "view": "today-view",
+    "viewport": 390
+  },
+  {
+    "brandOverlap": false,
+    "calendarOverlap": false,
+    "fullNameInTitle": true,
+    "nameLength": 160,
+    "checked": 47,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 753,
+    "view": "today-view",
+    "viewport": 768
+  },
+  {
+    "brandOverlap": false,
+    "calendarOverlap": false,
+    "fullNameInTitle": true,
+    "nameLength": 160,
+    "checked": 47,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 1009,
+    "view": "today-view",
+    "viewport": 1024
+  },
+  {
+    "brandOverlap": false,
+    "calendarOverlap": false,
+    "fullNameInTitle": true,
+    "nameLength": 160,
+    "checked": 47,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 1472,
+    "view": "today-view",
+    "viewport": 1487
+  },
+  {
+    "brandOverlap": false,
+    "calendarOverlap": false,
+    "fullNameInTitle": true,
+    "nameLength": 160,
+    "checked": 47,
+    "clipped": [],
+    "outside": [],
+    "pageWidth": 1905,
+    "view": "today-view",
+    "viewport": 1920
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "$schema":"node_modules/wrangler/config-schema.json",
+  "name":"mehyar-mayor","main":"src/index.ts",
+  "compatibility_date":"2026-09-22","compatibility_flags":["nodejs_compat","global_fetch_strictly_public"],
+  "workers_dev":false,"preview_urls":false,
+  "triggers":{"crons":["*/5 * * * *"]},
+  "routes":[{"pattern":"mayor.mehyar.us","custom_domain":true}],
+  "assets":{"directory":"./public","binding":"ASSETS","not_found_handling":"single-page-application","run_worker_first":["/api/*","/agents/*","/mcp","/business-audit","/business-audit/*"]},
+  "vars":{"APP_ORIGIN":"https://mayor.mehyar.us","ENVIRONMENT":"production","GOOGLE_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","ZOHO_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","MICROSOFT_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","MAYOR_EMAIL_FROM":"mayor@mehyar.us"},
+  "ai":{"binding":"AI"},
+  "send_email":[{"name":"MAYOR_EMAIL","allowed_sender_addresses":["mayor@mehyar.us"]}],
+  "d1_databases":[{"binding":"AGENT_DB","database_name":"mehyar-mayor","database_id":"701b5ade-45a6-491a-889d-42d79f6f59a0","migrations_dir":"migrations"}],
+  "durable_objects":{"bindings":[{"name":"MAYOR_VOICE","class_name":"MayorVoice"},{"name":"MAYOR_PHONE","class_name":"MayorPhone"}]},
+  "migrations":[{"tag":"mayor-v1","new_sqlite_classes":["MayorVoice"]},{"tag":"mayor-v2","new_sqlite_classes":["MayorPhone"]}],
+  "observability":{"enabled":true,"head_sampling_rate":0.1,"logs":{"enabled":true,"invocation_logs":false}}
+}

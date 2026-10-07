@@ -1,0 +1,286 @@
+{
+  "synthetic": true,
+  "assets": [
+    "main-DwsR8EAv.js",
+    "main-B8v14l04.css"
+  ],
+  "checks": [
+    {
+      "composer": {
+        "bottom": 510,
+        "height": 78,
+        "left": 16,
+        "right": 304,
+        "top": 432,
+        "width": 288,
+        "x": 16,
+        "y": 432
+      },
+      "input": {
+        "fontSize": "16px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "scrollHeight": 36
+      },
+      "page": {
+        "height": 568,
+        "width": 320
+      },
+      "scrollY": 0,
+      "tabs": {
+        "bottom": 568,
+        "height": 58,
+        "left": 0,
+        "right": 320,
+        "top": 510,
+        "width": 320,
+        "x": 0,
+        "y": 510
+      },
+      "transcript": {
+        "bottom": 424,
+        "height": 290,
+        "left": 16,
+        "right": 304,
+        "top": 134,
+        "width": 288,
+        "x": 16,
+        "y": 134
+      },
+      "transcriptScrollable": true,
+      "viewport": {
+        "height": 568,
+        "width": 320
+      }
+    },
+    {
+      "composer": {
+        "bottom": 609,
+        "height": 78,
+        "left": 16,
+        "right": 374,
+        "top": 531,
+        "width": 358,
+        "x": 16,
+        "y": 531
+      },
+      "input": {
+        "fontSize": "16px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "scrollHeight": 36
+      },
+      "page": {
+        "height": 667,
+        "width": 390
+      },
+      "scrollY": 0,
+      "tabs": {
+        "bottom": 667,
+        "height": 58,
+        "left": 0,
+        "right": 390,
+        "top": 609,
+        "width": 390,
+        "x": 0,
+        "y": 609
+      },
+      "transcript": {
+        "bottom": 523,
+        "height": 389,
+        "left": 16,
+        "right": 374,
+        "top": 134,
+        "width": 358,
+        "x": 16,
+        "y": 134
+      },
+      "transcriptScrollable": true,
+      "viewport": {
+        "height": 667,
+        "width": 390
+      }
+    },
+    {
+      "composer": {
+        "bottom": 786,
+        "height": 78,
+        "left": 16,
+        "right": 374,
+        "top": 708,
+        "width": 358,
+        "x": 16,
+        "y": 708
+      },
+      "input": {
+        "fontSize": "16px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "scrollHeight": 36
+      },
+      "page": {
+        "height": 844,
+        "width": 390
+      },
+      "scrollY": 0,
+      "tabs": {
+        "bottom": 844,
+        "height": 58,
+        "left": 0,
+        "right": 390,
+        "top": 786,
+        "width": 390,
+        "x": 0,
+        "y": 786
+      },
+      "transcript": {
+        "bottom": 700,
+        "height": 566,
+        "left": 16,
+        "right": 374,
+        "top": 134,
+        "width": 358,
+        "x": 16,
+        "y": 134
+      },
+      "transcriptScrollable": true,
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "composer": {
+        "bottom": 542,
+        "height": 78,
+        "left": 16,
+        "right": 744,
+        "top": 464,
+        "width": 728,
+        "x": 16,
+        "y": 464
+      },
+      "input": {
+        "fontSize": "16px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "scrollHeight": 36
+      },
+      "page": {
+        "height": 600,
+        "width": 760
+      },
+      "scrollY": 0,
+      "tabs": {
+        "bottom": 600,
+        "height": 58,
+        "left": 0,
+        "right": 760,
+        "top": 542,
+        "width": 760,
+        "x": 0,
+        "y": 542
+      },
+      "transcript": {
+        "bottom": 456,
+        "height": 314,
+        "left": 16,
+        "right": 744,
+        "top": 142,
+        "width": 728,
+        "x": 16,
+        "y": 142
+      },
+      "transcriptScrollable": true,
+      "viewport": {
+        "height": 600,
+        "width": 760
+      }
+    },
+    {
+      "composer": {
+        "bottom": 390,
+        "height": 88,
+        "left": 250,
+        "right": 814,
+        "top": 302,
+        "width": 564,
+        "x": 250,
+        "y": 302
+      },
+      "input": {
+        "fontSize": "14px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "scrollHeight": 36
+      },
+      "page": {
+        "height": 390,
+        "width": 844
+      },
+      "scrollY": 0,
+      "tabs": null,
+      "transcript": {
+        "bottom": 290,
+        "height": 162,
+        "left": 250,
+        "right": 814,
+        "top": 128,
+        "width": 564,
+        "x": 250,
+        "y": 128
+      },
+      "transcriptScrollable": true,
+      "viewport": {
+        "height": 390,
+        "width": 844
+      }
+    },
+    {
+      "composer": {
+        "bottom": 900,
+        "height": 88,
+        "left": 447,
+        "right": 1267,
+        "top": 812,
+        "width": 820,
+        "x": 447,
+        "y": 812
+      },
+      "input": {
+        "fontSize": "14px",
+        "height": 36,
+        "placeholder": "Ask Mayor…",
+        "scrollHeight": 36
+      },
+      "page": {
+        "height": 900,
+        "width": 1440
+      },
+      "scrollY": 0,
+      "tabs": null,
+      "transcript": {
+        "bottom": 800,
+        "height": 672,
+        "left": 447,
+        "right": 1267,
+        "top": 128,
+        "width": 820,
+        "x": 447,
+        "y": 128
+      },
+      "transcriptScrollable": true,
+      "viewport": {
+        "height": 900,
+        "width": 1440
+      }
+    }
+  ],
+  "keyboardFocusScroll": {
+    "outerScroll": 0,
+    "transcriptScroll": 2218,
+    "composerTop": 708,
+    "composerBottom": 786
+  },
+  "limitations": "Desktop viewport and keyboard checks. Physical touch, safe-area devices and soft keyboards are not certified."
+}

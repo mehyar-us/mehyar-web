@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+dist/
+.dev.vars*
+.env*
+coverage/
+/public/
+/tests/live/.sandbox*-objects.json
+/tests/live/sandbox-restores.ts

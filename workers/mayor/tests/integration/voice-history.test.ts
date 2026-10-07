@@ -1,0 +1,20 @@
+import {it,expect} from 'vitest';
+import {MayorVoice} from '../../src/voice';
+import {env} from 'cloudflare:workers';
+it.each([true,false])('only reads/sends conversation history after authorization succeeds: %s',async allowed=>{
+ const voice=Object.create(MayorVoice.prototype) as any;
+ voice.identities=new Map();voice.accessWatches=new Map();
+ voice.env=env;
+ const tenant=crypto.randomUUID(),user=crypto.randomUUID();
+ await (env as any).AGENT_DB.prepare('INSERT INTO agent_tenants(id,name,created_at) VALUES(?,?,?)').bind(tenant,'History fixture',new Date().toISOString()).run();
+ await (env as any).AGENT_DB.prepare("INSERT INTO agent_memberships(tenant_id,user_id,role) VALUES(?,?,'owner')").bind(tenant,user).run();
+ let read=false,closed=false;const sent:string[]=[];
+ voice.authorize=async()=>{if(!allowed)throw new Error('Access revoked');};
+ voice.recoverConversation=async()=>{};
+ voice.getConversationHistory=(limit:number)=>{expect(limit).toBe(50);read=true;return [{role:'user',content:'My business'}];};
+ const connection={id:'history-connection',send:(data:string)=>sent.push(data),close:()=>{closed=true;}};
+ await voice.onConnect(connection,{request:new Request('https://mayor.example.test',{headers:{'x-mayor-tenant':tenant,'x-mayor-user':user,'x-mayor-session':'session'}})});
+ voice.accessWatches.get(connection.id)?.();
+ expect(read).toBe(allowed);expect(closed).toBe(!allowed);
+ expect(sent.map(message=>JSON.parse(message))).toEqual(allowed?[{type:'business_context',profile:{}},{type:'conversation_history',messages:[{role:'user',text:'My business'}]}]:[]);
+});

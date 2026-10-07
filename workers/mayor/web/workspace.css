@@ -1,0 +1,65 @@
+/* Keep the existing brand and avatar, with room for a visible conversation. */
+.notification-inbox{margin:12px 0 0;text-align:left}.notification-inbox summary{cursor:pointer;font-weight:700}.notification-inbox article{border-top:1px solid #dce5ee;padding:16px 0}.notification-inbox article p{line-height:1.6}.notification-inbox article button{margin:4px 8px 4px 0}.notification-inbox>p{color:#617589;line-height:1.5}
+.app{max-width:1680px;padding-inline:clamp(20px,4vw,64px)}
+header{height:88px}main{max-width:none;min-height:calc(100dvh - 208px)}
+#chat-view{display:grid;grid-template-columns:minmax(250px,.7fr) minmax(0,1.3fr);gap:28px 44px;padding-top:32px;text-align:left}
+.intro{grid-column:1/-1;max-width:850px}.intro h1{font-size:clamp(30px,3vw,44px);margin:12px 0;letter-spacing:-1.4px}.intro p{line-height:1.6}
+.voice-stage{text-align:center;background:linear-gradient(155deg,#e7f0fc,#f5f8fc);border:1px solid #d8e4f0;border-radius:28px;padding:42px 22px 28px;align-self:start;position:sticky;top:24px}
+.portrait{width:clamp(160px,17vw,240px);height:clamp(160px,17vw,240px);margin-bottom:30px}
+#conversation{grid-column:2;grid-row:2;width:100%;max-width:none;margin:0;padding:24px;border:1px solid #dce5ee;border-radius:24px;background:#fff;align-self:start;min-width:0}
+#conversation summary{font-family:Manrope,sans-serif;font-size:17px;padding-bottom:16px;border-bottom:1px solid #edf1f6}#conversation summary span{font-family:'DM Sans',sans-serif}
+#transcript{max-height:55dvh;min-height:100px;scrollbar-gutter:stable}#transcript li{background:#f5f8fc;border:0;padding:16px 18px;overflow-wrap:anywhere}
+#text-form{padding-top:12px;border-top:1px solid #edf1f6}#message{background:#f8fafd;padding:16px}
+.chat-welcome{padding:36px 12px 18px;max-width:580px}.chat-welcome h2{font-family:Manrope,sans-serif;font-size:26px;line-height:1.25;letter-spacing:-.6px;margin:16px 0}.chat-welcome p,.chat-empty{color:#617589;line-height:1.7}.chat-welcome .primary{margin:10px 0}.chat-welcome .privacy-note{font-size:12px}.chat-empty{padding:24px 8px;margin:0}
+#chat-website-source,#chat-phone-guide{margin:16px 0;overflow-wrap:anywhere}#account-view{max-width:1000px;margin:auto;padding-top:32px}
+nav{width:280px;margin-top:24px}.status p{line-height:1.5}.portrait img{transform-origin:50% 80%;will-change:transform}
+.portrait img{animation:mayor-breathe 6s ease-in-out infinite}
+.listening .portrait img{animation:mayor-listen 3s ease-in-out infinite}.listening .portrait{box-shadow:0 0 0 8px #9cc7ed25,0 18px 48px #224d8118}
+.thinking .portrait img{transform:rotate(-4deg)}.thinking .voice-ring,.starting .voice-ring{border-color:#397cdd transparent #c4d9f2;animation:mayor-orbit 2.4s linear infinite}
+.speaking .portrait img{animation:mayor-speak 1.3s ease-in-out infinite}.speaking .voice-ring{border-width:3px;border-color:#72a5dc;animation:pulse 1s ease-in-out infinite}
+.reconnecting .voice-ring{border-style:dashed;animation:mayor-orbit 4s linear infinite}.reconnecting .portrait img,.offline .portrait img{filter:saturate(.45);animation:none}.offline .voice-ring{border-color:#9baab9;animation:none}
+@keyframes mayor-breathe{50%{transform:translateY(-3px) scale(1.015)}}@keyframes mayor-listen{50%{transform:rotate(2deg) scale(1.025)}}@keyframes mayor-speak{30%{transform:translateY(-3px) rotate(-1deg)}70%{transform:translateY(1px) rotate(1deg)}}@keyframes mayor-orbit{to{transform:rotate(360deg)}}
+@media(min-width:1300px){#chat-view{grid-template-columns:minmax(320px,.65fr) minmax(0,1.35fr)}#conversation{padding:28px 32px}}
+@media(max-width:720px){#chat-view{grid-template-columns:1fr;gap:20px;padding-top:24px}.intro{grid-column:1}.intro h1{font-size:32px}.voice-stage{position:static;padding:22px 16px}.portrait{width:132px;height:132px;margin-bottom:18px}.status p{margin-bottom:14px}#conversation{grid-column:1;grid-row:auto;padding:18px}#conversation summary span{float:none;display:block;margin-top:6px}#transcript{max-height:45dvh}#chat-website-source,#chat-phone-guide{grid-column:1}.chat-welcome{padding:24px 0 12px}.chat-welcome h2{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.portrait img,.voice-ring{animation:none!important;transform:none!important;will-change:auto}*{scroll-behavior:auto!important}}
+.optional-phone>summary{cursor:pointer;font-family:Manrope,sans-serif;font-size:18px;font-weight:700;line-height:1.5}.optional-phone>summary:focus-visible{outline:3px solid #2563eb;outline-offset:6px;border-radius:4px}.optional-phone[open]>summary{margin-bottom:16px}
+.optional-phone{max-width:none}
+/* Voice stays the primary action; the workspace holds lasting visual context. */
+#business-context{grid-column:2;min-width:0;background:#fff;border:1px solid #dce5ee;border-radius:24px;padding:24px;align-self:start}
+#business-context h2{font-family:Manrope,sans-serif;font-size:20px;letter-spacing:-.4px;margin:0 0 10px}
+#business-context p{font-size:13px;line-height:1.65;color:#617589}
+#business-facts{margin:20px 0;max-height:48dvh;overflow:auto;padding-right:8px;scrollbar-gutter:stable}
+#business-facts dt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#718397;margin-top:18px}
+#business-facts dd{font-size:14px;line-height:1.55;margin:6px 0;color:#17324c}
+.conversation-actions{display:flex;flex-wrap:wrap;gap:8px}.conversation-actions button{font-size:12px;text-align:left;padding:11px 13px}
+#mehyar-expertise{border-top:1px solid #e0e8f1;margin-top:24px;padding-top:8px}#mehyar-expertise h3{font-size:16px}#mehyar-expertise details{padding:12px 0;margin:0}#mehyar-expertise summary{font-size:13px}#mehyar-expertise a{display:inline-block;margin-top:16px;font-size:13px;color:#285b92}
+#transcript .message-user{background:#eaf2fb;margin-left:36px;border-radius:18px 18px 4px 18px}
+#transcript .message-mayor{background:#f6f8fb;margin-right:18px;border-radius:18px 18px 18px 4px}
+#conversation{min-height:480px}#transcript{min-height:180px}#usage-status{line-height:1.5;margin-bottom:0}
+.sound-check{display:block;margin:16px auto 8px;background:none;border:0;color:#496c91;font:inherit;font-size:12px;text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+#mic-level{display:block;margin:12px auto;width:110px;height:9px}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #3275ba;outline-offset:4px}
+.listening .portrait img{animation:mayor-listen 2.8s ease-in-out infinite}.starting .portrait img{animation:mayor-breathe 2s ease-in-out infinite}
+@media(min-width:1450px){#chat-view{grid-template-columns:minmax(250px,.75fr) minmax(440px,1.5fr) minmax(260px,.85fr);gap:24px}#business-context{grid-column:3;grid-row:2}#conversation{padding:24px}#transcript{max-height:54dvh}.portrait{width:190px;height:190px}.voice-stage{padding-inline:18px}.call-controls{flex-wrap:wrap}}
+@media(max-width:720px){#business-context{grid-column:1;padding:20px}#conversation{min-height:360px}#transcript{min-height:130px}.voice-stage{display:grid;grid-template-columns:82px minmax(0,1fr);text-align:left;gap:8px 18px;align-items:center;padding:22px}.portrait{width:76px;height:76px;margin:0;grid-row:1/3}.status p{font-size:12px;margin:6px 0}.status>span{font-size:16px}.call-controls{grid-column:2;justify-content:flex-start;flex-wrap:wrap}.call-controls .primary{padding:12px 14px;font-size:13px}.sound-check{grid-column:1/-1;margin:4px auto}.voice-stage .privacy-note{grid-column:1/-1;text-align:center;margin:3px}.voice-stage #mic-level{grid-column:1/-1}.intro h1{font-size:29px}#conversation summary span{font-size:11px}#text-form input{padding:12px;font-size:14px}#business-facts{max-height:none}}
+@media(prefers-reduced-motion:reduce){.portrait img,.voice-ring{animation:none!important;transform:none!important}}
+/* Audit repairs: navigation and recovery stay close to the current job. */
+header{position:sticky;top:0;z-index:5;background:#f4f7fb}
+nav{position:sticky;top:88px;z-index:4;width:100%;margin:0;padding:10px 0;justify-content:center;border:0;border-radius:0;background:#f4f7fb}
+nav .tab{width:140px;max-width:50%;background:#eaf0f7}
+nav .tab:first-child{border-radius:14px 0 0 14px}
+nav .tab:last-child{border-radius:0 14px 14px 0}
+nav .tab.active{background:#fff;box-shadow:inset 0 0 0 1px #d9e3ee}
+@media(min-width:721px){.voice-stage{top:172px}}
+textarea{font:inherit;min-width:0;flex:1;resize:vertical;max-height:180px;border:1px solid #cdd8e4;border-radius:12px;line-height:1.5}
+textarea:focus-visible{outline:3px solid #397cdd;outline-offset:3px}
+#composer-status{font-size:14px;line-height:1.5;margin:10px 0;color:#304e68;overflow-wrap:anywhere;min-height:21px}
+.chat-actions{display:flex;gap:8px;flex-wrap:wrap}.chat-actions button{font-size:13px;padding:7px 10px}
+#usage-status{font-size:12px;line-height:1.5}
+#transcript{overscroll-behavior:contain}#transcript span{display:block}
+@media(max-width:720px){header{position:static}nav{top:0}#chat-view{padding-top:12px}.intro h1{font-size:26px}.intro .eyebrow{display:none}.intro p{font-size:14px}.voice-stage{display:grid;grid-template-columns:64px 1fr;gap:8px 16px;padding:16px;text-align:left}.portrait{width:64px;height:64px;margin:0;grid-row:1/3}.status p{margin:6px 0}.call-controls{justify-content:flex-start;grid-column:2}.voice-stage>.privacy-note,.sound-check{grid-column:1/-1}.voice-stage>.privacy-note{margin:2px 0}.primary{padding:13px 17px}.voice-stage .status>span{font-size:16px}#conversation{padding:16px}#transcript{max-height:40dvh}.business-workspace{margin-bottom:20px}}
+
+.calendar-chat-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}.calendar-provider{padding:14px;border:1px solid var(--line,#d8dce2);border-radius:14px}.calendar-provider p{font-size:.9rem;line-height:1.5}.calendar-provider button,.calendar-chat-detail button{margin:6px 8px 6px 0}.calendar-chat form{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:16px 0}.calendar-chat label{display:grid;gap:6px;flex:1;min-width:180px}.calendar-chat input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;box-sizing:border-box}
+.calendar-chat{scroll-margin-top:170px}
+/* Keep provider identities and actions inside narrow account cards. */
+.connection{flex-wrap:wrap}.connection>div{min-width:0;flex:1 1 180px;overflow-wrap:anywhere}.connection>button{max-width:100%;white-space:normal}

@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mayor access recovery — local fixture</title></head>
+<body><div class="app"><header><span class="brand">The Mayor</span><span>Local UI fixture · no account</span></header><button id="preview" class="secondary">Preview expired access</button><p id="result" role="status"></p></div>
+<script type="module">
+ import '../../web/style.css';
+ import '../../web/workspace.css';
+ import {createAccessRecoveryView} from '../../web/voice-access-recovery.ts';
+ const view=createAccessRecoveryView(()=>{document.querySelector('#result').textContent='Reload requested. No real account or session was changed.';});
+ document.querySelector('.app').append(view.element);
+ document.querySelector('#preview').onclick=()=>view.show();
+</script></body></html>

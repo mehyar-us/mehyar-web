@@ -1,0 +1,6 @@
+import {it,expect} from 'vitest';
+import {assertReadOnlyReply} from '../src/reply-guard';
+it.each(['I have prepared your services for confirmation.','I proposed the update. Shall I save it?','Your time zone has been set to New York.','I saved your hours.','We have booked the appointment.','Updated. What next?','Your calendar has been successfully connected.'])("rejects unverified completion: %s",text=>expect(()=>assertReadOnlyReply(text)).toThrow('Read-only'));
+it.each(['Your saved business name is Example Studio.','What time do you open?','I can help you prepare a booking.','The calendar connection needs your attention.'])("allows read-only language: %s",text=>expect(()=>assertReadOnlyReply(text)).not.toThrow());
+it.each(['I have initiated the process to configure your agent.','We started a business review.','I configured your agent settings.','The agent settings will be saved with automatic reviews paused.','Your report will be automatically created.'])("rejects unverified initiation or promised action: %s",text=>expect(()=>assertReadOnlyReply(text)).toThrow('Read-only'));
+it.each(['No agent settings were saved. Review the current selection in Today.','A review needs a selected goal and skill.','Do you want help choosing a skill?'])("allows a prerequisite or accurate failure: %s",text=>expect(()=>assertReadOnlyReply(text)).not.toThrow());
