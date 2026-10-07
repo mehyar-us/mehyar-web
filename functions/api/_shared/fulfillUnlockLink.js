@@ -6,8 +6,6 @@
 // access_token. This hook sends the transactional receipt email carrying the
 // unlock link. (Before this hook, baby-peek and roast-card ran on
 // fulfillment='none' — buyers got NO email at all.)
-
-import { fulfillAgepack } from "./fulfillAgepack.js";
 //
 // Contract: fulfillUnlockLink({ db, env, sendEmail }, payment)
 //   db        — D1 binding (mehyar_leads_prod; has billing_products, billing_payments)
@@ -67,12 +65,6 @@ function readMeta(payment) {
 
 export async function fulfillUnlockLink({ db, env, sendEmail }, payment) {
   if (!db || !payment || !payment.id) throw new Error("fulfillUnlockLink: bad args");
-  // BabyPeek Age Progression Pack upsell: its own fulfillment module
-  // (receipt + BabyPeek generation trigger + CRM). Delegated BEFORE the
-  // receipt-claim below so fulfillAgepack owns the idempotency row.
-  if (payment.product_id === "baby-peek-agepack") {
-    return fulfillAgepack({ db, env, sendEmail }, payment);
-  }
   if (!payment.access_token) throw new Error("fulfillUnlockLink: payment has no access_token");
   if (!payment.email) throw new Error("fulfillUnlockLink: payment has no email");
   if (typeof sendEmail !== "function") throw new Error("fulfillUnlockLink: sendEmail not injected");
