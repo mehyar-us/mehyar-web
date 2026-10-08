@@ -107,7 +107,7 @@ export function createWorkday(hooks:Hooks){
      const send=button(test?'Simulate text-back':'Send text-back',guarded(async()=>{send.disabled=true;try{
       await hooks.api(base()+(test?`/phone/test-missed-call/${call.id}/text-back`:`/missed-calls/${call.id}/text-back`),{});
       hooks.onNotice(test?'Simulated text-back recorded. Check Notifications.':'Text-back sent.');
-      await load();}finally{send.disabled=false;}},'secondary'));
+      await load();}finally{send.disabled=false;}}),'secondary');
      action.append(send);
     }
     row.append(copy,action);list.append(row);
