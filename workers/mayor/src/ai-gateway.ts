@@ -32,9 +32,15 @@ export function gatewayRun(env:GatewayEnv&Pick<Env,'AI'>){
   // gateway fetch, combined with the 60s timeout — never dropped.
   const signal=options?.signal?AbortSignal.any([options.signal,AbortSignal.timeout(60000)]):AbortSignal.timeout(60000);
   let response:Response;
+  // Cache hygiene for personalized turns: non-streaming calls (the council's
+  // generateText) must never be served from the gateway's 1h cache — a cache
+  // key collision could leak one tenant's personalized answer to another.
+  // Streaming paths (voice, harness) are untouched.
+  const headers:Record<string,string>={'authorization':`Bearer ${gw.token}`,'content-type':'application/json'};
+  if(!options?.stream)headers['cf-aig-skip-cache']='true';
   try{
    response=await fetch(url,{method:'POST',
-    headers:{'authorization':`Bearer ${gw.token}`,'content-type':'application/json'},
+    headers,
     body:JSON.stringify(input??{}),signal});
   }catch(error){
    // Network error or caller abort — fall back to the direct binding, unless
@@ -53,7 +59,11 @@ export function gatewayRun(env:GatewayEnv&Pick<Env,'AI'>){
   if(options?.stream&&response.body){
    return response.body as ReadableStream<Uint8Array>;
   }
-  try{return await response.json();}catch{
+  // P1 fix: the REST envelope is {result,success,errors,messages} but the
+  // Workers AI binding shape (what workers-ai-provider's processText reads:
+  // output.response / output.choices) is the inner `result`. Unwrap it; fall
+  // back to the raw body if it isn't an envelope.
+  try{const parsed=await response.json();return (parsed as any)?.result??parsed;}catch{
    return direct(model,input as any,options as any);
   }
  };
