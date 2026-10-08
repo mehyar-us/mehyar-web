@@ -247,6 +247,42 @@ function updateNetwork(){
   workspace.ready(online&&historyReady&&!textChat.busy&&!pullBusy&&!accessEnded);
   if(!online){voiceCall?.stop();$('interim').textContent='';}
 }
+/** Business pill switcher: tap the business identity to switch between owned businesses.
+ * Switching navigates with ?business=<id>; the server selects the tenant from the param. */
+function setupBusinessSwitcher(businesses:Array<{id:string;name:string;role:string}>,currentId:string){
+  const identity=document.querySelector<HTMLElement>('.business-identity');
+  if(!identity||businesses.length<2)return;
+  identity.setAttribute('role','button');
+  identity.setAttribute('tabindex','0');
+  identity.setAttribute('aria-label',`Switch business, current: ${businesses.find(b=>b.id===currentId)?.name??'your business'}`);
+  identity.style.cursor='pointer';
+  const chevron=document.createElement('span');
+  chevron.textContent=' ▾';
+  chevron.setAttribute('aria-hidden','true');
+  identity.querySelector('strong')?.append(chevron);
+  const close=()=>{document.querySelector('.business-switcher-menu')?.remove();document.removeEventListener('click',onDoc);};
+  const onDoc=(e:MouseEvent)=>{if(!(e.target as HTMLElement).closest('.business-switcher-menu,.business-identity'))close();};
+  const open=()=>{
+    close();
+    const menu=document.createElement('div');
+    menu.className='business-switcher-menu';
+    menu.setAttribute('role','menu');
+    for(const b of businesses){
+      const item=document.createElement('button');
+      item.setAttribute('role','menuitemradio');
+      item.setAttribute('aria-checked',String(b.id===currentId));
+      item.className='business-switcher-item'+(b.id===currentId?' current':'');
+      item.textContent=`${b.name} · ${b.role}`;
+      if(b.id!==currentId)item.onclick=()=>{const url=new URL(location.href);url.searchParams.set('business',b.id);location.assign(url.toString());};
+      else item.disabled=true;
+      menu.append(item);
+    }
+    identity.after(menu);
+    document.addEventListener('click',onDoc);
+  };
+  identity.onclick=(e)=>{e.stopPropagation();document.querySelector('.business-switcher-menu')?close():open();};
+  identity.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();document.querySelector('.business-switcher-menu')?close():open();}if(e.key==='Escape')close();};
+}
 window.addEventListener('online',updateNetwork);
 window.addEventListener('offline',updateNetwork);
 window.addEventListener('pagehide',()=>voiceCall?.stop());
@@ -688,6 +724,7 @@ async function init(){
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();
   workday.ready(business.name,membershipRole);
+  setupBusinessSwitcher(businesses.businesses as Array<{id:string;name:string;role:string}>,business.id);
   $('calendar-status').hidden=!canManage();
   calendarLauncher.hidden=!canManage();
   const connectionError=new URLSearchParams(location.search).get('auth_error');

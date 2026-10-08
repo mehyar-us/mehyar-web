@@ -18,7 +18,7 @@ import type { Env } from './env';
 import {calendarConnectionSchema,calendarSelectionSchema,discoverCalendars,selectCalendar,selectedCalendar} from './calendars';
 import {ConnectorError} from './connectors/types';
 import {readSchedulingPolicy} from './scheduling-policy';
-import {readSchedulingSetup} from './scheduling-setup';
+import {readSchedulingSetup,proposeSchedulingSetup,confirmSchedulingSetup,schedulingDetailsSchema} from './scheduling-setup';
 import {listBookingRequests,reconcileBooking} from './appointments';
 import {listAppointments} from './appointment-changes';
 import {connectTwilio,phoneConnections,twilioNumbers,selectTwilioNumber,disconnectTwilio,twilioConnectionSchema} from './phone-connections';
@@ -32,6 +32,7 @@ import {runAttentionCycle} from './attention-cycle';
 import {saveTelnyxCallSetup,telnyxCallSetupSchema,connectTelnyx,telnyxNumbers,selectTelnyxNumber,disconnectTelnyx,telnyxConnectionSchema} from './telnyx-connections';
 import {gmailConnections,gmailReadSchema,readUnreadGmail} from './gmail';
 import {readConversationRecovery} from './conversation-recovery';
+import {recordMissedCall,sendTextBack,missedCallCard,listRecentMissedCalls,missedCallInputSchema} from './missed-call-textback';
 import {startTelnyxConsent} from './auth/phone-oauth-state';
 import {finishTelnyxConsent} from './auth/telnyx-callback';
 import {telnyxOAuthConfig} from './auth/telnyx-vault';
@@ -169,6 +170,30 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     if(!action&&request.method==='GET')return json(await businessNotifications(env,actor));
     if(action==='refresh'&&request.method==='POST'){await refreshAttentionNotifications(env,actor);return json(await businessNotifications(env,actor));}
     if(action?.endsWith('/read')&&request.method==='POST'){const id=z.uuid().parse(action.slice(0,-5));return json(await markHarnessReportRead(env,actor,id)??await markRoutineBriefRead(env,actor,id)??await markNotificationRead(env,actor,id));}
+  }
+  const missedCalls=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/missed-calls(?:\/([a-f0-9-]{36})\/(text-back)?)?$/);
+  if(missedCalls){
+    const actor={tenantId:missedCalls[1],userId:session.user.id},callId=missedCalls[2],action=missedCalls[3];
+    if(!callId&&request.method==='GET')return json({missedCalls:await listRecentMissedCalls(env,actor)});
+    if(callId&&!action&&request.method==='GET')return json(await missedCallCard(env,actor,callId));
+    if(callId&&action==='text-back'&&request.method==='POST')return json(await sendTextBack(env,actor,callId));
+  }
+  const testMissedCall=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone\/test-missed-call$/);
+  if(testMissedCall&&request.method==='POST'){
+    const actor={tenantId:testMissedCall[1],userId:session.user.id};
+    const input=missedCallInputSchema.parse({...(await readJson(request,2048) as Record<string,unknown>),source:'test'});
+    const call=await recordMissedCall(env,actor,input);
+    return json({test:true,missedCall:call,note:'TEST ONLY — no real customer was contacted unless a real number was provided.'});
+  }
+  const schedulingSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/scheduling-setup(?:\/(propose|confirm|activate))?$/);
+  if(schedulingSetup){
+    const actor={tenantId:schedulingSetup[1],userId:session.user.id},action=schedulingSetup[2];
+    if(!action&&request.method==='GET')return json(await readSchedulingSetup(env,actor));
+    if(action==='propose'&&request.method==='POST')return json(await proposeSchedulingSetup(env,actor,schedulingDetailsSchema.partial().parse(await readJson(request,4096))));
+    if(action==='confirm'&&request.method==='POST'){
+      const proposal=await proposeSchedulingSetup(env,actor,schedulingDetailsSchema.partial().parse(await readJson(request,4096)));
+      return json(await confirmSchedulingSetup(env,actor,proposal));
+    }
   }
   const telnyxSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-connections\/telnyx\/test-setup$/);
   if(telnyxSetup&&request.method==='POST')return json(await saveTelnyxCallSetup(env,{tenantId:telnyxSetup[1],userId:session.user.id},telnyxCallSetupSchema.parse(await readJson(request,2048))));

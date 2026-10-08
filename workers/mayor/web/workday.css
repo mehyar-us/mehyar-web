@@ -25,3 +25,8 @@ fieldset.booking-customer{border:1px solid #dce5ee;border-radius:9px;padding:15p
 .mode-toggle button[aria-pressed="true"]{background:#102b47;color:#fff}
 .mode-toggle button:focus-visible{outline:3px solid #3986ca;outline-offset:2px}
 .mode-note{font-size:11px;color:#8291a1;margin:0 0 10px;line-height:1.5;max-width:560px}
+.business-switcher-menu{position:absolute;z-index:40;background:#fff;border:1px solid #d5e0ec;border-radius:12px;box-shadow:0 12px 40px #102b4730;padding:6px;min-width:220px;margin-top:8px}
+.business-switcher-item{display:block;width:100%;text-align:left;background:none;border:0;padding:12px 14px;font-size:13px;border-radius:8px;min-height:44px;color:var(--ink)}
+.business-switcher-item:hover:not(:disabled){background:#eef4f9}
+.business-switcher-item.current{font-weight:700;color:#315d86}
+.business-switcher-item:disabled{cursor:default;opacity:1}

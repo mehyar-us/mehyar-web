@@ -3,9 +3,11 @@ import type { Actor, Env } from './env';
 import { requireMembership, OPERATORS } from './permissions';
 import { HttpError } from './http';
 import {validAssistantName} from './assistant-persona';
+import {verticalSchema} from './verticals';
 
 export const profileSchema = z.object({
   name: z.string().min(1).max(160).optional(),
+  vertical: verticalSchema.optional(),
   assistantName: z.string().trim().min(1).max(60).refine(validAssistantName,'Choose a short display name using letters, numbers, spaces, or name punctuation.').optional(),
   industry: z.string().max(160).optional(),
   website: z.url().max(2048).optional(),
