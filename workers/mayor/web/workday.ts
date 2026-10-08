@@ -84,7 +84,7 @@ export function createWorkday(hooks:Hooks){
   }catch(reason){if(version===taskVersion&&ready)error(target,reason,()=>void loadTasks());}
  }
  async function callbackDialog(){const node=dialog('Pending callbacks'),list=el('div');node.append(list);let cursor:string|null=null;const load=async()=>{const data=await hooks.api(base()+'/callbacks?limit=50'+(cursor?'&cursor='+encodeURIComponent(cursor):''));for(const item of data.callbacks){const row=el('article','','record-row');row.append(el('p',`${item.number} · ${item.reason} · ${fullTime(item.createdAt)}`),button('Mark handled',()=>confirmSimple('Mark callback handled?','Confirm that you have followed up.',async()=>{await hooks.api(base()+'/callbacks/'+item.id+'/handled',{confirm:true});row.remove();})));list.append(row);}cursor=data.nextCursor;more.hidden=!cursor;};const more=button('Load more',guarded(load));node.append(more);await guarded(load)();}
- type MissedCall={id:string;caller_number:string;source?:string;occurred_at:string;textback_sent_at:string|null;reply_received_at:string|null;booking_id:string|null;status:string};
+ type MissedCall={id:string;caller_number:string;source?:string;occurred_at:string;textback_sent_at:string|null;reply_received_at:string|null;booking_id:string|null;status:string;textback_preview?:string|null;textback_body?:string|null};
  async function missedCallsDialog(){
   const node=dialog('Missed calls'),target=el('div');node.append(target);
   const load=async()=>{
@@ -100,15 +100,20 @@ export function createWorkday(hooks:Hooks){
     copy.append(el('h3',call.caller_number),el('p',fullTime(call.occurred_at)+' · '+call.status+(call.source==='test'?' · test call':'')));
     state.textContent=call.textback_sent_at?'Text-back sent '+fullTime(call.textback_sent_at)+(call.reply_received_at?' · customer replied':''):'Waiting for a text-back';
     copy.append(state);
+    // Show what the engine will do (preview) or did (logged body) — never imply more than happened.
+    if(call.textback_body)copy.append(el('p','Sent: '+call.textback_body,'source-note'));
+    else if(call.textback_preview)copy.append(el('p','Will send: '+call.textback_preview,'source-note'));
     const action=el('span');
     if(call.textback_sent_at)action.append(el('span','Texted','status-tag'));
     else{
      const test=call.source==='test';
-     const send=button(test?'Simulate text-back':'Send text-back',guarded(async()=>{send.disabled=true;try{
+     const send=button(test?'Send test text-back':'Send text-back',guarded(async()=>{send.disabled=true;try{
       await hooks.api(base()+(test?`/phone/test-missed-call/${call.id}/text-back`:`/missed-calls/${call.id}/text-back`),{});
-      hooks.onNotice(test?'Simulated text-back recorded. Check Notifications.':'Text-back sent.');
+      hooks.onNotice(test?'Simulated text-back recorded — test only, no real SMS sent. Check Notifications.':'Text-back sent.');
       await load();}finally{send.disabled=false;}}),'secondary');
-     action.append(send);
+     // Honest labeling (compliance item 12): the test path only logs; the live path sends a real SMS.
+     const mode=el('p',test?'Test mode — logged to the SMS log, nothing sent to a real phone.':'Sends a real SMS through your connected business number.','source-note');
+     action.append(send,mode);
     }
     row.append(copy,action);list.append(row);
    }

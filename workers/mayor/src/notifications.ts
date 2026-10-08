@@ -9,7 +9,10 @@ const content={
  scheduled_check_failed:{title:'Your recurring account check could not finish',message:'The Mayor could not verify your account or selected calendar. Review your connection and the latest check status in Account.',action:'account'},
  onboarding:{title:'Tell The Mayor about your business',message:'Share your business name and what you offer, or provide a website. Review the suggested facts before saving them.',action:'chat'},
  calendar_connection:{title:'Your calendar connection needs attention',message:'Review your selected calendar in Account. Reconnect or select it again before relying on scheduling.',action:'account'},
- missed_call_texted:{title:'Missed call recovered',message:'A missed call just got a text-back. Check the conversation for details.',action:'missed-calls'},
+ missed_call_texted:{title:'Missed call recovered',message:'A text-back was sent to the missed caller. Review it in Missed calls.',action:'missed-calls'},
+ missed_call:{title:'Missed call — text-back ready',message:'A call was missed. Open Missed calls to review it and send the text-back.',action:'missed-calls'},
+ // Honest test-mode copy (compliance item 12): never imply a real SMS was sent.
+ missed_call_simulated:{title:'Test text-back logged — no SMS sent',message:'The simulated text-back for this test missed call was logged to the SMS log. Nothing was sent to a real phone.',action:'missed-calls'},
 } as const;
 type Kind=keyof typeof content;
 export type NotificationRunGuard={revision:number;leaseToken:string};
