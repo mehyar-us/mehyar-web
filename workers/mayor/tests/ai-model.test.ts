@@ -18,7 +18,7 @@ it('executes exactly one valid tool from the mixed Workers AI wire format',async
   {choices:[{delta:{},finish_reason:'stop'}],usage:{prompt_tokens:20,completion_tokens:20,total_tokens:40}}];
  const ai={run:async()=>stream(encode(events))} as unknown as Env['AI'];
  const calls:string[]=[];
- const result=streamText({model:mayorModel(ai),prompt:'Propose Remote Probe Business',tools:{proposeProfile:tool({inputSchema:z.object({name:z.string()}),execute:async({name})=>{calls.push(name);return {status:'awaiting_confirmation'};}})}});
+ const result=streamText({model:mayorModel({AI:ai}),prompt:'Propose Remote Probe Business',tools:{proposeProfile:tool({inputSchema:z.object({name:z.string()}),execute:async({name})=>{calls.push(name);return {status:'awaiting_confirmation'};}})}});
  for await(const part of result.fullStream){expect(part.type).not.toBe('tool-error');expect(part.type).not.toBe('error');}
  expect(calls).toEqual(['Remote Probe Business']);
 });
