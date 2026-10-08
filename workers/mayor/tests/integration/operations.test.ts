@@ -191,6 +191,20 @@ it('returns complete overview counts independently from its six-row previews',as
  expect(result.setup).toMatchObject({profileComplete:true,schedulingReady:false,calendarConnected:false});
 });
 
+it('surfaces pending missed calls as a text-back attention item',async()=>{
+ const now=new Date().toISOString();
+ // Simpler explicit insert (avoids brittle date arithmetic).
+ await env.AGENT_DB.prepare('INSERT INTO mayor_missed_calls(id,tenant_id,caller_number,business_number,occurred_at,source,status) VALUES(?,?,?,?,\'now\',\'test\',\'missed\')').bind(crypto.randomUUID(),actor.tenantId,'+15550131234','+15550139876').run();
+ await env.AGENT_DB.prepare('INSERT INTO mayor_missed_calls(id,tenant_id,caller_number,business_number,occurred_at,source,status) VALUES(?,?,?,?,\'now\',\'test\',\'missed\')').bind(crypto.randomUUID(),actor.tenantId,'+15550135555','+15550139876').run();
+ const result=await call('overview?date=2026-10-03');
+ const item=result.attention.find((entry:any)=>entry.action==='missed-calls');
+ expect(item).toMatchObject({id:'missed-calls',kind:'missed_call',count:2,action:'missed-calls'});
+ expect(item.title).toBe('2 missed calls need text-back');
+ // Texted calls drop out of attention.
+ await env.AGENT_DB.prepare("UPDATE mayor_missed_calls SET status='texted',textback_sent_at=? WHERE tenant_id=?").bind(now,actor.tenantId).run();
+ expect((await call('overview?date=2026-10-03')).attention.some((entry:any)=>entry.action==='missed-calls')).toBe(false);
+});
+
 it('labels an unknown timezone fallback and exposes actual uncertain appointment reviews',async()=>{
  const id=await storedAppointment('2026-10-03T10:00:00Z','2026-10-03T10:30:00Z',{jobState:'uncertain'});
  await env.AGENT_DB.prepare("INSERT INTO mayor_recovery_attempts(kind,request_id,tenant_id,attempts,state,next_attempt_at,lease_until,last_result,updated_at) VALUES('booking',?,?,6,'review',0,0,'uncertain',?)").bind(id,actor.tenantId,new Date().toISOString()).run();

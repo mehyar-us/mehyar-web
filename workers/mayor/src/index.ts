@@ -9,7 +9,8 @@ import { z } from 'zod';
 import { getSession, handleAuthRequest } from './auth';
 import { HttpError,json,readJson,requireOrigin,digest } from './http';
 import { requireMembership,CHAT_ROLES } from './permissions';
-import { readMemory } from './memory';
+import { readMemory,confirmProfile } from './memory';
+import {verticalSchema} from './verticals';
 import { onboardingProgress } from './onboarding';
 import {calendarGuide} from './calendar-guide';
 import {getPhoneSetup,savePhoneSetup,phoneSetupSchema,phoneSetupGuide} from './phone-setup';
@@ -32,7 +33,7 @@ import {runAttentionCycle} from './attention-cycle';
 import {saveTelnyxCallSetup,telnyxCallSetupSchema,connectTelnyx,telnyxNumbers,selectTelnyxNumber,disconnectTelnyx,telnyxConnectionSchema} from './telnyx-connections';
 import {gmailConnections,gmailReadSchema,readUnreadGmail} from './gmail';
 import {readConversationRecovery} from './conversation-recovery';
-import {recordMissedCall,sendTextBack,missedCallCard,listRecentMissedCalls,missedCallInputSchema} from './missed-call-textback';
+import {recordMissedCall,sendTextBack,simulateTextBack,missedCallCard,listRecentMissedCalls,missedCallInputSchema} from './missed-call-textback';
 import {startTelnyxConsent} from './auth/phone-oauth-state';
 import {finishTelnyxConsent} from './auth/telnyx-callback';
 import {telnyxOAuthConfig} from './auth/telnyx-vault';
@@ -185,6 +186,11 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const call=await recordMissedCall(env,actor,input);
     return json({test:true,missedCall:call,note:'TEST ONLY — no real customer was contacted unless a real number was provided.'});
   }
+  const testTextBack=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone\/test-missed-call\/([a-f0-9-]{36})\/text-back$/);
+  if(testTextBack&&request.method==='POST'){
+    const actor={tenantId:testTextBack[1],userId:session.user.id};
+    return json(await simulateTextBack(env,actor,testTextBack[2]));
+  }
   const schedulingSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/scheduling-setup(?:\/(propose|confirm|activate))?$/);
   if(schedulingSetup){
     const actor={tenantId:schedulingSetup[1],userId:session.user.id},action=schedulingSetup[2];
@@ -246,6 +252,11 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     }
   }
   if(profile&&request.method==='GET'){const memory=await readMemory(env,{tenantId:profile[1],userId:session.user.id});return json({...memory,progress:onboardingProgress(memory.profile)});}
+  if(profile&&request.method==='POST'){
+    const actor={tenantId:profile[1],userId:session.user.id};
+    const {revision,vertical}=z.object({vertical:verticalSchema,revision:z.number().int().min(0)}).strict().parse(await readJson(request,1024));
+    return json(await confirmProfile(env,actor,{vertical},revision));
+  }
   const phoneSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-setup$/);
   if(phoneSetup){
     const actor={tenantId:phoneSetup[1],userId:session.user.id};

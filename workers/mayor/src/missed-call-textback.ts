@@ -80,6 +80,30 @@ export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,trans
  return {alreadySent:false,messageId};
 }
 
+/** Test-mode simulation of a text-back. Records what a text-back would look like,
+ * marks the call texted, and writes the owner notification — but never touches
+ * Telnyx or any real provider. This function takes no transport: simulation has
+ * no network capability. Only calls recorded by the test simulator may be simulated. */
+export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string){
+ await requireMembership(env,actor,OPERATORS);
+ const call=await env.AGENT_DB.prepare('SELECT * FROM mayor_missed_calls WHERE id=? AND tenant_id=?').bind(missedCallId,actor.tenantId).first<MissedCallRecord&{source:string}>();
+ if(!call)throw new HttpError(404,'missed_call_not_found','Missed call not found.');
+ if(call.source!=='test')throw new HttpError(400,'simulation_test_only','Only calls recorded by the test simulator can be text-backed in simulation.');
+ if(call.textback_sent_at)return {alreadySent:true,messageId:null,simulated:true};
+ const mem=await readMemory(env,actor);
+ const businessName=mem.profile.name?.trim()||'us';
+ const profile=verticalProfile((mem.profile as {vertical?:string}).vertical);
+ const text=profile.textbackTemplate.replace('{business}',businessName);
+ const now=new Date().toISOString(),smsId=crypto.randomUUID();
+ await env.AGENT_DB.batch([
+  env.AGENT_DB.prepare(`UPDATE mayor_missed_calls SET status='texted',textback_sent_at=?,textback_message_id=NULL WHERE id=? AND tenant_id=?`).bind(now,missedCallId,actor.tenantId),
+  env.AGENT_DB.prepare(`INSERT INTO mayor_sms_log(id,tenant_id,direction,to_number,from_number,body,provider_message_id,status,related_missed_call_id)
+   VALUES(?,?,'outbound',?,?,?,?, 'simulated',?)`).bind(smsId,actor.tenantId,call.caller_number,call.business_number,text,null,missedCallId),
+ ]);
+ await notifyMissedCallTexted(env,actor,call);
+ return {alreadySent:false,messageId:null,simulated:true};
+}
+
 async function notifyMissedCallTexted(env:Env,actor:Actor,call:MissedCallRecord){
  const now=new Date().toISOString();
  const owners=await env.AGENT_DB.prepare(`SELECT user_id FROM agent_memberships WHERE tenant_id=? AND status='active' AND role IN ('owner','manager') AND (expires_at IS NULL OR expires_at>?)`).bind(actor.tenantId,now).all<{user_id:string}>();
@@ -101,6 +125,6 @@ export async function missedCallCard(env:Env,actor:Actor,missedCallId:string){
 
 export async function listRecentMissedCalls(env:Env,actor:Actor,limit=20){
  await requireMembership(env,actor,OPERATORS);
- const rows=await env.AGENT_DB.prepare('SELECT id,caller_number,occurred_at,textback_sent_at,reply_received_at,booking_id,status FROM mayor_missed_calls WHERE tenant_id=? ORDER BY occurred_at DESC LIMIT ?').bind(actor.tenantId,Math.min(limit,50)).all();
+ const rows=await env.AGENT_DB.prepare('SELECT id,caller_number,source,occurred_at,textback_sent_at,reply_received_at,booking_id,status FROM mayor_missed_calls WHERE tenant_id=? ORDER BY occurred_at DESC LIMIT ?').bind(actor.tenantId,Math.min(limit,50)).all();
  return rows.results;
 }

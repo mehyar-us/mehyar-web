@@ -50,8 +50,8 @@ export function createWorkday(hooks:Hooks){
    if(!existing)target.replaceChildren();const grid=el('div','','today-grid'),attention=el('section','','attention-section'),agenda=el('section','','agenda-preview');
    const heading=el('div','','section-heading');heading.append(el('h2','Needs your attention'),el('span',String(data.attention.length),'count-badge'));attention.append(heading);
    if(!data.attention.length)attention.append(empty('You’re all caught up.','No setup items, overdue tasks, or open alerts need your attention.',button('Add a task',()=>hooks.onNavigate('tasks'),'quiet')));
-   for(const item of data.attention){const row=el('article','','attention-row'),mark=el('span','','attention-icon');mark.append(icon(item.kind==='callback'?'phone':item.kind==='task'?'list-todo':item.kind==='notification'?'bell':item.kind==='appointment_review'?'calendar-days':'sparkles'));
-    const text=el('div','','row-copy');text.append(el('h3',item.title),el('p',item.detail));const link=button(item.action==='chat'?'Continue setup':item.action==='account'?'Connect calendar':item.action==='tasks'?'View tasks':item.action==='callbacks'?'View callbacks':item.action==='notifications'?'Review alerts':'Review requests',()=>{if(item.action==='chat')hooks.ask(item.detail);else if(item.action==='notifications')$('notifications-button').click();else hooks.onNavigate(item.action==='account'?'connections':item.action==='tasks'||item.action==='callbacks'?'tasks':'appointments');},'quiet row-action');link.append(icon('chevron-right'));row.append(mark,text,link);attention.append(row);
+   for(const item of data.attention){const row=el('article','','attention-row'),mark=el('span','','attention-icon');mark.append(icon(item.kind==='callback'||item.kind==='missed_call'?'phone':item.kind==='task'?'list-todo':item.kind==='notification'?'bell':item.kind==='appointment_review'?'calendar-days':'sparkles'));
+    const text=el('div','','row-copy');text.append(el('h3',item.title),el('p',item.detail));const link=button(item.action==='chat'?'Continue setup':item.action==='account'?'Connect calendar':item.action==='tasks'?'View tasks':item.action==='callbacks'?'View callbacks':item.action==='notifications'?'Review alerts':item.action==='missed-calls'?'Review missed calls':'Review requests',()=>{if(item.action==='chat')hooks.ask(item.detail);else if(item.action==='notifications')$('notifications-button').click();else if(item.action==='missed-calls')void missedCallsDialog();else hooks.onNavigate(item.action==='account'?'connections':item.action==='tasks'||item.action==='callbacks'?'tasks':'appointments');},'quiet row-action');link.append(icon('chevron-right'));row.append(mark,text,link);attention.append(row);
    }
    const agendaHeading=el('div','','section-heading');agendaHeading.append(el('h2','Up next'),button('View all',()=>hooks.onNavigate('appointments'),'quiet'));agenda.append(agendaHeading);
    if(!data.appointments.length){const blank=el('div','','agenda-empty');blank.append(el('p','No upcoming Mayor bookings today.'),button('New appointment',()=>hooks.onNavigate('appointments'),'quiet'));agenda.append(blank);}
@@ -84,6 +84,39 @@ export function createWorkday(hooks:Hooks){
   }catch(reason){if(version===taskVersion&&ready)error(target,reason,()=>void loadTasks());}
  }
  async function callbackDialog(){const node=dialog('Pending callbacks'),list=el('div');node.append(list);let cursor:string|null=null;const load=async()=>{const data=await hooks.api(base()+'/callbacks?limit=50'+(cursor?'&cursor='+encodeURIComponent(cursor):''));for(const item of data.callbacks){const row=el('article','','record-row');row.append(el('p',`${item.number} · ${item.reason} · ${fullTime(item.createdAt)}`),button('Mark handled',()=>confirmSimple('Mark callback handled?','Confirm that you have followed up.',async()=>{await hooks.api(base()+'/callbacks/'+item.id+'/handled',{confirm:true});row.remove();})));list.append(row);}cursor=data.nextCursor;more.hidden=!cursor;};const more=button('Load more',guarded(load));node.append(more);await guarded(load)();}
+ type MissedCall={id:string;caller_number:string;source?:string;occurred_at:string;textback_sent_at:string|null;reply_received_at:string|null;booking_id:string|null;status:string};
+ async function missedCallsDialog(){
+  const node=dialog('Missed calls'),target=el('div');node.append(target);
+  const load=async()=>{
+   target.replaceChildren(el('p','Loading missed calls…','loading-state'));
+   const data=await hooks.api(base()+'/missed-calls');
+   const calls=(data.missedCalls??[]) as MissedCall[];
+   target.replaceChildren();
+   if(!calls.length){target.append(empty('No missed calls yet.','Simulate one from the Business phone card in Account to watch the money loop here.'));return;}
+   target.append(el('p','Test calls only simulate the text-back — no real message is ever sent from a simulation.','source-note'));
+   const list=el('div','','record-list');
+   for(const call of calls){
+    const row=el('article','','record-row'),copy=el('div','','row-copy'),state=el('p','','subtle');
+    copy.append(el('h3',call.caller_number),el('p',fullTime(call.occurred_at)+' · '+call.status+(call.source==='test'?' · test call':'')));
+    state.textContent=call.textback_sent_at?'Text-back sent '+fullTime(call.textback_sent_at)+(call.reply_received_at?' · customer replied':''):'Waiting for a text-back';
+    copy.append(state);
+    const action=el('span');
+    if(call.textback_sent_at)action.append(el('span','Texted','status-tag'));
+    else{
+     const test=call.source==='test';
+     const send=button(test?'Simulate text-back':'Send text-back',guarded(async()=>{send.disabled=true;try{
+      await hooks.api(base()+(test?`/phone/test-missed-call/${call.id}/text-back`:`/missed-calls/${call.id}/text-back`),{});
+      hooks.onNotice(test?'Simulated text-back recorded. Check Notifications.':'Text-back sent.');
+      await load();}finally{send.disabled=false;}},'secondary'));
+     action.append(send);
+    }
+    row.append(copy,action);list.append(row);
+   }
+   target.append(list);
+  };
+  await guarded(load,target)();
+  paintIcons();
+ }
  async function loadCustomers(more=false){
   if(!ready||!hooks.canManage())return;const version=++customerVersion;
   const target=more?$('customers-content'):loading('customers');try{const query=new URLSearchParams({q:customerQuery,limit:'25'});if(more&&customerCursor)query.set('cursor',customerCursor);const data=await hooks.api(base()+'/customers?'+query);if(version!==customerVersion||!ready)return;if(!more)customerRows=[];customerRows.push(...data.customers);customerCursor=data.nextCursor;target.replaceChildren();
@@ -198,5 +231,5 @@ export function createWorkday(hooks:Hooks){
  const mobileTools=el('div','','mobile-tools');mobileTools.setAttribute('aria-label','More workspace tools');for(const [label,view] of [['Tasks','tasks'],['Plan & usage','billing'],['Help','help']] as [string,WorkdayView][])mobileTools.append(button(label,()=>hooks.onNavigate(view)));$('account-view').prepend(mobileTools);
  for(const view of views)$(`${view}-tab`).onclick=()=>hooks.onNavigate(view);
  updateDesktopTabs();updateMobileTabs();paintIcons();
- return {show,refresh:refreshOverview,refreshCurrent,ready(name:string,role:string){ready=true;workspaceRole=role;phoneTabs.hidden=false;menuButton.disabled=false;$('business-name').textContent=name;$('business-name').title=name;$('business-role').textContent=role.charAt(0).toUpperCase()+role.slice(1)+' workspace';show(current);const query=new URLSearchParams(location.search);if(query.get('billing')){hooks.onNavigate('billing');void loadBilling(true);}},clear(){ready=false;workspaceRole='';updateDesktopTabs();phoneTabs.hidden=true;menuButton.disabled=true;menuButton.setAttribute('aria-expanded','false');routines.clear();businessAgent.clear();accessVersion++;loadVersion++;taskVersion++;customerVersion++;agendaVersion++;billingVersion++;appointmentDate='';customerRows=[];taskRows=[];agendaRows=[];customerQuery='';customerCursor=taskCursor=agendaCursor=null;for(const view of ['today','appointments','customers','tasks','billing'])$(`${view}-content`).replaceChildren();document.querySelectorAll<HTMLDialogElement>('.workday-dialog').forEach(node=>node.close());$('business-name').textContent='Your business';$('business-name').removeAttribute('title');$('business-role').textContent='Workspace access ended';}};
+ return {show,refresh:refreshOverview,refreshCurrent,openMissedCalls:()=>{void missedCallsDialog();},ready(name:string,role:string){ready=true;workspaceRole=role;phoneTabs.hidden=false;menuButton.disabled=false;$('business-name').textContent=name;$('business-name').title=name;$('business-role').textContent=role.charAt(0).toUpperCase()+role.slice(1)+' workspace';show(current);const query=new URLSearchParams(location.search);if(query.get('billing')){hooks.onNavigate('billing');void loadBilling(true);}},clear(){ready=false;workspaceRole='';updateDesktopTabs();phoneTabs.hidden=true;menuButton.disabled=true;menuButton.setAttribute('aria-expanded','false');routines.clear();businessAgent.clear();accessVersion++;loadVersion++;taskVersion++;customerVersion++;agendaVersion++;billingVersion++;appointmentDate='';customerRows=[];taskRows=[];agendaRows=[];customerQuery='';customerCursor=taskCursor=agendaCursor=null;for(const view of ['today','appointments','customers','tasks','billing'])$(`${view}-content`).replaceChildren();document.querySelectorAll<HTMLDialogElement>('.workday-dialog').forEach(node=>node.close());$('business-name').textContent='Your business';$('business-name').removeAttribute('title');$('business-role').textContent='Workspace access ended';}};
 }
