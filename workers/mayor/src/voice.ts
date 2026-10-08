@@ -57,6 +57,19 @@ type Pending={patch:Profile;revision:number;expiresAt:number;source?:ProfileSour
 export class MayorVoice extends Base<Env> {
   private textBusy=false;
   async onRequest(request:Request){
+    if(request.method==='POST'&&new URL(request.url).pathname.endsWith('/reset')){
+      const identity={tenantId:request.headers.get('x-mayor-tenant')??'',userId:request.headers.get('x-mayor-user')??'',sessionId:request.headers.get('x-mayor-session')??''};
+      await requireVoiceAccess(this.env,identity);
+      if(this.recoveryIdentity&&(this.recoveryIdentity.tenantId!==identity.tenantId||this.recoveryIdentity.userId!==identity.userId))throw new Error('conversation_identity_mismatch');
+      if(this.callOwner)throw new HttpError(409,'voice_call_active','End the voice conversation before starting a new chat.');
+      // Clear the live thread (DO-local cf_voice_messages) and drop the
+      // memoized recovery state, so the next turn starts a fresh thread and
+      // re-reads the (now archived) recovery snapshot as empty.
+      this.getConversationHistory(1);
+      this.sql`DELETE FROM cf_voice_messages`;
+      this.recoveryStart=undefined;this.recoveryRevision=0;
+      return json({reset:true});
+    }
     if(request.method!=='POST'||!new URL(request.url).pathname.endsWith('/chat'))return new Response('Not found',{status:404});
     const identity={tenantId:request.headers.get('x-mayor-tenant')??'',userId:request.headers.get('x-mayor-user')??'',sessionId:request.headers.get('x-mayor-session')??''};
     const id='http:'+identity.sessionId;

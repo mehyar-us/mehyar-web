@@ -32,7 +32,7 @@ import {readEmailPreference,saveEmailPreference,emailPreferenceSchema,queueNotif
 import {runAttentionCycle} from './attention-cycle';
 import {saveTelnyxCallSetup,telnyxCallSetupSchema,connectTelnyx,telnyxNumbers,selectTelnyxNumber,disconnectTelnyx,telnyxConnectionSchema} from './telnyx-connections';
 import {gmailConnections,gmailReadSchema,readUnreadGmail} from './gmail';
-import {readConversationRecovery} from './conversation-recovery';
+import {readConversationRecovery,resetConversationRecovery} from './conversation-recovery';
 import {recordMissedCall,sendTextBack,simulateTextBack,missedCallCard,listRecentMissedCalls,missedCallInputSchema} from './missed-call-textback';
 import {startTelnyxConsent} from './auth/phone-oauth-state';
 import {finishTelnyxConsent} from './auth/telnyx-callback';
@@ -125,6 +125,20 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       headers.set('x-mayor-tenant',tenantId);headers.set('x-mayor-user',session.user.id);headers.set('x-mayor-session',session.session.id);
       return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/chat`,{method:'POST',headers,body:JSON.stringify(input)}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Conversation is temporarily unavailable.'},503);
     }
+  }
+  const conversationReset=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/conversation\/reset$/);
+  if(conversationReset&&request.method==='POST'){
+    const tenantId=conversationReset[1],identity={tenantId,userId:session.user.id,sessionId:session.session.id};
+    await requireMembership(env,identity,CHAT_ROLES);
+    const name=await digest(`${tenantId}:${session.user.id}`),headers=new Headers({'content-type':'application/json'});
+    headers.set('x-mayor-tenant',tenantId);headers.set('x-mayor-user',session.user.id);headers.set('x-mayor-session',session.session.id);
+    // Reset the live agent thread first; the recovery snapshot is archived
+    // only after the live thread is confirmed fresh, so a failure changes nothing.
+    let live:Response|null=null;
+    try{live=await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/reset`,{method:'POST',headers}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false});}catch{live=null;}
+    if(live&&live.status===409)throw new HttpError(409,'voice_call_active','End the voice conversation before starting a new chat.');
+    if(!live||!live.ok)throw new HttpError(502,'conversation_reset_failed','Could not start a new conversation. Your conversation is unchanged — try again.');
+    return json(await resetConversationRecovery(env,identity));
   }
   const council=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/council$/);
   if(council){

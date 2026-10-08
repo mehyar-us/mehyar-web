@@ -48,6 +48,10 @@ const helpIcon=document.createElement('i');helpIcon.dataset.lucide='circle-help'
 const voiceHelpContent=document.createElement('div');voiceHelpContent.id='voice-help-panel';voiceHelpContent.className='voice-help-content';voiceHelpContent.append($('voice-hint'),soundCheck);
 voiceHelp.append(voiceHelpSummary,voiceHelpContent);document.querySelector('.header-actions')!.append(voiceHelp);
 voiceHelp.addEventListener('keydown',event=>{if(event.key==='Escape'&&voiceHelp.open){event.preventDefault();voiceHelp.open=false;voiceHelpSummary.focus();}});
+// New chat control in the Assistant view header (visible on the chat view only,
+// desktop and mobile). Starts a fresh conversation thread; past history is
+// archived server-side, never deleted. Keyboard-operable with visible focus.
+const newChatHeader=document.createElement('button');newChatHeader.type='button';newChatHeader.id='new-chat';newChatHeader.className='secondary';newChatHeader.textContent='New chat';newChatHeader.setAttribute('aria-label','Start a new conversation');newChatHeader.hidden=true;newChatHeader.onclick=()=>void startNewChat();document.querySelector('.header-actions')!.append(newChatHeader);
 const micLevel=document.createElement('meter');micLevel.id='mic-level';micLevel.min=0;micLevel.max=1;micLevel.value=0;micLevel.hidden=true;micLevel.setAttribute('aria-label','Microphone input level');soundCheck.after(micLevel);
 const canManage=()=>!accessEnded&&['owner','manager'].includes(membershipRole);
 const canChat=()=>!accessEnded&&['owner','manager','staff'].includes(membershipRole);
@@ -203,6 +207,10 @@ function useBusinessProfile(profile:Record<string,unknown>,progress?:{missing:st
 const composerStatus=document.createElement('p');composerStatus.id='composer-status';composerStatus.setAttribute('role','status');
 const stopWaiting=document.createElement('button');stopWaiting.type='button';stopWaiting.className='secondary';stopWaiting.textContent='Stop waiting';stopWaiting.hidden=true;
 const chatActions=document.createElement('div');chatActions.className='chat-actions';chatActions.append(stopWaiting);$('text-form').after(composerStatus,chatActions);
+// New chat control in the global chat bar (assistant dock), desktop and mobile.
+// Same action as the header control: archive the server thread, clear the local
+// transcript, and re-render the business-first greeting.
+const newChatDock=document.createElement('button');newChatDock.type='button';newChatDock.className='secondary';newChatDock.textContent='New chat';newChatDock.setAttribute('aria-label','Start a new conversation');newChatDock.onclick=()=>void startNewChat();chatActions.append(newChatDock);
 const modeToggle=document.createElement('div');modeToggle.className='mode-toggle';modeToggle.setAttribute('role','group');modeToggle.setAttribute('aria-label','Chat mode');
 const assistantModeBtn=document.createElement('button');assistantModeBtn.type='button';assistantModeBtn.textContent='Assistant';assistantModeBtn.setAttribute('aria-pressed','true');
 const councilModeBtn=document.createElement('button');councilModeBtn.type='button';councilModeBtn.textContent='Council';councilModeBtn.setAttribute('aria-pressed','false');
@@ -231,6 +239,27 @@ stopWaiting.onclick=()=>textChat.cancel();
 async function loadConversation(){
  const result=await api(`/api/businesses/${tenantId}/conversation`);
  savedTranscript=result.messages.map((m:any)=>({role:m.role,text:m.content}));if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceRows.clear();voiceSeen=voice?.transcript.length??0;historyReady=true;transcripts();updateNetwork();
+}
+/** Start a new chat: the server archives the current thread (past history is
+ * preserved in the archive table, never deleted) and resets the live agent
+ * thread; the client clears the transcript and re-renders the business-first
+ * greeting via assistantGreeting, which leads with the saved business name. */
+async function startNewChat(){
+ if(!loggedIn||accessEnded)return;
+ if(textChat.busy){notice('Your reply is still sending. Start a new chat once it finishes.');return;}
+ if(voiceCall?.active||voiceCall?.starting){notice('End the voice conversation before starting a new chat.');return;}
+ notice('');
+ try{
+  await api(`/api/businesses/${tenantId}/conversation/reset`,{});
+  savedTranscript=[];
+  if(canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});
+  voiceRows.clear();voiceSeen=voice?.transcript.length??0;
+  $('transcript').replaceChildren();$('interim').textContent='';
+  historyReady=true;transcripts();updateNetwork();
+  show('chat');$('transcript').scrollTop=0;
+  notice('Started a new conversation. Your earlier messages stay saved with this business.');
+  $<HTMLTextAreaElement>('message').focus();
+ }catch(error){notice(error instanceof Error?error.message:'Could not start a new chat. Your conversation is unchanged.');}
 }
 const pullStatus=document.createElement('div');pullStatus.className='pull-refresh-status';pullStatus.hidden=true;pullStatus.setAttribute('role','status');document.body.append(pullStatus);
 const pullGesture=createPullRefresh();let pullBusy=false;
@@ -614,7 +643,7 @@ function endWorkspaceAccess(){
  document.querySelector('main')!.hidden=true;document.querySelector('nav')!.hidden=true;
  $<HTMLTextAreaElement>('message').value='';$<HTMLTextAreaElement>('message').disabled=true;
  $<HTMLButtonElement>('send-message').disabled=true;$<HTMLButtonElement>('talk').disabled=true;
- document.querySelector<HTMLElement>('.assistant-dock')!.hidden=true;composerStatus.textContent='';chatActions.hidden=true;
+ document.querySelector<HTMLElement>('.assistant-dock')!.hidden=true;composerStatus.textContent='';chatActions.hidden=true;newChatHeader.hidden=true;
  accessRecovery.show();
 }
 function handleMessage(data:unknown){
@@ -790,7 +819,7 @@ async function init(){
   if(!business)throw new Error('Your business membership is not available. Please contact the workspace owner.');
   tenantId=business.id;membershipRole=business.role;
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
-  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();
+  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();chatActions.hidden=false;
   workday.ready(business.name,membershipRole);
   setupBusinessSwitcher(businesses.businesses as Array<{id:string;name:string;role:string}>,business.id);
   $('calendar-status').hidden=!canManage();
