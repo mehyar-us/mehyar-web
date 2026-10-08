@@ -75,13 +75,13 @@ export async function handleCouncilRequest(request:Request,env:Env,actor:Actor):
   text=result.text.trim();finishReason=result.finishReason;
  }catch(error){
   console.error(JSON.stringify({event:'council_model_error',error:error instanceof Error?error.message:String(error)}));
-  throw new HttpError(502,'council_failed','The council could not finish. Try again.');
+  throw new HttpError(502,'council_failed','The council could not reach the AI service. Try again in a moment.');
  }
  // The empty check MUST come before the disclaimer append: an empty model
  // reply plus disclaimer used to surface as disclaimer-only output.
  if(!text){
   console.error(JSON.stringify({event:'council_empty_reply',finishReason}));
-  throw new HttpError(502,'council_empty','The council could not finish. Try again.');
+  throw new HttpError(502,'council_empty','The council returned an empty reply. Try again in a moment.');
  }
  return json({reply:text+COUNCIL_DISCLAIMER,events:[]});
 }

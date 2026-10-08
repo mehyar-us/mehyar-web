@@ -107,6 +107,18 @@ describe('handleCouncilRequest',()=>{
   } as any);
   await expect(handleCouncilRequest(postRequest({requestId:crypto.randomUUID(),text:'Should I raise prices?'}),env,actor)).rejects.toMatchObject({status:502,code:'council_empty'});
  });
+ it('uses distinct honest messages for model failure vs empty reply (never quota copy)',async()=>{
+  models.mayorModel.mockReturnValue({specificationVersion:'v2',provider:'test',modelId:'council-test',supportedUrls:{},doGenerate:async()=>{throw new Error('gateway timeout');}} as any);
+  const failed=await handleCouncilRequest(postRequest({requestId:crypto.randomUUID(),text:'Hi'}),env,actor).catch(e=>e as HttpError);
+  expect(failed).toMatchObject({status:502,code:'council_failed'});
+  expect(failed.message).toContain('AI service');
+  expect(failed.message).not.toMatch(/allowance|Plan & usage/i);
+  models.mayorModel.mockReturnValue({specificationVersion:'v2',provider:'test',modelId:'council-test',supportedUrls:{},doGenerate:async()=>({content:[{type:'text',text:''}],finishReason:'stop',usage:{},warnings:[]})} as any);
+  const empty=await handleCouncilRequest(postRequest({requestId:crypto.randomUUID(),text:'Hi'}),env,actor).catch(e=>e as HttpError);
+  expect(empty).toMatchObject({status:502,code:'council_empty'});
+  expect(empty.message).toContain('empty reply');
+  expect(empty.message).not.toMatch(/allowance|Plan & usage/i);
+ });
  it('throws 502 when the model call fails instead of returning disclaimer-only',async()=>{
   models.mayorModel.mockReturnValue({
    specificationVersion:'v2',provider:'test',modelId:'council-test',supportedUrls:{},

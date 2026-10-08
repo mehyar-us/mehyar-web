@@ -38,7 +38,7 @@ $('conversation').after(calendarChat.element);
 const calendarLauncher=document.createElement('button');calendarLauncher.type='button';calendarLauncher.className='quiet calendar-launcher';calendarLauncher.textContent='Calendar settings';calendarLauncher.hidden=true;
 calendarLauncher.onclick=()=>{show('chat');$('conversation').setAttribute('open','');void calendarChat.open();};calendarChat.element.after(calendarLauncher);
 $('account-view').append(workspace.element);
-const usageStatus=document.createElement('p');usageStatus.id='usage-status';usageStatus.className='privacy-note';usageStatus.textContent='Check Plan & usage for your shared business allowance.';
+const usageStatus=document.createElement('p');usageStatus.id='usage-status';usageStatus.className='privacy-note';usageStatus.textContent='';
 $('text-form').after(usageStatus);
 const soundCheck=document.createElement('button');soundCheck.type='button';soundCheck.className='sound-check';soundCheck.textContent='Check speaker sound';
 soundCheck.onclick=async()=>{soundCheck.disabled=true;try{await playSoundCheck();notice('Did you hear the tone? If not, check your speaker volume and whether this tab is muted. Then choose Talk to The Mayor.');}catch{notice('Audio could not start here. Open mayor.mehyar.us in your regular browser and try the sound check again.');}finally{soundCheck.disabled=false;}};
@@ -213,8 +213,20 @@ modeToggle.append(assistantModeBtn,councilModeBtn);$('text-form').before(modeTog
 const textChat=createTextChat(async(text,requestId,signal)=>{
  const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/${councilMode?'council':'conversation'}`;
  const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId}),signal});
- const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();throw new Error(result.message??'Could not send. Your draft is still here.');}return result;
-},(busy,message)=>{if(accessEnded)return;composerStatus.textContent=message;stopWaiting.hidden=!busy;updateNetwork();renderVoiceState();});
+ const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){
+  if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();
+  // The Plan & usage notice reflects genuine quota failures ONLY (402 /
+  // allowance exhausted). A model or gateway failure (502) must never imply
+  // the allowance is the problem.
+  if(response.status===402&&typeof result.message==='string'&&result.message)usageStatus.textContent=result.message;
+  const err=new Error(result.message??'Could not send. Your draft is still here.') as Error&{status?:number};
+  err.status=response.status;throw err;
+ }return result;
+},(busy,message)=>{if(accessEnded)return;composerStatus.textContent=message;stopWaiting.hidden=!busy;updateNetwork();renderVoiceState();},{
+ serviceDownCopy:(status)=>status===502
+  ?(councilMode?'The council couldn\u2019t reach the AI service — try again in a moment.':'The assistant couldn\u2019t reach the AI service — try again in a moment.')
+  :undefined,
+});
 stopWaiting.onclick=()=>textChat.cancel();
 async function loadConversation(){
  const result=await api(`/api/businesses/${tenantId}/conversation`);
