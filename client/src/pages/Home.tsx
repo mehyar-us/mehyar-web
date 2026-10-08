@@ -30,6 +30,40 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── THE MAYOR FEATURE ── */}
+      <section className="px-4 py-12 md:py-16">
+        <div className="site-shell">
+          <div className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-8 md:p-12">
+            <p className="site-eyebrow">The Mayor · AI for your business</p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-bold tracking-tight text-balance md:text-4xl">
+              The AI built for each business.
+            </h2>
+            <p className="site-lede mt-4 max-w-2xl">
+              The Mayor is an AI business workspace for Main Street — it remembers your business, captures the calls you miss, and keeps customers, appointments, and playbooks in one place.
+            </p>
+            <ul className="mt-6 grid max-w-3xl gap-3 text-sm sm:grid-cols-2">
+              {[
+                "Business memory — it knows your services, hours, and customers",
+                "Missed-call voice capture answers when you can't pick up",
+                "Appointments, customers, and playbooks in one workspace",
+                "Review-gated actions — nothing sends or books without your approval",
+              ].map((f) => (
+                <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" /><span>{f}</span></li>
+              ))}
+            </ul>
+            <p className="mt-6 text-sm text-muted-foreground">Free $0 · Pro $14/month.</p>
+            <a
+              href="https://mayor.mehyar.us"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "cta", size: "lg", className: "mt-6 min-h-12 w-full sm:w-auto" })}
+            >
+              Visit The Mayor <ArrowRight className="ml-2 h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ── */}
       <section className="px-4 py-12 md:py-16">
         <div className="site-shell">
