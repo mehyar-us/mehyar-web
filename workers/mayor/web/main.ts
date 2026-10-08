@@ -18,6 +18,7 @@ import {bindVoiceAccessRecovery,createAccessRecoveryView} from './voice-access-r
 import {createBusinessWorkspace,playSoundCheck} from './business-workspace';
 import {createWorkspaceAccessGuard,workspaceAccessWasRejected,selectWorkspaceBusiness} from './workspace-access';
 import {assistantName,assistantGreeting} from '../src/assistant-persona';
+import {VERTICAL_PROFILES} from '../src/verticals';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -79,9 +80,9 @@ async function refreshInbox(){
   inboxStatus.textContent=result.notifications.length?'Account items needing attention. Manage recurring checks and email alerts in Account.':'No account alerts are open. Manage recurring checks and email alerts in Account.';
   for(const item of result.notifications){
    const card=document.createElement('article'),title=document.createElement('h3'),message=document.createElement('p'),action=document.createElement('button');
-   const destination=item.action==='today'?'today':item.action==='tasks'?'tasks':item.action==='chat'?'chat':'account';
-   title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':'Talk to '+assistantName(confirmedProfile);
-   action.onclick=()=>{show(destination);inbox.open=false;(destination==='today'?$('today-heading'):destination==='tasks'?$('tasks-heading'):destination==='account'?$('account-heading'):$('talk')).focus();};
+   const destination=item.action==='today'?'today':item.action==='tasks'?'tasks':item.action==='chat'?'chat':item.action==='missed-calls'?'missed-calls':'account';
+   title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':destination==='missed-calls'?'Review missed call':'Talk to '+assistantName(confirmedProfile);
+   action.onclick=()=>{if(destination==='missed-calls'){inbox.open=false;show('today');workday.openMissedCalls();return;}show(destination);inbox.open=false;(destination==='today'?$('today-heading'):destination==='tasks'?$('tasks-heading'):destination==='account'?$('account-heading'):$('talk')).focus();};
    card.append(title,message,action);
    if(!item.read){
     const read=document.createElement('button');read.type='button';read.className='secondary';read.textContent='Mark read';
@@ -247,14 +248,20 @@ function updateNetwork(){
   workspace.ready(online&&historyReady&&!textChat.busy&&!pullBusy&&!accessEnded);
   if(!online){voiceCall?.stop();$('interim').textContent='';}
 }
-/** Business pill switcher: tap the business identity to switch between owned businesses.
- * Switching navigates with ?business=<id>; the server selects the tenant from the param. */
+/** Business pill: always shows the current business name in the header.
+ * The chevron and dropdown are interactive only when 2+ businesses exist;
+ * switching navigates with ?business=<id>; the server selects the tenant from the param. */
 function setupBusinessSwitcher(businesses:Array<{id:string;name:string;role:string}>,currentId:string){
   const identity=document.querySelector<HTMLElement>('.business-identity');
-  if(!identity||businesses.length<2)return;
+  if(!identity)return;
+  const current=businesses.find(b=>b.id===currentId);
+  const currentName=current?.name??'your business';
+  const nameEl=identity.querySelector('#business-name');
+  if(nameEl&&current){nameEl.textContent=current.name;identity.title=current.name;}
+  identity.setAttribute('aria-label',`Current business: ${currentName}${businesses.length>1?'. Activate to switch business.':''}`);
+  if(businesses.length<2)return;
   identity.setAttribute('role','button');
   identity.setAttribute('tabindex','0');
-  identity.setAttribute('aria-label',`Switch business, current: ${businesses.find(b=>b.id===currentId)?.name??'your business'}`);
   identity.style.cursor='pointer';
   const chevron=document.createElement('span');
   chevron.textContent=' ▾';
@@ -296,6 +303,34 @@ const phoneGuide=document.createElement('div');phoneGuide.id='phone-guide';phone
 const consentSection=document.createElement('div');consentSection.id='recording-consent';consentSection.setAttribute('aria-live','polite');
 phoneCard.append(phoneTitle,phoneIntro,phoneChoices,phoneGuide,consentSection);$('logout').before(phoneCard);
 const phoneControls=document.createElement('div');phoneCard.append(phoneControls);
+// TEST ONLY simulator: record a fake missed call and simulate its text-back.
+// Simulation writes local rows only — it never contacts a provider or sends a real SMS.
+const missedCallSim=document.createElement('details');missedCallSim.className='account-card test-simulator';
+const simSummary=document.createElement('summary');simSummary.textContent='TEST ONLY · Simulate a missed call';
+const simIntro=document.createElement('p');simIntro.textContent='Record a fake missed call and simulate its text-back to watch the money loop end to end. Nothing is sent to a real phone. Use a fake test number.';
+const simForm=document.createElement('form');
+const simCaller=document.createElement('input'),simBusiness=document.createElement('input');
+simCaller.type='tel';simCaller.required=true;simCaller.maxLength=16;simCaller.value='+15550131234';simCaller.autocomplete='off';
+simBusiness.type='tel';simBusiness.required=true;simBusiness.maxLength=16;simBusiness.placeholder='+15550139876';simBusiness.autocomplete='off';
+for(const [labelText,input] of [['Fake caller number',simCaller],['Fake business number',simBusiness]] as const){const label=document.createElement('label');label.textContent=labelText;label.append(input);simForm.append(label);}
+const simGo=document.createElement('button');simGo.type='submit';simGo.className='secondary';simGo.textContent='Simulate missed call';
+const simStatus=document.createElement('p');simStatus.setAttribute('role','status');
+simForm.append(simGo,simStatus);
+const simTextBack=document.createElement('button');simTextBack.type='button';simTextBack.className='secondary';simTextBack.textContent='Simulate text-back · no real SMS sent';simTextBack.hidden=true;
+let simCallId='';
+simForm.onsubmit=async event=>{event.preventDefault();simGo.disabled=true;simStatus.textContent='Recording the fake missed call…';simTextBack.hidden=true;
+ try{const result=await api(`/api/businesses/${tenantId}/phone/test-missed-call`,{callerNumber:simCaller.value.trim(),businessNumber:simBusiness.value.trim()});
+  simCallId=result.missedCall.id;simStatus.textContent='Fake missed call recorded. Now simulate its text-back.';simTextBack.hidden=false;}
+ catch(error){simStatus.textContent=error instanceof Error?error.message:'The fake call could not be recorded.';}
+ finally{simGo.disabled=false;}};
+simTextBack.onclick=async()=>{simTextBack.disabled=true;
+ try{await api(`/api/businesses/${tenantId}/phone/test-missed-call/${simCallId}/text-back`,{});
+  simStatus.textContent='Simulated text-back recorded. Check Notifications.';simTextBack.hidden=true;
+  notice('Simulated text-back recorded. Check Notifications.');await refreshInbox();}
+ catch(error){simStatus.textContent=error instanceof Error?error.message:'The simulated text-back failed.';}
+ finally{simTextBack.disabled=false;}};
+missedCallSim.append(simSummary,simIntro,simForm,simTextBack);
+phoneCard.append(missedCallSim);
 let phoneLoading=false;
 async function loadPhoneAccount(){
   if(phoneLoading||!loggedIn||!canManage())return;
@@ -660,6 +695,27 @@ async function account(){
    $('profile').append(dt,dd);
   }
   for(const [key,value] of Object.entries(memory.profile)){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=key.replace(/([A-Z])/g,' $1');dd.textContent=Array.isArray(value)?value.join(', '):String(value);$('profile').append(dt,dd);}
+  // Business vertical drives the vertical-aware SMS text-back wording. Server accepts the enum keys from src/verticals.ts.
+  {
+   const dt=document.createElement('dt');dt.textContent='Business type';
+   const dd=document.createElement('dd');
+   const picker=document.createElement('select');picker.setAttribute('aria-label','Business type');
+   for(const [key,vertical] of Object.entries(VERTICAL_PROFILES)){const option=document.createElement('option');option.value=key;option.textContent=vertical.label;picker.append(option);}
+   const current=(memory.profile as {vertical?:string}).vertical??'other';picker.value=current;
+   const note=document.createElement('p');note.className='privacy-note';note.textContent='Sets the wording of missed-call text-backs and appointment reminders.';
+   dd.append(picker,note);$('profile').append(dt,dd);
+   if(canManage()){
+    picker.onchange=async()=>{
+     picker.disabled=true;
+     try{
+      const updated=await api(`/api/businesses/${tenantId}/profile`,{vertical:picker.value,revision:memory.revision});
+      memory.revision=updated.revision;confirmedProfile.vertical=picker.value;
+      notice('Business type saved. Text-back messages will use this wording.');
+     }catch(error){notice(error instanceof Error?error.message:'Could not save the business type.');picker.value=(memory.profile as {vertical?:string}).vertical??'other';}
+     finally{picker.disabled=false;}
+    };
+   }else picker.disabled=true;
+  }
   const cited=Object.entries(memory.sources??{}).filter(([,source]:[string,any])=>source.kind==='website_owner_confirmed');
   if(cited.length){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent='Confirmed website sources';
     for(const [field,value] of cited){const source=value as any,line=document.createElement('p'),link=document.createElement('a');link.textContent=field.replace(/([A-Z])/g,' $1');

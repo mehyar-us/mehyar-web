@@ -1,10 +1,33 @@
 import {expect,it} from 'vitest';
-import {assistantGreeting,assistantName,assistantNameChoice,assistantNameWasChosen,assistantPersonaPrompt,validAssistantName} from '../src/assistant-persona';
+import {assistantGreeting,assistantName,assistantNameChoice,assistantNameWasChosen,assistantPersonaPrompt,businessDisplayName,businessFirstTurnPrompt,validAssistantName} from '../src/assistant-persona';
 import {profileSchema} from '../src/memory';
 it('asks about the business first, never the assistant name',()=>{
  const greeting=assistantGreeting();expect(greeting).toMatch(/^Hey — I’m Mayor\./);expect(greeting).toContain('What is your business called?');
  expect(greeting).not.toMatch(/what[’']ll it be\?|what would you like to call me\?/i);
  expect(assistantGreeting({},false)).not.toContain('call me');expect(assistantGreeting({assistantName:'Mayor Michael'})).toContain('I’m Mayor Michael');expect(assistantGreeting({assistantName:'Mayor'})).not.toContain('give me a name');
+});
+it('states the saved business name in the seeded greeting, asking only when unknown',()=>{
+ const named=assistantGreeting({name:'Acme Plumbing'});
+ expect(named).toContain('Acme Plumbing');expect(named).toContain('running the front at');
+ expect(named).not.toContain('What is your business called?');
+ const namedCustom=assistantGreeting({name:'Acme Plumbing',assistantName:'Mayor Michael'});
+ expect(namedCustom).toContain('I’m Mayor Michael, running the front at Acme Plumbing');
+ expect(assistantGreeting({name:'  '})).toContain('What is your business called?');
+ expect(assistantGreeting({assistantName:'Mayor'},false)).toContain('What are we working on?');
+});
+it('validates the saved business name as display data only',()=>{
+ expect(businessDisplayName({name:'Acme Plumbing'})).toBe('Acme Plumbing');
+ expect(businessDisplayName({name:'  Acme  '})).toBe('Acme');
+ expect(businessDisplayName({})).toBeNull();expect(businessDisplayName({name:''})).toBeNull();
+ expect(businessDisplayName({name:42})).toBeNull();expect(businessDisplayName({name:'x'.repeat(161)})).toBeNull();
+});
+it('greets business-first on the first turn and bans generic openers',()=>{
+ const prompt=businessFirstTurnPrompt({name:'Acme Plumbing',assistantName:'Mayor Michael'});
+ expect(prompt).toContain('Acme Plumbing');expect(prompt).toContain('I’m Mayor Michael');
+ expect(prompt).toContain('How can I assist you today?');
+ expect(businessFirstTurnPrompt()).toContain('what the business is called');
+ const persona=assistantPersonaPrompt({name:'Acme Plumbing'});
+ expect(persona).toContain('How can I assist you today?');
 });
 it('recognizes explicit assistant choices without confusing business/user names or mixed work',()=>{
  const question=assistantGreeting();
