@@ -4,3 +4,8 @@
 .phone-credential-form{display:grid;gap:12px;margin-top:16px}.phone-credential-form label{display:grid;gap:6px}.phone-credential-form input{width:100%;box-sizing:border-box;border:1px solid #cbd8e5;border-radius:10px;padding:12px;font:inherit}.phone-credential-form button{justify-self:start}
 #network-status{padding:14px;border:1px solid #9eb9d7;border-radius:12px;background:#e8f1fb;color:#18334d;font-size:14px;line-height:1.5}
 body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.onboarding-progress{max-width:640px;margin:0 auto 8px;text-align:left;background:#fff;border:1px solid #dce5ee;border-radius:14px;padding:12px 16px}
+.onboarding-progress p{font-size:13px;color:#53697e;margin:8px 0;line-height:1.5}
+.op-bar{height:6px;border-radius:3px;background:#e4eefc;overflow:hidden}
+.op-fill{height:100%;background:#102b47;border-radius:3px}
+.consent-blocked{border:2px solid #a62f25;background:#fdf0ee;color:#7a231b;border-radius:12px;padding:12px 16px;font-weight:700;font-size:14px;line-height:1.5;margin:12px 0}

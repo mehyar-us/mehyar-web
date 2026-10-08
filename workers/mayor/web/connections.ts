@@ -92,7 +92,10 @@ export function createConnections(hooks:ConnectionsHooks){
   const services=node('section','','connection-section');services.append(node('h3','Your accounts'));const grid=node('div','','connection-grid');services.append(grid);element.append(services);
   if(!hooks.canManage())grid.append(node('p','Your business owner manages shared connections.','connection-subtle'));
   else if(builtInError){const error=node('p',builtInError,'connection-error');error.setAttribute('role','alert');grid.append(error);}
-  else for(const provider of ['google','microsoft','zoho'] as Provider[])renderProvider(grid,provider);
+  else{const connected=(provider:Provider)=>grants.some(grant=>grant.provider===provider&&grant.tenantId===activeTenant&&grant.status==='authorized');
+   // Value order: connected providers first, then the canonical Google > Microsoft > Zoho order. Stable sort keeps the canonical order within each group.
+   const order=(['google','microsoft','zoho'] as Provider[]).slice().sort((a,b)=>Number(connected(b))-Number(connected(a)));
+   for(const provider of order)renderProvider(grid,provider);}
   for(const pending of hooks.pendingProviders??[]){const pendingCard=card(pending.label,'Social channels',Globe,pending.status);pendingCard.classList.add('connection-pending');grid.append(pendingCard);}
   if(hooks.canManage()){
    const section=node('section','','connection-section'),title=node('div','','connection-section-heading');title.append(node('h3','Custom connections'),button('Add',addConnection,'secondary',Plus));section.append(title);const cards=node('div','','connection-grid');section.append(cards);

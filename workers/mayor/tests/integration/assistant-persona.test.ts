@@ -21,7 +21,7 @@ function instance(actor:{tenantId:string;userId:string},ai:unknown={run:()=>{thr
 it.each(['owner','manager'])('introduces itself before setup and persists a confirmed %s choice across reconnects',async role=>{
  const actor=await business(role),first=instance(actor);
  expect(await first.greet()).toBe(assistantGreeting());
- expect(await first.turn('Mayor Michael',[{role:'assistant',content:assistantGreeting()}])).toContain('Say “yes” to save');
+ expect(await first.turn('Call yourself Mayor Michael',[{role:'assistant',content:assistantGreeting()}])).toContain('Say “yes” to make it official');
  expect((await readMemory(env,actor)).profile.assistantName).toBeUndefined();expect(first.voice.ready.has(first.connection.id)).toBe(true);
  expect(await first.turn('Yes.')).toContain('Saved. You can call me Mayor Michael. What is your business called?');
  expect((await readMemory(env,actor)).profile.assistantName).toBe('Mayor Michael');

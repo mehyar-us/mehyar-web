@@ -10,6 +10,7 @@ import { getSession, handleAuthRequest } from './auth';
 import { HttpError,json,readJson,requireOrigin,digest } from './http';
 import { requireMembership,CHAT_ROLES } from './permissions';
 import { readMemory } from './memory';
+import { onboardingProgress } from './onboarding';
 import {calendarGuide} from './calendar-guide';
 import {getPhoneSetup,savePhoneSetup,phoneSetupSchema,phoneSetupGuide} from './phone-setup';
 import {getRecordingConsent,acknowledgeRecordingConsent,RECORDING_CONSENT_TEXT,RECORDING_CONSENT_VERSION} from './phone-recording-consent';
@@ -219,7 +220,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       return json(await selectCalendar(env,actor,calendarSelectionSchema.parse(body)));
     }
   }
-  if(profile&&request.method==='GET')return json(await readMemory(env,{tenantId:profile[1],userId:session.user.id}));
+  if(profile&&request.method==='GET'){const memory=await readMemory(env,{tenantId:profile[1],userId:session.user.id});return json({...memory,progress:onboardingProgress(memory.profile)});}
   const phoneSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-setup$/);
   if(phoneSetup){
     const actor={tenantId:phoneSetup[1],userId:session.user.id};

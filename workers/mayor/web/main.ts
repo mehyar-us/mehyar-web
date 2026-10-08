@@ -56,6 +56,7 @@ $('open-connections').onclick=()=>show('connections');
 const workday=createWorkday({api,tenant:()=>tenantId,actor:()=>sessionUserId,canManage,canChat,onNavigate:show,ask:text=>{show('chat');const input=$<HTMLTextAreaElement>('message');input.value=text;resizeComposer();input.focus();},onNotice:message=>notice(message),onChanged:()=>void refreshInbox(),onSignIn:()=>void signIn()});
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-prompt]'))button.onclick=()=>{show('chat');const input=$<HTMLTextAreaElement>('message');input.value=button.dataset.prompt??'';resizeComposer();input.focus();};
 $('today-sign-in').onclick=()=>signIn();
+$('today-microsoft-sign-in').onclick=()=>signIn('microsoft');
 $('calendar-status').onclick=()=>{show('connections');$('connections-heading').focus();};
 $('dock-voice-label').onclick=()=>{show('chat');$('talk').click();};
 const inbox=document.createElement('details'),inboxSummary=document.createElement('summary'),inboxItems=document.createElement('div'),inboxRefresh=document.createElement('button'),inboxStatus=document.createElement('p');
@@ -164,8 +165,23 @@ let savedTranscript:Array<{role:string;text:string}>=[];
 let confirmedProfile:Record<string,unknown>={};
 let councilMode=false;
 function composerPlaceholder(){const name=assistantName(confirmedProfile);return councilMode?'Ask the council…':`Ask ${name.length<=14?name:'Mayor'}…`;}
-function useBusinessProfile(profile:Record<string,unknown>){
- confirmedProfile=profile;workspace.profile(profile);
+const ONBOARDING_STEP_LABELS:Record<string,string>={name:'Business name',industry:'Industry',services:'Services',locations:'Locations',hours:'Hours',timeZone:'Time zone',staff:'Team'};
+function renderOnboardingProgress(progress?:{missing:string[];basicsComplete:boolean}){
+ const el=$('onboarding-progress');el.replaceChildren();
+ if(!progress||progress.basicsComplete){el.hidden=true;return;}
+ const done=7-progress.missing.length;
+ const bar=document.createElement('div');bar.className='op-bar';bar.setAttribute('role','progressbar');
+ bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax','7');bar.setAttribute('aria-valuenow',String(done));
+ bar.setAttribute('aria-label',`Business profile ${done} of 7 complete`);
+ const fill=document.createElement('div');fill.className='op-fill';fill.style.width=`${Math.round(done/7*100)}%`;bar.append(fill);
+ const text=document.createElement('p');
+ text.textContent=`Business profile: ${done} of 7 complete. Still to go: ${progress.missing.map(field=>ONBOARDING_STEP_LABELS[field]??field).join(', ')}.`;
+ const again=document.createElement('button');again.type='button';again.className='secondary';again.textContent='Continue setup';
+ again.onclick=()=>{show('chat');const input=$<HTMLTextAreaElement>('message');input.value='Resume onboarding from my confirmed details. Ask one missing question.';resizeComposer();input.focus();};
+ el.append(bar,text,again);el.hidden=false;
+}
+function useBusinessProfile(profile:Record<string,unknown>,progress?:{missing:string[];basicsComplete:boolean}){
+ confirmedProfile=profile;workspace.profile(profile);renderOnboardingProgress(progress);
  const name=assistantName(profile);$<HTMLTextAreaElement>('message').placeholder=composerPlaceholder();resizeComposer();
  $('chat-view').querySelector('.page-heading > p')!.textContent=`Tell ${name} what you need. Review details before changing your calendar or saving a customer.`;
  $('chat-view').querySelector<HTMLImageElement>('.portrait img')!.alt=name;
@@ -251,32 +267,33 @@ async function loadPhoneAccount(){
 }
 async function loadRecordingConsent(){
   consentSection.replaceChildren();
+  const title=document.createElement('h4');title.textContent='Call recording consent';consentSection.append(title);
+  const blocked=(text:string)=>{const alert=document.createElement('p');alert.className='consent-blocked';alert.setAttribute('role','alert');alert.textContent=text;return alert;};
   try{
     const status=await api(`/api/businesses/${tenantId}/phone-connections/recording-consent`);
-    const title=document.createElement('h4');title.textContent='Call recording consent';
     const text=document.createElement('p');text.textContent=status.text;
-    consentSection.append(title,text);
+    consentSection.append(text);
     if(status.acknowledged){
       const done=document.createElement('p');done.setAttribute('role','status');
       done.textContent=`Acknowledged${status.acknowledgedAt?' on '+new Date(status.acknowledgedAt).toLocaleDateString():''}. Calls can be handled.`;
       consentSection.append(done);
     }else{
+      consentSection.append(blocked('Calls are blocked until recording consent is acknowledged. No calls can be placed or received until then.'));
       const label=document.createElement('label');
       const box=document.createElement('input');box.type='checkbox';
       label.append(box,document.createTextNode(' I acknowledge the above.'));
       const btn=document.createElement('button');btn.type='button';btn.className='secondary';
       btn.textContent='Acknowledge recording consent';btn.disabled=true;
-      const note=document.createElement('p');note.textContent='Calls cannot be handled until this is acknowledged.';
       box.onchange=()=>{btn.disabled=!box.checked;};
       btn.onclick=async()=>{
         btn.disabled=true;
         try{await api(`/api/businesses/${tenantId}/phone-connections/recording-consent`,{acknowledged:true});await loadRecordingConsent();}
         catch{btn.disabled=false;notice('Could not save the acknowledgement. Please try again.');}
       };
-      consentSection.append(label,btn,note);
+      consentSection.append(label,btn);
     }
   }catch{
-    // Consent status unavailable — the backend gate still blocks calls without acknowledgement.
+    consentSection.append(blocked('Recording consent status could not be checked. Calls remain blocked until consent is confirmed.'));
   }
 }
 phoneCard.addEventListener('toggle',()=>{if(phoneCard.open)void loadPhoneAccount();});
@@ -568,7 +585,9 @@ async function signIn(provider='google',capabilities:string[]=[]){
   }catch(error){notice((error as Error).message);}
 }
 $('sign-in').onclick=()=>signIn();
+$('sign-in-microsoft').onclick=()=>signIn('microsoft');
 $('chat-google-sign-in').onclick=()=>signIn();
+$('chat-microsoft-sign-in').onclick=()=>signIn('microsoft');
 $('logout').onclick=async()=>{endWorkspaceAccess();try{await api('/api/auth/sign-out',{});location.reload();}catch{$('status').textContent='Sign-out could not finish. Reload to check your account.';}};
 async function account(){
   if(!loggedIn||accessEnded)return;
@@ -621,11 +640,17 @@ async function init(){
   if(!capabilities.providers.google.configured){
     $<HTMLButtonElement>('sign-in').disabled=true;
     $<HTMLButtonElement>('chat-google-sign-in').disabled=true;
+    $<HTMLButtonElement>('today-sign-in').disabled=true;
     $('voice-hint').textContent='Google sign-in is being connected. Voice onboarding will be available after setup.';
+  }
+  if(!capabilities.providers.microsoft.configured){
+    $<HTMLButtonElement>('sign-in-microsoft').disabled=true;
+    $<HTMLButtonElement>('chat-microsoft-sign-in').disabled=true;
+    $<HTMLButtonElement>('today-microsoft-sign-in').disabled=true;
   }
   const session=await api('/api/auth/get-session');
   if(!session){if(new URLSearchParams(location.search).has('auth_error'))notice('Sign-in could not finish. Please try again.');return;}
-  sessionUserId=session.user.id;loggedIn=true;$('sign-in').hidden=true;$('chat-sign-in').hidden=true;$('chat-empty').hidden=false;$('logout').hidden=false;$('user-detail').textContent=session.user.email;
+  sessionUserId=session.user.id;loggedIn=true;$('sign-in').hidden=true;$('sign-in-microsoft').hidden=true;$('chat-sign-in').hidden=true;$('chat-empty').hidden=false;$('logout').hidden=false;$('user-detail').textContent=session.user.email;
   const businesses=await api('/api/businesses');
   let business=selectWorkspaceBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,new URLSearchParams(location.search).get('business'));
   if(!business){
@@ -654,7 +679,7 @@ async function init(){
   timezoneSuggestion.element.hidden=!canChat();timezoneSuggestion.ready(canChat());
   permissionDetail.textContent=`${business.name} · Role: ${membershipRole}. ${canManage()?'You can manage business details, scheduling, and connections.':canChat()?'You can talk to The Mayor and read business details. An owner or manager confirms business and scheduling changes.':membershipRole==='billing'?'You can manage the subscription and read shared usage in Plan & usage.':'You can read business details. Voice chat and connection management are not available for this role.'}`;
   phoneCard.hidden=!canManage();
-  if(canChat()){if(!canManage())show('chat');const memory=await api(`/api/businesses/${tenantId}/profile`);confirmedProfile=memory.profile;await loadConversation();useBusinessProfile(memory.profile);void connect().catch(error=>{microphoneProblem=`Voice could not connect. Text chat is available. ${error.message}`;renderVoiceState();});}
+  if(canChat()){if(!canManage())show('chat');const memory=await api(`/api/businesses/${tenantId}/profile`);confirmedProfile=memory.profile;await loadConversation();useBusinessProfile(memory.profile,memory.progress);void connect().catch(error=>{microphoneProblem=`Voice could not connect. Text chat is available. ${error.message}`;renderVoiceState();});}
   else{
     $('status').textContent='Account access';
     $('voice-hint').textContent=membershipRole==='billing'?'Your role manages the subscription and shared usage in Plan & usage.':'Your role does not include voice or text chat. Business details are available in Account.';

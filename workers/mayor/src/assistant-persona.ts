@@ -11,7 +11,7 @@ export function assistantName(profile:AssistantProfile={}){
 export function assistantGreeting(profile:AssistantProfile={},canConfigure=true){
  const name=assistantName(profile);
  return !profile.assistantName&&canConfigure
-  ? 'Hey — I’m Mayor. I run the front of this place: the bookings, the customers, the day-to-day. You can call me Mayor, or give me a name you like better. What’ll it be?'
+  ? 'Hey — I’m Mayor. I run the front of this place: the bookings, the customers, the day-to-day. What is your business called?'
   : `Hey — I’m ${name}. I run the front of this place: the bookings, the customers, the day-to-day. What are we working on?`;
 }
 export function assistantPersonaPrompt(profile:AssistantProfile){
