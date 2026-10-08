@@ -66,9 +66,12 @@ inboxStatus.setAttribute('role','status');
 inbox.append(inboxSummary,inboxStatus,inboxItems,inboxRefresh);$('notice').after(inbox);
 let inboxLoading=false;
 async function refreshInbox(){
- if(!tenantId||!canManage()||inboxLoading)return;
+ if(!tenantId||!canManage())return;
+ if(inboxLoading)return;
  inboxLoading=true;inboxRefresh.disabled=true;inboxStatus.textContent='Checking your business profile and saved calendar connection…';
  try{
+  // api() already bounds requests at 15s: a hanging provider check can never
+  // leave the button permanently disabled. The finally below always re-enables.
   const result=await api(`/api/businesses/${tenantId}/notifications/refresh`,{});
   inboxItems.replaceChildren();
   const unread=result.notifications.filter((item:any)=>!item.read).length;
@@ -88,8 +91,16 @@ async function refreshInbox(){
    inboxItems.append(card);
   }
   if(result.hasMore){const more=document.createElement('p');more.textContent='Showing the latest 50 items.';inboxItems.append(more);}
- }catch(error){inboxItems.replaceChildren();inboxSummary.textContent='Notifications';inboxStatus.textContent=error instanceof Error?error.message:'Notifications could not be checked. Try again.';}
- finally{inboxLoading=false;inboxRefresh.disabled=false;}
+ }catch(error){inboxItems.replaceChildren();inboxSummary.textContent='Notifications';
+  const message=error instanceof Error?error.message:'Notifications could not be checked. Try again.';
+  inboxStatus.textContent=message;
+  // Never a dead end: on calendar/connection failures offer the reconnect path.
+  if(/calendar|connection|verify|reconnect/i.test(message)){
+   const reconnect=document.createElement('button');reconnect.type='button';reconnect.className='secondary';
+   reconnect.textContent='Reconnect calendar';reconnect.onclick=()=>{show('connections');$('connections-heading').focus();};
+   inboxItems.append(reconnect);
+  }
+ }finally{inboxLoading=false;inboxRefresh.disabled=false;}
 }
 inboxRefresh.onclick=()=>void refreshInbox();
 $('notifications-button').onclick=()=>{inbox.hidden=!inbox.hidden;inbox.open=!inbox.hidden;};
@@ -194,7 +205,7 @@ const chatActions=document.createElement('div');chatActions.className='chat-acti
 const modeToggle=document.createElement('div');modeToggle.className='mode-toggle';modeToggle.setAttribute('role','group');modeToggle.setAttribute('aria-label','Chat mode');
 const assistantModeBtn=document.createElement('button');assistantModeBtn.type='button';assistantModeBtn.textContent='Assistant';assistantModeBtn.setAttribute('aria-pressed','true');
 const councilModeBtn=document.createElement('button');councilModeBtn.type='button';councilModeBtn.textContent='Council';councilModeBtn.setAttribute('aria-pressed','false');
-const modeNote=document.createElement('p');modeNote.className='mode-note';modeNote.hidden=true;modeNote.textContent='The council answers — the seats speak, the King rules. AI coaching, not professional advice. Council sessions are not saved to your conversation.';
+const modeNote=document.createElement('p');modeNote.className='mode-note';modeNote.hidden=true;modeNote.textContent='The council answers — the seats speak, the King rules. AI coaching, not professional advice. Council replies show here but are not saved to your conversation history.';
 function setChatMode(council:boolean){councilMode=council;assistantModeBtn.setAttribute('aria-pressed',String(!council));councilModeBtn.setAttribute('aria-pressed',String(council));modeNote.hidden=!council;$<HTMLTextAreaElement>('message').placeholder=composerPlaceholder();resizeComposer();}
 assistantModeBtn.onclick=()=>setChatMode(false);councilModeBtn.onclick=()=>setChatMode(true);
 modeToggle.append(assistantModeBtn,councilModeBtn);$('text-form').before(modeToggle,modeNote);
@@ -222,7 +233,7 @@ async function sendTextMessage(text:string){
  const input=$<HTMLTextAreaElement>('message');if(!text.trim())return;notice('');
  show('chat');
  const result=await textChat.submit(text.trim());
- if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(input.value.trim()===text.trim())input.value='';resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
+ if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(result.stopped)setChatMode(false);if(input.value.trim()===text.trim())input.value='';resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
 }
 function updateNetwork(){
   if(accessEnded)return;
@@ -496,6 +507,13 @@ async function connect(){
   client.addEventListener('mutechange',muted=>{if(active())$('mute').textContent=muted?'Unmute':'Mute';});
   client.addEventListener('custommessage',data=>{if(active())handleMessage(data);});
   client.connect();
+  // Watchdog: the SDK's "Connection lost. Reconnecting..." must never persist
+  // silently. If the websocket hasn't established in 20s, say so plainly.
+  setTimeout(()=>{
+   if(!active()||voiceConnected)return;
+   if($('notice').textContent==='Connection lost. Reconnecting...')
+    notice('Voice could not connect. Your microphone and text chat still work — try tapping the mic again, or just type below.');
+  },20000);
 }
 function endWorkspaceAccess(){
  if(accessEnded)return;
@@ -598,6 +616,13 @@ async function account(){
   const memory=await api(`/api/businesses/${tenantId}/profile`);
   if(memory.profile.name)permissionDetail.textContent=`${memory.profile.name} · ${membershipRole}`;
   $('profile').replaceChildren();
+  // Single source of truth: the same onboardingProgress() the chat panel uses.
+  if(memory.progress&&!memory.progress.basicsComplete){
+   const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent='Business profile';
+   const done=7-memory.progress.missing.length;
+   dd.textContent=`${done} of 7 complete. Still to go: ${memory.progress.missing.join(', ')}. Continue setup by talking to The Mayor.`;
+   $('profile').append(dt,dd);
+  }
   for(const [key,value] of Object.entries(memory.profile)){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=key.replace(/([A-Z])/g,' $1');dd.textContent=Array.isArray(value)?value.join(', '):String(value);$('profile').append(dt,dd);}
   const cited=Object.entries(memory.sources??{}).filter(([,source]:[string,any])=>source.kind==='website_owner_confirmed');
   if(cited.length){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent='Confirmed website sources';

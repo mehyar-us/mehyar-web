@@ -45,23 +45,43 @@ THE KING: ...
 /** Server-appended notice: guaranteed present on every council reply (item 12). */
 export const COUNCIL_DISCLAIMER='\n\n_Council Mode is AI coaching — perspective from an AI, not professional, financial, or legal advice._';
 
+/** Deterministic stop: the model must not be the only path out of Council Mode. */
+export function wantsCouncilStop(text:string){
+ return /^(?:stop|enough|that's enough|end (?:the )?council|dismiss (?:the )?council|back to (?:the )?assistant)[.!]*$/i.test(text.trim());
+}
+
+export const COUNCIL_STOPPED_REPLY='Understood — council dismissed. I\'m back as your assistant. What would you like to work on?';
+
 export async function handleCouncilRequest(request:Request,env:Env,actor:Actor):Promise<Response>{
  await requireMembership(env,actor,CHAT_ROLES);
  if(request.method!=='POST')throw new HttpError(405,'method_not_allowed','Use POST.');
  const input=councilInputSchema.parse(await readJson(request,20000));
+ // Deterministic stop: never depend on the model to exit Council Mode.
+ if(wantsCouncilStop(input.text))return json({reply:COUNCIL_STOPPED_REPLY,stopped:true,events:[]});
  // Council sessions ride the house gating: one reply attempt per session against
  // the existing monthly quota (Free 100 / Pro 1000). No new billing path.
  const allowance=await claimUsage(env,actor,'turn');
  if(!allowance.allowed)return json({message:allowance.message},402);
- const result=await generateText({
-  model:mayorModel(env),
-  temperature:0.7,
-  system:COUNCIL_SYSTEM_PROMPT,
-  messages:[{role:'user',content:input.text}],
-  maxOutputTokens:1000,
-  abortSignal:request.signal,
- });
- const reply=result.text.trim()+COUNCIL_DISCLAIMER;
- if(!reply.trim())throw new HttpError(502,'council_empty','The council could not finish. Try again.');
- return json({reply,events:[]});
+ let text:string,finishReason:string;
+ try{
+  const result=await generateText({
+   model:mayorModel(env),
+   temperature:0.7,
+   system:COUNCIL_SYSTEM_PROMPT,
+   messages:[{role:'user',content:input.text}],
+   maxOutputTokens:1000,
+   abortSignal:request.signal,
+  });
+  text=result.text.trim();finishReason=result.finishReason;
+ }catch(error){
+  console.error(JSON.stringify({event:'council_model_error',error:error instanceof Error?error.message:String(error)}));
+  throw new HttpError(502,'council_failed','The council could not finish. Try again.');
+ }
+ // The empty check MUST come before the disclaimer append: an empty model
+ // reply plus disclaimer used to surface as disclaimer-only output.
+ if(!text){
+  console.error(JSON.stringify({event:'council_empty_reply',finishReason}));
+  throw new HttpError(502,'council_empty','The council could not finish. Try again.');
+ }
+ return json({reply:text+COUNCIL_DISCLAIMER,events:[]});
 }

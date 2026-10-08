@@ -1,4 +1,4 @@
-export function createTextChat(send:(text:string,requestId:string,signal:AbortSignal)=>Promise<{reply:string;events?:unknown[]}>,changed:(busy:boolean,message:string)=>void){
+export function createTextChat(send:(text:string,requestId:string,signal:AbortSignal)=>Promise<{reply:string;stopped?:boolean;events?:unknown[]}>,changed:(busy:boolean,message:string)=>void){
  let controller:AbortController|undefined;
  return {
   get busy(){return !!controller;},

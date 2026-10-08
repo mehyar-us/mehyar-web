@@ -1,5 +1,5 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
-import {COUNCIL_DISCLAIMER,COUNCIL_SYSTEM_PROMPT,councilInputSchema,handleCouncilRequest} from '../src/council';
+import {COUNCIL_DISCLAIMER,COUNCIL_STOPPED_REPLY,COUNCIL_SYSTEM_PROMPT,councilInputSchema,handleCouncilRequest,wantsCouncilStop} from '../src/council';
 import {HttpError} from '../src/http';
 import type {Env} from '../src/env';
 
@@ -94,5 +94,47 @@ describe('handleCouncilRequest',()=>{
  it('denies without membership',async()=>{
   perms.requireMembership.mockRejectedValue(new HttpError(403,'forbidden','Nope.'));
   await expect(handleCouncilRequest(postRequest({requestId:crypto.randomUUID(),text:'Hi'}),env,actor)).rejects.toMatchObject({status:403});
+ });
+ it('throws 502 on empty model output instead of returning disclaimer-only',async()=>{
+  models.mayorModel.mockReturnValue({
+   specificationVersion:'v2',provider:'test',modelId:'council-test',supportedUrls:{},
+   doGenerate:async()=>({
+    content:[{type:'text',text:'   '}],
+    finishReason:'stop',
+    usage:{inputTokens:10,outputTokens:0,inputTokenDetails:{},outputTokenDetails:{}},
+    warnings:[],
+   }),
+  } as any);
+  await expect(handleCouncilRequest(postRequest({requestId:crypto.randomUUID(),text:'Should I raise prices?'}),env,actor)).rejects.toMatchObject({status:502,code:'council_empty'});
+ });
+ it('throws 502 when the model call fails instead of returning disclaimer-only',async()=>{
+  models.mayorModel.mockReturnValue({
+   specificationVersion:'v2',provider:'test',modelId:'council-test',supportedUrls:{},
+   doGenerate:async()=>{throw new Error('gateway timeout');},
+  } as any);
+  await expect(handleCouncilRequest(postRequest({requestId:crypto.randomUUID(),text:'Hi'}),env,actor)).rejects.toMatchObject({status:502});
+ });
+ it('handles "stop" deterministically without calling the model',async()=>{
+  for(const text of ['stop','Stop.','enough',"that's enough",'end the council','back to assistant']){
+   const response=await handleCouncilRequest(postRequest({requestId:crypto.randomUUID(),text}),env,actor);
+   expect(response.status).toBe(200);
+   const body=await response.json() as {reply:string;stopped:boolean};
+   expect(body.reply).toBe(COUNCIL_STOPPED_REPLY);
+   expect(body.stopped).toBe(true);
+  }
+  expect(models.mayorModel).not.toHaveBeenCalled();
+ });
+});
+describe('wantsCouncilStop',()=>{
+ it('matches stop phrases',()=>{
+  expect(wantsCouncilStop('stop')).toBe(true);
+  expect(wantsCouncilStop('Stop.')).toBe(true);
+  expect(wantsCouncilStop('ENOUGH')).toBe(true);
+  expect(wantsCouncilStop('end the council')).toBe(true);
+ });
+ it('does not match ordinary questions',()=>{
+  expect(wantsCouncilStop('Should I stop advertising?')).toBe(false);
+  expect(wantsCouncilStop('stop the bleeding on ad spend')).toBe(false);
+  expect(wantsCouncilStop('What is a stop-loss order?')).toBe(false);
  });
 });
