@@ -20,3 +20,8 @@ fieldset.booking-customer{border:1px solid #dce5ee;border-radius:9px;padding:15p
 @media(max-width:760px){.business-identity{position:static;max-width:100%;margin:12px 0 0;padding:0}.business-identity strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.5}.business-identity small{margin-top:3px;line-height:1.5}}
 @media(min-width:761px){.sidebar{overflow-y:auto}.sidebar nav{flex:1 0 auto}}
 @media(max-width:760px){.routines-heading{display:block}.routines-heading>.routine-actions{max-width:none;justify-content:flex-start;margin:8px 0 14px}.routines-heading .routine-actions>button{width:auto;flex-grow:1}.routine-catalog,.routine-settings,.routine-suggestions{grid-template-columns:1fr}.routine-template{padding:18px}.routine-brief{padding:20px}.routine-metrics{grid-template-columns:1fr 1fr}.routine-settings{padding:18px}.routine-configuration{padding:16px}.routines-heading h2{font-size:27px}.routine-brief>h3{font-size:25px}}
+.mode-toggle{display:inline-flex;background:#f1f5f9;border:1px solid #e2e9f1;border-radius:999px;padding:3px;gap:2px;margin:0 0 10px}
+.mode-toggle button{border:0;background:none;border-radius:999px;padding:8px 18px;font-size:12px;font-weight:600;color:#61778e;min-height:40px;cursor:pointer}
+.mode-toggle button[aria-pressed="true"]{background:#102b47;color:#fff}
+.mode-toggle button:focus-visible{outline:3px solid #3986ca;outline-offset:2px}
+.mode-note{font-size:11px;color:#8291a1;margin:0 0 10px;line-height:1.5;max-width:560px}
