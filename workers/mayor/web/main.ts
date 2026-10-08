@@ -162,9 +162,11 @@ let microphoneProblem='';
 let historyReady=false;
 let savedTranscript:Array<{role:string;text:string}>=[];
 let confirmedProfile:Record<string,unknown>={};
+let councilMode=false;
+function composerPlaceholder(){const name=assistantName(confirmedProfile);return councilMode?'Ask the council…':`Ask ${name.length<=14?name:'Mayor'}…`;}
 function useBusinessProfile(profile:Record<string,unknown>){
  confirmedProfile=profile;workspace.profile(profile);
- const name=assistantName(profile);$<HTMLTextAreaElement>('message').placeholder=`Ask ${name.length<=14?name:'Mayor'}…`;resizeComposer();
+ const name=assistantName(profile);$<HTMLTextAreaElement>('message').placeholder=composerPlaceholder();resizeComposer();
  $('chat-view').querySelector('.page-heading > p')!.textContent=`Tell ${name} what you need. Review details before changing your calendar or saving a customer.`;
  $('chat-view').querySelector<HTMLImageElement>('.portrait img')!.alt=name;
  if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(profile,canManage())});
@@ -173,10 +175,17 @@ function useBusinessProfile(profile:Record<string,unknown>){
 const composerStatus=document.createElement('p');composerStatus.id='composer-status';composerStatus.setAttribute('role','status');
 const stopWaiting=document.createElement('button');stopWaiting.type='button';stopWaiting.className='secondary';stopWaiting.textContent='Stop waiting';stopWaiting.hidden=true;
 const chatActions=document.createElement('div');chatActions.className='chat-actions';chatActions.append(stopWaiting);$('text-form').after(composerStatus,chatActions);
+const modeToggle=document.createElement('div');modeToggle.className='mode-toggle';modeToggle.setAttribute('role','group');modeToggle.setAttribute('aria-label','Chat mode');
+const assistantModeBtn=document.createElement('button');assistantModeBtn.type='button';assistantModeBtn.textContent='Assistant';assistantModeBtn.setAttribute('aria-pressed','true');
+const councilModeBtn=document.createElement('button');councilModeBtn.type='button';councilModeBtn.textContent='Council';councilModeBtn.setAttribute('aria-pressed','false');
+const modeNote=document.createElement('p');modeNote.className='mode-note';modeNote.hidden=true;modeNote.textContent='The council answers — the seats speak, the King rules. AI coaching, not professional advice. Council sessions are not saved to your conversation.';
+function setChatMode(council:boolean){councilMode=council;assistantModeBtn.setAttribute('aria-pressed',String(!council));councilModeBtn.setAttribute('aria-pressed',String(council));modeNote.hidden=!council;$<HTMLTextAreaElement>('message').placeholder=composerPlaceholder();resizeComposer();}
+assistantModeBtn.onclick=()=>setChatMode(false);councilModeBtn.onclick=()=>setChatMode(true);
+modeToggle.append(assistantModeBtn,councilModeBtn);$('text-form').before(modeToggle,modeNote);
 const textChat=createTextChat(async(text,requestId,signal)=>{
- const captured=workspaceAccess.capture();
- const response=await fetch(`/api/businesses/${tenantId}/conversation`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId}),signal});
- const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(`/api/businesses/${tenantId}/conversation`,tenantId,loggedIn,result.error))endWorkspaceAccess();throw new Error(result.message??'Could not send. Your draft is still here.');}return result;
+ const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/${councilMode?'council':'conversation'}`;
+ const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId}),signal});
+ const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();throw new Error(result.message??'Could not send. Your draft is still here.');}return result;
 },(busy,message)=>{if(accessEnded)return;composerStatus.textContent=message;stopWaiting.hidden=!busy;updateNetwork();renderVoiceState();});
 stopWaiting.onclick=()=>textChat.cancel();
 async function loadConversation(){

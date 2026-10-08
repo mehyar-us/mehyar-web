@@ -8,6 +8,8 @@ for(const action of ['routines','routines/run','routines/brief/read'])checks.pus
 for(const action of ['goals','skills','config','identity','prepare','confirm','run','tasks/prepare','tasks/confirm','report/read'])checks.push([`/api/businesses/${'0'.repeat(32)}/harness/${action}`,401,'POST']);
 checks.push([`/api/businesses/${'0'.repeat(32)}/calendars/guide`,401,'POST']);
 for(const resource of ['appointments','bookings','scheduling-policy','phone-connections','conversation'])checks.push([`/api/businesses/${'0'.repeat(32)}/${resource}`,401]);
+checks.push([`/api/businesses/${'0'.repeat(32)}/council`,401]);
+checks.push([`/api/businesses/${'0'.repeat(32)}/council`,401,'POST']);
 checks.push([`/api/businesses/${'0'.repeat(32)}/phone-connections/telnyx/numbers`,401]);
 checks.push([`/api/businesses/${'0'.repeat(32)}/phone-connections/telnyx/authorize`,401,'POST']);
 checks.push([`/api/businesses/${'0'.repeat(32)}/phone-connections/telnyx/test-setup`,401,'POST']);

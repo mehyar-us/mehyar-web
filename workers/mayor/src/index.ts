@@ -39,6 +39,7 @@ import {handleBillingPublic,handleBillingRequest} from './billing';
 import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
+import {handleCouncilRequest} from './council';
 export {MayorPhone} from './phone-voice';
 export { MayorVoice } from './voice';
 
@@ -121,6 +122,11 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       headers.set('x-mayor-tenant',tenantId);headers.set('x-mayor-user',session.user.id);headers.set('x-mayor-session',session.session.id);
       return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/chat`,{method:'POST',headers,body:JSON.stringify(input)}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Conversation is temporarily unavailable.'},503);
     }
+  }
+  const council=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/council$/);
+  if(council){
+    const tenantId=council[1],identity={tenantId,userId:session.user.id,sessionId:session.session.id};
+    return handleCouncilRequest(request,env,identity);
   }
   if(url.pathname==='/api/businesses'&&request.method==='GET') {
     const result=await env.AGENT_DB.prepare(`SELECT t.id,t.name,m.role FROM agent_tenants t JOIN agent_memberships m ON m.tenant_id=t.id
