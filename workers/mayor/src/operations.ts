@@ -212,12 +212,13 @@ async function listCallbacks(env:Env,actor:Actor,url:URL){
 async function overview(env:Env,actor:Actor,url:URL){
  const [tenant,clock,calendar,schedulingSetup]=await Promise.all([requireTenant(env,actor),businessClock(env,actor),selectedCalendar(env,actor),readSchedulingSetup(env,actor)]);
  const now=new Date().toISOString(),nowSeconds=Date.parse(now)/1000,range=dayWindow(url.searchParams.get('date')??localDate(Date.parse(now),clock.timeZone),clock.timeZone);
- const [customerCount,taskCounts,callbackCount,appointmentCounts,bookingCounts,changeCounts,unread,phoneCount,tasks,appointments,routineNotice]=await Promise.all([
+ const [customerCount,taskCounts,callbackCount,missedCallsPending,appointmentCounts,bookingCounts,changeCounts,unread,phoneCount,tasks,appointments,routineNotice]=await Promise.all([
   env.AGENT_DB.prepare('SELECT COUNT(*) AS total FROM mayor_customers WHERE tenant_id=?').bind(actor.tenantId).first<{total:number}>(),
   env.AGENT_DB.prepare(`SELECT COALESCE(SUM(status='open'),0) AS open,COALESCE(SUM(status='completed'),0) AS completed,
    COALESCE(SUM(status='open' AND due_at>=? AND due_at<?),0) AS due_today,
    COALESCE(SUM(status='open' AND due_at<?),0) AS overdue FROM mayor_tasks WHERE tenant_id=?`).bind(range.start,range.end,now,actor.tenantId).first<{open:number;completed:number;due_today:number;overdue:number}>(),
   env.AGENT_DB.prepare("SELECT COUNT(*) AS total FROM mayor_callbacks WHERE tenant_id=? AND status='pending'").bind(actor.tenantId).first<{total:number}>(),
+  env.AGENT_DB.prepare("SELECT COUNT(*) AS total FROM mayor_missed_calls WHERE tenant_id=? AND status='missed' AND textback_sent_at IS NULL").bind(actor.tenantId).first<{total:number}>(),
   env.AGENT_DB.prepare("SELECT COUNT(*) AS today FROM mayor_appointments WHERE tenant_id=? AND state!='cancelled' AND start_epoch<? AND end_epoch>?").bind(actor.tenantId,Date.parse(range.end)/1000,Date.parse(range.start)/1000).first<{today:number}>(),
   env.AGENT_DB.prepare(`SELECT COUNT(*) AS pending,COALESCE(SUM(j.state='uncertain' OR r.state='review'),0) AS review
    FROM mayor_appointment_jobs j LEFT JOIN mayor_recovery_attempts r ON r.kind='booking' AND r.request_id=j.id AND r.tenant_id=j.tenant_id
@@ -242,6 +243,7 @@ async function overview(env:Env,actor:Actor,url:URL){
  if(!clock.scheduling.policy)addSetup('scheduling-rules','Finish your booking rules',schedulingSetup.nextQuestion??'Review and activate your scheduling setup.','chat');
  if(taskCounts!.overdue)attention.push({id:'overdue-tasks',kind:'task',title:`${taskCounts!.overdue} overdue ${taskCounts!.overdue===1?'task':'tasks'}`,detail:'Review open tasks whose due time has passed.',action:'tasks',resourceId:null,count:taskCounts!.overdue});
  if(callbackCount!.total)attention.push({id:'pending-callbacks',kind:'callback',title:`${callbackCount!.total} pending ${callbackCount!.total===1?'callback':'callbacks'}`,detail:'Return contacts are unverified. Mark each request handled after you follow up.',action:'callbacks',resourceId:null,count:callbackCount!.total});
+ if(missedCallsPending!.total)attention.push({id:'missed-calls',kind:'missed_call',title:`${missedCallsPending!.total} missed ${missedCallsPending!.total===1?'call needs':'calls need'} text-back`,detail:'A fast text-back can still recover the customer. Review the missed calls.',action:'missed-calls',resourceId:null,count:missedCallsPending!.total});
  const reviewCount=bookingCounts!.review+changeCounts!.review;
  if(reviewCount)attention.push({id:'appointment-review',kind:'appointment_review',title:`${reviewCount} appointment ${reviewCount===1?'request needs':'requests need'} review`,detail:'The provider result is uncertain. Check the original request before creating another appointment.',action:'agenda',resourceId:null,count:reviewCount});
  if(unread!.total)attention.push({id:'unread-notifications',kind:'notification',title:`${unread!.total} unread ${unread!.total===1?'notification':'notifications'}`,detail:'Review account checks and phone issues in your notifications.',action:'notifications',resourceId:null,count:unread!.total});

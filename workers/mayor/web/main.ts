@@ -18,6 +18,7 @@ import {bindVoiceAccessRecovery,createAccessRecoveryView} from './voice-access-r
 import {createBusinessWorkspace,playSoundCheck} from './business-workspace';
 import {createWorkspaceAccessGuard,workspaceAccessWasRejected,selectWorkspaceBusiness} from './workspace-access';
 import {assistantName,assistantGreeting} from '../src/assistant-persona';
+import {VERTICAL_PROFILES} from '../src/verticals';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -37,7 +38,7 @@ $('conversation').after(calendarChat.element);
 const calendarLauncher=document.createElement('button');calendarLauncher.type='button';calendarLauncher.className='quiet calendar-launcher';calendarLauncher.textContent='Calendar settings';calendarLauncher.hidden=true;
 calendarLauncher.onclick=()=>{show('chat');$('conversation').setAttribute('open','');void calendarChat.open();};calendarChat.element.after(calendarLauncher);
 $('account-view').append(workspace.element);
-const usageStatus=document.createElement('p');usageStatus.id='usage-status';usageStatus.className='privacy-note';usageStatus.textContent='Check Plan & usage for your shared business allowance.';
+const usageStatus=document.createElement('p');usageStatus.id='usage-status';usageStatus.className='privacy-note';usageStatus.textContent='';
 $('text-form').after(usageStatus);
 const soundCheck=document.createElement('button');soundCheck.type='button';soundCheck.className='sound-check';soundCheck.textContent='Check speaker sound';
 soundCheck.onclick=async()=>{soundCheck.disabled=true;try{await playSoundCheck();notice('Did you hear the tone? If not, check your speaker volume and whether this tab is muted. Then choose Talk to The Mayor.');}catch{notice('Audio could not start here. Open mayor.mehyar.us in your regular browser and try the sound check again.');}finally{soundCheck.disabled=false;}};
@@ -47,6 +48,10 @@ const helpIcon=document.createElement('i');helpIcon.dataset.lucide='circle-help'
 const voiceHelpContent=document.createElement('div');voiceHelpContent.id='voice-help-panel';voiceHelpContent.className='voice-help-content';voiceHelpContent.append($('voice-hint'),soundCheck);
 voiceHelp.append(voiceHelpSummary,voiceHelpContent);document.querySelector('.header-actions')!.append(voiceHelp);
 voiceHelp.addEventListener('keydown',event=>{if(event.key==='Escape'&&voiceHelp.open){event.preventDefault();voiceHelp.open=false;voiceHelpSummary.focus();}});
+// New chat control in the Assistant view header (visible on the chat view only,
+// desktop and mobile). Starts a fresh conversation thread; past history is
+// archived server-side, never deleted. Keyboard-operable with visible focus.
+const newChatHeader=document.createElement('button');newChatHeader.type='button';newChatHeader.id='new-chat';newChatHeader.className='secondary';newChatHeader.textContent='New chat';newChatHeader.setAttribute('aria-label','Start a new conversation');newChatHeader.hidden=true;newChatHeader.onclick=()=>void startNewChat();document.querySelector('.header-actions')!.append(newChatHeader);
 const micLevel=document.createElement('meter');micLevel.id='mic-level';micLevel.min=0;micLevel.max=1;micLevel.value=0;micLevel.hidden=true;micLevel.setAttribute('aria-label','Microphone input level');soundCheck.after(micLevel);
 const canManage=()=>!accessEnded&&['owner','manager'].includes(membershipRole);
 const canChat=()=>!accessEnded&&['owner','manager','staff'].includes(membershipRole);
@@ -79,9 +84,9 @@ async function refreshInbox(){
   inboxStatus.textContent=result.notifications.length?'Account items needing attention. Manage recurring checks and email alerts in Account.':'No account alerts are open. Manage recurring checks and email alerts in Account.';
   for(const item of result.notifications){
    const card=document.createElement('article'),title=document.createElement('h3'),message=document.createElement('p'),action=document.createElement('button');
-   const destination=item.action==='today'?'today':item.action==='tasks'?'tasks':item.action==='chat'?'chat':'account';
-   title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':'Talk to '+assistantName(confirmedProfile);
-   action.onclick=()=>{show(destination);inbox.open=false;(destination==='today'?$('today-heading'):destination==='tasks'?$('tasks-heading'):destination==='account'?$('account-heading'):$('talk')).focus();};
+   const destination=item.action==='today'?'today':item.action==='tasks'?'tasks':item.action==='chat'?'chat':item.action==='missed-calls'?'missed-calls':'account';
+   title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':destination==='missed-calls'?'Review missed call':'Talk to '+assistantName(confirmedProfile);
+   action.onclick=()=>{if(destination==='missed-calls'){inbox.open=false;show('today');workday.openMissedCalls();return;}show(destination);inbox.open=false;(destination==='today'?$('today-heading'):destination==='tasks'?$('tasks-heading'):destination==='account'?$('account-heading'):$('talk')).focus();};
    card.append(title,message,action);
    if(!item.read){
     const read=document.createElement('button');read.type='button';read.className='secondary';read.textContent='Mark read';
@@ -202,6 +207,10 @@ function useBusinessProfile(profile:Record<string,unknown>,progress?:{missing:st
 const composerStatus=document.createElement('p');composerStatus.id='composer-status';composerStatus.setAttribute('role','status');
 const stopWaiting=document.createElement('button');stopWaiting.type='button';stopWaiting.className='secondary';stopWaiting.textContent='Stop waiting';stopWaiting.hidden=true;
 const chatActions=document.createElement('div');chatActions.className='chat-actions';chatActions.append(stopWaiting);$('text-form').after(composerStatus,chatActions);
+// New chat control in the global chat bar (assistant dock), desktop and mobile.
+// Same action as the header control: archive the server thread, clear the local
+// transcript, and re-render the business-first greeting.
+const newChatDock=document.createElement('button');newChatDock.type='button';newChatDock.className='secondary';newChatDock.textContent='New chat';newChatDock.setAttribute('aria-label','Start a new conversation');newChatDock.onclick=()=>void startNewChat();chatActions.append(newChatDock);
 const modeToggle=document.createElement('div');modeToggle.className='mode-toggle';modeToggle.setAttribute('role','group');modeToggle.setAttribute('aria-label','Chat mode');
 const assistantModeBtn=document.createElement('button');assistantModeBtn.type='button';assistantModeBtn.textContent='Assistant';assistantModeBtn.setAttribute('aria-pressed','true');
 const councilModeBtn=document.createElement('button');councilModeBtn.type='button';councilModeBtn.textContent='Council';councilModeBtn.setAttribute('aria-pressed','false');
@@ -212,12 +221,45 @@ modeToggle.append(assistantModeBtn,councilModeBtn);$('text-form').before(modeTog
 const textChat=createTextChat(async(text,requestId,signal)=>{
  const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/${councilMode?'council':'conversation'}`;
  const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId}),signal});
- const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();throw new Error(result.message??'Could not send. Your draft is still here.');}return result;
-},(busy,message)=>{if(accessEnded)return;composerStatus.textContent=message;stopWaiting.hidden=!busy;updateNetwork();renderVoiceState();});
+ const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){
+  if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();
+  // The Plan & usage notice reflects genuine quota failures ONLY (402 /
+  // allowance exhausted). A model or gateway failure (502) must never imply
+  // the allowance is the problem.
+  if(response.status===402&&typeof result.message==='string'&&result.message)usageStatus.textContent=result.message;
+  const err=new Error(result.message??'Could not send. Your draft is still here.') as Error&{status?:number};
+  err.status=response.status;throw err;
+ }return result;
+},(busy,message)=>{if(accessEnded)return;composerStatus.textContent=message;stopWaiting.hidden=!busy;updateNetwork();renderVoiceState();},{
+ serviceDownCopy:(status)=>status===502
+  ?(councilMode?'The council couldn\u2019t reach the AI service — try again in a moment.':'The assistant couldn\u2019t reach the AI service — try again in a moment.')
+  :undefined,
+});
 stopWaiting.onclick=()=>textChat.cancel();
 async function loadConversation(){
  const result=await api(`/api/businesses/${tenantId}/conversation`);
  savedTranscript=result.messages.map((m:any)=>({role:m.role,text:m.content}));if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceRows.clear();voiceSeen=voice?.transcript.length??0;historyReady=true;transcripts();updateNetwork();
+}
+/** Start a new chat: the server archives the current thread (past history is
+ * preserved in the archive table, never deleted) and resets the live agent
+ * thread; the client clears the transcript and re-renders the business-first
+ * greeting via assistantGreeting, which leads with the saved business name. */
+async function startNewChat(){
+ if(!loggedIn||accessEnded)return;
+ if(textChat.busy){notice('Your reply is still sending. Start a new chat once it finishes.');return;}
+ if(voiceCall?.active||voiceCall?.starting){notice('End the voice conversation before starting a new chat.');return;}
+ notice('');
+ try{
+  await api(`/api/businesses/${tenantId}/conversation/reset`,{});
+  savedTranscript=[];
+  if(canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});
+  voiceRows.clear();voiceSeen=voice?.transcript.length??0;
+  $('transcript').replaceChildren();$('interim').textContent='';
+  historyReady=true;transcripts();updateNetwork();
+  show('chat');$('transcript').scrollTop=0;
+  notice('Started a new conversation. Your earlier messages stay saved with this business.');
+  $<HTMLTextAreaElement>('message').focus();
+ }catch(error){notice(error instanceof Error?error.message:'Could not start a new chat. Your conversation is unchanged.');}
 }
 const pullStatus=document.createElement('div');pullStatus.className='pull-refresh-status';pullStatus.hidden=true;pullStatus.setAttribute('role','status');document.body.append(pullStatus);
 const pullGesture=createPullRefresh();let pullBusy=false;
@@ -247,14 +289,20 @@ function updateNetwork(){
   workspace.ready(online&&historyReady&&!textChat.busy&&!pullBusy&&!accessEnded);
   if(!online){voiceCall?.stop();$('interim').textContent='';}
 }
-/** Business pill switcher: tap the business identity to switch between owned businesses.
- * Switching navigates with ?business=<id>; the server selects the tenant from the param. */
+/** Business pill: always shows the current business name in the header.
+ * The chevron and dropdown are interactive only when 2+ businesses exist;
+ * switching navigates with ?business=<id>; the server selects the tenant from the param. */
 function setupBusinessSwitcher(businesses:Array<{id:string;name:string;role:string}>,currentId:string){
   const identity=document.querySelector<HTMLElement>('.business-identity');
-  if(!identity||businesses.length<2)return;
+  if(!identity)return;
+  const current=businesses.find(b=>b.id===currentId);
+  const currentName=current?.name??'your business';
+  const nameEl=identity.querySelector('#business-name');
+  if(nameEl&&current){nameEl.textContent=current.name;identity.title=current.name;}
+  identity.setAttribute('aria-label',`Current business: ${currentName}${businesses.length>1?'. Activate to switch business.':''}`);
+  if(businesses.length<2)return;
   identity.setAttribute('role','button');
   identity.setAttribute('tabindex','0');
-  identity.setAttribute('aria-label',`Switch business, current: ${businesses.find(b=>b.id===currentId)?.name??'your business'}`);
   identity.style.cursor='pointer';
   const chevron=document.createElement('span');
   chevron.textContent=' ▾';
@@ -296,6 +344,34 @@ const phoneGuide=document.createElement('div');phoneGuide.id='phone-guide';phone
 const consentSection=document.createElement('div');consentSection.id='recording-consent';consentSection.setAttribute('aria-live','polite');
 phoneCard.append(phoneTitle,phoneIntro,phoneChoices,phoneGuide,consentSection);$('logout').before(phoneCard);
 const phoneControls=document.createElement('div');phoneCard.append(phoneControls);
+// TEST ONLY simulator: record a fake missed call and simulate its text-back.
+// Simulation writes local rows only — it never contacts a provider or sends a real SMS.
+const missedCallSim=document.createElement('details');missedCallSim.className='account-card test-simulator';
+const simSummary=document.createElement('summary');simSummary.textContent='TEST ONLY · Simulate a missed call';
+const simIntro=document.createElement('p');simIntro.textContent='Record a fake missed call and simulate its text-back to watch the money loop end to end. Nothing is sent to a real phone. Use a fake test number.';
+const simForm=document.createElement('form');
+const simCaller=document.createElement('input'),simBusiness=document.createElement('input');
+simCaller.type='tel';simCaller.required=true;simCaller.maxLength=16;simCaller.value='+15550131234';simCaller.autocomplete='off';
+simBusiness.type='tel';simBusiness.required=true;simBusiness.maxLength=16;simBusiness.placeholder='+15550139876';simBusiness.autocomplete='off';
+for(const [labelText,input] of [['Fake caller number',simCaller],['Fake business number',simBusiness]] as const){const label=document.createElement('label');label.textContent=labelText;label.append(input);simForm.append(label);}
+const simGo=document.createElement('button');simGo.type='submit';simGo.className='secondary';simGo.textContent='Simulate missed call';
+const simStatus=document.createElement('p');simStatus.setAttribute('role','status');
+simForm.append(simGo,simStatus);
+const simTextBack=document.createElement('button');simTextBack.type='button';simTextBack.className='secondary';simTextBack.textContent='Simulate text-back · no real SMS sent';simTextBack.hidden=true;
+let simCallId='';
+simForm.onsubmit=async event=>{event.preventDefault();simGo.disabled=true;simStatus.textContent='Recording the fake missed call…';simTextBack.hidden=true;
+ try{const result=await api(`/api/businesses/${tenantId}/phone/test-missed-call`,{callerNumber:simCaller.value.trim(),businessNumber:simBusiness.value.trim()});
+  simCallId=result.missedCall.id;simStatus.textContent='Fake missed call recorded. Now simulate its text-back.';simTextBack.hidden=false;}
+ catch(error){simStatus.textContent=error instanceof Error?error.message:'The fake call could not be recorded.';}
+ finally{simGo.disabled=false;}};
+simTextBack.onclick=async()=>{simTextBack.disabled=true;
+ try{await api(`/api/businesses/${tenantId}/phone/test-missed-call/${simCallId}/text-back`,{});
+  simStatus.textContent='Simulated text-back recorded. Check Notifications.';simTextBack.hidden=true;
+  notice('Simulated text-back recorded. Check Notifications.');await refreshInbox();}
+ catch(error){simStatus.textContent=error instanceof Error?error.message:'The simulated text-back failed.';}
+ finally{simTextBack.disabled=false;}};
+missedCallSim.append(simSummary,simIntro,simForm,simTextBack);
+phoneCard.append(missedCallSim);
 let phoneLoading=false;
 async function loadPhoneAccount(){
   if(phoneLoading||!loggedIn||!canManage())return;
@@ -567,7 +643,7 @@ function endWorkspaceAccess(){
  document.querySelector('main')!.hidden=true;document.querySelector('nav')!.hidden=true;
  $<HTMLTextAreaElement>('message').value='';$<HTMLTextAreaElement>('message').disabled=true;
  $<HTMLButtonElement>('send-message').disabled=true;$<HTMLButtonElement>('talk').disabled=true;
- document.querySelector<HTMLElement>('.assistant-dock')!.hidden=true;composerStatus.textContent='';chatActions.hidden=true;
+ document.querySelector<HTMLElement>('.assistant-dock')!.hidden=true;composerStatus.textContent='';chatActions.hidden=true;newChatHeader.hidden=true;
  accessRecovery.show();
 }
 function handleMessage(data:unknown){
@@ -660,6 +736,27 @@ async function account(){
    $('profile').append(dt,dd);
   }
   for(const [key,value] of Object.entries(memory.profile)){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=key.replace(/([A-Z])/g,' $1');dd.textContent=Array.isArray(value)?value.join(', '):String(value);$('profile').append(dt,dd);}
+  // Business vertical drives the vertical-aware SMS text-back wording. Server accepts the enum keys from src/verticals.ts.
+  {
+   const dt=document.createElement('dt');dt.textContent='Business type';
+   const dd=document.createElement('dd');
+   const picker=document.createElement('select');picker.setAttribute('aria-label','Business type');
+   for(const [key,vertical] of Object.entries(VERTICAL_PROFILES)){const option=document.createElement('option');option.value=key;option.textContent=vertical.label;picker.append(option);}
+   const current=(memory.profile as {vertical?:string}).vertical??'other';picker.value=current;
+   const note=document.createElement('p');note.className='privacy-note';note.textContent='Sets the wording of missed-call text-backs and appointment reminders.';
+   dd.append(picker,note);$('profile').append(dt,dd);
+   if(canManage()){
+    picker.onchange=async()=>{
+     picker.disabled=true;
+     try{
+      const updated=await api(`/api/businesses/${tenantId}/profile`,{vertical:picker.value,revision:memory.revision});
+      memory.revision=updated.revision;confirmedProfile.vertical=picker.value;
+      notice('Business type saved. Text-back messages will use this wording.');
+     }catch(error){notice(error instanceof Error?error.message:'Could not save the business type.');picker.value=(memory.profile as {vertical?:string}).vertical??'other';}
+     finally{picker.disabled=false;}
+    };
+   }else picker.disabled=true;
+  }
   const cited=Object.entries(memory.sources??{}).filter(([,source]:[string,any])=>source.kind==='website_owner_confirmed');
   if(cited.length){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent='Confirmed website sources';
     for(const [field,value] of cited){const source=value as any,line=document.createElement('p'),link=document.createElement('a');link.textContent=field.replace(/([A-Z])/g,' $1');
@@ -722,7 +819,7 @@ async function init(){
   if(!business)throw new Error('Your business membership is not available. Please contact the workspace owner.');
   tenantId=business.id;membershipRole=business.role;
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
-  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();
+  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();chatActions.hidden=false;
   workday.ready(business.name,membershipRole);
   setupBusinessSwitcher(businesses.businesses as Array<{id:string;name:string;role:string}>,business.id);
   $('calendar-status').hidden=!canManage();

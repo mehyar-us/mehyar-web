@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {streamText,tool} from 'ai';
+import {generateText,streamText,tool} from 'ai';
 import {z} from 'zod';
 import {normalizeWorkersAIStream,mayorModel} from '../src/ai-model';
 import type {Env} from '../src/env';
@@ -25,4 +25,58 @@ it('executes exactly one valid tool from the mixed Workers AI wire format',async
 it('rejects malformed and oversized SSE instead of forwarding unbounded model data',async()=>{
  await expect(new Response(normalizeWorkersAIStream(stream('data: not-json\n\n'))).text()).rejects.toThrow('Invalid model');
  await expect(new Response(normalizeWorkersAIStream(stream('data: '+ 'a'.repeat(262145),65536))).text()).rejects.toThrow('too large');
+});
+it('unwraps the AI Gateway REST envelope on non-streaming generateText and skips the gateway cache',async()=>{
+ // Regression: gatewayRun used to return the full REST envelope
+ // {result,success,errors,messages}, so workers-ai-provider's processText
+ // (which reads output.response) extracted "" and the council 502'd with
+ // council_empty.
+ const envelope={result:{response:'HOT ZERO: Build it.'},success:true,errors:[],messages:[]};
+ const seenRequests:{url:string;headers:Record<string,string>}[]=[];
+ const realFetch=globalThis.fetch;
+ globalThis.fetch=(async(input:any,init?:any)=>{
+  seenRequests.push({url:String(input),headers:Object.fromEntries(new Headers(init?.headers as HeadersInit).entries())});
+  return new Response(JSON.stringify(envelope),{status:200,headers:{'content-type':'application/json'}});
+ }) as typeof fetch;
+ try{
+  const ai={run:async()=>{throw new Error('direct binding must not be reached on the gateway path');}} as unknown as Env['AI'];
+  const env={AI:ai,AI_GATEWAY_ACCOUNT_ID:'acct-1',AI_GATEWAY_ID:'mayor-businesses',AI_GATEWAY_TOKEN:'tok'} as Env;
+  const result=await generateText({model:mayorModel(env),prompt:'Should we launch?'});
+  expect(result.text).toBe('HOT ZERO: Build it.');
+  expect(seenRequests).toHaveLength(1);
+  expect(seenRequests[0].url).toContain('gateway.ai.cloudflare.com/v1/acct-1/mayor-businesses/workers-ai');
+  expect(seenRequests[0].headers['cf-aig-skip-cache']).toBe('true');
+ }finally{
+  globalThis.fetch=realFetch;
+ }
+});
+it('remaps reasoning_content to content on non-streaming generateText (qwen3 quirk)',async()=>{
+ // Regression (captured live 2026-10-08): @cf/qwen/qwen3-30b-a3b-fp8 returns
+ // HTTP 200 with the generated text in choices[0].message.reasoning_content
+ // (mirrored in .reasoning) while choices[0].message.content and the
+ // top-level response are null. workers-ai-provider's processText reads only
+ // content/response, so generateText produced "" and the council 502'd with
+ // council_empty. The binding wrapper must repair the shape first.
+ const quirk={choices:[{message:{role:'assistant',content:null,reasoning:'HOT ZERO: Build it.',reasoning_content:'HOT ZERO: Build it.'},finish_reason:'stop',index:0}],response:null,usage:{}};
+ const ai={run:async()=>quirk} as unknown as Env['AI'];
+ const result=await generateText({model:mayorModel({AI:ai}),prompt:'Should we launch?'});
+ expect(result.text).toBe('HOT ZERO: Build it.');
+});
+it('remapReasoningContent leaves healthy outputs and streams untouched',async()=>{
+ const {remapReasoningContent}=await import('../src/ai-model');
+ // Healthy: real content present -> untouched (same reference).
+ const healthy={choices:[{message:{content:'Real answer',reasoning_content:'thinking'}}]};
+ expect(remapReasoningContent(healthy)).toBe(healthy);
+ expect((healthy as any).choices[0].message.content).toBe('Real answer');
+ // Empty-string content + reasoning -> repaired.
+ const empty={choices:[{message:{content:'',reasoning_content:'Repaired'}}]};
+ remapReasoningContent(empty);
+ expect((empty as any).choices[0].message.content).toBe('Repaired');
+ // No reasoning text -> untouched.
+ const bare={choices:[{message:{content:null,reasoning_content:''}}]};
+ remapReasoningContent(bare);
+ expect((bare as any).choices[0].message.content).toBeNull();
+ // Non-objects pass through.
+ expect(remapReasoningContent(null)).toBeNull();
+ expect(remapReasoningContent('text')).toBe('text');
 });
