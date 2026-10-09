@@ -36,6 +36,7 @@ import { fulfillPillguard } from "../_shared/fulfillPillguard.js";
 import { fulfillPuretap } from "../_shared/fulfillPuretap.js";
 import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
 import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
+import { fulfillMoonroom } from "../_shared/fulfillMoonroom.js";
 
 // Buyer CRM hardening (tracking-crm-fix, 2026-10-05).
 //
@@ -460,6 +461,16 @@ const fulfillHooks = {
   async aimech() {
     return { ok: true };
   },
+
+  // Moonroom AI photo studio (moonroom.mehyar.us). Creates the
+  // moonroom_orders row (idempotent on payment_id via
+  // idx_moonroom_orders_payment), unifies the access token onto the
+  // billing_payments row, then hands off to the standalone module for
+  // background generation + buyer email.
+  async moonroom({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillMoonroom({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -498,7 +509,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
