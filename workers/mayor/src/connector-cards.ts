@@ -37,20 +37,37 @@ export interface ConnectorCardPayload{
 }
 export interface ConnectorCardEvent{type:'connector_card';card:ConnectorCardPayload}
 
-const NEGATION=/\b(?:do\s*not|don't|doesn't|never)\s+(?:connect|reconnect|hook\s+up|link|add|set\s*up|sync|integrate)\b/i;
-const REMOVAL=/\b(?:disconnect|remove|delete|unlink|no\s+longer)\b/i;
 const CONNECT_VERB=/\b(?:connect|reconnect|hook\s+up|link|add|set\s*up|sync|integrate|connecting|linking)\b/i;
 const KEY_WORD=/\b(?:api[_ ]?key|secret|token|credential)s?\b/i;
 const CALENDAR_WORD=/\bcalendar\b/i;
+
+/** Resolve the first mentioned service that is NOT negated/removed.
+ * Splits the text on contrast conjunctions and picks the first service from a
+ * clause without removal language. */
+function resolveUnnegatedService(text:string):string|null{
+ const clauses=text.split(/[,.;]|\bbut\b|\binstead\b/i);
+ for(const clause of clauses){
+  if(/\b(no longer|stop using|disconnect|remove|delete|unlink)\b/i.test(clause))continue;
+  if(/\b(don't|do not|doesn't|never)\s+(?:connect|reconnect|hook\s+up|link|add|set\s+up|sync|integrate)\b/i.test(clause))continue;
+  const service=resolveConnectorService(clause);
+  if(service)return service;
+ }
+ return null;
+}
 
 /** Deterministic connector-need detection on the owner's message.
  * Returns the canonical service key, or null. Calendar mentions for
  * google/microsoft/zoho are owned by the connectCalendar flow → null. */
 export function detectConnectorNeed(text:string):{service:string;name:string}|null{
  if(typeof text!=='string'||text.length>2000)return null;
- if(NEGATION.test(text)||REMOVAL.test(text))return null;
- const service=resolveConnectorService(text);
+ // Prefer a service that is NOT the target of a negation/removal clause:
+ // "I no longer use Booksy, connect Fresha" must detect Fresha, not die on Booksy.
+ const service=resolveUnnegatedService(text)??resolveConnectorService(text);
  if(!service)return null;
+ const guideName=guideForService(service)?.name??service;
+ const svcNames=[service,guideName].map(n=>n.replace(/[^a-z0-9]/gi,'')).join('|');
+ if(new RegExp(`\\b(no longer|stop using|disconnect|remove|delete)\\b[^,.;]{0,40}\\b(${svcNames})\\b`,'i').test(text))return null;
+ if(new RegExp(`\\b(don't|do not|doesn't|never|not)\\b[^,.;]{0,30}\\b(connect|reconnect|hook\\s+up|link|add|set\\s+up|sync|integrate)\\b[^,.;]{0,40}\\b(${svcNames})\\b`,'i').test(text))return null;
  const hasVerb=CONNECT_VERB.test(text),hasKeyWord=KEY_WORD.test(text);
  if(!hasVerb&&!hasKeyWord)return null;
  if((service==='google'||service==='microsoft'||service==='zoho')&&CALENDAR_WORD.test(text))return null;

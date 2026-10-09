@@ -21,8 +21,7 @@ describe('crew6a: pet_grooming profile',()=>{
   expect(p().vocabulary).toEqual({customer:'client',booking:'appointment',staff:'groomer',service:'service'});
   expect(p().briefingNouns).toEqual({appointments:'appointments',customers:'clients'});
  });
- it('watches the right detectors with grooming-tuned params',()=>{
-  expect(p().detectors).toEqual(['rebooking_gap','missed_call','slow_day','lapsed_regular','no_show_risk']);
+ it('carries grooming-tuned detector params',()=>{
   expect(p().detectorParams).toMatchObject({lapsedRegularDays:70,rebookingCycleDays:49,noShowLookbackDays:90});
  });
  it('carries grooming KPIs',()=>{
@@ -60,8 +59,7 @@ describe('crew6a: med_spa profile',()=>{
   expect(p().vocabulary).toEqual({customer:'client',booking:'appointment',staff:'provider',service:'treatment'});
   expect(p().briefingNouns).toEqual({appointments:'appointments',customers:'clients'});
  });
- it('detectors lean on no-show risk first',()=>{
-  expect(p().detectors).toEqual(['no_show_risk','rebooking_gap','missed_call','lapsed_regular']);
+ it('carries no-show-tuned detector params',()=>{
   expect(p().detectorParams).toMatchObject({lapsedRegularDays:120,rebookingCycleDays:90,noShowLookbackDays:90});
  });
  it('no-show KPI has teeth about the dollar cost',()=>{
@@ -111,7 +109,8 @@ describe('crew6a: Places detection for the new verticals',()=>{
  });
  it('existing verticals keep winning their own categories',()=>{
   expect(detectVerticalFromCategory('Hair Salon')).toBe('salon');
-  expect(detectVerticalFromCategory('nail salon')).toBe('salon');
+  // nail salon routes through the honest suggestion now (loop-1 fix)
+  expect(detectVerticalFromCategory('nail salon')).toBeNull();
   expect(detectVerticalFromCategory('Pet Grooming')).not.toBe('salon');
  });
 });

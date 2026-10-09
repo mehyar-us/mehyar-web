@@ -22,6 +22,7 @@ import type { Env } from './env';
 import { profileSchema, readMemory, confirmProfile, isSpokenConfirmation, profileSourceSchema,verifyProfileSource,type Profile,type ProfilePatch,type ProfileSource } from './memory';
 import {researchWebsite,publicWebsiteUrl,websiteWasSupplied,websiteEvidenceReadback} from './website';
 import {profileReadback,policyReadback,bookingReadback,changeReadback,confirmationStream,guardedSpeech} from './confirmation';
+import {suggestVertical,verticalSuggestionFraming,MODE_LABELS} from './vertical-mapping';
 import {phoneSetupSchema,savePhoneSetup} from './phone-setup';
 import {z} from 'zod';
 import {discoverCalendars,selectCalendar,calendarSelectionSchema} from './calendars';
@@ -377,7 +378,7 @@ export class MayorVoice extends Base<Env> {
     // "continue anyway" never re-triggers the message and is frictionless;
     // "not now" gets a clean stop with no further onboarding push.
     const lastAssistant=context.messages.filter(message=>message.role==='assistant').at(-1)?.content??'';
-    const fitReply=/^(continue anyway|not now|no thanks)[.!]*$/i.exec(transcript.trim());
+    const fitReply=/\b(continue anyway|not now|no thanks)\b/i.exec(transcript);
     if(fitReply&&lastAssistant.includes("I'd rather tell you than sell you")){
       this.clearProposals(context.connection);
       if(/^(not now|no thanks)/i.test(fitReply[1]))return 'Got it - I will leave the setup alone. If things change down the road, just say the word.';
@@ -510,7 +511,15 @@ export class MayorVoice extends Base<Env> {
           this.pendingPolicy.delete(context.connection.id);
           this.pendingChange.delete(context.connection.id);
           this.pendingBooking.delete(context.connection.id);
-          setReadback(Object.keys(patch).length===1&&patch.assistantName?assistantNameReadback(patch.assistantName):profileReadback(patch));
+          // Crew 6b/loop-1: conversational onboarding never saw the honest adjacent
+          // suggestion (Places-only). When the owner names their trade in chat and no
+          // vertical is set yet, offer the explicit choice in the readback.
+          let verticalHint='';
+          if(typeof patch.industry==='string'&&patch.industry.trim()&&!patch.vertical&&!memory.profile.vertical){
+           const suggestion=suggestVertical(patch.industry);
+           if(suggestion)verticalHint=` ${verticalSuggestionFraming(suggestion)}`;
+          }
+          setReadback((Object.keys(patch).length===1&&patch.assistantName?assistantNameReadback(patch.assistantName):profileReadback(patch))+verticalHint);
           this.pending.set(context.connection.id,{patch,revision:memory.revision,expiresAt:Date.now()+120000,deferHours:!patch.hours&&hoursExplicitlyUnknown(transcript)});
           context.connection.send(JSON.stringify({type:'profile_proposal',patch}));
           return {status:'awaiting_confirmation',patch};

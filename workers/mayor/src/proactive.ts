@@ -3,7 +3,7 @@ import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
 import {verticalProfile,isProfessionalTone,professionalFillGapTemplate,professionalWinbackTemplate,PROFESSIONAL_LEAD_REPLY_TEMPLATE,reminderTemplateFor,type Vertical} from './verticals';
-import {esTemplates,esFillGapCard,esWinbackCard,esLeadReplyCard,esNoShowCard,esFillGapDraft,esWinbackDraft,esLeadReplyDraft,esAgoText,esBriefingCopy,renderReminder} from './i18n';
+import {esTemplates,esFillGapCard,esWinbackCard,esLeadReplyCard,esNoShowCard,esFillGapDraft,esWinbackDraft,esLeadReplyDraft,esAgoText,esBriefingCopy,esFormatWhen,renderReminder} from './i18n';
 import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
 import {
@@ -151,12 +151,13 @@ async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow
  }
  // reminder_nudge
  const when=formatWhen(Date.parse(payload.startsAt),ctx.timeZone,ctx.nowMs);
+ const whenEs=es?esFormatWhen(Date.parse(payload.startsAt),ctx.timeZone,ctx.nowMs):when;
  if(es){
-  const copy=esNoShowCard(payload.customerName,when);
+  const copy=esNoShowCard(payload.customerName,whenEs);
   return {kind,
    title:copy.title,
    body:copy.body,
-   draft:{message:renderReminder(ctx.vertical,'es',ctx.businessName,when),
+   draft:{message:renderReminder(ctx.vertical,'es',ctx.businessName,whenEs,ctx.tone),
     audience:'cliente en riesgo',audienceCount:1,
     recipients:[{name:payload.customerName,phone:payload.customerPhone,when,bookingId:payload.bookingId}],meta:{bookingId:payload.bookingId,customerId:payload.customerId}}};
  }
@@ -328,6 +329,10 @@ export async function sendSuggestionCard(env:Env,actor:Actor,cardId:string,trans
   return finish({simulated:true,audienceCount:1,sentCount:1,failed:0});
  }
 
+ // Crew 6f/loop-1 light-up landmine: Instagram DM recipients (ig:<senderId>) are not
+ // phone numbers — never hand them to Telnyx. IG reply transport ships at light-up.
+ const igRecipients=draft.recipients.filter(r=>r.phone.startsWith('ig:'));
+ if(igRecipients.length)throw new HttpError(400,'ig_reply_not_supported','Instagram replies are not available yet — app review is still pending. The message was not sent.');
  let sentCount=0,failed=0;
  const smsRows=[];
  for(const r of draft.recipients){
