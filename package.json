@@ -17,7 +17,8 @@
     "test:offers": "node scripts/test-offer-fulfillment.mjs",
     "test:prospects": "node tests/test_prospect_pipeline.mjs",
     "test:gov-opportunities": "node scripts/test-gov-opportunities.mjs",
-    "test:gov-drafts": "tsx scripts/test-gov-drafting-assist.mjs"
+    "test:gov-drafts": "tsx scripts/test-gov-drafting-assist.mjs",
+    "test:avatar": "npx tsx client/src/lib/assessment-call/__tests__/lip-sync.test.ts && npx tsx client/src/lib/assessment-call/__tests__/avatar-head.test.ts && npx tsx client/src/lib/assessment-call/__tests__/avatar-controller.test.ts && npx tsx client/src/lib/assessment-call/__tests__/real-audio.test.ts && npx tsx client/src/lib/assessment-call/__tests__/call-window-contrast.test.ts && npx tsx client/src/lib/assessment-call/__tests__/analytics.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -67,6 +68,7 @@
     "recharts": "^2.15.4",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
+    "three": "^0.186.1",
     "vaul": "^1.1.0",
     "wouter": "^3.3.5",
     "zod": "^3.23.8"
@@ -76,6 +78,7 @@
     "@types/node": "^22.12.0",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.14",

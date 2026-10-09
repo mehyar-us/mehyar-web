@@ -397,6 +397,107 @@ an infra session row here exactly like an assessment call (linked via
 `brain_session_id`); the calendar/human booking is the brain crew's
 `book-followup` domain.
 
+## Avatar component contract (avatar crew — appended 2026-10-09)
+
+The 3D Mayor talking head + FaceTime-style call window. Source:
+`client/src/lib/assessment-call/*`, `client/src/components/assessment-call/*`.
+Full approach/perf/compliance writeup: `docs/assessment-call-avatar.md`.
+
+### API (exact — no deviations from the 5-method brief)
+
+```ts
+import { mountAvatar, primeAvatarAudio } from "./lib/assessment-call/mayor-avatar.js";
+import type { AvatarHandle } from "./lib/assessment-call/types.js";
+
+const avatar: AvatarHandle = mountAvatar(container, opts?);
+avatar.setSpeaking(speaking: boolean): void;
+avatar.setState(state: "idle" | "listening" | "thinking" | "speaking"): void;
+avatar.playSpeech(input: PlaySpeechInput, opts?: PlaySpeechOpts): Promise<void>;
+avatar.dispose(): void;
+```
+
+**`playSpeech` input (reconciled with the infra crew's adapter contract):**
+accepts every shape both crews specified — a superset, no conflicts:
+
+| Input | Behavior |
+|---|---|
+| `ArrayBuffer` | Real lip-sync: decoded + played through the shared AudioContext, mouth driven per-frame from the analyser |
+| `HTMLAudioElement` | Real lip-sync: tapped via `createMediaElementSource`; the avatar calls `el.play()` and resolves on `ended`. Same-origin/CORS audio only — tainted elements reject with `AvatarAudioError("cors")` |
+| `{ kind: "audio", src }` | Same as above (the adapter's envelope form) |
+| `{ kind: "text", text }` | **Text-rhythm visualization (NOT synced):** deterministic syllable-rhythm mouth animation for the text's estimated duration (chars ÷ 15/sec, 1.5s–120s), speaking state + body language. Use only when audio is unavailable |
+
+`PlaySpeechOpts`: `{ text?: string, audible?: boolean }`. `audible: false`
+analyzes at zero gain — for the integration where the voice transport plays
+the audible copy and the avatar analyzes a copy (no double audio).
+
+Errors are `AvatarAudioError` (`decode` / `autoplay` / `cors` /
+`unsupported` / `aborted`). A second `playSpeech()` aborts the first
+(its promise rejects `"aborted"`). `setState` is synchronous (same frame);
+`setSpeaking(true)` without `playSpeech` keeps the mouth near-neutral —
+**we never fake lip-sync.** All mount options, test seams
+(`audioEngineFactory`, `onViseme`, `onAudioAttached`, `forceNullRenderer`),
+and the auto-degrade FPS behavior are documented in the type headers.
+
+### Audio wiring — avatar crew recommendation (for the voice team / adapter)
+
+Mayor ordered **cheap + synced** (R2). Sync is only real when the avatar sees
+the audio. Ranked:
+
+1. **Preferred:** the voice transport exposes the played audio as an
+   `HTMLAudioElement` (or `MediaStream` → element) → adapter passes it to
+   `avatar.playSpeech(el)`. Real lip-sync, zero extra latency, one audible copy.
+2. **Also good:** voice team returns the TTS audio bytes alongside `speak()`
+   → adapter calls `avatar.playSpeech(buffer, { audible: false })` while the
+   transport plays audibly. Real lip-sync; clock drift between the two copies
+   is irrelevant for mouth animation (energy-driven, not sample-aligned).
+3. **Degraded:** `avatar.playSpeech({ kind: "text", text: reply_text })` —
+   rhythmic visualization only, not synced to the audio. Acceptable fallback,
+   not the target.
+
+**[NEED] from the voice team:** whichever of (1)/(2) you can provide, so the
+adapter can pass real audio. Until then the adapter's `{ kind: "text" }` call
+works today (it resolves; the avatar animates) — but the mouth won't be
+synced to your audio.
+
+### Latency (avatar's D5 contribution, measured headless-Chromium)
+
+- `setState('speaking')` / `playSpeech()` → speaking state: **0–4 ms** (sync)
+- Audio render start → first mouth movement: **~300 ms** (analyser prime + viseme attack)
+- Mouth streams per-frame; nothing waits for a full clip
+- Mount warms shaders + AudioContext up front; **`primeAvatarAudio()` must be
+  called in the Join-click handler** (user gesture) — skips the ~1.5–2.5 s
+  cold audio-service spin-up on first play
+- Cost: **$0.00/min** server compute (100% client-side WebGL); ~34 draw calls,
+  ~8.7k triangles, 24 µs/frame pose math; auto-degrades pixel ratio under
+  28 fps. Compare D-ID ~$2.95–5.90/min, HeyGen ~$0.10–0.20/min streaming.
+
+### Call-window UI (avatar crew)
+
+- `AssessmentCallConsent` — pre-join recording-consent gate (unchecked by
+  default, Join disabled until checked) + mehyar.us legal footer
+- `AssessmentCallWindow` — FaceTime-style UI: avatar centered, mute/end call,
+  captions toggle, connection pill, persistent REC indicator, aria-live state
+  announcements; WCAG AA contrast verified (7/7 pairs ≥ 4.5:1, tested)
+- Analytics: `trackAssessmentCallEvent("call_join"|"call_start"|"call_end")`
+  in `lib/assessment-call/analytics.ts` (GA4 via gtag, dry-run aware, unit
+  tested). **Meta Pixel / GTM are genuinely absent from the repo** — flagged
+  gap, not invented. SEO: ready-to-paste `SeoMeta` entry for the call route
+  (route TBD by infra — proposed `https://mehyar.us/call?...`) is in the
+  avatar doc; register it in `client/src/components/SeoManager.tsx`.
+- Tests: `npm run test:avatar` — 55/55 green (lip-sync 14, avatar-head 9,
+  avatar-controller 18, real-audio 3, contrast 7, analytics 4) + `npm run
+  check` clean + headless-Chromium E2E (screenshots QC'd by eye).
+
+### Compliance decision log (avatar crew)
+
+- **2026-10-09 11:47 ET — Mayor: "NEVER mention it's AI."** The call window
+  ships without an AI-disclosure badge, implementing his explicit word
+  (matches the brain crew's D2 log above). Logged as a compliance flag
+  against checklist items 9/12 — implementing as ordered.
+- Model provenance (item 19): the Mayor head is 100% code-authored
+  (`avatar-head.ts`) — no downloaded/scraped model, no licensing exposure.
+  Only new third-party dependency: `three` (MIT).
+
 ### R1: post-payment human booking mechanics (2026-10-09, WITHDRAWN same day)
 
 The infra crew drafted a parallel booking system under this heading and
