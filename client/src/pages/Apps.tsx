@@ -478,6 +478,24 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/audit-my-business-logo.png",
     accentClass: "from-fuchsia-100 to-white dark:from-fuchsia-900 dark:to-fuchsia-950",
   },
+  {
+    id: "dust",
+    name: "DUST",
+    url: "https://dust.mehyar.us",
+    tagline: "Your dust is a lottery ticket.",
+    description:
+      "The 7-day Great Sweep: sweep your sub-$5 dust balances and the entire $DUST supply goes pro-rata to sweepers — no presale, no insiders, zero team allocation. Currently testing on Solana devnet; nothing for sale.",
+    audience:
+      "Crypto holders with forgotten dust balances, and anyone who wants the fairest meme-coin launch ever attempted.",
+    highlights: [
+      "100% of the 1B supply goes pro-rata to sweepers",
+      "Zero team allocation — no presale, no insider wallets",
+      "Per-wallet cap so no whale can game the pile",
+      "Live Dust Census leaderboard, all on-chain and verifiable",
+    ],
+    logo: "/assets/dust-logo.png",
+    accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
+  },
 ];
 
 const buildPillars = [
@@ -719,7 +737,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST), and the request form.
           </p>
         </div>
       </section>

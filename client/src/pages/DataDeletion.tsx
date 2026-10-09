@@ -35,6 +35,7 @@
 //  25. The Mayor — https://mayor.mehyar.us (AI business assistant for local service businesses)
 //  26. Moonroom — https://moonroom.mehyar.us (AI photo studio: headshot/product/theme packs from one selfie)
 //  27. Audit My Business — https://mehyar.us/audit/ ($330 AI audit: score, money leaks, fixes, AI opportunities)
+//  28. DUST — https://dust.mehyar.us (meme-coin experiment: 7-day Great Sweep, 100% supply pro-rata to sweepers; testnet only)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -45,7 +46,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -383,6 +384,18 @@ id: "hustlekit",
       "The business URL you submit, your email (stored SHA-256 hashed only), and an optional walkthrough video plus its transcript. No accounts on this product.",
     whatWeDelete:
       "Submitted URL, hashed email, uploaded walkthrough video + transcript, and the generated audit report. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "dust",
+    name: "DUST",
+    url: "https://dust.mehyar.us",
+    tagline: "Your dust is a lottery ticket.",
+    icon: Coins,
+    inAppPath: "One-click unsubscribe link (no accounts on this product); email fallback (info@mehyar.us)",
+    whatWeCollect:
+      "Email address only, if you join the sweep notify list. No accounts, no wallets, no on-chain data collected by the site.",
+    whatWeDelete:
+      "Notify-list email on one-click unsubscribe (record flagged immediately, excluded from all sends). Deletion via the email fallback within 14 days.",
   },
 ];
 

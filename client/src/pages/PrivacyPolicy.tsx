@@ -291,6 +291,10 @@ const sections: Section[] = [
             <div className="font-semibold">Audit My Business — <a className="text-brand-700 underline dark:text-brand-100" href="https://mehyar.us/audit/" target="_blank" rel="noreferrer">mehyar.us/audit <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">$330 AI business audit: overall score, money leaks ranked by severity, prioritized fixes, and an AI opportunity map. One-time payment, purchases final.</div>
           </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">DUST — <a className="text-brand-700 underline dark:text-brand-100" href="https://dust.mehyar.us" target="_blank" rel="noreferrer">dust.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Meme-coin experiment: the 7-day Great Sweep distributes 100% of the $DUST supply pro-rata to sweepers — no presale, no insiders. Currently testnet only; nothing for sale. 18+.</div>
+          </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
