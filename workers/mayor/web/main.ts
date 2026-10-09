@@ -19,6 +19,7 @@ import {bindVoiceAccessRecovery,createAccessRecoveryView} from './voice-access-r
 import {createBusinessWorkspace,playSoundCheck} from './business-workspace';
 import {createWorkspaceAccessGuard,workspaceAccessWasRejected,selectWorkspaceBusiness} from './workspace-access';
 import {assistantName,assistantGreeting} from '../src/assistant-persona';
+import {namingGreeting,validateBusinessName} from './business-naming';
 import {VERTICAL_PROFILES} from '../src/verticals';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -55,7 +56,7 @@ voiceHelp.addEventListener('keydown',event=>{if(event.key==='Escape'&&voiceHelp.
 const newChatHeader=document.createElement('button');newChatHeader.type='button';newChatHeader.id='new-chat';newChatHeader.className='secondary';newChatHeader.textContent='New chat';newChatHeader.setAttribute('aria-label','Start a new conversation');newChatHeader.hidden=true;newChatHeader.onclick=()=>void startNewChat();document.querySelector('.header-actions')!.append(newChatHeader);
 const micLevel=document.createElement('meter');micLevel.id='mic-level';micLevel.min=0;micLevel.max=1;micLevel.value=0;micLevel.hidden=true;micLevel.setAttribute('aria-label','Microphone input level');soundCheck.after(micLevel);
 const canManage=()=>!accessEnded&&['owner','manager'].includes(membershipRole);
-const canChat=()=>!accessEnded&&['owner','manager','staff'].includes(membershipRole);
+const canChat=()=>!accessEnded&&(namingMode||['owner','manager','staff'].includes(membershipRole));
 const connectionHub=createConnections({api,tenant:()=>tenantId,actor:()=>sessionUserId,canManage,onConnect:(provider,capabilities)=>signIn(provider,capabilities),onCalendar:provider=>{show('chat');void calendarChat.open(undefined,provider);},onAccount:()=>show('account'),ask:text=>{show('chat');const input=$<HTMLTextAreaElement>('message');input.value=text;resizeComposer();input.focus();},pendingProviders:[{id:'facebook',label:'Facebook & Instagram',status:'App review pending'}]});
 $('connections-content').append(connectionHub.element);
 $('open-connections').onclick=()=>show('connections');
@@ -183,6 +184,10 @@ $('notice').before(networkStatus);
 let voiceConnected=false;
 let microphoneProblem='';
 let historyReady=false;
+// Crew 5 UX: true between sign-in and the owner naming their business. The
+// app never auto-creates a nameless business — namingMode gates the composer
+// so the owner's answer to "What's your business called?" becomes the name.
+let namingMode=false;
 let savedTranscript:Array<{role:string;text:string}>=[];
 let confirmedProfile:Record<string,unknown>={};
 function composerPlaceholder(){const name=assistantName(confirmedProfile);return `Ask ${name.length<=14?name:'Mayor'}…`;}
@@ -272,6 +277,9 @@ async function sendTextMessage(text:string){
  if(voiceCall?.active||voiceCall?.starting){notice('End the voice conversation before sending a typed message. Your draft is saved here.');return;}
  const input=$<HTMLTextAreaElement>('message');if(!text.trim())return;notice('');
  show('chat');
+ // Crew 5 UX: the first message after sign-in (no business yet) IS the
+ // business name — it creates the business, with that real name, once.
+ if(namingMode){await claimBusinessName(text.trim());return;}
  const result=await textChat.submit(text.trim());
  if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(input.value.trim()===text.trim())input.value='';resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
 }
@@ -628,7 +636,7 @@ async function connect(){
 function endWorkspaceAccess(){
  if(accessEnded)return;
  chatKeyboard.dispose();
- accessEnded=true;workspaceAccess.end();textChat.cancel();voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
+ accessEnded=true;namingMode=false;workspaceAccess.end();textChat.cancel();voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
  savedTranscript=[];confirmedProfile={};voiceRows.clear();$('transcript').replaceChildren();$('interim').textContent='';
  workspace.clear();workday.clear();connectionHub.reset();voiceHealth.clear();calendarChat.clear();calendarLauncher.hidden=true;$('calendar-status').hidden=true;voiceHelp.open=false;voiceHelp.hidden=true;micLevel.hidden=true;micLevel.value=0;
  $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
@@ -808,18 +816,54 @@ async function init(){
   if(!session){if(new URLSearchParams(location.search).has('auth_error'))notice('Sign-in could not finish. Please try again.');return;}
   sessionUserId=session.user.id;loggedIn=true;$('sign-in').hidden=true;$('sign-in-microsoft').hidden=true;$('chat-sign-in').hidden=true;$('chat-empty').hidden=false;$('logout').hidden=false;$('user-detail').textContent=session.user.email;
   const businesses=await api('/api/businesses');
-  let business=selectWorkspaceBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,new URLSearchParams(location.search).get('business'));
-  if(!business){
-    const created=await api('/api/businesses',{name:'My business'});
+  const business=selectWorkspaceBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,new URLSearchParams(location.search).get('business'));
+  // Crew 5 UX: never auto-create a nameless business. With no membership the
+  // owner names the business in conversation first; only that real name is
+  // ever sent to POST /api/businesses (see claimBusinessName).
+  if(!business){enterNamingMode();return;}
+  await enterBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,business);
+}
+
+/** First-run: the conversation asks "What's your business called?" and the
+ * owner's answer becomes the business name. No business exists yet here. */
+function enterNamingMode(){
+  namingMode=true;
+  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=false;
+  chatActions.hidden=false;
+  // No conversation exists yet — a reset would hit a tenant-less endpoint.
+  newChatDock.hidden=true;
+  show('chat');
+  savedTranscript=[{role:'assistant',text:namingGreeting()}];
+  // The composer is the naming input; there is no conversation history yet.
+  historyReady=true;transcripts();updateNetwork();
+  $<HTMLTextAreaElement>('message').placeholder='Your business name…';
+  $('status').textContent='Welcome to The Mayor';
+  $('voice-hint').textContent='Name your business first — then we can talk.';
+}
+
+/** The owner's answer to the naming question creates the business, once. */
+async function claimBusinessName(name:string){
+  const problem=validateBusinessName(name);
+  if(problem){notice(problem);return;}
+  notice('Creating your business…');
+  try{
+    const created=await api('/api/businesses',{name:name.trim()});
     // Read the actual membership; creation alone must not imply ownership.
-    business=(await api('/api/businesses')).businesses.find((item:any)=>item.id===created.id);
-  }
-  if(!business)throw new Error('Your business membership is not available. Please contact the workspace owner.');
-  tenantId=business.id;membershipRole=business.role;
+    const list=await api('/api/businesses');
+    const business=list.businesses.find((item:any)=>item.id===created.id);
+    if(!business)throw new Error('Your business was created but is not available yet. Reload to continue.');
+    namingMode=false;savedTranscript=[];
+    await enterBusiness(list.businesses,business);
+    notice(`Welcome, ${business.name} — your front desk is ready. Tell me what you do and we’ll set up the rest together.`);
+  }catch(error){notice(error instanceof Error?error.message:'Could not create your business. Try again.');}
+}
+
+async function enterBusiness(businesses:Array<{id:string;name:string;role:string}>,business:{id:string;name:string;role:string}){
+  tenantId=business.id;membershipRole=business.role;newChatDock.hidden=false;
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();chatActions.hidden=false;
   workday.ready(business.name,membershipRole);
-  setupBusinessSwitcher(businesses.businesses as Array<{id:string;name:string;role:string}>,business.id);
+  setupBusinessSwitcher(businesses,business.id);
   $('calendar-status').hidden=!canManage();
   calendarLauncher.hidden=!canManage();
   const connectionError=new URLSearchParams(location.search).get('auth_error');
