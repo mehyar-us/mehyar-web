@@ -2,11 +2,26 @@
 // Input:  { account, kind, author, author_name, text }
 // Output: { product_id, keyword, reply_text } or { product_id: null }
 //
+// route() is the deterministic keyword path (sync, unchanged).
+// routeAsync() adds the decide() intent assist on top: for messages with NO
+// keyword hit on @aimechanicapp, it asks the shared wants_fix_link question
+// (the SAME definition the affiliate dm_agent uses —
+// ./intent-questions.json, never forked). High-confidence wants_link routes
+// to the FIX special reply; anything else (low confidence, error, other
+// account) returns { product_id: null } exactly as before. Fail-closed: the
+// keyword path never changes and no new sends happen without an "auto"
+// verdict at >= 0.85.
+//
 // D1: social_inbox_log(ref_id TEXT PRIMARY KEY, account, kind, author,
 //       product_id, replied_at) — create once:
 //   CREATE TABLE IF NOT EXISTS social_inbox_log (
 //     ref_id TEXT PRIMARY KEY, account TEXT, kind TEXT, author TEXT,
 //     product_id TEXT, replied_at TEXT);
+
+import { decide, verdict } from "../../_shared/decide.js";
+import QUESTIONS from "./intent-questions.json" with { type: "json" };
+
+const WANTS_FIX_LINK = QUESTIONS.wants_fix_link;
 
 const TAG = "mehyarus-20";
 
@@ -164,10 +179,40 @@ export function route({ account, text, author_name }) {
 export function accountIgId(account) {
   return ACCOUNTS[account]?.ig_id || null;
 }
-
 export function accountForIgId(igsid) {
   for (const [slug, cfg] of Object.entries(ACCOUNTS)) {
     if (cfg.ig_id && String(cfg.ig_id) === String(igsid)) return slug;
   }
   return "unknown";
+}
+
+// ── decide() intent assist (2026-10-09) ─────────────────────────────────────
+// Async twin of route(): keyword path first, then the shared wants_fix_link
+// question for @aimechanicapp messages with no keyword hit. Returns the same
+// shape as route(). Fail-closed — any failure returns { product_id: null }.
+export async function routeAsync({ account, text, author_name }, { env = {}, transport } = {}) {
+  const kw = route({ account, text, author_name });
+  if (kw.product_id) return kw;
+  // The shared question is @aimechanicapp-specific (mirrors dm_agent).
+  if (account !== "aimechanicapp") return { product_id: null };
+  const t = String(text || "").trim();
+  if (!t) return { product_id: null };
+  try {
+    const r = await decide(env, { comment: t.slice(0, 500) }, {
+      intent: {
+        type: WANTS_FIX_LINK.type,
+        ask: WANTS_FIX_LINK.ask,
+        options: WANTS_FIX_LINK.options,
+      },
+    }, { tag: "social-inbox-intent", ...(transport ? { transport } : {}) });
+    if (!r.ok) return { product_id: null };
+    const ans = r.answers.intent;
+    if (verdict(ans, WANTS_FIX_LINK.thresholds) === "auto" && ans.decision === "wants_link") {
+      const name = (author_name || "there").split(" ")[0];
+      return specialReply(name, "fix");
+    }
+    return { product_id: null };
+  } catch {
+    return { product_id: null };
+  }
 }

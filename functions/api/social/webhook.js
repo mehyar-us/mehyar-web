@@ -1,7 +1,7 @@
 // Meta webhook for the unified social inbox.
 // GET  /api/social/webhook — subscription verification
 // POST /api/social/webhook — message + comment events
-import { route, accountIgId, accountForIgId } from "./_shared/router.js";
+import { routeAsync, accountIgId, accountForIgId } from "./_shared/router.js";
 import { sendInstagramReply } from "./send.js";
 
 function json(body, status = 200) {
@@ -53,7 +53,9 @@ export async function processInbound(env, evt) {
       .bind(String(ref_id)).first().catch(() => null);
     if (seen) return { ok: true, duplicate: true };
   }
-  const r = route({ account, kind, author, author_name, text });
+  // Keyword route first; decide() intent assist only for no-keyword
+  // @aimechanicapp messages (fail-closed -> { product_id: null }).
+  const r = await routeAsync({ account, kind, author, author_name, text }, { env });
   const now = new Date().toISOString();
   if (db) {
     await db.prepare(

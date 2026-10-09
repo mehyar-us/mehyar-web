@@ -1,0 +1,16 @@
+{
+  "_canonical": "mehyar-us/mehyar-web:functions/api/social/_shared/intent-questions.json",
+  "_note": "ONE shared definition for the 'is this message asking for the product link?' intent assist. Imported by functions/api/social/_shared/router.js (JS) and vendored to ~/workspace/affiliate/intent-questions.json for dm_agent.py (Python). Edit here, re-vendor there \u2014 never fork the wording.",
+  "wants_fix_link": {
+    "ask": "Is this Instagram comment asking for the AI Mechanic product link, or asking for help with a car problem?",
+    "options": {
+      "other": "anything else (compliment, tag, emoji, off-topic, spam)",
+      "wants_link": "explicitly or implicitly asking for the product/app link, or describing a car problem they want help with"
+    },
+    "thresholds": {
+      "autoAt": 0.85,
+      "reviewAt": 0.55
+    },
+    "type": "choice"
+  }
+}
