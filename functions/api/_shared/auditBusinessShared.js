@@ -118,6 +118,18 @@ export function extractBusinessSignals(html, meta, byteLength) {
   const wordCount = text ? text.split(/\s+/).length : 0;
   const pageWeightKb = Math.round((byteLength || 0) / 1024);
 
+  // ── JS app-shell detection (honest measurement) ──────────────────────────
+  // A mounted app root + near-empty document text + a substantial script
+  // payload means the page renders its content client-side. The raw-HTML
+  // signals below (word count, headings, forms, CTAs, contact details)
+  // then reflect only the pre-hydration shell — they are UNMEASURED, not
+  // zero. Consumers must disclose "couldn't be assessed" for them instead
+  // of reporting the undercounted numbers. Never fabricate, never inflate.
+  const textChars = text.trim().length;
+  const scriptChars = (html.match(/<script[\s>][\s\S]*?<\/script>/gi) || []).join("").length;
+  const hasAppRoot = /<div[^>]+id=["'](root|app|__next|___gatsby)["']/i.test(html);
+  const contentUnmeasured = hasAppRoot && textChars < 600 && scriptChars > 5000;
+
   return {
     url: meta.requestedUrl,
     finalUrl: meta.finalUrl,
@@ -152,6 +164,10 @@ export function extractBusinessSignals(html, meta, byteLength) {
     imageCount: imgs.length,
     hasSchema: /application\/ld\+json/i.test(html) || /itemtype=["']http:\/\/schema\.org/i.test(html),
     textSample: text.slice(0, 2500),
+    // True when the page is a JS app shell: content-dependent signals above
+    // (wordCount, h1, forms, CTAs, contact details) could NOT be measured
+    // from the initial HTML and must be disclosed as unassessed, not zero.
+    contentUnmeasured,
   };
 }
 
@@ -190,7 +206,18 @@ export function deterministicScore(sig) {
   parts.socials = sig.socials && sig.socials.length > 0 ? w.socials : 0;
   parts.pageWeight = sig.pageWeightKb < 100 ? w.pageWeight : sig.pageWeightKb < 300 ? 2 : 0;
   const score = Math.max(0, Math.min(100, Object.values(parts).reduce((a, b) => a + b, 0)));
-  return { score, parts };
+  // Components that scored zero ONLY because the content couldn't be measured
+  // (JS app shell) are listed here so reports can disclose "couldn't be
+  // assessed" instead of presenting the 0 as a measured failure. Points stay
+  // 0 — we never inflate — but the absence is not a verified finding.
+  const unmeasured = [];
+  if (sig.contentUnmeasured) {
+    if (!sig.h1) unmeasured.push("h1");
+    if (sig.wordCount < 100) unmeasured.push("contentDepth");
+    if (!sig.ctaCount) unmeasured.push("cta");
+    if (!sig.hasContactPath) unmeasured.push("contactPath");
+  }
+  return { score, parts, unmeasured };
 }
 
 export function scoreGrade(score) {

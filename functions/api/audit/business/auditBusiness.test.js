@@ -200,6 +200,45 @@ const FIXTURE_HTML = `<!DOCTYPE html><html><head>
   ok(!bare.https, "http detected as not https");
 }
 
+// ── 3b. JS app-shell detection (honest measurement, 2026-10-09) ──────────
+// A JS SPA's pre-hydration HTML undercounts content signals (mehyar.us
+// itself measured 8 words, 0 CTAs). Such pages must be flagged
+// contentUnmeasured so consumers disclose "couldn't be assessed"
+// instead of reporting the undercounted 0s — never fabricate, never inflate.
+{
+  // Mimics mehyar.us: mounted root + ~20 chars of text + multi-KB scripts.
+  const spaHtml = `<html><head><title>Acme Co | Widgets</title><meta name="description" content="We make widgets."><meta name="viewport" content="width=device-width"></head><body><div id="root"></div><script src="/assets/main-abc123.js"></script><script>${"console.log('x');".repeat(800)}</script></body></html>`;
+  const spa = extractBusinessSignals(spaHtml,
+    { requestedUrl: "https://acme.example", finalUrl: "https://acme.example/", status: 200, loadMs: 120 }, spaHtml.length);
+  ok(spa.contentUnmeasured === true, "SPA shell flagged contentUnmeasured");
+  ok(spa.wordCount < 100, "SPA word count undercounted pre-hydration (as expected)");
+  const detSpa = deterministicScore(spa);
+  ok(Array.isArray(detSpa.unmeasured), "score carries unmeasured list");
+  ok(detSpa.unmeasured.includes("contentDepth") && detSpa.unmeasured.includes("h1") && detSpa.unmeasured.includes("cta"),
+    `unmeasured lists contentDepth/h1/cta (got ${JSON.stringify(detSpa.unmeasured)})`);
+  ok(!detSpa.unmeasured.includes("https"), "measured components not listed as unmeasured");
+  // Points stay 0 (no inflation) — the disclosure is what changes.
+  eq(detSpa.parts.contentDepth, 0, "unmeasured contentDepth scores 0, not inflated");
+
+  // Server-rendered page with real content is NOT flagged.
+  const ssrHtml = `<html><head><title>Acme</title></head><body><div id="root"><h1>Welcome to Acme</h1><p>${"Real content words here. ".repeat(60)}</p><a href="/contact">Contact us</a></div><script>console.log('tiny');</script></body></html>`;
+  const ssr = extractBusinessSignals(ssrHtml,
+    { requestedUrl: "https://acme.example", finalUrl: "https://acme.example/", status: 200, loadMs: 120 }, ssrHtml.length);
+  ok(ssr.contentUnmeasured === false, "SSR page with real content not flagged");
+  eq(deterministicScore(ssr).unmeasured.length, 0, "SSR page has no unmeasured components");
+  ok(ssr.wordCount >= 100, "SSR word count measured");
+
+  // Bare page without an app root is not flagged even with tiny text.
+  const bare = extractBusinessSignals("<html><head></head><body><p>hi</p></body></html>",
+    { requestedUrl: "https://x.com", finalUrl: "http://x.com/", status: 200, loadMs: 10 }, 60);
+  ok(bare.contentUnmeasured === false, "bare non-SPA page not flagged");
+
+  // The decide()-gating evidence pack carries the disclosure so the LLM
+  // can't cite undercounted 0s as findings of missing content.
+  const ev = evidencePackText(spa, detSpa, null, null);
+  ok(ev.includes("CONTENT UNMEASURED"), "evidence pack carries the disclosure");
+}
+
 // ── 4. Streaming multipart parser (adversarial chunking) ─────────────────
 {
   const enc = new TextEncoder();

@@ -56,6 +56,8 @@ type PreviewSignal = { label: string; value: string; good?: boolean | null };
 type IntakeResult = {
   auditId: string;
   signals: PreviewSignal[];
+  /** True when the site is a JS app shell: content rows show "couldn't be assessed". */
+  contentUnmeasured: boolean;
 };
 
 function joinList(v: unknown): string {
@@ -68,16 +70,20 @@ function joinList(v: unknown): string {
 function mapIntakeSignals(s: Record<string, any>): PreviewSignal[] {
   const rows: PreviewSignal[] = [];
   const push = (label: string, value: string, good?: boolean | null) => rows.push({ label, value, good });
+  /* When the site is a JS app shell, content-dependent signals couldn't be
+     measured from the initial HTML — disclose honestly instead of the 0s. */
+  const unmeasured = !!s.content_unmeasured;
+  const na = "Couldn't be assessed";
   push("Page title", s.title ? String(s.title) : "No title found", s.title ? true : false);
   push("HTTPS", s.https ? "On" : "Off", !!s.https);
   push("Load time", typeof s.load_ms === "number" ? `${s.load_ms} ms` : "—", null);
-  push("H1 heading", s.h1 ? String(s.h1) : "None found", s.h1 ? true : false);
+  push("H1 heading", unmeasured ? na : (s.h1 ? String(s.h1) : "None found"), unmeasured ? null : (s.h1 ? true : false));
   push("Meta description", s.has_meta_description ? "Present" : "Missing", !!s.has_meta_description);
-  push("Words on page", typeof s.word_count === "number" ? s.word_count.toLocaleString() : "—", null);
+  push("Words on page", unmeasured ? na : (typeof s.word_count === "number" ? s.word_count.toLocaleString() : "—"), null);
   push("Page weight", typeof s.page_weight_kb === "number" ? `${s.page_weight_kb} KB` : "—", null);
-  push("Phone number found", s.has_phone ? "Yes" : "No", !!s.has_phone);
-  push("Contact path", s.has_contact_path ? "Yes" : "None found", !!s.has_contact_path);
-  push("Forms / CTAs", `${s.form_count ?? "—"} / ${s.cta_count ?? "—"}`, null);
+  push("Phone number found", unmeasured ? na : (s.has_phone ? "Yes" : "No"), unmeasured ? null : !!s.has_phone);
+  push("Contact path", s.has_contact_path ? "Yes" : (unmeasured ? na : "None found"), s.has_contact_path ? true : null);
+  push("Forms / CTAs", unmeasured ? na : `${s.form_count ?? "—"} / ${s.cta_count ?? "—"}`, null);
   push("Mobile viewport", s.has_viewport ? "Yes" : "No", !!s.has_viewport);
   push("Trust signals", joinList(s.trust), Array.isArray(s.trust) && s.trust.length > 0 ? true : null);
   push("Tracking pixels", joinList(s.pixels), null);
@@ -366,6 +372,7 @@ export default function Audit() {
       setIntake({
         auditId: String(data.audit_id),
         signals: mapIntakeSignals(data.signals || {}),
+        contentUnmeasured: !!(data.signals || {}).content_unmeasured,
       });
       setVideoUploaded(false);
     } catch (err: any) {
@@ -631,6 +638,14 @@ export default function Audit() {
                 <p className="flex items-center gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
                   <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Free preview — what the fetch actually measured
                 </p>
+                {intake.contentUnmeasured && (
+                  <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                    This site loads its content with JavaScript, so headings, word count, forms, CTAs,
+                    and phone couldn't be assessed from the initial page load — they're marked
+                    "couldn't be assessed" below, not counted as missing. The paid audit covers
+                    them via your walkthrough video.
+                  </p>
+                )}
                 {signals.length > 0 ? (
                   <dl className="mt-4 grid gap-2 sm:grid-cols-2">
                     {signals.map((s, i) => (
