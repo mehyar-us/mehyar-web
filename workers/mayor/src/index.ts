@@ -42,7 +42,6 @@ import {handleBillingPublic,handleBillingRequest} from './billing';
 import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
-import {handleCouncilRequest} from './council';
 import {runProactiveCycle,buildBriefing,buildRoi,setRoiConfig,roiConfigSchema,recordNoShow,noShowSchema,listSuggestionCards,sendSuggestionCard,editSuggestionCard,dismissSuggestionCard,setProactiveSettings,proactiveSettingsSchema} from './proactive';
 export {MayorPhone} from './phone-voice';
 export { MayorVoice } from './voice';
@@ -140,11 +139,6 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     if(live&&live.status===409)throw new HttpError(409,'voice_call_active','End the voice conversation before starting a new chat.');
     if(!live||!live.ok)throw new HttpError(502,'conversation_reset_failed','Could not start a new conversation. Your conversation is unchanged — try again.');
     return json(await resetConversationRecovery(env,identity));
-  }
-  const council=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/council$/);
-  if(council){
-    const tenantId=council[1],identity={tenantId,userId:session.user.id,sessionId:session.session.id};
-    return handleCouncilRequest(request,env,identity);
   }
   if(url.pathname==='/api/businesses'&&request.method==='GET') {
     const result=await env.AGENT_DB.prepare(`SELECT t.id,t.name,m.role FROM agent_tenants t JOIN agent_memberships m ON m.tenant_id=t.id

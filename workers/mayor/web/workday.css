@@ -20,11 +20,6 @@ fieldset.booking-customer{border:1px solid #dce5ee;border-radius:9px;padding:15p
 @media(max-width:760px){header .business-identity{margin:0;padding:7px 12px;gap:6px;max-width:44vw}header .business-identity>svg{width:14px;height:14px}header .business-identity strong{font-size:12px}}
 @media(min-width:761px){.sidebar{overflow-y:auto}.sidebar nav{flex:1 0 auto}}
 @media(max-width:760px){.routines-heading{display:block}.routines-heading>.routine-actions{max-width:none;justify-content:flex-start;margin:8px 0 14px}.routines-heading .routine-actions>button{width:auto;flex-grow:1}.routine-catalog,.routine-settings,.routine-suggestions{grid-template-columns:1fr}.routine-template{padding:18px}.routine-brief{padding:20px}.routine-metrics{grid-template-columns:1fr 1fr}.routine-settings{padding:18px}.routine-configuration{padding:16px}.routines-heading h2{font-size:27px}.routine-brief>h3{font-size:25px}}
-.mode-toggle{display:inline-flex;background:#f1f5f9;border:1px solid #e2e9f1;border-radius:999px;padding:3px;gap:2px;margin:0 0 10px}
-.mode-toggle button{border:0;background:none;border-radius:999px;padding:8px 18px;font-size:12px;font-weight:600;color:#61778e;min-height:40px;cursor:pointer}
-.mode-toggle button[aria-pressed="true"]{background:#102b47;color:#fff}
-.mode-toggle button:focus-visible{outline:3px solid #3986ca;outline-offset:2px}
-.mode-note{font-size:11px;color:#8291a1;margin:0 0 10px;line-height:1.5;max-width:560px}
 .business-switcher-menu{position:absolute;z-index:40;background:#fff;border:1px solid #d5e0ec;border-radius:12px;box-shadow:0 12px 40px #102b4730;padding:6px;min-width:220px;margin-top:8px}
 .business-switcher-item{display:block;width:100%;text-align:left;background:none;border:0;padding:12px 14px;font-size:13px;border-radius:8px;min-height:44px;color:var(--ink)}
 .business-switcher-item:hover:not(:disabled){background:#eef4f9}

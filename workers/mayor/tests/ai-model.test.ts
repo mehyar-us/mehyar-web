@@ -29,9 +29,9 @@ it('rejects malformed and oversized SSE instead of forwarding unbounded model da
 it('unwraps the AI Gateway REST envelope on non-streaming generateText and skips the gateway cache',async()=>{
  // Regression: gatewayRun used to return the full REST envelope
  // {result,success,errors,messages}, so workers-ai-provider's processText
- // (which reads output.response) extracted "" and the council 502'd with
- // council_empty.
- const envelope={result:{response:'HOT ZERO: Build it.'},success:true,errors:[],messages:[]};
+ // (which reads output.response) extracted "" and the assistant turn 502'd with
+ // an empty-reply error.
+ const envelope={result:{response:'Build the new landing page.'},success:true,errors:[],messages:[]};
  const seenRequests:{url:string;headers:Record<string,string>}[]=[];
  const realFetch=globalThis.fetch;
  globalThis.fetch=(async(input:any,init?:any)=>{
@@ -42,7 +42,7 @@ it('unwraps the AI Gateway REST envelope on non-streaming generateText and skips
   const ai={run:async()=>{throw new Error('direct binding must not be reached on the gateway path');}} as unknown as Env['AI'];
   const env={AI:ai,AI_GATEWAY_ACCOUNT_ID:'acct-1',AI_GATEWAY_ID:'mayor-businesses',AI_GATEWAY_TOKEN:'tok'} as Env;
   const result=await generateText({model:mayorModel(env),prompt:'Should we launch?'});
-  expect(result.text).toBe('HOT ZERO: Build it.');
+  expect(result.text).toBe('Build the new landing page.');
   expect(seenRequests).toHaveLength(1);
   expect(seenRequests[0].url).toContain('gateway.ai.cloudflare.com/v1/acct-1/mayor-businesses/workers-ai');
   expect(seenRequests[0].headers['cf-aig-skip-cache']).toBe('true');
@@ -55,12 +55,12 @@ it('remaps reasoning_content to content on non-streaming generateText (qwen3 qui
  // HTTP 200 with the generated text in choices[0].message.reasoning_content
  // (mirrored in .reasoning) while choices[0].message.content and the
  // top-level response are null. workers-ai-provider's processText reads only
- // content/response, so generateText produced "" and the council 502'd with
- // council_empty. The binding wrapper must repair the shape first.
- const quirk={choices:[{message:{role:'assistant',content:null,reasoning:'HOT ZERO: Build it.',reasoning_content:'HOT ZERO: Build it.'},finish_reason:'stop',index:0}],response:null,usage:{}};
+ // content/response, so generateText produced "" and the assistant turn 502'd
+ // with an empty-reply error. The binding wrapper must repair the shape first.
+ const quirk={choices:[{message:{role:'assistant',content:null,reasoning:'Build the new landing page.',reasoning_content:'Build the new landing page.'},finish_reason:'stop',index:0}],response:null,usage:{}};
  const ai={run:async()=>quirk} as unknown as Env['AI'];
  const result=await generateText({model:mayorModel({AI:ai}),prompt:'Should we launch?'});
- expect(result.text).toBe('HOT ZERO: Build it.');
+ expect(result.text).toBe('Build the new landing page.');
 });
 it('remapReasoningContent leaves healthy outputs and streams untouched',async()=>{
  const {remapReasoningContent}=await import('../src/ai-model');

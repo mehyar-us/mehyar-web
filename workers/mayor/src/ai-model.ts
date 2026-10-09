@@ -42,7 +42,7 @@ import {gatewayRun} from './ai-gateway';
  * path is unaffected (deltas carry `delta.content` correctly).
  *
  * workers-ai-provider's processText only reads content/response, so
- * generateText callers (council) see empty text and 502. Remap once here so
+ * generateText callers see empty text and 502. Remap once here so
  * every non-streaming caller gets the text. Never clobbers a real content
  * value; never touches streams.
  */

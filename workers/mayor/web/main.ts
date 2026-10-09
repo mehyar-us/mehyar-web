@@ -185,8 +185,7 @@ let microphoneProblem='';
 let historyReady=false;
 let savedTranscript:Array<{role:string;text:string}>=[];
 let confirmedProfile:Record<string,unknown>={};
-let councilMode=false;
-function composerPlaceholder(){const name=assistantName(confirmedProfile);return councilMode?'Ask the council…':`Ask ${name.length<=14?name:'Mayor'}…`;}
+function composerPlaceholder(){const name=assistantName(confirmedProfile);return `Ask ${name.length<=14?name:'Mayor'}…`;}
 const ONBOARDING_STEP_LABELS:Record<string,string>={name:'Business name',industry:'Industry',services:'Services',locations:'Locations',hours:'Hours',timeZone:'Time zone',staff:'Team'};
 function renderOnboardingProgress(progress?:{missing:string[];basicsComplete:boolean}){
  const el=$('onboarding-progress');el.replaceChildren();
@@ -217,15 +216,8 @@ const chatActions=document.createElement('div');chatActions.className='chat-acti
 // Same action as the header control: archive the server thread, clear the local
 // transcript, and re-render the business-first greeting.
 const newChatDock=document.createElement('button');newChatDock.type='button';newChatDock.className='secondary';newChatDock.textContent='New chat';newChatDock.setAttribute('aria-label','Start a new conversation');newChatDock.onclick=()=>void startNewChat();chatActions.append(newChatDock);
-const modeToggle=document.createElement('div');modeToggle.className='mode-toggle';modeToggle.setAttribute('role','group');modeToggle.setAttribute('aria-label','Chat mode');
-const assistantModeBtn=document.createElement('button');assistantModeBtn.type='button';assistantModeBtn.textContent='Assistant';assistantModeBtn.setAttribute('aria-pressed','true');
-const councilModeBtn=document.createElement('button');councilModeBtn.type='button';councilModeBtn.textContent='Council';councilModeBtn.setAttribute('aria-pressed','false');
-const modeNote=document.createElement('p');modeNote.className='mode-note';modeNote.hidden=true;modeNote.textContent='The council answers — the seats speak, the King rules. AI coaching, not professional advice. Council replies show here but are not saved to your conversation history.';
-function setChatMode(council:boolean){councilMode=council;assistantModeBtn.setAttribute('aria-pressed',String(!council));councilModeBtn.setAttribute('aria-pressed',String(council));modeNote.hidden=!council;$<HTMLTextAreaElement>('message').placeholder=composerPlaceholder();resizeComposer();}
-assistantModeBtn.onclick=()=>setChatMode(false);councilModeBtn.onclick=()=>setChatMode(true);
-modeToggle.append(assistantModeBtn,councilModeBtn);$('text-form').before(modeToggle,modeNote);
 const textChat=createTextChat(async(text,requestId,signal)=>{
- const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/${councilMode?'council':'conversation'}`;
+ const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/conversation`;
  const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId}),signal});
  const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){
   if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();
@@ -238,7 +230,7 @@ const textChat=createTextChat(async(text,requestId,signal)=>{
  }return result;
 },(busy,message)=>{if(accessEnded)return;composerStatus.textContent=message;stopWaiting.hidden=!busy;updateNetwork();renderVoiceState();},{
  serviceDownCopy:(status)=>status===502
-  ?(councilMode?'The council couldn\u2019t reach the AI service — try again in a moment.':'The assistant couldn\u2019t reach the AI service — try again in a moment.')
+  ?'The assistant couldn\u2019t reach the AI service — try again in a moment.'
   :undefined,
 });
 stopWaiting.onclick=()=>textChat.cancel();
@@ -281,7 +273,7 @@ async function sendTextMessage(text:string){
  const input=$<HTMLTextAreaElement>('message');if(!text.trim())return;notice('');
  show('chat');
  const result=await textChat.submit(text.trim());
- if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(result.stopped)setChatMode(false);if(input.value.trim()===text.trim())input.value='';resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
+ if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(input.value.trim()===text.trim())input.value='';resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
 }
 function updateNetwork(){
   if(accessEnded)return;
