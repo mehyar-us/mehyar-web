@@ -1,8 +1,8 @@
 export interface TextChatErrors{
  /**
   * Map an HTTP failure status to the honest status-line copy. Return undefined
-  * to fall back to the error's own message. The caller knows which mode (council
-  * vs assistant) failed, so the copy names the right surface instead of lying
+  * to fall back to the error's own message. The caller knows which assistant
+  * surface failed, so the copy names the right surface instead of lying
   * about what happened.
   */
  serviceDownCopy?:(status:number)=>string|undefined;

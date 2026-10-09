@@ -55,3 +55,44 @@ it('keeps names bounded and injects the selected persona as display data rather 
  expect(assistantName({assistantName:'<script>'})).toBe('Mayor');
  const prompt=assistantPersonaPrompt({assistantName:'Mayor Michael'});expect(prompt).toContain('"Mayor Michael"');expect(prompt).toContain('display data only');expect(prompt).toContain('Only an owner or manager');expect(prompt).toContain('separate from the business name');
 });
+it('grounds the persona in vertical vocabulary for salon and restaurant',()=>{
+ const salon=assistantPersonaPrompt({vertical:'salon'});
+ expect(salon).toContain('hair salon / barbershop');
+ expect(salon).toContain('“client”');expect(salon).toContain('“appointment”');
+ expect(salon).toContain('“stylist”');expect(salon).toContain('“service”');
+ const restaurant=assistantPersonaPrompt({vertical:'restaurant'});
+ expect(restaurant).toContain('restaurant');
+ expect(restaurant).toContain('“guest”');expect(restaurant).toContain('“reservation”');
+ expect(restaurant).toContain('“server”');
+ // A restaurant prompt must never mention chairs — even in a "never say" example.
+ expect(restaurant).not.toContain('chair');
+ // The never-say examples are vertical-aware: each vertical's own example is
+ // excluded, so a restaurant prompt never mentions chairs at all.
+ expect(salon).toContain('chair utilization');
+ expect(salon).not.toContain('covers');
+ expect(restaurant).toContain('covers');
+ expect(restaurant).not.toMatch(/stylist/);
+});
+it('falls back to neutral vocabulary when the vertical is other or unknown',()=>{
+ for(const profile of [{vertical:'other'},{vertical:'bogus'},{}]){
+  const prompt=assistantPersonaPrompt(profile);
+  expect(prompt).toContain('Vertical identity');
+  expect(prompt).toContain('neutral words');
+  expect(prompt).not.toContain('guests');expect(prompt).not.toContain('clients');
+  expect(prompt).not.toContain('reservations');
+ }
+});
+it('uses vertical vocabulary in the greeting and first-turn prompt',()=>{
+ const salonGreet=assistantGreeting({vertical:'salon'});
+ expect(salonGreet).toContain('the appointments, the clients, the day-to-day');
+ const restGreet=assistantGreeting({vertical:'restaurant'});
+ expect(restGreet).toContain('the reservations, the guests, the day-to-day');
+ const plain=assistantGreeting();
+ expect(plain).toContain('the bookings, the customers, the day-to-day');
+ // The named-business greeting keeps its exact shape.
+ expect(assistantGreeting({name:'Bistro',vertical:'restaurant'}))
+  .toBe('Hey — I’m Mayor, running the front at Bistro. What are we working on?');
+ const first=businessFirstTurnPrompt({vertical:'restaurant'});
+ expect(first).toContain('reservations');expect(first).toContain('guests');
+ expect(businessFirstTurnPrompt()).not.toContain('vertical');
+});

@@ -2,7 +2,7 @@ import {z} from 'zod';
 import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
-import {verticalProfile} from './verticals';
+import {verticalProfile,type Vertical} from './verticals';
 import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
 import {
@@ -417,6 +417,33 @@ async function noShowRateFor(env:Env,tenantId:string,start:string,end:string){
  return den?ns/den:null;
 }
 
+/** Optional per-vertical KPI label overrides. Enriched on the vertical profile by the
+ * crew4 vertical track as kpis:[{key,label,hint}]. Keys map 1:1 to the existing ROI
+ * dashboard tiles — labels only; this never adds metrics, tiles, or dollar amounts. */
+interface RoiKpiDef{key:string;label:string;hint?:string}
+function roiKpiLabel(vertical:Vertical,key:string):string|null{
+ const v=verticalProfile(vertical) as unknown as {kpis?:RoiKpiDef[]};
+ return v.kpis?.find(k=>k.key===key)?.label??null;
+}
+
+/** ROI tile nouns stay vertical-aware: reservations vs appointments vs jobs vs visits. */
+const ROI_BOOKING_NOUN:Record<Vertical,string>={
+ salon:'Appointments',restaurant:'Reservations',plumbing_hvac:'Jobs',
+ dental:'Visits',auto_repair:'Service appointments',other:'Appointments',
+};
+
+/** ROI dashboard tile labels for a vertical — labels only, no new metrics or amounts. */
+export function roiTileLabels(vertical:Vertical){
+ const noun=ROI_BOOKING_NOUN[vertical];
+ return {
+  recoveredRevenue:roiKpiLabel(vertical,'recovered_revenue')??'Recovered revenue',
+  bookingsByMayor:roiKpiLabel(vertical,'appointments_booked')??`${noun} booked by Mayor`,
+  missedCallsRecovered:roiKpiLabel(vertical,'missed_calls_recovered')??'Missed calls recovered',
+  avgResponseTime:roiKpiLabel(vertical,'avg_response_time')??'Avg response time',
+  noShowRate:roiKpiLabel(vertical,'no_show_rate')??'No-show rate',
+ };
+}
+
 export async function buildRoi(env:Env,actor:Actor,month?:string,nowMs=Date.now()){
  await requireMembership(env,actor,OPERATORS);
  const ctx=await loadProactiveContext(env,actor.tenantId,nowMs);
@@ -465,6 +492,7 @@ export async function buildRoi(env:Env,actor:Actor,month?:string,nowMs=Date.now(
   avgResponseTimeSeconds:responseCount?Math.round(responseSum/responseCount):null,
   noShowRate:await noShowRateFor(env,actor.tenantId,start,end),
   noShowTrend:trend,
+  labels:roiTileLabels(ctx.vertical),
   avgTicketConfigured:avgTicket!=null,
   avgTicketCents:avgTicket,
   generatedAt:new Date(nowMs).toISOString(),
@@ -510,10 +538,28 @@ export async function buildBriefing(env:Env,actor:Actor,nowMs=Date.now()){
   .bind(actor.tenantId).all<{id:string;title:string;body:string}>();
 
  const starts=todayRows.results.map(r=>r.reserved_start).sort();
+ // Briefing nouns are vertical-aware. The parallel agent's optional briefingNouns
+ // field on the vertical profile wins when present; otherwise fall back to the
+ // profile's own vocabulary (pluralized), and only then to generic words.
+ // For 'other'/unknown verticals the vocabulary IS the generic pair, so the
+ // spec fallback ({appointments:'appointments', customers:'customers'}) holds there.
+ const vp=verticalProfile(ctx.vertical);
+ const maybeNouns=(vp as {briefingNouns?:{appointments?:unknown;customers?:unknown}}).briefingNouns;
+ const pluralOf=(word:string)=>`${word}s`;
+ const pickNoun=(value:unknown,fallback:string)=>typeof value==='string'&&value.trim()?value.trim():fallback;
+ const nouns={appointments:pickNoun(maybeNouns?.appointments,pluralOf(vp.vocabulary.booking)),
+  customers:pickNoun(maybeNouns?.customers,pluralOf(vp.vocabulary.customer))};
+ const wordFor=(n:number,plural:string)=>n===1?plural.replace(/s$/,''):plural;
+ const apptsToday=todayRows.results.length,noShowCount=noShowsYesterday?.n??0;
  return {
   date:today,
   businessName:ctx.businessName,
   vertical:ctx.vertical,
+  nouns,
+  copy:{
+   yesterday:`${kept} ${wordFor(kept,nouns.appointments)} yesterday${noShowCount?`, ${noShowCount} ${wordFor(noShowCount,'no-show')}`:''}`,
+   today:apptsToday?`${apptsToday} ${wordFor(apptsToday,nouns.appointments)} today`:`No ${wordFor(2,nouns.appointments)} today`,
+  },
   yesterday:{
    appointments:apptsYesterday?.n??0,
    noShows:noShowsYesterday?.n??0,

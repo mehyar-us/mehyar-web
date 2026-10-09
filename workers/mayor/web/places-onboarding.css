@@ -1,0 +1,21 @@
+/* Crew 4 — Google Places onboarding cards. Lives inside #onboarding-progress. */
+.places-onboarding{margin-top:12px}
+.places-card h3{font-size:15px;margin:0 0 6px;color:#102b47}
+.places-card p{font-size:13px;color:#53697e;margin:6px 0;line-height:1.5}
+.places-search{display:flex;gap:8px;margin:8px 0}
+.places-search input{flex:1;min-width:0;font-size:16px;padding:10px 12px;border:1px solid #c9d6e2;border-radius:10px}
+.places-status{font-size:13px;color:#53697e}
+.places-candidates{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.places-candidate{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px}
+.places-candidate strong{font-size:14px;color:#102b47}
+.places-candidate span{font-size:12px;color:#53697e}
+.places-confirm .places-photo{width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin:4px 0}
+.places-confirm .places-name{font-size:15px;font-weight:700;color:#102b47}
+.places-confirm .places-hours{white-space:pre-line;font-size:12px}
+.places-actions{display:flex;gap:8px;margin-top:10px}
+.places-actions button{flex:1;min-height:44px}
+.places-question{font-size:14px;font-weight:600;color:#102b47;background:#eef4fb;border-radius:10px;padding:10px 12px}
+.places-hint{font-size:12px;color:#53697e}
+.places-steps{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.places-step{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;text-align:left}
+.places-test-badge{font-size:10px;font-weight:700;color:#7a231b;background:#fdf0ee;border:1px solid #a62f25;border-radius:6px;padding:2px 6px;white-space:nowrap}

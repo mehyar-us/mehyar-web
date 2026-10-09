@@ -67,10 +67,10 @@ describe('day gaps',()=>{
 
 describe('lapsed windows',()=>{
  it('uses the per-vertical rebooking window',()=>{
-  expect(LAPSED_DAYS.salon).toBe(45);
+  expect(LAPSED_DAYS.salon).toBe(56);
   expect(LAPSED_DAYS.restaurant).toBe(60);
   expect(LAPSED_DAYS.plumbing_hvac).toBe(180);
-  expect(LAPSED_DAYS.dental).toBe(190);
+  expect(LAPSED_DAYS.dental).toBe(180);
   expect(LAPSED_DAYS.auto_repair).toBe(180);
   expect(LAPSED_DAYS.other).toBe(90);
  });
