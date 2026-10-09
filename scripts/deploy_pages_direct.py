@@ -77,6 +77,15 @@ def make_zip():
             shutil.rmtree(dst_funcs)
         shutil.copytree(src_funcs, dst_funcs)
         print(f"  synced {src_funcs} -> {dst_funcs}")
+    # Static assessment-call page (standalone HTML + adapter JS, not part of
+    # the Vite SPA). Ships at /assessment-call/ with working relative imports.
+    src_call = "assessment-call"
+    dst_call = os.path.join(DIST, "public", "assessment-call")
+    if os.path.isdir(src_call):
+        if os.path.exists(dst_call):
+            shutil.rmtree(dst_call)
+        shutil.copytree(src_call, dst_call)
+        print(f"  synced {src_call} -> {dst_call}")
     file_list = []
     # Source roots and how to map them into the zip
     src_dirs = [
