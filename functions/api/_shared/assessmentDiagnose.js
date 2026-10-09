@@ -64,9 +64,12 @@ export function spokenUrlToUrl(raw, { spellout = false } = {}) {
   const direct = t.match(/(https?:\/\/[^\s]+|(?:www\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?:\/[^\s]*)?)/);
   if (direct) return normalizeUrl(direct[1]);
   // 2) Spoken form: "acme plumbing dot com" / letter-spelled "a c m e dot com".
+  // Requires the caller to have said "dot" — without that signal, sentence
+  // punctuation ("Referrals. The rest is private.") false-positives.
   // Strategy: drop leading filler words, join the rest, validate as a domain.
   // Ambiguous captures self-correct downstream: a bad URL fails the live fetch
   // and the avatar falls back to spell-it-out, then interview mode.
+  if (!/\bdot\b/.test(t)) return null;
   const STOPWORDS = new Set(["my", "site", "is", "it's", "its", "the", "a", "an",
     "go", "to", "at", "on", "www", "website", "web", "address", "called", "named",
     "find", "us", "me", "our", "check", "out"]);
@@ -77,13 +80,32 @@ export function spokenUrlToUrl(raw, { spellout = false } = {}) {
   // In spellout mode every token is a letter — never drop stopwords.
   if (!spellout) while (tokens.length && STOPWORDS.has(tokens[0])) tokens.shift();
   if (!tokens.length) return null;
-  const joined = tokens.join("");
-  if (/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(\/\S*)?$/.test(joined)) {
-    return normalizeUrl(joined);
+  // Accumulate tokens only up to the FIRST complete domain — then STOP.
+  // Trailing conversation is not the URL ("debbiesboutique dot com — my
+  // nephew made it" must not become debbiesboutique.commynephewmadeit).
+  // In spellout mode single letters may extend the TLD ("b i" → "bi" vs
+  // "b i z" → "biz"), so keep the LONGEST valid match while tokens are
+  // single letters; a full word means we've left the spelled domain.
+  const DOM_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/;
+  let best = null;
+  let acc = "";
+  for (const tok of tokens) {
+    if (spellout && best && tok.length > 1) break;
+    acc += tok;
+    if (DOM_RE.test(acc)) {
+      best = acc;
+      if (!spellout) break;
+    }
+    if (acc.length > 64) break; // runaway — not a domain
   }
-  // Last resort: the last domain-like token on its own.
-  const domTokens = tokens.filter((tok) => /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(\/\S*)?$/.test(tok));
-  if (domTokens.length) return normalizeUrl(domTokens[domTokens.length - 1]);
+  if (best) return normalizeUrl(best);
+  // Last resort: the last domain-like token on its own — ONLY when the caller
+  // actually dictated a URL ("dot" present). Without that signal, sentence
+  // fragments false-positive: "Referrals. The rest is private." → "referrals.the".
+  if (/\bdot\b/.test(t)) {
+    const domTokens = tokens.filter((tok) => /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(\/\S*)?$/.test(tok));
+    if (domTokens.length) return normalizeUrl(domTokens[domTokens.length - 1]);
+  }
   return null;
 }
 

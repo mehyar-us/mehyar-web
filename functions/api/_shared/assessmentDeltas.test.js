@@ -131,15 +131,13 @@ function memStore(session) {
   await simulateTurn(s, "yes", deps);
   await simulateTurn(s, "ok", deps);
   await simulateTurn(s, "plumbing", deps);
-  await simulateTurn(s, "Acme", deps);
-  await simulateTurn(s, "acmeplumbing.com", deps); // → Q4, background analysis
+  await simulateTurn(s, "acmeplumbing.com", deps); // → url, background analysis, asks Q4
   eq(s.diagnosisStatus, "ready", "background analysis completed inline (simulation)");
   eq(s.stage, STAGES.DISCOVERY, "call continues during analysis");
-  await simulateTurn(s, "word of mouth", deps); // → diagnosis
+  await simulateTurn(s, "word of mouth", deps); // → weave to diagnosis, finding #1
   eq(s.stage, STAGES.DIAGNOSIS, "in diagnosis");
-  await simulateTurn(s, "go on", deps); // weaves finding #1
-  eq(s.findingsPresented, 1, "one finding presented");
-  // background scorer flags HOT at minute 6
+  eq(s.findingsPresented, 1, "weave presents finding #1");
+  // background scorer flags HOT at minute 6 → pitch on 1 finding (hot-early rule)
   s.prospectTier = "hot"; s.prospectScore = 82;
   s.startedAt = new Date(Date.now() - 6 * 60000).toISOString();
   const deps6 = { ...deps, nowMs: () => Date.parse(s.startedAt) + 6 * 60000 };

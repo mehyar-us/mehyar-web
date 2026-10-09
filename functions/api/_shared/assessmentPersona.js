@@ -206,8 +206,8 @@ ${GUARDRAILS}`;
 // Per-stage steering appended after the system prompt (kept tiny — stage logic
 // lives in the state machine, not in the model's head).
 export const STAGE_STEER = {
-  consent: "You just asked for recording consent. If they said yes: confirm warmly, move to framing. If no or unclear: ask once more, plainly. Two no's = end politely.",
-  open: "Deliver the framing. Then ask the first discovery question.",
+  consent: "You just asked for recording consent. If they said yes: confirm warmly and deliver the framing (free 45-min assessment + live diagnosis), then ask the first discovery question.",
+  open: "The framing was delivered at consent. Move into discovery: ask the first discovery question conversationally.",
   discovery: "One discovery question per turn, conversational. When you have the URL, acknowledge you're pulling it up. Acknowledge answers briefly — no interrogation vibe.",
   diagnosis: "Present ONE finding per turn, spoken simply: what you saw, why it costs them money, in one breath. Then ask a light question to keep them talking (e.g. how they get customers).",
   pitch: "Deliver the pitch: the $330 audit is the prescription for the flaws you just diagnosed. State price plainly, no subscription, no upsell. Then the assumptive close: ask for the email to lock it in.",
