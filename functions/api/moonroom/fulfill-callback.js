@@ -4,6 +4,7 @@
 // MOONROOM_FULFILL_SECRET. Marks the order ready/failed and sends the buyer
 // the deliverable email. Idempotent: replays on a final order are no-ops.
 //
+// Redeploy trigger: CF_EMAIL_ACCOUNT_ID added 2026-10-09.
 // Body: { order_token, status: "ready"|"failed", manifest? }
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
