@@ -80,7 +80,7 @@ function personalize(message:string,businessName:string,recipient:{name:string})
  return message.replace('{business}',businessName).replace('{name}',recipient.name||'there');
 }
 
-async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<{kind:CardKind;title:string;body:string;draft:Draft}|null>{
+export async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<{kind:CardKind;title:string;body:string;draft:Draft}|null>{
  const kind=DETECTOR_CARD[detection.detector];
  const v=verticalProfile(ctx.vertical);
  const cust=v.vocabulary.customer,booking=v.vocabulary.booking;
@@ -101,10 +101,15 @@ async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow
      audience:'clientes que no vuelven',audienceCount:n,
      recipients:audience.map(a=>({name:a.name,phone:a.phone})),meta:{}}};
   }
+  const mappedFillBody=ctx.verticalMappedFrom
+   ?`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-schedule text to ${n} lapsed ${cust}${n===1?'':'s'}?`
+   :`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-chairs text to ${n} lapsed ${cust}${n===1?'':'s'}?`;
+  const mappedFillDraft=ctx.verticalMappedFrom&&!professional
+   ?`Hi {name}, it's {business}! We have a few open spots tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`:null;
   return {kind,
    title:`Fill ${hours} slow hour${hours===1?'':'s'} tomorrow`,
-   body:`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-chairs text to ${n} lapsed ${cust}${n===1?'':'s'}?`,
-   draft:{message:professional?professionalFillGapTemplate(booking):`Hi {name}, it's {business}! We have a few open ${booking}s tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`,
+   body:mappedFillBody,
+   draft:{message:professional?professionalFillGapTemplate(booking):(mappedFillDraft??`Hi {name}, it's {business}! We have a few open ${booking}s tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`),
     audience:'lapsed regulars',audienceCount:n,
     recipients:audience.map(a=>({name:a.name,phone:a.phone})),meta:{}}};
  }
@@ -121,10 +126,12 @@ async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow
      audience:'clientes que no vuelven',audienceCount:n,
      recipients:customers.map(c=>({name:c.name,phone:c.phone})),meta:{}}};
   }
+  const mappedWinbackDraft=ctx.verticalMappedFrom&&!professional
+   ?`Hi {name}, it's {business} — it's been a while! Thinking about your next visit? Reply YES and we'll find you a time. ${STOP}`:null;
   return {kind,
    title:`Win back ${n} lapsed ${cust}${n===1?'':'s'}`,
    body:`${n} ${cust}${n===1?'':'s'} ${n===1?'has':'have'}n't booked in ${days}+ days — send this win-back text?`,
-   draft:{message:professional?professionalWinbackTemplate(booking):`Hi {name}, it's {business} — it's been a while! Ready to book your next ${booking}? Reply YES and we'll find you a time. ${STOP}`,
+   draft:{message:professional?professionalWinbackTemplate(booking):(mappedWinbackDraft??`Hi {name}, it's {business} — it's been a while! Ready to book your next ${booking}? Reply YES and we'll find you a time. ${STOP}`),
     audience:'lapsed regulars',audienceCount:n,
     recipients:customers.map(c=>({name:c.name,phone:c.phone})),meta:{}}};
  }

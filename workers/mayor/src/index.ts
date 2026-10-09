@@ -436,7 +436,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
        trade:suggestion.trade,vertical:suggestion.vertical,reason:suggestion.reason,
        modeLabel:MODE_LABELS[suggestion.vertical as Exclude<Vertical,'other'>],
        framing:verticalSuggestionFraming(suggestion),
-       followUpQuestion:`Using ${MODE_LABELS[suggestion.vertical as Exclude<Vertical,'other'>]} mode for your ${suggestion.trade} business — ${VERTICAL_CONFIRM_FOLLOWUPS[suggestion.vertical as Exclude<Vertical,'other'>]}`,
+       followUpQuestion:`Using ${MODE_LABELS[suggestion.vertical as Exclude<Vertical,'other'>]} mode for your ${suggestion.trade} business — what ${suggestion.trade} services should I know about?`,
       }:null,
       placePhone:patch.phone,placeAddress:patch.address,
       progress:onboardingProgressForVertical(finalProfile,patch.vertical),

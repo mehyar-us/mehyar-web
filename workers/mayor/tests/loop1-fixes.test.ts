@@ -4,6 +4,8 @@ import {ADJACENT_VERTICAL_MAP,suggestVertical,verticalSuggestionFraming} from '.
 import {esFormatWhen,ES_PROFESSIONAL_SMS,smsTemplates,renderTextback,renderReminder} from '../src/i18n';
 import {verticalIdentityBlock,assistantGreeting,businessFirstTurnPrompt,growthMetricsInstruction} from '../src/assistant-persona';
 import {asksCurrentCapabilities} from '../src/current-capabilities';
+import {buildCardCopy} from '../src/proactive';
+import {visionInstruction} from '../src/image-qa';
 import {detectConnectorNeed} from '../src/connector-cards';
 
 describe('loop-1: honest adjacent mapping can never be bypassed by direct hints',()=>{
@@ -147,5 +149,40 @@ describe('loop-1: dead detector metadata is gone',()=>{
  });
  it('detectorParams (consumed) still exist',()=>{
   expect(VERTICAL_PROFILES.salon.detectorParams.lapsedRegularDays).toBe(56);
+ });
+});
+
+describe('loop-2: mapped trades stay trade-honest in proactive copy',()=>{
+ const ctxBase={vertical:'salon',language:'en',tone:'friendly',businessName:'Ink House'} as never;
+ const fakeDb={prepare:()=>({bind:(..._a:never[])=>({all:async()=>({results:[{id:'c1',name:'A',phone:'+1',lastBooking:0}]})})})} as never;
+ const fillRow={id:'1',tenant_id:'t',detector:'slow_day',detected_at:'',state:'new',dedupe_key:'k',
+  payload_json:JSON.stringify({slowDay:{hours:2,audience:[{name:'A',phone:'+1',lastBooking:0}]}})} as never;
+ const winbackRow={id:'2',tenant_id:'t',detector:'lapsed_regular',detected_at:'',state:'new',dedupe_key:'k2',
+  payload_json:JSON.stringify({winback:{customers:[{name:'A',phone:'+1',lastBooking:0}],days:60}})} as never;
+ it('fill-gap card drops salon-only language for a mapped trade',async()=>{
+  const card=await buildCardCopy({AGENT_DB:fakeDb} as never,{...ctxBase,verticalMappedFrom:'tattoo',tenantId:'t',nowMs:Date.now()} as never,fillRow);
+  expect(card).not.toBeNull();
+  expect(card!.body).toContain('fill-the-schedule');
+  expect(card!.body).not.toContain('fill-the-chairs');
+ });
+ it('win-back draft does not assume rebooking for a mapped trade',async()=>{
+  const card=await buildCardCopy({} as never,{...ctxBase,verticalMappedFrom:'tattoo'} as never,winbackRow);
+  expect(card).not.toBeNull();
+  expect(card!.draft.message).toContain('next visit');
+  expect(card!.draft.message).not.toContain('next appointment');
+ });
+ it('unmapped trades keep the vertical copy',async()=>{
+  const card=await buildCardCopy({} as never,ctxBase,winbackRow);
+  expect(card!.draft.message).toContain('next appointment');
+ });
+});
+describe('loop-2: mapped trades stay trade-honest in vision',()=>{
+ it('tattoo in salon mode does not get the hair focus',()=>{
+  const out=visionInstruction({vertical:'salon',verticalMappedFrom:'tattoo'},'is this linework clean?');
+  expect(out).toContain('tattoo');
+  expect(out).not.toContain('hair');
+ });
+ it('direct salon keeps the hair focus',()=>{
+  expect(visionInstruction({vertical:'salon'},'check this')).toContain('hair');
  });
 });

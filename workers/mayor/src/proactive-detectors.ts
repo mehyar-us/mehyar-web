@@ -22,6 +22,9 @@ export interface ProactiveContext{
  /** Customer-facing register from the business profile. Unset (e.g. older
   * callers/tests) means the friendly default. */
  tone?:string;
+ /** Real trade when the vertical came from the honest adjacent map
+  * (e.g. "tattoo" running in salon mode). Card copy stays trade-honest. */
+ verticalMappedFrom?:string;
 }
 
 export interface NewDetection{
@@ -146,7 +149,7 @@ export function dayGaps(periods:{startMinute:number;endMinute:number}[],busy:{st
 /** Scheduled context reads the tenant profile directly — no user session exists. */
 export async function loadProactiveContext(env:Env,tenantId:string,nowMs=Date.now()):Promise<ProactiveContext>{
  const mem=await env.AGENT_DB.prepare("SELECT value_json FROM mayor_memory WHERE tenant_id=? AND field='profile'").bind(tenantId).first<{value_json:string}>();
- const profile=mem?JSON.parse(mem.value_json) as {name?:string;vertical?:string;timeZone?:string;language?:unknown;tone?:string}:{ };
+ const profile=mem?JSON.parse(mem.value_json) as {name?:string;vertical?:string;timeZone?:string;language?:unknown;tone?:string;verticalMappedFrom?:string}:{ };
  const polRow=await env.AGENT_DB.prepare("SELECT value_json FROM mayor_memory WHERE tenant_id=? AND field='scheduling_policy'").bind(tenantId).first<{value_json:string}>();
  const policy=polRow?schedulingPolicySchema.parse(JSON.parse(polRow.value_json)):null;
  return {
@@ -154,6 +157,7 @@ export async function loadProactiveContext(env:Env,tenantId:string,nowMs=Date.no
   businessName:typeof profile.name==='string'&&profile.name.trim()?profile.name.trim():'your business',
   vertical:verticalProfile(profile.vertical).vertical,
   tone:typeof profile.tone==='string'?profile.tone:'friendly',
+  verticalMappedFrom:typeof profile.verticalMappedFrom==='string'&&profile.verticalMappedFrom.trim()?profile.verticalMappedFrom.trim():undefined,
   timeZone:policy?.timeZone??(typeof profile.timeZone==='string'?profile.timeZone:'America/New_York'),
   policy,
   language:resolveLanguage(profile.language),
