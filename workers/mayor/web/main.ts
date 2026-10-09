@@ -35,7 +35,7 @@ let accessEnded=false;
 const workspaceAccess=createWorkspaceAccessGuard();
 const accessRecovery=createAccessRecoveryView(()=>location.reload());
 document.querySelector('header')!.after(accessRecovery.element);
-const workspace=createBusinessWorkspace(text=>{if(historyReady&&!accessEnded){void sendTextMessage(text);$('conversation').setAttribute('open','');}},()=>show('connections'));
+const workspace=createBusinessWorkspace(text=>{if(historyReady&&!accessEnded){void sendTextMessage(text);$('conversation').setAttribute('open','');}},()=>show('connections'),{onRefreshProfile:()=>void refreshBusinessProfile()});
 const calendarChat=createCalendarChat({api,tenant:()=>tenantId,signIn,followup:text=>void sendTextMessage(text)});
 $('conversation').after(calendarChat.element);
 const calendarLauncher=document.createElement('button');calendarLauncher.type='button';calendarLauncher.className='quiet calendar-launcher';calendarLauncher.textContent='Calendar settings';calendarLauncher.hidden=true;
@@ -221,6 +221,23 @@ function useBusinessProfile(profile:Record<string,unknown>,progress?:{missing:st
  $('chat-view').querySelector<HTMLImageElement>('.portrait img')!.alt=name;
  if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(profile,canManage())});
  if(historyReady)transcripts();
+}
+/** Crew 4b — one-tap business profile refresh from the saved vertical.
+ * Shows the owner exactly what would change (About + Industry only) and saves
+ * nothing until the owner taps Save on the confirmation card. */
+async function refreshBusinessProfile(){
+ if(!loggedIn||accessEnded||!canManage())return;
+ try{
+  const preview=await api(`/api/businesses/${tenantId}/profile/refresh-preview`,{});
+  if(!preview.changes||!preview.changes.length){notice('Your business profile already matches your business type.');return;}
+  workspace.showRefreshConfirm(preview,async()=>{
+   try{
+    const updated=await api(`/api/businesses/${tenantId}/profile/refresh-confirm`,{revision:preview.revision});
+    confirmedProfile=updated.profile;workspace.profile(updated.profile);workspace.hideRefreshConfirm();
+    notice('Business profile refreshed from your business type.');
+   }catch(error){notice(error instanceof Error?error.message:'Could not save the refreshed profile.');workspace.hideRefreshConfirm();}
+  });
+ }catch(error){notice(error instanceof Error?error.message:'Could not preview the profile refresh.');}
 }
 const composerStatus=document.createElement('p');composerStatus.id='composer-status';composerStatus.setAttribute('role','status');
 const stopWaiting=document.createElement('button');stopWaiting.type='button';stopWaiting.className='secondary';stopWaiting.textContent='Stop waiting';stopWaiting.hidden=true;

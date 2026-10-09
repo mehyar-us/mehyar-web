@@ -46,8 +46,11 @@ export async function onRequestPost({ request, env }) {
     .first();
   if (!order) return j({ ok: false, error: "order not found" }, 404);
 
-  // Idempotent: a final order stays final; replays return the current state.
-  if (order.status === "ready" || order.status === "failed") {
+  // Idempotent: a final order stays final — but the worker marks ready in D1
+  // directly before POSTing this callback, so "already ready" must NOT skip
+  // the email. Gate the early return on email_sent_at; the send block below
+  // already guards on !order.email_sent_at, so replays can't double-send.
+  if ((order.status === "ready" || order.status === "failed") && order.email_sent_at) {
     return j({ ok: true, replay: true, status: order.status });
   }
 

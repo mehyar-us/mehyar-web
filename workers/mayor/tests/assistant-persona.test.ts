@@ -73,6 +73,39 @@ it('grounds the persona in vertical vocabulary for salon and restaurant',()=>{
  expect(restaurant).toContain('covers');
  expect(restaurant).not.toMatch(/stylist/);
 });
+it('injects the vertical KPI vocabulary so growth answers speak the trade',()=>{
+ const salon=assistantPersonaPrompt({vertical:'salon'});
+ expect(salon).toContain('Rebooking rate');
+ expect(salon).toContain('Chair utilization');
+ expect(salon).toContain('Average ticket');
+ expect(salon).toContain('what to track');
+ expect(salon).toContain('frame the answer in these metrics');
+ const restaurant=assistantPersonaPrompt({vertical:'restaurant'});
+ expect(restaurant).toContain('Covers');
+ expect(restaurant).toContain('No-show rate');
+ expect(restaurant).not.toContain('chair');
+ const dental=assistantPersonaPrompt({vertical:'dental'});
+ expect(dental).toContain('Recare rate');
+ expect(dental).toContain('Treatment acceptance');
+});
+it('uses vertical metric nouns, never generic bookings/customers',()=>{
+ const salon=assistantPersonaPrompt({vertical:'salon'});
+ expect(salon).toContain('Say “appointments” and “clients”');
+ const plumbing=assistantPersonaPrompt({vertical:'plumbing_hvac'});
+ expect(plumbing).toContain('Say “jobs” and “customers”');
+});
+it('gives the vertical precedence over stale business memory',()=>{
+ const salon=assistantPersonaPrompt({vertical:'salon'});
+ expect(salon).toContain('Vertical precedence');
+ expect(salon).toContain('the vertical wins');
+ expect(salon).toContain('stale memory');
+});
+it('keeps KPI and precedence blocks out of the neutral fallback',()=>{
+ const prompt=assistantPersonaPrompt({vertical:'other'});
+ expect(prompt).toContain('Vertical identity');
+ expect(prompt).not.toContain('Metrics that matter');
+ expect(prompt).not.toContain('Vertical precedence');
+});
 it('falls back to neutral vocabulary when the vertical is other or unknown',()=>{
  for(const profile of [{vertical:'other'},{vertical:'bogus'},{}]){
   const prompt=assistantPersonaPrompt(profile);
