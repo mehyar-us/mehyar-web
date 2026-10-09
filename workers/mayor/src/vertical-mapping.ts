@@ -37,7 +37,7 @@ export const ADJACENT_VERTICAL_MAP:Record<string,AdjacentVerticalEntry>={
  spa:{match:'salon',
   reason:"Closest fit — appointment-based treatments with rebooking, like a salon. We don't have a spa mode yet."},
  pizza:{match:'restaurant',
-  reason:'Closest fit — restaurant mode covers dine-in, takeout, and delivery.'},
+  reason:'Closest fit — reservations and table booking, like a restaurant. We don\'t have a dedicated pizza mode yet.'},
  food_delivery:{match:'restaurant',
   reason:"Closest fit — restaurant mode covers takeout and delivery orders. We don't have a delivery-only mode yet."},
  car_detailing:{match:'auto_repair',
@@ -156,7 +156,8 @@ export function suggestVertical(descriptionOrCategory:string|undefined|null):Ver
  * visits … like plumbing/HVAC. Use plumbing/HVAC mode?` */
 export function verticalSuggestionFraming(suggestion:VerticalSuggestion):string{
  const mode=MODE_LABELS[suggestion.vertical as Exclude<Vertical,'other'>]??suggestion.vertical;
- return `We don't have "${suggestion.trade}" yet — ${suggestion.reason} Use ${mode} mode?`;
+ const reason=suggestion.reason.replace(/We don't have a dedicated \S+ mode yet\.?\s*/,'');
+ return `We don't have "${suggestion.trade}" yet — ${reason} Use ${mode} mode?`;
 }
 
 /** "Using X mode" note for anywhere the stored vertical surfaces (settings

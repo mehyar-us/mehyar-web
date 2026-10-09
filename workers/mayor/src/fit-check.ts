@@ -53,7 +53,7 @@ export interface FitAssessment extends FitResult {
 
 const WALK_UP_PHRASES = [
   'food truck', 'taco truck', 'ice cream truck', 'food cart', 'food stand',
-  'hot dog stand', 'coffee cart', 'coffee shop',
+  'hot dog stand', 'coffee cart',
   'market stall', 'farmers market', 'flea market', 'kiosk', 'newsstand', 'vending',
   'dry cleaner', 'dry cleaners', 'dry cleaning', 'laundromat', 'launderette', 'coin laundry',
   'car wash', 'convenience store', 'bodega',

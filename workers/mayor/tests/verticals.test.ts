@@ -30,7 +30,8 @@ describe('vertical profiles',()=>{
  });
  it('detects vertical from Places category',()=>{
   expect(detectVerticalFromCategory('Hair Salon')).toBe('salon');
-  expect(detectVerticalFromCategory('Barber Shop')).toBe('salon');
+  // Adjacent trades route through the honest suggestion (loop-1 fix)
+  expect(detectVerticalFromCategory('Barber Shop')).toBeNull();
   expect(detectVerticalFromCategory('Italian Restaurant')).toBe('restaurant');
   expect(detectVerticalFromCategory('Plumber')).toBe('plumbing_hvac');
   expect(detectVerticalFromCategory('Dental Clinic')).toBe('dental');
@@ -89,13 +90,15 @@ describe('crew4 enriched vertical profiles',()=>{
  });
  it('detects vertical from Places category slugs',()=>{
   expect(detectVerticalFromCategory('hair_salon')).toBe('salon');
-  expect(detectVerticalFromCategory('barber_shop')).toBe('salon');
+  // Adjacent trades route through the honest suggestion (loop-1 fix)
+  expect(detectVerticalFromCategory('barber_shop')).toBeNull();
   expect(detectVerticalFromCategory('plumbing')).toBe('plumbing_hvac');
   expect(detectVerticalFromCategory('dentist')).toBe('dental');
   expect(detectVerticalFromCategory('auto_repair_shop')).toBe('auto_repair');
   expect(detectVerticalFromCategory('restaurant')).toBe('restaurant');
-  expect(detectVerticalFromCategory('pizzeria')).toBe('restaurant');
-  expect(detectVerticalFromCategory('nail_salon')).toBe('salon');
+  expect(detectVerticalFromCategory('pizzeria')).toBeNull();
+  // nail_salon routes through the honest suggestion (loop-1 fix)
+  expect(detectVerticalFromCategory('nail_salon')).toBeNull();
  });
  it('fallback onboarding questions are the generic 7',()=>{
   expect(ONBOARDING_QUESTIONS_FALLBACK.length).toBe(7);

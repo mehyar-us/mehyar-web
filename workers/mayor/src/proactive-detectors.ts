@@ -305,7 +305,7 @@ export function buildFollowupCardCopy(
   return {
    title:copy.title,
    body:copy.body,
-   draft:{message:renderTextback(ctx.vertical,'es',ctx.businessName),
+   draft:{message:renderTextback(ctx.vertical,'es',ctx.businessName,ctx.tone),
     audience:'llamada perdida',audienceCount:1,
     recipients:[{name:'',phone:payload.callerNumber}],meta:{missedCallId:payload.missedCallId}},
   };

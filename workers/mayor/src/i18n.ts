@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {verticalProfile,type Vertical} from './verticals';
+import {verticalProfile,textbackTemplateFor,textbackConfirmTemplateFor,reminderTemplateFor,isProfessionalTone,type Vertical} from './verticals';
 
 /** Crew 6c — Spanish language support.
  *
@@ -80,29 +80,52 @@ export function esTemplates(vertical:string|undefined|null):EsSmsPack{
  return ES_SMS[verticalProfile(vertical).vertical];
 }
 
-/** The localized SMS template triple: English from the vertical profile, or the
- * deterministic Spanish pack. Placeholders ({business}, {when}) are preserved
- * by the render helpers below. */
-export function smsTemplates(vertical:string|undefined|null,language:Language):{textback:string;textbackConfirm:string;reminder:string}{
+/** Professional-register Spanish pack: formal, precise, no exclamation marks,
+ * no chirpy calls-to-action. One pack for all verticals — the register, not
+ * the trade, is what matters here. */
+export const ES_PROFESSIONAL_SMS:{textback:string;textbackConfirm:string;reminder:string}={
+ textback:'Le escribe {business}. No pudimos atender su llamada. Nos comunicaremos con usted a la brevedad. Responda STOP para no recibir más mensajes.',
+ textbackConfirm:'Recibido. Nos comunicaremos con usted en breve.',
+ reminder:'Recordatorio: su cita en {business} es {when}. Responda CANCELAR para cancelarla.',
+};
+
+/** Spanish "tomorrow at 3:00 PM" — mirrors formatWhen in proactive.ts but in
+ * Spanish, so Spanish cards never ship English time phrases. Pure. */
+export function esFormatWhen(ms:number,timeZone:string,nowMs:number):string{
+ const day=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(ms);
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(nowMs);
+ const time=new Intl.DateTimeFormat('es',{timeZone,hour:'numeric',minute:'2-digit'}).format(ms);
+ if(day===today)return `hoy a las ${time}`;
+ const tomorrowKey=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(nowMs+86400000);
+ if(day===tomorrowKey)return `mañana a las ${time}`;
+ const date=new Intl.DateTimeFormat('es',{timeZone,weekday:'short',day:'numeric',month:'short'}).format(ms);
+ return `${date} a las ${time}`;
+}
+
+/** The localized SMS template triple: English from the vertical profile (tone-aware),
+ * or the deterministic Spanish pack (tone-aware: professional Spanish exists too).
+ * Placeholders ({business}, {when}) are preserved by the render helpers below. */
+export function smsTemplates(vertical:string|undefined|null,language:Language,tone:unknown='friendly'):{textback:string;textbackConfirm:string;reminder:string}{
  if(language!=='es'){
   const v=verticalProfile(vertical);
-  return {textback:v.textbackTemplate,textbackConfirm:v.textbackConfirmTemplate,reminder:v.reminderTemplate};
+  return {textback:textbackTemplateFor(v,tone),textbackConfirm:textbackConfirmTemplateFor(v,tone),reminder:reminderTemplateFor(v,tone)};
  }
+ if(isProfessionalTone(tone))return {...ES_PROFESSIONAL_SMS};
  const pack=esTemplates(vertical);
  return {textback:pack.textback,textbackConfirm:pack.textbackConfirm,reminder:pack.reminder};
 }
 
 /** Rendered text-back with {business} filled. */
-export function renderTextback(vertical:string|undefined|null,language:Language,businessName:string):string{
- return smsTemplates(vertical,language).textback.replace('{business}',businessName);
+export function renderTextback(vertical:string|undefined|null,language:Language,businessName:string,tone:unknown='friendly'):string{
+ return smsTemplates(vertical,language,tone).textback.replace('{business}',businessName);
 }
 /** Rendered text-back confirmation (no placeholders). */
-export function renderTextbackConfirm(vertical:string|undefined|null,language:Language):string{
- return smsTemplates(vertical,language).textbackConfirm;
+export function renderTextbackConfirm(vertical:string|undefined|null,language:Language,tone:unknown='friendly'):string{
+ return smsTemplates(vertical,language,tone).textbackConfirm;
 }
 /** Rendered reminder with {business} and {when} filled. */
-export function renderReminder(vertical:string|undefined|null,language:Language,businessName:string,when:string):string{
- return smsTemplates(vertical,language).reminder.replace('{business}',businessName).replace('{when}',when);
+export function renderReminder(vertical:string|undefined|null,language:Language,businessName:string,when:string,tone:unknown='friendly'):string{
+ return smsTemplates(vertical,language,tone).reminder.replace('{business}',businessName).replace('{when}',when);
 }
 
 /* ---------------- suggestion-card copy (Spanish) ---------------- */

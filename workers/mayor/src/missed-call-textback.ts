@@ -3,7 +3,7 @@ import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
 import {readMemory} from './memory';
-import {verticalProfile,textbackTemplateFor} from './verticals';
+import {verticalProfile} from './verticals';
 import {renderTextback,resolveLanguage} from './i18n';
 import {telnyxManagementAccess} from './telnyx-connections';
 import {loadProactiveContext,ensureMissedCallFollowupCard,resolveMissedCallFollowupCards} from './proactive-detectors';
@@ -14,12 +14,11 @@ import {loadProactiveContext,ensureMissedCallFollowupCard,resolveMissedCallFollo
 
 const e164=z.string().regex(/^\+[1-9]\d{6,14}$/);
 
-/** Crew 6c+6d: Spanish wins when language==='es' (friendly register); otherwise
- * the tone-aware English template (professional vs friendly). */
+/** Crew 6c+6d: language picks the pack (Spanish vs English), tone picks the
+ * register inside the pack (professional Spanish exists too). */
 function textbackText(profile:ReturnType<typeof verticalProfile>,memProfile:{language?:unknown;tone?:unknown},businessName:string):string{
  const language=resolveLanguage(memProfile.language);
- if(language==='es')return renderTextback(profile.vertical,language,businessName);
- return textbackTemplateFor(profile,memProfile.tone).replace('{business}',businessName);
+ return renderTextback(profile.vertical,language,businessName,memProfile.tone);
 }
 
 export const missedCallInputSchema=z.object({

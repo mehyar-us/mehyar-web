@@ -83,7 +83,7 @@ describe('professional templates',()=>{
  it('selectors return the professional variants for professional tone',()=>{
   expect(textbackTemplateFor(salon,'professional')).toBe(PROFESSIONAL_TEXTBACK_TEMPLATE);
   expect(textbackConfirmTemplateFor(salon,'professional')).toBe(PROFESSIONAL_TEXTBACK_CONFIRM_TEMPLATE);
-  expect(reminderTemplateFor(salon,'professional')).toBe(PROFESSIONAL_REMINDER_TEMPLATE);
+  expect(reminderTemplateFor(salon,'professional')).toBe(PROFESSIONAL_REMINDER_TEMPLATE.replace('{booking}','appointment'));
  });
  it('professional drafts have no upsell language',()=>{
   for(const t of [professionalWinbackTemplate('appointment'),PROFESSIONAL_LEAD_REPLY_TEMPLATE,professionalFillGapTemplate('reservation')]){

@@ -1,5 +1,6 @@
 import {HttpError} from './http';
 import {verticalProfile} from './verticals';
+import {esTemplates} from './i18n';
 import {mayorVisionRun,MAYOR_VISION_MODEL} from './ai-model';
 import type {Env} from './env';
 
@@ -93,6 +94,8 @@ const VERTICAL_FOCUS:Record<string,string>={
  plumbing_hvac:'corrosion, leaks, water staining, and the condition of fittings and pipes',
  dental:'the office environment and visible equipment only — never diagnose a patient\u2019s condition from a photo',
  auto_repair:'body damage, tire wear, fluid leaks, and the condition of visible parts',
+ pet_grooming:'coat condition, skin irritation, matting, nail length, and ear cleanliness visible in the frame',
+ med_spa:'the treatment room, equipment, and product presentation only — never diagnose a skin condition or recommend a treatment from a photo',
 };
 
 /** Deterministic vision instruction, appended to the user message when photos
@@ -105,7 +108,8 @@ export function visionInstruction(profile:ImageProfile={},transcript='',imageCou
  const v=vp.vocabulary;
  const question=transcript.trim()?` The owner asks: "${transcript.trim().slice(0,500)}"`:'';
  if(lang==='es'){
-  return `\n\n[Instrucción para esta foto: el dueño adjuntó ${imageCount===1?'una foto':'fotos'} y pregunta sobre ${vp.label.toLowerCase()}.${question} En este negocio, los clientes se llaman “${v.customer}”, las reservas son “${v.booking}” y el personal es “${v.staff}”. Enfóquese en: ${focus}. REGLA DE HONESTIDAD — nunca invente lo que no puede ver. Si la foto está borrosa, oscura, recortada o no muestra lo necesario para responder, dígalo claramente (“No puedo determinarlo con esta foto — …”) y pida una mejor foto. Nunca adivine diagnósticos, medidas ni identidades. Describa solo lo que realmente se ve. Responda en español.]`;
+  const esNouns=esTemplates(vp.vertical).nouns;
+  return `\n\n[Instrucción para esta foto: el dueño adjuntó ${imageCount===1?'una foto':'fotos'} y pregunta sobre ${vp.label.toLowerCase()}.${question} En este negocio, los clientes se llaman "${esNouns.customers}", las reservas son "${esNouns.appointments}". Enfóquese en: ${focus}. REGLA DE HONESTIDAD — nunca invente lo que no puede ver. Si la foto está borrosa, oscura, recortada o no muestra lo necesario para responder, dígalo claramente (“No puedo determinarlo con esta foto — …”) y pida una mejor foto. Nunca adivine diagnósticos, medidas ni identidades. Describa solo lo que realmente se ve. Responda en español.]`;
  }
  return `\n\n[Instruction for this photo: the owner attached ${imageCount===1?'a photo':'photos'} and asks about their ${vp.label.toLowerCase()}.${question} In this business, customers are called “${v.customer}”, bookings are “${v.booking}”, and staff are “${v.staff}”. Focus on: ${focus}. HONESTY RULE — never invent what you cannot see. If the photo is blurry, dark, cropped, or doesn't show what's needed to answer, say so plainly ("I can't tell from this photo — ...") and ask for a clearer one. Never guess at diagnoses, measurements, or identities. Describe only what is actually visible. Reply in English.]`;
 }
