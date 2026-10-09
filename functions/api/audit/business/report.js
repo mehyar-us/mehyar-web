@@ -1,4 +1,4 @@
-// functions/api/audit/business/get.js
+// functions/api/audit/business/report.js
 // GET /api/audit/business/report?token=<64-hex access token> — fetch a delivered
 // "Audit My Business" report. Same access pattern as full-report/get.js:
 // the token is a random secret minted at checkout; the audit id alone is NOT

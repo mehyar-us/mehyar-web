@@ -21,7 +21,7 @@ import { orderHooks } from "../../pay/checkout.js";
 import { onRequestPost as intakePost } from "./intake.js";
 import { onRequestPost as uploadPost } from "./upload.js";
 import { onRequestPost as generatePost } from "./generate.js";
-import { onRequestGet as reportGet } from "./get.js";
+import { onRequestGet as reportGet } from "./report.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 
