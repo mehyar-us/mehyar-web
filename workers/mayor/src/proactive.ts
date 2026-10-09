@@ -2,6 +2,7 @@ import {z} from 'zod';
 import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
+import {decide} from './decide.js';
 import {verticalProfile,type Vertical} from './verticals';
 import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
@@ -67,6 +68,78 @@ async function notifyOwners(env:Env,tenantId:string,kind:'proactive_suggestion'|
 }
 
 /* ---------------- card copy (vertical-aware) ---------------- */
+
+/** PII-scrubbed one-line summary of a detection for the triage question.
+ * Only detector kind, age, and counts — never names, numbers, or message bodies. */
+export function triageSummary(detection:DetectionRow,nowMs:number):string{
+ const payload=JSON.parse(detection.payload_json) as Record<string,any>;
+ const ageMin=Math.max(1,Math.round((nowMs-Date.parse(detection.detected_at))/60000));
+ const age=ageMin<60?`${ageMin} min ago`:`${Math.round(ageMin/60)}h ago`;
+ switch(detection.detector){
+  case 'missed_call_followup':return `Missed call ${age}; no text-back sent yet.`;
+  case 'unanswered_lead':return `Inbound lead text ${age}; still no reply.`;
+  case 'lapsed_regular':{const n=Array.isArray(payload.customers)?payload.customers.length:(payload.count??0);return `${n} lapsed customers not booked in ${payload.cutoffDays??'?'}+ days.`;}
+  case 'slow_day':return `Open schedule gap of ${payload.maxGapMinutes??'?'} min tomorrow.`;
+  case 'no_show_risk':return `Upcoming booking with a customer who missed before and has no reminder.`;
+  default:return `New ${detection.detector} detection ${age}.`;
+ }
+}
+
+/** Normalized triage score from a detection payload (0-100), or null when unscored. */
+export function triageScoreOf(payloadJson:string):number|null{
+ try{
+  const v=(JSON.parse(payloadJson) as {triage_score?:unknown}).triage_score;
+  return typeof v==='number'&&Number.isFinite(v)?Math.max(0,Math.min(100,v)):null;
+ }catch{return null;}
+}
+
+export interface TriageItem{detection:DetectionRow;card:{id:string;title:string;body:string}}
+
+/**
+ * decide()-assisted nudge triage (2026-10-09). When a proactive cycle creates
+ * two or more suggestion cards, one batched clef-flash score question per
+ * detection ranks "how much does this deserve the owner's attention right now?"
+ * so the daily nudge cap spends on the highest-value nudges first. Read-only
+ * curation: it only reorders surfacing, never creates or suppresses anything.
+ * Strictly fail-closed: fewer than 2 items, any decide() failure, or unusable
+ * answers keep the original creation order and write nothing. Scores persist on
+ * the detection payload (triage_score) so card lists and briefings order by
+ * them without another model call on read paths. State summaries are
+ * PII-scrubbed (kind + age + counts only); the audit carries question ids,
+ * decisions, and confidences — never customer text.
+ */
+export async function prioritizeDetectionsDecide(
+ env:Env,ctx:ProactiveContext,items:TriageItem[],
+ opts:{decideTransport?:any}={},
+):Promise<TriageItem[]>{
+ if(items.length<2)return items;
+ try{
+  const questions:Record<string,any>={};
+  items.forEach((item,i)=>{
+   questions[`triage_${i}`]={
+    type:'score',
+    ask:`How much does this proactive nudge deserve the small business owner's attention right now? ${triageSummary(item.detection,ctx.nowMs)}`,
+    levels:['Not worth surfacing','Low priority','Worth a look','Important','Urgent — money or a customer is at stake'],
+   };
+  });
+  const d=await decide(env,{note:'proactive nudge triage'},questions,{tag:'proactive-triage',...(opts.decideTransport?{transport:opts.decideTransport}:{})});
+  if(!d.ok)return items;
+  const scored=items.map((item,i)=>{
+   const a=d.answers[`triage_${i}`];
+   return {item,score:a&&a.ok?Number(a.decision):-1};
+  });
+  // Persist scores for read-path ordering; unscored rows keep no score.
+  for(const {item,score} of scored){
+   if(score<0)continue;
+   await env.AGENT_DB.prepare(`UPDATE mayor_proactive_detections SET payload_json=json_set(payload_json,'$.triage_score',?) WHERE id=? AND json_valid(payload_json)`)
+    .bind(Math.round(score),item.detection.id).run();
+  }
+  return scored
+   .map((s,idx)=>({...s,idx}))
+   .sort((a,b)=>b.score-a.score||a.idx-b.idx)
+   .map(s=>s.item);
+ }catch{return items;}
+}
 function formatWhen(ms:number,timeZone:string,nowMs:number){
  const day=localDayKey(ms,timeZone),today=localDayKey(nowMs,timeZone);
  const time=new Intl.DateTimeFormat('en-US',{timeZone,hour:'numeric',minute:'2-digit'}).format(ms);
@@ -155,10 +228,16 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
   try{
    const {context,created}=await runDetectors(env,t.id,nowMs);
    detections+=created.length;
+   const pending:TriageItem[]=[];
    for(const d of created){
     const card=await createSuggestionCard(env,context,d);
     if(!card)continue;
     cards++;
+    pending.push({detection:d,card});
+   }
+   // Highest-triage-value nudges surface first under the daily cap.
+   const ordered=await prioritizeDetectionsDecide(env,context,pending);
+   for(const {detection:d,card} of ordered){
     if(!(await surfaceGate(env,context)).ok)continue;
     await surfaceDetection(env,context,d,card);
     surfaced++;
@@ -192,9 +271,12 @@ function publicCard(row:CardRow&{detector:DetectorName}){
 }
 export async function listSuggestionCards(env:Env,actor:Actor){
  await requireMembership(env,actor,OPERATORS);
- const rows=await env.AGENT_DB.prepare(`SELECT c.*,d.detector FROM mayor_suggestion_cards c
+ const rows=await env.AGENT_DB.prepare(`SELECT c.*,d.detector,
+  COALESCE(CAST(json_extract(d.payload_json,'$.triage_score') AS INTEGER),-1) AS triage_score
+  FROM mayor_suggestion_cards c
   JOIN mayor_proactive_detections d ON d.id=c.detection_id WHERE c.tenant_id=?
-  ORDER BY CASE c.state WHEN 'pending' THEN 0 WHEN 'edited' THEN 1 WHEN 'sent' THEN 2 ELSE 3 END, c.created_at DESC LIMIT 50`)
+  ORDER BY CASE c.state WHEN 'pending' THEN 0 WHEN 'edited' THEN 1 WHEN 'sent' THEN 2 ELSE 3 END,
+   triage_score DESC, c.created_at DESC LIMIT 50`)
   .bind(actor.tenantId).all<CardRow&{detector:DetectorName}>();
  await requireMembership(env,actor,OPERATORS);
  return {cards:rows.results.map(publicCard)};
@@ -533,9 +615,12 @@ export async function buildBriefing(env:Env,actor:Actor,nowMs=Date.now()){
   FROM mayor_missed_calls WHERE tenant_id=? AND occurred_at>=? AND occurred_at<?`)
   .bind(actor.tenantId,yb.start,yb.end).first<{total:number;texted:number;recovered:number}>();
 
- const cards=await env.AGENT_DB.prepare(`SELECT id,title,body FROM mayor_suggestion_cards
-  WHERE tenant_id=? AND state IN ('pending','edited') ORDER BY created_at DESC LIMIT 10`)
-  .bind(actor.tenantId).all<{id:string;title:string;body:string}>();
+ const cards=await env.AGENT_DB.prepare(`SELECT c.id,c.title,c.body,
+  COALESCE(CAST(json_extract(d.payload_json,'$.triage_score') AS INTEGER),-1) AS triage_score
+  FROM mayor_suggestion_cards c JOIN mayor_proactive_detections d ON d.id=c.detection_id
+  WHERE c.tenant_id=? AND c.state IN ('pending','edited')
+  ORDER BY triage_score DESC, c.created_at DESC LIMIT 10`)
+  .bind(actor.tenantId).all<{id:string;title:string;body:string;triage_score:number}>();
 
  const starts=todayRows.results.map(r=>r.reserved_start).sort();
  // Briefing nouns are vertical-aware. The parallel agent's optional briefingNouns
