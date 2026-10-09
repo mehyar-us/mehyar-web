@@ -9,9 +9,10 @@ import { z } from 'zod';
 import { getSession, handleAuthRequest } from './auth';
 import { HttpError,json,readJson,requireOrigin,digest } from './http';
 import { requireMembership,CHAT_ROLES } from './permissions';
-import { readMemory,confirmProfile } from './memory';
+import { readMemory,confirmProfile,type Profile } from './memory';
 import {verticalSchema} from './verticals';
-import { onboardingProgress } from './onboarding';
+import { onboardingProgress,buildPlaceConfirmCard,confirmPlace,onboardingProgressForVertical } from './onboarding';
+import { searchPlacesText,getPlaceDetails,placesApiKey } from './places';
 import {calendarGuide} from './calendar-guide';
 import {getPhoneSetup,savePhoneSetup,phoneSetupSchema,phoneSetupGuide} from './phone-setup';
 import {getRecordingConsent,acknowledgeRecordingConsent,RECORDING_CONSENT_TEXT,RECORDING_CONSENT_VERSION} from './phone-recording-consent';
@@ -42,7 +43,6 @@ import {handleBillingPublic,handleBillingRequest} from './billing';
 import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
-import {handleCouncilRequest} from './council';
 import {runProactiveCycle,buildBriefing,buildRoi,setRoiConfig,roiConfigSchema,recordNoShow,noShowSchema,listSuggestionCards,sendSuggestionCard,editSuggestionCard,dismissSuggestionCard,setProactiveSettings,proactiveSettingsSchema} from './proactive';
 export {MayorPhone} from './phone-voice';
 export { MayorVoice } from './voice';
@@ -140,11 +140,6 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     if(live&&live.status===409)throw new HttpError(409,'voice_call_active','End the voice conversation before starting a new chat.');
     if(!live||!live.ok)throw new HttpError(502,'conversation_reset_failed','Could not start a new conversation. Your conversation is unchanged — try again.');
     return json(await resetConversationRecovery(env,identity));
-  }
-  const council=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/council$/);
-  if(council){
-    const tenantId=council[1],identity={tenantId,userId:session.user.id,sessionId:session.session.id};
-    return handleCouncilRequest(request,env,identity);
   }
   if(url.pathname==='/api/businesses'&&request.method==='GET') {
     const result=await env.AGENT_DB.prepare(`SELECT t.id,t.name,m.role FROM agent_tenants t JOIN agent_memberships m ON m.tenant_id=t.id
@@ -297,6 +292,52 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const actor={tenantId:phoneSetup[1],userId:session.user.id};
     if(request.method==='GET')return json({setup:await getPhoneSetup(env,actor)});
     if(request.method==='POST')return json(await savePhoneSetup(env,actor,phoneSetupSchema.parse(await readJson(request,2048))));
+  }
+  // Crew 4 — Google Places onboarding. Auth-gated by the session check above
+  // (401 unauthenticated). All three degrade when GOOGLE_PLACES_API_KEY is
+  // absent — the secret does not exist in prod yet (human step) — so the
+  // client falls back to the manual question flow. Places data is public
+  // directory data; requests use a minimal field mask (see places.ts).
+  const placesSearch=url.pathname==='/api/places/search';
+  if(placesSearch&&request.method==='POST'){
+    const input=z.object({query:z.string().trim().min(1).max(200)}).strict().parse(await readJson(request,2048));
+    return json(await searchPlacesText(input.query,placesApiKey(env)));
+  }
+  const placesDetails=url.pathname==='/api/places/details';
+  if(placesDetails&&request.method==='POST'){
+    const input=z.object({placeId:z.string().trim().min(1).max(256)}).strict().parse(await readJson(request,1024));
+    const key=placesApiKey(env);
+    const place=await getPlaceDetails(input.placeId,key);
+    if(!place)throw new HttpError(key?404:503,key?'place_not_found':'places_unavailable',key?'That business could not be found. Try the manual questions instead.':'The business lookup is not configured yet. Continue with the manual questions.');
+    return json({card:buildPlaceConfirmCard(place)});
+  }
+  const confirmPlaceRoute=url.pathname==='/api/onboarding/confirm-place';
+  if(confirmPlaceRoute&&request.method==='POST'){
+    const input=z.object({placeId:z.string().trim().min(1).max(256),businessId:z.string().regex(/^[a-f0-9]{32}$/)}).strict().parse(await readJson(request,2048));
+    const key=placesApiKey(env);
+    if(!key)throw new HttpError(503,'places_unavailable','The business lookup is not configured yet. Continue with the manual questions.');
+    const actor={tenantId:input.businessId,userId:session.user.id};
+    await requireMembership(env,actor,CHAT_ROLES);
+    const place=await getPlaceDetails(input.placeId,key);
+    if(!place)throw new HttpError(404,'place_not_found','That business could not be found. Try the manual questions instead.');
+    const memory=await readMemory(env,actor);
+    const patch=confirmPlace(memory.profile,place);
+    // profileSchema is strict and has no address/phone fields: persist the
+    // schema-compatible subset, folding the Places address into locations
+    // when the profile has none. The confirmed phone rides along in the
+    // response for the phone-provisioning step.
+    const applyPatch:Profile={};
+    if(patch.name)applyPatch.name=patch.name.slice(0,160);
+    if(patch.hours)applyPatch.hours=patch.hours.slice(0,2000);
+    if(patch.vertical)applyPatch.vertical=patch.vertical;
+    if(patch.address&&!(memory.profile.locations??[]).some(location=>location.trim()))applyPatch.locations=[patch.address.slice(0,300)];
+    const updated=await confirmProfile(env,actor,applyPatch,memory.revision);
+    return json({
+      profile:updated.profile,revision:updated.revision,
+      vertical:patch.vertical,followUpQuestion:patch.followUpQuestion,
+      placePhone:patch.phone,placeAddress:patch.address,
+      progress:onboardingProgressForVertical(updated.profile,patch.vertical),
+    });
   }
   const voice=url.pathname.match(/^\/agents\/mayor-voice\/([a-f0-9]{64})$/);
   if(voice&&request.method==='GET'&&request.headers.get('upgrade')?.toLowerCase()==='websocket') {

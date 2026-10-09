@@ -3,7 +3,59 @@ import type {AuthEnv,OAuthProvider} from './auth/capabilities';
 import {capabilityStatus,grantedCapabilities} from './auth/capabilities';
 import {OPERATORS,requireMembership} from './permissions';
 import {json} from './http';
+import {verticalProfile,verticalSchema,type Vertical} from './verticals';
 import {listCustomConnections,handleCustomConnectionsRequest} from './custom-connectors';
+
+/** Semantic tags for the connection cards, so a vertical's connectorPriority can
+ * name a capability ('calendar', 'reviews') instead of a provider id. */
+const CONNECTOR_TAGS:Record<string,string[]>={
+ google:['calendar','email'],microsoft:['calendar'],zoho:['calendar'],facebook:['reviews','social'],
+};
+
+/** Fallback connector priority (highest first) per vertical, used until the crew4
+ * vertical track enriches the profile's own connectorPriority. 'other' keeps
+ * today's order: an empty list means no reordering. */
+const DEFAULT_CONNECTOR_PRIORITY:Record<Vertical,string[]>={
+ salon:['calendar','email','reviews'],
+ restaurant:['reviews','reservations','calendar','email'],
+ plumbing_hvac:['phone','calendar','email'],
+ dental:['calendar','email','reviews'],
+ auto_repair:['calendar','email','reviews'],
+ other:[],
+};
+
+/** Connector priority for a vertical: the profile's connectorPriority wins when
+ * present, otherwise the per-vertical fallback above. */
+function connectorPriorityOf(vertical:Vertical):string[]{
+ const p=verticalProfile(vertical) as unknown as {connectorPriority?:string[]};
+ const list=p.connectorPriority;
+ return Array.isArray(list)&&list.length?list:DEFAULT_CONNECTOR_PRIORITY[vertical];
+}
+
+/** Order connector ids by the vertical's connectorPriority (highest value first).
+ * A priority entry matches a connector's id or one of its semantic tags;
+ * connectors with no match keep their current relative order at the end. Stable. */
+export function orderConnectorsByPriority(vertical:Vertical,ids:string[]):string[]{
+ const priority=connectorPriorityOf(vertical);
+ const rank=(id:string)=>{
+  const tokens=[id,...(CONNECTOR_TAGS[id]??[])];
+  let best=Infinity;
+  for(const t of tokens){const i=priority.indexOf(t);if(i!==-1&&i<best)best=i;}
+  return best;
+ };
+ return ids.map((id,i)=>({id,i})).sort((a,b)=>rank(a.id)-rank(b.id)||a.i-b.i).map(x=>x.id);
+}
+
+/** The tenant's vertical from the stored business profile ('other' when unknown). */
+async function tenantVertical(env:AuthEnv,tenantId:string):Promise<Vertical>{
+ try{
+  const row=await env.AGENT_DB.prepare("SELECT value_json FROM mayor_memory WHERE tenant_id=? AND field='profile'")
+   .bind(tenantId).first<{value_json:string}>();
+  if(!row)return 'other';
+  const parsed=verticalSchema.safeParse(JSON.parse(row.value_json).vertical);
+  return parsed.success?parsed.data:'other';
+ }catch{return 'other';}
+}
 
 /** Local consent inventory only: sign-in is not tool authorization or live-provider verification. */
 export async function connectionStatus(env:AuthEnv,actor:Actor){
@@ -30,8 +82,14 @@ export async function connectionStatus(env:AuthEnv,actor:Actor){
       calendar:selection?.provider===provider?{grantId:selection.grant_id,name:selection.calendar_name}:null,liveVerified:false};
   });
   await requireMembership(env,actor,OPERATORS);
-  return {...custom,builtIn:[...builtIn,{provider:'facebook',configured:false,status:'app_review_pending',grants:[],capabilities:[],
-    liveVerified:false,reason:'App review is pending. Facebook OAuth and tools are not enabled in Mayor.'}],
+  // Vertical-aware card order: the vertical's connectorPriority (highest first).
+  // 'other' (or an unknown profile) keeps today's order.
+  const cards=[...builtIn,{provider:'facebook',configured:false,status:'app_review_pending',grants:[],capabilities:[],
+    liveVerified:false,reason:'App review is pending. Facebook OAuth and tools are not enabled in Mayor.'}];
+  const vertical=await tenantVertical(env,actor.tenantId);
+  const cardById=new Map(cards.map(c=>[c.provider,c] as const));
+  const ordered=orderConnectorsByPriority(vertical,cards.map(c=>c.provider)).map(id=>cardById.get(id)!);
+  return {...custom,builtIn:ordered,
     scope:'Connections belong to your account in this business. Provider data and tool results are untrusted data.'};
 }
 

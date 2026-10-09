@@ -1,5 +1,5 @@
 import type {Env} from './env';
-import {verticalProfile,type Vertical} from './verticals';
+import {verticalProfile,type Vertical,type VerticalProfile} from './verticals';
 import {schedulingPolicySchema,type SchedulingPolicy} from './scheduling-policy';
 
 /** Crew 3 proactive engine: detectors.
@@ -29,10 +29,33 @@ export interface DetectionRow{
  payload_json:string;state:string;dedupe_key:string;
 }
 
-/** Days without a booking after which a customer counts as lapsed, per vertical. */
+/** Days without a booking after which a customer counts as lapsed, per vertical.
+ * This table is the fallback source of truth for lapsed_regular: detectors read
+ * the vertical profile's detectorParams first and fall back here — never a
+ * second hardcoded copy. */
 export const LAPSED_DAYS:Record<Vertical,number>={
- salon:45,restaurant:60,plumbing_hvac:180,dental:190,auto_repair:180,other:90,
+ salon:56,restaurant:60,plumbing_hvac:180,dental:180,auto_repair:180,other:90,
 };
+
+/** Optional per-vertical detector tuning. Enriched on the vertical profile by the
+ * crew4 vertical track; every field is optional. Detectors read these via
+ * detectorParamsOf() and fall back to the hardcoded defaults when absent. */
+export interface DetectorParams{
+ lapsedRegularDays?:number;
+ rebookingCycleDays?:number;
+ slowDayMinGapMinutes?:number;
+ unansweredLeadMinutes?:number;
+ noShowLookbackDays?:number;
+ afterHoursStart?:number;
+ afterHoursEnd?:number;
+}
+
+/** Detector params for a vertical: the profile's detectorParams win when present,
+ * otherwise an empty object so callers fall back to the per-detector defaults. */
+export function detectorParamsOf(vertical:Vertical):DetectorParams{
+ const p=verticalProfile(vertical) as VerticalProfile & {detectorParams?:DetectorParams};
+ return p.detectorParams??{};
+}
 
 const WEEKDAY_NUM:Record<string,number>={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
 
@@ -130,9 +153,11 @@ export async function loadProactiveContext(env:Env,tenantId:string,nowMs=Date.no
 }
 
 export interface LapsedCustomer{id:string;name:string;phone:string;lastStart:string}
-/** Customers with a phone whose most recent booking is older than the vertical's lapsed window. */
-export async function lapsedCustomers(env:Env,tenantId:string,vertical:Vertical,nowMs:number,limit=25):Promise<LapsedCustomer[]>{
- const cutoff=new Date(nowMs-LAPSED_DAYS[vertical]*86400000).toISOString();
+/** Customers with a phone whose most recent booking is older than the vertical's lapsed window.
+ * Pass an explicit lapsedDays to override the vertical default (used by detectLapsedRegulars
+ * after it resolves the profile's detectorParams). */
+export async function lapsedCustomers(env:Env,tenantId:string,vertical:Vertical,nowMs:number,limit=25,lapsedDays?:number):Promise<LapsedCustomer[]>{
+ const cutoff=new Date(nowMs-(lapsedDays??LAPSED_DAYS[vertical])*86400000).toISOString();
  const rows=await env.AGENT_DB.prepare(`SELECT c.id,c.name,c.phone,MAX(j.reserved_start) AS last_start
   FROM mayor_customers c
   JOIN mayor_appointment_customers ac ON ac.customer_id=c.id AND ac.tenant_id=c.tenant_id
@@ -155,9 +180,11 @@ export async function detectMissedCallFollowup(env:Env,ctx:ProactiveContext):Pro
   payload:{missedCallId:r.id,callerNumber:r.caller_number,occurredAt:r.occurred_at}}));
 }
 
-/** Tomorrow has a ≥2h open gap vs the scheduling policy's weekly hours. */
+/** Tomorrow has a large open gap vs the scheduling policy's weekly hours.
+ * The minimum gap comes from the vertical's detectorParams.slowDayMinGapMinutes (default 120). */
 export async function detectSlowDay(env:Env,ctx:ProactiveContext):Promise<NewDetection[]>{
  if(!ctx.policy)return [];
+ const minGapMinutes=detectorParamsOf(ctx.vertical).slowDayMinGapMinutes??120;
  const tomorrow=shiftLocalDate(localDayKey(ctx.nowMs,ctx.timeZone),1);
  const weekday=WEEKDAY_NUM[localParts(ctx.nowMs+86400000,ctx.timeZone).weekday]??-1;
  const periods=ctx.policy.weeklyHours.filter(p=>p.day===weekday);
@@ -168,23 +195,30 @@ export async function detectSlowDay(env:Env,ctx:ProactiveContext):Promise<NewDet
   WHERE a.tenant_id=? AND a.state='confirmed' AND j.reserved_start>=? AND j.reserved_start<?`)
   .bind(ctx.tenantId,bounds.start,bounds.end).all<{reserved_start:string;reserved_end:string}>();
  const gaps=dayGaps(periods,rows.results.map(r=>({start:r.reserved_start,end:r.reserved_end})),tomorrow,ctx.timeZone)
-  .filter(g=>g.minutes>=120);
+  .filter(g=>g.minutes>=minGapMinutes);
  if(!gaps.length)return [];
  return [{detector:'slow_day' as const,dedupeKey:`day:${tomorrow}`,
   payload:{date:tomorrow,gaps,maxGapMinutes:Math.max(...gaps.map(g=>g.minutes))}}];
 }
 
-/** Lapsed regulars per the vertical's rebooking window. One detection per day max. */
+/** Lapsed regulars per the vertical's rebooking window (detectorParams.lapsedRegularDays,
+ * falling back to LAPSED_DAYS). When the vertical defines rebookingCycleDays, it is
+ * included in the payload so downstream copy can name the expected cycle. One detection per day max. */
 export async function detectLapsedRegulars(env:Env,ctx:ProactiveContext):Promise<NewDetection[]>{
- const customers=await lapsedCustomers(env,ctx.tenantId,ctx.vertical,ctx.nowMs,25);
+ const params=detectorParamsOf(ctx.vertical);
+ const lapsedDays=params.lapsedRegularDays??LAPSED_DAYS[ctx.vertical];
+ const customers=await lapsedCustomers(env,ctx.tenantId,ctx.vertical,ctx.nowMs,25,lapsedDays);
  if(!customers.length)return [];
  return [{detector:'lapsed_regular' as const,dedupeKey:`day:${localDayKey(ctx.nowMs,ctx.timeZone)}`,
-  payload:{cutoffDays:LAPSED_DAYS[ctx.vertical],count:customers.length,customers}}];
+  payload:{cutoffDays:lapsedDays,count:customers.length,customers,
+   ...(params.rebookingCycleDays!=null?{rebookingCycleDays:params.rebookingCycleDays}:{})}}];
 }
 
-/** Inbound SMS with no outbound reply within 2h. */
+/** Inbound SMS with no outbound reply within the vertical's window
+ * (detectorParams.unansweredLeadMinutes, default 120). */
 export async function detectUnansweredLeads(env:Env,ctx:ProactiveContext):Promise<NewDetection[]>{
- const cutoff=new Date(ctx.nowMs-2*3600000).toISOString();
+ const unansweredMinutes=detectorParamsOf(ctx.vertical).unansweredLeadMinutes??120;
+ const cutoff=new Date(ctx.nowMs-unansweredMinutes*60000).toISOString();
  const rows=await env.AGENT_DB.prepare(`SELECT s.id,s.from_number,s.body,s.created_at FROM mayor_sms_log s
   WHERE s.tenant_id=? AND s.direction='inbound' AND s.created_at<=?
   AND NOT EXISTS(SELECT 1 FROM mayor_sms_log o WHERE o.tenant_id=s.tenant_id AND o.direction='outbound'
@@ -194,11 +228,13 @@ export async function detectUnansweredLeads(env:Env,ctx:ProactiveContext):Promis
   payload:{smsId:r.id,fromNumber:r.from_number,body:r.body.slice(0,160),receivedAt:r.created_at}}));
 }
 
-/** Confirmed appointments in the next 48h for customers with a recorded no-show
- * and no reminder sent. no_show events are recorded via recordNoShow (proactive.ts);
- * until a flow marks no-shows, this detector stays quiet — honestly. */
+/** Confirmed appointments in the upcoming window (detectorParams.noShowLookbackDays,
+ * default 2) for customers with a recorded no-show and no reminder sent. no_show
+ * events are recorded via recordNoShow (proactive.ts); until a flow marks
+ * no-shows, this detector stays quiet — honestly. */
 export async function detectNoShowRisk(env:Env,ctx:ProactiveContext):Promise<NewDetection[]>{
- const start=new Date(ctx.nowMs).toISOString(),end=new Date(ctx.nowMs+48*3600000).toISOString();
+ const lookbackDays=detectorParamsOf(ctx.vertical).noShowLookbackDays??2;
+ const start=new Date(ctx.nowMs).toISOString(),end=new Date(ctx.nowMs+lookbackDays*86400000).toISOString();
  const rows=await env.AGENT_DB.prepare(`SELECT j.id AS booking_id,j.reserved_start,ac.customer_id,c.name AS customer_name,c.phone AS customer_phone
   FROM mayor_appointments a
   JOIN mayor_appointment_jobs j ON j.id=a.id

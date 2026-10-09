@@ -19,7 +19,9 @@ import {bindVoiceAccessRecovery,createAccessRecoveryView} from './voice-access-r
 import {createBusinessWorkspace,playSoundCheck} from './business-workspace';
 import {createWorkspaceAccessGuard,workspaceAccessWasRejected,selectWorkspaceBusiness} from './workspace-access';
 import {assistantName,assistantGreeting} from '../src/assistant-persona';
+import {namingGreeting,validateBusinessName} from './business-naming';
 import {VERTICAL_PROFILES} from '../src/verticals';
+import {createPlacesOnboarding} from './places-onboarding';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -55,7 +57,7 @@ voiceHelp.addEventListener('keydown',event=>{if(event.key==='Escape'&&voiceHelp.
 const newChatHeader=document.createElement('button');newChatHeader.type='button';newChatHeader.id='new-chat';newChatHeader.className='secondary';newChatHeader.textContent='New chat';newChatHeader.setAttribute('aria-label','Start a new conversation');newChatHeader.hidden=true;newChatHeader.onclick=()=>void startNewChat();document.querySelector('.header-actions')!.append(newChatHeader);
 const micLevel=document.createElement('meter');micLevel.id='mic-level';micLevel.min=0;micLevel.max=1;micLevel.value=0;micLevel.hidden=true;micLevel.setAttribute('aria-label','Microphone input level');soundCheck.after(micLevel);
 const canManage=()=>!accessEnded&&['owner','manager'].includes(membershipRole);
-const canChat=()=>!accessEnded&&['owner','manager','staff'].includes(membershipRole);
+const canChat=()=>!accessEnded&&(namingMode||['owner','manager','staff'].includes(membershipRole));
 const connectionHub=createConnections({api,tenant:()=>tenantId,actor:()=>sessionUserId,canManage,onConnect:(provider,capabilities)=>signIn(provider,capabilities),onCalendar:provider=>{show('chat');void calendarChat.open(undefined,provider);},onAccount:()=>show('account'),ask:text=>{show('chat');const input=$<HTMLTextAreaElement>('message');input.value=text;resizeComposer();input.focus();},pendingProviders:[{id:'facebook',label:'Facebook & Instagram',status:'App review pending'}]});
 $('connections-content').append(connectionHub.element);
 $('open-connections').onclick=()=>show('connections');
@@ -92,7 +94,7 @@ async function refreshInbox(){
    const anchor=typeof item.anchor==='string'&&item.anchor?item.anchor:item.action==='briefing'?'briefing':item.action==='suggestions'?'suggestions':'';
    const anchorLabel=anchor==='briefing'?'Open morning briefing':anchor==='suggestions'?'Open suggestions':anchor==='roi'?'Open ROI dashboard':anchor.startsWith('suggestion')?'Open suggestion':undefined;
    title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=anchorLabel??(destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':destination==='missed-calls'?'Review missed call':'Talk to '+assistantName(confirmedProfile));
-   action.onclick=()=>{if(destination==='missed-calls'){inbox.open=false;show('today');workday.openMissedCalls();return;}show(destination);inbox.open=false;if(anchor&&destination==='today')workday.proactive.highlight(anchor);else(destination==='today'?$('today-heading'):destination==='tasks'?$('tasks-heading'):destination==='account'?$('account-heading'):$('talk')).focus();};
+   action.onclick=()=>{inbox.open=false;if(destination==='missed-calls'){show('today');workday.openMissedCalls();return;}if(destination==='tasks'){workday.openTasks();return;}const target=anchor==='roi'?'feed':destination;show(target);if(anchor&&(target==='today'||target==='feed'))workday.proactive.highlight(anchor);else(target==='today'?$('today-heading'):target==='feed'?$('feed-heading'):target==='account'?$('account-heading'):$('talk')).focus();};
    card.append(title,message,action);
    if(!item.read){
     const read=document.createElement('button');read.type='button';read.className='secondary';read.textContent='Mark read';
@@ -158,7 +160,7 @@ const timezoneSuggestion=createTimeZoneSuggestion(text=>{show('chat');void sendT
 $('logout').before(timezoneSuggestion.element);
 const diagnostics=createVoiceDiagnostics();
 const voiceHealth=createVoiceHealth(diagnostics);
-$('help-view').append(voiceHealth.element);
+$('account-view').append(voiceHealth.element);
 const notice=(message:string)=>{
  if(accessEnded)return;
  const banner=$('notice');
@@ -183,24 +185,34 @@ $('notice').before(networkStatus);
 let voiceConnected=false;
 let microphoneProblem='';
 let historyReady=false;
+// Crew 5 UX: true between sign-in and the owner naming their business. The
+// app never auto-creates a nameless business — namingMode gates the composer
+// so the owner's answer to "What's your business called?" becomes the name.
+let namingMode=false;
 let savedTranscript:Array<{role:string;text:string}>=[];
 let confirmedProfile:Record<string,unknown>={};
-let councilMode=false;
-function composerPlaceholder(){const name=assistantName(confirmedProfile);return councilMode?'Ask the council…':`Ask ${name.length<=14?name:'Mayor'}…`;}
-const ONBOARDING_STEP_LABELS:Record<string,string>={name:'Business name',industry:'Industry',services:'Services',locations:'Locations',hours:'Hours',timeZone:'Time zone',staff:'Team'};
-function renderOnboardingProgress(progress?:{missing:string[];basicsComplete:boolean}){
+function composerPlaceholder(){const name=assistantName(confirmedProfile);return `Ask ${name.length<=14?name:'Mayor'}…`;}
+const ONBOARDING_STEP_LABELS:Record<string,string>={name:'Business name',industry:'Industry',services:'Services',locations:'Locations',hours:'Hours',timeZone:'Time zone',staff:'Team',appointmentTypes:'Appointment length'};
+// Crew 4 Places: Google listing lookup entry, mounted into the onboarding
+// progress card below. Created after the phone card exists; see below.
+let placesOnboarding:ReturnType<typeof createPlacesOnboarding>|undefined;
+function renderOnboardingProgress(progress?:{missing:string[];basicsComplete:boolean;total?:number}){
  const el=$('onboarding-progress');el.replaceChildren();
- if(!progress||progress.basicsComplete){el.hidden=true;return;}
- const done=7-progress.missing.length;
+ if(!progress||progress.basicsComplete){el.hidden=true;placesOnboarding?.reset();return;}
+ const total=progress.total??7;
+ const done=total-progress.missing.length;
  const bar=document.createElement('div');bar.className='op-bar';bar.setAttribute('role','progressbar');
- bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax','7');bar.setAttribute('aria-valuenow',String(done));
- bar.setAttribute('aria-label',`Business profile ${done} of 7 complete`);
- const fill=document.createElement('div');fill.className='op-fill';fill.style.width=`${Math.round(done/7*100)}%`;bar.append(fill);
+ bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax',String(total));bar.setAttribute('aria-valuenow',String(done));
+ bar.setAttribute('aria-label',`Business profile ${done} of ${total} complete`);
+ const fill=document.createElement('div');fill.className='op-fill';fill.style.width=`${Math.round(done/total*100)}%`;bar.append(fill);
  const text=document.createElement('p');
- text.textContent=`Business profile: ${done} of 7 complete. Still to go: ${progress.missing.map(field=>ONBOARDING_STEP_LABELS[field]??field).join(', ')}.`;
+ text.textContent=`Business profile: ${done} of ${total} complete. Still to go: ${progress.missing.map(field=>ONBOARDING_STEP_LABELS[field]??field).join(', ')}.`;
  const again=document.createElement('button');again.type='button';again.className='secondary';again.textContent='Continue setup';
  again.onclick=()=>{show('chat');const input=$<HTMLTextAreaElement>('message');input.value='Resume onboarding from my confirmed details. Ask one missing question.';resizeComposer();input.focus();};
- el.append(bar,text,again);el.hidden=false;
+ el.append(bar,text,again);
+ // One-tap Google listing lookup as an alternative to the manual questions.
+ placesOnboarding?.mount(el);
+ el.hidden=false;
 }
 function useBusinessProfile(profile:Record<string,unknown>,progress?:{missing:string[];basicsComplete:boolean}){
  confirmedProfile=profile;workspace.profile(profile);renderOnboardingProgress(progress);
@@ -217,15 +229,8 @@ const chatActions=document.createElement('div');chatActions.className='chat-acti
 // Same action as the header control: archive the server thread, clear the local
 // transcript, and re-render the business-first greeting.
 const newChatDock=document.createElement('button');newChatDock.type='button';newChatDock.className='secondary';newChatDock.textContent='New chat';newChatDock.setAttribute('aria-label','Start a new conversation');newChatDock.onclick=()=>void startNewChat();chatActions.append(newChatDock);
-const modeToggle=document.createElement('div');modeToggle.className='mode-toggle';modeToggle.setAttribute('role','group');modeToggle.setAttribute('aria-label','Chat mode');
-const assistantModeBtn=document.createElement('button');assistantModeBtn.type='button';assistantModeBtn.textContent='Assistant';assistantModeBtn.setAttribute('aria-pressed','true');
-const councilModeBtn=document.createElement('button');councilModeBtn.type='button';councilModeBtn.textContent='Council';councilModeBtn.setAttribute('aria-pressed','false');
-const modeNote=document.createElement('p');modeNote.className='mode-note';modeNote.hidden=true;modeNote.textContent='The council answers — the seats speak, the King rules. AI coaching, not professional advice. Council replies show here but are not saved to your conversation history.';
-function setChatMode(council:boolean){councilMode=council;assistantModeBtn.setAttribute('aria-pressed',String(!council));councilModeBtn.setAttribute('aria-pressed',String(council));modeNote.hidden=!council;$<HTMLTextAreaElement>('message').placeholder=composerPlaceholder();resizeComposer();}
-assistantModeBtn.onclick=()=>setChatMode(false);councilModeBtn.onclick=()=>setChatMode(true);
-modeToggle.append(assistantModeBtn,councilModeBtn);$('text-form').before(modeToggle,modeNote);
 const textChat=createTextChat(async(text,requestId,signal)=>{
- const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/${councilMode?'council':'conversation'}`;
+ const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/conversation`;
  const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId}),signal});
  const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){
   if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();
@@ -238,7 +243,7 @@ const textChat=createTextChat(async(text,requestId,signal)=>{
  }return result;
 },(busy,message)=>{if(accessEnded)return;composerStatus.textContent=message;stopWaiting.hidden=!busy;updateNetwork();renderVoiceState();},{
  serviceDownCopy:(status)=>status===502
-  ?(councilMode?'The council couldn\u2019t reach the AI service — try again in a moment.':'The assistant couldn\u2019t reach the AI service — try again in a moment.')
+  ?'The assistant couldn\u2019t reach the AI service — try again in a moment.'
   :undefined,
 });
 stopWaiting.onclick=()=>textChat.cancel();
@@ -280,8 +285,11 @@ async function sendTextMessage(text:string){
  if(voiceCall?.active||voiceCall?.starting){notice('End the voice conversation before sending a typed message. Your draft is saved here.');return;}
  const input=$<HTMLTextAreaElement>('message');if(!text.trim())return;notice('');
  show('chat');
+ // Crew 5 UX: the first message after sign-in (no business yet) IS the
+ // business name — it creates the business, with that real name, once.
+ if(namingMode){await claimBusinessName(text.trim());return;}
  const result=await textChat.submit(text.trim());
- if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(result.stopped)setChatMode(false);if(input.value.trim()===text.trim())input.value='';resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
+ if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(input.value.trim()===text.trim())input.value='';resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
 }
 function updateNetwork(){
   if(accessEnded)return;
@@ -378,6 +386,24 @@ simTextBack.onclick=async()=>{simTextBack.disabled=true;
  finally{simTextBack.disabled=false;}};
 missedCallSim.append(simSummary,simIntro,simForm,simTextBack);
 phoneCard.append(missedCallSim);
+// Crew 4 Places onboarding: the same TEST ONLY endpoints the simulator above
+// uses (fake test numbers, local rows only — never a real SMS), driven from
+// the post-confirm "immediate test" step.
+async function runPlacesMissedCallTest(){
+ const recorded=await api(`/api/businesses/${tenantId}/phone/test-missed-call`,{callerNumber:'+15550131234',businessNumber:'+15550139876'});
+ await api(`/api/businesses/${tenantId}/phone/test-missed-call/${recorded.missedCall.id}/text-back`,{});
+ notice('Test missed call recorded — check Notifications. Nothing was sent to a real phone.');
+ await refreshInbox();
+}
+placesOnboarding=createPlacesOnboarding({
+ api:(path,body)=>api(path,body),
+ tenant:()=>tenantId,
+ canManage,
+ openCalendarConnect:()=>{show('chat');$('conversation').setAttribute('open','');void calendarChat.open();},
+ openPhoneCard:()=>{show('account');phoneCard.open=true;phoneCard.scrollIntoView({block:'start',behavior:'smooth'});},
+ runMissedCallTest:()=>runPlacesMissedCallTest(),
+ onProgress:progress=>renderOnboardingProgress(progress),
+});
 let phoneLoading=false;
 async function loadPhoneAccount(){
   if(phoneLoading||!loggedIn||!canManage())return;
@@ -636,7 +662,7 @@ async function connect(){
 function endWorkspaceAccess(){
  if(accessEnded)return;
  chatKeyboard.dispose();
- accessEnded=true;workspaceAccess.end();textChat.cancel();voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
+ accessEnded=true;namingMode=false;workspaceAccess.end();textChat.cancel();voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
  savedTranscript=[];confirmedProfile={};voiceRows.clear();$('transcript').replaceChildren();$('interim').textContent='';
  workspace.clear();workday.clear();connectionHub.reset();voiceHealth.clear();calendarChat.clear();calendarLauncher.hidden=true;$('calendar-status').hidden=true;voiceHelp.open=false;voiceHelp.hidden=true;micLevel.hidden=true;micLevel.value=0;
  $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
@@ -715,6 +741,9 @@ $('talk').onclick=async()=>{show('chat');microphoneProblem='';notice('');if(voic
 $('mute').onclick=()=>voice?.toggleMute();
 $('text-form').onsubmit=event=>{event.preventDefault();void sendTextMessage($<HTMLTextAreaElement>('message').value);};
 $('message').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('text-form').dispatchEvent(new Event('submit',{cancelable:true}));}});
+// Crew 5 UX: the conversation is home, not a tab. Tapping the persistent
+// composer from any view returns to the conversation first.
+$('message').addEventListener('focus',()=>{if(loggedIn&&!accessEnded&&!namingMode&&document.body.dataset.view!=='chat')show('chat');});
 async function signIn(provider='google',capabilities:string[]=[]){
   try{notice('');const data=await api(`/api/auth/start/${provider}`,{capabilities,...(capabilities.length?{tenantId}:{})});
     const url=new URL(data.url);if(!['accounts.google.com','login.microsoftonline.com','accounts.zoho.com'].includes(url.hostname))throw new Error('Unexpected sign-in destination.');location.assign(url.href);
@@ -816,18 +845,54 @@ async function init(){
   if(!session){if(new URLSearchParams(location.search).has('auth_error'))notice('Sign-in could not finish. Please try again.');return;}
   sessionUserId=session.user.id;loggedIn=true;$('sign-in').hidden=true;$('sign-in-microsoft').hidden=true;$('chat-sign-in').hidden=true;$('chat-empty').hidden=false;$('logout').hidden=false;$('user-detail').textContent=session.user.email;
   const businesses=await api('/api/businesses');
-  let business=selectWorkspaceBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,new URLSearchParams(location.search).get('business'));
-  if(!business){
-    const created=await api('/api/businesses',{name:'My business'});
+  const business=selectWorkspaceBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,new URLSearchParams(location.search).get('business'));
+  // Crew 5 UX: never auto-create a nameless business. With no membership the
+  // owner names the business in conversation first; only that real name is
+  // ever sent to POST /api/businesses (see claimBusinessName).
+  if(!business){enterNamingMode();return;}
+  await enterBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,business);
+}
+
+/** First-run: the conversation asks "What's your business called?" and the
+ * owner's answer becomes the business name. No business exists yet here. */
+function enterNamingMode(){
+  namingMode=true;
+  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=false;
+  chatActions.hidden=false;
+  // No conversation exists yet — a reset would hit a tenant-less endpoint.
+  newChatDock.hidden=true;
+  show('chat');
+  savedTranscript=[{role:'assistant',text:namingGreeting()}];
+  // The composer is the naming input; there is no conversation history yet.
+  historyReady=true;transcripts();updateNetwork();
+  $<HTMLTextAreaElement>('message').placeholder='Your business name…';
+  $('status').textContent='Welcome to The Mayor';
+  $('voice-hint').textContent='Name your business first — then we can talk.';
+}
+
+/** The owner's answer to the naming question creates the business, once. */
+async function claimBusinessName(name:string){
+  const problem=validateBusinessName(name);
+  if(problem){notice(problem);return;}
+  notice('Creating your business…');
+  try{
+    const created=await api('/api/businesses',{name:name.trim()});
     // Read the actual membership; creation alone must not imply ownership.
-    business=(await api('/api/businesses')).businesses.find((item:any)=>item.id===created.id);
-  }
-  if(!business)throw new Error('Your business membership is not available. Please contact the workspace owner.');
-  tenantId=business.id;membershipRole=business.role;
+    const list=await api('/api/businesses');
+    const business=list.businesses.find((item:any)=>item.id===created.id);
+    if(!business)throw new Error('Your business was created but is not available yet. Reload to continue.');
+    namingMode=false;savedTranscript=[];
+    await enterBusiness(list.businesses,business);
+    notice(`Welcome, ${business.name} — your front desk is ready. Tell me what you do and we’ll set up the rest together.`);
+  }catch(error){notice(error instanceof Error?error.message:'Could not create your business. Try again.');}
+}
+
+async function enterBusiness(businesses:Array<{id:string;name:string;role:string}>,business:{id:string;name:string;role:string}){
+  tenantId=business.id;membershipRole=business.role;newChatDock.hidden=false;
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();chatActions.hidden=false;
   workday.ready(business.name,membershipRole);
-  setupBusinessSwitcher(businesses.businesses as Array<{id:string;name:string;role:string}>,business.id);
+  setupBusinessSwitcher(businesses,business.id);
   $('calendar-status').hidden=!canManage();
   calendarLauncher.hidden=!canManage();
   const connectionError=new URLSearchParams(location.search).get('auth_error');

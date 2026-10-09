@@ -6,6 +6,10 @@
   "triggers":{"crons":["*/5 * * * *"]},
   "routes":[{"pattern":"mayor.mehyar.us","custom_domain":true}],
   "assets":{"directory":"./public","binding":"ASSETS","not_found_handling":"single-page-application","run_worker_first":["/api/*","/agents/*","/mcp","/business-audit","/business-audit/*"]},
+  // Secrets (set via `wrangler secret put`, never in vars): GOOGLE_PLACES_API_KEY
+  // — Google Cloud Console → enable Places API (New) → create a key restricted
+  // to HTTP referrers on mayor.mehyar.us. Absent key ⇒ Places onboarding
+  // degrades to the manual question flow (see src/places.ts).
   "vars":{"APP_ORIGIN":"https://mayor.mehyar.us","ENVIRONMENT":"production","GOOGLE_ENABLED_CAPABILITIES":"calendar_read,calendar_manage,gmail_read","ZOHO_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","MICROSOFT_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","MAYOR_EMAIL_FROM":"mayor@mehyar.us"},
   "ai":{"binding":"AI"},
   "send_email":[{"name":"MAYOR_EMAIL","allowed_sender_addresses":["mayor@mehyar.us"]}],

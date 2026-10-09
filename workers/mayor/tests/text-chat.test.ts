@@ -20,17 +20,17 @@ function httpFailure(status:number,message:string){
 }
 it('never claims "Reply received" on a failed turn — 502 gets the honest service copy',async()=>{
  const changed=vi.fn();
- const chat=createTextChat(httpFailure(502,'council_failed'),changed,{serviceDownCopy:(status)=>status===502?"The council couldn't reach the AI service — try again in a moment.":undefined});
- expect(await chat.submit('Hi council')).toBeNull();
+ const chat=createTextChat(httpFailure(502,'model_failed'),changed,{serviceDownCopy:(status)=>status===502?"The assistant couldn't reach the AI service — try again in a moment.":undefined});
+ expect(await chat.submit('Hi')).toBeNull();
  expect(changed).toHaveBeenLastCalledWith(false,expect.stringContaining("couldn't reach the AI service"));
  const last=changed.mock.calls[changed.mock.calls.length-1][1] as string;
  expect(last).not.toContain('Reply received');expect(last).not.toContain('allowance');
 });
 it('falls back to the error message on 502 when no copy override is provided',async()=>{
  const changed=vi.fn();
- const chat=createTextChat(httpFailure(502,'The council could not reach the AI service. Try again in a moment.'),changed);
+ const chat=createTextChat(httpFailure(502,'The assistant could not reach the AI service. Try again in a moment.'),changed);
  expect(await chat.submit('Hi')).toBeNull();
- expect(changed).toHaveBeenLastCalledWith(false,'The council could not reach the AI service. Try again in a moment.');
+ expect(changed).toHaveBeenLastCalledWith(false,'The assistant could not reach the AI service. Try again in a moment.');
 });
 it('shows the server allowance copy verbatim on 402 and never on other failures',async()=>{
  const changed=vi.fn();
@@ -40,8 +40,8 @@ it('shows the server allowance copy verbatim on 402 and never on other failures'
 });
 it('keeps "Reply received." for genuinely successful turns',async()=>{
  const changed=vi.fn();
- const chat=createTextChat(async()=>({reply:'HOT ZERO: Ship it.'}),changed);
- expect(await chat.submit('Hi')).toEqual({reply:'HOT ZERO: Ship it.'});
+ const chat=createTextChat(async()=>({reply:'Understood — booking confirmed.'}),changed);
+ expect(await chat.submit('Hi')).toEqual({reply:'Understood — booking confirmed.'});
  expect(changed).toHaveBeenLastCalledWith(false,'Reply received.');
 });
 it('never starts a paid voice session when microphone preflight fails',async()=>{

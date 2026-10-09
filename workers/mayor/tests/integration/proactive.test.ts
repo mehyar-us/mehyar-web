@@ -15,13 +15,13 @@ const TZ='America/New_York';
 const NOW=Date.parse('2026-10-08T12:00:00Z');
 const WD={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6} as const;
 
-async function fixture(){
+async function fixture(vertical:'salon'|'restaurant'='salon'){
  const actor={tenantId:crypto.randomUUID(),userId:crypto.randomUUID()};
  await env.AGENT_DB.prepare('INSERT INTO agent_tenants(id,name,created_at) VALUES(?,?,?)')
   .bind(actor.tenantId,'Proactive fixture',new Date().toISOString()).run();
  await env.AGENT_DB.prepare("INSERT INTO agent_memberships(tenant_id,user_id,role) VALUES(?,?,'owner')")
   .bind(actor.tenantId,actor.userId).run();
- await confirmProfile(env,actor,{name:'Test Salon',vertical:'salon',timeZone:TZ},0);
+ await confirmProfile(env,actor,{name:vertical==='salon'?'Test Salon':'Test Bistro',vertical,timeZone:TZ},0);
  return actor;
 }
 async function setPolicy(actor:{tenantId:string;userId:string},weekday:number){
@@ -287,6 +287,34 @@ describe('briefing honesty',()=>{
   await expect(setRoiConfig(env,actor,{avgTicketCents:0})).rejects.toThrow();
   await expect(setRoiConfig(env,actor,{avgTicketCents:-100})).rejects.toThrow();
   await expect(setRoiConfig(env,actor,{avgTicketCents:12.5})).rejects.toThrow();
+ });
+});
+
+describe('briefing nouns',()=>{
+ it('uses salon nouns for a salon',async()=>{
+  const actor=await fixture('salon');
+  const b=await buildBriefing(env,actor,NOW);
+  expect(b.vertical).toBe('salon');
+  expect(b.nouns).toEqual({appointments:'appointments',customers:'clients'});
+  expect(b.copy.today).toBe('No appointments today');
+  expect(b.copy.yesterday).toBe('0 appointments yesterday');
+ });
+ it('uses restaurant nouns for a restaurant',async()=>{
+  const actor=await fixture('restaurant');
+  const b=await buildBriefing(env,actor,NOW);
+  expect(b.vertical).toBe('restaurant');
+  expect(b.nouns).toEqual({appointments:'reservations',customers:'guests'});
+  expect(b.copy.today).toBe('No reservations today');
+  expect(b.copy.yesterday).toBe('0 reservations yesterday');
+ });
+ it('counts yesterday bookings with the vertical noun',async()=>{
+  const actor=await fixture('restaurant');
+  // Yesterday 10:00–10:30 EDT (14:00–14:30 UTC).
+  const start=Date.parse('2026-10-07T14:00:00Z'),end=Date.parse('2026-10-07T14:30:00Z');
+  await addBooking(actor,null,start,end);
+  const b=await buildBriefing(env,actor,NOW);
+  expect(b.copy.yesterday).toBe('1 reservation yesterday');
+  expect(b.yesterday.appointments).toBe(1);
  });
 });
 
