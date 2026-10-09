@@ -56,6 +56,8 @@ export interface ProactiveRoi {
   noShowTrend: RoiMonth[]; generatedAt: string;
   revenueSource?: 'configured_avg_ticket' | 'recorded_amounts' | 'not_configured';
   avgTicketConfigured?: boolean;
+  /** Current average ticket in cents, when configured — for prefilling the editor. */
+  avgTicketCents?: number | null;
 }
 
 type Api = (path: string, body?: unknown, headers?: Record<string, string>) => Promise<any>;
@@ -99,6 +101,11 @@ export async function dismissSuggestion(api: Api, tenantId: string, id: string):
 export async function fetchRoi(api: Api, tenantId: string): Promise<ProactiveRoi | null> {
   try { return await api(`${base(tenantId)}/roi`) as ProactiveRoi; }
   catch (error) { if (isNotLive(error)) return null; throw error; }
+}
+
+/** Set the average ticket that powers the recovered-revenue tile. */
+export async function setRoiConfig(api: Api, tenantId: string, avgTicketCents: number): Promise<{ avgTicketCents: number }> {
+  return await api(`${base(tenantId)}/roi/config`, { avgTicketCents }) as { avgTicketCents: number };
 }
 
 /* ------------------------------------------------------------------ */

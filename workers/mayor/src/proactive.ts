@@ -7,7 +7,7 @@ import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
 import {
  inQuietHours,localDayKey,localParts,localDayBoundsUtc,monthBoundsUtc,shiftLocalDate,dayGaps,
- lapsedCustomers,loadProactiveContext,runDetectors,LAPSED_DAYS,
+ lapsedCustomers,loadProactiveContext,runDetectors,agoText,buildFollowupCardCopy,LAPSED_DAYS,
  type ProactiveContext,type DetectionRow,type DetectorName,type LapsedCustomer,
 } from './proactive-detectors';
 
@@ -67,11 +67,6 @@ async function notifyOwners(env:Env,tenantId:string,kind:'proactive_suggestion'|
 }
 
 /* ---------------- card copy (vertical-aware) ---------------- */
-
-function agoText(ms:number,nowMs:number){
- const mins=Math.max(1,Math.round((nowMs-ms)/60000));
- return mins<60?`${mins} min ago`:`${Math.round(mins/60)}h ago`;
-}
 function formatWhen(ms:number,timeZone:string,nowMs:number){
  const day=localDayKey(ms,timeZone),today=localDayKey(nowMs,timeZone);
  const time=new Intl.DateTimeFormat('en-US',{timeZone,hour:'numeric',minute:'2-digit'}).format(ms);
@@ -112,12 +107,8 @@ async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow
     recipients:customers.map(c=>({name:c.name,phone:c.phone})),meta:{}}};
  }
  if(kind==='followup'){
-  return {kind,
-   title:'Missed call needs a text-back',
-   body:`A call from ${payload.callerNumber} ${agoText(Date.parse(payload.occurredAt),ctx.nowMs)} never got a text-back — send it now?`,
-   draft:{message:v.textbackTemplate.replace('{business}',ctx.businessName),
-    audience:'missed caller',audienceCount:1,
-    recipients:[{name:'',phone:payload.callerNumber}],meta:{missedCallId:payload.missedCallId}}};
+  // Shared with the record-time path (ensureMissedCallFollowupCard) — one copy builder.
+  return {kind,...buildFollowupCardCopy(ctx,payload as {missedCallId:string;callerNumber:string;occurredAt:string})};
  }
  if(kind==='lead_reply'){
   return {kind,
@@ -475,6 +466,7 @@ export async function buildRoi(env:Env,actor:Actor,month?:string,nowMs=Date.now(
   noShowRate:await noShowRateFor(env,actor.tenantId,start,end),
   noShowTrend:trend,
   avgTicketConfigured:avgTicket!=null,
+  avgTicketCents:avgTicket,
   generatedAt:new Date(nowMs).toISOString(),
  };
 }

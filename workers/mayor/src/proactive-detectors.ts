@@ -43,6 +43,12 @@ export function localParts(ms:number,timeZone:string){
  return {date:`${parts.year}-${parts.month}-${parts.day}`,hour:Number(parts.hour),minute:Number(parts.minute),weekday:parts.weekday};
 }
 
+/** Human "x min ago" for card bodies. Pure. */
+export function agoText(ms:number,nowMs:number){
+ const mins=Math.max(1,Math.round((nowMs-ms)/60000));
+ return mins<60?`${mins} min ago`:`${Math.round(mins/60)}h ago`;
+}
+
 /** Quiet hours: 21:00–08:00 business-local. Pure. */
 export function inQuietHours(ms:number,timeZone:string){
  const {hour}=localParts(ms,timeZone);
@@ -232,4 +238,86 @@ export async function runDetectors(env:Env,tenantId:string,nowMs=Date.now()):Pro
   if(row)created.push(row);
  }
  return {context:ctx,created};
+}
+
+/* ---------------- record-time follow-up cards ---------------- */
+
+export interface FollowupCardCopy{
+ title:string;body:string;
+ draft:{message:string;audience:string;audienceCount:number;
+  recipients:{name:string;phone:string}[];meta:Record<string,string>};
+}
+
+/** Card copy for a missed call that never got a text-back. Shared by the
+ * record-time path below and proactive.ts's detector-driven card builder,
+ * so both produce the identical prepared action. */
+export function buildFollowupCardCopy(
+ ctx:ProactiveContext,
+ payload:{missedCallId:string;callerNumber:string;occurredAt:string},
+):FollowupCardCopy{
+ const v=verticalProfile(ctx.vertical);
+ return {
+  title:'Missed call needs a text-back',
+  body:`A call from ${payload.callerNumber} ${agoText(Date.parse(payload.occurredAt),ctx.nowMs)} never got a text-back — send it now?`,
+  draft:{message:v.textbackTemplate.replace('{business}',ctx.businessName),
+   audience:'missed caller',audienceCount:1,
+   recipients:[{name:'',phone:payload.callerNumber}],meta:{missedCallId:payload.missedCallId}},
+ };
+}
+
+/** Create the missed-call follow-up suggestion card the moment the call is
+ * recorded — the missed call IS the nudge, so the owner gets a prepared
+ * [Send] [Edit] [Dismiss] action immediately instead of waiting up to 20
+ * minutes for the 15-minute backstop detector. Idempotent per missed call:
+ * never duplicates an existing card and never recreates one the owner
+ * already decided (sent/dismissed). */
+export async function ensureMissedCallFollowupCard(
+ env:Env,ctx:ProactiveContext,
+ call:{id:string;callerNumber:string;occurredAt:string},
+):Promise<{cardId:string;created:boolean}>{
+ const dedupeKey=`mc:${call.id}`;
+ const prior=await env.AGENT_DB.prepare(
+  `SELECT c.id FROM mayor_suggestion_cards c
+   JOIN mayor_proactive_detections d ON d.id=c.detection_id
+   WHERE d.tenant_id=? AND d.detector='missed_call_followup' AND d.dedupe_key=? LIMIT 1`)
+  .bind(ctx.tenantId,dedupeKey).first<{id:string}>();
+ if(prior)return {cardId:prior.id,created:false};
+ const now=new Date(ctx.nowMs).toISOString();
+ const detection=await env.AGENT_DB.prepare(
+  `INSERT INTO mayor_proactive_detections(id,tenant_id,detector,detected_at,payload_json,state,dedupe_key)
+   SELECT ?,?,?,?,?,'open',?
+   WHERE NOT EXISTS(SELECT 1 FROM mayor_proactive_detections
+    WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=? AND state IN ('open','surfaced'))
+   RETURNING *`).bind(
+   crypto.randomUUID(),ctx.tenantId,'missed_call_followup',now,
+   JSON.stringify({missedCallId:call.id,callerNumber:call.callerNumber,occurredAt:call.occurredAt}),
+   dedupeKey,ctx.tenantId,dedupeKey).first<DetectionRow>();
+ if(!detection)return {cardId:'',created:false};
+ const copy=buildFollowupCardCopy(ctx,{missedCallId:call.id,callerNumber:call.callerNumber,occurredAt:call.occurredAt});
+ const cardId=crypto.randomUUID();
+ await env.AGENT_DB.prepare(
+  `INSERT INTO mayor_suggestion_cards(id,tenant_id,detection_id,kind,title,body,draft_json,state,created_at)
+   VALUES(?,?,?,?,?,?,?,'pending',?)`)
+  .bind(cardId,ctx.tenantId,detection.id,'followup',copy.title,copy.body,JSON.stringify(copy.draft),now).run();
+ return {cardId,created:true};
+}
+
+/** Mark pending follow-up cards for a missed call as sent once a text-back
+ * goes out through ANY path (card Send, manual text-back, instant engine),
+ * so a handled call never leaves a stale suggestion behind. */
+export async function resolveMissedCallFollowupCards(env:Env,tenantId:string,missedCallId:string){
+ const now=new Date().toISOString(),dedupeKey=`mc:${missedCallId}`;
+ await env.AGENT_DB.batch([
+  env.AGENT_DB.prepare(
+   `UPDATE mayor_suggestion_cards SET state='sent',decided_at=?,
+    result_json=json_object('resolved_by','textback_sent')
+    WHERE tenant_id=? AND state IN ('pending','edited') AND detection_id IN
+    (SELECT id FROM mayor_proactive_detections
+     WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=?)`)
+   .bind(now,tenantId,tenantId,dedupeKey),
+  env.AGENT_DB.prepare(
+   `UPDATE mayor_proactive_detections SET state='resolved'
+    WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=? AND state IN ('open','surfaced')`)
+   .bind(tenantId,dedupeKey),
+ ]);
 }

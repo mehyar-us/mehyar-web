@@ -10,7 +10,7 @@
  * global prefers-reduced-motion rules (flash animation stays under 900ms).
  */
 import {
-  fetchBriefing, fetchSuggestions, sendSuggestion, editSuggestion, dismissSuggestion, fetchRoi,
+  fetchBriefing, fetchSuggestions, sendSuggestion, editSuggestion, dismissSuggestion, fetchRoi, setRoiConfig,
   formatMoney, pluralize, formatClock, formatDuration, formatBriefingDate, formatAsOf, sparklinePoints,
   type Briefing, type SuggestionCard, type ProactiveRoi,
 } from './proactive-stub';
@@ -325,6 +325,85 @@ export function createProactive(hooks: ProactiveHooks) {
 
   /* ---------------------------------- ROI ---------------------------------- */
 
+  /**
+   * The recovered-revenue tile is a real <button>: tapping it opens the
+   * average-ticket editor inline, so the owner can switch the money tile on
+   * in seconds instead of hitting a "Not configured" dead end.
+   */
+  function revenueTile(data: ProactiveRoi, onSaved: () => void): HTMLElement {
+    const wrap = el('div', '', 'roi-tile-wrap');
+
+    function showTile() {
+      const configured = data.recoveredRevenueCents != null;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'roi-tile';
+      btn.setAttribute('aria-label', configured
+        ? `Recovered revenue ${formatMoney(data.recoveredRevenueCents as number)}. Activate to change your average ticket.`
+        : 'Recovered revenue is not configured. Activate to set your average ticket.');
+      btn.append(
+        el('h3', 'Recovered revenue'),
+        el('p', configured ? formatMoney(data.recoveredRevenueCents as number) : 'Not configured', 'roi-value'),
+        el('p', configured ? 'Tap to change your average ticket' : 'Tap to set your average ticket — 10 seconds', 'roi-note'),
+      );
+      btn.onclick = () => {
+        wrap.replaceChildren(showEditor());
+        const input = wrap.querySelector('input');
+        if (input) input.focus();
+        hooks.paint();
+      };
+      wrap.replaceChildren(btn);
+    }
+
+    function showEditor(): HTMLElement {
+      const panel = el('div', '', 'roi-tile roi-config');
+      panel.setAttribute('role', 'group');
+      panel.setAttribute('aria-label', 'Average ticket');
+      const label = el('label', 'Average ticket ($)');
+      label.setAttribute('for', 'roi-avg-ticket');
+      const input = document.createElement('input');
+      input.id = 'roi-avg-ticket';
+      input.inputMode = 'decimal';
+      input.autocomplete = 'off';
+      input.placeholder = '75';
+      if (data.avgTicketCents != null) input.value = (data.avgTicketCents / 100).toFixed(2).replace(/\.00$/, '');
+      const err = el('p', '', 'roi-config-error');
+      err.setAttribute('role', 'alert');
+      const row = el('div', '', 'row');
+      const save = button('Save', () => void doSave(), 'primary');
+      const cancel = button('Cancel', () => { showTile(); hooks.paint(); }, 'secondary');
+      row.append(save, cancel);
+      panel.append(label, input, err, row);
+
+      async function doSave() {
+        const dollars = Number(input.value.trim().replace(/[$,\s]/g, ''));
+        if (!Number.isFinite(dollars) || dollars <= 0) {
+          err.textContent = 'Enter an amount greater than $0.'; input.focus(); return;
+        }
+        const cents = Math.round(dollars * 100);
+        if (cents > 100_000_00) {
+          err.textContent = 'That looks too high — enter your average ticket.'; input.focus(); return;
+        }
+        save.disabled = true; cancel.disabled = true;
+        try {
+          await setRoiConfig(hooks.api, hooks.tenant(), cents);
+          hooks.onNotice('Average ticket saved — recovered revenue is now live.');
+          onSaved();
+        } catch (error) {
+          err.textContent = error instanceof Error ? error.message : 'Could not save. Please try again.';
+          save.disabled = false; cancel.disabled = false;
+        }
+      }
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') { event.preventDefault(); void doSave(); }
+      });
+      return panel;
+    }
+
+    showTile();
+    return wrap;
+  }
+
   function renderRoi(result: { value: ProactiveRoi | null } | { error: unknown }) {
     if ('error' in result) {
       roiSection.replaceChildren(
@@ -362,7 +441,7 @@ export function createProactive(hooks: ProactiveHooks) {
     };
     const asOf = `as of ${formatAsOf(data.generatedAt, tz())}`;
     grid.append(
-      tile('Recovered revenue', data.recoveredRevenueCents == null ? 'Not configured' : formatMoney(data.recoveredRevenueCents), `${asOf} · this month`),
+      revenueTile(data, () => void refresh()),
       tile('Appointments booked by Mayor', String(data.appointmentsBookedByMayor), `${asOf} · this month`),
       tile('Missed calls recovered', `${data.missedCallsRecovered.recovered}/${data.missedCallsRecovered.total}`, `${asOf} · this month`),
       tile('Avg response time', data.avgResponseTimeSeconds == null ? 'No data yet' : formatDuration(data.avgResponseTimeSeconds), asOf),

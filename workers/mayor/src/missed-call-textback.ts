@@ -5,6 +5,7 @@ import {OPERATORS,requireMembership} from './permissions';
 import {readMemory} from './memory';
 import {verticalProfile} from './verticals';
 import {telnyxManagementAccess} from './telnyx-connections';
+import {loadProactiveContext,ensureMissedCallFollowupCard,resolveMissedCallFollowupCards} from './proactive-detectors';
 
 /** Money loop: missed call -> SMS text-back within 60s -> owner card.
  * Never sends without an authorized Telnyx connection and a selected number.
@@ -40,14 +41,25 @@ export async function recordMissedCall(env:Env,actor:Actor,input:MissedCallInput
  }
  const id=crypto.randomUUID(),now=new Date().toISOString();
  if(data.callControlId){
-  const existing=await env.AGENT_DB.prepare('SELECT id,tenant_id,caller_number,business_number,status,textback_sent_at FROM mayor_missed_calls WHERE tenant_id=? AND call_control_id=?').bind(actor.tenantId,data.callControlId).first<MissedCallRecord>();
-  if(existing){await notifyMissedCallRecorded(env,actor,existing);return existing;}
+  const existing=await env.AGENT_DB.prepare('SELECT id,tenant_id,caller_number,business_number,status,textback_sent_at,occurred_at FROM mayor_missed_calls WHERE tenant_id=? AND call_control_id=?').bind(actor.tenantId,data.callControlId).first<MissedCallRecord&{occurred_at:string}>();
+  if(existing){
+   await notifyMissedCallRecorded(env,actor,existing);
+   // Backfill the prepared action if an older record predates it — never duplicates.
+   const pctx0=await loadProactiveContext(env,actor.tenantId);
+   await ensureMissedCallFollowupCard(env,pctx0,{id:existing.id,callerNumber:existing.caller_number,occurredAt:existing.occurred_at});
+   return existing;
+  }
  }
  await env.AGENT_DB.prepare(`INSERT INTO mayor_missed_calls(id,tenant_id,caller_number,business_number,call_control_id,occurred_at,source,status)
   VALUES(?,?,?,?,?,?,?,'missed')`).bind(id,actor.tenantId,data.callerNumber,data.businessNumber!,data.callControlId??null,now,data.source).run();
  const record={id,tenant_id:actor.tenantId,caller_number:data.callerNumber,business_number:data.businessNumber!,status:'missed',textback_sent_at:null};
  // Bell card the moment the call is recorded — test and live paths alike.
  await notifyMissedCallRecorded(env,actor,record);
+ // Suggestion card at the same moment: the missed call IS the nudge. The owner
+ // gets a prepared [Send] [Edit] [Dismiss] action immediately — no waiting for
+ // the 15-minute backstop detector.
+ const pctx=await loadProactiveContext(env,actor.tenantId);
+ await ensureMissedCallFollowupCard(env,pctx,{id,callerNumber:data.callerNumber,occurredAt:now});
  return record;
 }
 
@@ -80,6 +92,8 @@ export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,trans
    VALUES(?,?,'outbound',?,?,?,?, 'sent',?)`).bind(smsId,actor.tenantId,call.caller_number,call.business_number,text,messageId,missedCallId),
  ]);
  await notifyMissedCallTexted(env,actor,call,false);
+ // A handled call leaves no stale suggestion behind (card Send path does this too).
+ await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId);
  return {alreadySent:false,messageId};
 }
 
@@ -104,6 +118,8 @@ export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string){
    VALUES(?,?,'outbound',?,?,?,?, 'simulated',?)`).bind(smsId,actor.tenantId,call.caller_number,call.business_number,text,null,missedCallId),
  ]);
  await notifyMissedCallTexted(env,actor,call,true);
+ // A handled call leaves no stale suggestion behind (card Send path does this too).
+ await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId);
  return {alreadySent:false,messageId:null,simulated:true};
 }
 

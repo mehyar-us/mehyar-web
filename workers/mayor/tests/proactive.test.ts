@@ -82,3 +82,20 @@ describe('localParts',()=>{
   expect(localParts(Date.parse('2026-10-08T12:00:00Z'),TZ).weekday).toBe('Thu');
  });
 });
+
+describe('buildFollowupCardCopy',()=>{
+ it('builds the vertical-aware text-back action',async()=>{
+  const {buildFollowupCardCopy}=await import('../src/proactive-detectors');
+  const ctx={tenantId:'t',nowMs:Date.parse('2026-10-08T12:30:00Z'),businessName:'Test Salon',vertical:'salon' as const,timeZone:TZ,policy:null};
+  const copy=buildFollowupCardCopy(ctx,{missedCallId:'mc1',callerNumber:'+17185551212',occurredAt:'2026-10-08T12:00:00Z'});
+  expect(copy.title).toBe('Missed call needs a text-back');
+  expect(copy.body).toContain('+17185551212');
+  expect(copy.body).toContain('30 min ago');
+  expect(copy.draft.message).toContain('Test Salon');
+  expect(copy.draft.message).toContain('STOP');
+  expect(copy.draft.audience).toBe('missed caller');
+  expect(copy.draft.audienceCount).toBe(1);
+  expect(copy.draft.recipients).toEqual([{name:'',phone:'+17185551212'}]);
+  expect(copy.draft.meta).toEqual({missedCallId:'mc1'});
+ });
+});

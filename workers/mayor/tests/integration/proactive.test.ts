@@ -386,3 +386,91 @@ describe('proactive cycle',()=>{
   expect(notes!.n).toBe(0);
  });
 });
+
+describe('record-time follow-up cards',()=>{
+ it('creates a prepared [Send] [Edit] [Dismiss] card the moment a missed call is recorded',async()=>{
+  const actor=await fixture();
+  const {recordMissedCall}=await import('../../src/missed-call-textback');
+  const call=await recordMissedCall(env,actor,{callerNumber:'+17185551212',businessNumber:'+17477772687',source:'test'});
+  expect(call.status).toBe('missed');
+  // No 15-minute wait, no cron cycle — the card is there immediately.
+  const listed=await listSuggestionCards(env,actor);
+  expect(listed.cards).toHaveLength(1);
+  const card=listed.cards[0];
+  expect(card).toMatchObject({kind:'followup',detector:'missed_call_followup',state:'pending'});
+  expect(card.title).toMatch(/text-back/i);
+  expect(card.body).toContain('+17185551212');
+  expect(card.draft.message).toContain('Test Salon');
+  expect(card.draft.audience).toBe('missed caller');
+  expect(card.draft.audienceCount).toBe(1);
+  // The card is actionable: send works (simulated), edit and dismiss endpoints exist.
+  const sent=await sendSuggestionCard(env,actor,card.id);
+  expect(sent).toMatchObject({sent:true,simulated:true,audienceCount:1});
+  const state=await env.AGENT_DB.prepare('SELECT state FROM mayor_suggestion_cards WHERE id=?').bind(card.id).first<{state:string}>();
+  expect(state!.state).toBe('sent');
+ });
+ it('never duplicates a card for the same missed call',async()=>{
+  const actor=await fixture();
+  const {recordMissedCall}=await import('../../src/missed-call-textback');
+  const input={callerNumber:'+17185551212',businessNumber:'+17477772687',source:'test' as const,callControlId:'dup-1'};
+  await recordMissedCall(env,actor,input);
+  await recordMissedCall(env,actor,input); // idempotent re-record
+  const listed=await listSuggestionCards(env,actor);
+  expect(listed.cards).toHaveLength(1);
+ });
+ it('does not recreate a card the owner dismissed',async()=>{
+  const actor=await fixture();
+  const {recordMissedCall}=await import('../../src/missed-call-textback');
+  const input={callerNumber:'+17185551212',businessNumber:'+17477772687',source:'test' as const,callControlId:'dup-2'};
+  await recordMissedCall(env,actor,input);
+  const listed=await listSuggestionCards(env,actor);
+  await dismissSuggestionCard(env,actor,listed.cards[0].id);
+  await recordMissedCall(env,actor,input);
+  // The dismissed card is not recreated: still exactly one card, still dismissed.
+  const again=await listSuggestionCards(env,actor);
+  expect(again.cards).toHaveLength(1);
+  expect(again.cards[0].state).toBe('dismissed');
+ });
+ it('resolves the card when the text-back goes out through any path',async()=>{
+  const actor=await fixture();
+  const {recordMissedCall,simulateTextBack}=await import('../../src/missed-call-textback');
+  const call=await recordMissedCall(env,actor,{callerNumber:'+17185551212',businessNumber:'+17477772687',source:'test'});
+  const before=await listSuggestionCards(env,actor);
+  expect(before.cards).toHaveLength(1);
+  await simulateTextBack(env,actor,call.id); // direct engine path, not the card Send
+  const state=await env.AGENT_DB.prepare('SELECT state FROM mayor_suggestion_cards WHERE id=?').bind(before.cards[0].id).first<{state:string}>();
+  expect(state!.state).toBe('sent');
+  const det=await env.AGENT_DB.prepare("SELECT state FROM mayor_proactive_detections WHERE tenant_id=? AND detector='missed_call_followup'").bind(actor.tenantId).first<{state:string}>();
+  expect(det!.state).toBe('resolved');
+  // No actionable card left behind: the handled call shows as sent, never pending.
+  const after=await listSuggestionCards(env,actor);
+  expect(after.cards.filter(c=>c.state==='pending'||c.state==='edited')).toHaveLength(0);
+  expect(after.cards.find(c=>c.id===before.cards[0].id)!.state).toBe('sent');
+ });
+ it('the 15-minute backstop does not double-fire a record-time card',async()=>{
+  const actor=await fixture();
+  const {recordMissedCall}=await import('../../src/missed-call-textback');
+  await recordMissedCall(env,actor,{callerNumber:'+17185551212',businessNumber:'+17477772687',source:'test'});
+  // Age the call past the backstop window, then run the detector cycle.
+  await env.AGENT_DB.prepare("UPDATE mayor_missed_calls SET occurred_at=? WHERE tenant_id=?")
+   .bind(new Date(NOW-20*60000).toISOString(),actor.tenantId).run();
+  const {created}=await runDetectors(env,actor.tenantId,NOW);
+  expect(created.filter(d=>d.detector==='missed_call_followup')).toHaveLength(0);
+  const listed=await listSuggestionCards(env,actor);
+  expect(listed.cards).toHaveLength(1);
+ });
+});
+
+describe('ROI average-ticket config',()=>{
+ it('exposes the configured ticket so the tile editor can prefill it',async()=>{
+  const actor=await fixture();
+  await setRoiConfig(env,actor,{avgTicketCents:8500});
+  const roi=await buildRoi(env,actor,undefined,NOW);
+  expect(roi.avgTicketConfigured).toBe(true);
+  expect(roi.avgTicketCents).toBe(8500);
+ });
+ it('rejects non-positive tickets',async()=>{
+  const actor=await fixture();
+  await expect(setRoiConfig(env,actor,{avgTicketCents:0})).rejects.toThrow();
+ });
+});
