@@ -1,4 +1,4 @@
--- 0041_assessment_call_followup.sql — post-payment follow-up call booking (D7b)
+-- 0043_assessment_call_followup.sql — post-payment follow-up call booking (D7b)
 -- + background decide() scoring columns (D4).
 --
 -- kind: 'assessment' (the free front-door call) | 'followup' (the paid deeper dive,
