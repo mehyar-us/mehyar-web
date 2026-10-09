@@ -24,7 +24,7 @@
 // Owner-only.
 
 import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
-import { chatJson } from "../../../_shared/llmChat.js";
+import { chatJson, safeJsonParse } from "../../../_shared/llmChat.js";
 
 const MAX_MESSAGE_LEN = 4000;
 const MAX_HISTORY_TURNS = 16;
@@ -101,15 +101,14 @@ export async function onRequestPost({ request, env, params }) {
   } catch (e) {
     return json({ ok: false, error: "llm_call_failed", details: String(e?.message || e) }, 500, request, env);
   }
-  if (!llmResp?.ok) {
+  // chatJson returns { used_llm, content, model, usage, ... } — no `ok`/`json` fields.
+  if (!llmResp?.used_llm || !llmResp?.content) {
     return json({ ok: false, error: "llm_unavailable", details: llmResp?.error || "no_response" }, 502, request, env);
   }
 
-  let parsed;
-  try {
-    parsed = typeof llmResp.json === "object" ? llmResp.json : JSON.parse(llmResp.text || "{}");
-  } catch {
-    parsed = { reply: llmResp.text || "(empty)", patch: null };
+  let parsed = safeJsonParse(llmResp.content, null);
+  if (!parsed || typeof parsed !== "object") {
+    parsed = { reply: llmResp.content || "(empty)", patch: null };
   }
   const reply = String(parsed.reply || "").trim();
   let patch = parsed.patch || null;

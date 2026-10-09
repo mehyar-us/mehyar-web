@@ -31,7 +31,7 @@
 // Owner-only.
 
 import { verifyAdminToken, json, corsHeaders } from "../../../_shared/adminAuth.js";
-import { chatJson } from "../../../_shared/llmChat.js";
+import { chatJson, safeJsonParse } from "../../../_shared/llmChat.js";
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -40,7 +40,6 @@ export async function onRequestOptions({ request, env }) {
 export async function onRequestPost({ request, env, params }) {
   const auth = await verifyAdminToken(request, env);
   if (!auth.ok) return json({ ok: false, error: auth.message }, auth.status, request, env);
-  if (!env?.LEADS_DB) return json({ ok: false, error: "missing_db" }, 500, request, env);
   if (!env?.LEADS_DB) return json({ ok: false, error: "missing_db" }, 500, request, env);
 
   const id = params.id;
@@ -87,16 +86,15 @@ export async function onRequestPost({ request, env, params }) {
   } catch (e) {
     return json({ ok: false, error: "llm_call_failed", details: String(e?.message || e) }, 500, request, env);
   }
-  if (!llmResp?.ok) {
+  // chatJson returns { used_llm, content, model, usage, ... } — no `ok`/`json` fields.
+  if (!llmResp?.used_llm || !llmResp?.content) {
     return json({ ok: false, error: "llm_unavailable", details: llmResp?.error || "no_response" }, 502, request, env);
   }
 
   // Parse + sanitize
-  let analysis;
-  try {
-    analysis = typeof llmResp.json === "object" ? llmResp.json : JSON.parse(llmResp.text || "{}");
-  } catch {
-    return json({ ok: false, error: "llm_parse_failed", raw: llmResp.text?.slice(0, 500) }, 502, request, env);
+  let analysis = safeJsonParse(llmResp.content, null);
+  if (!analysis || typeof analysis !== "object") {
+    return json({ ok: false, error: "llm_parse_failed", raw: String(llmResp.content || "").slice(0, 500) }, 502, request, env);
   }
   analysis = sanitizeAnalysis(analysis, ctx);
 
