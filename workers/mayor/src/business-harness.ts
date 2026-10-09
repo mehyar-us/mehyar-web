@@ -15,7 +15,52 @@ import {connectionAuthorizationSnapshot} from './connectors/credentials';
 import {calendarOperations} from './connectors/calendar-provider';
 import type {OAuthProvider} from './auth/capabilities';
 import {HARNESS_TOOLS,HARNESS_BUILTINS,harnessGoalSchema,harnessSkillSchema,harnessConfigSchema,harnessTaskSchema,harnessIdentitySchema,harnessPlanSchema,harnessModelPlanSchema,harnessGoalProgress,validateHarnessPlan,normalizeHarnessModelPlan,deduplicateHarnessTaskDrafts,type HarnessTool,type HarnessGoalInput,type HarnessSkillInput,type HarnessConfigInput,type HarnessTaskInput,type HarnessPlan} from './business-harness-schema';
+import {decide,verdict} from './decide.js';
 export {HARNESS_TOOLS,HARNESS_BUILTINS,harnessGoalSchema,harnessSkillSchema,harnessConfigSchema,harnessTaskSchema,harnessIdentitySchema,harnessGoalProgress,validateHarnessPlan} from './business-harness-schema';
+
+/**
+ * decide()-assisted duplicate suppression (2026-10-09). Runs the deterministic
+ * deduplicateHarnessTaskDrafts() first (existing behavior, word/action match),
+ * then asks clef-flash one batched noul question per surviving (draft, open
+ * task) pair: "is this draft a duplicate of the open task?" Only a
+ * high-confidence (>= 0.85) "auto" duplicate verdict suppresses, folded into
+ * priorities exactly like the sync version. Strictly additive: it can only
+ * suppress drafts the word-match missed, never un-suppress. Any decide()
+ * failure, low confidence, or >64 pairs -> the sync result, unchanged.
+ */
+export async function deduplicateHarnessTaskDraftsDecide(env:any,plan:HarnessPlan,openTasks:{id:string;title:string}[],opts:{decideTransport?:any}={}){
+ const base=deduplicateHarnessTaskDrafts(plan,openTasks);
+ try{
+  const kept=base.plan.taskDrafts;
+  if(kept.length===0||openTasks.length===0)return base;
+  const pairs:{qid:string;draft:any;task:{id:string;title:string}}[]=[];
+  for(const draft of kept){for(const task of openTasks){if(pairs.length>=64)break;
+   pairs.push({qid:`dup_${pairs.length}`,draft,task});}if(pairs.length>=64)break;}
+  if(pairs.length===0)return base;
+  const questions:Record<string,any>={};
+  for(const{qid,draft,task}of pairs)questions[qid]={type:'noul',ask:`Is this draft task a duplicate of the already-open task (same work, not merely related)? DRAFT: "${String(draft.title).slice(0,160)}" — ${String(draft.detail||'').slice(0,200)} OPEN TASK: "${String(task.title).slice(0,160)}"`};
+  const d=await decide(env,{note:'harness dedupe assist'},questions,{tag:'harness-dedupe',...(opts.decideTransport?{transport:opts.decideTransport}:{})});
+  if(!d.ok)return base;
+  const suppress=new Map<any,{id:string;title:string}>();
+  for(const{qid,draft,task}of pairs){const a=d.answers[qid];
+   if(a&&verdict(a,{autoAt:0.85,reviewAt:0.6})==='auto'&&a.decision===true&&!suppress.has(draft))suppress.set(draft,task);}
+  if(suppress.size===0)return base;
+  const priorities=[...base.plan.priorities];
+  let omitted=base.omitted;
+  const taskDrafts=kept.filter(draft=>{
+   const task=suppress.get(draft);
+   if(!task)return true;
+   omitted++;
+   const source=`task:${task.id}`;
+   if(priorities.length<3&&!priorities.some(priority=>priority.sourceIds.includes(source))){
+    const title=task.title.length>160?task.title.slice(0,159)+'…':task.title;
+    priorities.push({title,detail:`Already open: "${task.title}". Review the saved task instead of creating another copy.`,sourceIds:[source]});
+   }
+   return false;
+  });
+  return {plan:{...base.plan,priorities,taskDrafts},omitted};
+ }catch{return base;}
+}
 
 export const BUSINESS_HARNESS_SCOPE='Tenant-scoped confirmed business memory and selected read tools. Goal numbers are manually entered; unknown revenue, conversion, rankings and benchmarks stay unknown. AI plans and experiments are drafts. Only an explicitly reviewed internal task can be saved; no messages, public posts, payments or calendar changes are made.';
 const permission="EXISTS(SELECT 1 FROM agent_memberships m JOIN agent_tenants t ON t.id=m.tenant_id WHERE m.tenant_id=? AND m.user_id=? AND m.status='active' AND t.status='active' AND m.role IN ('owner','manager') AND (m.expires_at IS NULL OR m.expires_at>?))";
@@ -155,7 +200,7 @@ async function executeHarness(env:Env,actor:Actor,config:ConfigRow,key:string,tr
    counted=true;const startingAt=new Date(options.now??Date.now()).toISOString(),started=await env.AGENT_DB.prepare(`UPDATE mayor_harness_runs SET reply_attempt_counted=1,model_started_at=?,data_revision=?,memory_revision=? WHERE id=? AND state='processing' AND lease_token=? AND lease_until>? AND ${runGuard(trigger)} ${authorizationGuard(authorizations)}`).bind(startingAt,dataRevision,memoryRevision,id,token,startingAt,...guardArgs(actor,config,token,startingAt,dataRevision,memoryRevision),...authorizationArgs(authorizations,actor,startingAt)).run();if(!started.meta.changes)throw new HttpError(409,'harness_result_canceled','Your configuration, memory or access changed before planning.');
    // Native inference already validated every original model claim before adding
    // canonical saved-title data. Injected legacy plans retain full claim validation.
-   const raw=await (options.infer??inferHarnessPlan)(env,context),validated=options.infer?validateHarnessPlan(raw,harnessPlanFacts(context)):harnessPlanSchema.parse(raw),deduplicated=deduplicateHarnessTaskDrafts(validated,context.openTasks),plan=deduplicated.plan;
+   const raw=await (options.infer??inferHarnessPlan)(env,context),validated=options.infer?validateHarnessPlan(raw,harnessPlanFacts(context)):harnessPlanSchema.parse(raw),deduplicated=await deduplicateHarnessTaskDraftsDecide(env,validated,context.openTasks),plan=deduplicated.plan;
    report={id,generatedAt:new Date(options.now??Date.now()).toISOString(),summary:plan.summary,goalProgress:context.goals.map(goal=>({goalId:goal.id,title:goal.title,metric:goal.metric,progress:harnessGoalProgress(goal.metric),source:'manual_entry'})),metrics:context.metrics,sources:context.sources,priorities:plan.priorities,taskDrafts:plan.taskDrafts.map((draft,index)=>({...draft,id:`draft-${index+1}`,dueAt:null,customerId:null,acceptedTaskId:null})),experiments:plan.experiments.map((experiment,index)=>({...experiment,id:`experiment-${index+1}`})),toolTrace:[...context.toolTrace,{tool:'bounded_planner',status:'completed',detail:'One metered fresh-context Qwen planning invocation; references and short structured output validated. No executable model tools.'}],gaps:[...new Set([...context.gaps,...plan.gaps,...(deduplicated.omitted?['Draft ideas that overlap selected open tasks remain priorities rather than duplicate new task drafts.']:[])])].slice(0,12),scope:BUSINESS_HARNESS_SCOPE};status='ready';
   }
  }catch(error){status=error instanceof HttpError&&['workspace_not_found','permission_denied','harness_result_canceled'].includes(error.code)?'canceled':'failed';errorCode=error instanceof HttpError?error.code:'planner_unavailable_or_invalid';}
