@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {assistantGreeting,assistantName,assistantNameChoice,assistantNameWasChosen,assistantPersonaPrompt,businessDisplayName,businessFirstTurnPrompt,validAssistantName} from '../src/assistant-persona';
+import {assistantGreeting,assistantName,assistantNameChoice,assistantNameWasChosen,assistantPersonaPrompt,businessDisplayName,businessFirstTurnPrompt,growthMetricsInstruction,validAssistantName} from '../src/assistant-persona';
 import {profileSchema} from '../src/memory';
 it('asks about the business first, never the assistant name',()=>{
  const greeting=assistantGreeting();expect(greeting).toMatch(/^Hey — I’m Mayor\./);expect(greeting).toContain('What is your business called?');
@@ -73,6 +73,39 @@ it('grounds the persona in vertical vocabulary for salon and restaurant',()=>{
  expect(restaurant).toContain('covers');
  expect(restaurant).not.toMatch(/stylist/);
 });
+it('injects the vertical KPI vocabulary so growth answers speak the trade',()=>{
+ const salon=assistantPersonaPrompt({vertical:'salon'});
+ expect(salon).toContain('Rebooking rate');
+ expect(salon).toContain('Chair utilization');
+ expect(salon).toContain('Average ticket');
+ expect(salon).toContain('what to track');
+ expect(salon).toContain('frame the answer in these metrics');
+ const restaurant=assistantPersonaPrompt({vertical:'restaurant'});
+ expect(restaurant).toContain('Covers');
+ expect(restaurant).toContain('No-show rate');
+ expect(restaurant).not.toContain('chair');
+ const dental=assistantPersonaPrompt({vertical:'dental'});
+ expect(dental).toContain('Recare rate');
+ expect(dental).toContain('Treatment acceptance');
+});
+it('uses vertical metric nouns, never generic bookings/customers',()=>{
+ const salon=assistantPersonaPrompt({vertical:'salon'});
+ expect(salon).toContain('Say “appointments” and “clients”');
+ const plumbing=assistantPersonaPrompt({vertical:'plumbing_hvac'});
+ expect(plumbing).toContain('Say “jobs” and “customers”');
+});
+it('gives the vertical precedence over stale business memory',()=>{
+ const salon=assistantPersonaPrompt({vertical:'salon'});
+ expect(salon).toContain('Vertical precedence');
+ expect(salon).toContain('the vertical wins');
+ expect(salon).toContain('stale memory');
+});
+it('keeps KPI and precedence blocks out of the neutral fallback',()=>{
+ const prompt=assistantPersonaPrompt({vertical:'other'});
+ expect(prompt).toContain('Vertical identity');
+ expect(prompt).not.toContain('Metrics that matter');
+ expect(prompt).not.toContain('Vertical precedence');
+});
 it('falls back to neutral vocabulary when the vertical is other or unknown',()=>{
  for(const profile of [{vertical:'other'},{vertical:'bogus'},{}]){
   const prompt=assistantPersonaPrompt(profile);
@@ -95,4 +128,23 @@ it('uses vertical vocabulary in the greeting and first-turn prompt',()=>{
  const first=businessFirstTurnPrompt({vertical:'restaurant'});
  expect(first).toContain('reservations');expect(first).toContain('guests');
  expect(businessFirstTurnPrompt()).not.toContain('vertical');
+});
+it('appends vertical KPI instruction to growth questions deterministically',()=>{
+ const salon={name:'Maria Studio',vertical:'salon'};
+ const instruction=growthMetricsInstruction(salon,'what should I track to grow?');
+ expect(instruction).not.toBeNull();
+ expect(instruction!).toContain('Rebooking rate');
+ expect(instruction!).toContain('Chair utilization');
+ expect(instruction!).toContain('Average ticket');
+ expect(instruction!).toContain('“client”');
+ expect(instruction!).toContain('Never answer with generic');
+ // Restaurant never gets salon metrics.
+ const rest=growthMetricsInstruction({vertical:'restaurant'},'how do I grow?');
+ expect(rest).toContain('Covers');expect(rest).not.toContain('Chair utilization');
+ // Non-growth questions get nothing.
+ expect(growthMetricsInstruction(salon,'book me an appointment tomorrow')).toBeNull();
+ expect(growthMetricsInstruction(salon,'what are my hours?')).toBeNull();
+ // No vertical, no instruction.
+ expect(growthMetricsInstruction({},'what should I track to grow?')).toBeNull();
+ expect(growthMetricsInstruction({vertical:'other'},'what metrics matter?')).toBeNull();
 });

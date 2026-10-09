@@ -11,6 +11,7 @@ import { HttpError,json,readJson,requireOrigin,digest } from './http';
 import { requireMembership,CHAT_ROLES } from './permissions';
 import { readMemory,confirmProfile,type Profile } from './memory';
 import {verticalSchema} from './verticals';
+import {profileRefreshPreview} from './profile-refresh';
 import { onboardingProgress,buildPlaceConfirmCard,confirmPlace,onboardingProgressForVertical } from './onboarding';
 import { searchPlacesText,getPlaceDetails,placesApiKey } from './places';
 import {calendarGuide} from './calendar-guide';
@@ -286,6 +287,29 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const actor={tenantId:profile[1],userId:session.user.id};
     const {revision,vertical}=z.object({vertical:verticalSchema,revision:z.number().int().min(0)}).strict().parse(await readJson(request,1024));
     return json(await confirmProfile(env,actor,{vertical},revision));
+  }
+  // Crew 4b — one-tap business profile refresh from the saved vertical.
+  // Preview is deterministic (vertical profile + saved answers, no model call);
+  // confirm re-derives server-side and saves through the owner-confirmed
+  // revision-checked flow. Nothing is deleted or changed without the owner.
+  const refreshPreview=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/profile\/refresh-preview$/);
+  if(refreshPreview&&request.method==='POST'){
+    const actor={tenantId:refreshPreview[1],userId:session.user.id};
+    const memory=await readMemory(env,actor);
+    const preview=profileRefreshPreview(memory.profile);
+    if(!preview)throw new HttpError(400,'vertical_not_set','Set a business type first, then refresh the profile.');
+    return json({...preview,revision:memory.revision});
+  }
+  const refreshConfirm=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/profile\/refresh-confirm$/);
+  if(refreshConfirm&&request.method==='POST'){
+    const actor={tenantId:refreshConfirm[1],userId:session.user.id};
+    const {revision}=z.object({revision:z.number().int().min(0)}).strict().parse(await readJson(request,1024));
+    const memory=await readMemory(env,actor);
+    const preview=profileRefreshPreview(memory.profile);
+    if(!preview||!preview.changes.length)throw new HttpError(400,'nothing_to_refresh','The business profile already matches the business type.');
+    const patch:Profile={};
+    for(const change of preview.changes)patch[change.field]=change.to;
+    return json(await confirmProfile(env,actor,patch,revision));
   }
   const phoneSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-setup$/);
   if(phoneSetup){
