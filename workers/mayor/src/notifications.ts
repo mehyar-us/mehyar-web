@@ -3,6 +3,7 @@ import {OPERATORS,requireMembership} from './permissions';
 import {readMemory} from './memory';
 import {selectedCalendar} from './calendars';
 import {HttpError} from './http';
+import {esNotificationCopy,resolveLanguage} from './i18n';
 
 const content={
  phone_call_review:{title:'A phone call needs your attention',message:'The Mayor could not confirm that a Telnyx call ended. Check active calls in your Telnyx account and end any unintended call. Provider charges may continue until the call ends.',action:'account'},
@@ -43,9 +44,15 @@ export async function refreshAttentionNotifications(env:Env,actor:Actor,run?:Not
 }
 export async function listNotifications(env:Env,actor:Actor){
  await requireMembership(env,actor,OPERATORS);
+ const mem=await readMemory(env,actor);
+ const es=resolveLanguage((mem.profile as {language?:unknown}).language)==='es';
  const rows=await env.AGENT_DB.prepare("SELECT id,kind,created_at,read_at FROM mayor_notifications WHERE tenant_id=? AND user_id=? AND state='open' ORDER BY created_at DESC,id LIMIT 51").bind(actor.tenantId,actor.userId).all<{id:string;kind:Kind;created_at:string;read_at:string|null}>();
  await requireMembership(env,actor,OPERATORS);
- return {notifications:rows.results.slice(0,50).map(row=>({id:row.id,...content[row.kind],createdAt:row.created_at,read:row.read_at!==null})),hasMore:rows.results.length>50};
+ return {notifications:rows.results.slice(0,50).map(row=>{
+  const en=content[row.kind];
+  const copy=es?(esNotificationCopy(row.kind)??en):en;
+  return {id:row.id,...en,...copy,createdAt:row.created_at,read:row.read_at!==null};
+ }),hasMore:rows.results.length>50};
 }
 export async function markNotificationRead(env:Env,actor:Actor,id:string){
  await requireMembership(env,actor,OPERATORS);const now=new Date().toISOString();

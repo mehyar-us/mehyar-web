@@ -21,6 +21,8 @@ const DEFAULT_CONNECTOR_PRIORITY:Record<Vertical,string[]>={
  plumbing_hvac:['phone','calendar','email'],
  dental:['calendar','email','reviews'],
  auto_repair:['calendar','email','reviews'],
+ pet_grooming:['calendar','email','reviews'],
+ med_spa:['calendar','email','reviews'],
  other:[],
 };
 

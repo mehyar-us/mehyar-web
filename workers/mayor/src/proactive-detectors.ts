@@ -1,5 +1,6 @@
 import type {Env} from './env';
-import {verticalProfile,type Vertical,type VerticalProfile} from './verticals';
+import {verticalProfile,textbackTemplateFor,type Vertical,type VerticalProfile} from './verticals';
+import {renderTextback,esFollowupCard,esAgoText,resolveLanguage,type Language} from './i18n';
 import {schedulingPolicySchema,type SchedulingPolicy} from './scheduling-policy';
 
 /** Crew 3 proactive engine: detectors.
@@ -16,6 +17,11 @@ export interface ProactiveContext{
  vertical:Vertical;
  timeZone:string;
  policy:SchedulingPolicy|null;
+ /** Owner-chosen customer-facing language. Unset (e.g. older callers/tests) means English. */
+ language:Language;
+ /** Customer-facing register from the business profile. Unset (e.g. older
+  * callers/tests) means the friendly default. */
+ tone?:string;
 }
 
 export interface NewDetection{
@@ -34,7 +40,7 @@ export interface DetectionRow{
  * the vertical profile's detectorParams first and fall back here — never a
  * second hardcoded copy. */
 export const LAPSED_DAYS:Record<Vertical,number>={
- salon:56,restaurant:60,plumbing_hvac:180,dental:180,auto_repair:180,other:90,
+ salon:56,restaurant:60,plumbing_hvac:180,dental:180,auto_repair:180,pet_grooming:70,med_spa:120,other:90,
 };
 
 /** Optional per-vertical detector tuning. Enriched on the vertical profile by the
@@ -140,15 +146,17 @@ export function dayGaps(periods:{startMinute:number;endMinute:number}[],busy:{st
 /** Scheduled context reads the tenant profile directly — no user session exists. */
 export async function loadProactiveContext(env:Env,tenantId:string,nowMs=Date.now()):Promise<ProactiveContext>{
  const mem=await env.AGENT_DB.prepare("SELECT value_json FROM mayor_memory WHERE tenant_id=? AND field='profile'").bind(tenantId).first<{value_json:string}>();
- const profile=mem?JSON.parse(mem.value_json) as {name?:string;vertical?:string;timeZone?:string}:{ };
+ const profile=mem?JSON.parse(mem.value_json) as {name?:string;vertical?:string;timeZone?:string;language?:unknown;tone?:string}:{ };
  const polRow=await env.AGENT_DB.prepare("SELECT value_json FROM mayor_memory WHERE tenant_id=? AND field='scheduling_policy'").bind(tenantId).first<{value_json:string}>();
  const policy=polRow?schedulingPolicySchema.parse(JSON.parse(polRow.value_json)):null;
  return {
   tenantId,nowMs,
   businessName:typeof profile.name==='string'&&profile.name.trim()?profile.name.trim():'your business',
   vertical:verticalProfile(profile.vertical).vertical,
+  tone:typeof profile.tone==='string'?profile.tone:'friendly',
   timeZone:policy?.timeZone??(typeof profile.timeZone==='string'?profile.timeZone:'America/New_York'),
   policy,
+  language:resolveLanguage(profile.language),
  };
 }
 
@@ -292,10 +300,20 @@ export function buildFollowupCardCopy(
  payload:{missedCallId:string;callerNumber:string;occurredAt:string},
 ):FollowupCardCopy{
  const v=verticalProfile(ctx.vertical);
+ if(ctx.language==='es'){
+  const copy=esFollowupCard(payload.callerNumber,esAgoText(Date.parse(payload.occurredAt),ctx.nowMs));
+  return {
+   title:copy.title,
+   body:copy.body,
+   draft:{message:renderTextback(ctx.vertical,'es',ctx.businessName),
+    audience:'llamada perdida',audienceCount:1,
+    recipients:[{name:'',phone:payload.callerNumber}],meta:{missedCallId:payload.missedCallId}},
+  };
+ }
  return {
   title:'Missed call needs a text-back',
   body:`A call from ${payload.callerNumber} ${agoText(Date.parse(payload.occurredAt),ctx.nowMs)} never got a text-back — send it now?`,
-  draft:{message:v.textbackTemplate.replace('{business}',ctx.businessName),
+  draft:{message:textbackTemplateFor(v,ctx.tone).replace('{business}',ctx.businessName),
    audience:'missed caller',audienceCount:1,
    recipients:[{name:'',phone:payload.callerNumber}],meta:{missedCallId:payload.missedCallId}},
  };

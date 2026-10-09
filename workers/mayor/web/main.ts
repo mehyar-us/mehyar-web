@@ -1,7 +1,8 @@
-import {createElement,X} from 'lucide';
+import {createElement,X,Camera} from 'lucide';
 import {createTimeZoneSuggestion} from './time-zone';
 import {createTextChat} from './text-chat';
 import {createCalendarChat} from './calendar-chat';
+import {renderConnectorCard,isConnectorCardPayload} from './connector-cards';
 import {createPullRefresh} from './pull-refresh';
 import {bindChatKeyboardViewport,chatComposerHeightLimit} from './chat-keyboard-viewport';
 import {MayorMicrophone} from './microphone-input';
@@ -15,12 +16,14 @@ import {createConnections} from './connections';
 import {createVoiceDiagnostics} from './voice-diagnostics';
 import {createVoiceHealth} from './voice-health';
 import {createVoiceCall} from './voice-call';
+import {createVoiceConsentStore,showVoiceConsentSheet} from './voice-consent';
 import {bindVoiceAccessRecovery,createAccessRecoveryView} from './voice-access-recovery';
 import {createBusinessWorkspace,playSoundCheck} from './business-workspace';
 import {createWorkspaceAccessGuard,workspaceAccessWasRejected,selectWorkspaceBusiness} from './workspace-access';
 import {assistantName,assistantGreeting} from '../src/assistant-persona';
 import {namingGreeting,validateBusinessName} from './business-naming';
 import {VERTICAL_PROFILES} from '../src/verticals';
+import {verticalMappingNote} from '../src/vertical-mapping';
 import {createPlacesOnboarding} from './places-onboarding';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -51,6 +54,22 @@ const helpIcon=document.createElement('i');helpIcon.dataset.lucide='circle-help'
 const voiceHelpContent=document.createElement('div');voiceHelpContent.id='voice-help-panel';voiceHelpContent.className='voice-help-content';voiceHelpContent.append($('voice-hint'),soundCheck);
 voiceHelp.append(voiceHelpSummary,voiceHelpContent);document.querySelector('.header-actions')!.append(voiceHelp);
 voiceHelp.addEventListener('keydown',event=>{if(event.key==='Escape'&&voiceHelp.open){event.preventDefault();voiceHelp.open=false;voiceHelpSummary.focus();}});
+// 6i voice consent: first-use disclosure for the in-PWA owner<->assistant voice
+// chat (AI identity + audio never stored + transcript saved like typed messages).
+// Per-device, no D1 migration; withdrawable anytime from this panel.
+const voiceConsent=createVoiceConsentStore();
+let consentSheetCleanup:(()=>void)|undefined;
+const closeConsentSheet=()=>{consentSheetCleanup?.();consentSheetCleanup=undefined;};
+function openVoiceConsentSheet(mode:'first-run'|'review'){
+ closeConsentSheet();
+ consentSheetCleanup=showVoiceConsentSheet({mode,
+  onAccept:async()=>{voiceConsent.grant();closeConsentSheet();await voiceCall?.start();},
+  onDecline:()=>{closeConsentSheet();notice('No problem — you can still type below. Tap the mic anytime to try voice.');renderVoiceState();},
+  onWithdraw:()=>{voiceConsent.withdraw();closeConsentSheet();notice('Voice choice cleared. You will be asked again the next time you tap the mic.');},
+ });
+}
+const voicePrivacy=document.createElement('button');voicePrivacy.type='button';voicePrivacy.className='secondary';voicePrivacy.textContent='Voice privacy';
+voicePrivacy.onclick=()=>openVoiceConsentSheet('review');voiceHelpContent.append(voicePrivacy);
 // New chat control in the Assistant view header (visible on the chat view only,
 // desktop and mobile). Starts a fresh conversation thread; past history is
 // archived server-side, never deleted. Keyboard-operable with visible focus.
@@ -154,6 +173,15 @@ async function refreshEmailPreference(){
  }catch(error){emailStatus.textContent=error instanceof Error?error.message:'Could not load email preferences.';}
 }
 emailToggle.onclick=async()=>{emailToggle.disabled=true;try{await api(`/api/businesses/${tenantId}/email-preferences`,{enabled:!emailsEnabled});await refreshEmailPreference();}catch(error){emailStatus.textContent=error instanceof Error?error.message:'Could not save email preferences.';emailToggle.disabled=false;}};
+// Harness entry point: goals, saved skills and the agent review schedule live
+// in Today's Business agent section; Settings links there instead of
+// duplicating the surface.
+const agentCard=document.createElement('div'),agentHeading=document.createElement('h2'),agentDescription=document.createElement('p'),agentOpen=document.createElement('button');
+agentCard.className='account-card';agentCard.hidden=true;agentHeading.textContent='Business agent';
+agentDescription.textContent='Goals, saved skills, the review schedule and your latest AI review. Manage them in Today.';
+agentOpen.type='button';agentOpen.className='secondary';agentOpen.textContent='Open Business agent';
+agentOpen.onclick=()=>workday.openBusinessAgent();
+agentCard.append(agentHeading,agentDescription,agentOpen);emailCard.after(agentCard);
 const permissionDetail=document.createElement('p');permissionDetail.id='permission-detail';
 $('user-detail').after(permissionDetail);
 const timezoneSuggestion=createTimeZoneSuggestion(text=>{show('chat');void sendTextMessage(text);});
@@ -246,9 +274,9 @@ const chatActions=document.createElement('div');chatActions.className='chat-acti
 // Same action as the header control: archive the server thread, clear the local
 // transcript, and re-render the business-first greeting.
 const newChatDock=document.createElement('button');newChatDock.type='button';newChatDock.className='secondary';newChatDock.textContent='New chat';newChatDock.setAttribute('aria-label','Start a new conversation');newChatDock.onclick=()=>void startNewChat();chatActions.append(newChatDock);
-const textChat=createTextChat(async(text,requestId,signal)=>{
+const textChat=createTextChat(async(text,requestId,signal,imageIds)=>{
  const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/conversation`;
- const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId}),signal});
+ const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId,imageIds}),signal});
  const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){
   if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();
   // The Plan & usage notice reflects genuine quota failures ONLY (402 /
@@ -264,6 +292,73 @@ const textChat=createTextChat(async(text,requestId,signal)=>{
   :undefined,
 });
 stopWaiting.onclick=()=>textChat.cancel();
+// Crew 6j — chat photo attach (mobile-first: camera + photo library).
+// Photos upload first to tenant-scoped storage; the turn references the ids.
+const MAX_CHAT_PHOTOS=2;
+const attachedPhotos:{id:string;thumbUrl:string}[]=[];
+const attachButton=document.createElement('button');
+attachButton.type='button';attachButton.className='icon-button';attachButton.id='attach-photo';
+attachButton.setAttribute('aria-label','Attach a photo');attachButton.disabled=true;
+{const icon=createElement(Camera);icon.setAttribute('aria-hidden','true');attachButton.append(icon);}
+$('send-message').before(attachButton);
+const attachMenu=document.createElement('div');attachMenu.className='attach-menu';attachMenu.hidden=true;attachMenu.setAttribute('role','menu');
+const takePhotoBtn=document.createElement('button');takePhotoBtn.type='button';takePhotoBtn.textContent='Take photo';takePhotoBtn.setAttribute('role','menuitem');
+const libraryBtn=document.createElement('button');libraryBtn.type='button';libraryBtn.textContent='Photo library';libraryBtn.setAttribute('role','menuitem');
+attachMenu.append(takePhotoBtn,libraryBtn);$('text-form').after(attachMenu);
+const cameraInput=document.createElement('input');cameraInput.type='file';cameraInput.accept='image/*';cameraInput.setAttribute('capture','environment');cameraInput.hidden=true;cameraInput.tabIndex=-1;cameraInput.setAttribute('aria-hidden','true');
+const libraryInput=document.createElement('input');libraryInput.type='file';libraryInput.accept='image/*';libraryInput.hidden=true;libraryInput.tabIndex=-1;libraryInput.setAttribute('aria-hidden','true');
+document.body.append(cameraInput,libraryInput);
+const photoChips=document.createElement('div');photoChips.className='photo-chips';photoChips.setAttribute('aria-live','polite');photoChips.hidden=true;
+$('text-form').before(photoChips);
+function renderPhotoChips(){
+ photoChips.replaceChildren();
+ for(const photo of attachedPhotos){
+  const chip=document.createElement('span');chip.className='photo-chip';
+  const img=document.createElement('img');img.src=photo.thumbUrl;img.alt='Attached photo';
+  const remove=document.createElement('button');remove.type='button';remove.className='photo-chip-remove';remove.setAttribute('aria-label','Remove photo');remove.textContent='×';
+  remove.onclick=()=>void removeAttachedPhoto(photo.id);
+  chip.append(img,remove);photoChips.append(chip);
+ }
+ photoChips.hidden=!attachedPhotos.length;
+}
+async function downscalePhoto(file:File):Promise<Blob>{
+ const bitmap=await createImageBitmap(file);
+ const scale=Math.min(1,1280/Math.max(bitmap.width,bitmap.height));
+ const canvas=document.createElement('canvas');
+ canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+ canvas.getContext('2d')!.drawImage(bitmap,0,0,canvas.width,canvas.height);
+ bitmap.close();
+ const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/jpeg',0.82));
+ if(!blob)throw new Error('That photo could not be read.');
+ return blob;
+}
+async function uploadAttachedPhoto(file:File){
+ if(attachedPhotos.length>=MAX_CHAT_PHOTOS){notice('Two photos max per message.');return;}
+ if(!/^image\//.test(file.type)){notice('Send a photo file (JPEG, PNG, or WebP).');return;}
+ try{
+  composerStatus.textContent='Uploading photo…';
+  const blob=await downscalePhoto(file);
+  const form=new FormData();form.append('image',blob,'photo.jpg');
+  const response=await fetch(`/api/businesses/${tenantId}/conversation/images`,{method:'POST',body:form});
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.message??'Photo upload failed.');
+  attachedPhotos.push({id:result.id,thumbUrl:URL.createObjectURL(blob)});
+  renderPhotoChips();composerStatus.textContent='';
+ }catch(error){composerStatus.textContent='';notice(error instanceof Error?error.message:'Photo upload failed.');}
+}
+async function removeAttachedPhoto(id:string){
+ const index=attachedPhotos.findIndex(p=>p.id===id);
+ if(index>=0){const [photo]=attachedPhotos.splice(index,1);URL.revokeObjectURL(photo.thumbUrl);renderPhotoChips();}
+ try{await api(`/api/businesses/${tenantId}/conversation/images/delete`,{id});}catch{/* already gone server-side */}
+}
+function clearAttachedPhotos(){for(const photo of attachedPhotos)URL.revokeObjectURL(photo.thumbUrl);attachedPhotos.length=0;renderPhotoChips();}
+attachButton.onclick=event=>{event.stopPropagation();attachMenu.hidden=!attachMenu.hidden;if(!attachMenu.hidden)takePhotoBtn.focus();};
+document.addEventListener('click',event=>{if(!attachMenu.hidden&&!attachMenu.contains(event.target as Node)&&event.target!==attachButton)attachMenu.hidden=true;});
+takePhotoBtn.onclick=()=>{attachMenu.hidden=true;cameraInput.click();};
+libraryBtn.onclick=()=>{attachMenu.hidden=true;libraryInput.click();};
+const onPhotoPicked=(input:HTMLInputElement)=>async()=>{const file=input.files?.[0];input.value='';if(file)await uploadAttachedPhoto(file);};
+cameraInput.onchange=onPhotoPicked(cameraInput);
+libraryInput.onchange=onPhotoPicked(libraryInput);
 async function loadConversation(){
  const result=await api(`/api/businesses/${tenantId}/conversation`);
  savedTranscript=result.messages.map((m:any)=>({role:m.role,text:m.content}));if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceRows.clear();voiceSeen=voice?.transcript.length??0;historyReady=true;transcripts();updateNetwork();
@@ -305,8 +400,9 @@ async function sendTextMessage(text:string){
  // Crew 5 UX: the first message after sign-in (no business yet) IS the
  // business name — it creates the business, with that real name, once.
  if(namingMode){await claimBusinessName(text.trim());return;}
- const result=await textChat.submit(text.trim());
- if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(input.value.trim()===text.trim())input.value='';resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
+ const imageIds=attachedPhotos.map(p=>p.id);
+ const result=await textChat.submit(text.trim(),imageIds);
+ if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()+(imageIds.length?' [photo attached]':'')},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(input.value.trim()===text.trim())input.value='';clearAttachedPhotos();resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
 }
 function updateNetwork(){
   if(accessEnded)return;
@@ -317,6 +413,7 @@ function updateNetwork(){
   $<HTMLButtonElement>('talk').disabled=!online||!voiceConnected||!historyReady||textChat.busy||pullBusy;
   $<HTMLTextAreaElement>('message').disabled=!loggedIn||!canChat()||accessEnded;
   $<HTMLButtonElement>('send-message').disabled=!online||!historyReady||textChat.busy||pullBusy||!canChat();
+  $<HTMLButtonElement>('attach-photo').disabled=!online||!historyReady||textChat.busy||pullBusy||!canChat();
   workspace.ready(online&&historyReady&&!textChat.busy&&!pullBusy&&!accessEnded);
   if(!online){voiceCall?.stop();$('interim').textContent='';}
 }
@@ -679,6 +776,7 @@ async function connect(){
 function endWorkspaceAccess(){
  if(accessEnded)return;
  chatKeyboard.dispose();
+ closeConsentSheet();
  accessEnded=true;namingMode=false;workspaceAccess.end();textChat.cancel();voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
  savedTranscript=[];confirmedProfile={};voiceRows.clear();$('transcript').replaceChildren();$('interim').textContent='';
  workspace.clear();workday.clear();connectionHub.reset();voiceHealth.clear();calendarChat.clear();calendarLauncher.hidden=true;$('calendar-status').hidden=true;voiceHelp.open=false;voiceHelp.hidden=true;micLevel.hidden=true;micLevel.value=0;
@@ -691,7 +789,7 @@ function endWorkspaceAccess(){
  $('notifications-button').hidden=true;$<HTMLButtonElement>('notifications-button').disabled=true;
  document.querySelector('main')!.hidden=true;document.querySelector('nav')!.hidden=true;
  $<HTMLTextAreaElement>('message').value='';$<HTMLTextAreaElement>('message').disabled=true;
- $<HTMLButtonElement>('send-message').disabled=true;$<HTMLButtonElement>('talk').disabled=true;
+ $<HTMLButtonElement>('send-message').disabled=true;$<HTMLButtonElement>('talk').disabled=true;$<HTMLButtonElement>('attach-photo').disabled=true;
  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=true;composerStatus.textContent='';chatActions.hidden=true;newChatHeader.hidden=true;
  accessRecovery.show();
 }
@@ -705,6 +803,14 @@ function handleMessage(data:unknown){
       }
       const message=data as any;
       if(message.type==='calendar_connection_guide'&&message.guide&&Array.isArray(message.guide.providers)){calendarChat.render(message.guide);$('conversation').setAttribute('open','');}
+      // Crew 6h — in-conversation connector cards: offer / guide / credential
+      // capture / reconnect. The card never carries a secret; the capture form
+      // posts straight to the encrypted credential store.
+      if(message.type==='connector_card'&&isConnectorCardPayload(message.card)){
+        const card=renderConnectorCard(message.card,{api,tenant:()=>tenantId,signIn,onNotice:message=>notice(message)});
+        $('transcript').after(card);
+        card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});
+      }
       if(message.type==='calendar_inventory'&&Array.isArray(message.connections)&&message.setup){calendarChat.inventory(message);$('conversation').setAttribute('open','');}
       if(message.type==='business_context'&&message.profile&&typeof message.profile==='object')useBusinessProfile(message.profile);
       if(message.type==='mehyar_expertise'&&Array.isArray(message.services)&&message.services.every((s:any)=>s&&typeof s.name==='string'&&typeof s.scope==='string'))workspace.expertise(message.services);
@@ -754,7 +860,7 @@ function renderVoiceState(){
 }
 $('talk').setAttribute('aria-describedby','voice-hint');
 $('voice-hint').setAttribute('role','status');
-$('talk').onclick=async()=>{show('chat');microphoneProblem='';notice('');if(voiceCall?.starting||voiceCall?.active)voiceCall?.stop();else if(voiceCall)await voiceCall.start();else{microphoneProblem='Voice is not connected yet. Wait for the connection or reload this page, then try again.';renderVoiceState();}};
+$('talk').onclick=async()=>{show('chat');microphoneProblem='';notice('');if(voiceCall?.starting||voiceCall?.active)voiceCall?.stop();else if(voiceCall){if(!voiceConsent.granted()){openVoiceConsentSheet('first-run');return;}await voiceCall.start();}else{microphoneProblem='Voice is not connected yet. Wait for the connection or reload this page, then try again.';renderVoiceState();}};
 $('mute').onclick=()=>voice?.toggleMute();
 $('text-form').onsubmit=event=>{event.preventDefault();void sendTextMessage($<HTMLTextAreaElement>('message').value);};
 $('message').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('text-form').dispatchEvent(new Event('submit',{cancelable:true}));}});
@@ -776,6 +882,7 @@ async function account(){
   if(membershipRole==='billing'){show('billing');return;}
   routineCard.hidden=!canManage();if(canManage())void refreshRoutine();
   emailCard.hidden=!canManage();if(canManage())void refreshEmailPreference();
+  agentCard.hidden=!canManage();
   phoneCard.hidden=!canManage();
   const memory=await api(`/api/businesses/${tenantId}/profile`);
   if(memory.profile.name)permissionDetail.textContent=`${memory.profile.name} · ${membershipRole}`;
@@ -796,15 +903,67 @@ async function account(){
    for(const [key,vertical] of Object.entries(VERTICAL_PROFILES)){const option=document.createElement('option');option.value=key;option.textContent=vertical.label;picker.append(option);}
    const current=(memory.profile as {vertical?:string}).vertical??'other';picker.value=current;
    const note=document.createElement('p');note.className='privacy-note';note.textContent='Sets the wording of missed-call text-backs and appointment reminders.';
+   // Crew 6b: when the vertical came from the adjacent-vertical map, say
+   // "using X mode" explicitly — never a silent mismatch.
+   const mappedNote=document.createElement('p');mappedNote.className='privacy-note';
+   const mappedText=verticalMappingNote(memory.profile as {vertical?:string;verticalMappedFrom?:string});
+   if(mappedText)mappedNote.textContent=mappedText;else mappedNote.hidden=true;
+   dd.append(picker,note,mappedNote);$('profile').append(dt,dd);
+   if(canManage()){
+    picker.onchange=async()=>{
+     picker.disabled=true;
+     try{
+      const updated=await api(`/api/businesses/${tenantId}/profile`,{vertical:picker.value,clearVerticalMapping:true,revision:memory.revision});
+      memory.revision=updated.revision;confirmedProfile.vertical=picker.value;
+      mappedNote.hidden=true;
+      notice('Business type saved. Text-back messages will use this wording.');
+     }catch(error){notice(error instanceof Error?error.message:'Could not save the business type.');picker.value=(memory.profile as {vertical?:string}).vertical??'other';}
+     finally{picker.disabled=false;}
+    };
+   }else picker.disabled=true;
+  }
+  // Crew 6c — customer-facing language. Owner-chosen; deterministic Spanish
+  // templates (text-backs, reminders, cards, notifications) when 'es'.
+  // Saved through the same owner-confirmed profile flow as the business type.
+  {
+   const dt=document.createElement('dt');dt.textContent='Customer language';
+   const dd=document.createElement('dd');
+   const picker=document.createElement('select');picker.setAttribute('aria-label','Customer language');
+   for(const [value,label] of [['en','English'],['es','Español']] as const){const option=document.createElement('option');option.value=value;option.textContent=label;picker.append(option);}
+   const current=(memory.profile as {language?:string}).language??'en';picker.value=current;
+   const note=document.createElement('p');note.className='privacy-note';note.textContent='Customer-facing texts (text-backs, reminders, cards, notifications) send in Spanish when Español is chosen.';
    dd.append(picker,note);$('profile').append(dt,dd);
    if(canManage()){
     picker.onchange=async()=>{
      picker.disabled=true;
      try{
-      const updated=await api(`/api/businesses/${tenantId}/profile`,{vertical:picker.value,revision:memory.revision});
-      memory.revision=updated.revision;confirmedProfile.vertical=picker.value;
-      notice('Business type saved. Text-back messages will use this wording.');
-     }catch(error){notice(error instanceof Error?error.message:'Could not save the business type.');picker.value=(memory.profile as {vertical?:string}).vertical??'other';}
+      const updated=await api(`/api/businesses/${tenantId}/profile`,{language:picker.value,revision:memory.revision});
+      memory.revision=updated.revision;confirmedProfile.language=picker.value;
+      notice('Language saved. Customer-facing messages will use this language.');
+     }catch(error){notice(error instanceof Error?error.message:'Could not save the language.');picker.value=(memory.profile as {language?:string}).language??'en';}
+     finally{picker.disabled=false;}
+    };
+   }else picker.disabled=true;
+  }
+  // Tone picker: Friendly (default) vs Professional register for customer-facing
+  // copy — text-backs, reminders, suggestion drafts, and the persona. Owner-chosen.
+  // Server accepts the enum keys from src/verticals.ts.
+  {
+   const dt=document.createElement('dt');dt.textContent='Tone';
+   const dd=document.createElement('dd');
+   const picker=document.createElement('select');picker.setAttribute('aria-label','Tone');
+   for(const [key,label] of [['friendly','Friendly'],['professional','Professional']] as const){const option=document.createElement('option');option.value=key;option.textContent=label;picker.append(option);}
+   const current=(memory.profile as {tone?:string}).tone??'friendly';picker.value=current;
+   const note=document.createElement('p');note.className='privacy-note';note.textContent='Professional keeps customer messages formal — no casual upsell. Choose it for law, clinics, and financial services.';
+   dd.append(picker,note);$('profile').append(dt,dd);
+   if(canManage()){
+    picker.onchange=async()=>{
+     picker.disabled=true;
+     try{
+      const updated=await api(`/api/businesses/${tenantId}/profile`,{tone:picker.value,revision:memory.revision});
+      memory.revision=updated.revision;confirmedProfile.tone=picker.value;
+      notice('Tone saved. Customer messages will use this register.');
+     }catch(error){notice(error instanceof Error?error.message:'Could not save tone.');picker.value=(memory.profile as {tone?:string}).tone??'friendly';}
      finally{picker.disabled=false;}
     };
    }else picker.disabled=true;

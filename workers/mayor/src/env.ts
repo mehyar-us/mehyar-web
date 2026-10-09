@@ -26,6 +26,14 @@ export interface Env extends AuthEnv {
   MAYOR_STRIPE_ACCOUNT_ID?: string;
   MAYOR_STRIPE_AUDIT_PRICE_ID?: string;
   MAYOR_AUDIT_STATUS_SECRET?: string;
+  /** Crew 6f Instagram DM — DARK until Meta App Review approves instagram_manage_messages.
+   *  INSTAGRAM_DM_ENABLED must be '1' to activate; unset/anything-else = dark. */
+  INSTAGRAM_DM_ENABLED?:string;
+  INSTAGRAM_VERIFY_TOKEN?:string;
+  INSTAGRAM_PAGE_TOKEN?:string;
+  /** Dark-stage page→tenant map: '{"<pageId>":"<tenantId>"}'. Replaced by a D1
+   *  connection table + OAuth connect flow at light-up. */
+  INSTAGRAM_DM_TENANT_MAP?:string;
   MAYOR_AUDIT_ALLOWED_ORIGINS?: string;
   MAYOR_AUDIT_OPERATOR_USER_IDS?: string;
   MAYOR_AUDIT_FULFILLMENT_READY?: string;

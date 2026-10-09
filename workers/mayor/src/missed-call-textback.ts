@@ -3,7 +3,8 @@ import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
 import {readMemory} from './memory';
-import {verticalProfile} from './verticals';
+import {verticalProfile,textbackTemplateFor} from './verticals';
+import {renderTextback,resolveLanguage} from './i18n';
 import {telnyxManagementAccess} from './telnyx-connections';
 import {loadProactiveContext,ensureMissedCallFollowupCard,resolveMissedCallFollowupCards} from './proactive-detectors';
 
@@ -12,6 +13,14 @@ import {loadProactiveContext,ensureMissedCallFollowupCard,resolveMissedCallFollo
  * Test flows must pass source:'test' and never touch real customer numbers. */
 
 const e164=z.string().regex(/^\+[1-9]\d{6,14}$/);
+
+/** Crew 6c+6d: Spanish wins when language==='es' (friendly register); otherwise
+ * the tone-aware English template (professional vs friendly). */
+function textbackText(profile:ReturnType<typeof verticalProfile>,memProfile:{language?:unknown;tone?:unknown},businessName:string):string{
+ const language=resolveLanguage(memProfile.language);
+ if(language==='es')return renderTextback(profile.vertical,language,businessName);
+ return textbackTemplateFor(profile,memProfile.tone).replace('{business}',businessName);
+}
 
 export const missedCallInputSchema=z.object({
  callerNumber:e164,
@@ -74,7 +83,7 @@ export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,trans
  const mem=await readMemory(env,actor);
  const businessName=mem.profile.name?.trim()||'us';
  const profile=verticalProfile((mem.profile as {vertical?:string}).vertical);
- const text=profile.textbackTemplate.replace('{business}',businessName);
+ const text=textbackText(profile,mem.profile as {language?:unknown;tone?:unknown},businessName);
  const access=await telnyxManagementAccess(env,actor,transport);
  const response=await transport('https://api.telnyx.com/v2/messages',{
   method:'POST',redirect:'manual',signal:AbortSignal.timeout(15000),
@@ -110,7 +119,7 @@ export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string){
  const mem=await readMemory(env,actor);
  const businessName=mem.profile.name?.trim()||'us';
  const profile=verticalProfile((mem.profile as {vertical?:string}).vertical);
- const text=profile.textbackTemplate.replace('{business}',businessName);
+ const text=textbackText(profile,mem.profile as {language?:unknown;tone?:unknown},businessName);
  const now=new Date().toISOString(),smsId=crypto.randomUUID();
  await env.AGENT_DB.batch([
   env.AGENT_DB.prepare(`UPDATE mayor_missed_calls SET status='texted',textback_sent_at=?,textback_message_id=NULL WHERE id=? AND tenant_id=?`).bind(now,missedCallId,actor.tenantId),
@@ -176,7 +185,7 @@ export async function listRecentMissedCalls(env:Env,actor:Actor,limit=20){
  return rows.results.map(row=>({
   ...row,
   // What the engine will send (unsent) or did send (logged body) — owner-facing honesty.
-  textback_preview:row.textback_sent_at?null:profile.textbackTemplate.replace('{business}',businessName),
+  textback_preview:row.textback_sent_at?null:textbackText(profile,mem.profile as {language?:unknown;tone?:unknown},businessName),
   textback_body:row.textback_body??null,
  }));
 }

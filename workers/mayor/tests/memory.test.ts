@@ -10,7 +10,13 @@ describe('spoken profile confirmation',()=>{
   it('rejects unknown fields and invalid time zones',()=>{
     expect(profileSchema.safeParse({admin:true}).success).toBe(false);
     expect(profileSchema.safeParse({timeZone:'Moon/Base'}).success).toBe(false);
-    expect(profileSchema.safeParse({}).success).toBe(false);
+    // Crew 6c: language defaults to 'en', so an empty input now parses to
+    // {language:'en'} instead of tripping the non-empty refine. Empty
+    // *patches* still fail closed upstream (the intake tool requires a
+    // supplied fact before parsing).
+    expect(profileSchema.safeParse({}).success).toBe(true);
+    const emptyParsed=profileSchema.safeParse({});
+    if(emptyParsed.success)expect(emptyParsed.data.language).toBe('en');
     expect(profileSchema.safeParse({timeZone:'America/New_York',name:'Example'}).success).toBe(true);
   });
   it('accepts ASR it-is variants without accepting negation or qualifications',()=>{

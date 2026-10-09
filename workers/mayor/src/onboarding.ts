@@ -1,8 +1,11 @@
 import type {Profile} from './memory';
+import {confirmProfile} from './memory';
+import type {Actor,Env} from './env';
 import {detectVerticalFromCategory} from './verticals';
 import * as verticals from './verticals';
 import type {Vertical} from './verticals';
 import type {PlaceCard} from './places';
+import {assessFit,fitAnswersFromProfile,honestFitMessage,type FitAssessment} from './fit-check';
 
 /** Only unambiguous commands; mixed requests still go through the conversation model. */
 export function asksToResumeOnboarding(text:string){
@@ -83,14 +86,18 @@ const VERTICAL_CONFIRM_LABELS:Record<Exclude<Vertical,'other'>,string>={
  plumbing_hvac:'plumbing/HVAC shop',
  dental:'dental office',
  auto_repair:'auto repair shop',
+ pet_grooming:'pet grooming salon',
+ med_spa:'med spa',
 };
 
-const VERTICAL_CONFIRM_FOLLOWUPS:Record<Exclude<Vertical,'other'>,string>={
+export const VERTICAL_CONFIRM_FOLLOWUPS:Record<Exclude<Vertical,'other'>,string>={
  salon:'cuts, color, or both?',
  restaurant:'dine-in, takeout, or both?',
  plumbing_hvac:'residential, commercial, or both?',
  dental:'general, cosmetic, or both?',
  auto_repair:'repairs, maintenance, or both?',
+ pet_grooming:'dogs, cats, or both?',
+ med_spa:'tox, laser, or both?',
 };
 
 export interface PlaceConfirmPatch{
@@ -221,4 +228,44 @@ export function onboardingProgressForVertical(profile:Partial<Profile>,vertical:
   nextQuestion:next?.[1]??null,
   readback:next?`We can build your profile by talking; a website is optional. ${next[1]}`:missing.length?'We can return to the missing details later. What would you like help with next?':'Your basic business details are saved. Appointment rules and service connections are separate; what would you like to set up next?',
  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Crew 6e - honest fit check. Runs once, after the core onboarding     */
+/* questions are answered. A 'poor' verdict stores the assessment and   */
+/* returns the plain-spoken message for the assistant to deliver        */
+/* instead of selling. The stored flag means we never nag about it      */
+/* again, so "continue anyway" is frictionless by construction.          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Pure trigger: null when an assessment is already stored (never nag
+ * again) or the core questions are not complete yet; otherwise the fresh
+ * assessment plus the honest message only on a 'poor' verdict.
+ */
+export function honestFitStep(profile:Partial<Profile>):{assessment:FitAssessment;message:string|null}|null{
+ if(profile.fitAssessment)return null;
+ const vertical=typeof profile.vertical==='string'?profile.vertical:undefined;
+ const complete=onboardingProgressForVertical(profile,vertical).basicsComplete
+  ||onboardingProgress(profile).basicsComplete;
+ if(!complete)return null;
+ const result=assessFit(fitAnswersFromProfile(profile));
+ const assessment:FitAssessment={
+  fit:result.fit,reasons:result.reasons,
+  assessedAt:new Date().toISOString(),source:'answers',
+ };
+ return {assessment,message:result.fit==='poor'?honestFitMessage(result):null};
+}
+
+/**
+ * Server-side wrapper: computes the fit once via honestFitStep, persists
+ * it through the revision-checked profile flow, and hands back the message
+ * to deliver (null unless the verdict is 'poor').
+ */
+export async function runHonestFitCheck(env:Env,actor:Actor,profile:Profile,revision:number)
+ :Promise<{profile:Profile;revision:number;message:string|null}>{
+ const step=honestFitStep(profile);
+ if(!step)return {profile,revision,message:null};
+ const saved=await confirmProfile(env,actor,{fitAssessment:step.assessment},revision);
+ return {profile:saved.profile,revision:saved.revision,message:step.message};
 }

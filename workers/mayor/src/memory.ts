@@ -3,11 +3,23 @@ import type { Actor, Env } from './env';
 import { requireMembership, OPERATORS } from './permissions';
 import { HttpError } from './http';
 import {validAssistantName} from './assistant-persona';
-import {verticalSchema} from './verticals';
+import {verticalSchema,toneSchema} from './verticals';
+import {languageSchema} from './i18n';
 
 export const profileSchema = z.object({
   name: z.string().min(1).max(160).optional(),
   vertical: verticalSchema.optional(),
+  /** Original trade when the vertical came from the adjacent-vertical map
+   * (crew 6b). Drives the honest "using X mode" copy; never a silent mismatch.
+   * Cleared whenever the owner picks a vertical directly. No D1 migration:
+   * the profile is a JSON column, this is a code-level schema field. */
+  verticalMappedFrom: z.string().max(80).optional(),
+  /** Owner-chosen customer-facing language. Optional so existing profiles keep
+   * working; stored profiles always carry it (default 'en' fills on parse). */
+  language: languageSchema.optional().default('en'),
+  /** Owner-chosen register: friendly (default) vs professional. Optional so
+   * existing profiles keep working. */
+  tone: toneSchema.optional(),
   assistantName: z.string().trim().min(1).max(60).refine(validAssistantName,'Choose a short display name using letters, numbers, spaces, or name punctuation.').optional(),
   industry: z.string().max(160).optional(),
   website: z.url().max(2048).optional(),
@@ -23,12 +35,24 @@ export const profileSchema = z.object({
   hours: z.string().max(2000).optional(),
   appointmentTypes: z.array(z.string().max(300)).max(30).optional(),
   schedulingRules: z.string().max(3000).optional(),
+  /** Crew 6e - honest fit check. Written only by the server (never by the
+   * model: profileUpdateFields cannot propose it), computed once after the
+   * core onboarding questions are answered. */
+  fitAssessment: z.object({
+    fit: z.enum(['good','uncertain','poor']),
+    reasons: z.array(z.string().max(300)).max(10),
+    assessedAt: z.string().max(40),
+    source: z.enum(['answers','place-category']),
+  }).strict().optional(),
 }).strict().refine(v => Object.keys(v).length > 0);
 export type Profile = z.infer<typeof profileSchema>;
+/** Input-side type for partial profile patches: every field optional (no
+ * defaults applied yet). Use this wherever a patch is constructed or passed. */
+export type ProfilePatch = z.input<typeof profileSchema>;
 export const profileSourceSchema=z.object({sourceId:z.uuid(),quotes:z.record(z.string(),z.string().min(5).max(1000))}).strict();
 export type ProfileSource=z.infer<typeof profileSourceSchema>;
 type Provenance=Record<string,{kind:string;url?:string;sourceId?:string;quote?:string;confirmedAt:string}>;
-export async function verifyProfileSource(env:Env,actor:Actor,patch:Profile,input:ProfileSource){
+export async function verifyProfileSource(env:Env,actor:Actor,patch:ProfilePatch,input:ProfileSource){
   await requireMembership(env,actor,OPERATORS);
   const source=profileSourceSchema.parse(input);
   if(patch.assistantName!==undefined)throw new HttpError(400,'source_invalid','The assistant name must be chosen by the owner or manager, not imported from a website.');
@@ -42,9 +66,9 @@ export async function readMemory(env: Env, actor: Actor) {
   const row=await env.AGENT_DB.prepare("SELECT value_json,revision,confirmed_at,provenance_json FROM mayor_memory WHERE tenant_id=? AND field='profile'").bind(actor.tenantId).first<{value_json:string;revision:number;confirmed_at:string;provenance_json:string}>();
   // Discard fetched private data if membership or tenant access changed in flight.
   await requireMembership(env,actor);
-  return {profile: row ? JSON.parse(row.value_json) as Profile : {}, revision:row?.revision??0, confirmedAt:row?.confirmed_at??null,sources:row?JSON.parse(row.provenance_json) as Provenance:{}};
+  return {profile: row ? JSON.parse(row.value_json) as Profile : ({} as Profile), revision:row?.revision??0, confirmedAt:row?.confirmed_at??null,sources:row?JSON.parse(row.provenance_json) as Provenance:{}};
 }
-export async function confirmProfile(env: Env, actor: Actor, patch: Profile, expectedRevision: number,source?:ProfileSource) {
+export async function confirmProfile(env: Env, actor: Actor, patch: ProfilePatch, expectedRevision: number,source?:ProfileSource) {
   await requireMembership(env,actor,OPERATORS);
   const current=await readMemory(env,actor);
   if(current.revision!==expectedRevision) throw new HttpError(409,'profile_changed','Your business details changed. Review the current version first.');

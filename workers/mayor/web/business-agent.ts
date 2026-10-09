@@ -28,6 +28,8 @@ const localDate=(value:string|null)=>{if(!value)return '';const date=new Date(va
 /** Read-only reports and explicit, reviewed saves. Authorization remains with the supplied API. */
 export function createBusinessAgent(hooks:Hooks){
  const element=node('section','','business-agent');element.setAttribute('aria-label','Business agent');
+ // Deep-link anchor: Settings and Feed entry points scroll here.
+ element.id='business-agent';
  const dialogs=new Set<HTMLDialogElement>();
  let data:Data|null=null,epoch=0,loadVersion=0,activeTenant='',activeActor='',busy=false,requestId:string|null=null,revealAfterSave='';
  const base=()=>`/api/businesses/${encodeURIComponent(hooks.tenant())}/harness`;
@@ -194,5 +196,17 @@ export function createBusinessAgent(hooks:Hooks){
   form.onsubmit=event=>{event.preventDefault();if(save.disabled)return;save.disabled=true;const captured=epoch,tenant=activeTenant;void(async()=>{try{const dueAt=due.value?new Date(due.value).toISOString():null;const result=await hooks.api(base()+'/tasks/prepare',{runId,draftId:draft.id,title:title.value.trim(),priority:priority.value,dueAt,customerId:draft.customerId??null});if(!current(captured,tenant)||!modal.isConnected)return;const proposal=result.proposal as {id:string;expiresAt:string;readback:string};review(modal,'Confirm internal task',[proposal.readback,`This review expires ${dateText(proposal.expiresAt)}.`],async()=>{await hooks.api(base()+'/tasks/confirm',{proposal:{id:proposal.id}});},restore,'Save internal task');}catch(error){if(current(captured,tenant)&&modal.isConnected){message.textContent=errorText(error);save.disabled=false;}}})();};modal.append(form);title.focus();
  }
  function clear(){epoch++;loadVersion++;data=null;activeTenant='';activeActor='';requestId=null;busy=false;revealAfterSave='';element.replaceChildren();for(const modal of [...dialogs]){modal.close();modal.remove();}dialogs.clear();}
- return {element,load,clear};
+ /** Scroll to the Business agent section and open "Goals, skills & automation".
+  * Returns false when the section is not rendered yet (caller retries). */
+ function reveal():boolean{
+  if(!element.isConnected||!data)return false;
+  const manage=element.querySelector<HTMLDetailsElement>('details[data-agent-disclosure="manage"]');
+  if(!manage)return false;
+  manage.open=true;
+  element.scrollIntoView({block:'start',behavior:'smooth'});
+  const heading=element.querySelector<HTMLElement>('.agent-heading h2');
+  if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+  return true;
+ }
+ return {element,load,clear,reveal};
 }

@@ -63,7 +63,7 @@ describe('detector params vary by vertical',()=>{
   expect(r2[0].payload.cutoffDays).toBe(180);
  });
  it('LAPSED_DAYS is the single fallback source (no forked copies)',()=>{
-  expect(LAPSED_DAYS).toEqual({salon:56,restaurant:60,plumbing_hvac:180,dental:180,auto_repair:180,other:90});
+  expect(LAPSED_DAYS).toEqual({salon:56,restaurant:60,plumbing_hvac:180,dental:180,auto_repair:180,pet_grooming:70,med_spa:120,other:90});
   expect(detectorParamsOf('salon' as any)).toEqual({});
  });
  it('profile detectorParams override the fallbacks',async()=>{
