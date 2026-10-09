@@ -50,3 +50,33 @@ it('unwraps the AI Gateway REST envelope on non-streaming generateText and skips
   globalThis.fetch=realFetch;
  }
 });
+it('remaps reasoning_content to content on non-streaming generateText (qwen3 quirk)',async()=>{
+ // Regression (captured live 2026-10-08): @cf/qwen/qwen3-30b-a3b-fp8 returns
+ // HTTP 200 with the generated text in choices[0].message.reasoning_content
+ // (mirrored in .reasoning) while choices[0].message.content and the
+ // top-level response are null. workers-ai-provider's processText reads only
+ // content/response, so generateText produced "" and the council 502'd with
+ // council_empty. The binding wrapper must repair the shape first.
+ const quirk={choices:[{message:{role:'assistant',content:null,reasoning:'HOT ZERO: Build it.',reasoning_content:'HOT ZERO: Build it.'},finish_reason:'stop',index:0}],response:null,usage:{}};
+ const ai={run:async()=>quirk} as unknown as Env['AI'];
+ const result=await generateText({model:mayorModel({AI:ai}),prompt:'Should we launch?'});
+ expect(result.text).toBe('HOT ZERO: Build it.');
+});
+it('remapReasoningContent leaves healthy outputs and streams untouched',async()=>{
+ const {remapReasoningContent}=await import('../src/ai-model');
+ // Healthy: real content present -> untouched (same reference).
+ const healthy={choices:[{message:{content:'Real answer',reasoning_content:'thinking'}}]};
+ expect(remapReasoningContent(healthy)).toBe(healthy);
+ expect((healthy as any).choices[0].message.content).toBe('Real answer');
+ // Empty-string content + reasoning -> repaired.
+ const empty={choices:[{message:{content:'',reasoning_content:'Repaired'}}]};
+ remapReasoningContent(empty);
+ expect((empty as any).choices[0].message.content).toBe('Repaired');
+ // No reasoning text -> untouched.
+ const bare={choices:[{message:{content:null,reasoning_content:''}}]};
+ remapReasoningContent(bare);
+ expect((bare as any).choices[0].message.content).toBeNull();
+ // Non-objects pass through.
+ expect(remapReasoningContent(null)).toBeNull();
+ expect(remapReasoningContent('text')).toBe('text');
+});
