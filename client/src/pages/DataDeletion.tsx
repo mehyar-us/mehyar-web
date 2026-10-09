@@ -34,6 +34,7 @@
 //  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
 //  25. The Mayor — https://mayor.mehyar.us (AI business assistant for local service businesses)
 //  26. Moonroom — https://moonroom.mehyar.us (AI photo studio: headshot/product/theme packs from one selfie)
+//  27. Audit My Business — https://mehyar.us/audit/ ($330 AI audit: score, money leaks, fixes, AI opportunities)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -44,7 +45,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -370,6 +371,18 @@ id: "hustlekit",
       "Selfie uploads and the photos we generate from them, email + order/payment records for pack purchases, and free-tier usage counters (3 watermarked previews, IP-keyed). Uploads are stored for re-rolls and purged on account delete.",
     whatWeDelete:
       "Selfie uploads, generated images, orders, and account records. In-app delete purges everything in one tap; email fallback actions within 14 days.",
+  },
+  {
+    id: "audit-my-business",
+    name: "Audit My Business",
+    url: "https://mehyar.us/audit/",
+    tagline: "A $330 AI audit that finds where your business is leaking money.",
+    icon: ScanLine,
+    inAppPath: "Email fallback (info@mehyar.us) — video + report data deleted on request.",
+    whatWeCollect:
+      "The business URL you submit, your email (stored SHA-256 hashed only), and an optional walkthrough video plus its transcript. No accounts on this product.",
+    whatWeDelete:
+      "Submitted URL, hashed email, uploaded walkthrough video + transcript, and the generated audit report. Deletion via the email fallback within 14 days.",
   },
 ];
 

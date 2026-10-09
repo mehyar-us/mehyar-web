@@ -460,6 +460,24 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/moonroom-logo.png",
     accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
   },
+  {
+    id: "audit-my-business",
+    name: "Audit My Business",
+    url: "https://mehyar.us/audit/",
+    tagline: "A $330 AI audit that finds where your business is leaking money.",
+    description:
+      "Enter your business URL — optionally upload a walkthrough video — and get a professional AI audit: overall score, money leaks, flaws, prioritized fixes, and where AI fits in your business. One-time $330, purchases final.",
+    audience:
+      "Local business owners who suspect leads or revenue are leaking through their website, booking path, or follow-up.",
+    highlights: [
+      "URL in, full visual audit out",
+      "Optional CEO walkthrough video analysis",
+      "Money leaks ranked by severity",
+      "AI opportunity map for your business",
+    ],
+    logo: "/assets/audit-my-business-logo.png",
+    accentClass: "from-fuchsia-100 to-white dark:from-fuchsia-900 dark:to-fuchsia-950",
+  },
 ];
 
 const buildPillars = [
@@ -701,7 +719,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business), and the request form.
           </p>
         </div>
       </section>
