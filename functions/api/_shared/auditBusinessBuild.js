@@ -109,10 +109,14 @@ function buildFindingsUserMessage(signals, det, transcript, coverage, businessNa
     images_missing_alt: signals.imagesMissingAlt, image_count: signals.imageCount,
     has_schema: signals.hasSchema, has_address: signals.hasAddress,
     text_sample: signals.textSample,
+    content_unmeasured: !!signals.contentUnmeasured,
   };
   let msg = `Business: ${businessName || "(not given)"}\n`;
   msg += `Measured homepage signals (from a real fetch):\n${JSON.stringify(sig).slice(0, 6000)}\n`;
-  msg += `Deterministic score from the same signals: ${det.score}/100 (parts: ${JSON.stringify(det.parts)})\n`;
+  if (signals.contentUnmeasured) {
+    msg += `IMPORTANT — CONTENT UNMEASURED: this site renders its content with JavaScript, so the pre-hydration fetch could NOT measure page words, headings, forms, CTAs, or contact details. The word_count/h1/form_count/cta_count values above reflect only the empty app shell — they are NOT evidence of missing content. Do NOT write findings claiming the site lacks content, headings, CTAs, or contact info. Where you cannot verify something, say it couldn't be assessed.\n`;
+  }
+  msg += `Deterministic score from the same signals: ${det.score}/100 (parts: ${JSON.stringify(det.parts)})${det.unmeasured && det.unmeasured.length ? ` — components that couldn't be assessed (JS-rendered site, scored 0 but not verified): ${det.unmeasured.join(", ")}` : ""}\n`;
   if (transcript) {
     msg += `Owner walkthrough transcript (${coverage}):\n${transcript.slice(0, 6000)}\n`;
   } else {
@@ -167,6 +171,9 @@ function evidencePackText(signals, det, transcript, coverage) {
     `Trust: ${(signals.trust || []).join(", ") || "none"} | Socials: ${(signals.socials || []).join(", ") || "none"} | Pixels: ${(signals.pixels || []).join(", ") || "none"}`,
     `Deterministic score: ${det.score}/100`,
   ];
+  if (signals.contentUnmeasured) {
+    lines.push(`CONTENT UNMEASURED: JS-rendered site — words/headings/forms/CTAs/contact details reflect only the pre-hydration shell and must NOT be cited as findings of missing content.`);
+  }
   if (transcript) lines.push(`Walkthrough transcript (${coverage}): ${transcript.slice(0, 2500)}`);
   else lines.push(`No walkthrough transcript provided.`);
   return lines.join("\n");

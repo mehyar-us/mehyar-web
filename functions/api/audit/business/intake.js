@@ -72,6 +72,10 @@ function publicPreview(signals) {
     pixels: signals.pixels,
     trust: signals.trust,
     has_schema: signals.hasSchema,
+    // True when the site is a JS app shell: content-dependent signals above
+    // (h1, word_count, form_count, cta_count, has_phone) could NOT be measured
+    // from the initial HTML — clients must show "couldn't be assessed".
+    content_unmeasured: !!signals.contentUnmeasured,
   };
 }
 
