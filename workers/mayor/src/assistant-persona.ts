@@ -57,7 +57,23 @@ export function verticalIdentityBlock(profile:AssistantProfile={}){
  const metricsLine=kpis.length?`\nMetrics that matter here: ${kpis.map(k=>`${k.label} — ${k.hint}`).join('; ')}. When the owner asks what to track, measure, or how to grow, frame the answer in these metrics — never generic “industry benchmarks” or another trade's numbers.`:'';
  const nouns=verticalBriefingNouns(vp);
  const nounsLine=nouns?`\nSay “${nouns.appointments}” and “${nouns.customers}” — never generic “bookings” or “customers” when you mean these.`:'';
- return `\n\nVertical identity: this business is a ${vp.label.toLowerCase()}. In this business, customers are called “${v.customer}”, bookings are “${v.booking}”, staff are “${v.staff}”, and services are “${v.service}” — always use these words, never generic ones or other verticals' words${neverLine}.${tone}${metricsLine}${nounsLine}\nVertical precedence: the saved vertical is the source of truth for what kind of business this is. Saved business memory may describe an older or different business — when they conflict, the vertical wins; treat stale memory as outdated background, never as the business's identity.`;
+ return `\n\nVertical identity: this business is a ${vp.label.toLowerCase()}.${metricsLine} In this business, customers are called “${v.customer}”, bookings are “${v.booking}”, staff are “${v.staff}”, and services are “${v.service}” — always use these words, never generic ones or other verticals' words${neverLine}.${tone}${nounsLine}\nVertical precedence: the saved vertical is the source of truth for what kind of business this is. Saved business memory may describe an older or different business — when they conflict, the vertical wins; treat stale memory as outdated background, never as the business's identity.`;
+}
+/** Deterministic growth-question detector. The system-prompt metrics directive
+ * is followed flakily (verified live: a salon growth question got generic
+ * business-speak despite the full vertical block), so when the owner asks what
+ * to track/measure or how to grow, this instruction is appended to the user
+ * message itself, where models follow it reliably. Pure function: safe to call
+ * on every turn. */
+const GROWTH_QUESTION=/\btrack(?:ing|s)?\b|\bmeasur(?:e|ing|es)\b|\bmetric(?:s)?\b|\bkpis?\b|\bgrow(?:th|ing)?\b|\bimprov(?:e|ing|ement)\b|\bbenchmark(?:s)?\b/i;
+export function growthMetricsInstruction(profile:AssistantProfile={},transcript=''):string|null{
+ if(!GROWTH_QUESTION.test(transcript))return null;
+ const vp=knownVerticalProfile(profile);
+ if(!vp)return null;
+ const kpis=verticalKpis(vp);
+ if(!kpis.length)return null;
+ const v=vp.vocabulary;
+ return `\n\n[Instruction for this answer: frame it in this business's key metrics — name each metric and give one concrete action per metric. Metrics: ${kpis.map(k=>`${k.label} (${k.hint})`).join('; ')}. In this business, customers are “${v.customer}”, bookings are “${v.booking}”, staff are “${v.staff}”. Never answer with generic “industry benchmarks” or another trade's numbers.]`;
 }
 export function assistantGreeting(profile:AssistantProfile={},canConfigure=true){
  const name=assistantName(profile);
