@@ -1,6 +1,7 @@
 import {createIcons,House,Sparkles,CalendarDays,Users,ListTodo,CreditCard,Settings,CircleHelp,Store,Bell,Mic,ArrowUp,ArrowRight,ChevronRight,Plus,Check,Clock,RefreshCw,Copy,X,Search,Phone,CalendarCheck,Menu,Plug} from 'lucide';
 import {createBusinessRoutines} from './business-routines';
 import {createBusinessAgent} from './business-agent';
+import {createProactive, proactiveIcons} from './proactive-ui';
 import './credit-packs.css';
 
 export type WorkdayView='today'|'chat'|'appointments'|'customers'|'tasks'|'billing'|'connections'|'account'|'help';
@@ -10,7 +11,7 @@ type Appointment={id:string;input:{title:string;appointmentType:string;staff?:st
 type Customer={id:string;name:string;email?:string|null;phone?:string|null;revision:number};
 type Task={id:string;title:string;dueAt:string|null;priority:string;status:'open'|'completed';revision:number;customer?:{id:string;name:string}|null};
 const views:WorkdayView[]=['today','chat','appointments','customers','tasks','billing','connections','account','help'];
-const icons={House,Sparkles,CalendarDays,Users,ListTodo,CreditCard,Settings,CircleHelp,Store,Bell,Mic,ArrowUp,ArrowRight,ChevronRight,Plus,Check,Clock,RefreshCw,Copy,X,Search,Phone,CalendarCheck,Menu,Plug};
+const icons={House,Sparkles,CalendarDays,Users,ListTodo,CreditCard,Settings,CircleHelp,Store,Bell,Mic,ArrowUp,ArrowRight,ChevronRight,Plus,Check,Clock,RefreshCw,Copy,X,Search,Phone,CalendarCheck,Menu,Plug,...proactiveIcons};
 const $=(id:string)=>document.getElementById(id)!;
 function el<K extends keyof HTMLElementTagNameMap>(tag:K,text='',className=''):HTMLElementTagNameMap[K]{const node=document.createElement(tag);node.textContent=text;node.className=className;return node;}
 function icon(name:string){const node=el('i');node.dataset.lucide=name;node.setAttribute('aria-hidden','true');return node;}
@@ -30,6 +31,10 @@ export function createWorkday(hooks:Hooks){
  const base=()=>`/api/businesses/${hooks.tenant()}`;
  const routines=createBusinessRoutines({api:hooks.api,tenant:hooks.tenant,ask:hooks.ask,onChanged:hooks.onChanged});$('tasks-content').after(routines.element);
  const businessAgent=createBusinessAgent({api:hooks.api,tenant:hooks.tenant,actor:hooks.actor,ask:hooks.ask,onChanged:()=>{hooks.onChanged?.();void refreshOverview(false);}});
+ // Crew 3 proactive engine: morning briefing + suggestion cards + ROI dashboard.
+ // The stack mounts at the top of the Today view; chatHome mounts in the chat view.
+ const proactive=createProactive({api:hooks.api,tenant:hooks.tenant,timeZone:()=>timeZone,onNotice:hooks.onNotice,onNavigate:view=>hooks.onNavigate(view),paint:()=>paintIcons()});
+ $('onboarding-progress').before(proactive.chatHome);
  const dateLabel=(date:string)=>new Intl.DateTimeFormat(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric',timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
  const time=(value:string)=>new Intl.DateTimeFormat(undefined,{timeZone,hour:'numeric',minute:'2-digit'}).format(new Date(value));
  const fullTime=(value:string)=>new Intl.DateTimeFormat(undefined,{timeZone,dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
@@ -57,6 +62,9 @@ export function createWorkday(hooks:Hooks){
    if(!data.appointments.length){const blank=el('div','','agenda-empty');blank.append(el('p','No upcoming Mayor bookings today.'),button('New appointment',()=>hooks.onNavigate('appointments'),'quiet'));agenda.append(blank);}
    for(const item of data.appointments as Appointment[])agenda.append(appointmentPreview(item));
    agenda.append(el('p','Mayor bookings only · '+timeZone,'source-note'));grid.append(attention,agenda);const oldGrid=target.querySelector('.today-grid');if(oldGrid)oldGrid.replaceWith(grid);else target.append(grid);
+   // Crew 3 proactive stack stays pinned at the top of the Today view.
+   target.prepend(proactive.stack);
+   void proactive.refresh();
    const taskSection=el('section','','today-tasks');const taskHeading=el('div','','section-heading');taskHeading.append(el('h2','Your next steps'),button(`View tasks (${data.counts.tasksOpen})`,()=>hooks.onNavigate('tasks'),'quiet'));taskSection.append(taskHeading);
    if(data.tasks.length){for(const task of data.tasks as Task[])taskSection.append(taskRow(task));}else taskSection.append(el('p','Your shared task list is clear. Add a next step whenever you need it.','subtle'));
    if(grid.nextSibling!==businessAgent.element)grid.after(businessAgent.element);const oldTasks=target.querySelector('.today-tasks');if(oldTasks)oldTasks.replaceWith(taskSection);else target.append(taskSection);paintIcons();if(loadAgent)await businessAgent.load();
@@ -236,5 +244,5 @@ export function createWorkday(hooks:Hooks){
  const mobileTools=el('div','','mobile-tools');mobileTools.setAttribute('aria-label','More workspace tools');for(const [label,view] of [['Tasks','tasks'],['Plan & usage','billing'],['Help','help']] as [string,WorkdayView][])mobileTools.append(button(label,()=>hooks.onNavigate(view)));$('account-view').prepend(mobileTools);
  for(const view of views)$(`${view}-tab`).onclick=()=>hooks.onNavigate(view);
  updateDesktopTabs();updateMobileTabs();paintIcons();
- return {show,refresh:refreshOverview,refreshCurrent,openMissedCalls:()=>{void missedCallsDialog();},ready(name:string,role:string){ready=true;workspaceRole=role;phoneTabs.hidden=false;menuButton.disabled=false;$('business-name').textContent=name;$('business-name').title=name;$('business-role').textContent=role.charAt(0).toUpperCase()+role.slice(1)+' workspace';show(current);const query=new URLSearchParams(location.search);if(query.get('billing')){hooks.onNavigate('billing');void loadBilling(true);}},clear(){ready=false;workspaceRole='';updateDesktopTabs();phoneTabs.hidden=true;menuButton.disabled=true;menuButton.setAttribute('aria-expanded','false');routines.clear();businessAgent.clear();accessVersion++;loadVersion++;taskVersion++;customerVersion++;agendaVersion++;billingVersion++;appointmentDate='';customerRows=[];taskRows=[];agendaRows=[];customerQuery='';customerCursor=taskCursor=agendaCursor=null;for(const view of ['today','appointments','customers','tasks','billing'])$(`${view}-content`).replaceChildren();document.querySelectorAll<HTMLDialogElement>('.workday-dialog').forEach(node=>node.close());$('business-name').textContent='Your business';$('business-name').removeAttribute('title');$('business-role').textContent='Workspace access ended';}};
+ return {show,refresh:refreshOverview,refreshCurrent,openMissedCalls:()=>{void missedCallsDialog();},proactive,ready(name:string,role:string){ready=true;workspaceRole=role;phoneTabs.hidden=false;menuButton.disabled=false;$('business-name').textContent=name;$('business-name').title=name;$('business-role').textContent=role.charAt(0).toUpperCase()+role.slice(1)+' workspace';show(current);const query=new URLSearchParams(location.search);if(query.get('billing')){hooks.onNavigate('billing');void loadBilling(true);}},clear(){ready=false;workspaceRole='';updateDesktopTabs();phoneTabs.hidden=true;menuButton.disabled=true;menuButton.setAttribute('aria-expanded','false');routines.clear();businessAgent.clear();proactive.reset();accessVersion++;loadVersion++;taskVersion++;customerVersion++;agendaVersion++;billingVersion++;appointmentDate='';customerRows=[];taskRows=[];agendaRows=[];customerQuery='';customerCursor=taskCursor=agendaCursor=null;for(const view of ['today','appointments','customers','tasks','billing'])$(`${view}-content`).replaceChildren();document.querySelectorAll<HTMLDialogElement>('.workday-dialog').forEach(node=>node.close());$('business-name').textContent='Your business';$('business-name').removeAttribute('title');$('business-role').textContent='Workspace access ended';}};
 }

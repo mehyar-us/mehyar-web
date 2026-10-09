@@ -1,0 +1,95 @@
+/* Crew 3 — proactive engine (morning briefing, suggestion cards, ROI dashboard). */
+.proactive-stack{display:flex;flex-direction:column;gap:34px;margin-bottom:10px}
+.proactive-stack .section-heading{margin-bottom:18px}
+.proactive-stack .section-heading .source-note{margin-left:auto;margin-top:0}
+
+/* Morning briefing */
+.briefing-section{background:var(--pale);border:1px solid var(--line);border-radius:14px;padding:24px 26px}
+.briefing-date{font-family:Manrope,sans-serif;font-size:20px;font-weight:700;letter-spacing:-.4px;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.briefing-date svg{width:20px;height:20px;color:#a5761a;flex-shrink:0}
+.briefing-section .section-heading h2 svg{width:19px;height:19px;color:#a5761a;vertical-align:-3px;margin-right:2px}
+.briefing-lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.briefing-lines li{font-size:14px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
+.briefing-lines strong{font-weight:700}
+.opportunity-list{margin-top:6px}
+.opportunity-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.opportunity-row>p{margin:0;font-size:13px;line-height:1.6;flex:1;min-width:200px;display:flex;gap:9px;align-items:flex-start;overflow-wrap:anywhere}
+.opportunity-row>p svg{width:17px;height:17px;color:#a5761a;flex-shrink:0;margin-top:2px}
+.opportunity-actions{display:flex;gap:8px;align-items:center}
+.opportunity-actions button{font-size:12px;min-height:38px}
+.opportunity-result{flex-basis:100%;font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.6}
+.opportunity-result:empty{display:none}
+
+/* Suggestion cards */
+.suggestion-list{display:flex;flex-direction:column;gap:16px}
+.suggestion-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;scroll-margin-top:20px}
+.suggestion-card h3{font-size:15px;font-weight:700;margin:0 0 6px;overflow-wrap:anywhere}
+.suggestion-card .row-copy p{font-size:13px}
+.suggestion-card .draft-preview{border-left:3px solid #bcd0e4;margin:12px 0;padding:10px 14px;font-style:italic;color:#33506e;background:#f7fafd;border-radius:0 8px 8px 0;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.suggestion-card .audience-line{font-size:12px;color:var(--muted);margin:0}
+.suggestion-card .card-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.suggestion-card .card-actions button{font-size:13px;display:inline-flex;align-items:center;gap:7px}
+.suggestion-card .card-actions button svg{width:15px;height:15px}
+.suggestion-card .edit-area{width:100%;min-height:96px;padding:11px 12px;border:1px solid #cbd8e6;border-radius:8px;font-size:13px;line-height:1.6;background:#fff;color:var(--ink);margin:12px 0;resize:vertical}
+.suggestion-card .send-result{font-size:12px;color:var(--muted);line-height:1.6;margin:10px 0 0}
+.suggestion-card .send-result:empty{display:none}
+.sent-badge{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#2f6b3a;background:#e8f3ea;border-radius:8px;padding:8px 12px}
+.sent-badge svg{width:14px;height:14px}
+.undo-bar{display:flex;align-items:center;gap:12px;background:#eef4f9;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px;margin-top:12px}
+.undo-bar button{font-size:12px;display:inline-flex;align-items:center;gap:6px}
+.undo-bar button svg{width:14px;height:14px}
+.suggestions-section>.quiet{margin-top:6px;font-size:13px}
+
+/* ROI dashboard */
+.roi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.roi-tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+.roi-tile h3{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin:0 0 8px;font-weight:700}
+.roi-value{font-family:Manrope,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.5px;margin:0 0 6px;overflow-wrap:anywhere}
+.roi-note{font-size:11px;color:#8391a0;margin:0;line-height:1.6}
+.sparkline{width:100%;height:36px;margin-top:8px;display:block}
+.sparkline polyline{stroke:#274f7c;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+/* Clickable revenue tile -> average-ticket editor (real <button>, inherits tile look) */
+button.roi-tile{cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%;height:100%;display:block}
+button.roi-tile:hover{border-color:#274f7c}
+button.roi-tile:focus-visible{outline:2px solid #274f7c;outline-offset:2px}
+/* Wrapper keeps grid placement on the tile itself, not the wrapper. */
+.roi-tile-wrap{display:contents}
+.roi-config{display:grid;gap:8px;margin-top:4px}
+.roi-config label{font-size:11px;color:var(--muted);font-weight:700}
+.roi-config input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;width:100%;box-sizing:border-box}
+.roi-config .row{display:flex;gap:8px}
+.roi-config-error{font-size:12px;color:#a33;margin:0}
+
+/* Chat home (compact card in the Assistant view) */
+.proactive-chat-home{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:0 0 18px;text-align:left}
+.proactive-chat-home h2{font-family:Manrope,sans-serif;font-size:16px;font-weight:700;margin:0 0 6px;letter-spacing:-.3px}
+.proactive-chat-home .chat-home-summary{font-size:12px;color:var(--muted);margin:0 0 12px}
+.proactive-chat-home .suggestion-card{padding:16px 18px;margin-bottom:12px}
+.proactive-chat-home>.quiet{font-size:12px}
+
+/* Deep-link flash (kept under 900ms; disabled under reduced-motion globally) */
+@keyframes proactive-flash{0%{box-shadow:0 0 0 0 rgba(57,134,202,.45)}100%{box-shadow:0 0 0 16px rgba(57,134,202,0)}}
+.flash{animation:proactive-flash .85s ease-out;border-radius:14px}
+@media(prefers-reduced-motion:reduce){.flash{animation:none}}
+
+/* Desktop: pin the stack full-width above the existing Today grid rows. */
+@media(min-width:1101px){
+ #today-view:has(.today-grid) .proactive-stack{grid-column:1/-1;grid-row:2}
+ #today-view:has(.today-grid) .attention-section{grid-column:1;grid-row:3}
+ #today-view:has(.today-grid) .agenda-preview{grid-column:2;grid-row:2/span 2}
+ #today-view:has(.today-grid) .today-tasks{grid-column:1/-1;grid-row:4}
+}
+@media(max-width:1100px){
+ .roi-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+}
+@media(max-width:760px){
+ .proactive-stack{gap:26px}
+ .briefing-section{padding:20px}
+ .briefing-date{font-size:18px}
+ .suggestion-card{padding:18px}
+ .suggestion-card .card-actions button{flex:1;justify-content:center;min-height:44px}
+ .opportunity-row{flex-direction:column;align-items:stretch}
+ .opportunity-actions{justify-content:flex-end}
+ .roi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .roi-value{font-size:20px}
+}

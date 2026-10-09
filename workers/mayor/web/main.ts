@@ -9,6 +9,7 @@ import {VoiceClient} from '@cloudflare/voice/client';
 import './style.css';
 import './workspace.css';
 import './workday.css';
+import './proactive.css';
 import {createWorkday,type WorkdayView} from './workday';
 import {createConnections} from './connections';
 import {createVoiceDiagnostics} from './voice-diagnostics';
@@ -84,9 +85,14 @@ async function refreshInbox(){
   inboxStatus.textContent=result.notifications.length?'Account items needing attention. Manage recurring checks and email alerts in Account.':'No account alerts are open. Manage recurring checks and email alerts in Account.';
   for(const item of result.notifications){
    const card=document.createElement('article'),title=document.createElement('h3'),message=document.createElement('p'),action=document.createElement('button');
-   const destination=item.action==='today'?'today':item.action==='tasks'?'tasks':item.action==='chat'?'chat':item.action==='missed-calls'?'missed-calls':'account';
-   title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':destination==='missed-calls'?'Review missed call':'Talk to '+assistantName(confirmedProfile);
-   action.onclick=()=>{if(destination==='missed-calls'){inbox.open=false;show('today');workday.openMissedCalls();return;}show(destination);inbox.open=false;(destination==='today'?$('today-heading'):destination==='tasks'?$('tasks-heading'):destination==='account'?$('account-heading'):$('talk')).focus();};
+   const destination=item.action==='today'||item.action==='briefing'||item.action==='suggestions'?'today':item.action==='tasks'?'tasks':item.action==='chat'?'chat':item.action==='missed-calls'?'missed-calls':'account';
+   // Real backend kinds (src/notifications.ts): action 'briefing' | 'suggestions'
+   // deep-link into the Today proactive sections; a future item.anchor
+   // ('briefing'|'suggestions'|'roi'|'suggestion:<cardId>') overrides either.
+   const anchor=typeof item.anchor==='string'&&item.anchor?item.anchor:item.action==='briefing'?'briefing':item.action==='suggestions'?'suggestions':'';
+   const anchorLabel=anchor==='briefing'?'Open morning briefing':anchor==='suggestions'?'Open suggestions':anchor==='roi'?'Open ROI dashboard':anchor.startsWith('suggestion')?'Open suggestion':undefined;
+   title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=anchorLabel??(destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':destination==='missed-calls'?'Review missed call':'Talk to '+assistantName(confirmedProfile));
+   action.onclick=()=>{if(destination==='missed-calls'){inbox.open=false;show('today');workday.openMissedCalls();return;}show(destination);inbox.open=false;if(anchor&&destination==='today')workday.proactive.highlight(anchor);else(destination==='today'?$('today-heading'):destination==='tasks'?$('tasks-heading'):destination==='account'?$('account-heading'):$('talk')).focus();};
    card.append(title,message,action);
    if(!item.read){
     const read=document.createElement('button');read.type='button';read.className='secondary';read.textContent='Mark read';

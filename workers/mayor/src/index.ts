@@ -43,6 +43,7 @@ import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
 import {handleCouncilRequest} from './council';
+import {runProactiveCycle,buildBriefing,buildRoi,setRoiConfig,roiConfigSchema,recordNoShow,noShowSchema,listSuggestionCards,sendSuggestionCard,editSuggestionCard,dismissSuggestionCard,setProactiveSettings,proactiveSettingsSchema} from './proactive';
 export {MayorPhone} from './phone-voice';
 export { MayorVoice } from './voice';
 
@@ -242,6 +243,26 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   }
   const appointments=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/appointments$/);
   if(appointments&&request.method==='GET')return json({appointments:await listAppointments(env,{tenantId:appointments[1],userId:session.user.id},url.searchParams.has('customerId')?z.uuid().parse(url.searchParams.get('customerId')):undefined)});
+  // Crew 3 proactive engine: briefing, ROI, suggestion cards, proactive settings.
+  const briefing=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/briefing$/);
+  if(briefing&&request.method==='GET')return json(await buildBriefing(env,{tenantId:briefing[1],userId:session.user.id}));
+  const roi=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/roi(?:\/(config|no-show))?$/);
+  if(roi){
+   const actor={tenantId:roi[1],userId:session.user.id},action=roi[2];
+   if(!action&&request.method==='GET')return json(await buildRoi(env,actor,url.searchParams.get('month')??undefined));
+   if(action==='config'&&request.method==='POST')return json(await setRoiConfig(env,actor,roiConfigSchema.parse(await readJson(request,1024))));
+   if(action==='no-show'&&request.method==='POST')return json(await recordNoShow(env,actor,noShowSchema.parse(await readJson(request,1024))));
+  }
+  const suggestions=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/suggestions(?:\/([a-f0-9-]{36})\/(send|edit|dismiss))?$/);
+  if(suggestions){
+   const actor={tenantId:suggestions[1],userId:session.user.id},cardId=suggestions[2],action=suggestions[3];
+   if(!cardId&&request.method==='GET')return json(await listSuggestionCards(env,actor));
+   if(cardId&&action==='send'&&request.method==='POST')return json(await sendSuggestionCard(env,actor,cardId));
+   if(cardId&&action==='edit'&&request.method==='POST')return json(await editSuggestionCard(env,actor,cardId,z.object({message:z.string().trim().min(1).max(320)}).strict().parse(await readJson(request,2048)).message));
+   if(cardId&&action==='dismiss'&&request.method==='POST')return json(await dismissSuggestionCard(env,actor,cardId));
+  }
+  const proactiveSettings=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/proactive\/settings$/);
+  if(proactiveSettings&&request.method==='POST')return json(await setProactiveSettings(env,{tenantId:proactiveSettings[1],userId:session.user.id},proactiveSettingsSchema.parse(await readJson(request,512))));
   const bookings=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/bookings(?:\/([a-f0-9-]{36})\/check)?$/);
   if(bookings){
     const actor={tenantId:bookings[1],userId:session.user.id};
@@ -332,4 +353,5 @@ export default {async fetch(request:Request,env:Env,context?:ExecutionContext) {
     if(result.ok)console.log(JSON.stringify(event));else console.error(JSON.stringify(event));
   }));
   context.waitUntil(runAppointmentRecovery(env).then(summary=>{console.log(JSON.stringify({event:'appointment_recovery',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'appointment_recovery_failed'}));throw new Error('Appointment recovery failed.');}));
+  context.waitUntil(runProactiveCycle(env).then(summary=>{console.log(JSON.stringify({event:'proactive_cycle',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'proactive_cycle_failed'}));}));
 }} satisfies ExportedHandler<Env>;
