@@ -1,0 +1,44 @@
+# voice-transport — VoiceSession Durable Object + realtime STT/TTS pipeline.
+#
+# Browser (AudioWorklet PCM16 16kHz mono) <-> wss://<host>/voice?session=<id>
+#   <-> VoiceSession DO <-> Workers AI realtime WebSockets
+#   (flux streaming STT, aura-1 streaming TTS, smart-turn-v2 endpointing).
+#
+# Auth: ?session=<sessionId> possession. Unknown/mismatch -> close 4401.
+# Validation: /probe runs env.AI.run(model, params, {websocket:true}) from
+# inside the DO and reports the handshake result as JSON.
+
+name = "voice-transport"
+main = "src/index.js"
+compatibility_date = "2026-10-09"
+account_id = "621600637337cc1c9ecb7095508bc732"
+
+[ai]
+binding = "AI"
+
+[durable_objects]
+bindings = [
+  { name = "VOICE_SESSION", class_name = "VoiceSession" },
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["VoiceSession"]
+
+[[kv_namespaces]]
+binding = "TTS_CACHE"
+id = "69d8bcaf67de40d3b5121cf61aa8edcc"
+
+[vars]
+# Origin used to validate ?session= via POST /api/assessment-call/heartbeat.
+VOICE_AUTH_ORIGIN = "https://mehyar.us"
+# Voice model for replies. aura-2-en is the default: ~200ms Speak->first-audio
+# vs ~450ms for aura-1 (measured 2026-10-09) — the difference between hitting
+# and missing the 400ms tts split. 2x neurons (2727.27/kchar); aura-1 remains
+# a one-line fallback. Mayor picks the final voice after hearing samples.
+TTS_MODEL = "@cf/deepgram/aura-2-en"
+TTS_VOICE = "asteria"
+STT_MODEL = "@cf/deepgram/flux"
+TURN_MODEL = "@cf/pipecat-ai/smart-turn-v2"
+# Max utterance seconds forwarded to a single STT stream segment.
+MAX_UTTERANCE_S = "30"

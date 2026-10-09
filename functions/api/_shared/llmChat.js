@@ -198,8 +198,8 @@ export async function chatJson({
 // Plain chat (non-JSON), for Jarvis general Q&A.
 export async function chat({ env, messages, max_tokens = 800, temperature = 0.4 }) {
   const r = await chatJson({ env, messages, max_tokens, temperature, json_mode: false });
-  if (!r.used_llm) return { used_llm: false, error: r.error, text: "" };
-  return { used_llm: true, text: r.content, model: r.model, provider: r.provider, latency_ms: r.latency_ms };
+  if (!r.used_llm) return { used_llm: false, error: r.error, text: "", usage: null };
+  return { used_llm: true, text: r.content, model: r.model, provider: r.provider, latency_ms: r.latency_ms, usage: r.usage || null };
 }
 
 // JSON-only parser: tries strict JSON first, then a tolerant extraction.
