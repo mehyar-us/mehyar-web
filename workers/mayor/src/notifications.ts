@@ -13,6 +13,9 @@ const content={
  missed_call:{title:'Missed call — text-back ready',message:'A call was missed. Open Missed calls to review it and send the text-back.',action:'missed-calls'},
  // Honest test-mode copy (compliance item 12): never imply a real SMS was sent.
  missed_call_simulated:{title:'Test text-back logged — no SMS sent',message:'The simulated text-back for this test missed call was logged to the SMS log. Nothing was sent to a real phone.',action:'missed-calls'},
+ // Crew 3 proactive engine: suggestion + morning briefing surface cards.
+ proactive_suggestion:{title:'A proactive suggestion is ready',message:'The Mayor spotted a way to fill slow time or win back business. Review the suggestion.',action:'suggestions'},
+ proactive_briefing:{title:'Your morning briefing is ready',message:'Yesterday, today, and open opportunities at a glance.',action:'briefing'},
 } as const;
 type Kind=keyof typeof content;
 export type NotificationRunGuard={revision:number;leaseToken:string};
