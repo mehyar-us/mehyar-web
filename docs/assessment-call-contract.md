@@ -320,3 +320,28 @@ Until you report real tokens we estimate from text lengths and mark the
 rollup `estimated: true`. Field names above are frozen — implement against
 them; if your route can't see a value, omit the key (never send 0 for
 unknown).
+
+### Follow-up call is human (Mayor 2026-10-09 ~12:25 ET)
+
+The paid follow-up call is with Mayor himself personally (AI mayor →
+human Mayor funnel continuity); post-payment booking lands on his real
+calendar (human-in-the-loop). Infra impact: none — a follow-up call opens
+an infra session row here exactly like an assessment call (linked via
+`brain_session_id`); the calendar/human booking is the brain crew's
+`book-followup` domain.
+
+### R1: post-payment human booking mechanics (2026-10-09, WITHDRAWN same day)
+
+The infra crew drafted a parallel booking system under this heading and
+**withdrew it before commit** when the brain crew shipped the real R1 system
+on this branch (commit `01c155e`, ~12:4x ET): `POST
+/api/assessment/book-followup` now takes `slot_start` and creates the booking
+request (status=requested, slot held, one-click approve/decline email to
+Mayor); `GET /api/assessment/booking-availability` (office hours minus
+holds); `GET /api/assessment/booking-decline?token=` (Mayor's one-click
+decline); `GET /api/assessment/booking-status?booking_id=`; `migrations/
+0042_assessment_bookings.sql`; shared logic in
+`functions/api/_shared/assessmentBooking.js`; Google Calendar template-link
+seam in `createCalendarEvent()`. Manual Mayor approval (not auto-confirm),
+Tue/Thu 10:00–16:00 ET office hours, 45-min slots, 24h notice, 48h TTL.
+The infra crew coordinates with this system and builds no parallel one.
