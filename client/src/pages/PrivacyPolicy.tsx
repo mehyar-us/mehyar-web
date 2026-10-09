@@ -30,6 +30,10 @@ const sections: Section[] = [
           and <a className="text-brand-700 underline dark:text-brand-100" href="/services">Services</a>{" "}
           pages. This notice covers all of them under one consistent policy.
         </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Business address: 244 96th St APT 1B, Brooklyn, NY 11209. Contact:{" "}
+          <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}`}>{contactEmail}</a>.
+        </p>
       </>
     ),
   },

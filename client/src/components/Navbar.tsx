@@ -30,6 +30,7 @@ const primaryLinks = [
   { href: "/portfolio", label: "Work", icon: BriefcaseBusiness },
   { href: "/apps", label: "Products we own", icon: Boxes },
   { href: "/services", label: "Services", icon: AppWindow },
+  { href: "/audit", label: "Audit", icon: ClipboardCheck },
   { href: "/pricing", label: "Industries", icon: Building2 },
   { href: "/blog", label: "Insights", icon: BookOpen },
 ];
@@ -38,6 +39,7 @@ const actionLinks = [
   { href: "/contact", label: "Start a project", icon: Mail },
   { href: "/booking", label: "Book a call", icon: CalendarDays },
   { href: "/micro-offer#intake", label: "Book a tech audit", icon: ClipboardCheck },
+  { href: "/audit", label: "Audit my business", icon: ClipboardCheck },
 ];
 
 const accountLinks = [
@@ -68,6 +70,13 @@ const Navbar = () => {
   }, [isMobileMenuOpen]);
 
   const closeMenu = () => setIsMobileMenuOpen(false);
+
+  const isNavActive = (link: { href: string }) => {
+    const base = link.href.split("#")[0];
+    if (link.href === "/pricing") return location === base || location.startsWith("/industries/");
+    if (link.href === "/audit") return location === base || location.startsWith("/audit/");
+    return location === base;
+  };
 
   return (
     <nav
@@ -108,7 +117,7 @@ const Navbar = () => {
                 href={link.href}
                 className={cn(
                   "relative px-0 py-2 text-sm font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  (location === link.href.split("#")[0] || (link.href === "/pricing" && location.startsWith("/industries/")))
+                  isNavActive(link)
                     ? "text-brand-900 after:absolute after:inset-x-0 after:-bottom-[0.72rem] after:h-0.5 after:bg-brand-700 dark:text-white"
                     : "text-ink/75 hover:text-brand-800 dark:text-white/72 dark:hover:text-white",
                 )}
@@ -152,7 +161,7 @@ const Navbar = () => {
             <div className="divide-y divide-border border-y border-border">
               {primaryLinks.map((link) => {
                 const Icon = link.icon;
-                const active = location === link.href.split("#")[0] || (link.href === "/pricing" && location.startsWith("/industries/"));
+                const active = isNavActive(link);
                 return (
                   <Link
                     key={link.href}

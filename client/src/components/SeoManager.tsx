@@ -154,10 +154,63 @@ const industryOfferCatalog = {
 
 const staticMeta: Record<string, SeoMeta> = {
   "/audit": {
+    title: "Audit My Business — $330 AI Business Audit | MehyarSoft",
+    description:
+      "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 30-minute CEO walkthrough video. One-time $330, no subscription.",
+    path: "/audit",
+    jsonLd: [
+      webPage(
+        "/audit",
+        "Audit My Business — $330 AI Business Audit | MehyarSoft",
+        "Professional AI business audit: score, ranked money leaks, flaws, prioritized fixes, and where AI fits in your business.",
+      ),
+      breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Audit My Business", path: "/audit" },
+      ]),
+      {
+        "@type": "Service",
+        name: "Audit My Business — $330 AI Business Audit",
+        description:
+          "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 30-minute CEO walkthrough video for a deeper transcript-based assessment.",
+        provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
+        areaServed: "Worldwide",
+        offers: {
+          "@type": "Offer",
+          price: "330",
+          priceCurrency: "USD",
+          url: absoluteUrl("/audit"),
+        },
+      },
+      faq([
+        {
+          question: "Is this the same as the founder-led $330 tech audit?",
+          answer:
+            "No — same price, different product. The founder-led $330 tech audit is a human review, manually invoiced after a scope check. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email.",
+        },
+        {
+          question: "Do I need the walkthrough video?",
+          answer:
+            "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings it can't get from the site.",
+        },
+        {
+          question: "What if the AI isn't sure about something?",
+          answer:
+            "It says so. Low-confidence findings carry a “Needs review” flag, and anything the audit couldn't see enough of is marked “couldn't be assessed” instead of guessed at.",
+        },
+        {
+          question: "Can I get a refund?",
+          answer:
+            "Purchases are final — there are no refunds on the $330 audit. Read the honest scope on the page before paying.",
+        },
+      ]),
+    ],
+  },
+  "/audit/free": {
     title: "Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft",
     description:
       "Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.",
-    path: "/audit",
+    path: "/audit/free",
   },
   "/": {
     title: "MehyarSoft LLC | Software, Systems & AI Automation",

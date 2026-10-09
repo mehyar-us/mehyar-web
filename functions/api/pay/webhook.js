@@ -37,6 +37,7 @@ import { fulfillPuretap } from "../_shared/fulfillPuretap.js";
 import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
 import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
 import { fulfillMoonroom } from "../_shared/fulfillMoonroom.js";
+import { fulfillAuditBusiness } from "../_shared/fulfillAuditBusiness.js";
 
 // Buyer CRM hardening (tracking-crm-fix, 2026-10-05).
 //
@@ -471,6 +472,16 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillMoonroom({ db, env, waitUntil, sendEmail }, payment);
   },
+
+  // Audit My Business ($330 one-time audit). Marks the audit row paid
+  // (idempotent; never touches ready/generating rows), unifies the access
+  // token onto payment.access_token, triggers generation via the internal
+  // /api/audit/business/generate endpoint, and emails the buyer their
+  // personal report link.
+  async audit_business({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillAuditBusiness({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -509,7 +520,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
 import Audit from "@/pages/Audit";
+import AuditFree from "@/pages/AuditFree";
 import AuditReport from "@/pages/AuditReport";
 import Services from "@/pages/Services";
 import Pricing from "@/pages/Pricing";
@@ -37,6 +38,7 @@ import NotFound from "@/pages/not-found";
 import MainLayout from "@/layouts/MainLayout";
 import SeoManager from "@/components/SeoManager";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import MarketingTags from "@/components/MarketingTags";
 
 // ── Custom redirect component ─────────────────────────────────────────
 // wouter's built-in <Redirect to="/x" /> does an exact-path match.
@@ -119,6 +121,7 @@ function App({ ssrPath }: { ssrPath?: string }) {
         <DashboardHostRedirect />
         <SeoManager />
         <GoogleAnalytics />
+        <MarketingTags />
         <MainLayout>
           <Switch>
             {/* ─── Public marketing + legal pages ─────────────────────────────
@@ -162,6 +165,8 @@ function App({ ssrPath }: { ssrPath?: string }) {
             <Route path="/contact/" component={Contact} />
             <Route path="/audit" component={Audit} />
             <Route path="/audit/" component={Audit} />
+            <Route path="/audit/free" component={AuditFree} />
+            <Route path="/audit/free/" component={AuditFree} />
             <Route path="/audit/report" component={AuditReport} />
             <Route path="/audit/report/" component={AuditReport} />
             <Route path="/billing/checkout" component={BillingCheckout} />

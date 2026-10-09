@@ -16,6 +16,8 @@
 // initOrder hook below; the audit_report hook mirrors the legacy
 // /api/audit/full-report/checkout behavior.
 
+import { sha256hex } from "../_shared/auditBusinessShared.js";
+
 // Attribution threading (tracking-crm-fix, 2026-10-05). Product pages
 // forward MSRC.get() as params.attribution; we store it on
 // billing_payments.attribution_json and mirror marketing fields into
@@ -203,6 +205,34 @@ const orderHooks = {
     const userId = sanitize(params.user_id, 128);
     if (!userId) return { error: "missing_user_id" };
     return { orderExtra: {}, metadataExtra: { aimech_user_id: userId } };
+  },
+
+  // Audit My Business ($330 one-time audit). params: { audit_id } — the
+  // intake row created by /api/audit/business/intake.
+  // The buyer must own the intake: SHA-256 of the checkout email has to
+  // match the row's email_hash (the row never holds the raw email).
+  // Mints the 64-hex access token here so the Stripe success_url (?token=)
+  // and the audit row share ONE token from the start.
+  async audit_business(db, product, { email, params }) {
+    const auditId = sanitize(params.audit_id, 64);
+    if (!/^[0-9a-f-]{36}$/i.test(auditId)) return { error: "invalid_audit_id" };
+    const row = await db.prepare(
+      "SELECT id, status, email_hash FROM audit_business_reports WHERE id = ?"
+    ).bind(auditId).first();
+    if (!row) return { error: "unknown_audit" };
+    const emailHash = await sha256hex("audit-business|" + email);
+    if (row.email_hash !== emailHash) return { error: "audit_email_mismatch" };
+    if (row.status !== "intake" && row.status !== "failed") {
+      return { error: "audit_not_payable" };
+    }
+    const accessToken = randomHex(32);
+    await db.prepare(
+      "UPDATE audit_business_reports SET access_token=?, status_changed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?"
+    ).bind(accessToken, auditId).run();
+    return {
+      orderExtra: { audit_id: auditId, accessToken },
+      metadataExtra: { audit_id: auditId },
+    };
   },
 };
 

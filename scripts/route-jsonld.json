@@ -1576,5 +1576,89 @@
         }
       ]
     }
+  ],
+  "/audit": [
+    {
+      "@type": "WebPage",
+      "@id": "https://mehyar.us/audit/#webpage",
+      "url": "https://mehyar.us/audit/",
+      "name": "Audit My Business — $330 AI Business Audit | MehyarSoft",
+      "description": "Professional AI business audit: score, ranked money leaks, flaws, prioritized fixes, and where AI fits in your business.",
+      "isPartOf": {
+        "@id": "https://mehyar.us/#website"
+      },
+      "about": {
+        "@id": "https://mehyar.us/#professional-service"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://mehyar.us/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Audit My Business",
+          "item": "https://mehyar.us/audit/"
+        }
+      ]
+    },
+    {
+      "@type": "Service",
+      "name": "Audit My Business — $330 AI Business Audit",
+      "description": "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 30-minute CEO walkthrough video for a deeper transcript-based assessment.",
+      "provider": {
+        "@id": "https://mehyar.us/#professional-service"
+      },
+      "areaServed": "Worldwide",
+      "offers": {
+        "@type": "Offer",
+        "price": "330",
+        "priceCurrency": "USD",
+        "url": "https://mehyar.us/audit/"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is this the same as the founder-led $330 tech audit?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No — same price, different product. The founder-led $330 tech audit is a human review, manually invoiced after a scope check. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need the walkthrough video?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings it can't get from the site."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What if the AI isn't sure about something?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It says so. Low-confidence findings carry a “Needs review” flag, and anything the audit couldn't see enough of is marked “couldn't be assessed” instead of guessed at."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I get a refund?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Purchases are final — there are no refunds on the $330 audit. Read the honest scope on the page before paying."
+          }
+        }
+      ]
+    }
   ]
 }

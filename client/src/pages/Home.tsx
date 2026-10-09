@@ -105,7 +105,7 @@ export default function Home() {
                 <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{f}</li>
               ))}
             </ul>
-            <Link href="/audit" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-8 bg-emerald-500 text-emerald-950 hover:bg-emerald-400" })}>
+            <Link href="/audit/free" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-8 bg-emerald-500 text-emerald-950 hover:bg-emerald-400" })}>
               Start with the free audit <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </div>

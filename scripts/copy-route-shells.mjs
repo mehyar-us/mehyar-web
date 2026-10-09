@@ -20,10 +20,16 @@ const appShell = readFileSync(indexHtml, 'utf8');
 // its own meta.
 const routeMeta = {
   '/audit': {
+    title: 'Audit My Business — $330 AI Business Audit | MehyarSoft',
+    description:
+      'A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 30-minute CEO walkthrough video. One-time $330, no subscription.',
+    path: '/audit',
+  },
+  '/audit/free': {
     title: 'Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft',
     description:
       'Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.',
-    path: '/audit',
+    path: '/audit/free',
   },
   '/': {
     title: 'MehyarSoft LLC | Software, Systems & AI Automation',
@@ -371,6 +377,7 @@ if (missingBlogShells.length > 0) {
 
 const directRoutes = [
   'audit',
+  'audit/free',
   'services',
   'pricing',
   'proposals',

@@ -330,7 +330,8 @@ const sections: Section[] = [
           <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}`}>{contactEmail}</a>.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Operated by <strong>{company}</strong>. Effective July 18, 2026.
+          Operated by <strong>{company}</strong>. Mail: 244 96th St APT 1B, Brooklyn, NY 11209.
+          Effective July 18, 2026.
         </p>
       </>
     ),
