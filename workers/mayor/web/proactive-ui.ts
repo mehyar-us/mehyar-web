@@ -71,7 +71,10 @@ export function createProactive(hooks: ProactiveHooks) {
   roiSection.id = 'proactive-roi';
   roiSection.setAttribute('aria-labelledby', 'proactive-roi-heading');
 
-  stack.append(briefingSection, suggestionsSection, roiSection);
+  // Crew 5 UX: the stack is briefing + suggestions (Today view + chat home).
+  // The ROI dashboard lives on its own as the Feed collection's proof
+  // stream — it mounts separately in the Feed view.
+  stack.append(briefingSection, suggestionsSection);
 
   const chatHome = el('section', '', 'proactive-chat-home');
   chatHome.id = 'proactive-chat-home';
@@ -523,5 +526,5 @@ export function createProactive(hooks: ProactiveHooks) {
     window.setTimeout(() => target.classList.remove('flash'), 900);
   }
 
-  return { stack, chatHome, refresh, reset, highlight };
+  return { stack, roi: roiSection, chatHome, refresh, reset, highlight };
 }

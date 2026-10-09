@@ -25,3 +25,19 @@ fieldset.booking-customer{border:1px solid #dce5ee;border-radius:9px;padding:15p
 .business-switcher-item:hover:not(:disabled){background:#eef4f9}
 .business-switcher-item.current{font-weight:700;color:#315d86}
 .business-switcher-item:disabled{cursor:default;opacity:1}
+/* Crew 5 UX — front-desk pass: 44px minimum tap targets on card + composer actions */
+.suggestion-card .card-actions button{min-height:44px}
+.opportunity-actions button{min-height:44px}
+.send-button{width:44px;height:44px;min-height:44px}
+#talk{width:44px;height:44px;min-height:44px}
+/* Task toggle keeps a 44px hit area around its 25px visible box */
+.task-toggle{width:44px;height:44px;min-height:44px;background:none;border:0;display:grid;place-items:center;flex-shrink:0;padding:0;position:relative}
+.task-toggle::before{content:"";width:25px;height:25px;border:1.5px solid #b6c8d9;border-radius:6px;background:#fff;position:absolute}
+.task-toggle[aria-pressed=true]::before{background:#e5eef6;border-color:#7d9cbb}
+.task-toggle svg{position:relative;color:#284f78}
+/* Crew 5 UX — Feed collection */
+.feed-wins{margin-top:36px}
+.win-tag{background:#e8f3ea;color:#2f6b3a;font-weight:700}
+/* Crew 5 UX — Help is contextual now, living in the conversation view */
+.contextual-help{margin:26px 0 8px}
+.contextual-help>summary{font-size:14px;font-weight:700;cursor:pointer;padding:12px 0}

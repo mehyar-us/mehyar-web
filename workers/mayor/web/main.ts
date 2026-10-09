@@ -93,7 +93,7 @@ async function refreshInbox(){
    const anchor=typeof item.anchor==='string'&&item.anchor?item.anchor:item.action==='briefing'?'briefing':item.action==='suggestions'?'suggestions':'';
    const anchorLabel=anchor==='briefing'?'Open morning briefing':anchor==='suggestions'?'Open suggestions':anchor==='roi'?'Open ROI dashboard':anchor.startsWith('suggestion')?'Open suggestion':undefined;
    title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=anchorLabel??(destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':destination==='missed-calls'?'Review missed call':'Talk to '+assistantName(confirmedProfile));
-   action.onclick=()=>{if(destination==='missed-calls'){inbox.open=false;show('today');workday.openMissedCalls();return;}show(destination);inbox.open=false;if(anchor&&destination==='today')workday.proactive.highlight(anchor);else(destination==='today'?$('today-heading'):destination==='tasks'?$('tasks-heading'):destination==='account'?$('account-heading'):$('talk')).focus();};
+   action.onclick=()=>{inbox.open=false;if(destination==='missed-calls'){show('today');workday.openMissedCalls();return;}if(destination==='tasks'){workday.openTasks();return;}const target=anchor==='roi'?'feed':destination;show(target);if(anchor&&(target==='today'||target==='feed'))workday.proactive.highlight(anchor);else(target==='today'?$('today-heading'):target==='feed'?$('feed-heading'):target==='account'?$('account-heading'):$('talk')).focus();};
    card.append(title,message,action);
    if(!item.read){
     const read=document.createElement('button');read.type='button';read.className='secondary';read.textContent='Mark read';
@@ -159,7 +159,7 @@ const timezoneSuggestion=createTimeZoneSuggestion(text=>{show('chat');void sendT
 $('logout').before(timezoneSuggestion.element);
 const diagnostics=createVoiceDiagnostics();
 const voiceHealth=createVoiceHealth(diagnostics);
-$('help-view').append(voiceHealth.element);
+$('account-view').append(voiceHealth.element);
 const notice=(message:string)=>{
  if(accessEnded)return;
  const banner=$('notice');
@@ -715,6 +715,9 @@ $('talk').onclick=async()=>{show('chat');microphoneProblem='';notice('');if(voic
 $('mute').onclick=()=>voice?.toggleMute();
 $('text-form').onsubmit=event=>{event.preventDefault();void sendTextMessage($<HTMLTextAreaElement>('message').value);};
 $('message').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('text-form').dispatchEvent(new Event('submit',{cancelable:true}));}});
+// Crew 5 UX: the conversation is home, not a tab. Tapping the persistent
+// composer from any view returns to the conversation first.
+$('message').addEventListener('focus',()=>{if(loggedIn&&!accessEnded&&!namingMode&&document.body.dataset.view!=='chat')show('chat');});
 async function signIn(provider='google',capabilities:string[]=[]){
   try{notice('');const data=await api(`/api/auth/start/${provider}`,{capabilities,...(capabilities.length?{tenantId}:{})});
     const url=new URL(data.url);if(!['accounts.google.com','login.microsoftonline.com','accounts.zoho.com'].includes(url.hostname))throw new Error('Unexpected sign-in destination.');location.assign(url.href);
