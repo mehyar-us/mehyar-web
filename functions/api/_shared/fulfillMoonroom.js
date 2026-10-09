@@ -77,7 +77,12 @@ export async function fulfillMoonroom({ db, env, waitUntil, sendEmail }, payment
     return { ok: true, replay: true, order_id: existing.id, status: existing.status };
   }
 
-  const accessToken = randomToken(32);
+  // Reuse the payment's checkout-time access_token as the order token (house
+  // pattern: prepguide, sproutscore). The Stripe success_url is baked at
+  // checkout creation with this token — minting a new one here orphans the
+  // buyer's success page (status?token= -> not_found -> "Confirming..." hangs).
+  const accessToken = payment.access_token;
+  if (!accessToken) throw new Error("fulfillMoonroom: payment has no access_token");
   const inputsJson = JSON.stringify({ inputs: intakeInputs, sku: productId });
   const ins = await db
     .prepare(
@@ -88,14 +93,6 @@ export async function fulfillMoonroom({ db, env, waitUntil, sendEmail }, payment
     .run();
   const orderId = ins.meta.last_row_id;
 
-  // Token unification: the Stripe success_url_template receives
-  // billing_payments.access_token, but every Moonroom surface gates on the
-  // moonroom_orders token. Point the payment row at the Moonroom token so
-  // ONE token works everywhere.
-  await db
-    .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
-    .bind(accessToken, payment.id)
-    .run();
 
   const { from, fromName } = fromAddress();
   const headers = { "content-type": "application/json" };
