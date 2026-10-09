@@ -21,6 +21,7 @@ import { onRequestPost as interruptPost } from "../functions/api/assessment-call
 import { onRequestPost as tcPost } from "../functions/api/assessment-call/turn-complete.js";
 import {
   estimateBrainNeurons, applyTimings, appendTurn, sha256Hex, costNeurons, rollupUsage,
+  checkSpendGuard, dailySpendCapUsd, dailySpendUsd,
 } from "../functions/api/assessment-call/_shared/callShared.js";
 
 import { VoiceAdapter } from "../assessment-call/voice-adapter.js";
@@ -184,11 +185,21 @@ function freshEnv() {
   }
   r = await sessionPost({ request: req("/api/assessment-call/session", { body: { consent: true, adult: true }, headers: withIp("2.2.2.2") }), env });
   ok(r.status === 429, "6th session same IP rejected");
-  // neuron guard
+  // spend guard: at cap → clean decline (429), never a half-call
   const day = Math.floor(Date.now() / 86400000);
-  await env.INTAKE_KV.put(`call:neurons:day:${day}`, "8000");
+  await env.INTAKE_KV.put(`call:spend:day:${day}`, "20");
   r = await sessionPost({ request: req("/api/assessment-call/session", { body: { consent: true, adult: true }, headers: withIp("9.9.9.9") }), env });
-  ok(r.status === 429, "neuron guard trips admission");
+  ok(r.status === 429, "spend guard trips admission at cap");
+  // under cap → admitted
+  await env.INTAKE_KV.put(`call:spend:day:${day}`, "19.99");
+  r = await sessionPost({ request: req("/api/assessment-call/session", { body: { consent: true, adult: true }, headers: withIp("9.9.9.9") }), env });
+  ok(r.status === 200, "spend guard admits under cap");
+  // configurability
+  ok(dailySpendCapUsd({}) === 20, "spend cap defaults $20/day");
+  ok(dailySpendCapUsd({ ASSESSMENT_CALL_DAILY_SPEND_CAP_USD: "50" }) === 50, "spend cap configurable via env");
+  ok(dailySpendCapUsd({ ASSESSMENT_CALL_DAILY_SPEND_CAP_USD: "junk" }) === 20, "bad env value falls back to $20");
+  ok((await dailySpendUsd(env)) === 19.99, "dailySpendUsd reads the KV counter");
+  ok((await checkSpendGuard(env)) === true, "checkSpendGuard true under cap");
 }
 
 // ── 3. heartbeat / expiry ─────────────────────────────────────────────────
@@ -282,9 +293,18 @@ function freshEnv() {
   const c1 = costNeurons({ llmInputTokens: 1e6, llmOutputTokens: 1e6, decideCalls: 2, decideInputTokens: 1e6 });
   ok(Math.abs(c1.neurons - (31818 + 68182 + 8182)) < 1e-6, "costNeurons brain+decide math");
   ok(Math.abs(c1.usd - c1.neurons * 0.011 / 1000) < 1e-9, "costNeurons usd math");
-  // voice-team defaults at list price
-  const c2 = costNeurons({ sttSeconds: 60, ttsChars: 1000 });
-  ok(Math.abs(c2.neurons - (46.63 + 2727.27)) < 1e-6, "costNeurons stt/tts defaults");
+  // voice-team frozen shape (answers doc §11): actuals verbatim, never list-price estimates
+  const c2 = costNeurons({
+    stt: { model: "@cf/deepgram/flux", audioMinutes: 12.4, neurons: 8680 },
+    tts: { model: "@cf/deepgram/aura-1", chars: 8230, neurons: 11224 },
+    turn: { model: "@cf/pipecat-ai/smart-turn-v2", audioMinutes: 45.0, neurons: 23 },
+  });
+  ok(c2.neurons === 8680 + 11224 + 23, "costNeurons voice actuals passthrough");
+  ok(Math.abs(c2.usd - 19927 * 0.011 / 1000) < 1e-12, "costNeurons voice usd math");
+  // legacy list-price estimation is gone: old fields contribute nothing
+  ok(costNeurons({ sttSeconds: 60, ttsChars: 1000 }).neurons === 0, "no list-price STT/TTS estimation");
+  // garbage voice shapes are ignored, not fatal
+  ok(costNeurons({ stt: { neurons: "nope" }, tts: null, turn: { neurons: -5 } }).neurons === 0, "garbage voice usage ignored");
   const merged = await rollupUsage(env, sessionId, { llmInputTokens: 400, llmOutputTokens: 100, decideCalls: 1, llmModel: "test-model" });
   ok(merged.llmInputTokens === 400 && merged.decideCalls === 1, "rollup accumulates");
   ok(merged.llmModel === "test-model", "rollup keeps scalars");
@@ -293,10 +313,20 @@ function freshEnv() {
   const row2 = env.LEADS_DB.sessions.get(sessionId);
   ok(row2.cost_usd_est === merged.usdEst && row2.neurons_est === merged.neuronsEst, "session row carries rollup");
   const day = Math.floor(Date.now() / 86400000);
-  ok(Number(await env.INTAKE_KV.get(`call:neurons:day:${day}`)) > 0, "daily guard accumulates");
-  // second rollup accumulates, estimate flag flips when brain goes quiet
-  const merged2 = await rollupUsage(env, sessionId, { sttSeconds: 30 });
-  ok(merged2.sttSeconds === 30 && merged2.llmInputTokens === 400, "rollup merges across turns");
+  ok(Number(await env.INTAKE_KV.get(`call:spend:day:${day}`)) > 0, "daily spend guard accumulates");
+  // second rollup merges the frozen voice shape; estimate flag flips when brain goes quiet
+  const merged2 = await rollupUsage(env, sessionId, {
+    stt: { model: "@cf/deepgram/flux", audioMinutes: 12.4, neurons: 8680 },
+    tts: { model: "@cf/deepgram/aura-1", chars: 8230, neurons: 11224 },
+    turn: { model: "@cf/pipecat-ai/smart-turn-v2", audioMinutes: 45, neurons: 23 },
+  });
+  ok(merged2.stt.neurons === 8680 && merged2.stt.audioMinutes === 12.4, "rollup merges voice stt actuals");
+  ok(merged2.stt.model === "@cf/deepgram/flux", "rollup keeps voice stt model");
+  ok(merged2.tts.chars === 8230 && merged2.tts.model === "@cf/deepgram/aura-1", "rollup merges voice tts actuals");
+  ok(merged2.turn.neurons === 23, "rollup merges turn actuals");
+  ok(merged2.llmInputTokens === 400, "rollup keeps brain counters across turns");
+  ok(Math.abs(merged2.neuronsEst - (merged.neuronsEst + 19927)) < 0.01, "voice actuals land in the cost rollup");
+  ok(Math.abs(Number(await env.INTAKE_KV.get(`call:spend:day:${day}`)) - merged2.usdEst) < 1e-9, "spend counter tracks rollup USD");
   // turn-complete wires usage through
   const r3 = await tcPost({
     request: req("/api/assessment-call/turn-complete", {
@@ -310,6 +340,18 @@ function freshEnv() {
   const u3 = JSON.parse(row3.usage_json);
   ok(u3.llmInputTokens === 900, "turn-complete usage accumulates (400+500)");
   ok(u3.estimated === false, "real usage stays non-estimated");
+  // turn-complete passes the frozen voice shape through to the rollup
+  const r3b = await tcPost({
+    request: req("/api/assessment-call/turn-complete", {
+      body: { sessionId, userText: "u".repeat(100), replyText: "r".repeat(100),
+              usage: { stt: { model: "flux", audioMinutes: 2, neurons: 1400 },
+                       tts: { model: "aura-1", chars: 500, neurons: 682 } } },
+    }), env,
+  });
+  ok(r3b.status === 200, "turn-complete accepts frozen voice usage");
+  const u3b = JSON.parse(env.LEADS_DB.sessions.get(sessionId).usage_json);
+  ok(u3b.stt.neurons === 8680 + 1400 && u3b.tts.chars === 8230 + 500, "frozen voice usage accumulates across turns");
+  ok(u3b.tts.model === "aura-1", "latest voice model kept");
   // estimated fallback when nobody reports
   const env2 = freshEnv();
   const r4 = await sessionPost({ request: req("/api/assessment-call/session", { body: { consent: true, adult: true }, headers: withIp("8.8.8.8") }), env: env2 });
@@ -338,6 +380,7 @@ function freshEnv() {
   const a = new VoiceAdapter({ transport, avatar, fetchFn });
   await a.startCall({ brainSessionId: "brain-1", callSessionId: "call-1" });
   ok(transport.brainSessionId === "brain-1", "transport init got brain session");
+  ok(transport.sessionId === "call-1", "transport init got call sessionId (voice WS auth)");
   ok(transport.listening, "transport listening");
   ok(avatar.log.some((e) => e.call === "setState" && e.state === "listening"), "avatar listening");
 

@@ -22,7 +22,7 @@
 
 import {
   reply, sha256Hex, originOk, ipHashOf,
-  createSession, checkSessionCreateLimit, checkNeuronGuard,
+  createSession, checkSessionCreateLimit, checkSpendGuard,
   CALL_MAX_SECONDS, HEARTBEAT_SECONDS,
 } from "./_shared/callShared.js";
 
@@ -40,7 +40,9 @@ export async function onRequestPost({ request, env }) {
   if (body?.consent !== true) return reply(403, { message: "Please agree to call recording and transcription to start." });
   if (body?.adult !== true) return reply(403, { message: "Assessment calls are for adults 18 and older." });
 
-  if (!(await checkNeuronGuard(env)))
+  // Daily spend guard — fail-closed admission: over cap => clean decline,
+  // never a half-call. Configurable via ASSESSMENT_CALL_DAILY_SPEND_CAP_USD.
+  if (!(await checkSpendGuard(env)))
     return reply(429, { message: "Call capacity is full right now. Please try again tomorrow." });
 
   const ipHash = await ipHashOf(request);

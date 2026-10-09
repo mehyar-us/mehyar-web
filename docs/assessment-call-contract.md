@@ -334,7 +334,8 @@ The call UI creates two sessions and links them:
 `assessment_call_sessions.brain_session_id` is the join key. Consent is two
 layers: our UI checkboxes (timestamped `consent_at`) + your spoken consent
 script / consent stage. Rate limits: 5 sessions/day/IP on our endpoint (yours
-has its own 5/day on `/start`); daily neuron guard (8,000) on admission.
+has its own 5/day on `/start`); daily spend guard ($20/day default, configurable
+via `ASSESSMENT_CALL_DAILY_SPEND_CAP_USD`) on admission — fail-closed.
 
 ### Per-turn latency log (we store, voice stack supplies)
 

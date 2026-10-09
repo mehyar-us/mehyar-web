@@ -7,12 +7,13 @@
 // Overhead is measured in scripts/test-assessment-call.mjs (event->fetch and
 // response->speak must each be < 50ms in-process).
 //
-// Transport contract (requested from the voice team —
-// docs/voice-adapter-contract.md):
-//   init({ brainSessionId }), startListening(), stopListening(),
+// Transport contract (voice team — docs/voice-adapter-answers.md §1, frozen):
+//   init({ brainSessionId, sessionId }), startListening(), stopListening(),
 //   on('transcript'|'bargein'|'error'|'ended', handler),
 //   speak(text, { onFirstAudio, onEnd }) -> Promise,
 //   cancelSpeech(), dispose()
+// sessionId is OUR 128-bit infra session secret — it authorizes the voice
+// WebSocket (wss://<voice-host>/voice?session=<sessionId>).
 // Avatar contract: mountAvatar, setSpeaking, setState, playSpeech, dispose.
 
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -42,7 +43,7 @@ export class VoiceAdapter {
     this.brainSessionId = brainSessionId;
     this.callSessionId = callSessionId;
     this.active = true;
-    await this.transport.init({ brainSessionId });
+    await this.transport.init({ brainSessionId, sessionId: this.callSessionId });
     this.transport.on("transcript", (e) => this.onTranscript(e));
     this.transport.on("bargein", () => this.onBargeIn());
     this.transport.on("error", (e) => this.emit("transport_error", e));

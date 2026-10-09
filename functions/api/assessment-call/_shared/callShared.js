@@ -5,7 +5,7 @@
 // the <=1s latency budget and turn-taking. The brain crew owns the
 // conversation (functions/api/assessment/* + assessment_sessions).
 // THIS module owns: infra session lifecycle, IP rate limits, the daily
-// neuron guard, and the per-turn latency log.
+// spend guard, and the per-turn latency log.
 //
 // Turn flow (post-pivot):
 //   voice transport -> transcript -> POST /api/assessment/turn (brain crew)
@@ -17,7 +17,8 @@ import { validateMayorWave } from "../../explore-voice.js";
 export const CALL_MAX_SECONDS = 45 * 60;   // hard session cap (backstop)
 export const HEARTBEAT_SECONDS = 30;
 export const TURN_MAX_PER_SESSION = 120;   // sanity cap on logged turns
-export const DAILY_NEURON_GUARD = 8000;    // stop new sessions before the 10k cap
+export const DAILY_SPEND_CAP_USD_DEFAULT = 20; // ≈50 voice calls/day (voice-team recommendation)
+// Configurable: ASSESSMENT_CALL_DAILY_SPEND_CAP_USD (e.g. wrangler secret / vars).
 export const SESSIONS_PER_IP_PER_DAY = 5;
 export const NEURONS_BRAIN_PER_MTOK_IN = 8182; // @cf/cloudflare/clef-flash
 // Unit-economics rates (official Workers AI pricing, 2026-10-09):
@@ -125,26 +126,35 @@ export async function checkSessionCreateLimit(env, ipHash) {
   return true;
 }
 
-// Global daily neuron guard — the free-tier circuit breaker (admission only).
-export async function checkNeuronGuard(env) {
-  const day = Math.floor(Date.now() / 86400000);
-  const key = `call:neurons:day:${day}`;
-  const used = Number((await env.INTAKE_KV.get(key)) || 0);
-  return used < DAILY_NEURON_GUARD;
+export function dailySpendCapUsd(env) {
+  const v = Number(env?.ASSESSMENT_CALL_DAILY_SPEND_CAP_USD);
+  return Number.isFinite(v) && v > 0 ? v : DAILY_SPEND_CAP_USD_DEFAULT;
 }
 
-export async function addNeurons(env, sessionId, neurons) {
+// Global daily spend guard — paid-neuron circuit breaker (admission only).
+// Replaces the old 8,000-neuron/day tripwire (2026-10-09): streaming STT/TTS
+// burns ~34.5k neurons per 45-min call, so a neuron guard trips on the first
+// real call. Fail-closed: over cap → new sessions cleanly declined (429),
+// never a half-call.
+export async function dailySpendUsd(env) {
   const day = Math.floor(Date.now() / 86400000);
-  const key = `call:neurons:day:${day}`;
-  const used = Number((await env.INTAKE_KV.get(key)) || 0);
-  await env.INTAKE_KV.put(key, String(used + neurons), { expirationTtl: 172800 });
-  await env.LEADS_DB.prepare(
-    "UPDATE assessment_call_sessions SET neurons_est = neurons_est + ? WHERE id = ?"
-  ).bind(neurons, sessionId).run();
+  return Number((await env.INTAKE_KV.get(`call:spend:day:${day}`)) || 0);
 }
 
-// Rough brain-input-token estimate for the neuron guard (~4 chars/token).
-// Our per-call AI cost is brain-only now (voice team owns STT/TTS).
+export async function checkSpendGuard(env) {
+  return (await dailySpendUsd(env)) < dailySpendCapUsd(env);
+}
+
+export async function addSpendUsd(env, usdDelta) {
+  if (!Number.isFinite(usdDelta) || usdDelta <= 0) return;
+  const day = Math.floor(Date.now() / 86400000);
+  const key = `call:spend:day:${day}`;
+  const used = Number((await env.INTAKE_KV.get(key)) || 0);
+  await env.INTAKE_KV.put(key, String(used + usdDelta), { expirationTtl: 172800 });
+}
+
+// Rough brain-input-token estimate (~4 chars/token) — used for the honest
+// brain-cost estimate when the brain crew reports no usage.
 export function estimateBrainNeurons(userText, replyText) {
   const tokens = Math.ceil((String(userText).length + String(replyText).length + 1200) / 4);
   return (tokens / 1e6) * NEURONS_BRAIN_PER_MTOK_IN;
@@ -155,14 +165,22 @@ export function estimateBrainNeurons(userText, replyText) {
 //   - brain usage: reported by the brain crew's /assessment/turn `usage`
 //     object (see docs/assessment-call-contract.md) — REAL when present,
 //     else estimated from text lengths (labeled estimate).
-//   - STT/TTS usage: reported by the voice team (see NEEDS list item 11) —
-//     official list-price defaults until they report actuals.
+//   - STT/TTS/turn usage: reported by the voice team in the FROZEN shape
+//     (docs/voice-adapter-answers.md §11) — actual neurons passed through
+//     verbatim; we never estimate voice at list price.
 //   - infra compute: Workers requests are unmetered here; ~40 requests/call
 //     against the 100k/day free tier ≈ $0 — labeled estimate.
 // usage = { llmInputTokens?, llmOutputTokens?, llmModel?, decideCalls?,
-//           decideInputTokens?, sttSeconds?, sttNeuronsPerMin?, ttsChars?,
-//           ttsNeuronsPerKChar?, ttsSeconds?, ttsNeuronsPerMin? }
-// Returns { neurons, usd, merged } and persists the rollup.
+//           decideInputTokens?,
+//           stt?: { model?, audioMinutes?, neurons? },   // flux actuals
+//           tts?: { model?, chars?, neurons? },          // aura-1 actuals
+//           turn?: { model?, audioMinutes?, neurons? } } // smart-turn actuals
+// Returns { neurons, usd, decideCalls } and persists the rollup.
+function voiceNeurons(u, key) {
+  const n = Number(u?.[key]?.neurons);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 export function costNeurons(usage = {}) {
   const u = usage || {};
   const brainIn = Number(u.llmInputTokens) || 0;
@@ -170,15 +188,11 @@ export function costNeurons(usage = {}) {
   // decide() calls ride clef-flash; count them separately when reported.
   const decideIn = Number(u.decideInputTokens) || 0;
   const decideCalls = Number(u.decideCalls) || 0;
-  const sttN = ((Number(u.sttSeconds) || 0) / 60) * (Number(u.sttNeuronsPerMin) || NEURONS_WHISPER_PER_MIN);
-  const ttsN =
-    ((Number(u.ttsChars) || 0) / 1000) * (Number(u.ttsNeuronsPerKChar) || NEURONS_AURA2_PER_KCHAR) +
-    ((Number(u.ttsSeconds) || 0) / 60) * (Number(u.ttsNeuronsPerMin) || NEURONS_MELOTTS_PER_MIN);
   const neurons =
     (brainIn / 1e6) * NEURONS_GPT_OSS_120B_IN_PER_MTOK +
     (brainOut / 1e6) * NEURONS_GPT_OSS_120B_OUT_PER_MTOK +
     (decideIn / 1e6) * NEURONS_DECIDE_PER_MTOK +
-    sttN + ttsN;
+    voiceNeurons(u, "stt") + voiceNeurons(u, "tts") + voiceNeurons(u, "turn");
   return { neurons, usd: neurons * USD_PER_NEURON, decideCalls };
 }
 
@@ -191,13 +205,23 @@ export async function rollupUsage(env, sessionId, usage = {}) {
   try { merged = JSON.parse(row.usage_json || "{}"); } catch {}
   const u = usage || {};
   // Accumulate counters; keep latest scalar reports.
-  for (const k of ["llmInputTokens", "llmOutputTokens", "decideCalls", "decideInputTokens", "sttSeconds", "ttsChars", "ttsSeconds"]) {
+  for (const k of ["llmInputTokens", "llmOutputTokens", "decideCalls", "decideInputTokens"]) {
     const v = Number(u[k]);
     if (Number.isFinite(v) && v >= 0) merged[k] = (Number(merged[k]) || 0) + v;
   }
-  for (const k of ["llmModel", "sttModel", "ttsModel", "sttNeuronsPerMin", "ttsNeuronsPerKChar", "ttsNeuronsPerMin"]) {
-    if (u[k] !== undefined && u[k] !== null) merged[k] = u[k];
+  // Voice actuals (frozen shape): accumulate neuron counters + audio volume,
+  // keep the latest reported model string per leg.
+  for (const k of ["stt", "tts", "turn"]) {
+    const v = u[k];
+    if (!v || typeof v !== "object") continue;
+    const m = (merged[k] && typeof merged[k] === "object") ? merged[k] : (merged[k] = {});
+    for (const c of ["neurons", "audioMinutes", "chars"]) {
+      const n = Number(v[c]);
+      if (Number.isFinite(n) && n >= 0) m[c] = (Number(m[c]) || 0) + n;
+    }
+    if (typeof v.model === "string" && v.model) m.model = v.model;
   }
+  if (u.llmModel !== undefined && u.llmModel !== null) merged.llmModel = u.llmModel;
   // estimated=true until the brain reports real tokens; once real, stays real.
   // An explicit boolean from the caller (e.g. turn-complete's honest fallback) wins.
   if (typeof u.estimated === "boolean") merged.estimated = u.estimated && merged.estimated !== false;
@@ -209,12 +233,10 @@ export async function rollupUsage(env, sessionId, usage = {}) {
   await env.LEADS_DB.prepare(
     "UPDATE assessment_call_sessions SET usage_json = ?, cost_usd_est = ?, neurons_est = ? WHERE id = ?"
   ).bind(JSON.stringify(merged), merged.usdEst, merged.neuronsEst, sessionId).run();
-  // Keep the daily guard honest: add this rollup's delta to the KV counter.
-  if (env.INTAKE_KV && merged.neuronsEst > (Number(row.neurons_est) || 0)) {
-    const day = Math.floor(Date.now() / 86400000);
-    const key = `call:neurons:day:${day}`;
-    const used = Number((await env.INTAKE_KV.get(key)) || 0);
-    await env.INTAKE_KV.put(key, String(used + (merged.neuronsEst - (Number(row.neurons_est) || 0))), { expirationTtl: 172800 });
+  // Keep the daily spend guard honest: add this rollup's USD delta to the KV counter.
+  const prevUsd = Number(row.cost_usd_est) || 0;
+  if (env.INTAKE_KV && merged.usdEst > prevUsd) {
+    await addSpendUsd(env, merged.usdEst - prevUsd);
   }
   return merged;
 }

@@ -9,8 +9,8 @@
 //    No stop method by design — the shell cancels its own playback on barge-in.
 //
 // 2) createStubVoiceTransport() — implements the TRANSPORT contract we request
-//    from the voice team (see docs/voice-adapter-contract.md § Transport API):
-//      init({ brainSessionId }), startListening(), stopListening(),
+//    from the voice team (see docs/voice-adapter-answers.md §1, frozen):
+//      init({ brainSessionId, sessionId }), startListening(), stopListening(),
 //      on('transcript'|'bargein'|'error'|'ended', handler),
 //      speak(text, { onFirstAudio, onEnd }) -> Promise (resolves at speech end),
 //      cancelSpeech(), dispose()
@@ -71,9 +71,10 @@ export function createStubVoiceTransport() {
       handlers[evt].push(fn);
       log.push({ call: "on", evt });
     },
-    async init({ brainSessionId } = {}) {
+    async init({ brainSessionId, sessionId } = {}) {
       t.brainSessionId = brainSessionId || null;
-      log.push({ call: "init", brainSessionId: t.brainSessionId });
+      t.sessionId = sessionId || null;
+      log.push({ call: "init", brainSessionId: t.brainSessionId, sessionId: t.sessionId });
     },
     async startListening() {
       t.listening = true;

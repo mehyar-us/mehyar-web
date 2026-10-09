@@ -16,7 +16,7 @@ for integration.
 
 1. **[NEED] Transport JS API.** Confirm (or rename) the 7-method surface our
    adapter calls:
-   - `init({ brainSessionId }) → Promise`
+   - `init({ brainSessionId, sessionId }) → Promise`
    - `startListening() / stopListening() → Promise`
    - `on('transcript' | 'bargein' | 'error' | 'ended', handler)`
    - `speak(text, { onFirstAudio, onEnd }) → Promise` (resolves when speech ends)
@@ -39,10 +39,13 @@ for integration.
    byte → first audible). Confirm you can supply `sttMs` on the transcript
    event and fire `onFirstAudio` (item 3). If you measure additional fields,
    tell us the names and we will store them.
-6. **[NEED] Session/auth model.** Our adapter calls your `init({ brainSessionId })`
-   at call start. Do you need anything else from our server — e.g. a signed
-   token endpoint for your transport's auth? If so, specify the endpoint shape
-   and we will build it.
+6. **[NEED] Session/auth model — ANSWERED (voice-adapter-answers.md §1, §6).**
+   Our adapter calls your `init({ brainSessionId, sessionId })` at call start:
+   `brainSessionId` authorizes the brain route; `sessionId` (our 128-bit
+   opaque infra-session secret) authorizes the voice WebSocket
+   (`wss://<voice-host>/voice?session=<sessionId>`). No extra token endpoint.
+   Session mismatch/unknown → server closes 4401 → transport surfaces
+   `error { code:'auth' }`.
 7. **[NEED] Error/ended events.** Confirm `error` payload shape
    (`{ message, code? }`) and the `ended` reasons you emit
    (e.g. `remote`, `network`, `timeout`).
@@ -57,15 +60,17 @@ for integration.
     first-audio number on a real call, and that our two measurement points
     (`transcript` event time, `onFirstAudio`) are the right ones for the
     shared budget.
-11. **[NEED] STT/TTS usage + pricing for unit economics.** Mayor rethinks the
-    $330 price after red-team on measured per-call cost. Our adapter forwards
-    a `usage` object through `POST /turn-complete`; we need from you per call:
-    `sttSeconds` + `sttModel`, `ttsChars` (or `ttsSeconds`) + `ttsModel`, and
-    your per-minute / per-character pricing for the models you actually use.
-    Until you report, we cost STT/TTS at official list price (Whisper 46.63
-    neurons/audio-min, MeloTTS 18.63, Aura-2 2727.27/1k chars, Nova-3 472.73)
-    and mark the rollup estimated. Confirm the models + rates, or send
-    measured replacements.
+11. **[NEED] STT/TTS usage + pricing for unit economics — ANSWERED (frozen in
+    voice-adapter-answers.md §11).** The voice team reports per-turn usage in
+    the frozen shape via our `POST /api/assessment-call/turn-complete`
+    `usage` passthrough:
+    `{ stt: { model, audioMinutes, neurons }, tts: { model, chars, neurons },
+       turn: { model, audioMinutes, neurons } }`.
+    Our cost rollup passes these actuals through verbatim — no list-price
+    estimation. Confirmed rates: flux WS STT 700 neurons/audio-min
+    ($0.0077/min), aura-1 TTS 1363.64 neurons/1k chars ($0.015/1k),
+    smart-turn-v2 0.51 neurons/audio-min; USD = neurons × $0.011/1k.
+    If aura-2-en is preferred in testing: 2727.27/1k chars ($0.030).
 
 ---
 
@@ -97,7 +102,7 @@ for integration.
 
 | Hook | Owner | Shape |
 |---|---|---|
-| Call start (after UI consent) | ours → yours | `POST /api/assessment/start` → `{ session_id, reply_text: <consent script> }`, then `POST /api/assessment-call/session { consent, adult, brainSessionId }` → `{ sessionId, … }`, then `transport.init({ brainSessionId })` + `startListening()` |
+| Call start (after UI consent) | ours → yours | `POST /api/assessment/start` → `{ session_id, reply_text: <consent script> }`, then `POST /api/assessment-call/session { consent, adult, brainSessionId }` → `{ sessionId, … }`, then `transport.init({ brainSessionId, sessionId })` + `startListening()` |
 | Heartbeat (30s) | ours | `POST /api/assessment-call/heartbeat { sessionId }` → `{ ok, secondsRemaining }`; at 0 the adapter ends the call (45-min hard cap) |
 | Barge-in | yours → ours | `bargein` event → we `cancelSpeech()`, `POST /api/assessment-call/interrupt { sessionId }` (marks the latest assistant turn `interrupted=1` in our latency log) |
 | End | either | `endCall` action from the brain, user hangs up, or 45-min cap → adapter `transport.stopListening()` + `POST /api/assessment-call/end { sessionId }` |

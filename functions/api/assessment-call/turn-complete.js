@@ -10,7 +10,12 @@
 //     "replyText": "…",            // assistant reply (persisted)
 //     "timings": { "sttMs": 320, "tttMs": 610, "brainMs": 540, "ttsMs": 180 },
 //     "usage": { "llmInputTokens": 412, "llmOutputTokens": 96, "decideCalls": 1,
-//                "sttSeconds": 4.2, "ttsChars": 180 }   // cost rollup (optional)
+//                "stt": { "model": "@cf/deepgram/flux", "audioMinutes": 4.2, "neurons": 2940 },
+//                "tts": { "model": "@cf/deepgram/aura-1", "chars": 180, "neurons": 245 },
+//                "turn": { "model": "@cf/pipecat-ai/smart-turn-v2", "audioMinutes": 6.5, "neurons": 3 } }
+//              // cost rollup (optional). Voice legs use the FROZEN shape from
+//              // docs/voice-adapter-answers.md §11 — actual neurons verbatim,
+//              // never list-price estimates.
 //   }
 //
 // Field ownership (frozen in docs/voice-adapter-contract.md):

@@ -67,15 +67,16 @@ via `POST /turn-complete` — the red-team gate reads them.
 ## Rate limits
 
 - `POST /api/assessment-call/session`: ≤ 5 sessions/day/IP (KV, hash-only);
-  consent + 18+ gate; daily neuron guard (8,000 of the 10,000/day free tier)
-  on admission. The brain's `/start` has its own 5/day/IP.
+  consent + 18+ gate; daily spend guard ($20/day default, configurable via
+  `ASSESSMENT_CALL_DAILY_SPEND_CAP_USD`) on admission — fail-closed: over cap
+  → clean 429 decline, never a half-call. The brain's `/start` has its own 5/day/IP.
 - `POST /turn-complete`: ≤ 120 logged turns/session (sanity cap).
 - Heartbeat misses don't kill the call; the 45-min cap is enforced on
   heartbeat response and client-side clock.
 
-## Cost (free-tier math, verified 2026-10-09)
+## Cost (paid-neuron math, verified 2026-10-09 — voice-team decision)
 
-Official Workers AI pricing (developers.cloudflare.com/workers-ai/platform/pricing):
+Reference pricing (developers.cloudflare.com/workers-ai/platform/pricing):
 
 | Model | Price |
 |---|---|
@@ -86,14 +87,15 @@ Official Workers AI pricing (developers.cloudflare.com/workers-ai/platform/prici
 | `@cf/cloudflare/clef-flash` (decide/brain) | 8182 neurons / M input tokens |
 | Free tier | **10,000 neurons/day, hard cap** |
 
-Our session layer's AI cost is brain-only: ~60 turns × ~600 input tokens ×
-8182/1M ≈ **~300 neurons per 45-min call** → ~25+ calls/day inside the free
-tier before the 8,000 guard trips. STT/TTS neurons (if any) are the voice
-team's budget — note nova-3 WS alone would cost ~37,600 neurons per 45-min
-call and cannot fit the free tier; aura-2-en TTS ~46,000 neurons per call.
-The ≤1s budget must therefore be met without per-minute server audio models,
-or calls must be neuron-capped accordingly — the voice team's call, documented
-here so the trade-off is explicit.
+The infra session layer's own AI cost is brain-only: ~60 turns × ~600 input
+tokens × 8182/1M ≈ **~300 neurons per 45-min call**. Per
+voice-adapter-answers.md, paid streaming voice is the only path to the ≤1s
+budget: worst-case 45-min call ≈ 34,500 neurons ≈ **$0.38** (typical 25-min ≈
+$0.20). Voice usage arrives as reported actuals (frozen `usage.stt/tts/turn`
+shape) — never list-price estimates. The daily spend guard ($20/day default ≈
+50 calls, configurable via `ASSESSMENT_CALL_DAILY_SPEND_CAP_USD`) is the
+admission circuit breaker, replacing the old 8,000-neuron tripwire that
+streaming STT/TTS would blow through on the first call.
 
 ## Unit economics (Mayor's pricing rethink, 2026-10-09)
 
