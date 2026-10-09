@@ -86,7 +86,7 @@ export function resolveImageLanguage(value:unknown):'en'|'es'{
  return value==='es'?'es':'en';
 }
 
-type ImageProfile={vertical?:unknown;language?:unknown};
+type ImageProfile={vertical?:unknown;language?:unknown;verticalMappedFrom?:unknown};
 
 const VERTICAL_FOCUS:Record<string,string>={
  salon:'hair color lift and evenness, cut lines and blending, and scalp or skin condition visible in the frame',
@@ -104,14 +104,20 @@ const VERTICAL_FOCUS:Record<string,string>={
 export function visionInstruction(profile:ImageProfile={},transcript='',imageCount=1):string{
  const vp=verticalProfile(typeof profile.vertical==='string'?profile.vertical:undefined);
  const lang=resolveImageLanguage(profile.language);
- const focus=VERTICAL_FOCUS[vp.vertical]??'what is actually visible in the frame';
+ // When the vertical came from the honest adjacent map, anchor vision in the
+ // REAL trade (a tattoo shop is not hair) instead of the mapped mode's focus.
+ const mappedTrade=typeof profile.verticalMappedFrom==='string'&&profile.verticalMappedFrom.trim()?profile.verticalMappedFrom.trim():null;
+ const focus=mappedTrade
+  ?`what is actually visible in this ${mappedTrade} photo — materials, workmanship, condition, layout`
+  :VERTICAL_FOCUS[vp.vertical]??'what is actually visible in the frame';
  const v=vp.vocabulary;
+ const tradeLabel=mappedTrade??vp.label.toLowerCase();
  const question=transcript.trim()?` The owner asks: "${transcript.trim().slice(0,500)}"`:'';
  if(lang==='es'){
   const esNouns=esTemplates(vp.vertical).nouns;
-  return `\n\n[Instrucción para esta foto: el dueño adjuntó ${imageCount===1?'una foto':'fotos'} y pregunta sobre ${vp.label.toLowerCase()}.${question} En este negocio, los clientes se llaman "${esNouns.customers}", las reservas son "${esNouns.appointments}". Enfóquese en: ${focus}. REGLA DE HONESTIDAD — nunca invente lo que no puede ver. Si la foto está borrosa, oscura, recortada o no muestra lo necesario para responder, dígalo claramente (“No puedo determinarlo con esta foto — …”) y pida una mejor foto. Nunca adivine diagnósticos, medidas ni identidades. Describa solo lo que realmente se ve. Responda en español.]`;
+  return `\n\n[Instrucción para esta foto: el dueño adjuntó ${imageCount===1?'una foto':'fotos'} y pregunta sobre ${tradeLabel}.${question} En este negocio, los clientes se llaman "${esNouns.customers}", las reservas son "${esNouns.appointments}". Enfóquese en: ${focus}. REGLA DE HONESTIDAD — nunca invente lo que no puede ver. Si la foto está borrosa, oscura, recortada o no muestra lo necesario para responder, dígalo claramente (“No puedo determinarlo con esta foto — …”) y pida una mejor foto. Nunca adivine diagnósticos, medidas ni identidades. Describa solo lo que realmente se ve. Responda en español.]`;
  }
- return `\n\n[Instruction for this photo: the owner attached ${imageCount===1?'a photo':'photos'} and asks about their ${vp.label.toLowerCase()}.${question} In this business, customers are called “${v.customer}”, bookings are “${v.booking}”, and staff are “${v.staff}”. Focus on: ${focus}. HONESTY RULE — never invent what you cannot see. If the photo is blurry, dark, cropped, or doesn't show what's needed to answer, say so plainly ("I can't tell from this photo — ...") and ask for a clearer one. Never guess at diagnoses, measurements, or identities. Describe only what is actually visible. Reply in English.]`;
+ return `\n\n[Instruction for this photo: the owner attached ${imageCount===1?'a photo':'photos'} and asks about their ${tradeLabel}.${question} In this business, customers are called “${v.customer}”, bookings are “${v.booking}”, and staff are “${v.staff}”. Focus on: ${focus}. HONESTY RULE — never invent what you cannot see. If the photo is blurry, dark, cropped, or doesn't show what's needed to answer, say so plainly ("I can't tell from this photo — ...") and ask for a clearer one. Never guess at diagnoses, measurements, or identities. Describe only what is actually visible. Reply in English.]`;
 }
 
 function arrayBufferToBase64(bytes:ArrayBuffer):string{
