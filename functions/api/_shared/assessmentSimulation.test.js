@@ -121,7 +121,7 @@ async function runCall(script, { persona, decide }) {
     "fine, it's bob@acmeplumbing.com",
   ], { persona: "skeptical", decide: personaDecide("skeptical") });
   ok(s.consentGiven, "[plumber] consent captured");
-  ok(s.diagnosisOk && s.findings.length === 4, "[plumber] live diagnosis ran with real findings");
+  ok(s.diagnosisStatus === "ready" && s.findings.length === 4, "[plumber] live diagnosis ran with real findings");
   ok(s.findings.every((f) => FIXTURE_FINDINGS.some((x) => x.id === f.id)), "[plumber] no invented findings");
   ok(s.pitchDelivered, "[plumber] pitch delivered");
   ok(clockMin <= 30, `[plumber] pitch by minute 15 (call clock ${clockMin})`);

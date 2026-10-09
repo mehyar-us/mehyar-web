@@ -63,6 +63,9 @@ export const DISCOVERY_QUESTIONS = [
 
 // ── Spoken scripts (exact copy the avatar speaks) ───────────────────────────
 
+// The AI's intro line (R1 — Mayor's word): "Hi, I'm the mayor."
+export const INTRO_LINE = "Hi, I'm the mayor.";
+
 export const CONSENT_SCRIPT =
   "Before we start — quick heads-up: this call is recorded and transcribed so I can build " +
   "your assessment and send you the follow-up. Is that okay with you? Say yes to continue, " +
@@ -85,6 +88,12 @@ export const DIAGNOSIS_FETCH_FAILED_SCRIPT =
   "I tried to pull up your site and couldn't load it — could be your host blocking " +
   "automated checks, or the address needs a second look. I won't guess at flaws I " +
   "can't see. Let's keep talking and I'll diagnose what I can from what you tell me.";
+
+// Spell-out fallback (R3): the fetch failed — have them spell the domain.
+// Warm, zero frustration. One retry; then interview mode (never a dead end).
+export const SPELL_OUT_SCRIPT =
+  "Hmm, I'm not pulling it up — might be me mishearing the domain. Could you spell " +
+  "it out for me, letter by letter? Like a-b-c dot com.";
 
 export const EMAIL_CAPTURE_SCRIPT =
   "I'm going to send you a personal link right after this call — it opens the audit " +

@@ -164,23 +164,61 @@ no PII) — the red-team's observability feed. Closed calls are skipped.
 In simulation, `simulateTurn()` runs it inline (awaited) unless
 `deps.runBackground === false`.
 
-## Session-issuance interface — follow-up call booking (D7b, proposed)
+## Session-issuance interface — post-payment follow-up booking (R1, SHIPPED)
 
-After the $330 checkout clears, the deeper follow-up call is issued by:
+The $330 follow-up deep-dive is with MAYOR HIMSELF personally (AI mayor → human
+Mayor). It is a **request/confirmation** flow on his real calendar — manual
+approve, never an auto-call. The old WebRTC `booking_url` concept is withdrawn.
 
-`POST /api/assessment/book-followup` `{ audit_id, access_token }`
-→ verifies payment against `audit_business_reports` (status paid|generating|ready
-+ token match; 402 if unpaid — calls are NEVER issued unpaid)
-→ mints a session with `kind: "followup"`, `followup_of: <audit_id>`
-→ returns `{ session_id, booking_url }`.
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/assessment/booking-availability?days=14` | Open 45-min slots: Tue/Thu 10:00–16:00 ET minus active holds (`requested`/`confirmed`). 24h min notice. |
+| `POST /api/assessment/book-followup` `{ audit_id, access_token, slot_start }` | Verify payment (402 if unpaid) → create request (`requested`, slot held) → email Mayor one-click approve/decline. Idempotent per audit. |
+| `GET /api/assessment/booking-confirm?token=abt_…` | Mayor's one-click APPROVE → `confirmed` + Google Calendar template link (one click onto his calendar). |
+| `GET /api/assessment/booking-decline?token=abt_…` | Mayor's one-click DECLINE → hold released, buyer notified to pick another slot. |
+| `GET /api/assessment/booking-status?booking_id=…` | Booking state for funnel polling / buyer pages. No raw PII. |
 
-**Proposed booking URL (needs infra-crew confirmation):**
-`https://mehyar.us/call?session=<session_id>&mode=followup`
-— the same WebRTC experience as the assessment call, with the avatar opening
-from the buyer's audit context (`session.followupContext`). The audit-tab
-crew's Stripe fulfill webhook calls this endpoint (one fetch) and emails the
-buyer the `booking_url`. Until infra confirms the URL shape, treat it as
-proposed.
+**Confirmation mechanics — DECISION (Mayor's "human-in-the-loop", his phrase):**
+manual approve. Tentative hold + 24h SLA + one-click links. Requests expire
+after 48h. Auto-confirm inside office hours stays a future flip on his word.
+
+**Calendar:** no server-side Google Calendar path exists in this runtime
+(`hatch_gws_cli` is agent-local only; repo `/api/calendar/*` proxies to a
+Zoho-backed upstream). `createCalendarEvent()` in `assessmentBooking.js` is the
+seam: today it returns a Google Calendar template link + structured event
+fields; when the mehyarsoft admin API gains a Google path, wire it there.
+
+**Buyer notifications:** we store `email_hash` only — the audit crew's emailer
+owns buyer email. Configure `BOOKING_NOTIFY_URL` (webhook): we POST
+`booking.requested|confirmed|declined|expired` events
+(`bookingWebhookPayload()`); they send. Manage tokens are opaque
+(`abt_`+64hex), SHA-256 stored, like prefill tokens.
+
+## Proactive mid-call agency (R3, SHIPPED)
+
+The avatar takes the business URL **by voice** and analyzes it **live in the
+background while the conversation continues** — never blocking the audio path.
+
+- **Voice capture:** `spokenUrlToUrl()` (`assessmentDiagnose.js`) handles
+  "acmeplumbing dot com", "www dot acme dot com", letter spell-outs
+  ("a c m e dot com"), filler ("my site is…"), and keeps the SSRF guards.
+- **State machine** (`session.diagnosisStatus`):
+  `idle → analyzing → ready | failed → (spell-out retry) → ready | interview`.
+- **Background engine:** `backgroundDiagnose(env, sessionId, url, deps)` —
+  site fetch (browser UA) + signal extraction + decide() severity scoring,
+  writes findings + `bgEvents[]` entry. Fired via `waitUntil` in `turn.js` on
+  the `{ type: "diagnoseUrl", url }` action; runs inline in `simulateTurn`.
+- **Weave:** when findings land mid-call, the next turn presents the first one
+  with "while you were talking I had a look at your site in the background…".
+- **Spell-out fallback:** fetch fails → avatar asks them to spell the domain
+  (`SPELL_OUT_SCRIPT`) → retry; second failure or unparseable spelling →
+  **interview mode** (funnel questions from their answers — never invented
+  flaws, never a dead end).
+- **Objection safety:** the pitch-transition turn runs `closeReadiness` first
+  (`routeObjection`) — the avatar never pitches OVER a live price/skepticism/
+  timing objection raised during diagnosis.
+- The AI's intro line (R1, Mayor's word): **"Hi, I'm the mayor."**
+  (`INTRO_LINE`, prepended to the consent script in `start.js`).
 
 ## Per-call usage ledger — pricing unit economics (Mayor's reporting add)
 
@@ -194,6 +232,7 @@ at every model call site:
 | Close-readiness + persona, per turn (`closeReadiness`) | `decide` |
 | Early persona detection (`detectPersona`) | `decide` |
 | **Background mid-turn scoring** (`backgroundScoring`: prospect score + next-best-action + persona) | `decide` + `backgroundCalls` |
+| **Background site analysis** (`backgroundDiagnose` → `scoreFindings` → decide/Clef) | `decide` + `backgroundCalls` |
 
 **Honesty rule:** measured numbers only. Token counts are added only when the
 provider reports `usage` on the response; otherwise the call still counts and
@@ -223,6 +262,34 @@ response (running total) and on `POST /api/assessment/end` (final per-call
 total). Pricing math (tokens × provider rates) belongs to the coordinator's
 report — this crew supplies measured inputs only.
 
+## Ship-checklist: tracking + SEO (Mayor, standing — definition of done)
+
+Brain-crew surfaces are API-only (no rendered pages), so our obligation is the
+contract below; the page-owning crews implement it. Audited 2026-10-09:
+
+1. **Google tag** — `client/src/components/GoogleAnalytics.tsx` exists and is
+   reusable (page_view fires automatically on wouter route change; explicit
+   events via `trackPublicAnalyticsEvent`). The infra crew added
+   `client/src/lib/assessment-call/analytics.ts` (`trackAssessmentCallEvent`:
+   `call_join` / `call_start` / `call_end`) following the same gating.
+   **Funnel milestone events** (names agreed here; page crews fire them):
+   `email_captured` (assessment email OR audit prefill submit),
+   `payment_started` (Stripe checkout opened), `payment_completed`,
+   `booking_requested` (book-followup 200), `booking_confirmed`.
+2. **Meta pixel + GTM — GAP, flagged not invented.** Grep-verified 2026-10-09:
+   no `fbq`/fbevents snippet and no GTM container anywhere in
+   `client/index.html` or `client/src`. `PrivacyPolicy.tsx` discloses
+   "We do not embed Facebook Pixel, Google Ads conversion tags, or similar."
+   If the business wants Meta/GTM, that's a separate decision + privacy-policy
+   update — not something to sneak in.
+3. **SEO** — `client/src/components/SeoManager.tsx` carries the route registry
+   (title/description/OG per route). Every new funnel route
+   (`/call`, audit prefill page, booking pages) must be registered there by
+   the page-owning crew before ship.
+4. **Verification** — `MEHYAR_PUBLIC_ANALYTICS_DRY_RUN=true` before ship:
+   tags must fire (dry-run logs) on every new surface. Tags-firing is part of
+   the ship gate, alongside the red-team gate.
+
 ## Running the brain/closer tests
 
 ```bash
@@ -233,7 +300,7 @@ node functions/api/_shared/assessmentBrain.test.js && \
 node functions/api/_shared/assessmentDeltas.test.js && \
 node functions/api/_shared/assessmentSimulation.test.js && \
 node functions/api/_shared/uploadLimits.test.js && \
-node functions/api/assessment/book-followup.test.js
+node functions/api/assessment/booking.test.js
 ```
 All suites are self-contained (no network, no credentials, no D1). Exit
 non-zero on any failure.

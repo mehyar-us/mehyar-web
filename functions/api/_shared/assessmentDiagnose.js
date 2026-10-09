@@ -54,6 +54,39 @@ function stripTags(html) {
     .trim();
 }
 
+// spokenUrlToUrl — voice URL capture (R3). Callers say domains, not URLs:
+// "acmeplumbing dot com", "www dot acme dot com", or spell "a c m e ...".
+// Returns a normalized URL or null. Never guesses beyond the utterance.
+export function spokenUrlToUrl(raw, { spellout = false } = {}) {
+  let t = String(raw || "").toLowerCase().trim();
+  if (!t) return null;
+  // 1) If it already looks like a URL/domain, take it as-is.
+  const direct = t.match(/(https?:\/\/[^\s]+|(?:www\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?:\/[^\s]*)?)/);
+  if (direct) return normalizeUrl(direct[1]);
+  // 2) Spoken form: "acme plumbing dot com" / letter-spelled "a c m e dot com".
+  // Strategy: drop leading filler words, join the rest, validate as a domain.
+  // Ambiguous captures self-correct downstream: a bad URL fails the live fetch
+  // and the avatar falls back to spell-it-out, then interview mode.
+  const STOPWORDS = new Set(["my", "site", "is", "it's", "its", "the", "a", "an",
+    "go", "to", "at", "on", "www", "website", "web", "address", "called", "named",
+    "find", "us", "me", "our", "check", "out"]);
+  let s = ` ${t} `;
+  s = s.replace(/\bdot\b/g, ".").replace(/\bslash\b/g, "/").replace(/\bdash\b/g, "-");
+  s = s.replace(/\s*\.\s*/g, ".").replace(/\s*\/\s*/g, "/"); // "dot com" -> ".com"
+  let tokens = s.replace(/[^a-z0-9./\s-]/g, "").split(/\s+/).filter(Boolean);
+  // In spellout mode every token is a letter — never drop stopwords.
+  if (!spellout) while (tokens.length && STOPWORDS.has(tokens[0])) tokens.shift();
+  if (!tokens.length) return null;
+  const joined = tokens.join("");
+  if (/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(\/\S*)?$/.test(joined)) {
+    return normalizeUrl(joined);
+  }
+  // Last resort: the last domain-like token on its own.
+  const domTokens = tokens.filter((tok) => /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(\/\S*)?$/.test(tok));
+  if (domTokens.length) return normalizeUrl(domTokens[domTokens.length - 1]);
+  return null;
+}
+
 // ── Signal extraction: measured facts only ──────────────────────────────────
 export function extractSignals(html, meta, byteLength) {
   const get = (re) => { const m = html.match(re); return m ? m[1].trim() : ""; };

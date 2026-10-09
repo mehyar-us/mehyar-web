@@ -27,19 +27,18 @@
 
 import { decide, verdict } from "./decide.js";
 import { chat } from "./llmChat.js";
-import { diagnoseUrl, diagnosisSummary } from "./assessmentDiagnose.js";
+import { diagnoseUrl, diagnosisSummary, spokenUrlToUrl } from "./assessmentDiagnose.js";
 import {
   STAGES, PITCH_BY_MINUTE, PITCH_EARLIEST_MINUTE,
   DISCOVERY_QUESTIONS, STAGE_STEER, CALLER_PERSONAS,
   CONSENT_SCRIPT, CONSENT_DECLINED_SCRIPT, FRAMING_SCRIPT,
-  DIAGNOSIS_INTRO_SCRIPT, DIAGNOSIS_FETCH_FAILED_SCRIPT,
+  DIAGNOSIS_INTRO_SCRIPT, DIAGNOSIS_FETCH_FAILED_SCRIPT, SPELL_OUT_SCRIPT,
   EMAIL_CAPTURE_SCRIPT, FOLLOWUP_CONSENT_SCRIPT, PRICE_SCRIPT,
   WRAP_BOOKED_SCRIPT, WRAP_FOLLOWUP_SCRIPT, WRAP_DECLINED_SCRIPT, DECLINED_EMAIL_SCRIPT,
   buildSystemPrompt, FORBIDDEN_PHRASES, PRODUCT_PRICE,
 } from "./assessmentPersona.js";
 
 const EMAIL_RE = /\b([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/i;
-const URL_RE = /(https?:\/\/[^\s]+|(?:www\.)?[a-z0-9-]+\.(?:com|net|org|io|co|us|biz|app|dev|site|store|shop|nyc)(?:\/[^\s]*)?)/i;
 const REPLY_CHAR_CAP = 450;
 
 const YES_RE = /^(yes|yeah|yep|yup|sure|okay|ok|fine|go ahead|that's fine|thats fine|sounds good|absolutely|definitely)/i;
@@ -91,7 +90,17 @@ export function newSession() {
     outcome: "",          // booked | followup | declined | ""
     objections: [],
     closeReady: false,
-    callerPersona: "neutral", // live-detected: warm|cold|rude|skeptical|rushed|neutral
+    callerPersona: "neutral", // live-detected: warm|cold|rude|skeptical|rushed|chatty|guarded|neutral
+    // R3 proactive agency — background site analysis state machine:
+    // idle → analyzing → ready | failed → (spell-out retry) → ready | interview
+    diagnosisStatus: "idle",
+    diagnosisAttempts: 0,
+    diagnosisError: "",
+    pendingDiagnosisUrl: "",
+    spelloutAsked: false,
+    spelloutMode: false,
+    urlRetried: false,
+    interviewQuestions: 0,
     turns: [],
     startedAt: new Date().toISOString(),
     prefillToken: "",
@@ -149,7 +158,7 @@ export function getUsageSummary(session) {
 
 // (a) Finding-severity scoring. Batch all findings into ONE decide() call.
 // Fail closed: transport failure or low confidence → deterministic severity.
-export async function scoreFindings(env, findings, decideFn = decide, session = null) {
+export async function scoreFindings(env, findings, decideFn = decide, session = null, { background = false } = {}) {
   if (!findings || !findings.length) return [];
   const questions = {};
   findings.forEach((f, i) => {
@@ -169,7 +178,7 @@ export async function scoreFindings(env, findings, decideFn = decide, session = 
   });
   try {
     const r = await decideFn(env, { text: JSON.stringify(findings.map((f) => ({ title: f.title, observation: f.observation }))) }, questions);
-    if (session) addDecideUsage(session, r);
+    if (session) addDecideUsage(session, r, { background });
     if (!r || !r.ok) return findings.map((f) => ({ ...f, severitySource: "deterministic" })); // transport failure → deterministic
     return findings.map((f, i) => {
       const sev = r.answers?.[`sev_${i}`];
@@ -338,12 +347,13 @@ function nextDiscoveryQuestion(session) {
 }
 
 // Naive but honest slot-filling from the caller's own words. The URL is the
-// only slot we parse structurally; the rest ride on turn order (the question
+// only slot parsed structurally — via spokenUrlToUrl (R3: handles "dot com"
+// voice speech and letter spell-outs); the rest ride on turn order (the question
 // just asked determines the slot). The LLM is never trusted to invent facts.
 function fillDiscovery(session, userText) {
-  const urlM = userText.match(URL_RE);
-  if (urlM && !session.url) {
-    session.url = urlM[1].startsWith("http") ? urlM[1] : "https://" + urlM[1];
+  const spoken = spokenUrlToUrl(userText, { spellout: session.spelloutMode });
+  if (spoken && !session.url) {
+    session.url = spoken;
     if (!session.askedDiscovery.includes("url")) session.askedDiscovery.push("url");
     return "url";
   }
@@ -359,6 +369,53 @@ function fillDiscovery(session, userText) {
     return "category";
   }
   return null;
+}
+
+// ── R3: proactive mid-call agency — background site analysis ────────────────
+// backgroundDiagnose(env, sessionId, url, deps): the avatar takes the business
+// URL by voice, then this runs the multi-task analysis live in the background
+// WHILE the conversation continues — site fetch (browser UA), signal
+// extraction, decide() severity scoring — and injects the findings into the
+// session. The next turn's respond() weaves them into the dialogue ("while you
+// were talking I had a look at your site…"). Fire-and-forget via waitUntil in
+// turn.js; inline (awaited) in simulateTurn. Never blocks the audio path.
+// Fail closed: fetch failure → diagnosisStatus="failed" (spell-out fallback,
+// then interview mode) — the call NEVER dead-ends.
+export async function backgroundDiagnose(env, sessionId, url, deps = {}) {
+  const decideFn = deps.decideFn || decide;
+  const diagnoseFn = deps.diagnoseFn || diagnoseUrl;
+  try {
+    const store = deps.store || await import("./assessmentStore.js");
+    const loaded = await store.loadSession(env, sessionId);
+    if (!loaded || !loaded.state) return { ok: false, error: "session_not_found" };
+    const session = loaded.state;
+    if (session.outcome || session.diagnosisStatus === "ready") {
+      return { ok: true, skipped: true }; // closed call or already diagnosed
+    }
+    const diag = await diagnoseFn(url);
+    session.diagnosisAttempts = (session.diagnosisAttempts || 0) + 1;
+    if (diag.ok) {
+      session.signals = diag.signals;
+      session.findings = await scoreFindings(env, diag.findings, decideFn, session, { background: true });
+      session.diagnosisStatus = "ready";
+      session.findingsPresented = 0;
+      session.pendingDiagnosisUrl = "";
+    } else {
+      session.diagnosisStatus = "failed";
+      session.diagnosisError = diag.error;
+    }
+    session.bgEvents = session.bgEvents || [];
+    session.bgEvents.push({
+      at: new Date().toISOString(), kind: "diagnosis",
+      summary: diag.ok
+        ? `diagnosis_ready:${(session.findings || []).length} findings for ${url}`
+        : `diagnosis_failed:${diag.error || "fetch_failed"} (attempt ${session.diagnosisAttempts})`,
+    });
+    await store.saveSession(env, session);
+    return { ok: diag.ok };
+  } catch (e) {
+    return { ok: false, error: e?.message || "background_diagnose_failed" };
+  }
 }
 
 // ── D4: real-time background decide() ───────────────────────────────────────
@@ -465,6 +522,35 @@ export async function respond(env, userText, session, deps = {}) {
   };
   const go = (stage) => { session.stage = stage; reply.actions.push({ type: "transition", to: stage }); };
 
+  // Shared objection router (DIAGNOSIS pitch-transition + PITCH): never pitch
+  // OVER a live objection — record it, answer it with straight talk, then keep
+  // the close moving. Returns the reply when it handled the turn, null when not.
+  const routeObjection = async (objection) => {
+    if (!objection || objection === "none") return null;
+    if (!session.objections.includes(objection)) session.objections.push(objection);
+    if (objection === "price") {
+      // The price answer IS the pitch (states the $330 offer) — move to PITCH
+      // so the email turn books instead of looping.
+      go(STAGES.PITCH);
+      session.pitchDelivered = true;
+      return say("Price objection. Straight talk: name what the audit costs vs. what one lost customer costs them. Restate $330 one-time, all sales final, no subscription. Then ask for the email.",
+        PRICE_SCRIPT + " One lost customer costs you more than that. What's the best email — I'll send your personal booking link.");
+    }
+    if (objection === "skepticism") {
+      go(STAGES.PITCH);
+      session.pitchDelivered = true;
+      return say("They've been burned by agencies. Validate it hard — most agencies sell reports nobody reads. Your edge: you diagnosed their site LIVE in front of them, on this call, for free. That's the proof. Then ask for the email.",
+        "I get it — most agencies sell you a PDF nobody reads. Difference is, I just diagnosed your site live, in front of you, for free. That's the product. Give me your email and I'll send the booking link.");
+    }
+    if (objection === "timing" || objection === "authority") {
+      session.outcome = "followup";
+      go(STAGES.DEPTH);
+      return say("They're not buying today. Don't push — pivot to the follow-up: capture the email for the personal prefilled link, good for 7 days.",
+        EMAIL_CAPTURE_SCRIPT);
+    }
+    return null;
+  };
+
   switch (session.stage) {
     case STAGES.CONSENT: {
       if (YES_RE.test(text)) {
@@ -495,7 +581,7 @@ export async function respond(env, userText, session, deps = {}) {
     }
 
     case STAGES.DISCOVERY: {
-      fillDiscovery(session, text);
+      const filled = fillDiscovery(session, text);
       // D1: persona detection live in the first 1-2 minutes (awaited, fast),
       // then every 3rd turn; backgroundScoring covers the rest off the audio path.
       if (session.turns.length <= 6 || session.turns.length % 3 === 0) {
@@ -503,6 +589,13 @@ export async function respond(env, userText, session, deps = {}) {
       }
       const emailM = text.match(EMAIL_RE);
       if (emailM && !session.email) { session.email = emailM[1].toLowerCase(); session.emailCaptured = true; }
+      // R3: URL captured by voice → fire background analysis and KEEP TALKING.
+      // Never block the audio path on the fetch; findings weave in when ready.
+      if (filled === "url" && session.diagnosisStatus === "idle") {
+        session.diagnosisStatus = "analyzing";
+        session.pendingDiagnosisUrl = session.url;
+        reply.actions.push({ type: "diagnoseUrl", url: session.url });
+      }
       // D4: background next-best-action — the live diagnosis is the strongest
       // weapon, so prioritize getting the URL when the scorer says so.
       let q = nextDiscoveryQuestion(session);
@@ -511,33 +604,23 @@ export async function respond(env, userText, session, deps = {}) {
         q = DISCOVERY_QUESTIONS.find((qq) => qq.key === "url");
         session.nextBestAction = "keep_flow"; // consumed
       }
-      // URL in hand → run live diagnosis NOW (inline; the avatar narrates the pause).
-      if (session.url && !session.diagnosisOk && !session.diagnosisError) {
-        const diag = await d.diagnoseFn(session.url);
-        if (diag.ok) {
-          session.signals = diag.signals;
-          session.findings = await scoreFindings(env, diag.findings, d.decideFn, session);
-          session.diagnosisOk = true;
-        } else {
-          session.diagnosisError = diag.error;
-        }
-        go(STAGES.DIAGNOSIS);
-        session.findingsPresented = 0;
-        const canned = session.diagnosisOk
-          ? DIAGNOSIS_INTRO_SCRIPT
-          : DIAGNOSIS_FETCH_FAILED_SCRIPT;
-        return say("You just pulled up their site live. React naturally — a beat of 'got it, looking at it now' — then lead into the diagnosis.",
-          canned);
-      }
       if (q) {
         session.askedDiscovery.push(q.key);
-        return say(`Ask the next discovery question conversationally: ${q.key}.`, q.prompt);
+        const steer = filled === "url"
+          ? "They just gave their website. Acknowledge it naturally — you're pulling it up in the background while you talk — then ask the next discovery question."
+          : `Ask the next discovery question conversationally: ${q.key}.`;
+        const canned = filled === "url"
+          ? `Got it — I'm pulling up ${session.url.replace(/^https?:\/\//, "").replace(/\/$/, "")} in the background while we talk. ${q.prompt}`
+          : q.prompt;
+        return say(steer, canned);
       }
-      // Discovery exhausted without a URL — move on, diagnose from conversation.
+      // Discovery exhausted — move to diagnosis (findings may still be analyzing).
       go(STAGES.DIAGNOSIS);
-      session.diagnosisError = session.diagnosisError || "no_url";
-      return say("No website to look at. Acknowledge it lightly and move to the pitch track — you'll diagnose from what they told you.",
-        "No site to pull up — no problem. Tell me this: what's the one thing about getting customers that keeps you up at night?");
+      if (!session.url) session.diagnosisError = "no_url";
+      return say("Discovery done. If the site analysis is still running, say so naturally and keep them talking; if there's no URL, diagnose from conversation.",
+        session.url
+          ? "While my system finishes pulling up your site, tell me this: what's the one thing about getting customers that keeps you up at night?"
+          : "No site to pull up — no problem. Tell me this: what's the one thing about getting customers that keeps you up at night?");
     }
 
     case STAGES.DIAGNOSIS: {
@@ -546,7 +629,69 @@ export async function respond(env, userText, session, deps = {}) {
       }
       const emailM = text.match(EMAIL_RE);
       if (emailM && !session.email) { session.email = emailM[1].toLowerCase(); session.emailCaptured = true; }
+
+      // R3: spell-out retry — they spelled the domain after a failed fetch.
+      if (session.spelloutMode) {
+        session.spelloutMode = false;
+        const spelled = spokenUrlToUrl(text, { spellout: true }) || spokenUrlToUrl(text);
+        if (spelled) { // spelled confirmation counts as a legit retry, even if identical
+          session.url = spelled;
+          session.urlRetried = true;
+          session.diagnosisStatus = "analyzing";
+          session.pendingDiagnosisUrl = spelled;
+          reply.actions.push({ type: "diagnoseUrl", url: spelled });
+          return say("They spelled the domain. Acknowledge warmly — you're pulling it up in the background now — and keep them talking.",
+            "Got it, thank you — pulling that up in the background now. While it loads: how are most of your customers finding you these days?");
+        }
+        // Unparseable spelling → interview mode. Never a dead end.
+        session.diagnosisStatus = "interview";
+      }
+
+      const dstat = session.diagnosisStatus || "idle";
+
+      // R3: fetch failed → spell-it-out (once), then interview mode.
+      if (dstat === "failed") {
+        if (!session.spelloutAsked) {
+          session.spelloutAsked = true;
+          session.spelloutMode = true;
+          return say("The site fetch failed. Ask them to spell the domain letter by letter — warm, zero frustration, no tech jargon.",
+            SPELL_OUT_SCRIPT);
+        }
+        session.diagnosisStatus = "interview"; // second failure → interview
+      }
+
+      // R3: analysis still running in the background → keep the conversation
+      // alive, never stall. After minute 20, stop waiting and interview.
+      if ((session.diagnosisStatus || "idle") === "analyzing" && mins < 20) {
+        return say("The background site analysis is still running. Keep them talking with a real business question — do NOT mention findings you don't have yet.",
+          "My system's still pulling up your site in the background — while it works, paint me a picture: when someone's ready to buy, what's the actual next step they take with you?");
+      }
+      if (session.diagnosisStatus === "analyzing") session.diagnosisStatus = "interview"; // gave it long enough
+
+      // R3: interview mode — no site, no invented flaws. Diagnose from what
+      // they SAY: two sharp funnel questions, then the pitch track.
+      if (session.diagnosisStatus === "interview" || (!session.url && (session.diagnosisStatus || "idle") === "idle")) {
+        session.interviewQuestions = (session.interviewQuestions || 0) + 1;
+        if (session.interviewQuestions >= 3 || mins >= PITCH_BY_MINUTE) {
+          go(STAGES.PITCH);
+          session.pitchDelivered = true;
+          const canned = `So here's the prescription. From everything you've told me, the gaps are in how customers find you and what happens when they do — and that's exactly what our Audit My Business covers: a one-time $${PRODUCT_PRICE} deep dive over your whole funnel, your competitors, and where AI fits in your business. You get a ranked fix list, you own it. No subscription, no retainer, no upsell ambush — all sales final. Want me to lock that in for you?`;
+          return say("Interview-mode pitch: tie the $330 audit to what THEY told you (never invented site flaws). Assumptive close.",
+            canned);
+        }
+        const iqs = [
+          "When someone's ready to buy — what's the actual next step they take? Call, form, walk in?",
+          "And after that first contact — do you follow up, or does it live and die on that one touch?",
+          "Last one: do you know, roughly, where your best customers heard about you?",
+        ];
+        const iq = iqs[Math.min(session.interviewQuestions - 1, iqs.length - 1)];
+        return say("Interview mode: one sharp funnel question, conversational. You're diagnosing from their answers, not their site.", iq);
+      }
+
       const remaining = session.findings.slice(session.findingsPresented);
+      // R3: weave — findings landed mid-conversation. First one gets the
+      // "while you were talking" framing; the rest flow as normal findings.
+      const justReady = session.diagnosisStatus === "ready" && session.findingsPresented === 0 && remaining.length > 0;
       // D3: HOT callers get pitched by minute 5 — the background scorer's
       // prospect tier / go_pitch signal short-circuits the finding cadence.
       const hotEarly = (session.prospectTier === "hot" || session.nextBestAction === "go_pitch")
@@ -554,6 +699,12 @@ export async function respond(env, userText, session, deps = {}) {
       if (hotEarly) session.nextBestAction = "keep_flow"; // consumed
       const pitchDue = hotEarly || mins >= PITCH_BY_MINUTE || session.findingsPresented >= 3;
       if (pitchDue || remaining.length === 0) {
+        // Never pitch OVER a live objection: check close-readiness on the
+        // transition turn and route the objection first (same as PITCH).
+        const cr = await closeReadiness(env, session, text, d.decideFn);
+        session.closeReady = cr.closeReady;
+        const routed = await routeObjection(cr.objection);
+        if (routed) return routed;
         go(STAGES.PITCH);
         session.pitchDelivered = true;
         const top = session.findings.slice(0, 3).map((f) => f.title.toLowerCase()).join(", ");
@@ -563,7 +714,8 @@ export async function respond(env, userText, session, deps = {}) {
       }
       const f = remaining[0];
       session.findingsPresented++;
-      const canned = `${f.observation} ${session.findingsPresented < Math.min(3, session.findings.length) ? "And there's more —" : "Now here's what that means for you —"}`;
+      const weavePrefix = justReady ? "While you were talking I had a look at your site in the background — and something jumped out right away. " : "";
+      const canned = `${weavePrefix}${f.observation} ${session.findingsPresented < Math.min(3, session.findings.length) ? "And there's more —" : "Now here's what that means for you —"}`;
       return say(`Present this ONE finding in your own spoken words, one breath: ${f.title}. ${f.observation} Then a light question to keep them talking.`,
         canned);
     }
@@ -592,24 +744,9 @@ export async function respond(env, userText, session, deps = {}) {
       }
       const cr = await closeReadiness(env, session, text, d.decideFn);
       session.closeReady = cr.closeReady;
-      if (cr.objection && cr.objection !== "none" && !session.objections.includes(cr.objection)) {
-        session.objections.push(cr.objection);
-      }
       // Objection handling with straight talk, then back to the close.
-      if (cr.objection === "price") {
-        return say("Price objection. Straight talk: name what the audit costs vs. what one lost customer costs them. Restate $330 one-time, all sales final, no subscription. Then ask for the email.",
-          PRICE_SCRIPT + " One lost customer costs you more than that. What's the best email — I'll send your personal booking link.");
-      }
-      if (cr.objection === "skepticism") {
-        return say("They've been burned by agencies. Validate it hard — most agencies sell reports nobody reads. Your edge: you diagnosed their site LIVE in front of them, on this call, for free. That's the proof. Then ask for the email.",
-          "I get it — most agencies sell you a PDF nobody reads. Difference is, I just diagnosed your site live, in front of you, for free. That's the product. Give me your email and I'll send the booking link.");
-      }
-      if (cr.objection === "timing" || cr.objection === "authority") {
-        session.outcome = "followup";
-        go(STAGES.DEPTH);
-        return say("They're not buying today. Don't push — pivot to the follow-up: capture the email for the personal prefilled link, good for 7 days.",
-          EMAIL_CAPTURE_SCRIPT);
-      }
+      const routed = await routeObjection(cr.objection);
+      if (routed) return routed;
       go(STAGES.DEPTH);
       return say("No hard objection. Keep momentum — restate the prescription in one line and ask for the email to lock it in.",
         EMAIL_CAPTURE_SCRIPT);
@@ -766,6 +903,17 @@ export async function simulateTurn(session, userText, deps = {}) {
     };
     try {
       await backgroundScoring(null, session.id || "sim", userText, deps.decideFn, memStore);
+    } catch { /* background never breaks the turn */ }
+    // R3: inline the background site analysis too — the next turn weaves it.
+    try {
+      const diagAction = (r.actions || []).find((a) => a.type === "diagnoseUrl" && a.url);
+      if (diagAction) {
+        await backgroundDiagnose(null, session.id || "sim", diagAction.url, {
+          decideFn: deps.decideFn,
+          diagnoseFn: deps.diagnoseFn,
+          store: memStore,
+        });
+      }
     } catch { /* background never breaks the turn */ }
   }
   return r;

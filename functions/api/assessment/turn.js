@@ -6,7 +6,7 @@
 // Actions the infra crew must honor: endCall, captureEmail, bookAudit { booking_url }.
 
 import { json, loadSession, saveSession, mintPrefillToken } from "../_shared/assessmentStore.js";
-import { respond, backgroundScoring, getUsageSummary } from "../_shared/assessmentBrain.js";
+import { respond, backgroundScoring, backgroundDiagnose, getUsageSummary } from "../_shared/assessmentBrain.js";
 import { AUDIT_PREFILL_URL } from "../_shared/assessmentPersona.js";
 
 function bookingUrl(token) {
@@ -52,11 +52,20 @@ export async function onRequestPost({ request, env, waitUntil }) {
       session.closedAt = new Date().toISOString();
     }
     await saveSession(env, session);
-    // D4: real-time background decide() — prospect scoring, next-best-action,
-    // persona re-detection. Fire-and-forget AFTER the reply is built and saved:
-    // it NEVER blocks the audio path. waitUntil keeps it alive past the response.
-    const bg = backgroundScoring(env, session.id, userText).catch(
-      (e) => console.error("[assessment/turn] background scoring failed", e?.message));
+    // R3 + D4: background work AFTER the reply is built and saved — NEVER
+    // blocks the audio path. waitUntil keeps it alive past the response.
+    const bgTasks = [
+      backgroundScoring(env, session.id, userText),
+    ];
+    // R3: the avatar took the URL by voice — analyze it live in the background
+    // while the conversation continues; findings weave in on the next turn.
+    for (const a of outActions) {
+      if (a.type === "diagnoseUrl" && a.url) {
+        bgTasks.push(backgroundDiagnose(env, session.id, a.url));
+      }
+    }
+    const bg = Promise.all(bgTasks).catch(
+      (e) => console.error("[assessment/turn] background task failed", e?.message));
     if (typeof waitUntil === "function") waitUntil(bg);
     return json({
       ok: true,

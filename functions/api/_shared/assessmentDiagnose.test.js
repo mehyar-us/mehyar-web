@@ -4,6 +4,7 @@
 
 import {
   normalizeUrl, extractSignals, buildFindings, diagnoseUrl, diagnosisSummary, sanitize,
+  spokenUrlToUrl,
 } from "./assessmentDiagnose.js";
 
 let passed = 0, failed = 0;
@@ -127,6 +128,32 @@ const summary = diagnosisSummary(bad);
 ok(summary.includes("NO HTTPS") && summary.includes("no meta description"), "summary names measured facts");
 ok(!/revenue|traffic|ranking/i.test(summary), "summary never invents business metrics");
 eq(diagnosisSummary(null), "not run yet", "null signals → not run yet");
+
+// ── spokenUrlToUrl: voice URL capture (R3) ──────────────────────────────────
+{
+  const cases = [
+    // [input, opts, expected]
+    ["acmeplumbing.com", {}, "https://acmeplumbing.com/"],
+    ["https://acmeplumbing.com/contact", {}, "https://acmeplumbing.com/contact"],
+    ["acmeplumbing dot com", {}, "https://acmeplumbing.com/"],
+    ["www dot acme dot com", {}, "https://www.acme.com/"],
+    ["my site is acmeplumbing dot com", {}, "https://acmeplumbing.com/"],
+    ["Acme Plumbing DOT COM", {}, "https://acmeplumbing.com/"],
+    ["go to example dot org slash contact", {}, "https://example.org/contact"],
+    ["a c m e dot com", { spellout: true }, "https://acme.com/"],
+    ["a c m e p l u m b i n g dot com", { spellout: true }, "https://acmeplumbing.com/"],
+    ["not a url at all", {}, null],
+    ["call me at five", {}, null],
+    ["", {}, null],
+    ["http://127.0.0.1/admin", {}, null],   // SSRF guard survives voice path
+    ["ftp://example.com", {}, "https://example.com/"], // scheme misspeak → https
+  ];
+  for (const [inp, opts, want] of cases) {
+    eq(spokenUrlToUrl(inp, opts), want, `spokenUrlToUrl(${JSON.stringify(inp)})`);
+  }
+  // Ambiguous captures never throw; the fetch decides, spell-out is the fallback
+  eq(typeof spokenUrlToUrl("uh, it's like bob's plumbing dot com"), "string", "filler-heavy input still yields a candidate");
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

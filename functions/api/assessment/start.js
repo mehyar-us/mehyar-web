@@ -7,7 +7,7 @@
 import { json, clientIpHashInput, saveSession } from "../_shared/assessmentStore.js";
 import { sha256hex } from "../_shared/assessmentDiagnose.js";
 import { newSession } from "../_shared/assessmentBrain.js";
-import { CONSENT_SCRIPT } from "../_shared/assessmentPersona.js";
+import { CONSENT_SCRIPT, INTRO_LINE } from "../_shared/assessmentPersona.js";
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -24,7 +24,9 @@ export async function onRequestPost({ request, env }) {
       await env.INTAKE_KV.put(k, String(n + 1), { expirationTtl: 86400 });
     }
     await saveSession(env, session);
-    return json({ ok: true, session_id: session.id, reply_text: CONSENT_SCRIPT, stage: session.stage });
+    // R1: the AI introduces itself as "the mayor", then the consent gate.
+    const opening = `${INTRO_LINE} ${CONSENT_SCRIPT}`;
+    return json({ ok: true, session_id: session.id, reply_text: opening, stage: session.stage });
   } catch (e) {
     console.error("[assessment/start]", e?.message);
     return json({ ok: false, error: "start_failed" }, 500);

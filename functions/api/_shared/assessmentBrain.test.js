@@ -77,7 +77,7 @@ function fresh() { return newSession(); }
   eq(s.outcome, "declined", "ambiguous consent → declined");
 }
 
-// ── discovery → diagnosis ───────────────────────────────────────────────────
+// ── discovery → background diagnosis (R3) ───────────────────────────────────
 async function driveToDiagnosis() {
   const s = fresh();
   const d = deps(s);
@@ -85,17 +85,27 @@ async function driveToDiagnosis() {
   await simulateTurn(s, "ok", d);                     // open → discovery (Q1)
   await simulateTurn(s, "plumbing company", d);       // category → Q2
   await simulateTurn(s, "Acme Plumbing", d);          // name → Q3
-  const r = await simulateTurn(s, "acmeplumbing.com", d); // url → diagnosis
+  // Voice URL capture ("dot com" speech) → background analysis fires, call continues
+  const r = await simulateTurn(s, "acmeplumbing dot com", d);
   return { s, r, d };
 }
 {
   const { s, r } = await driveToDiagnosis();
-  eq(s.stage, STAGES.DIAGNOSIS, "URL → diagnosis stage");
-  ok(s.diagnosisOk, "diagnosis ran");
-  eq(s.findings.length, 4, "fixture findings scored");
+  eq(s.url, "https://acmeplumbing.com/", "voice URL captured + normalized");
+  eq(s.diagnosisStatus, "ready", "background analysis completed inline (simulation)");
+  ok(r.actions.some((a) => a.type === "diagnoseUrl"), "diagnoseUrl action emitted (route fires it via waitUntil)");
+  eq(s.findings.length, 4, "fixture findings scored in background");
   ok(s.findings.every((f) => f.severitySource === "deterministic"), "decide down → deterministic severity (fail closed)");
-  eq(s.url, "https://acmeplumbing.com", "URL normalized with https");
-  ok(r.replyText.length > 0, "diagnosis intro spoken");
+  ok((s.bgEvents || []).some((e) => e.kind === "diagnosis"), "diagnosis bg event logged");
+  eq(s.stage, STAGES.DISCOVERY, "call keeps going — discovery continues while analysis runs");
+  // Finish discovery → diagnosis → findings weave in mid-conversation
+  const d = deps(s);
+  await simulateTurn(s, "word of mouth", d);          // acquisition → diagnosis
+  eq(s.stage, STAGES.DIAGNOSIS, "discovery exhausted → diagnosis");
+  const r2 = await simulateTurn(s, "go on", d);
+  ok(/while you were talking/i.test(r2.replyText) || /background/i.test(r2.replyText) || /Canned/i.test(r2.replyText),
+    "first finding weaves in with background framing");
+  eq(s.findingsPresented, 1, "one finding presented");
 }
 
 // ── scoreFindings: decide adopts on auto, keeps deterministic on review ─────
@@ -140,6 +150,9 @@ async function driveToDiagnosis() {
 // ── pitch timing: must land by minute 15 ────────────────────────────────────
 {
   const { s } = await driveToDiagnosis();
+  const d0 = deps(s);
+  await simulateTurn(s, "word of mouth", d0);         // → diagnosis
+  await simulateTurn(s, "go on", d0);                 // weave finding 1
   s.startedAt = new Date(Date.now() - 16 * 60000).toISOString(); // 16 min in
   // LLM throws → canned pitch fallback (the real $330 pitch copy)
   const d = { chatFn: async () => { throw new Error("llm down"); }, decideFn: decideDown, diagnoseFn: diagnoseStub, nowMs: clockAt(s, 16) };
@@ -232,20 +245,52 @@ async function driveToDiagnosis() {
   ok(r.replyText.length > 10, "LLM down → canned fallback, never silent");
 }
 
-// ── diagnosis fetch failure: never invent ───────────────────────────────────
+// ── diagnosis fetch failure: spell-out → never invent, never dead-end ────────
 {
   const s = fresh();
   const failDiag = async () => ({ ok: false, error: "fetch_failed" });
-  const d = { ...deps(s), chatFn: stubChat(), decideFn: decideDown, diagnoseFn: failDiag };
+  const d = { ...deps(s), chatFn: async () => { throw new Error("llm down"); }, decideFn: decideDown, diagnoseFn: failDiag };
   await simulateTurn(s, "yes", d);
   await simulateTurn(s, "go", d);
   await simulateTurn(s, "plumbing", d);
   await simulateTurn(s, "Acme", d);
-  const r = await simulateTurn(s, "acmeplumbing.com", d);
-  eq(s.stage, STAGES.DIAGNOSIS, "fetch fail still → diagnosis stage");
-  ok(!s.diagnosisOk && s.diagnosisError === "fetch_failed", "failure recorded, not hidden");
+  await simulateTurn(s, "acmeplumbing dot com", d);   // voice URL → bg fails
+  eq(s.diagnosisStatus, "failed", "fetch failure recorded, not hidden");
+  eq(s.diagnosisAttempts, 1, "attempt counted");
   eq(s.findings.length, 0, "no findings invented on fetch failure");
-  ok(/couldn't load/i.test(r.replyText) || /can't see/i.test(r.replyText) || /Canned/i.test(r.replyText), "honest fetch-failure line spoken");
+  eq(s.stage, STAGES.DISCOVERY, "call continues — discovery doesn't stall");
+  await simulateTurn(s, "word of mouth", d);          // → diagnosis
+  eq(s.stage, STAGES.DIAGNOSIS, "reaches diagnosis");
+  const r = await simulateTurn(s, "ok", d);           // spell-out ask (canned)
+  ok(s.spelloutAsked && s.spelloutMode, "spell-out fallback triggered once");
+  ok(/spell/i.test(r.replyText), "avatar asks them to spell the domain");
+  // They spell it; retry succeeds this time
+  const d2 = { ...d, diagnoseFn: diagnoseStub };
+  const r2 = await simulateTurn(s, "a c m e p l u m b i n g dot com", d2);
+  eq(s.diagnosisStatus, "ready", "spelled URL retried in background → ready");
+  ok(r2.actions.some((a) => a.type === "diagnoseUrl"), "retry fires background analysis");
+  ok(!s.spelloutMode, "spellout mode cleared");
+}
+{
+  // Spell-out unparseable → interview mode, still no dead end
+  const s = fresh();
+  const failDiag = async () => ({ ok: false, error: "fetch_failed" });
+  const d = { ...deps(s), chatFn: async () => { throw new Error("llm down"); }, decideFn: decideDown, diagnoseFn: failDiag };
+  await simulateTurn(s, "yes", d);
+  await simulateTurn(s, "go", d);
+  await simulateTurn(s, "plumbing", d);
+  await simulateTurn(s, "Acme", d);
+  await simulateTurn(s, "acmeplumbing dot com", d);
+  await simulateTurn(s, "word of mouth", d);
+  await simulateTurn(s, "ok", d);                     // spell-out ask
+  const r = await simulateTurn(s, "never mind, forget the website", d); // unparseable
+  eq(s.diagnosisStatus, "interview", "unparseable spelling → interview mode");
+  ok(r.replyText.length > 10, "interview question asked — call continues");
+  // Interview mode asks funnel questions, then pitches — never stalls
+  await simulateTurn(s, "they call us", d);
+  const r2 = await simulateTurn(s, "no follow up really", d);
+  ok(s.stage === STAGES.DIAGNOSIS || s.stage === STAGES.PITCH, "interview progresses toward pitch");
+  ok(!/traffic|revenue|ranking/i.test(r2.replyText), "interview never invents site metrics");
 }
 
 // ── simulateTurn does not need env ──────────────────────────────────────────

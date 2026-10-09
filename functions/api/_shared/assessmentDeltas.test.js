@@ -126,14 +126,18 @@ function memStore(session) {
 // ── D3: hot early pitch (by minute 5, not 15) ───────────────────────────────
 {
   const s = newSession();
-  const deps = { chatFn: stubChat(), decideFn: decideDown, diagnoseFn: diagnoseStub, nowMs: clockAt(s, 2), runBackground: false };
+  // background ON (default): the site analysis completes inline in simulation
+  const deps = { chatFn: stubChat(), decideFn: decideDown, diagnoseFn: diagnoseStub, nowMs: clockAt(s, 2) };
   await simulateTurn(s, "yes", deps);
   await simulateTurn(s, "ok", deps);
   await simulateTurn(s, "plumbing", deps);
   await simulateTurn(s, "Acme", deps);
-  await simulateTurn(s, "acmeplumbing.com", deps); // → diagnosis, intro
+  await simulateTurn(s, "acmeplumbing.com", deps); // → Q4, background analysis
+  eq(s.diagnosisStatus, "ready", "background analysis completed inline (simulation)");
+  eq(s.stage, STAGES.DISCOVERY, "call continues during analysis");
+  await simulateTurn(s, "word of mouth", deps); // → diagnosis
   eq(s.stage, STAGES.DIAGNOSIS, "in diagnosis");
-  await simulateTurn(s, "go on", deps); // presents finding #1
+  await simulateTurn(s, "go on", deps); // weaves finding #1
   eq(s.findingsPresented, 1, "one finding presented");
   // background scorer flags HOT at minute 6
   s.prospectTier = "hot"; s.prospectScore = 82;

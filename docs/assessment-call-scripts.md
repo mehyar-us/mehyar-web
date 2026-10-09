@@ -30,6 +30,14 @@ every generated reply (forbidden-phrase scan, URL scan, length cap).
 
 ## Scripts
 
+### Intro (R1 — Mayor's word)
+
+> "Hi, I'm the mayor."
+
+Spoken first, then the consent gate. The avatar never mentions it's AI —
+logged as a conscious decision in `docs/assessment-call-contract.md`
+(§ Identity decision log).
+
 ### Consent (minute 0 — the gate)
 
 > "Before we start — quick heads-up: this call is recorded and transcribed so
@@ -55,15 +63,22 @@ every generated reply (forbidden-phrase scan, URL scan, length cap).
 3. "What's the website? I'll pull it up right now and look at it live."
 4. "Last one — how do most of your customers find you today?"
 
-Acknowledge answers briefly. Not an interrogation. The moment the URL lands,
-the avatar pulls the site live (server-side fetch, ~seconds) and reacts
-naturally: *"Got it — looking at it now."*
+Acknowledge answers briefly. Not an interrogation. The moment the URL lands by
+voice ("acmeplumbing dot com" works — the avatar parses spoken domains and
+letter spell-outs), it fires the background analysis and keeps talking:
+*"Got it — I'm pulling up your site in the background while we talk."*
+The fetch never blocks the conversation; findings weave in when they're ready:
+*"While you were talking I had a look at your site in the background — and
+something jumped out right away."*
 
-If the site won't load: **never invent flaws.** Say it straight:
-> "I tried to pull up your site and couldn't load it — could be your host
-> blocking automated checks, or the address needs a second look. I won't guess
-> at flaws I can't see. Let's keep talking and I'll diagnose what I can from
-> what you tell me."
+If the site won't load: **never invent flaws.** First, the spell-out fallback
+(warm, zero frustration):
+> "Hmm, I'm not pulling it up — might be me mishearing the domain. Could you
+> spell it out for me, letter by letter? Like a-b-c dot com."
+
+One retry. If that fails too — or the spelling can't be parsed — the call
+**never dead-ends**: it drops into interview mode (sharp funnel questions from
+what they SAY) and the pitch ties to their answers, never invented site flaws.
 
 ### Diagnosis (minute 5–12 — real findings only)
 
@@ -181,6 +196,24 @@ digest, verified working). Contains: greeting, the personal prefilled link
 audit covers, the automated-measurements disclaimer, physical address
 (CAN-SPAM), one-click unsubscribe. Template: `buildEmail()` in
 `functions/api/assessment/end.js`.
+
+## Funnel continuity (R1): AI mayor → human Mayor
+
+The post-payment follow-up call is with **Mayor himself personally** — a
+human-in-the-loop step, not an auto-call. Booking is a **request/confirmation**
+flow on his real calendar:
+
+1. Buyer picks a slot (Tue/Thu 10:00–16:00 ET, 45 min, 24h notice) →
+   `POST /api/assessment/book-followup` creates a **request** (tentative hold).
+2. Mayor gets a one-click **approve/decline** email. Buyer copy says
+   "Request sent — Mayor personally confirms within 24 hours."
+3. **Approve** → confirmed + one-click Google Calendar template link for his
+   calendar; the audit crew's emailer notifies the buyer (webhook).
+4. **Decline** → hold released; buyer picks another slot.
+
+Manual approve is the decision (his personal time; auto-confirm stays a future
+flip on his word). Full mechanics: `docs/assessment-call-contract.md` §R1;
+audit-crew integration: `docs/assessment-call-handoff.md` §R1.
 
 ## Compliance checklist (product-compliance skill — this build)
 

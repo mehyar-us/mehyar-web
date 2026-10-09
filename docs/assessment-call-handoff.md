@@ -144,31 +144,73 @@ Mayor finalized the funnel upload limits (his proposal, adopted verbatim):
 These are enforced with HTTP 413, not suggested in helper text. A file over
 any cap is rejected, not truncated.
 
-## D7b — Post-payment follow-up booking (the deeper call)
+## D7b / R1 — Post-payment follow-up booking: WITH MAYOR HIMSELF (request/confirm)
 
-After the $330 checkout clears, the buyer gets a **follow-up call** (same
-WebRTC experience, avatar opens from their audit context). The issuance
-endpoint lives on our side:
+After the $330 checkout clears, the buyer books a **personal deep-dive call
+with Mayor himself** (AI mayor → human Mayor funnel continuity). This is a
+**request/confirmation flow on his real calendar — manual approve, never an
+auto-call** (his personal time; "human-in-the-loop" was his phrase). The old
+WebRTC `booking_url` concept is WITHDRAWN.
 
-`POST https://mehyar.us/api/assessment/book-followup`
-`{ "audit_id": "<audit_business_reports.id>", "access_token": "<buyer token>" }`
-→ `{ ok, session_id, kind: "followup", booking_url }`
-(`booking_url` = `https://mehyar.us/call?session=<id>&mode=followup` — proposed,
-infra crew to confirm.)
+**Buyer flow (your funnel pages):**
+1. After payment: show the slot picker — `GET /api/assessment/booking-availability?days=14`
+   → `{ slots: [{ start, end }], timezone: "America/New_York", slot_minutes: 45 }`
+   (Tue/Thu 10:00–16:00 ET, minus active holds, 24h min notice).
+2. Buyer picks a slot → `POST /api/assessment/book-followup`
+   `{ audit_id, access_token, slot_start }`
+   → verifies payment (402 `not_paid` if unpaid — calls are NEVER issued unpaid)
+   → creates the request (`status: "requested"`, slot held) → emails Mayor a
+   one-click approve/decline link.
+   → `{ ok, booking_id, status: "requested", slot_start, slot_end, timezone,
+        message: "Request sent — Mayor personally confirms your deep-dive call within 24 hours." }`
+   Buyer-facing copy: **requested, not booked** — Mayor personally confirms.
+3. Poll `GET /api/assessment/booking-status?booking_id=…` → `{ booking: { status } }`
+   (`requested` → `confirmed` | `declined` | `expired`). On `declined`/`expired`,
+   send them back to the slot picker.
+4. On `confirmed`: show the booking + note that the calendar invite follows.
 
-**Your integration (one fetch in your Stripe fulfill webhook, after marking paid):**
-```js
-const r = await fetch("https://mehyar.us/api/assessment/book-followup", {
-  method: "POST", headers: { "content-type": "application/json" },
-  body: JSON.stringify({ audit_id, access_token }),
-}).then(r => r.json());
-if (r.ok) emailBuyer({ subject: "Your follow-up call is booked", bookingUrl: r.booking_url });
+**Buyer notifications are YOUR send** (we store `email_hash` only — never raw
+buyer email). Set `BOOKING_NOTIFY_URL` on our side to your webhook; we POST:
+```json
+{ "event": "booking.requested|confirmed|declined|expired",
+  "booking_id": "...", "audit_id": "...", "email_hash": "sha256(...)",
+  "business_name": "...", "slot_start": "...", "slot_end": "...",
+  "timezone": "America/New_York",
+  "calendar_template_url": "https://calendar.google.com/calendar/render?..." }
 ```
-- The endpoint verifies payment itself (`status` ∈ paid|generating|ready +
-  token match; 402 otherwise) — but call it only from the paid path anyway.
-- Idempotent: one follow-up session per paid audit (`reused: true` on repeat).
-- If it returns 503 `audit_engine_not_ready`, your migration hasn't applied —
-  retry after deploy; never email a booking link you didn't get.
+Match `email_hash` to your buyer record and send:
+- `requested`: "Request received — Mayor personally confirms within 24 hours."
+- `confirmed`: "Confirmed for <date> ET — your personal deep-dive call with Mayor." (+ the calendar template link)
+- `declined`/`expired`: "That time didn't work — pick another: <your booking page>."
+
+**Mayor's side (ours):** approve/decline links (`?token=abt_…`, hashed at rest,
+48h TTL) → confirmed flips status + hands him a Google Calendar template link
+(one click onto his calendar — no server-side Google Calendar API exists in
+this runtime; `createCalendarEvent()` is the upgrade seam).
+
+**Your Stripe fulfill webhook** calls `POST /api/assessment/book-followup` only
+from the paid path. Idempotent per audit (`reused: true` on repeat).
+503 `audit_engine_not_ready` = your migration hasn't applied — retry after
+deploy.
+
+## Ship-checklist for YOUR pages (Mayor, standing — definition of done)
+
+Every new surface (prefill page, funnel pages, booking pages) must carry the
+tracking stack before ship:
+
+1. **Google tag** — reuse `client/src/components/GoogleAnalytics.tsx`
+   (page_view fires automatically on wouter route change). Fire explicit funnel
+   milestones via `trackPublicAnalyticsEvent` (names agreed — see
+   `docs/assessment-call-contract.md`): `email_captured`, `payment_started`,
+   `payment_completed`, `booking_requested`, `booking_confirmed`.
+2. **Meta pixel + GTM — GAP, flagged not invented.** Grep-verified 2026-10-09:
+   neither exists anywhere in `client/index.html` or `client/src`, and
+   `PrivacyPolicy.tsx` discloses their absence. Don't add them silently — that's
+   a business + privacy-policy decision.
+3. **SEO** — register every new route in `client/src/components/SeoManager.tsx`
+   with title/description/OG tags.
+4. **Verify** with `MEHYAR_PUBLIC_ANALYTICS_DRY_RUN=true` before ship —
+   tags-firing is part of the ship gate.
 
 ## Test hooks
 
