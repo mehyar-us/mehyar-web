@@ -33,6 +33,7 @@
 //  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
 //  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
 //  25. The Mayor — https://mayor.mehyar.us (AI business assistant for local service businesses)
+//  26. Moonroom — https://moonroom.mehyar.us (AI photo studio: headshot/product/theme packs from one selfie)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -43,7 +44,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -357,6 +358,18 @@ id: "hustlekit",
       "Business profile (name, services, hours, location), customer records you save (name, email/phone), appointments, call metadata from voice calls you enable, and usage records for billing. All records are scoped to your business.",
     whatWeDelete:
       "Business profile, customer records, appointments, call records, and usage data tied to your business. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "moonroom",
+    name: "Moonroom",
+    url: "https://moonroom.mehyar.us",
+    tagline: "Studio portraits from one selfie.",
+    icon: Camera,
+    inAppPath: "Account page (moonroom.mehyar.us/account.html) — Delete my account & data; email fallback (info@mehyar.us)",
+    whatWeCollect:
+      "Selfie uploads and the photos we generate from them, email + order/payment records for pack purchases, and free-tier usage counters (3 watermarked previews, IP-keyed). Uploads are stored for re-rolls and purged on account delete.",
+    whatWeDelete:
+      "Selfie uploads, generated images, orders, and account records. In-app delete purges everything in one tap; email fallback actions within 14 days.",
   },
 ];
 

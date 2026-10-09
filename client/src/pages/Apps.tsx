@@ -443,6 +443,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/mayor-logo.png",
     accentClass: "from-neutral-100 to-white dark:from-neutral-900 dark:to-neutral-950",
   },
+  {
+    id: "moonroom",
+    name: "Moonroom",
+    url: "https://moonroom.mehyar.us",
+    tagline: "Studio portraits from one selfie.",
+    description:
+      "AI photo studio that turns one selfie into studio portraits: $24 headshot packs, $15 product-photo backgrounds for sellers, $9 seasonal theme packs. One-time payments — no subscription.",
+    audience: "Job seekers and professionals who need a great headshot, and online sellers who need clean product photos without a photo shoot.",
+    highlights: [
+      "AI headshot packs, product photos, and themed portraits from a single selfie",
+      "Free watermarked preview — pay only for the pack you love",
+      "Identity-locked generation keeps every portrait looking like you",
+      "Private gallery links — your photos, your downloads, delete anytime",
+    ],
+    logo: "/assets/moonroom-logo.png",
+    accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
+  },
 ];
 
 const buildPillars = [
@@ -684,7 +701,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom), and the request form.
           </p>
         </div>
       </section>
