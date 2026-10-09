@@ -9,10 +9,13 @@ import { z } from 'zod';
 import { getSession, handleAuthRequest } from './auth';
 import { HttpError,json,readJson,requireOrigin,digest } from './http';
 import { requireMembership,CHAT_ROLES } from './permissions';
-import { readMemory,confirmProfile,type Profile } from './memory';
-import {verticalSchema} from './verticals';
+import { readMemory,confirmProfile,type Profile,type ProfilePatch } from './memory';
+import {verticalSchema,type Vertical} from './verticals';
+import {languageSchema} from './i18n';
 import {profileRefreshPreview} from './profile-refresh';
-import { onboardingProgress,buildPlaceConfirmCard,confirmPlace,onboardingProgressForVertical } from './onboarding';
+import { onboardingProgress,buildPlaceConfirmCard,confirmPlace,onboardingProgressForVertical,VERTICAL_CONFIRM_FOLLOWUPS,normalizePlaceCategory } from './onboarding';
+import { suggestVertical,verticalSuggestionFraming,MODE_LABELS } from './vertical-mapping';
+import {assessFit,fitAnswersFromProfile,honestFitMessage,type FitAssessment} from './fit-check';
 import { searchPlacesText,getPlaceDetails,placesApiKey } from './places';
 import {calendarGuide} from './calendar-guide';
 import {getPhoneSetup,savePhoneSetup,phoneSetupSchema,phoneSetupGuide} from './phone-setup';
@@ -45,6 +48,7 @@ import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
 import {runProactiveCycle,buildBriefing,buildRoi,setRoiConfig,roiConfigSchema,recordNoShow,noShowSchema,listSuggestionCards,sendSuggestionCard,editSuggestionCard,dismissSuggestionCard,setProactiveSettings,proactiveSettingsSchema} from './proactive';
+import {handleInstagramWebhook} from './instagram-dm';
 export {MayorPhone} from './phone-voice';
 export { MayorVoice } from './voice';
 
@@ -85,6 +89,10 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   const stream=url.pathname.match(/^\/api\/phone\/twilio\/stream\/([a-f0-9-]{36})$/);
   if(stream&&request.method==='GET')return connectTwilioStream(request,env,stream[1]);
   if(url.pathname==='/api/health') return json({service:'The Mayor',status:'ok',environment:env.ENVIRONMENT});
+  // Crew 6f Instagram DM webhook — DARK by default. Unauthenticated like the
+  // phone incoming routes; the handler itself 404s when INSTAGRAM_DM_ENABLED
+  // is not '1' (must not verify with Meta while dark).
+  if(url.pathname==='/api/webhooks/instagram')return handleInstagramWebhook(request,env);
   if(url.pathname==='/api/phone-guide'&&request.method==='GET'){
     const input=phoneSetupSchema.parse({mode:url.searchParams.get('mode')??'new',...(url.searchParams.has('provider')?{provider:url.searchParams.get('provider')}:{})});
     return json(phoneSetupGuide(input));
@@ -122,11 +130,38 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     await requireMembership(env,identity,CHAT_ROLES);
     if(request.method==='GET')return json(await readConversationRecovery(env,identity));
     if(request.method==='POST'){
-      const input=z.object({requestId:z.uuid(),text:z.string().trim().min(1).max(4000)}).strict().parse(await readJson(request,20000));
+      const input=z.object({requestId:z.uuid(),text:z.string().trim().min(1).max(4000),imageIds:z.array(z.string().uuid()).max(2).optional()}).strict().parse(await readJson(request,20000));
       const name=await digest(`${tenantId}:${session.user.id}`),headers=new Headers({'content-type':'application/json'});
       headers.set('x-mayor-tenant',tenantId);headers.set('x-mayor-user',session.user.id);headers.set('x-mayor-session',session.session.id);
       return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/chat`,{method:'POST',headers,body:JSON.stringify(input)}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Conversation is temporarily unavailable.'},503);
     }
+  }
+  // Crew 6j — chat photo upload (multipart, field "image") and delete.
+  // Proxied to the tenant's voice agent with the same session identity headers.
+  const conversationImages=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/conversation\/images$/);
+  if(conversationImages&&request.method==='POST'){
+    const tenantId=conversationImages[1],identity={tenantId,userId:session.user.id,sessionId:session.session.id};
+    await requireMembership(env,identity,CHAT_ROLES);
+    const contentLength=Number(request.headers.get('content-length')??'0');
+    if(contentLength>6_500_000)throw new HttpError(413,'image_too_large','That photo is too large. Keep it under 5 MB.');
+    const contentType=request.headers.get('content-type')??'';
+    if(!contentType.toLowerCase().startsWith('multipart/form-data'))throw new HttpError(415,'multipart_required','Send the photo as multipart form data.');
+    const name=await digest(`${tenantId}:${session.user.id}`),headers=new Headers();
+    headers.set('x-mayor-tenant',tenantId);headers.set('x-mayor-user',session.user.id);headers.set('x-mayor-session',session.session.id);
+    headers.set('content-type',contentType);if(contentLength)headers.set('content-length',String(contentLength));
+    // Buffer the (size-capped) body: workers-types RequestInit has no duplex option.
+    const body=await request.arrayBuffer();
+    if(body.byteLength>6_500_000)throw new HttpError(413,'image_too_large','That photo is too large. Keep it under 5 MB.');
+    return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/images`,{method:'POST',headers,body}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Photo upload is temporarily unavailable.'},503);
+  }
+  const conversationImageDelete=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/conversation\/images\/delete$/);
+  if(conversationImageDelete&&request.method==='POST'){
+    const tenantId=conversationImageDelete[1],identity={tenantId,userId:session.user.id,sessionId:session.session.id};
+    await requireMembership(env,identity,CHAT_ROLES);
+    const input=z.object({id:z.string().uuid()}).strict().parse(await readJson(request,4096));
+    const name=await digest(`${tenantId}:${session.user.id}`),headers=new Headers({'content-type':'application/json'});
+    headers.set('x-mayor-tenant',tenantId);headers.set('x-mayor-user',session.user.id);headers.set('x-mayor-session',session.session.id);
+    return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/images/delete`,{method:'POST',headers,body:JSON.stringify(input)}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Photo deletion is temporarily unavailable.'},503);
   }
   const conversationReset=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/conversation\/reset$/);
   if(conversationReset&&request.method==='POST'){
@@ -285,8 +320,19 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(profile&&request.method==='GET'){const memory=await readMemory(env,{tenantId:profile[1],userId:session.user.id});return json({...memory,progress:onboardingProgress(memory.profile)});}
   if(profile&&request.method==='POST'){
     const actor={tenantId:profile[1],userId:session.user.id};
-    const {revision,vertical}=z.object({vertical:verticalSchema,revision:z.number().int().min(0)}).strict().parse(await readJson(request,1024));
-    return json(await confirmProfile(env,actor,{vertical},revision));
+    const input=z.object({vertical:verticalSchema.optional(),revision:z.number().int().min(0),
+     verticalMappedFrom:z.string().trim().min(1).max(80).optional(),
+     clearVerticalMapping:z.boolean().optional(),
+     language:languageSchema.optional()}).strict().parse(await readJson(request,1024));
+    // Crew 6b: the onboarding "Use X mode" button records the original trade
+    // so the UI can say "using X mode"; a manual picker change clears it.
+    // Crew 6c: language picker.
+    const profilePatch:ProfilePatch={};
+    if(input.vertical)profilePatch.vertical=input.vertical;
+    if(input.clearVerticalMapping)profilePatch.verticalMappedFrom=undefined;
+    else if(input.verticalMappedFrom)profilePatch.verticalMappedFrom=input.verticalMappedFrom;
+    if(input.language)profilePatch.language=input.language;
+    return json(await confirmProfile(env,actor,profilePatch,input.revision));
   }
   // Crew 4b — one-tap business profile refresh from the saved vertical.
   // Preview is deterministic (vertical profile + saved answers, no model call);
@@ -307,7 +353,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const memory=await readMemory(env,actor);
     const preview=profileRefreshPreview(memory.profile);
     if(!preview||!preview.changes.length)throw new HttpError(400,'nothing_to_refresh','The business profile already matches the business type.');
-    const patch:Profile={};
+    const patch:ProfilePatch={};
     for(const change of preview.changes)patch[change.field]=change.to;
     return json(await confirmProfile(env,actor,patch,revision));
   }
@@ -350,17 +396,51 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     // schema-compatible subset, folding the Places address into locations
     // when the profile has none. The confirmed phone rides along in the
     // response for the phone-provisioning step.
-    const applyPatch:Profile={};
+    // Crew 6b — adjacent-vertical mapping. A direct vertical match saves as
+    // before (and clears any stale mapping flag). An adjacent trade NEVER
+    // auto-saves: the owner must explicitly accept the honest suggestion, so
+    // only the raw place facts are persisted here.
+    const suggestion=!patch.vertical?suggestVertical(place.category):null;
+    const applyPatch:ProfilePatch={};
     if(patch.name)applyPatch.name=patch.name.slice(0,160);
     if(patch.hours)applyPatch.hours=patch.hours.slice(0,2000);
-    if(patch.vertical)applyPatch.vertical=patch.vertical;
+    if(patch.vertical){applyPatch.vertical=patch.vertical;applyPatch.verticalMappedFrom=undefined;}
     if(patch.address&&!(memory.profile.locations??[]).some(location=>location.trim()))applyPatch.locations=[patch.address.slice(0,300)];
     const updated=await confirmProfile(env,actor,applyPatch,memory.revision);
+    // Crew 6e - honest fit check on the Places path. A walk-up place
+    // category (food truck, kiosk, ...) with no appointments and no inbound
+    // call volume is a clear poor fit: store it once and surface the
+    // plain-spoken message once. Anything less clear waits for the
+    // conversational check after the core questions are answered.
+    let fitCheck:{message:string;reasons:string[]}|null=null;
+    let finalProfile=updated.profile;
+    let finalRevision=updated.revision;
+    if(!updated.profile.fitAssessment){
+      const result=assessFit(fitAnswersFromProfile(updated.profile,normalizePlaceCategory(place.category)));
+      if(result.fit==='poor'){
+        const assessment:FitAssessment={fit:result.fit,reasons:result.reasons,assessedAt:new Date().toISOString(),source:'place-category'};
+        const refit=await confirmProfile(env,actor,{fitAssessment:assessment},updated.revision);
+        finalProfile=refit.profile;
+        finalRevision=refit.revision;
+        fitCheck={message:honestFitMessage(result),reasons:result.reasons};
+      }
+    }
     return json({
-      profile:updated.profile,revision:updated.revision,
+      profile:finalProfile,revision:finalRevision,
       vertical:patch.vertical,followUpQuestion:patch.followUpQuestion,
+      // Crew 6b: honest adjacent-vertical suggestion. The web UI renders the
+      // framing with explicit [Use X mode] / [Choose different] /
+      // [Continue without a vertical] choices; the follow-up is shown in chat
+      // after the owner accepts, so the trade is never silently mismatched.
+      verticalSuggestion:suggestion?{
+       trade:suggestion.trade,vertical:suggestion.vertical,reason:suggestion.reason,
+       modeLabel:MODE_LABELS[suggestion.vertical as Exclude<Vertical,'other'>],
+       framing:verticalSuggestionFraming(suggestion),
+       followUpQuestion:`Using ${MODE_LABELS[suggestion.vertical as Exclude<Vertical,'other'>]} mode for your ${suggestion.trade} business — ${VERTICAL_CONFIRM_FOLLOWUPS[suggestion.vertical as Exclude<Vertical,'other'>]}`,
+      }:null,
       placePhone:patch.phone,placeAddress:patch.address,
-      progress:onboardingProgressForVertical(updated.profile,patch.vertical),
+      progress:onboardingProgressForVertical(finalProfile,patch.vertical),
+      fitCheck,
     });
   }
   const voice=url.pathname.match(/^\/agents\/mayor-voice\/([a-f0-9]{64})$/);

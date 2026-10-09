@@ -1,10 +1,19 @@
 import {z} from 'zod';
 
 /** Runtime vertical profiles. The 41 docs in docs/verticals/ are the content source;
- * these 5 ship first. One `vertical` field on the business profile selects the profile.
+ * these 7 ship now. One `vertical` field on the business profile selects the profile.
  * Everything downstream — templates, vocabulary, detectors — keys off this. */
-export const verticalSchema=z.enum(['salon','restaurant','plumbing_hvac','dental','auto_repair','other']);
+export const verticalSchema=z.enum(['salon','restaurant','plumbing_hvac','dental','auto_repair','pet_grooming','med_spa','other']);
 export type Vertical=z.infer<typeof verticalSchema>;
+
+/** Customer-facing register. `friendly` is the default; `professional` is for
+ * lawyers, clinics, financial advisors — never casual, never upsell.
+ * Optional on the profile so existing businesses default to friendly. */
+export const toneSchema=z.enum(['friendly','professional']);
+export type Tone=z.infer<typeof toneSchema>;
+/** A saved tone counts as professional only when explicitly set — every other
+ * value (unset, unknown, friendly) keeps the default register. */
+export function isProfessionalTone(tone:unknown):boolean{return tone==='professional';}
 
 export interface VerticalProfile{
  vertical:Vertical;
@@ -19,6 +28,12 @@ export interface VerticalProfile{
  textbackConfirmTemplate:string;
  /** Reminder template. {when} is replaced with the appointment time. */
  reminderTemplate:string;
+ /** Professional-register overrides for the three customer SMS templates above.
+  * Optional; when profile tone is 'professional' and these are unset, the
+  * shared PROFESSIONAL_* defaults below are used. */
+ professionalTextbackTemplate?:string;
+ professionalTextbackConfirmTemplate?:string;
+ professionalReminderTemplate?:string;
  /** What the proactive detectors watch for this vertical. */
  detectors:string[];
  /** Per-vertical detector tuning knobs. All optional so profiles keep working
@@ -188,6 +203,53 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
   connectorPriority:['telnyx','twilio','google','google-business','stripe','shop-ware','tekmetric'],
   suggestionVoice:'Straight-talking, capable — car people smell nonsense fast.',
   briefingNouns:{appointments:'service appointments',customers:'customers'}},
+ pet_grooming:{vertical:'pet_grooming',label:'Pet grooming salon',
+  vocabulary:{customer:'client',booking:'appointment',staff:'groomer',service:'service'},
+  placesHints:['pet groomer','dog grooming','pet salon','pet grooming'],
+  textbackTemplate:'Hi, this is {business}. Sorry we missed your call! Want to book a grooming appointment? Reply YES and we will find a spot for your pet. '+STOP,
+  textbackConfirmTemplate:'Thanks! We will text you shortly with open grooming times.',
+  reminderTemplate:'Reminder: your pet has a grooming appointment at {business} {when}. Reply CANCEL to cancel.',
+  detectors:['rebooking_gap','missed_call','slow_day','lapsed_regular','no_show_risk'],
+  detectorParams:{lapsedRegularDays:70,rebookingCycleDays:49,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
+  kpis:[
+   {key:'rebooking_rate',label:'Rebooking rate',hint:'Share of clients who rebook within their grooming cycle'},
+   {key:'table_utilization',label:'Table utilization',hint:'Booked grooming table-hours vs available table-hours'},
+   {key:'avg_ticket',label:'Average ticket',hint:'Average revenue per visit, per client'},
+  ],
+  onboardingQuestions:[
+   {field:'services',question:'What services do you offer — bath, full cut, nails, de-shedding — and what do you charge? You can type it out or paste your menu.'},
+   {field:'staff',question:'How many groomers and tables do you run? Who handles the big dogs vs the fussy ones?'},
+   {field:'pricing_rules',question:'Breed and size pricing — flat tiers or case by case? Extra charges for matting or special handling?'},
+   {field:'dead_days',question:'Which days are dead? We fill those first.'},
+   {field:'hours',question:'What are your hours, including weekends?'},
+  ],
+  connectorPriority:['telnyx','twilio','google','google-business','stripe','moego','groomore','123pet'],
+  suggestionVoice:'Warm, upbeat, animal-loving — like the best front desk at a great salon. Never chirpy about prices.',
+  briefingNouns:{appointments:'appointments',customers:'clients'}},
+ med_spa:{vertical:'med_spa',label:'Med spa',
+  vocabulary:{customer:'client',booking:'appointment',staff:'provider',service:'treatment'},
+  placesHints:['med spa','medical spa','botox','laser hair removal'],
+  textbackTemplate:'Hi, this is {business}. Sorry we missed your call. Would you like to book a consultation? Reply YES and we will find you a time. '+STOP,
+  textbackConfirmTemplate:'Thank you — we will text you shortly with available times.',
+  reminderTemplate:'Reminder: your treatment at {business} is {when}. Reply CANCEL to cancel.',
+  detectors:['no_show_risk','rebooking_gap','missed_call','lapsed_regular'],
+  detectorParams:{lapsedRegularDays:120,rebookingCycleDays:90,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
+  kpis:[
+   {key:'rebooking_rate',label:'Rebooking rate',hint:'Share of clients who rebook within their treatment cycle'},
+   {key:'room_utilization',label:'Room utilization',hint:'Booked treatment room-hours vs available room-hours'},
+   {key:'avg_ticket',label:'Average ticket',hint:'Average revenue per visit, per client'},
+   {key:'no_show_rate',label:'No-show rate',hint:'Share of appointments that never showed — one missed visit can cost $400 or more'},
+  ],
+  onboardingQuestions:[
+   {field:'treatments',question:'What treatments do you offer, and what do you charge? You can type it out or paste your menu.'},
+   {field:'staff',question:'How many providers and treatment rooms do you run?'},
+   {field:'memberships',question:'Do you offer memberships or treatment packages? How are they priced?'},
+   {field:'no_show_policy',question:'What is your no-show and late-cancel policy — deposit, card on file, fees?'},
+   {field:'hours',question:'What are your hours, including weekend exceptions?'},
+  ],
+  connectorPriority:['telnyx','twilio','google','google-business','stripe','zenoti','boulevard','mangomint'],
+  suggestionVoice:'Calm, premium, discreet — a trusted advisor. Never salesy, never chirpy.',
+  briefingNouns:{appointments:'appointments',customers:'clients'}},
  other:{vertical:'other',label:'Other local business',
   vocabulary:{customer:'customer',booking:'appointment',staff:'team member',service:'service'},
   placesHints:[],
@@ -210,6 +272,35 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
 export function verticalProfile(vertical:string|undefined|null):VerticalProfile{
  const parsed=verticalSchema.safeParse(vertical);
  return VERTICAL_PROFILES[parsed.success?parsed.data:'other'];
+}
+
+/** Shared professional-register SMS defaults. No "Reply YES", no exclamation
+ * marks, no chirpiness — the legal opt-out line is kept, phrased plainly.
+ * Used when profile tone is 'professional' and the vertical profile does not
+ * define its own professional*Template overrides. */
+export const PROFESSIONAL_TEXTBACK_TEMPLATE='This is {business}. We missed your call and will follow up shortly. '+STOP;
+export const PROFESSIONAL_TEXTBACK_CONFIRM_TEMPLATE='Thank you. We will be in touch shortly.';
+export const PROFESSIONAL_REMINDER_TEMPLATE='Reminder: your appointment at {business} is {when}. Reply CANCEL to cancel.';
+/** Tone-aware template selectors. Everything that renders customer SMS goes
+ * through these, so the professional register follows automatically. */
+export function textbackTemplateFor(profile:VerticalProfile,tone:unknown):string{
+ return isProfessionalTone(tone)?(profile.professionalTextbackTemplate??PROFESSIONAL_TEXTBACK_TEMPLATE):profile.textbackTemplate;
+}
+export function textbackConfirmTemplateFor(profile:VerticalProfile,tone:unknown):string{
+ return isProfessionalTone(tone)?(profile.professionalTextbackConfirmTemplate??PROFESSIONAL_TEXTBACK_CONFIRM_TEMPLATE):profile.textbackConfirmTemplate;
+}
+export function reminderTemplateFor(profile:VerticalProfile,tone:unknown):string{
+ return isProfessionalTone(tone)?(profile.professionalReminderTemplate??PROFESSIONAL_REMINDER_TEMPLATE):profile.reminderTemplate;
+}
+/** Professional variants of the inline proactive suggestion drafts (win-back,
+ * lead-reply, fill-gap). {name}, {business} are replaced at render time;
+ * the booking word comes from the vertical's vocabulary. */
+export function professionalWinbackTemplate(bookingWord:string):string{
+ return `Hello {name}, this is {business}. It has been some time since your last ${bookingWord}. If you would like to schedule another, reply to this message. ${STOP}`;
+}
+export const PROFESSIONAL_LEAD_REPLY_TEMPLATE=`This is {business}. Thank you for reaching out. We will respond shortly. ${STOP}`;
+export function professionalFillGapTemplate(bookingWord:string):string{
+ return `Hello {name}, this is {business}. We have a few open ${bookingWord}s tomorrow. If you would like one, reply to this message. ${STOP}`;
 }
 
 /** Normalizes a Places category for hint matching: underscores/hyphens to spaces. */

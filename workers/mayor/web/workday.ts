@@ -80,6 +80,11 @@ export function createWorkday(hooks:Hooks){
    }
    wins.append(button('Review missed calls',()=>void missedCallsDialog(),'secondary'));
   }catch(reason){if(version===feedVersion&&ready)wins.append(empty('Wins could not load.',reason instanceof Error?reason.message:'Please try again.',button('Try again',()=>void loadFeed(),'secondary')));}
+  // Harness hook: goals, saved skills and agent reviews live in Today.
+  const agent=el('section','','feed-agent'),agentHeading=el('div','','section-heading');
+  agentHeading.append(el('h2','Business agent'));
+  agent.append(agentHeading,el('p','Your goals, saved skills, review schedule and latest AI review.','subtle'),button('Open Business agent',()=>openBusinessAgent(),'quiet'));
+  target.append(agent);
   paintIcons();
  }
  function pagedMore(target:HTMLElement,cursor:string|null,load:()=>void){if(cursor)target.append(button('Load more',load,'secondary load-more'));}
@@ -254,6 +259,18 @@ export function createWorkday(hooks:Hooks){
   if(!hooks.canManage()&&['today','feed','connections'].includes(view)){$(`${view}-content`).replaceChildren(empty('Your workspace is ready.',hooks.canChat()?'Owners and managers manage shared business records. Your role can use the conversation below.':'Owners and managers manage shared business records. Your role can read shared usage in Plan & usage.',button(hooks.canChat()?'Back to conversation':'Plan & usage',()=>hooks.onNavigate(hooks.canChat()?'chat':'billing'),'primary')));return;}
   if(view==='today')void refreshOverview();if(view==='feed')void loadFeed();if(view==='billing')void loadBilling();
  }
+ /** Deep-link into the Business agent section from Settings or Feed: show
+  * Today, then reveal the agent section once it has rendered. */
+ function openBusinessAgent(){
+  if(!ready||!hooks.canManage())return;
+  show('today');
+  const start=Date.now();
+  const tick=()=>{
+   if(businessAgent.reveal())return;
+   if(Date.now()-start<4000&&document.body.dataset.view==='today')setTimeout(tick,200);
+  };
+  tick();
+ }
  const menuButton=button('',()=>{
   const panel=dialog('Your workspace');panel.classList.add('mobile-navigation');menuButton.setAttribute('aria-expanded','true');
   panel.append(el('p',`${$('business-name').textContent} · ${$('business-role').textContent}`,'subtle'));
@@ -281,5 +298,5 @@ export function createWorkday(hooks:Hooks){
  async function refreshCurrent(){if(!ready)return;if(current==='today')await refreshOverview();if(current==='feed')await loadFeed();if(current==='billing')await loadBilling(true);}
  for(const view of views){const tab=$(`${view}-tab`);if(tab)tab.onclick=()=>hooks.onNavigate(view);}
  updateDesktopTabs();updateMobileTabs();paintIcons();
- return {show,refresh:refreshOverview,refreshCurrent,openMissedCalls:()=>{void missedCallsDialog();},openAgenda,openCustomers,openTasks,proactive,ready(name:string,role:string){ready=true;workspaceRole=role;phoneTabs.hidden=false;menuButton.disabled=false;$('business-name').textContent=name;$('business-name').title=name;$('business-role').textContent=role.charAt(0).toUpperCase()+role.slice(1)+' workspace';show(current);const query=new URLSearchParams(location.search);if(query.get('billing')){hooks.onNavigate('billing');void loadBilling(true);}},clear(){ready=false;workspaceRole='';agendaHost=customerHost=taskHost=null;updateDesktopTabs();phoneTabs.hidden=true;menuButton.disabled=true;menuButton.setAttribute('aria-expanded','false');routines.clear();businessAgent.clear();proactive.reset();accessVersion++;loadVersion++;feedVersion++;taskVersion++;customerVersion++;agendaVersion++;billingVersion++;appointmentDate='';customerRows=[];taskRows=[];agendaRows=[];customerQuery='';customerCursor=taskCursor=agendaCursor=null;for(const view of ['today','feed','billing'])$(`${view}-content`).replaceChildren();document.querySelectorAll<HTMLDialogElement>('.workday-dialog').forEach(node=>node.close());$('business-name').textContent='Your business';$('business-name').removeAttribute('title');$('business-role').textContent='Workspace access ended';}};
+ return {show,refresh:refreshOverview,refreshCurrent,openBusinessAgent,openMissedCalls:()=>{void missedCallsDialog();},openAgenda,openCustomers,openTasks,proactive,ready(name:string,role:string){ready=true;workspaceRole=role;phoneTabs.hidden=false;menuButton.disabled=false;$('business-name').textContent=name;$('business-name').title=name;$('business-role').textContent=role.charAt(0).toUpperCase()+role.slice(1)+' workspace';show(current);const query=new URLSearchParams(location.search);if(query.get('billing')){hooks.onNavigate('billing');void loadBilling(true);}},clear(){ready=false;workspaceRole='';agendaHost=customerHost=taskHost=null;updateDesktopTabs();phoneTabs.hidden=true;menuButton.disabled=true;menuButton.setAttribute('aria-expanded','false');routines.clear();businessAgent.clear();proactive.reset();accessVersion++;loadVersion++;feedVersion++;taskVersion++;customerVersion++;agendaVersion++;billingVersion++;appointmentDate='';customerRows=[];taskRows=[];agendaRows=[];customerQuery='';customerCursor=taskCursor=agendaCursor=null;for(const view of ['today','feed','billing'])$(`${view}-content`).replaceChildren();document.querySelectorAll<HTMLDialogElement>('.workday-dialog').forEach(node=>node.close());$('business-name').textContent='Your business';$('business-name').removeAttribute('title');$('business-role').textContent='Workspace access ended';}};
 }

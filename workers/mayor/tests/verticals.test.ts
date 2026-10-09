@@ -2,8 +2,8 @@ import {describe,it,expect} from 'vitest';
 import {VERTICAL_PROFILES,verticalProfile,detectVerticalFromCategory,verticalSchema,ONBOARDING_QUESTIONS_FALLBACK,onboardingQuestionsFor} from '../src/verticals';
 
 describe('vertical profiles',()=>{
- it('has 5 launch profiles plus other',()=>{
-  expect(Object.keys(VERTICAL_PROFILES)).toEqual(['salon','restaurant','plumbing_hvac','dental','auto_repair','other']);
+ it('has 7 launch profiles plus other',()=>{
+  expect(Object.keys(VERTICAL_PROFILES)).toEqual(['salon','restaurant','plumbing_hvac','dental','auto_repair','pet_grooming','med_spa','other']);
  });
  it('every profile has a text-back template with {business} and opt-out',()=>{
   for(const profile of Object.values(VERTICAL_PROFILES)){
