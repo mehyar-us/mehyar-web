@@ -62,10 +62,11 @@ describe('crew6a: med_spa profile',()=>{
  it('carries no-show-tuned detector params',()=>{
   expect(p().detectorParams).toMatchObject({lapsedRegularDays:120,rebookingCycleDays:90,noShowLookbackDays:90});
  });
- it('no-show KPI has teeth about the dollar cost',()=>{
+ it('no-show KPI has teeth, never an invented dollar figure',()=>{
   const noShow=p().kpis!.find(k=>k.key==='no_show_rate');
   expect(noShow).toBeDefined();
-  expect(noShow!.hint).toContain('$400');
+  expect(noShow!.hint).toContain('staffed');
+  expect(noShow!.hint).not.toMatch(/\$\d/);
   expect(p().kpis!.map(k=>k.key)).toEqual(['rebooking_rate','room_utilization','avg_ticket','no_show_rate']);
  });
  it('SMS templates are polished, never chirpy',()=>{
@@ -128,7 +129,8 @@ describe('crew6a: growthMetricsInstruction names the new metrics',()=>{
   const instruction=growthMetricsInstruction({vertical:'med_spa'},'what should we track and measure?');
   expect(instruction).not.toBeNull();
   expect(instruction!).toContain('No-show rate');
-  expect(instruction!).toContain('$400');
+  expect(instruction!).toContain('staffed');
+  expect(instruction!).not.toMatch(/\$\d/);
   expect(instruction!).toContain('Rebooking rate');
   expect(instruction!).toContain('Room utilization');
   expect(instruction!).toContain('provider');
