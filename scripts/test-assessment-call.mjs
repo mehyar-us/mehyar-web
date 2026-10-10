@@ -636,6 +636,7 @@ function freshEnv() {
       querySelector() { return null; },
       click() { (this._ls.click || []).forEach((fn) => fn()); },
       focus() {},
+      focus() {},
     };
     Object.defineProperty(e, "innerHTML", {
       get() { return this._h || ""; },
@@ -803,6 +804,122 @@ function freshEnv() {
     ok(calls.length === 3, "VoiceAdapter default fetchFn is browser-safe");
   } finally {
     globalThis.fetch = savedFetch;
+  }
+}
+
+// ── 14. Incoming-call ringer: native vibration + HTMLAudio ringtone ─────────
+// The Mayor's order: when the incoming-call screen shows, the device must
+// vibrate (navigator.vibrate) and play a ringtone (HTMLAudioElement), and
+// both must stop on answer or decline.
+{
+  const { ChatOnramp } = await import("../assessment-call/chat.js");
+
+  // Ringtone asset: real audio, small, loopable.
+  const ringPath = new URL("../assessment-call/ringtone.mp3", import.meta.url);
+  ok(fs.existsSync(ringPath), "ringtone.mp3 exists");
+  const ringStat = fs.statSync(ringPath);
+  ok(ringStat.size > 1000 && ringStat.size < 100 * 1024, `ringtone.mp3 is small (${ringStat.size}b)`);
+  try {
+    const probe = execSync(`ffprobe -v error -show_entries stream=codec_name -of csv=p=0 "${ringPath.pathname}"`).toString().trim();
+    ok(probe.includes("mp3"), `ringtone.mp3 is valid audio (got ${probe})`);
+  } catch {
+    ok(false, "ringtone.mp3 ffprobe failed");
+  }
+
+  // Fake DOM/navigator/audio for the ringer path.
+  const mkEl = (tag) => {
+    const e = {
+      tagName: tag, children: [], style: {}, className: "", textContent: "",
+      type: "", src: "", alt: "", disabled: false, _ls: {}, _attrs: {},
+      classList: { add() {}, remove() {}, contains() { return false; } },
+      appendChild(c) { this.children.push(c); return c; },
+      addEventListener(ev, fn) { (this._ls[ev] = this._ls[ev] || []).push(fn); },
+      setAttribute(k, v) { this._attrs[k] = v; },
+      getAttribute(k) { return this._attrs[k]; },
+      querySelector() { return null; },
+      click() { (this._ls.click || []).forEach((fn) => fn()); },
+      focus() {},
+    };
+    Object.defineProperty(e, "innerHTML", {
+      get() { return this._h || ""; },
+      set(v) { this._h = v; this.children = []; },
+    });
+    createdRinger.push(e);
+    return e;
+  };
+  const createdRinger = [];
+  const docListeners = {};
+  globalThis.document = {
+    createElement: (t) => mkEl(t),
+    createElementNS: (ns, t) => mkEl(t),
+    createTextNode: (t) => ({ nodeType: 3, text: t }),
+    addEventListener: (ev, fn) => { (docListeners[ev] = docListeners[ev] || []).push(fn); },
+    removeEventListener: (ev, fn) => {
+      docListeners[ev] = (docListeners[ev] || []).filter((f) => f !== fn);
+    },
+  };
+  const vibCalls = [];
+  const navDesc = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true, writable: true,
+    value: { vibrate: (p) => { vibCalls.push(p); return true; } },
+  });
+  const audioInstances = [];
+  globalThis.Audio = class {
+    constructor(src) { this.src = src; this.loop = false; this._played = false; this._paused = false; audioInstances.push(this); }
+    play() { this._played = true; return Promise.resolve(); }
+    pause() { this._paused = true; }
+    removeAttribute() {}
+    load() {}
+  };
+
+  try {
+    const chat = new ChatOnramp({
+      fetchFn: async () => { throw Error("no network in ringer test"); },
+      onHandoff: async () => {},
+    });
+    chat.mount(globalThis.document.createElement("div"));
+
+    // Drive straight to the incoming-call screen.
+    chat.renderIncomingCall();
+    await new Promise((r) => setTimeout(r, 50));
+    ok(chat.state === "incoming", "ringer test reaches incoming state");
+    ok(vibCalls.some((c) => Array.isArray(c) && c.length > 0),
+      "vibration pattern triggered on incoming call");
+    ok(audioInstances.length === 1, "ringtone Audio element created");
+    ok(audioInstances[0].src === "./ringtone.mp3", "ringtone src is ringtone.mp3");
+    ok(audioInstances[0].loop === true, "ringtone loops");
+    ok(audioInstances[0]._played === true, "ringtone play() called");
+
+    // Answer stops everything.
+    const answerBtn = createdRinger.find((e) => e.className === "chat-answer-btn");
+    answerBtn.click();
+    await new Promise((r) => setTimeout(r, 100));
+    ok(vibCalls[vibCalls.length - 1] === 0, "vibration cancelled on answer");
+    ok(audioInstances[0]._paused === true, "ringtone paused on answer");
+    ok(chat.ringAudio === null && chat.ringVibeTimer === null, "ringer handles released on answer");
+
+    // Decline stops everything too, and re-render restarts the ring.
+    const chat2 = new ChatOnramp({
+      fetchFn: async () => { throw Error("no network in ringer test"); },
+      onHandoff: async () => {},
+    });
+    chat2.mount(globalThis.document.createElement("div"));
+    const vibBefore = vibCalls.length;
+    chat2.renderIncomingCall();
+    await new Promise((r) => setTimeout(r, 50));
+    ok(vibCalls.length > vibBefore, "vibration restarts on incoming re-render");
+    const declineBtn = createdRinger.filter((e) => e.className === "chat-decline-btn").pop();
+    declineBtn.click();
+    await new Promise((r) => setTimeout(r, 50));
+    ok(vibCalls[vibCalls.length - 1] === 0, "vibration cancelled on decline");
+    ok(audioInstances[audioInstances.length - 1]._paused === true, "ringtone paused on decline");
+    ok(chat2.ringAudio === null && chat2.ringVibeTimer === null, "ringer handles released on decline");
+  } finally {
+    delete globalThis.document;
+    if (navDesc) Object.defineProperty(globalThis, "navigator", navDesc);
+    else delete globalThis.navigator;
+    delete globalThis.Audio;
   }
 }
 

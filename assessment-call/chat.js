@@ -24,6 +24,11 @@ const EMAIL_RE = /[^\s@]+@[^\s@]+\.[^\s@]+/;
 const DEFAULT_MAX_TEXT_TURNS = 4;
 // Brain stages past which text chat hands off to voice.
 const HANDOFF_STAGES = new Set(["diagnosis", "pitch", "depth", "wrap"]);
+// Native incoming-call alert: vibration pattern + looped ringtone (HTMLAudio).
+// The vibrate() pattern plays once per call, so it is re-triggered on a timer
+// while the call screen is up. iOS Safari has no vibration API — guarded.
+const RING_VIBE_PATTERN = [1000, 500, 1000, 500];
+const RING_VIBE_REPEAT_MS = 4000;
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -61,11 +66,13 @@ export class ChatOnramp {
   constructor({
     fetchFn = (...args) => fetch(...args),
     avatarSrc = "./mayor-avatar.png",
+    ringtoneSrc = "./ringtone.mp3",
     maxTextTurns = DEFAULT_MAX_TEXT_TURNS,
     onHandoff = null,
   } = {}) {
     this.fetchFn = fetchFn;
     this.avatarSrc = avatarSrc;
+    this.ringtoneSrc = ringtoneSrc;
     this.maxTextTurns = maxTextTurns;
     this.onHandoff = onHandoff;
     this.state = "idle"; // idle → greeting → consent → chatting → handoff → calling → ended
@@ -74,6 +81,8 @@ export class ChatOnramp {
     this.userTurns = 0;
     this.emailCaptured = false;
     this.consentGiven = false;
+    this.ringAudio = null;
+    this.ringVibeTimer = null;
   }
 
   emit(type, data = {}) {
@@ -515,6 +524,7 @@ export class ChatOnramp {
     dSvg.style.transform = "rotate(135deg)";
     decline.appendChild(dSvg);
     decline.addEventListener("click", () => {
+      this.stopRinger();
       this.emit("handoff_declined");
       // Back to chat — the brain session is still alive.
       this.render();
@@ -538,10 +548,82 @@ export class ChatOnramp {
     wrap.appendChild(ho);
     this.root.appendChild(wrap);
     this.emit("incoming_call_shown");
+    this.startRinger();
+  }
+
+  // ── incoming-call ringer: native vibration + HTMLAudio ringtone ──
+
+  startRinger() {
+    this.stopRinger(); // idempotent — never double-ring on re-render
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+        navigator.vibrate(RING_VIBE_PATTERN);
+        this.ringVibeTimer = setInterval(() => {
+          try {
+            navigator.vibrate(RING_VIBE_PATTERN);
+          } catch {
+            /* vibration failed mid-ring — ringtone continues */
+          }
+        }, RING_VIBE_REPEAT_MS);
+        if (this.ringVibeTimer && typeof this.ringVibeTimer.unref === "function") {
+          this.ringVibeTimer.unref(); // node test env: don't hold the process open
+        }
+      }
+    } catch {
+      /* no vibration API (e.g. iOS Safari) — ringtone still plays */
+    }
+    try {
+      if (typeof Audio !== "undefined" && this.ringtoneSrc) {
+        const audio = new Audio(this.ringtoneSrc);
+        audio.loop = true;
+        audio.preload = "auto";
+        this.ringAudio = audio;
+        const p = audio.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            // Autoplay blocked (no recent user gesture): retry on the
+            // visitor's next tap — answer/decline are right there.
+            const retry = () => {
+              if (typeof document !== "undefined") document.removeEventListener("pointerdown", retry);
+              if (this.ringAudio === audio) audio.play().catch(() => {});
+            };
+            if (typeof document !== "undefined") document.addEventListener("pointerdown", retry);
+          });
+        }
+      }
+    } catch {
+      /* audio unavailable — vibration still ran */
+    }
+  }
+
+  stopRinger() {
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+        navigator.vibrate(0); // cancel any in-progress vibration
+      }
+    } catch {
+      /* noop */
+    }
+    if (this.ringVibeTimer) {
+      clearInterval(this.ringVibeTimer);
+      this.ringVibeTimer = null;
+    }
+    if (this.ringAudio) {
+      const a = this.ringAudio;
+      this.ringAudio = null;
+      try {
+        a.pause();
+        a.removeAttribute("src");
+        a.load();
+      } catch {
+        /* noop */
+      }
+    }
   }
 
   async answerCall() {
     this.state = "calling";
+    this.stopRinger();
     this.emit("call_answered");
     try {
       if (typeof this.onHandoff === "function") {
