@@ -335,33 +335,35 @@ export default function Audit() {
   const [payEmail, setPayEmail] = useState("");
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
-  /* True while live checkout is unavailable: show notify-me + human CTA
-     instead of letting the visitor bounce with nothing captured. */
+  /* True while live checkout is unavailable: show notify-me instead of letting
+     the visitor bounce with nothing captured. */
   const [payBlocked, setPayBlocked] = useState(false);
-  const [notifyEmail, setNotifyEmail] = useState("");
-  const [notifying, setNotifying] = useState(false);
-  const [notifyDone, setNotifyDone] = useState(false);
-  const [notifyError, setNotifyError] = useState("");
+  const [notifyState, setNotifyState] = useState<"idle" | "saving" | "saved">("idle");
+  const [notifyMsg, setNotifyMsg] = useState("");
 
-  const submitNotify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setNotifyError("");
-    const em = (notifyEmail || payEmail).trim();
-    if (!EMAIL_RE.test(em)) return setNotifyError("That email doesn't look valid — check it and try again.");
-    setNotifying(true);
+  /* Blocked-checkout notify-me: the buyer already gave us their email in this
+     step; clicking the button IS the explicit consent to one notification email
+     when checkout reopens (compliance item 6). POSTs to /api/audit/pay-blocked. */
+  const notifyWhenBack = async () => {
+    if (notifyState !== "idle" || !intake) return;
+    setNotifyState("saving");
+    setNotifyMsg("");
     try {
-      const r = await fetch("/api/audit/notify", {
+      const r = await fetch("/api/audit/pay-blocked", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: em, audit_id: intake?.auditId }),
+        body: JSON.stringify({ email: payEmail.trim(), audit_id: intake.auditId }),
       });
       const data = await r.json().catch(() => ({}));
-      if (!data.ok) throw new Error(data.message || String(data.error || "Couldn't save — try again."));
-      setNotifyDone(true);
-    } catch (err: any) {
-      setNotifyError(err?.message || "Couldn't save — try again.");
-    } finally {
-      setNotifying(false);
+      if (r.ok && data.ok) {
+        setNotifyState("saved");
+      } else {
+        setNotifyState("idle");
+        setNotifyMsg(data.error === "rate_limited" ? "Too many tries — wait a bit and try again." : "Couldn't save that — try again in a bit.");
+      }
+    } catch {
+      setNotifyState("idle");
+      setNotifyMsg("Couldn't save that — check your connection and try again.");
     }
   };
 
@@ -529,6 +531,8 @@ export default function Audit() {
     e.preventDefault();
     setPayError("");
     setPayBlocked(false);
+    setNotifyState("idle");
+    setNotifyMsg("");
     if (!intake) return setPayError("Complete step 1 first so we know which business to audit.");
     if (!EMAIL_RE.test(payEmail.trim())) return setPayError("Please enter a valid email for delivery.");
     setPaying(true);
@@ -565,8 +569,7 @@ export default function Audit() {
         }
         if (code === "stripe_not_configured") {
           setPayBlocked(true);
-          setNotifyEmail(payEmail.trim());
-          throw new Error("Checkout opens very soon — your audit details are saved. Check back in a bit!");
+          throw new Error("Checkout is temporarily unavailable — no charge was made.");
         }
         if (/product/i.test(code + String(data.message || ""))) {
           throw new Error("Checkout is still being wired up for this product — your audit details are saved. Check back shortly.");
@@ -901,43 +904,35 @@ export default function Audit() {
                   {payError}
                 </p>
               )}
+              {payBlocked && (
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <p className="text-sm font-semibold text-foreground">Don't lose your audit details</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Your audit is saved. Leave your email and we'll send you one message the moment
+                    checkout reopens — nothing else, ever. No charge is made until you pay.
+                  </p>
+                  {notifyState === "saved" ? (
+                    <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      You're on the list — we'll email you at {payEmail.trim()} the moment checkout is back.
+                    </p>
+                  ) : (
+                    <>
+                      <Button type="button" variant="outline" size="lg" className="mt-3 w-full" onClick={notifyWhenBack} disabled={notifyState === "saving"}>
+                        {notifyState === "saving" ? "Saving…" : "Notify me when checkout opens"}
+                      </Button>
+                      {notifyMsg && (
+                        <p role="alert" className="mt-2 text-sm text-amber-700 dark:text-amber-300">{notifyMsg}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
               <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying}>
                 {paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
               <p className="text-center text-xs text-muted-foreground">One-time payment · $330 · Report emailed with a permanent link</p>
               <p className="text-center text-xs font-medium text-muted-foreground">Purchases are final — no refunds.</p>
             </form>
-            {/* ── Blocked checkout: capture the lead + offer the human path ── */}
-            {payBlocked && (
-              <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-50/60 p-5 dark:bg-amber-950/20" aria-live="polite">
-                <p className="text-sm font-semibold text-foreground">Don't want to wait? Two options:</p>
-                {notifyDone ? (
-                  <p className="mt-3 flex items-center gap-2 text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" /> You're on the list — we'll email you the moment checkout opens.
-                  </p>
-                ) : (
-                  <form onSubmit={submitNotify} className="mt-3">
-                    <Label htmlFor="ab-notify-email">Notify me when checkout opens</Label>
-                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                      <Input id="ab-notify-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={notifyEmail} onChange={(e) => setNotifyEmail(e.target.value)} className="h-12 flex-1 text-base" />
-                      <Button type="submit" variant="cta" size="lg" className="h-12 shrink-0" disabled={notifying}>
-                        {notifying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Saving…</>) : "Notify me"}
-                      </Button>
-                    </div>
-                    {notifyError && (
-                      <p role="alert" className="mt-2 text-sm text-amber-800 dark:text-amber-300">{notifyError}</p>
-                    )}
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">One email when checkout opens. Nothing else.</p>
-                  </form>
-                )}
-                <div className="mt-4 border-t border-amber-500/30 pt-4">
-                  <p className="text-sm text-muted-foreground">Prefer a human to look at it instead?</p>
-                  <a href="/booking" className={cn(buttonVariants({ variant: "outline" }), "mt-2 w-full sm:w-auto")}>
-                    Book a human walkthrough <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-                  </a>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       </StepShell>
