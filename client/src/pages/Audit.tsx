@@ -289,14 +289,6 @@ function FaqItem({ q, children }: { q: string; children: React.ReactNode }) {
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function Audit() {
   const token = new URLSearchParams(window.location.search).get("token");
-  /* Assessment-call prefill (?prefill=<token>): the post-call email links here
-     with a tokenized payload (business name, URL, call findings). Redeem it and
-     fill the intake form — the token, name, URL and findings must never be
-     silently discarded (full-QA fix F2). Invalid/expired tokens degrade to an
-     empty form with a gentle note, never an error wall. */
-  const prefillToken = new URLSearchParams(window.location.search).get("prefill");
-  const [prefillNote, setPrefillNote] = useState("");
-  const [prefillLoading, setPrefillLoading] = useState(false);
 
   /* ── Report view: same page when ?token= is present ── */
   if (token) {
@@ -343,45 +335,40 @@ export default function Audit() {
   const [payEmail, setPayEmail] = useState("");
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
+  /* True while live checkout is unavailable: show notify-me + human CTA
+     instead of letting the visitor bounce with nothing captured. */
+  const [payBlocked, setPayBlocked] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifying, setNotifying] = useState(false);
+  const [notifyDone, setNotifyDone] = useState(false);
+  const [notifyError, setNotifyError] = useState("");
+
+  const submitNotify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNotifyError("");
+    const em = (notifyEmail || payEmail).trim();
+    if (!EMAIL_RE.test(em)) return setNotifyError("That email doesn't look valid — check it and try again.");
+    setNotifying(true);
+    try {
+      const r = await fetch("/api/audit/notify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: em, audit_id: intake?.auditId }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!data.ok) throw new Error(data.message || String(data.error || "Couldn't save — try again."));
+      setNotifyDone(true);
+    } catch (err: any) {
+      setNotifyError(err?.message || "Couldn't save — try again.");
+    } finally {
+      setNotifying(false);
+    }
+  };
 
   useEffect(() => {
     if (intake && !payEmail) setPayEmail(email);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intake]);
-
-  /* ── F2: redeem the assessment-call prefill token once on mount ── */
-  useEffect(() => {
-    if (!prefillToken) return;
-    let cancelled = false;
-    setPrefillLoading(true);
-    fetch(`/api/assessment/prefill?token=${encodeURIComponent(prefillToken)}`)
-      .then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }))
-      .then(({ status, data }) => {
-        if (cancelled) return;
-        if (status === 200 && data && data.ok && data.payload) {
-          const p = data.payload as { business_name?: string; url?: string; findings_summary?: string };
-          if (p.business_name) setBusinessName(p.business_name);
-          if (p.url) setSiteUrl(p.url);
-          setPrefillNote(
-            "Pre-filled from your assessment call" +
-              (p.findings_summary ? ` — we covered: ${p.findings_summary}.` : ".") +
-              " Check it over and continue below."
-          );
-        } else {
-          setPrefillNote("That personal link has expired — no problem, just fill in the form below.");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setPrefillNote("Couldn't load your saved details — just fill in the form below.");
-      })
-      .finally(() => {
-        if (!cancelled) setPrefillLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefillToken]);
 
   const submitIntake = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -541,6 +528,7 @@ export default function Audit() {
   const pay = async (e: React.FormEvent) => {
     e.preventDefault();
     setPayError("");
+    setPayBlocked(false);
     if (!intake) return setPayError("Complete step 1 first so we know which business to audit.");
     if (!EMAIL_RE.test(payEmail.trim())) return setPayError("Please enter a valid email for delivery.");
     setPaying(true);
@@ -576,6 +564,8 @@ export default function Audit() {
           throw new Error("We couldn't find your intake — go back to Step 1 and re-enter your URL.");
         }
         if (code === "stripe_not_configured") {
+          setPayBlocked(true);
+          setNotifyEmail(payEmail.trim());
           throw new Error("Checkout opens very soon — your audit details are saved. Check back in a bit!");
         }
         if (/product/i.test(code + String(data.message || ""))) {
@@ -648,16 +638,6 @@ export default function Audit() {
       <StepShell step="Step 1 · free" title="Tell us about your business" id="step-1">
         <Card>
           <CardContent className="p-5 md:p-7">
-            {prefillLoading && (
-              <p className="mb-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground" aria-live="polite">
-                Loading your saved details…
-              </p>
-            )}
-            {prefillNote && (
-              <p className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm leading-6 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" aria-live="polite">
-                {prefillNote}
-              </p>
-            )}
             <form onSubmit={submitIntake} className="space-y-4">
               <div>
                 <Label htmlFor="ab-name">Business name</Label>
@@ -926,6 +906,37 @@ export default function Audit() {
               </Button>
               <p className="text-center text-xs text-muted-foreground">One-time payment · Report emailed with a permanent link</p>
             </form>
+            {/* ── Blocked checkout: capture the lead + offer the human path ── */}
+            {payBlocked && (
+              <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-50/60 p-5 dark:bg-amber-950/20" aria-live="polite">
+                <p className="text-sm font-semibold text-foreground">Don't want to wait? Two options:</p>
+                {notifyDone ? (
+                  <p className="mt-3 flex items-center gap-2 text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" /> You're on the list — we'll email you the moment checkout opens.
+                  </p>
+                ) : (
+                  <form onSubmit={submitNotify} className="mt-3">
+                    <Label htmlFor="ab-notify-email">Notify me when checkout opens</Label>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <Input id="ab-notify-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={notifyEmail} onChange={(e) => setNotifyEmail(e.target.value)} className="h-12 flex-1 text-base" />
+                      <Button type="submit" variant="cta" size="lg" className="h-12 shrink-0" disabled={notifying}>
+                        {notifying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Saving…</>) : "Notify me"}
+                      </Button>
+                    </div>
+                    {notifyError && (
+                      <p role="alert" className="mt-2 text-sm text-amber-800 dark:text-amber-300">{notifyError}</p>
+                    )}
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">One email when checkout opens. Nothing else.</p>
+                  </form>
+                )}
+                <div className="mt-4 border-t border-amber-500/30 pt-4">
+                  <p className="text-sm text-muted-foreground">Prefer a human to look at it instead?</p>
+                  <a href="/booking" className={cn(buttonVariants({ variant: "outline" }), "mt-2 w-full sm:w-auto")}>
+                    Book a human walkthrough <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                  </a>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </StepShell>
