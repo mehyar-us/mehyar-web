@@ -432,6 +432,7 @@ const managedApps: ManagedApp[] = [
     url: "https://mayor.mehyar.us",
     tagline: "The AI built for each business.",
     description:
+      {/* PRICING: update when the $39 catalog ships (see ~/workspace/mayor-pilot/pricing-39.diff) */}
       "AI business workspace for Main Street: customers, appointments, playbooks, and voice — with a $14/mo Pro plan and one-time credit packs.",
     audience: "Local service businesses (salons, restaurants, trades, retail) that want an AI assistant with real memory of their business.",
     highlights: [
