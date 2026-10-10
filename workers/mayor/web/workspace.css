@@ -63,3 +63,17 @@ textarea:focus-visible{outline:3px solid #397cdd;outline-offset:3px}
 .calendar-chat{scroll-margin-top:170px}
 /* Keep provider identities and actions inside narrow account cards. */
 .connection{flex-wrap:wrap}.connection>div{min-width:0;flex:1 1 180px;overflow-wrap:anywhere}.connection>button{max-width:100%;white-space:normal}
+/* Public offer block on the logged-out view. Prices render from the live
+   billing catalog at runtime (web/offer-block.ts) — never hardcoded here. */
+.offer-block{margin:0 0 16px;padding:18px 20px;background:#f6f9fc;border:1px solid #e2eaf3;border-radius:12px;max-width:580px}
+.offer-block p{margin:0;font-size:13px;line-height:1.7;color:#617589}
+.offer-plans{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.offer-plan{background:#fff;border:1px solid #e2eaf3;border-radius:10px;padding:14px 16px;min-width:0}
+.offer-plan-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.offer-plan-head strong{font-size:14px;color:#102b47}
+.offer-price{font-size:18px;font-weight:700;color:#102b47;white-space:nowrap}
+.offer-per{font-size:11px;font-weight:400;color:#8291a1}
+.offer-plan p{font-size:12px;margin:0 0 4px;overflow-wrap:anywhere}
+.offer-plan .offer-blurb{color:#5d7285;font-size:11px;margin:0}
+.offer-note{font-size:11px;color:#5d7285}
+@media(max-width:520px){.offer-plans{grid-template-columns:1fr}}

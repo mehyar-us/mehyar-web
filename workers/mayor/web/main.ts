@@ -25,6 +25,7 @@ import {namingGreeting,validateBusinessName} from './business-naming';
 import {VERTICAL_PROFILES} from '../src/verticals';
 import {verticalMappingNote} from '../src/vertical-mapping';
 import {createPlacesOnboarding} from './places-onboarding';
+import {loadOfferBlock} from './offer-block';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -1030,6 +1031,9 @@ function show(tab:WorkdayView){
   if(tab==='connections'&&canManage())void connectionHub.activate().catch(error=>notice(error.message));
 }
 async function init(){
+  // Public offer block: catalog-priced plans on the logged-out view. Non-blocking;
+  // the price-free fallback stays if the catalog can't be reached.
+  void loadOfferBlock();
   $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
   const capabilities=await api('/api/auth/capabilities');
   if(!capabilities.providers.google.configured){
