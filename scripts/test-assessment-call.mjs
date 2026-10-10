@@ -950,6 +950,144 @@ console.log(`\nAll ${N} assessment-call assertions passed.`);
   t.dispose();
 }
 
+// ── 16. Voice honesty: readiness probe + bounded transport init ──────────
+// The degraded voice path must say so plainly — never a stuck "Connecting…",
+// never silence presented as a working call.
+
+{
+  const makeDoc = () => {
+    const created = [];
+    const doc = {
+      createElement(tag) {
+        const e = {
+          tagName: tag, children: [], style: {}, className: "", textContent: "",
+          type: "", id: "", checked: false, disabled: false, href: "", target: "", rel: "",
+          _ls: {},
+          appendChild(c) { this.children.push(c); return c; },
+          addEventListener(ev, fn) { (this._ls[ev] = this._ls[ev] || []).push(fn); },
+          setAttribute(k, v) { this[k] = v; },
+          querySelector() { return null; },
+          click() { (this._ls.click || []).forEach((fn) => fn()); },
+        };
+        Object.defineProperty(e, "innerHTML", {
+          get() { return this._h || ""; },
+          set(v) { this._h = v; this.children = []; },
+        });
+        created.push(e);
+        return e;
+      },
+      createTextNode(t) { return { nodeType: 3, text: t }; },
+    };
+    return { doc, created };
+  };
+  const readinessUrl = "https://readiness.test/api/voice/readiness";
+  // mount + consent -> click start, then wait until the shell settles out of
+  // "starting" (the stub transport's speak takes up to ~400ms)
+  const consentAndStart = async (shell, created) => {
+    const root = globalThis.document.createElement("div");
+    shell.mount(root);
+    const boxes = created.filter((e) => e.tagName === "input" && e.type === "checkbox");
+    boxes.forEach((b) => { b.checked = true; });
+    created.find((e) => e.className === "ac-start").click();
+    const deadline = Date.now() + 3000;
+    while (shell.state === "starting" && Date.now() < deadline)
+      await new Promise((r) => setTimeout(r, 25));
+  };
+  const errorText = (created) =>
+    (created.find((e) => e.className === "ac-error" && e.textContent) || { textContent: "" }).textContent;
+
+  // 16a. readiness says unavailable -> plain notice, no call attempt
+  {
+    const { doc, created } = makeDoc();
+    globalThis.document = doc;
+    const calls = [];
+    const fetchFn = async (url) => {
+      calls.push(url);
+      if (url === readinessUrl)
+        return new Response(JSON.stringify({ available: false, reason: "voice service is not configured", transport: "none" }));
+      throw Error("unexpected " + url);
+    };
+    const shell = new CallShell({ avatar: createStubAvatar(), transport: createStubVoiceTransport(), fetchFn, readinessUrl });
+    await consentAndStart(shell, created);
+    ok(shell.state === "error", "readiness-unavailable: shell fails plainly");
+    ok(errorText(created).includes("Voice isn't available right now — voice service is not configured."),
+      "readiness-unavailable: plain notice with the server's reason");
+    ok(!calls.includes("/api/assessment/start"), "readiness-unavailable: no call is started");
+    delete globalThis.document;
+  }
+
+  // 16b. readiness probe itself fails (unknown) -> normal attempt proceeds
+  {
+    const { doc, created } = makeDoc();
+    globalThis.document = doc;
+    const calls = [];
+    const fetchFn = async (url) => {
+      calls.push(url);
+      if (url === readinessUrl) throw Error("network down");
+      if (url === "/api/assessment/start")
+        return new Response(JSON.stringify({ ok: true, session_id: "brain-9", reply_text: "consent script", stage: "consent" }));
+      if (url === "/api/assessment-call/session")
+        return new Response(JSON.stringify({ ok: true, sessionId: "infra-9", secondsRemaining: 2700 }));
+      if (url === "/api/assessment-call/turn-complete") return new Response(JSON.stringify({ ok: true }));
+      throw Error("unexpected " + url);
+    };
+    const shell = new CallShell({ avatar: createStubAvatar(), transport: createStubVoiceTransport(), fetchFn, readinessUrl });
+    await consentAndStart(shell, created);
+    ok(calls.includes("/api/assessment/start"), "readiness-unknown: the normal attempt still runs");
+    ok(shell.state === "incall", "readiness-unknown: call reaches incall on a healthy transport");
+    shell.dispose && shell.adapter.dispose();
+    delete globalThis.document;
+  }
+
+  // 16c. transport init throws -> plain notice, no stuck "Connecting…"
+  {
+    const { doc, created } = makeDoc();
+    globalThis.document = doc;
+    const fetchFn = async (url) => {
+      if (url === readinessUrl)
+        return new Response(JSON.stringify({ available: true, reason: null, transport: "direct" }));
+      if (url === "/api/assessment/start")
+        return new Response(JSON.stringify({ ok: true, session_id: "brain-10", stage: "consent" }));
+      if (url === "/api/assessment-call/session")
+        return new Response(JSON.stringify({ ok: true, sessionId: "infra-10", secondsRemaining: 2700 }));
+      throw Error("unexpected " + url);
+    };
+    const bad = createStubVoiceTransport();
+    bad.init = async () => { throw Error("websocket refused"); };
+    const shell = new CallShell({ avatar: createStubAvatar(), transport: bad, fetchFn, readinessUrl });
+    await consentAndStart(shell, created);
+    ok(shell.state === "error", "init-failure: shell fails instead of hanging");
+    ok(errorText(created).includes("Voice isn't available right now — websocket refused."),
+      "init-failure: plain notice names the failure");
+    delete globalThis.document;
+  }
+
+  // 16d. transport init hangs -> bounded timeout -> plain notice
+  {
+    const { doc, created } = makeDoc();
+    globalThis.document = doc;
+    const fetchFn = async (url) => {
+      if (url === readinessUrl)
+        return new Response(JSON.stringify({ available: true, reason: null, transport: "direct" }));
+      if (url === "/api/assessment/start")
+        return new Response(JSON.stringify({ ok: true, session_id: "brain-11", stage: "consent" }));
+      if (url === "/api/assessment-call/session")
+        return new Response(JSON.stringify({ ok: true, sessionId: "infra-11", secondsRemaining: 2700 }));
+      throw Error("unexpected " + url);
+    };
+    const hanging = createStubVoiceTransport();
+    hanging.init = () => new Promise(() => {}); // never settles
+    const shell = new CallShell({
+      avatar: createStubAvatar(), transport: hanging, fetchFn, readinessUrl, transportInitTimeoutMs: 50,
+    });
+    await consentAndStart(shell, created);
+    ok(shell.state === "error", "hung-init: bounded timeout fires instead of a stuck Connecting…");
+    ok(errorText(created).includes("Voice isn't available right now — the voice connection timed out while connecting."),
+      "hung-init: plain timeout notice");
+    delete globalThis.document;
+  }
+}
+
 console.log(`\nAll ${N} assessment-call assertions passed (incl. F1 wiring).`);
 // The shell's heartbeat/clock intervals would keep node alive — tests are done.
 process.exit(0);

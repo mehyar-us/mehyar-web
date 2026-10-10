@@ -1,1 +1,1 @@
-{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","lib":["ES2022","DOM","DOM.Iterable"],"strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true},"include":["main.ts","audit-main.ts","places-onboarding.ts","sales.ts","sales-pricing.ts"]}
+{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","lib":["ES2022","DOM","DOM.Iterable"],"strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true},"include":["main.ts","audit-main.ts","places-onboarding.ts"]}

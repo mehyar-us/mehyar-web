@@ -49,6 +49,7 @@ import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,m
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
 import {runProactiveCycle,buildBriefing,buildRoi,setRoiConfig,roiConfigSchema,recordNoShow,noShowSchema,listSuggestionCards,sendSuggestionCard,editSuggestionCard,dismissSuggestionCard,setProactiveSettings,proactiveSettingsSchema} from './proactive';
 import {handleInstagramWebhook} from './instagram-dm';
+import {voiceReadinessResponse} from './voice-readiness';
 export {MayorPhone} from './phone-voice';
 export { MayorVoice } from './voice';
 
@@ -75,6 +76,12 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const target=new URL('/business-audit',request.url);
     return env.ASSETS.fetch(new Request(target,request));
   }
+  if((url.pathname==='/sales'||url.pathname==='/sales/')&&request.method==='GET'){
+    if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
+    // Fetch the clean asset path: ASSETS redirects .html back to this route.
+    const target=new URL('/sales',request.url);
+    return env.ASSETS.fetch(new Request(target,request));
+  }
   const telnyxIncoming=url.pathname.match(/^\/api\/phone\/telnyx\/incoming\/([a-f0-9-]{32,36})$/);
   const telnyxStream=url.pathname.match(/^\/api\/phone\/telnyx\/stream\/([a-f0-9-]{36})\/([a-f0-9]{64})$/);
   if(telnyxIncoming||telnyxStream){
@@ -89,6 +96,11 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   const stream=url.pathname.match(/^\/api\/phone\/twilio\/stream\/([a-f0-9-]{36})$/);
   if(stream&&request.method==='GET')return connectTwilioStream(request,env,stream[1]);
   if(url.pathname==='/api/health') return json({service:'The Mayor',status:'ok',environment:env.ENVIRONMENT});
+  // Voice capability probe — PUBLIC (no user data, reveals no secrets). The
+  // PWA tap-to-talk button and the standalone /assessment-call/ page check
+  // this before starting a call so a misconfigured voice path says so plainly
+  // instead of failing silently.
+  if(url.pathname==='/api/voice/readiness'&&request.method==='GET')return voiceReadinessResponse(env);
   // Crew 6f Instagram DM webhook — DARK by default. Unauthenticated like the
   // phone incoming routes; the handler itself 404s when INSTAGRAM_DM_ENABLED
   // is not '1' (must not verify with Meta while dark).
@@ -470,7 +482,7 @@ export default {async fetch(request:Request,env:Env,context?:ExecutionContext) {
     secured.headers.set('referrer-policy','no-referrer');
     secured.headers.set('x-frame-options','DENY');
     const path=new URL(request.url).pathname;
-    if(['/business-audit','/business-audit/','/business-audit/report','/business-audit.html'].includes(path))secured.headers.set('cache-control','no-store');
+    if(['/business-audit','/business-audit/','/business-audit/report','/business-audit.html','/sales','/sales/','/sales.html'].includes(path))secured.headers.set('cache-control','no-store');
     if(path==='/business-audit/report')secured.headers.set('x-robots-tag','noindex, nofollow, noarchive');
     return secured;
   }catch(error){

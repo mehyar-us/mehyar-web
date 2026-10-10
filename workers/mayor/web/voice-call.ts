@@ -7,6 +7,12 @@ function startupMessage(message:string){
   ? microphoneHelp
   : message;
 }
+/** Plain-language notice for the degraded voice state. Pure — no DOM — so the
+ *  exact wording is unit-testable and shared by every voice start path. */
+export function voiceUnavailableNotice(reason:string){
+ const cause=reason&&reason.trim()?reason.trim():'voice service is not configured';
+ return `Voice isn't available right now — ${cause}. Chat works normally.`;
+}
 /** Server listening status may precede local microphone permission/readiness. */
 export function createVoiceCall(client:Client,changed:()=>void,failed:(message:string)=>void,prepare?:()=>Promise<void>){
  let starting=false,active=false,pending=false,localReady=false,serverReady=false,generation=0,timer:ReturnType<typeof setTimeout>|undefined;

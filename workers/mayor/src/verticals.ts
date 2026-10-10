@@ -229,7 +229,7 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
    {key:'rebooking_rate',label:'Rebooking rate',hint:'Share of clients who rebook within their treatment cycle'},
    {key:'room_utilization',label:'Room utilization',hint:'Booked treatment room-hours vs available room-hours'},
    {key:'avg_ticket',label:'Average ticket',hint:'Average revenue per visit, per client'},
-   {key:'no_show_rate',label:'No-show rate',hint:'Share of appointments that never showed — one missed visit can cost $400 or more'},
+   {key:'no_show_rate',label:'No-show rate',hint:'Share of appointments that never showed — each one is a visit you already staffed for'},
   ],
   onboardingQuestions:[
    {field:'treatments',question:'What treatments do you offer, and what do you charge? You can type it out or paste your menu.'},

@@ -6,13 +6,24 @@
 // (voice-adapter.js) wires transport <-> brain (/api/assessment/turn) <-> avatar.
 //
 // Start flow:
+//   0. GET /api/voice/readiness (mayor worker, public probe) — if voice is
+//      down, fail plainly instead of pretending to connect
 //   1. Consent checkboxes -> POST /api/assessment/start (brain session; its
 //      first reply_text is the spoken consent script)
 //   2. POST /api/assessment-call/session { consent, adult, brainSessionId }
 //      (infra session: rate limit, neuron guard, 45-min cap, latency log)
-//   3. VoiceAdapter.startCall({ brainSessionId, callSessionId })
+//   3. VoiceAdapter.startCall({ brainSessionId, callSessionId }) — bounded so
+//      a hung transport can never sit on "Connecting…" forever
 
 import { VoiceAdapter } from "./voice-adapter.js";
+
+// Production origin of the mayor worker, which owns the /api/voice/readiness
+// capability probe. Overridable via the CallShell constructor (local dev).
+const DEFAULT_VOICE_READINESS_URL = "https://mayor.mehyar.us/api/voice/readiness";
+// A transport init that never settles is a stuck "Connecting…" — bound it and
+// say so plainly instead.
+const TRANSPORT_INIT_TIMEOUT_MS = 45000;
+const READINESS_TIMEOUT_MS = 6000;
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -22,12 +33,14 @@ function el(tag, cls, text) {
 }
 
 export class CallShell {
-  constructor({ avatar, transport, fetchFn = (...args) => fetch(...args) } = {}) {
+  constructor({ avatar, transport, fetchFn = (...args) => fetch(...args), readinessUrl = DEFAULT_VOICE_READINESS_URL, transportInitTimeoutMs = TRANSPORT_INIT_TIMEOUT_MS } = {}) {
     if (!avatar) throw Error("CallShell needs an avatar implementing the avatar API");
     if (!transport) throw Error("CallShell needs a voice transport implementing the transport contract");
     this.avatar = avatar;
     this.transport = transport;
     this.fetchFn = fetchFn;
+    this.readinessUrl = readinessUrl;
+    this.transportInitTimeoutMs = transportInitTimeoutMs;
     this.adapter = new VoiceAdapter({ transport, avatar, fetchFn });
     this.state = "idle";
     this.events = [];
@@ -197,6 +210,10 @@ export class CallShell {
     this.state = "starting";
     this.emit("start");
     try {
+      // 0) Capability probe. Unavailable -> plain notice, no fake "connecting".
+      //    Unknown (probe fails) -> attempt normally; transport errors surface below.
+      const readiness = await this.checkVoiceReadiness();
+      if (readiness && !readiness.ok) { this.fail(`Voice isn't available right now — ${readiness.reason}.`); return; }
       // 1) Brain session (its first reply_text is the spoken consent script).
       const start = await this.api("/api/assessment/start", {});
       this.brainSessionId = start.session_id;
@@ -227,6 +244,8 @@ export class CallShell {
     this.state = "starting";
     this.emit("start");
     try {
+      const readiness = await this.checkVoiceReadiness();
+      if (readiness && !readiness.ok) { this.fail(`Voice isn't available right now — ${readiness.reason}.`); return; }
       await this.beginVoiceSession();
       this.setStatus("You're live — speak naturally.");
       this.state = "incall";
@@ -247,10 +266,44 @@ export class CallShell {
     this.secondsRemaining = s.secondsRemaining;
     this.renderCall();
     this.setStatus("Connecting…");
-    // 3) Wire the voice transport.
-    await this.adapter.startCall({ brainSessionId: this.brainSessionId, callSessionId: this.callSessionId });
+    // 3) Wire the voice transport. A transport init that throws OR hangs must
+    //    never leave a stuck "Connecting…" — fail with a plain notice instead.
+    try {
+      await Promise.race([
+        this.adapter.startCall({ brainSessionId: this.brainSessionId, callSessionId: this.callSessionId }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(Error("the voice connection timed out while connecting")), this.transportInitTimeoutMs)
+        ),
+      ]);
+    } catch (e) {
+      try { this.adapter.dispose(); } catch {}
+      throw Error(`Voice isn't available right now — ${e.message || "the voice connection could not start"}.`);
+    }
     this.startHeartbeat();
     this.startClock();
+  }
+
+  /** Capability probe against the mayor worker. Returns null when the probe
+   *  itself fails (unknown) so callers attempt the call normally. */
+  async checkVoiceReadiness() {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), READINESS_TIMEOUT_MS);
+    try {
+      const res = await this.fetchFn(this.readinessUrl, { signal: controller.signal });
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => ({}));
+      if (data && data.available === false) {
+        const reason = typeof data.reason === "string" && data.reason.trim()
+          ? data.reason.trim()
+          : "voice service is not configured";
+        return { ok: false, reason };
+      }
+      return { ok: true, reason: "" };
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   startHeartbeat() {

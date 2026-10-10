@@ -15,7 +15,7 @@ import {createWorkday,type WorkdayView} from './workday';
 import {createConnections} from './connections';
 import {createVoiceDiagnostics} from './voice-diagnostics';
 import {createVoiceHealth} from './voice-health';
-import {createVoiceCall} from './voice-call';
+import {createVoiceCall,voiceUnavailableNotice} from './voice-call';
 import {createVoiceConsentStore,showVoiceConsentSheet} from './voice-consent';
 import {bindVoiceAccessRecovery,createAccessRecoveryView} from './voice-access-recovery';
 import {createBusinessWorkspace,playSoundCheck} from './business-workspace';
@@ -63,7 +63,7 @@ const closeConsentSheet=()=>{consentSheetCleanup?.();consentSheetCleanup=undefin
 function openVoiceConsentSheet(mode:'first-run'|'review'){
  closeConsentSheet();
  consentSheetCleanup=showVoiceConsentSheet({mode,
-  onAccept:async()=>{voiceConsent.grant();closeConsentSheet();await voiceCall?.start();},
+  onAccept:async()=>{voiceConsent.grant();closeConsentSheet();await startVoiceCall();},
   onDecline:()=>{closeConsentSheet();notice('No problem — you can still type below. Tap the mic anytime to try voice.');renderVoiceState();},
   onWithdraw:()=>{voiceConsent.withdraw();closeConsentSheet();notice('Voice choice cleared. You will be asked again the next time you tap the mic.');},
  });
@@ -858,9 +858,35 @@ function renderVoiceState(){
  micLevel.hidden=!voiceCall?.active;if(micLevel.hidden)micLevel.value=0;
  $('voice-hint').textContent=starting?'Allow microphone access in your browser to begin. You can cancel and type instead.':voiceCall?.active?'Speak naturally. You can interrupt me anytime.':microphoneProblem|| (voiceConnected?'Press Talk to begin. I’ll greet you when your microphone is ready.':'Voice is reconnecting. You can still type below.');
 }
+type VoiceProbe={ok:boolean;reason:string};
+/** Capability probe before any call starts. A network failure is "unknown":
+ *  never block the normal attempt on a failed probe — existing error handling
+ *  still covers the call itself. */
+async function probeVoiceReadiness():Promise<VoiceProbe|null>{
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6000);
+ try{
+  const response=await fetch('/api/voice/readiness',{signal:controller.signal});
+  if(!response.ok)return null;
+  const body=await response.json() as {available?:boolean;reason?:string|null};
+  if(body.available===false)return {ok:false,reason:typeof body.reason==='string'&&body.reason.trim()?body.reason.trim():'voice service is not configured'};
+  return {ok:true,reason:''};
+ }catch{return null;}finally{clearTimeout(timer);}
+}
+/** Honest start: when the server says voice is down, say so in the existing
+ *  notice UI and never start a call — no infinite spinner, no dead Talk
+ *  button, no silence presented as a working call. */
+async function startVoiceCall(){
+ if(!voiceCall)return;
+ const probe=await probeVoiceReadiness();
+ if(probe&&!probe.ok){
+  const message=voiceUnavailableNotice(probe.reason);
+  microphoneProblem=message;notice(message);renderVoiceState();return;
+ }
+ await voiceCall.start();
+}
 $('talk').setAttribute('aria-describedby','voice-hint');
 $('voice-hint').setAttribute('role','status');
-$('talk').onclick=async()=>{show('chat');microphoneProblem='';notice('');if(voiceCall?.starting||voiceCall?.active)voiceCall?.stop();else if(voiceCall){if(!voiceConsent.granted()){openVoiceConsentSheet('first-run');return;}await voiceCall.start();}else{microphoneProblem='Voice is not connected yet. Wait for the connection or reload this page, then try again.';renderVoiceState();}};
+$('talk').onclick=async()=>{show('chat');microphoneProblem='';notice('');if(voiceCall?.starting||voiceCall?.active)voiceCall?.stop();else if(voiceCall){if(!voiceConsent.granted()){openVoiceConsentSheet('first-run');return;}await startVoiceCall();}else{microphoneProblem='Voice is not connected yet. Wait for the connection or reload this page, then try again.';renderVoiceState();}};
 $('mute').onclick=()=>voice?.toggleMute();
 $('text-form').onsubmit=event=>{event.preventDefault();void sendTextMessage($<HTMLTextAreaElement>('message').value);};
 $('message').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('text-form').dispatchEvent(new Event('submit',{cancelable:true}));}});

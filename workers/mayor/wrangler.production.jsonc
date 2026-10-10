@@ -5,7 +5,7 @@
   "workers_dev":false,"preview_urls":false,
   "triggers":{"crons":["*/5 * * * *"]},
   "routes":[{"pattern":"mayor.mehyar.us","custom_domain":true}],
-  "assets":{"directory":"./public","binding":"ASSETS","not_found_handling":"single-page-application","run_worker_first":["/api/*","/agents/*","/mcp","/business-audit","/business-audit/*"]},
+  "assets":{"directory":"./public","binding":"ASSETS","not_found_handling":"single-page-application","run_worker_first":["/api/*","/agents/*","/mcp","/business-audit","/business-audit/*","/sales","/sales/*"]},
   // Secrets (set via `wrangler secret put`, never in vars): GOOGLE_PLACES_API_KEY
   // — Google Cloud Console → enable Places API (New) → create a key restricted
   // to HTTP referrers on mayor.mehyar.us. Absent key ⇒ Places onboarding
