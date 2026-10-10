@@ -1,0 +1,22 @@
+/* assessment-call/call.css — voice-call UI (dark FaceTime-style), rendered by call-shell.js. */
+.ac-consent, .ac-call, .ac-ended { background: #1e293b; border-radius: 16px; padding: 28px; }
+  .ac-consent h2, .ac-ended h2 { margin-top: 0; }
+  .ac-notice { line-height: 1.6; color: #cbd5e1; }
+  .ac-check { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; cursor: pointer; }
+  .ac-check input { margin-top: 4px; width: 18px; height: 18px; }
+  .ac-start, .ac-delete { background: #38bdf8; color: #0f172a; border: 0; border-radius: 10px; padding: 12px 20px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .ac-start:hover, .ac-delete:hover { background: #7dd3fc; }
+  .ac-start:focus-visible, .ac-delete:focus-visible, .ac-end:focus-visible { outline: 3px solid #facc15; outline-offset: 2px; }
+  .ac-end { background: #ef4444; color: #fff; border: 0; border-radius: 10px; padding: 12px 24px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .ac-error { color: #fca5a5; }
+  .ac-stage { min-height: 280px; border-radius: 12px; background: #0b1220; display: flex; align-items: center; justify-content: center; color: #64748b; margin-bottom: 16px; }
+  .ac-status { font-size: 18px; font-weight: 600; }
+  .ac-clock { color: #94a3b8; }
+  .ac-captions { max-height: 220px; overflow-y: auto; margin: 16px 0; }
+  .ac-captions p { margin: 8px 0; line-height: 1.5; }
+  .ac-cap-user { color: #bae6fd; }
+  .ac-cap-assistant { color: #fde68a; }
+  .ac-controls { margin-top: 8px; }
+  .ac-legal { margin-top: 24px; font-size: 13px; color: #94a3b8; }
+  .ac-legal a { color: #7dd3fc; }
+  .ac-biz { margin-top: 6px; }

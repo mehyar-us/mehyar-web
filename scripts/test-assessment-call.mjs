@@ -611,6 +611,201 @@ function freshEnv() {
   console.info("  [tracking] GA4 via gtag G-25N8E18944 (mirrors client/index.html); Meta Pixel + GTM absent — flagged as gap for ship.");
 }
 
+// ── 12. ChatOnramp: chat-first on-ramp → voice handoff ───────────────────
+
+{
+  const { ChatOnramp } = await import("../assessment-call/chat.js");
+  const created = [];
+  const mkEl = (tag, ns) => {
+    const e = {
+      tagName: tag, namespace: ns || null, children: [], style: {},
+      className: "", textContent: "", type: "", id: "", checked: false,
+      disabled: false, href: "", target: "", rel: "", value: "",
+      src: "", alt: "", placeholder: "", parentNode: null,
+      _ls: {}, _attrs: {},
+      classList: {
+        _s: new Set(),
+        add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); },
+        contains(c) { return this._s.has(c); },
+      },
+      appendChild(c) { c.parentNode = this; this.children.push(c); return c; },
+      removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); c.parentNode = null; return c; },
+      addEventListener(ev, fn) { (this._ls[ev] = this._ls[ev] || []).push(fn); },
+      setAttribute(k, v) { this._attrs[k] = v; },
+      getAttribute(k) { return this._attrs[k]; },
+      querySelector() { return null; },
+      click() { (this._ls.click || []).forEach((fn) => fn()); },
+      focus() {},
+    };
+    Object.defineProperty(e, "innerHTML", {
+      get() { return this._h || ""; },
+      set(v) { this._h = v; this.children = []; },
+    });
+    Object.defineProperty(e, "scrollHeight", { get() { return 100; } });
+    created.push(e);
+    return e;
+  };
+  const fakeDocument = {
+    createElement: (t) => mkEl(t),
+    createElementNS: (ns, t) => mkEl(t, ns),
+    createTextNode: (t) => ({ nodeType: 3, text: t }),
+  };
+  globalThis.document = fakeDocument;
+
+  const routeCalls = [];
+  let turnCount = 0;
+  const fetchFn = async (url, init) => {
+    const body = init.body ? JSON.parse(init.body) : {};
+    routeCalls.push(url);
+    if (url === "/api/assessment/start")
+      return new Response(JSON.stringify({
+        ok: true, session_id: "brain-chat-1",
+        reply_text: "Hi, I'm the mayor. Before we start — quick heads-up: this call is recorded...",
+        stage: "consent",
+      }));
+    if (url === "/api/assessment/turn") {
+      turnCount++;
+      return new Response(JSON.stringify({
+        ok: true,
+        reply_text: turnCount === 1 ? "Great — what kind of business are we talking about?" : `Noted (${turnCount}).`,
+        stage: "discovery",
+        actions: [],
+      }));
+    }
+    throw Error("unexpected " + url);
+  };
+
+  let handoffArgs = null;
+  const chat = new ChatOnramp({
+    fetchFn,
+    avatarSrc: "./mayor-avatar.png",
+    maxTextTurns: 2, // short for tests
+    onHandoff: async (args) => { handoffArgs = args; },
+  });
+  const root = fakeDocument.createElement("div");
+  chat.mount(root);
+
+  const bubbles = () => created.filter((e) => e.className && e.className.includes("chat-bubble"));
+  const texts = () => bubbles().map((b) => b.textContent);
+
+  // Greeting: exact, no AI mention
+  ok(texts().some((t) => t === "Hi, I'm the mayor."), "greeting is exactly \"Hi, I'm the mayor.\"");
+  ok(!texts().join(" ").toLowerCase().includes("ai assistant"), "no AI disclosure in greeting");
+  ok(chat.state === "greeting", "starts in greeting state");
+
+  // Consent card appears after the beat
+  await new Promise((r) => setTimeout(r, 1100));
+  ok(chat.state === "consent", "consent card shown");
+  const boxes = created.filter((e) => e.tagName === "input" && e.type === "checkbox");
+  ok(boxes.length === 2, "two consent checkboxes in chat");
+  ok(boxes.every((b) => b.checked === false), "chat checkboxes unchecked by default");
+
+  // Gate: no session without consent
+  const consentBtn = created.find((e) => e.className === "chat-btn" && e.textContent.includes("Sounds good"));
+  consentBtn.click();
+  await new Promise((r) => setTimeout(r, 50));
+  ok(!routeCalls.includes("/api/assessment/start"), "no brain session without consent");
+  const errEl = created.find((e) => e.className === "chat-consent-error");
+  ok(errEl && errEl.style.display === "block", "consent error shown");
+
+  // Consent → brain session + first turn
+  boxes.forEach((b) => { b.checked = true; });
+  consentBtn.click();
+  await new Promise((r) => setTimeout(r, 300));
+  ok(routeCalls.includes("/api/assessment/start"), "brain session started after consent");
+  ok(chat.brainSessionId === "brain-chat-1", "brain session id stored");
+  ok(chat.state === "chatting", "chat is live after consent");
+  ok(texts().some((t) => t.includes("what kind of business")), "brain discovery question rendered");
+
+  // Text turn round-trip
+  const input = created.find((e) => e.className === "chat-input" && e.type === "text");
+  const sendBtn = created.find((e) => e.className === "chat-send");
+  input.value = "I run a plumbing company";
+  sendBtn.click();
+  await new Promise((r) => setTimeout(r, 300));
+  ok(texts().some((t) => t === "I run a plumbing company"), "user message rendered");
+  ok(routeCalls.filter((u) => u === "/api/assessment/turn").length === 2, "second turn sent to brain");
+
+  // Handoff after maxTextTurns
+  input.value = "mehyarplumbing.com";
+  sendBtn.click();
+  await new Promise((r) => setTimeout(r, 400));
+  ok(texts().some((t) => t === "Let's talk it through — calling you now."), "handoff line delivered");
+  ok(chat.state === "handoff", "handoff state");
+  await new Promise((r) => setTimeout(r, 1400));
+  ok(chat.state === "incoming", "incoming-call UI shown");
+  const answerBtn = created.find((e) => e.className === "chat-answer-btn");
+  const declineBtn = created.find((e) => e.className === "chat-decline-btn");
+  ok(!!answerBtn && !!declineBtn, "answer + decline buttons present");
+  ok(answerBtn.getAttribute("aria-label") === "Answer the call", "answer button labeled");
+
+  // Answer → onHandoff with the SAME brain session
+  answerBtn.click();
+  await new Promise((r) => setTimeout(r, 100));
+  ok(handoffArgs && handoffArgs.brainSessionId === "brain-chat-1", "handoff carries brain session");
+  ok(handoffArgs.consent.consent === true && handoffArgs.consent.adult === true, "handoff carries consent");
+
+  // Decline path: fresh chat, decline returns to chatting
+  const chat2 = new ChatOnramp({ fetchFn, maxTextTurns: 1, onHandoff: async () => {} });
+  const root2 = fakeDocument.createElement("div");
+  chat2.mount(root2);
+  await new Promise((r) => setTimeout(r, 1100));
+  const boxes2 = created.filter((e) => e.tagName === "input" && e.type === "checkbox" && e.checked === false);
+  boxes2.slice(-2).forEach((b) => { b.checked = true; });
+  const btn2 = created.filter((e) => e.className === "chat-btn" && e.textContent.includes("Sounds good")).pop();
+  btn2.click();
+  await new Promise((r) => setTimeout(r, 300));
+  const input2 = created.filter((e) => e.className === "chat-input" && e.type === "text").pop();
+  const send2 = created.filter((e) => e.className === "chat-send").pop();
+  input2.value = "test";
+  send2.click();
+  await new Promise((r) => setTimeout(r, 1800));
+  ok(chat2.state === "incoming", "second chat reaches incoming");
+  const decline2 = created.filter((e) => e.className === "chat-decline-btn").pop();
+  decline2.click();
+  await new Promise((r) => setTimeout(r, 100));
+  ok(chat2.state === "chatting", "decline returns to chat");
+  ok(chat2.brainSessionId === "brain-chat-1", "brain session preserved after decline");
+
+  delete globalThis.document;
+}
+
+// ── 13. Regression: default fetchFn must survive a real browser ──────────────
+// Browsers throw "Illegal invocation" when the native fetch is detached from
+// window (const f = fetch; f()). The default used to be `fetch` itself, which
+// broke every real browser while mocked-fetch tests stayed green.
+{
+  const calls = [];
+  function strictFetch(...args) {
+    // Emulate the WebIDL receiver check: detached invocation throws.
+    if (this !== undefined && this !== globalThis) {
+      throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+    }
+    calls.push(args);
+    return Promise.resolve({ ok: true, json: async () => ({ ok: true }) });
+  }
+  const savedFetch = globalThis.fetch;
+  globalThis.fetch = strictFetch;
+  try {
+    const { ChatOnramp } = await import("../assessment-call/chat.js");
+    const chat = new ChatOnramp(); // default fetchFn
+    await chat.fetchFn("/api/assessment/start", { method: "POST" });
+    ok(calls.length === 1 && calls[0][0] === "/api/assessment/start", "ChatOnramp default fetchFn is browser-safe");
+
+    const { CallShell } = await import("../assessment-call/call-shell.js");
+    const shell = new CallShell({ avatar: createStubAvatar(), transport: createStubVoiceTransport() });
+    await shell.fetchFn("/api/assessment-call/session", { method: "POST" });
+    ok(calls.length === 2, "CallShell default fetchFn is browser-safe");
+
+    const { VoiceAdapter } = await import("../assessment-call/voice-adapter.js");
+    const va = new VoiceAdapter({ avatar: createStubAvatar(), transport: createStubVoiceTransport() });
+    await va.fetchFn("/api/assessment/turn", { method: "POST" });
+    ok(calls.length === 3, "VoiceAdapter default fetchFn is browser-safe");
+  } finally {
+    globalThis.fetch = savedFetch;
+  }
+}
+
 console.log(`\nAll ${N} assessment-call assertions passed.`);
 // The shell's heartbeat/clock intervals would keep node alive — tests are done.
 process.exit(0);

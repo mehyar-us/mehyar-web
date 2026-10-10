@@ -19,7 +19,7 @@
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
 
 export class VoiceAdapter {
-  constructor({ transport, avatar, apiBase = "", fetchFn = fetch } = {}) {
+  constructor({ transport, avatar, apiBase = "", fetchFn = (...args) => fetch(...args) } = {}) {
     if (!transport) throw Error("VoiceAdapter needs a voice transport");
     if (!avatar) throw Error("VoiceAdapter needs an avatar implementing the avatar API");
     this.transport = transport;

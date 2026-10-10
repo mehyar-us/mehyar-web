@@ -22,7 +22,7 @@ function el(tag, cls, text) {
 }
 
 export class CallShell {
-  constructor({ avatar, transport, fetchFn = fetch } = {}) {
+  constructor({ avatar, transport, fetchFn = (...args) => fetch(...args) } = {}) {
     if (!avatar) throw Error("CallShell needs an avatar implementing the avatar API");
     if (!transport) throw Error("CallShell needs a voice transport implementing the transport contract");
     this.avatar = avatar;
@@ -74,7 +74,7 @@ export class CallShell {
       el(
         "p",
         "ac-notice",
-        "This is a voice call with an AI assistant. The call is recorded and transcribed " +
+        "This is a voice call with the Mayor. The call is recorded and transcribed " +
           "so we can build your business audit. The transcript is stored securely and you can " +
           "delete it at any time. This is a free assessment — no charge, no payment taken."
       )
@@ -200,18 +200,8 @@ export class CallShell {
       // 1) Brain session (its first reply_text is the spoken consent script).
       const start = await this.api("/api/assessment/start", {});
       this.brainSessionId = start.session_id;
-      // 2) Infra session (consent gate, rate limit, 45-min cap, latency log).
-      const s = await this.api("/api/assessment-call/session", {
-        consent: true,
-        adult: true,
-        brainSessionId: this.brainSessionId,
-      });
-      this.callSessionId = s.sessionId;
-      this.secondsRemaining = s.secondsRemaining;
-      this.renderCall();
-      this.setStatus("Connecting…");
-      // 3) Wire the voice transport.
-      await this.adapter.startCall({ brainSessionId: this.brainSessionId, callSessionId: this.callSessionId });
+      // 2) Infra session + voice wiring (shared with the chat on-ramp).
+      await this.beginVoiceSession();
       // Speak the consent script as the first turn (goes through the same
       // latency-logged path as every reply).
       if (start.reply_text) {
@@ -219,12 +209,48 @@ export class CallShell {
         await this.adapter.speak(start.reply_text, { userText: "(call started)", sttMs: 0, tttMs: 0 });
       }
       this.setStatus("You're live — speak naturally.");
-      this.startHeartbeat();
-      this.startClock();
       this.state = "incall";
     } catch (e) {
       this.fail(e.message);
     }
+  }
+
+  /**
+   * startVoiceCall — entry point for the chat on-ramp handoff.
+   * The chat already collected consent and created the brain session, so this
+   * skips the consent screen, the brain start, and the spoken consent script,
+   * then runs the identical voice-session tail as startCall().
+   */
+  async startVoiceCall({ brainSessionId } = {}) {
+    if (!brainSessionId) throw Error("startVoiceCall needs brainSessionId");
+    this.brainSessionId = brainSessionId;
+    this.state = "starting";
+    this.emit("start");
+    try {
+      await this.beginVoiceSession();
+      this.setStatus("You're live — speak naturally.");
+      this.state = "incall";
+    } catch (e) {
+      this.fail(e.message);
+    }
+  }
+
+  /** Shared tail: infra session → render → wire transport → heartbeat/clock. */
+  async beginVoiceSession() {
+    // 2) Infra session (consent gate, rate limit, 45-min cap, latency log).
+    const s = await this.api("/api/assessment-call/session", {
+      consent: true,
+      adult: true,
+      brainSessionId: this.brainSessionId,
+    });
+    this.callSessionId = s.sessionId;
+    this.secondsRemaining = s.secondsRemaining;
+    this.renderCall();
+    this.setStatus("Connecting…");
+    // 3) Wire the voice transport.
+    await this.adapter.startCall({ brainSessionId: this.brainSessionId, callSessionId: this.callSessionId });
+    this.startHeartbeat();
+    this.startClock();
   }
 
   startHeartbeat() {

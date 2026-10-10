@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Free Business Assessment Call — MehyarSoft</title>
-<meta name="description" content="A free 45-minute voice assessment of your business with the Mayor. Recorded and transcribed with your consent. No charge, no card.">
+<meta name="description" content="Chat with the Mayor, then talk it through on a free 45-minute voice assessment of your business. Recorded and transcribed with your consent. No charge, no card.">
 <link rel="canonical" href="https://mehyar.us/assessment-call/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MehyarSoft LLC">
 <meta property="og:title" content="Free Business Assessment Call — MehyarSoft">
-<meta property="og:description" content="A free 45-minute voice assessment of your business with the Mayor. Find where money is leaking. No charge, no card.">
+<meta property="og:description" content="Chat with the Mayor, then talk it through on a free voice assessment. Find where money is leaking. No charge, no card.">
 <meta property="og:url" content="https://mehyar.us/assessment-call/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Free Business Assessment Call — MehyarSoft">
-<meta name="twitter:description" content="A free 45-minute voice assessment of your business with the Mayor. No charge, no card.">
+<meta name="twitter:description" content="Chat with the Mayor, then talk it through on a free voice assessment. No charge, no card.">
 <!-- Google tag (gtag.js) — mirrors client/index.html, MehyarSoft LLC GA4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-25N8E18944"></script>
 <script>
@@ -22,49 +22,47 @@
   gtag('js', new Date());
   gtag('config', 'G-25N8E18944'); /* page_view fires automatically */
 </script>
+<link rel="stylesheet" href="./chat.css">
+<link rel="stylesheet" href="./call.css">
 <style>
   :root { color-scheme: light; }
-  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
-  #call-root { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
-  .ac-consent, .ac-call, .ac-ended { background: #1e293b; border-radius: 16px; padding: 28px; }
-  .ac-consent h2, .ac-ended h2 { margin-top: 0; }
-  .ac-notice { line-height: 1.6; color: #cbd5e1; }
-  .ac-check { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; cursor: pointer; }
-  .ac-check input { margin-top: 4px; width: 18px; height: 18px; }
-  .ac-start, .ac-delete { background: #38bdf8; color: #0f172a; border: 0; border-radius: 10px; padding: 12px 20px; font-size: 16px; font-weight: 700; cursor: pointer; }
-  .ac-start:hover, .ac-delete:hover { background: #7dd3fc; }
-  .ac-start:focus-visible, .ac-delete:focus-visible, .ac-end:focus-visible { outline: 3px solid #facc15; outline-offset: 2px; }
-  .ac-end { background: #ef4444; color: #fff; border: 0; border-radius: 10px; padding: 12px 24px; font-size: 16px; font-weight: 700; cursor: pointer; }
-  .ac-error { color: #fca5a5; }
-  .ac-stage { min-height: 280px; border-radius: 12px; background: #0b1220; display: flex; align-items: center; justify-content: center; color: #64748b; margin-bottom: 16px; }
-  .ac-status { font-size: 18px; font-weight: 600; }
-  .ac-clock { color: #94a3b8; }
-  .ac-captions { max-height: 220px; overflow-y: auto; margin: 16px 0; }
-  .ac-captions p { margin: 8px 0; line-height: 1.5; }
-  .ac-cap-user { color: #bae6fd; }
-  .ac-cap-assistant { color: #fde68a; }
-  .ac-controls { margin-top: 8px; }
-  .ac-legal { margin-top: 24px; font-size: 13px; color: #94a3b8; }
-  .ac-legal a { color: #7dd3fc; }
-  .ac-biz { margin-top: 6px; }
+  /* The voice-call UI keeps its own dark FaceTime styling (rendered by
+     call-shell.js into #call-root once the call starts). */
+  body { margin: 0; background: #faf8f5; }
+  #call-root:empty { min-height: 100dvh; }
 </style>
 </head>
 <body>
 <main id="call-root" aria-label="Assessment call"></main>
 <script type="module">
+  import { ChatOnramp } from "./chat.js";
   import { CallShell } from "./call-shell.js";
   import { createStubAvatar, createStubVoiceTransport } from "./stubs.js";
   // Demo/test wiring: stub avatar + stub voice transport.
   // Production swaps:
   //   createStubAvatar()        -> the avatar crew's mountAvatar(container, opts)
   //   createStubVoiceTransport() -> the voice team's transport (same 7-method API)
-  // The CallShell and VoiceAdapter only need those two contracts.
-  const shell = new CallShell({
-    avatar: createStubAvatar(),
-    transport: createStubVoiceTransport(),
+  // The ChatOnramp, CallShell and VoiceAdapter only need those two contracts.
+
+  const root = document.getElementById("call-root");
+  const avatar = createStubAvatar();
+  const transport = createStubVoiceTransport();
+
+  const chat = new ChatOnramp({
+    avatarSrc: "./mayor-avatar.png",
+    onHandoff: async ({ brainSessionId }) => {
+      // Same brain session continues on voice — the chat was the on-ramp.
+      const shell = new CallShell({ avatar, transport });
+      shell.root = root;
+      root.classList.remove("chat-page");
+      document.body.style.background = "#0f172a"; // call UI is dark FaceTime-style
+      await shell.startVoiceCall({ brainSessionId });
+      window.__callShell = shell; // test hook
+    },
   });
-  shell.mount(document.getElementById("call-root"));
-  window.__callShell = shell; // test hook
+  chat.mount(root);
+  window.__chatOnramp = chat; // test hook
+
   // CTA click tracking (mirrors GoogleAnalytics.tsx installCtaTracking):
   // any click on [data-analytics-cta] fires cta_click.
   document.addEventListener("click", (event) => {
