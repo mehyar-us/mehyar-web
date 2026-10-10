@@ -114,6 +114,22 @@ section.page-width{padding-top:2.5rem;padding-bottom:2.5rem}
 }
 .section-fallback{color:var(--muted);padding:1rem 0}
 
+/* Plans (pricing without amounts) */
+.plan-grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1.5rem}
+.plan-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.4rem;
+}
+.plan-card h3{margin-top:0}
+.plan-tier{
+  display:inline-block;background:var(--brand-soft);color:var(--brand);
+  font-weight:800;font-size:0.85rem;letter-spacing:0.04em;
+  border-radius:999px;padding:0.3rem 0.9rem;margin:0 0 0.8rem;
+}
+.plan-card p{margin:0;color:var(--ink)}
+.plan-card p+p{margin-top:0.8rem}
+.plans-note{color:var(--muted);font-size:0.92rem;margin-top:1.25rem;max-width:44rem}
+
 /* FAQ */
 .question-list{display:grid;gap:0.75rem;max-width:44rem;margin-top:1.25rem}
 .question-list details{
@@ -158,6 +174,7 @@ section.page-width{padding-top:2.5rem;padding-bottom:2.5rem}
   .hero{padding:5rem 1.25rem 3.5rem}
   .feature-grid{grid-template-columns:1fr 1fr}
   .loop-grid{grid-template-columns:1fr 1fr}
+  .plan-grid{grid-template-columns:1fr 1fr 1fr}
   .cta-band{padding:3.5rem 2rem}
 }
 @media (min-width:1080px){

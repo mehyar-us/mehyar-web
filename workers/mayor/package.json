@@ -7,7 +7,7 @@
     "check": "tsc --noEmit",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "build:web": "vite build",
+    "build:web": "node scripts/gen-sales-verticals.mjs && vite build",
     "build": "npm run build:web && wrangler deploy --dry-run --outdir dist",
     "db:local": "wrangler d1 migrations apply AGENT_DB --local"
   },

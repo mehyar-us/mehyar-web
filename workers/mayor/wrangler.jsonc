@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat","global_fetch_strictly_public"],
   "workers_dev": false,
   "preview_urls": false,
-  "assets": {"directory":"./public","binding":"ASSETS","not_found_handling":"single-page-application","run_worker_first":["/api/*","/agents/*","/mcp","/business-audit","/business-audit/*","/sales","/sales/*"]},
+  "assets": {"directory":"./public","binding":"ASSETS","not_found_handling":"single-page-application","run_worker_first":["/*"]},
   "vars": {"APP_ORIGIN": "http://127.0.0.1:5175", "ENVIRONMENT": "local"},
   "ai": {"binding": "AI"},
   "d1_databases": [{"binding": "AGENT_DB", "database_name": "mehyar-mayor", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations"}],

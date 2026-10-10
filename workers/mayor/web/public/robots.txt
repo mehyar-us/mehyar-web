@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /agents/
+Disallow: /mcp
+
+Sitemap: https://mayor.mehyar.us/sitemap.xml

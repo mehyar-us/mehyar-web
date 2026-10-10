@@ -1,4 +1,6 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
+import {isPublicAssetPath,isSalesVerticalPath} from './public-routes';
+import {NOT_FOUND_HTML} from './not-found-page';
 import {handleConnectionsRequest} from './connections';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
@@ -82,6 +84,12 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const target=new URL('/sales',request.url);
     return env.ASSETS.fetch(new Request(target,request));
   }
+  // Public vertical sales pages (static, generated from verticals.ts).
+  if(isSalesVerticalPath(url.pathname)&&request.method==='GET'){
+    if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
+    const target=new URL(url.pathname.replace(/\/$/,''),request.url);
+    return env.ASSETS.fetch(new Request(target,request));
+  }
   const telnyxIncoming=url.pathname.match(/^\/api\/phone\/telnyx\/incoming\/([a-f0-9-]{32,36})$/);
   const telnyxStream=url.pathname.match(/^\/api\/phone\/telnyx\/stream\/([a-f0-9-]{36})\/([a-f0-9]{64})$/);
   if(telnyxIncoming||telnyxStream){
@@ -115,7 +123,14 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     return finishTelnyxConsent(request,env,session);
   }
   if(url.pathname.startsWith('/api/auth/'))return handleAuthRequest(request,env);
-  if(!url.pathname.startsWith('/api/')&&!url.pathname.startsWith('/agents/'))return env.ASSETS?env.ASSETS.fetch(request):new Response('The Mayor frontend is not built yet.',{status:503});
+  if(!url.pathname.startsWith('/api/')&&!url.pathname.startsWith('/agents/')){
+    if(!env.ASSETS)return new Response('The Mayor frontend is not built yet.',{status:503});
+    if(isPublicAssetPath(url.pathname))return env.ASSETS.fetch(request);
+    // Real 404: a clean not-found page, never the app shell. (Inlined: the
+    // asset server 307-redirects .html to clean paths, which empties
+    // subrequest bodies, so we can't fetch /404.html here.)
+    return new Response(NOT_FOUND_HTML,{status:404,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+  }
   const session=await getSession(request,env);
   if(!session)throw new HttpError(401,'authentication_required','Sign in to talk to The Mayor.');
   if(request.method!=='GET'||url.pathname.startsWith('/agents/'))requireOrigin(request,env.APP_ORIGIN);
@@ -482,7 +497,7 @@ export default {async fetch(request:Request,env:Env,context?:ExecutionContext) {
     secured.headers.set('referrer-policy','no-referrer');
     secured.headers.set('x-frame-options','DENY');
     const path=new URL(request.url).pathname;
-    if(['/business-audit','/business-audit/','/business-audit/report','/business-audit.html','/sales','/sales/','/sales.html'].includes(path))secured.headers.set('cache-control','no-store');
+    if(['/business-audit','/business-audit/','/business-audit/report','/business-audit.html','/sales','/sales/','/sales.html'].includes(path)||path.startsWith('/sales/'))secured.headers.set('cache-control','no-store');
     if(path==='/business-audit/report')secured.headers.set('x-robots-tag','noindex, nofollow, noarchive');
     return secured;
   }catch(error){
