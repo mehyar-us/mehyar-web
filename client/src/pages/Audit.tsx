@@ -904,7 +904,8 @@ export default function Audit() {
               <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying}>
                 {paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
-              <p className="text-center text-xs text-muted-foreground">One-time payment · Report emailed with a permanent link</p>
+              <p className="text-center text-xs text-muted-foreground">One-time payment · $330 · Report emailed with a permanent link</p>
+              <p className="text-center text-xs font-medium text-muted-foreground">Purchases are final — no refunds.</p>
             </form>
             {/* ── Blocked checkout: capture the lead + offer the human path ── */}
             {payBlocked && (
