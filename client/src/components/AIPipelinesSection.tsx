@@ -10,7 +10,7 @@ const TABS = [
     pipelines: [
       { name: "AI Voice Receptionist", desc: "Answers every call 24/7, books jobs, quotes prices. Never miss a 2am emergency call again." },
       { name: "Smart Dispatch & Scheduling", desc: "Fills your calendar, clusters jobs by route, sends arrival texts, follows up on unsold quotes." },
-      { name: "Review Engine", desc: "Texts happy customers for Google reviews; routes unhappy ones to you privately first." },
+      { name: "Review Engine", desc: "Drafts polite review-request follow-ups you send yourself after a job well done — never fake reviews, never filtered." },
     ],
   },
   {
@@ -64,7 +64,7 @@ export default function AIPipelinesSection() {
       <div className="site-shell">
         <p className="site-eyebrow mb-4 text-center">AI pipelines by industry</p>
         <h2 className="mx-auto max-w-3xl text-center text-3xl font-bold tracking-tight text-foreground md:text-4xl text-balance">
-          The same AI systems that multiply output up to 5x
+          The same AI systems that can multiply a small team's output — example math below
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-muted-foreground">
           Your free audit detects your business type and shows which of these systems fit you — with honest math on the upside.
@@ -102,7 +102,7 @@ export default function AIPipelinesSection() {
         <div className="mx-auto mt-8 flex max-w-2xl items-center justify-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
           <TrendingUp className="h-8 w-8 shrink-0 text-emerald-500" />
           <p className="text-sm leading-6 text-foreground">
-            <strong>The 500% math:</strong> one AI voice agent handles the call volume of 3–5 receptionists, 24/7, at a fraction of one salary. The full $5 report shows your exact numbers.
+            <strong>Example math (illustrative, not a guarantee):</strong> one AI voice agent can handle the call volume of 3–5 receptionists, 24/7, at a fraction of one salary. The full $5 report shows your exact numbers.
           </p>
         </div>
       </div>

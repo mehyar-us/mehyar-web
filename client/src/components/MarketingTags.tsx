@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { hasConsented } from "@/lib/consent";
 
 /* ── Marketing tags for the Audit tab (ID-driven, no hardcoded IDs) ────────
    GTM container, Meta pixel, and Google Ads tag load ONLY when their env var
@@ -29,6 +30,8 @@ function isPublicPath(pathname: string) {
 function canLoadTags(pathname = typeof window === "undefined" ? "" : window.location.pathname) {
   if (typeof window === "undefined") return false;
   if (!isPublicPath(pathname)) return false;
+  // Consent-gated (full-QA fix): marketing tags never load before Accept.
+  if (!hasConsented()) return false;
   if (!GTM_ID && !META_PIXEL_ID && !GOOGLE_ADS_ID) return false;
   return forceEnable || dryRun || productionHosts.has(window.location.hostname);
 }

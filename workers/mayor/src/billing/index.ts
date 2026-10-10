@@ -8,10 +8,35 @@ import {baseConfiguration,parseEvent,rawBody,verifySignature,type BillingEnv,typ
 import {handleAuditPublic,auditOrders} from './audit';
 import {createCreditCheckout} from './credits';
 export {billingUsageContext,usageBalance} from './state';
+import {PLANS,CREDIT_PACKS,BILLING_VERSION,PRO_PRICE_VERSION,CREDIT_PACK_VERSION} from './plans';
 export {PLANS,CREDIT_PACKS} from './plans';
 export {STRIPE_API_VERSION} from './stripe';
 export function billingRequestId(request:Request){const value=request.headers.get('idempotency-key')??request.headers.get('x-idempotency-key');if(!value||!z.uuid().safeParse(value).success)throw new HttpError(400,'idempotency_key_required','Retry with the same unique billing request.');return value;}
+// ── Public pricing catalog (full-QA fix F3) ────────────────────────────────
+// GET /api/billing/catalog — the single source of truth for public pricing.
+// plans.ts is authoritative; the mehyar.us marketing page (MayorPlans.tsx)
+// and any other surface MUST read this endpoint, never hardcode prices.
+// Public and unauthenticated by design (it's marketing copy); CORS-open only
+// to the mehyar.us origins that render it.
+const CATALOG_ORIGINS=new Set(['https://mehyar.us','https://www.mehyar.us']);
+export function catalogResponse(request:Request):Response|null{
+ const url=new URL(request.url);
+ if(url.pathname!=='/api/billing/catalog')return null;
+ if(request.method!=='GET')throw new HttpError(405,'method_not_allowed','Use GET for the billing catalog.');
+ const origin=request.headers.get('origin')??'';
+ const headers:Record<string,string>={'cache-control':'public, max-age=300','x-content-type-options':'nosniff','referrer-policy':'no-referrer'};
+ if(CATALOG_ORIGINS.has(origin))headers['access-control-allow-origin']=origin;
+ return Response.json({
+  currency:'USD',
+  catalogVersion:BILLING_VERSION,
+  priceVersion:PRO_PRICE_VERSION,
+  creditPackVersion:CREDIT_PACK_VERSION,
+  plans:PLANS.map(p=>({id:p.id,name:p.name,priceCents:p.priceCents,interval:p.interval,replyLimit:p.replyLimit,voiceMinuteLimit:p.voiceMinuteLimit})),
+  creditPacks:CREDIT_PACKS.map(p=>({id:p.id,name:p.name,priceCents:p.priceCents,replyAttempts:p.replyAttempts,voiceMinutes:p.voiceMinutes})),
+ },{headers});
+}
 export async function handleBillingPublic(request:Request,env:BillingEnv,injected?:StripeClient):Promise<Response|null>{
+ const catalog=catalogResponse(request);if(catalog)return catalog;
  const audit=await handleAuditPublic(request,env,injected);if(audit)return audit;
  if(new URL(request.url).pathname!=='/api/billing/webhook')return null;if(request.method!=='POST')throw new HttpError(405,'method_not_allowed','Use POST for billing events.');baseConfiguration(env);const bytes=await rawBody(request);await verifySignature(bytes,request.headers.get('stripe-signature'),env.MAYOR_STRIPE_WEBHOOK_SECRET!);return json(await processBillingEvent(env,parseEvent(bytes),injected));
 }

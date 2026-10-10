@@ -596,7 +596,9 @@ function freshEnv() {
 {
   const html = fs.readFileSync(new URL("../assessment-call/index.html", import.meta.url), "utf8");
   const shellJs = fs.readFileSync(new URL("../assessment-call/call-shell.js", import.meta.url), "utf8");
-  ok(html.includes("googletagmanager.com/gtag/js?id=G-25N8E18944"), "GA tag mirrors live site ID");
+  ok(html.includes("G-25N8E18944"), "GA tag mirrors live site ID");
+  ok(/consent.*default.*denied/s.test(html), "GA4 consent-gated: defaults deny storage (full-QA fix)");
+  ok(!/script async src="https:\/\/www\.googletagmanager\.com\/gtag\/js/.test(html), "GA4: no unconditional gtag.js load pre-consent");
   ok(html.includes('gtag("event", "cta_click"'), "cta_click event wired");
   ok(shellJs.includes('data-analytics-cta'), "start button carries data-analytics-cta");
   ok(html.includes('rel="canonical"') && html.includes('og:title'), "SEO: canonical + OG tags");
@@ -924,5 +926,30 @@ function freshEnv() {
 }
 
 console.log(`\nAll ${N} assessment-call assertions passed.`);
+// ── 15. F1: live page wires the REAL voice transport, never the stub ───────
+// Full-QA finding: assessment-call/index.html shipped createStubVoiceTransport()
+// (a silent simulation — a real caller heard nothing). The page must wire the
+// voice team's real browser transport instead.
+{
+  const html = fs.readFileSync(new URL("../assessment-call/index.html", import.meta.url), "utf8");
+  ok(!html.includes("createStubVoiceTransport"), "index.html does not reference the stub voice transport");
+  ok(html.includes('from "./voice-transport.js"'), "index.html imports the real voice transport");
+  ok(html.includes("new VoiceTransport()"), "index.html constructs the real VoiceTransport");
+  // Vendored copy must match the voice track's source of truth (below header).
+  const src = fs.readFileSync(new URL("../client/src/lib/assessment-call/voice-transport.js", import.meta.url), "utf8");
+  const vendored = fs.readFileSync(new URL("../assessment-call/voice-transport.js", import.meta.url), "utf8");
+  const srcBody = src.split("\n").slice(51).join("\n");
+  const vendoredBody = vendored.split("\n").slice(5).join("\n");
+  ok(srcBody === vendoredBody, "vendored voice-transport.js matches client source of truth");
+  // The real transport implements the frozen 7-method contract the page needs.
+  const { VoiceTransport } = await import("../assessment-call/voice-transport.js");
+  const t = new VoiceTransport();
+  for (const m of ["init", "startListening", "stopListening", "on", "speak", "cancelSpeech", "dispose", "getUsage"]) {
+    ok(typeof t[m] === "function", `VoiceTransport implements ${m}()`);
+  }
+  t.dispose();
+}
+
+console.log(`\nAll ${N} assessment-call assertions passed (incl. F1 wiring).`);
 // The shell's heartbeat/clock intervals would keep node alive — tests are done.
 process.exit(0);

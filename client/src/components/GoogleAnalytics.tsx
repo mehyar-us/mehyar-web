@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { hasConsented, onConsentChange } from "@/lib/consent";
 
 const googleTagId = import.meta.env.MEHYAR_PUBLIC_GOOGLE_TAG_ID?.trim() || "";
 const ga4MeasurementId = import.meta.env.MEHYAR_PUBLIC_GOOGLE_GA4_MEASUREMENT_ID?.trim() || "";
@@ -18,12 +19,23 @@ function isPublicPath(pathname: string) {
 function canLoadAnalytics(pathname = typeof window === "undefined" ? "" : window.location.pathname) {
   if (typeof window === "undefined") return false;
   if (!isPublicPath(pathname)) return false;
+  // Consent-gated (full-QA fix): GA4 must never load or fire before the visitor
+  // accepts cookies. The inline <head> script owns Consent-Mode defaults.
+  if (!hasConsented()) return false;
   if (!googleTagId && !ga4MeasurementId) return false;
   return forceEnable || dryRun || productionHosts.has(window.location.hostname);
 }
 
+function gtagScriptPresent() {
+  if (typeof document === "undefined") return false;
+  return Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]'));
+}
+
 function installGoogleTag() {
   if (typeof window === "undefined" || !canLoadAnalytics()) return;
+  // The consent-gated <head> loader may have already loaded gtag.js (returning
+  // visitor who accepted). Never load it twice.
+  if (gtagScriptPresent()) return;
 
   window.dataLayer = window.dataLayer || [];
   window.gtag =
@@ -151,7 +163,15 @@ export default function GoogleAnalytics() {
 
   useEffect(() => {
     installGoogleTag();
-    return installCtaTracking();
+    // Visitor grants consent after load (banner Accept): install then.
+    const off = onConsentChange((choice) => {
+      if (choice === "accepted") installGoogleTag();
+    });
+    const stopCta = installCtaTracking();
+    return () => {
+      off();
+      stopCta();
+    };
   }, []);
 
   useEffect(() => {

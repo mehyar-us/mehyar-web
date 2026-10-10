@@ -114,10 +114,14 @@ const sections: Section[] = [
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
-            <code>localStorage["darkMode"]</code> — remembers your light/dark theme preference. No personal data.
+            <code>localStorage[&quot;darkMode&quot;]</code> — remembers your light/dark theme preference. No personal data.
           </li>
           <li>
-            <code>sessionStorage["mehyarsoft_admin_token"]</code> — used only by the
+            <code>localStorage[&quot;ms_cookie_consent&quot;]</code> — remembers your cookie-consent choice
+            (accepted/declined) so we don&apos;t ask on every visit.
+          </li>
+          <li>
+            <code>sessionStorage[&quot;mehyarsoft_admin_token&quot;]</code> — used only by the
             owner-only <code>/admin</code> dashboard so the admin UI does not log you out on every
             refresh. Cleared when you log out or close the tab.
           </li>
@@ -127,10 +131,18 @@ const sections: Section[] = [
           </li>
         </ul>
         <p className="mt-2">
-          <strong>Analytics:</strong> At the time of this writing there is no third-party analytics
-          script loaded on this site. Aggregate traffic visibility comes from Cloudflare&apos;s
-          server-side request logs, which we can read but do not share. If we ever add an analytics
-          provider we will update this page first.
+          <strong>Analytics:</strong> we use <strong>Google Analytics 4</strong> (measurement ID{" "}
+          <code>G-25N8E18944</code>) to understand aggregate site traffic — which pages are visited,
+          roughly where visitors come from, and which buttons get clicked. It sets <code>_ga</code>{" "}
+          cookies in your browser for that purpose. <strong>It only loads after you click
+          &quot;Accept&quot; on our cookie banner</strong> — if you click &quot;Decline,&quot; no
+          analytics script loads and no <code>_ga</code> cookie is set. Aggregate traffic visibility
+          also comes from Cloudflare&apos;s server-side request logs, which we can read but do not
+          share. You can also opt out of Google Analytics entirely with{" "}
+          <a className="text-brand-700 underline dark:text-brand-100" href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">
+            Google&apos;s opt-out add-on
+          </a>
+          .
         </p>
       </>
     ),
@@ -351,9 +363,9 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          This site is a business consulting offering. It is not directed to children under 16, and
-          we do not knowingly collect data from children. If you believe a child has submitted
-          information through a form, email <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}`}>{contactEmail}</a>
+          This site is a business consulting offering. It is not directed to children under 13 (or
+          under 16), and we do not knowingly collect data from children. If you believe a child has
+          submitted information through a form, email <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}`}>{contactEmail}</a>
           and we will delete it.
         </p>
       </>

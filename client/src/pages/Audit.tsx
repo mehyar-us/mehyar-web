@@ -289,6 +289,14 @@ function FaqItem({ q, children }: { q: string; children: React.ReactNode }) {
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function Audit() {
   const token = new URLSearchParams(window.location.search).get("token");
+  /* Assessment-call prefill (?prefill=<token>): the post-call email links here
+     with a tokenized payload (business name, URL, call findings). Redeem it and
+     fill the intake form — the token, name, URL and findings must never be
+     silently discarded (full-QA fix F2). Invalid/expired tokens degrade to an
+     empty form with a gentle note, never an error wall. */
+  const prefillToken = new URLSearchParams(window.location.search).get("prefill");
+  const [prefillNote, setPrefillNote] = useState("");
+  const [prefillLoading, setPrefillLoading] = useState(false);
 
   /* ── Report view: same page when ?token= is present ── */
   if (token) {
@@ -340,6 +348,40 @@ export default function Audit() {
     if (intake && !payEmail) setPayEmail(email);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intake]);
+
+  /* ── F2: redeem the assessment-call prefill token once on mount ── */
+  useEffect(() => {
+    if (!prefillToken) return;
+    let cancelled = false;
+    setPrefillLoading(true);
+    fetch(`/api/assessment/prefill?token=${encodeURIComponent(prefillToken)}`)
+      .then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }))
+      .then(({ status, data }) => {
+        if (cancelled) return;
+        if (status === 200 && data && data.ok && data.payload) {
+          const p = data.payload as { business_name?: string; url?: string; findings_summary?: string };
+          if (p.business_name) setBusinessName(p.business_name);
+          if (p.url) setSiteUrl(p.url);
+          setPrefillNote(
+            "Pre-filled from your assessment call" +
+              (p.findings_summary ? ` — we covered: ${p.findings_summary}.` : ".") +
+              " Check it over and continue below."
+          );
+        } else {
+          setPrefillNote("That personal link has expired — no problem, just fill in the form below.");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPrefillNote("Couldn't load your saved details — just fill in the form below.");
+      })
+      .finally(() => {
+        if (!cancelled) setPrefillLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillToken]);
 
   const submitIntake = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -606,6 +648,16 @@ export default function Audit() {
       <StepShell step="Step 1 · free" title="Tell us about your business" id="step-1">
         <Card>
           <CardContent className="p-5 md:p-7">
+            {prefillLoading && (
+              <p className="mb-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground" aria-live="polite">
+                Loading your saved details…
+              </p>
+            )}
+            {prefillNote && (
+              <p className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm leading-6 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" aria-live="polite">
+                {prefillNote}
+              </p>
+            )}
             <form onSubmit={submitIntake} className="space-y-4">
               <div>
                 <Label htmlFor="ab-name">Business name</Label>

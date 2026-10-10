@@ -14,13 +14,45 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Free Business Assessment Call — MehyarSoft">
 <meta name="twitter:description" content="Chat with the Mayor, then talk it through on a free voice assessment. No charge, no card.">
-<!-- Google tag (gtag.js) — mirrors client/index.html, MehyarSoft LLC GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-25N8E18944"></script>
+<!-- Google Analytics (GA4 G-25N8E18944) — CONSENT-GATED (full-QA fix, 2026-10-09).
+     Mirrors client/index.html: Consent-Mode defaults deny all storage; gtag.js
+     loads ONLY after the visitor accepts cookies (shared ms_cookie_consent key).
+     No _ga cookie is set pre-consent. -->
 <script>
+(function(){
+  var GA_ID = 'G-25N8E18944', KEY = 'ms_cookie_consent';
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-25N8E18944'); /* page_view fires automatically */
+  function gtag(){ window.dataLayer.push(arguments); }
+  window.gtag = window.gtag || gtag;
+  gtag('consent', 'default', {
+    'ad_storage': 'denied', 'ad_user_data': 'denied',
+    'ad_personalization': 'denied', 'analytics_storage': 'denied',
+    'functionality_storage': 'denied', 'personalization_storage': 'denied',
+    'security_storage': 'granted'
+  });
+  function read(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
+  function save(v){
+    try { localStorage.setItem(KEY, v); } catch(e){}
+    try { window.dataLayer.push({ event: 'cookie_consent', consent: v }); } catch(e){}
+  }
+  var loaded = false;
+  function loadTag(){
+    if (loaded) return; loaded = true;
+    gtag('consent', 'update', { 'analytics_storage': 'granted' });
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(GA_ID);
+    document.head.appendChild(s);
+    gtag('js', new Date());
+    gtag('config', GA_ID); /* page_view fires automatically */
+  }
+  window.__mehyarConsent = {
+    choice: read,
+    grant: function(){ save('accepted'); loadTag(); },
+    deny: function(){ save('declined'); }
+  };
+  if (read() === 'accepted') loadTag();
+})();
 </script>
 <link rel="stylesheet" href="./chat.css">
 <link rel="stylesheet" href="./call.css">
@@ -37,16 +69,19 @@
 <script type="module">
   import { ChatOnramp } from "./chat.js";
   import { CallShell } from "./call-shell.js";
-  import { createStubAvatar, createStubVoiceTransport } from "./stubs.js";
-  // Demo/test wiring: stub avatar + stub voice transport.
-  // Production swaps:
-  //   createStubAvatar()        -> the avatar crew's mountAvatar(container, opts)
-  //   createStubVoiceTransport() -> the voice team's transport (same 7-method API)
-  // The ChatOnramp, CallShell and VoiceAdapter only need those two contracts.
+  import { createStubAvatar } from "./stubs.js";
+  import { VoiceTransport } from "./voice-transport.js";
+  // Production wiring (2026-10-09, full-QA fix F1): the voice team's real
+  // browser transport (vendored from client/src/lib/assessment-call/
+  // voice-transport.js — the voice track owns the source of truth).
+  // Previously this page wired the stub transport from stubs.js, a silent
+  // simulation — a real caller heard nothing. Never go back to the stub.
+  // createStubAvatar() remains: the 3D avatar is TypeScript (client build
+  // only); the stub is visual-only and harmless on this static page.
 
   const root = document.getElementById("call-root");
   const avatar = createStubAvatar();
-  const transport = createStubVoiceTransport();
+  const transport = new VoiceTransport(); // wss://voice-transport.mehyar.workers.dev
 
   const chat = new ChatOnramp({
     avatarSrc: "./mayor-avatar.png",
@@ -64,10 +99,11 @@
   window.__chatOnramp = chat; // test hook
 
   // CTA click tracking (mirrors GoogleAnalytics.tsx installCtaTracking):
-  // any click on [data-analytics-cta] fires cta_click.
+  // any click on [data-analytics-cta] fires cta_click — only after cookie consent.
   document.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target.closest("[data-analytics-cta]") : null;
     if (!target || typeof gtag !== "function") return;
+    try { if (localStorage.getItem("ms_cookie_consent") !== "accepted") return; } catch { return; }
     const label = (target.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120);
     gtag("event", "cta_click", { label, location: window.location.pathname });
   }, { capture: true });
