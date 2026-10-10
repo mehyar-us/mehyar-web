@@ -622,7 +622,7 @@ export default function Audit() {
         <div className="site-shell grid max-w-4xl gap-4 sm:grid-cols-3">
           {[
             { n: "1", t: "Share your URL", d: "Business name, URL, and email. We fetch your site and show you the honest signals we found — free.", icon: FileSearch },
-            { n: "2", t: "Add your walkthrough (optional)", d: "Upload up to 30 minutes of MP4: talk us through your business like you're showing a friend. The AI uses it for a deeper read.", icon: Video },
+            { n: "2", t: "Add your walkthrough (optional)", d: "Even 2 minutes works (up to 30 min MP4): talk us through your business like you're showing a friend. The AI uses it for a deeper read.", icon: Video },
             { n: "3", t: "Pay $330, get the report", d: "One-time payment. The AI writes your visual report and emails you a permanent link.", icon: BadgeCheck },
           ].map(({ n, t, d, icon: Icon }) => (
             <div key={n} className="rounded-2xl border border-border bg-card p-5">
@@ -716,7 +716,7 @@ export default function Audit() {
         <Card>
           <CardContent className="p-5 md:p-7">
             <p className="text-sm leading-6 text-muted-foreground">
-              Record up to <strong className="text-foreground">30 minutes</strong> of MP4 — walk us
+              Record a quick walkthrough — <strong className="text-foreground">even 2 minutes works</strong> (up to 30 minutes of MP4) — walk us
               through your business like you're showing a friend: your site, your offer, your
               customers, what's working and what isn't. The AI uses it for a deeper assessment,
               including transcript-based findings in your report. Skip it and the audit covers

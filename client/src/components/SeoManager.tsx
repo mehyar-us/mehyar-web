@@ -227,6 +227,33 @@ const staticMeta: Record<string, SeoMeta> = {
         "Websites, customer apps, booking, AI follow-up, phone care, and automation for businesses worldwide.",
       ),
       offerCatalog,
+      faq([
+        {
+          question: "What does MehyarSoft do?",
+          answer:
+            "MehyarSoft LLC is a founder-led software, systems, and AI automation firm helping businesses worldwide fix lead leaks, manual workflows, CRM gaps, and disconnected tools.",
+        },
+        {
+          question: "Who is MehyarSoft for?",
+          answer:
+            "Owners and operators who need a practical technical owner to clean up the path from prospect to paid customer and from manual work to reliable system - especially local service businesses, agencies, clinics, and regulated teams losing leads to missed calls, weak websites, manual follow-up, or disconnected tools.",
+        },
+        {
+          question: "How is MehyarSoft different from an agency?",
+          answer:
+            "MehyarSoft is founder-led. There is no agency theater. One senior technical owner scopes around the business leak, ships the smallest useful fix, and hands off clear documentation. Habits come from current pharma systems-engineering work: reliability, access boundaries, auditability, and controlled change.",
+        },
+        {
+          question: "What does a first engagement cost?",
+          answer:
+            "A focused Tech Audit starts at $150 and a written Website Diagnosis Report is $250. Custom builds run $1k-$25k, retainers run $500-$3,500 per month, and hourly advisory is $150 per hour. The first call identifies the smallest useful engagement for the leak.",
+        },
+        {
+          question: "Where is MehyarSoft based?",
+          answer:
+            "MehyarSoft is headquartered in Brooklyn, New York and serves businesses worldwide through remote-first delivery.",
+        },
+      ]),
     ],
   },
   "/services": {
