@@ -84,7 +84,22 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const target=new URL('/sales',request.url);
     return env.ASSETS.fetch(new Request(target,request));
   }
-  // Public vertical sales pages (static, generated from verticals.ts).
+  // Pricing page (static; plan names/structure render from /api/billing/catalog,
+  // amounts are never shown — the priced offer hydrates #offer-slot later).
+  if((url.pathname==='/pricing'||url.pathname==='/pricing/')&&request.method==='GET'){
+    if(!env.ASSETS)return new Response('The pricing page is not built yet.',{status:503});
+    // Fetch the clean asset path: ASSETS redirects .html back to this route.
+    const target=new URL('/pricing',request.url);
+    return env.ASSETS.fetch(new Request(target,request));
+  }
+  // Auth lives at / (the app's sign-in). /login and /signup redirect there;
+  // /privacy redirects to the shared mehyar.us legal page (scope rule).
+  if((url.pathname==='/login'||url.pathname==='/login/'||url.pathname==='/signup'||url.pathname==='/signup/')&&request.method==='GET'){
+    return Response.redirect(new URL('/',request.url).toString(),301);
+  }
+  if((url.pathname==='/privacy'||url.pathname==='/privacy/')&&request.method==='GET'){
+    return Response.redirect('https://mehyar.us/privacy-policy/',301);
+  }
   if(isSalesVerticalPath(url.pathname)&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
     const target=new URL(url.pathname.replace(/\/$/,''),request.url);
