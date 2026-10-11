@@ -76,7 +76,10 @@ it('generates one page per vertical from verticals.ts (single source of truth)',
     expect(page).toContain('not a customer story');
     expect(page).toContain('nothing here promises revenue');
     expect(page).not.toMatch(/\$\d/);
-    expect(page).not.toContain('<script');
+    // The only script allowed is the consent-gated analytics snippet —
+    // no product JavaScript on the generated sales pages.
+    const scripts=[...page.matchAll(/<script\b[^>]*>/g)].map(m=>m[0]);
+    expect(scripts).toEqual(['<script src="/analytics-consent.js">']);
     // SEO + CTA plumbing.
     expect(page).toContain(`<link rel="canonical" href="https://mayor.mehyar.us/sales/${slug}">`);
     expect(page).toContain('href="/sales#plans"');
