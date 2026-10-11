@@ -22,7 +22,7 @@ const routeMeta = {
   '/audit': {
     title: 'Audit My Business — $330 AI Business Audit | MehyarSoft',
     description:
-      'A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 30-minute CEO walkthrough video. One-time $330, no subscription.',
+      'A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 2-minute CEO walkthrough video (up to 30 min). One-time $330, no subscription.',
     path: '/audit',
   },
   '/audit/free': {
