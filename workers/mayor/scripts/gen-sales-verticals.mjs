@@ -119,7 +119,7 @@ export function verticalPage(vertical, profile) {
         <h3>${esc(label)}</h3>
         <ol class="loop-steps">
           <li><strong>The missed ${esc(v.booking)}.</strong> A ${esc(v.customer)} calls and nobody can pick up — your ${esc(v.staff)}s are with ${esc(v.customer)}s. Normally that ${esc(v.booking)} goes to whoever answers first.</li>
-          <li><strong>The instant text-back.</strong> The Mayor texts within a minute, in your voice: sorry we missed your call — want to book? Reply YES and we will find you a time. Reply STOP to opt out.</li>
+          <li><strong>The instant text-back.</strong> The Mayor texts back almost instantly, in your voice: sorry we missed your call — want to book? Reply YES and we will find you a time. Reply STOP to opt out.</li>
           <li><strong>The recovered ${esc(v.booking)}.</strong> ${cap(v.customer)} replies YES. The Mayor takes it from there, and the ${esc(v.booking)} lands on your book — before you have even seen the missed call.</li>
         </ol>
       </article>

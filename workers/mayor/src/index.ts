@@ -1,5 +1,5 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
-import {isPublicAssetPath,isSalesVerticalPath,normalizePathname} from './public-routes';
+import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
 import {injectOfferBlock,injectPricingCards} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
@@ -182,6 +182,13 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       // url.pathname is already normalized (see fetch); fetch the clean path.
       const target=new URL(url.pathname,request.url);
       return env.ASSETS.fetch(new Request(target,request));
+    }
+    // SPA deep links: known app views serve the app shell (index.html) with
+    // a 200 so the client can activate the matching view. The client reads
+    // location.pathname in init() and calls show(view). Unknown paths still
+    // get the real 404 below — never the shell.
+    if(spaViewForPath(url.pathname)&&request.method==='GET'){
+      return env.ASSETS.fetch(new Request(new URL('/',request.url),request));
     }
     // Real 404: a clean not-found page, never the app shell. (Inlined: the
     // asset server 307-redirects .html to clean paths, which empties

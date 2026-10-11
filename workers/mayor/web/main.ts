@@ -1129,6 +1129,12 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
     $('voice-hint').textContent=membershipRole==='billing'?'Your role manages the subscription and shared usage in Plan & usage.':'Your role does not include voice or text chat. Business details are available in Account.';
     show(membershipRole==='billing'?'billing':'account');
   }
+  // SPA deep links: /today, /feed, /billing, /connectors, /settings, /account
+  // serve the app shell (see spaViewForPath in src/public-routes.ts).
+  // Activate the matching view; workday.show() already guards by role.
+  const deepLink:Record<string,WorkdayView>={'/today':'today','/feed':'feed','/billing':'billing','/connectors':'connections','/settings':'account','/account':'account'};
+  const deepView=deepLink[location.pathname];
+  if(deepView)show(deepView);
 }
 const retryStartup=document.createElement('button');retryStartup.type='button';retryStartup.className='secondary';retryStartup.textContent='Retry loading';retryStartup.hidden=true;composerStatus.after(retryStartup);
 async function start(){if(accessEnded)return;retryStartup.hidden=true;try{await init();}catch(error){if(accessEnded)return;notice((error as Error).message);retryStartup.hidden=false;$('status').textContent='Could not load your workspace';}}
