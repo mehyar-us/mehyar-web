@@ -5,6 +5,10 @@ checks.push(['/business-audit',200],['/business-audit/report',200],['/api/busine
 checks.push(['/sales',200],['/robots.txt',200],['/sitemap.xml',200],['/favicon.ico',200]);
 for(const slug of ['salon','restaurant','plumbing-hvac','dental','auto-repair','pet-grooming','med-spa'])checks.push([`/sales/${slug}`,200]);
 checks.push(['/sales/saloon',404],['/definitely-not-a-page-xyz',404]);
+// Trailing-slash normalization: every public route resolves with and without.
+for(const p of ['/terms/','/pricing/','/sales/','/sales/salon/','/robots.txt'])checks.push([p,200]);
+checks.push(['/api/billing/catalog/',200]);
+checks.push(['/data-deletion',301],['/data-deletion/',301]);
 for(const resource of ['customers','tasks','overview','billing','routines','harness'])checks.push([`/api/businesses/${'0'.repeat(32)}/${resource}`,401]);
 for(const action of ['checkout','credit-checkout','portal','sync','audit-orders'])checks.push([`/api/businesses/${'0'.repeat(32)}/billing/${action}`,401,'POST']);
 for(const action of ['routines','routines/run','routines/brief/read'])checks.push([`/api/businesses/${'0'.repeat(32)}/${action}`,401,'POST']);
@@ -66,6 +70,10 @@ for(const [path,expected,method='GET'] of checks){
     }
     if(path==='/'){
       const html=await response.text();assert.match(html,/The Mayor/);
+      // SSR pricing: the served HTML carries the catalog-priced offer block
+      // (data-ssr marker + a dollar amount from the live catalog).
+      assert.match(html,/data-ssr="catalog"/,'Missing server-rendered offer block');
+      assert.match(html,/\$\d/,'Missing catalog price in served HTML');
       const scripts=[...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(match=>match[1]);
       const styles=[...html.matchAll(/<link\b[^>]*\bhref="([^"]+\.css(?:\?[^\"]*)?)"[^>]*>/g)].map(match=>match[1]);
       assert.ok(scripts.length,'Missing application JavaScript');assert.ok(styles.length,'Missing application stylesheet');

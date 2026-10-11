@@ -15,7 +15,7 @@ import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
 import {VERTICAL_PROFILES} from '../src/verticals';
 import {generateVerticalPages,VERTICAL_SLUGS} from '../scripts/gen-sales-verticals.mjs';
-import {isPublicAssetPath,isSalesVerticalPath,SALES_VERTICAL_SLUGS} from '../src/public-routes';
+import {isPublicAssetPath,isSalesVerticalPath,SALES_VERTICAL_SLUGS,normalizePathname} from '../src/public-routes';
 import {NOT_FOUND_HTML} from '../src/not-found-page';
 
 const here=dirname(fileURLToPath(import.meta.url));
@@ -94,7 +94,8 @@ it('generates one page per vertical from verticals.ts (single source of truth)',
 it('vertical slugs match the worker route contract',()=>{
   for(const slug of SALES_VERTICAL_SLUGS){
     expect(isSalesVerticalPath(`/sales/${slug}`)).toBe(true);
-    expect(isSalesVerticalPath(`/sales/${slug}/`)).toBe(true);
+    // Trailing slashes are normalized at the fetch entry before matching.
+    expect(isSalesVerticalPath(normalizePathname(`/sales/${slug}/`))).toBe(true);
   }
   expect(isSalesVerticalPath('/sales/saloon')).toBe(false);
   expect(isSalesVerticalPath('/sales')).toBe(false);

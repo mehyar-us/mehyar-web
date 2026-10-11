@@ -32,6 +32,7 @@ export function offerBlockHtml(catalog:unknown):string|null{
 export async function loadOfferBlock():Promise<void>{
  const el=document.getElementById('offer-block');
  if(!el)return;
+ if(el.dataset.ssr==='catalog')return; // worker already rendered from the live catalog (src/offer-block-ssr.ts)
  try{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
   try{

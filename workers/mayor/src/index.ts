@@ -1,6 +1,7 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
-import {isPublicAssetPath,isSalesVerticalPath} from './public-routes';
+import {isPublicAssetPath,isSalesVerticalPath,normalizePathname} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
+import {injectOfferBlock} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
@@ -72,13 +73,33 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(mcp)return mcp;
   const publicBilling=await handleBillingPublic(request,env);
   if(publicBilling)return publicBilling;
-  if(['/business-audit','/business-audit/','/business-audit/report'].includes(url.pathname)&&request.method==='GET'){
+  if((url.pathname==='/business-audit'||url.pathname==='/business-audit/report')&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The audit page is not built yet.',{status:503});
     // Fetch the clean asset path: ASSETS redirects .html back to this route.
     const target=new URL('/business-audit',request.url);
     return env.ASSETS.fetch(new Request(target,request));
   }
-  if((url.pathname==='/sales'||url.pathname==='/sales/')&&request.method==='GET'){
+  // Unauthenticated home: server-render the pricing summary into #offer-block
+  // from the live billing catalog (amounts never hardcoded). If injection
+  // changes nothing, serve the asset as-is; the client (web/offer-block.ts)
+  // hydrates only when data-ssr="catalog" is absent.
+  if((url.pathname==='/'||url.pathname==='/index.html')&&request.method==='GET'){
+    if(!env.ASSETS)return new Response('The Mayor frontend is not built yet.',{status:503});
+    const assetRes=await env.ASSETS.fetch(new Request(new URL('/',request.url),request));
+    const contentType=assetRes.headers.get('content-type')??'';
+    if(assetRes.ok&&contentType.includes('text/html')){
+      const original=await assetRes.text(),injected=injectOfferBlock(original);
+      if(injected!==original){
+        const headers=new Headers(assetRes.headers);
+        headers.set('content-type','text/html; charset=utf-8');
+        // Keep the asset's cache-control (no-store for /): the pricing is
+        // rendered from the live catalog at request time, so it is always fresh.
+        return new Response(injected,{status:assetRes.status,headers});
+      }
+    }
+    return assetRes;
+  }
+  if(url.pathname==='/sales'&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
     // Fetch the clean asset path: ASSETS redirects .html back to this route.
     const target=new URL('/sales',request.url);
@@ -86,23 +107,26 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   }
   // Pricing page (static; plan names/structure render from /api/billing/catalog,
   // amounts are never shown — the priced offer hydrates #offer-slot later).
-  if((url.pathname==='/pricing'||url.pathname==='/pricing/')&&request.method==='GET'){
+  if(url.pathname==='/pricing'&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The pricing page is not built yet.',{status:503});
     // Fetch the clean asset path: ASSETS redirects .html back to this route.
     const target=new URL('/pricing',request.url);
     return env.ASSETS.fetch(new Request(target,request));
   }
   // Auth lives at / (the app's sign-in). /login and /signup redirect there;
-  // /privacy redirects to the shared mehyar.us legal page (scope rule).
-  if((url.pathname==='/login'||url.pathname==='/login/'||url.pathname==='/signup'||url.pathname==='/signup/')&&request.method==='GET'){
+  // /privacy and /data-deletion redirect to the shared mehyar.us legal pages (scope rule).
+  if((url.pathname==='/login'||url.pathname==='/signup')&&request.method==='GET'){
     return Response.redirect(new URL('/',request.url).toString(),301);
   }
-  if((url.pathname==='/privacy'||url.pathname==='/privacy/')&&request.method==='GET'){
+  if(url.pathname==='/privacy'&&request.method==='GET'){
     return Response.redirect('https://mehyar.us/privacy-policy/',301);
+  }
+  if(url.pathname==='/data-deletion'&&request.method==='GET'){
+    return Response.redirect('https://mehyar.us/data-deletion/',301);
   }
   if(isSalesVerticalPath(url.pathname)&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
-    const target=new URL(url.pathname.replace(/\/$/,''),request.url);
+    const target=new URL(url.pathname,request.url);
     return env.ASSETS.fetch(new Request(target,request));
   }
   const telnyxIncoming=url.pathname.match(/^\/api\/phone\/telnyx\/incoming\/([a-f0-9-]{32,36})$/);
@@ -140,7 +164,11 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(url.pathname.startsWith('/api/auth/'))return handleAuthRequest(request,env);
   if(!url.pathname.startsWith('/api/')&&!url.pathname.startsWith('/agents/')){
     if(!env.ASSETS)return new Response('The Mayor frontend is not built yet.',{status:503});
-    if(isPublicAssetPath(url.pathname))return env.ASSETS.fetch(request);
+    if(isPublicAssetPath(url.pathname)){
+      // url.pathname is already normalized (see fetch); fetch the clean path.
+      const target=new URL(url.pathname,request.url);
+      return env.ASSETS.fetch(new Request(target,request));
+    }
     // Real 404: a clean not-found page, never the app shell. (Inlined: the
     // asset server 307-redirects .html to clean paths, which empties
     // subrequest bodies, so we can't fetch /404.html here.)
@@ -505,14 +533,25 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
 }
 export default {async fetch(request:Request,env:Env,context?:ExecutionContext) {
   try{
-    const response=await handle(request,env,context);
+    // Normalize a single trailing slash (except the root) ONCE, before all
+    // routing, so /terms/, /pricing/, /api/billing/catalog/ etc. behave
+    // exactly like their bare forms. Everything downstream sees the
+    // normalized path.
+    const requestUrl=new URL(request.url);
+    const cleanPath=normalizePathname(requestUrl.pathname);
+    let routedRequest=request;
+    if(cleanPath!==requestUrl.pathname){
+      requestUrl.pathname=cleanPath;
+      routedRequest=new Request(requestUrl.toString(),request);
+    }
+    const response=await handle(routedRequest,env,context);
     if(response.status===101)return response;
     const secured=new Response(response.body,response);
     secured.headers.set('x-content-type-options','nosniff');
     secured.headers.set('referrer-policy','no-referrer');
     secured.headers.set('x-frame-options','DENY');
-    const path=new URL(request.url).pathname;
-    if(['/business-audit','/business-audit/','/business-audit/report','/business-audit.html','/sales','/sales/','/sales.html'].includes(path)||path.startsWith('/sales/'))secured.headers.set('cache-control','no-store');
+    const path=cleanPath;
+    if(['/business-audit','/business-audit/report','/business-audit.html','/sales','/sales.html'].includes(path)||path.startsWith('/sales/'))secured.headers.set('cache-control','no-store');
     if(path==='/business-audit/report')secured.headers.set('x-robots-tag','noindex, nofollow, noarchive');
     return secured;
   }catch(error){
