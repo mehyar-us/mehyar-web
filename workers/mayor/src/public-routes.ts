@@ -43,3 +43,23 @@ export function isPublicAssetPath(path:string):boolean{
 export function isSalesVerticalPath(path:string):boolean{
   return SALES_VERTICAL_PATHS.has(path);
 }
+
+/**
+ * Known SPA app views (see WorkdayView in web/workday.ts). Deep links to
+ * these paths serve the app shell (index.html) with a 200 so the client can
+ * activate the matching view — instead of a dead 404. Everything else that
+ * isn't a public asset path still gets the real 404 page.
+ */
+export const SPA_VIEW_PATHS:Record<string,string>={
+  '/today':'today',
+  '/feed':'feed',
+  '/billing':'billing',
+  '/connectors':'connections',
+  '/settings':'account',
+  '/account':'account',
+};
+
+/** True when the path is a known SPA app view (deep link → app shell). */
+export function spaViewForPath(path:string):string|null{
+  return SPA_VIEW_PATHS[path]??null;
+}
