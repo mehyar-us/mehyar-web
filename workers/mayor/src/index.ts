@@ -118,7 +118,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if((url.pathname==='/login'||url.pathname==='/signup')&&request.method==='GET'){
     return Response.redirect(new URL('/',request.url).toString(),301);
   }
-  if(url.pathname==='/privacy'&&request.method==='GET'){
+  if((url.pathname==='/privacy'||url.pathname==='/privacy-policy')&&request.method==='GET'){
     return Response.redirect('https://mehyar.us/privacy-policy/',301);
   }
   if(url.pathname==='/data-deletion'&&request.method==='GET'){
