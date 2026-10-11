@@ -13,6 +13,8 @@ import {expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
+import {generateVerticalPages,VERTICAL_SLUGS} from '../scripts/gen-sales-verticals.mjs';
+import {VERTICAL_PROFILES} from '../src/verticals';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const webDir=join(here,'..','web');
@@ -55,6 +57,30 @@ it('/ and /sales carry OG + Twitter card tags with real image assets',()=>{
   }
   expect(read('index.html')).toContain('<meta property="og:url" content="https://mayor.mehyar.us/">');
   expect(read('sales.html')).toContain('<meta property="og:url" content="https://mayor.mehyar.us/sales">');
+});
+
+it('all 7 vertical pages carry per-vertical OG + Twitter card tags',()=>{
+  generateVerticalPages();
+  for(const [vertical,slug] of Object.entries(VERTICAL_SLUGS)){
+    const profile=(VERTICAL_PROFILES as Record<string,typeof VERTICAL_PROFILES.salon>)[vertical];
+    const html=read(`sales/${slug}.html`);
+    for(const tag of [
+      '<meta property="og:type" content="website">',
+      '<meta property="og:title"',
+      '<meta property="og:description"',
+      '<meta name="twitter:card" content="summary_large_image">',
+      '<meta name="twitter:title"',
+      '<meta name="twitter:description"',
+      '<meta property="og:image" content="https://mayor.mehyar.us/icon-512.png">',
+      '<meta name="twitter:image" content="https://mayor.mehyar.us/icon-512.png">',
+    ]) expect(html,`/sales/${slug} missing ${tag}`).toContain(tag);
+    // og:url is the page's own canonical URL.
+    expect(html).toContain(`<meta property="og:url" content="https://mayor.mehyar.us/sales/${slug}">`);
+    // Titles/descriptions are per-vertical, from the profile — honest, no invented claims.
+    expect(html).toContain(`The Mayor for ${profile.label}`);
+    expect(html).toContain(profile.label.toLowerCase());
+    expect(html).not.toMatch(/\$\d/);
+  }
 });
 
 it('logged-out view hides the app nav and business-identity; login restores nav',()=>{

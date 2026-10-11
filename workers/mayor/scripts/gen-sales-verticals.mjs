@@ -46,6 +46,9 @@ export function verticalPage(vertical, profile) {
     .map(k => `<li title="${esc(k.hint)}">${esc(k.label)}</li>`)
     .join('');
   const canonical = `https://mayor.mehyar.us/sales/${slug}`;
+  const ogTitle = `The Mayor for ${label} · Your AI Chief of Staff`;
+  const ogDescription = `The Mayor is the AI chief of staff for your ${label.toLowerCase()} — missed-call text-backs, reminders, and the numbers that matter, in your language.`;
+  const ogImage = `https://mayor.mehyar.us/icon-512.png`;
 
   return `<!doctype html>
 <html lang="en">
@@ -53,12 +56,21 @@ export function verticalPage(vertical, profile) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#102b47">
-  <meta name="description" content="The Mayor is the AI chief of staff for your ${esc(label.toLowerCase())} — missed-call text-backs, reminders, and the numbers that matter, in your language.">
+  <meta name="description" content="${esc(ogDescription)}">
   <meta name="referrer" content="no-referrer">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${esc(ogTitle)}">
+  <meta property="og:description" content="${esc(ogDescription)}">
+  <meta property="og:url" content="${canonical}">
+  <meta property="og:image" content="${ogImage}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${esc(ogTitle)}">
+  <meta name="twitter:description" content="${esc(ogDescription)}">
+  <meta name="twitter:image" content="${ogImage}">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="canonical" href="${canonical}">
   <link rel="stylesheet" href="/sales.css">
-  <title>The Mayor for ${esc(label)} · Your AI Chief of Staff</title>
+  <title>${esc(ogTitle)}</title>
 </head>
 <body>
   <a class="skip-link" href="#sales-content">Skip to content</a>
