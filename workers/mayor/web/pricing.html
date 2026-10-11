@@ -80,13 +80,16 @@
   </main>
 
   <footer class="site-footer page-width">
-    <nav aria-label="Legal">
-      <a href="https://mehyar.us/privacy-policy/">Privacy policy</a>
-      <a href="https://mehyar.us/terms/">Terms of service</a>
-      <a href="https://mehyar.us/data-deletion/">Data deletion</a>
-      <a href="mailto:info@mehyar.us">Contact</a>
+    <p class="footer-brand">The Mayor <small>BY MEHYARSOFT LLC</small></p>
+    <nav aria-label="Footer">
+      <a href="/terms">Terms</a>
+      <a href="https://mehyar.us/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy</a>
+      <a href="https://mehyar.us/terms/" target="_blank" rel="noopener noreferrer">Company terms</a>
+      <a href="https://mehyar.us/data-deletion/" target="_blank" rel="noopener noreferrer">Data deletion</a>
+      <a href="mailto:info@mehyar.us">info@mehyar.us</a>
     </nav>
-    <p class="footer-note">The Mayor · MehyarSoft LLC</p>
+    <p class="footer-note">Purchases are final — no refunds.</p>
+    <p class="footer-note">© 2026 MehyarSoft LLC. All rights reserved.</p>
   </footer>
 
   <script>
@@ -109,6 +112,8 @@
     function fail(el){el.innerHTML='<p class="plans-note">Plans could not be loaded. <button class="text-link" onclick="location.reload()">Try again</button>.</p>';}
     async function load(){
       var plansEl=document.getElementById('plan-cards'),packsEl=document.getElementById('topup-cards');
+      // Server-rendered cards (data-ssr="catalog") win — never re-fetch or double-render.
+      if(plansEl&&plansEl.dataset.ssr==='catalog'&&packsEl&&packsEl.dataset.ssr==='catalog')return;
       try{
         var ctl=new AbortController(),t=setTimeout(function(){ctl.abort();},10000);
         var res=await fetch('/api/billing/catalog',{headers:{accept:'application/json'},signal:ctl.signal});

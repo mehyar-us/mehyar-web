@@ -28,10 +28,16 @@ it('/sales has the honest capability line under the money-loop section',()=>{
   // It sits inside the money-loop section (after the section opens, before it closes).
   const sectionStart=html.indexOf('id="money-loop"');
   const sectionEnd=html.indexOf('</section>',sectionStart);
-  const lineAt=html.indexOf(HONEST_LINE);
+  const lineAt=html.indexOf(HONEST_LINE,sectionStart);
   expect(sectionStart).toBeGreaterThanOrEqual(0);
   expect(lineAt).toBeGreaterThan(sectionStart);
   expect(lineAt).toBeLessThan(sectionEnd);
+});
+
+it('/sales hero surfaces the provider-setup qualifier up top',()=>{
+  const html=read('sales.html');
+  const heroEnd=html.indexOf('id="how"');
+  expect(html.slice(0,heroEnd)).toContain(HONEST_LINE);
 });
 
 it('/sales honest line is consistent with the homepage FAQ requirement language',()=>{

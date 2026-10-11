@@ -1,7 +1,7 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
-import {injectOfferBlock} from './offer-block-ssr';
+import {injectOfferBlock,injectPricingCards} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
@@ -105,13 +105,27 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const target=new URL('/sales',request.url);
     return env.ASSETS.fetch(new Request(target,request));
   }
-  // Pricing page (static; plan names/structure render from /api/billing/catalog,
-  // amounts are never shown — the priced offer hydrates #offer-slot later).
+  // Pricing page: server-render the plan cards from the live billing catalog
+  // (amounts never hardcoded), same pattern as the home-page offer slot.
+  // If injection changes nothing, serve the asset as-is; the client renders
+  // from /api/billing/catalog only when data-ssr="catalog" is absent.
   if(url.pathname==='/pricing'&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The pricing page is not built yet.',{status:503});
     // Fetch the clean asset path: ASSETS redirects .html back to this route.
     const target=new URL('/pricing',request.url);
-    return env.ASSETS.fetch(new Request(target,request));
+    const assetRes=await env.ASSETS.fetch(new Request(target,request));
+    const contentType=assetRes.headers.get('content-type')??'';
+    if(assetRes.ok&&contentType.includes('text/html')){
+      const original=await assetRes.text(),injected=injectPricingCards(original);
+      if(injected!==original){
+        const headers=new Headers(assetRes.headers);
+        headers.set('content-type','text/html; charset=utf-8');
+        // Keep the asset's cache-control (no-store): the pricing is rendered
+        // from the live catalog at request time, so it is always fresh.
+        return new Response(injected,{status:assetRes.status,headers});
+      }
+    }
+    return assetRes;
   }
   // Auth lives at / (the app's sign-in). /login and /signup redirect there;
   // /privacy and /data-deletion redirect to the shared mehyar.us legal pages (scope rule).
