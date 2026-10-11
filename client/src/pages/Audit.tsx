@@ -340,6 +340,18 @@ export default function Audit() {
   const [payBlocked, setPayBlocked] = useState(false);
   const [notifyState, setNotifyState] = useState<"idle" | "saving" | "saved">("idle");
   const [notifyMsg, setNotifyMsg] = useState("");
+  /* Up-front availability probe: warn visitors at the top of step 3 and under
+     the hero BEFORE they invest time in steps 1–2. Null = unknown (probe failed
+     — stay quiet; the post-click blocked panel still catches it). */
+  const [checkoutOpen, setCheckoutOpen] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pay/availability", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setCheckoutOpen(d && d.ok ? !!d.checkout_open : null); })
+      .catch(() => { if (!cancelled) setCheckoutOpen(null); });
+    return () => { cancelled = true; };
+  }, []);
 
   /* Blocked-checkout notify-me: the buyer already gave us their email in this
      step; clicking the button IS the explicit consent to one notification email
@@ -607,6 +619,16 @@ export default function Audit() {
               What's inside the report
             </a>
           </div>
+          {checkoutOpen === false && (
+            <div className="mx-auto mt-5 flex max-w-xl items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-900/60 dark:bg-amber-950/30">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <p className="text-xs leading-5 text-muted-foreground">
+                <strong className="text-foreground">Checkout is temporarily closed</strong> while we finish
+                payment setup. The free audit in step 1 still works right now — and when you reach step 3,
+                you can leave your email to be the first to know the moment checkout opens.
+              </p>
+            </div>
+          )}
           <p className="mx-auto mt-4 max-w-xl text-xs leading-5 text-muted-foreground">
             One-time $330 · No subscription · Purchases are final (no refunds) ·
             the automated counterpart to our{" "}
@@ -631,7 +653,11 @@ export default function Audit() {
                 <Icon className="h-5 w-5 text-brand-700 dark:text-brand-100" aria-hidden="true" />
               </div>
               <p className="mt-3 text-sm font-semibold text-foreground">{t}</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{d}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                {n === "3" && checkoutOpen === false
+                  ? "One-time payment — checkout is temporarily closed while payment setup completes. Leave your email at step 3 and we'll notify you the moment it opens."
+                  : d}
+              </p>
             </div>
           ))}
         </div>
@@ -852,6 +878,17 @@ export default function Audit() {
       <StepShell step="Step 3 · one-time $330" title="Get your report" id="step-3">
         <Card className="overflow-hidden">
           <CardContent className="p-5 md:p-7">
+            {checkoutOpen === false && (
+              <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <p className="text-sm leading-6 text-muted-foreground">
+                  <strong className="text-foreground">Checkout is temporarily closed</strong> while we finish
+                  payment setup — the payment button below won't go through yet. Your audit details stay
+                  saved from steps 1–2; leave your email below and we'll notify you the moment checkout
+                  opens. No charge is made until you pay.
+                </p>
+              </div>
+            )}
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Audit My Business</p>
@@ -865,7 +902,7 @@ export default function Audit() {
             <ul className="mt-3 space-y-2.5">
               {[
                 "Overall score (0–100) with what it measures",
-                "Money leaks, ranked by estimated impact",
+                "Money leaks, ranked by estimated dollar impact — every leak priced in dollars",
                 "Flaws in your site, messaging, and conversion path",
                 "Prioritized fixes — what to do first, second, third",
                 "Where AI fits in your business — concrete opportunities",
