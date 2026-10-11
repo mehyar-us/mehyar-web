@@ -156,7 +156,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/audit": {
     title: "Audit My Business — $330 AI Business Audit | MehyarSoft",
     description:
-      "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 30-minute CEO walkthrough video. One-time $330, no subscription.",
+      "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 2-minute CEO walkthrough video (up to 30 min). One-time $330, no subscription.",
     path: "/audit",
     jsonLd: [
       webPage(
@@ -172,7 +172,7 @@ const staticMeta: Record<string, SeoMeta> = {
         "@type": "Service",
         name: "Audit My Business — $330 AI Business Audit",
         description:
-          "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 30-minute CEO walkthrough video for a deeper transcript-based assessment.",
+          "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 2-minute CEO walkthrough video (up to 30 min) for a deeper transcript-based assessment.",
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
         areaServed: "Worldwide",
         offers: {
