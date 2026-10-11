@@ -1048,8 +1048,15 @@ async function init(){
     $<HTMLButtonElement>('today-microsoft-sign-in').disabled=true;
   }
   const session=await api('/api/auth/get-session');
-  if(!session){if(new URLSearchParams(location.search).has('auth_error'))notice('Sign-in could not finish. Please try again.');return;}
+  if(!session){
+    // Logged-out landing: hide the app nav and account-assuming header copy.
+    // The view is a clean sign-in landing with a single primary CTA.
+    document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')!.hidden=true;
+    $('business-identity').hidden=true;
+    if(new URLSearchParams(location.search).has('auth_error'))notice('Sign-in could not finish. Please try again.');return;
+  }
   sessionUserId=session.user.id;loggedIn=true;$('sign-in').hidden=true;$('sign-in-microsoft').hidden=true;$('chat-sign-in').hidden=true;$('chat-empty').hidden=false;$('logout').hidden=false;$('user-detail').textContent=session.user.email;
+  document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')!.hidden=false;
   const businesses=await api('/api/businesses');
   const business=selectWorkspaceBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,new URLSearchParams(location.search).get('business'));
   // Crew 5 UX: never auto-create a nameless business. With no membership the
@@ -1095,6 +1102,7 @@ async function claimBusinessName(name:string){
 
 async function enterBusiness(businesses:Array<{id:string;name:string;role:string}>,business:{id:string;name:string;role:string}){
   tenantId=business.id;membershipRole=business.role;newChatDock.hidden=false;
+  $('business-identity').hidden=false;
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();chatActions.hidden=false;
   workday.ready(business.name,membershipRole);
