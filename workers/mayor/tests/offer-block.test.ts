@@ -8,9 +8,9 @@ it('renders catalog prices and plan terms (no hardcoded amounts)',()=>{
  const html=offerBlockHtml(catalog())!;
  expect(html).toContain('$14');
  expect(html).toContain('/ month');
- expect(html).toContain('1,000 assistant replies');
+ expect(html).toContain('1,000 reply attempts');
  expect(html).toContain('120 microphone minutes');
- expect(html).toContain('100 assistant replies');
+ expect(html).toContain('100 reply attempts');
  expect(html).toContain('10 microphone minutes');
  expect(html).toContain('Purchases are final');
 });
