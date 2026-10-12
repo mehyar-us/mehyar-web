@@ -40,13 +40,24 @@ it('pricing SSR renders plan cards from the live catalog (no hardcoded amounts)'
   expect(rendered.plans).toContain('Pro');
   expect(rendered.plans).toContain('Free');
   expect(rendered.plans).toContain(`$${pro.priceCents/100}`);
-  expect(rendered.plans).toContain('1,000 assistant replies');
+  expect(rendered.plans).toContain('1,000 reply attempts');
   expect(rendered.plans).toContain('120 microphone minutes');
-  expect(rendered.plans).toContain(`${free.replyLimit} assistant replies`);
+  expect(rendered.plans).toContain(`${free.replyLimit} reply attempts`);
   const small=CREDIT_PACKS[0];
   expect(rendered.packs).toContain('Small');
   expect(rendered.packs).toContain(`$${small.priceCents/100}`);
   expect(rendered.packs).toContain('reply attempts');
+  // rot105: distinct Pro CTA built from the catalog price; Free keeps Start free.
+  expect(rendered.plans).toContain(`Go Pro — $${pro.priceCents/100}/mo`);
+  expect(rendered.plans).toContain('>Start free</a>');
+  // rot105: every top-up card carries a Buy CTA.
+  expect(rendered.packs.split('>Buy</a>').length-1).toBe(CREDIT_PACKS.length);
+});
+
+it('pricing page carries the credit expiry sentence and the attempts disclosure (rot105)',()=>{
+  const page=readWeb('pricing.html');
+  expect(page).toContain('Credits activate after verified payment and expire at the end of the purchased Free UTC calendar month or Pro paid period. They do not roll over or transfer when switching plans.');
+  expect(page).toContain('Usage counts reply attempts');
 });
 
 it('injectPricingCards marks containers data-ssr="catalog" and replaces loading notes',()=>{

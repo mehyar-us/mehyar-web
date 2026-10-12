@@ -46,6 +46,7 @@
       <div id="plan-cards" class="plan-grid" aria-live="polite">
         <p class="plans-note">Loading plans…</p>
       </div>
+      <p class="plans-note">Usage counts reply attempts — every try counts toward your allowance, not only delivered replies.</p>
       <!-- OFFER SLOT: the priced offer hydrates here when the owner sets the price.
            Rendered from GET /api/billing/catalog by pricing-offer.js (future).
            Until then this slot stays empty — no amounts are ever hardcoded. -->
@@ -59,6 +60,7 @@
       <div id="topup-cards" class="plan-grid" aria-live="polite">
         <p class="plans-note">Loading top-ups…</p>
       </div>
+      <p class="plans-note">Credits activate after verified payment and expire at the end of the purchased Free UTC calendar month or Pro paid period. They do not roll over or transfer when switching plans.</p>
     </section>
 
     <section class="page-width" aria-labelledby="fair-heading">
@@ -103,14 +105,15 @@
     function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
     function planCard(p){
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'
-        +'<p class="plan-tier">'+Number(p.replyLimit).toLocaleString()+' assistant replies · '+Number(p.voiceMinuteLimit)+' microphone minutes a month</p>'
+        +'<p class="plan-tier">'+Number(p.replyLimit).toLocaleString()+' reply attempts · '+Number(p.voiceMinuteLimit)+' microphone minutes a month</p>'
         +'<p>'+(p.id==='free'?'A good place to start. Talk to The Mayor and feel the money loop working.':'For the busier business: the full proactive engine watching your book.')+'</p>'
-        +'<a class="button button-small" href="/">Start free</a></article>';
+        +'<a class="button button-small" href="/">'+(p.id==='pro'?'Go Pro — $'+Math.round(Number(p.priceCents)/100)+'/mo':'Start free')+'</a></article>';
     }
     function topupCard(p){
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'
         +'<p class="plan-tier">One-time</p>'
-        +'<p>+'+Number(p.replyAttempts).toLocaleString()+' reply attempts · +'+Number(p.voiceMinutes)+' microphone minutes</p></article>';
+        +'<p>+'+Number(p.replyAttempts).toLocaleString()+' reply attempts · +'+Number(p.voiceMinutes)+' microphone minutes</p>'
+        +'<a class="button button-small" href="/">Buy</a></article>';
     }
     function fail(el){el.innerHTML='<p class="plans-note">Plans could not be loaded. <button class="text-link" onclick="location.reload()">Try again</button>.</p>';}
     async function load(){
