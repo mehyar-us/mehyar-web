@@ -40,8 +40,10 @@ it('pricing page reads plan names/structure from the catalog at render time',()=
   expect(page).toContain('/api/billing/catalog');
   expect(page).toContain('id="plan-cards"');
   expect(page).toContain('id="topup-cards"');
-  // priceCents is deliberately never rendered.
-  expect(page).not.toContain('priceCents');
+  // Amounts are never hardcoded: the client builds the Pro CTA label from
+  // the catalog response at render time (rot105), so no priced label literal.
+  expect(page).not.toMatch(/Go Pro — \$\d/);
+  expect(page).not.toMatch(/<article class="plan-card"><h3>Pro<\/h3>[\s\S]{0,200}\$\d/);
 });
 
 it('pricing page carries the clearly-marked offer slot (empty until priced)',()=>{
