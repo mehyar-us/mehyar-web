@@ -38,7 +38,7 @@ export function offerBlockSsrHtml():string|null{
   const row=(p:SsrPlan,blurb:string)=>
     `<div class="offer-plan"><div class="offer-plan-head"><strong>${escapeHtml(p.name)}</strong>`+
     `<span class="offer-price">${escapeHtml(formatPrice(p.priceCents))}${p.priceCents>0?'<span class="offer-per"> / month</span>':''}</span></div>`+
-    `<p>${p.replyLimit.toLocaleString('en-US')} assistant replies · ${p.voiceMinuteLimit} microphone minutes a month</p>`+
+    `<p>${p.replyLimit.toLocaleString('en-US')} reply attempts · ${p.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p class="offer-blurb">${blurb}</p></div>`;
   return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.')}</div>`+
     `<p class="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>`;
