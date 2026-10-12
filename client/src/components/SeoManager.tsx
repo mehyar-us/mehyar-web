@@ -156,7 +156,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/audit": {
     title: "Audit My Business — $330 AI Business Audit | MehyarSoft",
     description:
-      "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 2-minute CEO walkthrough video (up to 30 min). One-time $330, no subscription.",
+      "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.",
     path: "/audit",
     jsonLd: [
       webPage(
@@ -172,7 +172,7 @@ const staticMeta: Record<string, SeoMeta> = {
         "@type": "Service",
         name: "Audit My Business — $330 AI Business Audit",
         description:
-          "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 2-minute CEO walkthrough video (up to 30 min) for a deeper transcript-based assessment.",
+          "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment.",
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
         areaServed: "Worldwide",
         offers: {
@@ -211,6 +211,12 @@ const staticMeta: Record<string, SeoMeta> = {
     description:
       "Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.",
     path: "/audit/free",
+  },
+  "/audit/report": {
+    title: "Full AI Website Evaluation — $5 Report | MehyarSoft",
+    description:
+      "The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.",
+    path: "/audit/report",
   },
   "/": {
     title: "MehyarSoft LLC | Software, Systems & AI Automation",

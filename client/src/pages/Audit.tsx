@@ -608,8 +608,8 @@ export default function Audit() {
           <p className="site-lede mx-auto mt-4 max-w-2xl text-balance">
             Enter your business URL and our AI audits your public site — then writes you a
             professional visual report: an overall score, your money leaks ranked, your flaws,
-            prioritized fixes, and where AI fits in your business. Add an optional 2-minute
-            CEO walkthrough video (up to 30 min) for a deeper assessment.
+            prioritized fixes, and where AI fits in your business. Add an optional
+            CEO walkthrough video (2–30 min) for a deeper assessment.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a href="#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "w-full sm:w-auto")}>

@@ -1611,7 +1611,7 @@
     {
       "@type": "Service",
       "name": "Audit My Business — $330 AI Business Audit",
-      "description": "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 2-minute CEO walkthrough video (up to 30 min) for a deeper transcript-based assessment.",
+      "description": "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment.",
       "provider": {
         "@id": "https://mehyar.us/#professional-service"
       },

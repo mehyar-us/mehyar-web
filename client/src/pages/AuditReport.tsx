@@ -109,7 +109,7 @@ const WHATS_INSIDE = [
   "Page-by-page grades (A–F)",
   "How you stack up vs typical sites in your industry",
   "AI automation blueprint for your business type",
-  "The 500% capacity math, shown step by step",
+  "The AI capacity math, shown step by step",
   "Your 90-day action plan",
   "The one thing to fix first",
 ];
@@ -422,7 +422,7 @@ export default function AuditReport() {
             {/* ── 500% MATH ── */}
             {hasMath && (
               <div className="report-print-section mt-10 overflow-hidden rounded-3xl bg-[#0B1B33] p-6 text-white md:p-10">
-                <h2 className="text-2xl font-semibold">The 500% math — step by step</h2>
+                <h2 className="text-2xl font-semibold">The capacity math — step by step</h2>
                 <p className="mt-2 text-sm text-slate-300">
                   Capacity arithmetic: what your operation handles today vs. with these AI systems in place.
                 </p>
@@ -510,7 +510,7 @@ export default function AuditReport() {
         <p className="site-eyebrow mb-4 text-center">The full evaluation</p>
         <h1 className="site-display mx-auto max-w-2xl text-balance text-center">The free audit is the trailer — this is the movie.</h1>
         <p className="site-lede mx-auto mt-4 max-w-xl text-balance text-center">
-          The complete professional evaluation of <em>your</em> site — every leak priced, page-by-page grades, how you compare, the 500% AI blueprint with the math shown step by step, and your 90-day plan.
+          The complete professional evaluation of <em>your</em> site — every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.
         </p>
 
         <div className="mx-auto mt-10 grid max-w-3xl items-start gap-8 md:grid-cols-2">
