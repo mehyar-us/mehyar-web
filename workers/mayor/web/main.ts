@@ -818,7 +818,7 @@ function handleMessage(data:unknown){
       if(message.type==='usage_notice'){
         // A new conversation turn retires the previous phone setup panel.
         if(message.kind==='turn'&&message.allowed){const phonePanel=document.getElementById('chat-phone-guide');if(phonePanel)phonePanel.hidden=true;}
-        if(message.allowed&&typeof message.remaining==='number'&&message.kind==='turn')usageStatus.textContent=`${message.remaining} of ${message.limit} assistant replies remaining. See Plan & usage for your billing period.`;
+        if(message.allowed&&typeof message.remaining==='number'&&message.kind==='turn')usageStatus.textContent=`${message.remaining} of ${message.limit} reply attempts remaining. See Plan & usage for your billing period.`;
         else if(typeof message.message==='string'&&message.message){usageStatus.textContent=message.message;notice(message.message);}
       }
     }
