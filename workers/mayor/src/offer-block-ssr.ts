@@ -145,7 +145,7 @@ export function salesPlansSsrHtml():string|null{
     `<article class="plan-card"><h3>Free</h3>`+
     priceLine(free.priceCents,'')+
     `<p class="plan-tier">${free.replyLimit.toLocaleString('en-US')} reply attempts · ${free.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs, reminders, and the morning briefing.</p>`+
+    `<p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs once your number is connected, reminders, and the morning briefing.</p>`+
     `<a class="button button-small" href="/">Start free</a></article>`;
   const grow=
     `<article class="plan-card"><h3>Pro</h3>`+
