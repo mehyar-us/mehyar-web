@@ -123,7 +123,7 @@
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'
         +'<p class="plan-tier">'+Number(p.replyLimit).toLocaleString()+' reply attempts · '+Number(p.voiceMinuteLimit)+' microphone minutes a month</p>'
         +'<p>'+(p.id==='free'?'A good place to start. Talk to The Mayor and feel the money loop working.':'For the busier business: the full proactive engine watching your book.')+'</p>'
-        +'<a class="button button-small" href="/">'+(p.id==='pro'?'Go Pro — $'+Math.round(Number(p.priceCents)/100)+'/mo':'Start free')+'</a></article>';
+        +'<a class="button button-small" href="'+(p.id==='pro'?'/billing?plan=pro':'/')+'">'+(p.id==='pro'?'Go Pro — $'+Math.round(Number(p.priceCents)/100)+'/mo':'Start free')+'</a></article>';
     }
     function topupCard(p){
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'

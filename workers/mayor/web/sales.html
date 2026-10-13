@@ -113,6 +113,20 @@
       <p class="plans-note">No credit card to start. Cancel anytime. Purchases are final — no refunds.</p>
     </section>
 
+    <section id="updates" class="page-width" aria-labelledby="updates-heading">
+      <span class="section-kicker">STAY IN THE LOOP</span>
+      <h2 id="updates-heading">Not ready to start free?</h2>
+      <p class="section-lead">Leave your email and we&rsquo;ll send occasional updates about The Mayor &mdash; new features and practical ideas for your shop. No spam, and you can unsubscribe anytime.</p>
+      <form class="lead-form" action="/api/leads" method="post">
+        <label for="lead-email">Email address</label>
+        <input id="lead-email" name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@yourbusiness.com">
+        <input type="hidden" name="source" value="sales">
+        <span class="lead-hp" aria-hidden="true"><label>Leave this field empty<input name="website" type="text" tabindex="-1" autocomplete="off"></label></span>
+        <button class="button" type="submit">Keep me posted</button>
+      </form>
+      <p class="plans-note">We store your email only to send these updates, and we never sell it. See the <a href="https://mehyar.us/privacy-policy/">Privacy Policy</a>.</p>
+    </section>
+
     <section id="money-loop" class="page-width" aria-labelledby="money-loop-heading">
       <span class="section-kicker">THE MONEY LOOP</span>
       <h2 id="money-loop-heading">One loop, seven trades.</h2>
@@ -233,19 +247,7 @@
       </div>
     </section>
 
-    <section id="updates" class="page-width" aria-labelledby="updates-heading">
-      <span class="section-kicker">STAY IN THE LOOP</span>
-      <h2 id="updates-heading">Not ready to start free?</h2>
-      <p class="section-lead">Leave your email and we&rsquo;ll send occasional updates about The Mayor &mdash; new features and practical ideas for your shop. No spam, and you can unsubscribe anytime.</p>
-      <form class="lead-form" action="/api/leads" method="post">
-        <label for="lead-email">Email address</label>
-        <input id="lead-email" name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@yourbusiness.com">
-        <input type="hidden" name="source" value="sales">
-        <span class="lead-hp" aria-hidden="true"><label>Leave this field empty<input name="website" type="text" tabindex="-1" autocomplete="off"></label></span>
-        <button class="button" type="submit">Keep me posted</button>
-      </form>
-      <p class="plans-note">We store your email only to send these updates, and we never sell it. See the <a href="https://mehyar.us/privacy-policy/">Privacy Policy</a>.</p>
-    </section>
+    
 
     <section class="cta-band page-width" aria-labelledby="cta-heading">
       <h2 id="cta-heading">Meet your chief of staff.</h2>

@@ -183,6 +183,20 @@ it('homepage footer links to /sales and /pricing (rot120)',()=>{
   expect(home).toContain('href="/pricing"');
 });
 
+it('Pro takes the direct billing path on both pricing surfaces (rot139)',()=>{
+  expect(pricingCardsSsrHtml()!.plans).toContain('href="/billing?plan=pro">Go Pro');
+  expect(injectSalesPlans(readWeb('sales.html'))).toContain('href="/billing?plan=pro">Go Pro');
+  // Free still starts at the app root.
+  expect(pricingCardsSsrHtml()!.plans).toContain('href="/">Start free');
+});
+
+it('/sales surfaces the email capture right after pricing (rot139)',()=>{
+  const page=readWeb('sales.html');
+  const plansAt=page.indexOf('id="plans"'),updatesAt=page.indexOf('id="updates"'),loopAt=page.indexOf('id="money-loop"');
+  expect(updatesAt).toBeGreaterThan(plansAt);
+  expect(loopAt).toBeGreaterThan(updatesAt);
+});
+
 it('structured data: Product JSON-LD injected from the catalog; Organization on home (rot130)',()=>{
   for(const page of ['sales.html','pricing.html']){
     const out=page==='sales.html'?injectSalesPlans(readWeb(page)):injectPricingCards(readWeb(page));
