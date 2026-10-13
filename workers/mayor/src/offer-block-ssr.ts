@@ -93,7 +93,7 @@ export function pricingCardsSsrHtml():{plans:string;packs:string}|null{
     priceLine(p.priceCents,' one-time')+
     `<p class="plan-tier">+${p.replyAttempts.toLocaleString('en-US')} reply attempts · `+
     `+${p.voiceMinutes} microphone minutes</p>`+
-    `<a class="button button-small" href="/">Buy</a></article>`;
+    `<a class="button button-small" href="/billing?pack=${p.id}">Buy ${escapeHtml(p.name)}</a></article>`;
   return {
     plans:planCard(free,'A good place to start. Talk to The Mayor and feel the money loop working.')
       +planCard(pro,'For the busier business: the full proactive engine watching your book.'),
