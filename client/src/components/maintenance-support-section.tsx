@@ -9,21 +9,21 @@ const plans = [
     price: "$149/month",
     annual: "$1,490/year",
     summary: "For a small website or customer app that needs dependable upkeep.",
-    items: ["Hosting and uptime checks", "Security and dependency updates", "Backups and recovery help", "Up to 30 minutes of small content changes"],
+    items: ["Hosting and uptime checks", "Security and dependency updates", "Backups and recovery help", "30 minutes of small content changes included every month"],
   },
   {
     name: "Growth Care",
     price: "$349/month",
     annual: "$3,490/year",
     summary: "For businesses using booking, forms, email, SMS, or automations.",
-    items: ["Everything in Essential Care", "Monthly booking and form checks", "Automation and delivery monitoring", "Up to 2 hours of fixes or improvements"],
+    items: ["Everything in Essential Care", "Monthly booking and form checks", "Automation and delivery monitoring", "2 hours of fixes or improvements included every month"],
   },
   {
     name: "Priority Operations",
     price: "$699/month",
     annual: "$6,990/year",
     summary: "For a customer-facing system that needs faster help and active oversight.",
-    items: ["Everything in Growth Care", "Priority response and incident help", "Monthly performance review", "Up to 5 hours of fixes or improvements"],
+    items: ["Everything in Growth Care", "Priority response and incident help", "Monthly performance review", "5 hours of fixes or improvements included every month"],
   },
 ] as const;
 
@@ -58,7 +58,7 @@ export default function MaintenanceSupportSection({ compact = false }: { compact
         ) : (
           <div className="mt-8 grid divide-y divide-white/15 border-y border-white/15 sm:grid-cols-3 sm:divide-x sm:divide-y-0">{["Hosting, backups, and security", "Forms, booking, and automations checked", "Clear support tickets and accountable follow-through"].map((item) => <div key={item} className="flex gap-2 px-2 py-4 text-sm leading-6 text-white/80 sm:px-5"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-brand-100" />{item}</div>)}</div>
         )}
-        <p className="mt-6 text-xs leading-5 text-white/55">One-time repair work starts at $250 after review. Response times, included hours, third-party fees, and emergency coverage are confirmed in the written scope.</p>
+        <p className="mt-6 text-xs leading-5 text-white/55">One-time repair work is $250, with response times and coverage set out in your written scope.</p>
       </div>
     </section>
   );

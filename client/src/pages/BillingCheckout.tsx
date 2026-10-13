@@ -57,7 +57,7 @@ const MANUAL_INVOICE_SERVICES: ManualInvoiceService[] = [
     description: "Owner-scoped implementation sprint for CRM cleanup, missed-lead follow-up, booking automation, or internal workflow repair.",
     unit_amount_cents: 250000,
     delivery_window: "Scheduled after scope confirmation",
-    features: ["Scope review before invoicing", "Manual invoice only", "ACH, wire, check, or cash", "No card checkout"],
+    features: ["Scope review before invoicing", "Personal invoice from the founder", "ACH, wire, check, or cash"],
     requires_scope_review: true,
   },
 ];

@@ -70,7 +70,7 @@ const paths = [
     kicker: "Recommended managed AI setup",
     title: "Give your team an assistant that can actually help do the work.",
     summary: "Use a private assistant from your phone to summarize, research, schedule, prepare follow-up, and run approved routines across the tools you choose.",
-    outcome: "Faster routine work while sensitive actions stay under approval.",
+    outcome: "Faster routine work — sensitive actions run on your approval.",
     includes: "Private gateway, mobile commands, three workflows, approvals, monitoring, and maintenance.",
     price: "$1,500 setup",
     cadence: "+ $349/month",

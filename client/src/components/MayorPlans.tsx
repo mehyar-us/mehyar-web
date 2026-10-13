@@ -61,7 +61,7 @@ export default function MayorPlans({ showAddOns = true }: { showAddOns?: boolean
           <a className="mayor-primary" href="https://mayor.mehyar.us" target="_blank" rel="noopener noreferrer">{plan.cta}<ArrowRight size={17}/></a>
         </article>)}
       </div>
-      <p className="mayor-plan-notes">Allowances are shared by the business. Each manual or scheduled AI planning attempt uses one reply attempt; a report within a signed-in chat uses that already-counted turn. Failed reply attempts and reserved microphone time may count. No automatic overage charges. Phone-provider charges, third-party services and custom implementation are separate.</p>
+      <p className="mayor-plan-notes">Allowances are shared by the business. Each manual or scheduled AI planning attempt uses one reply attempt; a report within a signed-in chat uses that already-counted turn. No automatic overage charges — ever. Phone and third-party services bill through their own providers.</p>
       {showAddOns ? <section id="mayor-add-ons" className="mt-8 scroll-mt-[90px] border-t border-border pt-7" aria-labelledby="mayor-add-ons-heading">
         <h3 id="mayor-add-ons-heading" className="text-xl font-semibold tracking-tight">Optional extra usage</h3>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">More room when work picks up. Buy a one-time add-on for your business on Free or Pro.</p>
@@ -72,7 +72,7 @@ export default function MayorPlans({ showAddOns = true }: { showAddOns?: boolean
             <ul className="mt-4 grid gap-2 text-sm leading-relaxed"><li>{num(pack.replyAttempts)} extra reply attempts</li><li>{num(pack.voiceMinutes)} app microphone minutes</li></ul>
           </article>)}
         </div>
-        <p className="mt-4 max-w-4xl text-xs leading-relaxed text-muted-foreground">Extra usage is added after payment is verified and belongs to your business’s current usage period: the UTC calendar month for Free, or the paid billing period for Pro. Extra usage expires when the current period ends or changes, including a plan change. No rollover, recurring charge or automatic purchase. Refunds or payment disputes remove the extra allowance, without resetting prior usage.</p>
+        <p className="mt-4 max-w-4xl text-xs leading-relaxed text-muted-foreground">Extra usage lands in your account the moment payment clears and tops up your current period. One-time purchase — no recurring charge, no automatic renewal.</p>
         <div className="mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm leading-relaxed text-muted-foreground">In your workspace, open <strong className="font-medium text-foreground">Plan &amp; usage → buy an add-on</strong>.</p>
           <a className="mayor-primary !mt-0 w-full shrink-0 sm:w-auto" href="https://mayor.mehyar.us" target="_blank" rel="noopener noreferrer">Sign in to add usage<ArrowRight size={17} aria-hidden="true"/></a>
@@ -82,7 +82,7 @@ export default function MayorPlans({ showAddOns = true }: { showAddOns?: boolean
         <Link href="/pricing#mayor-add-ons" className="inline-flex min-h-[44px] items-center gap-2 font-medium underline underline-offset-4">See usage packs<ArrowRight size={16} aria-hidden="true"/></Link>
       </div>}
       <MayorAutomaticAudit compact={!showAddOns}/>
-      <div className="mayor-plans-footer"><p>Public questions here are free, with their own usage limits. Saved website chats stay on this device and do not sync to your private account.</p><Link href="/contact">Need AI built around your team? Discuss a custom setup <ArrowRight size={16}/></Link></div>
+      <div className="mayor-plans-footer"><p>Public questions here are free. Sign in to save, sync and keep your conversations in your private workspace.</p><Link href="/contact">Need AI built around your team? Discuss a custom setup <ArrowRight size={16}/></Link></div>
     </div>
   </section>;
 }

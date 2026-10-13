@@ -23,7 +23,7 @@ const Services = () => {
               Choose the result you need. See what it takes.
             </h1>
             <p className="site-lede mt-4 max-w-2xl">
-              From a clearer website to a custom cloud platform, each path explains the problem, the build, the outcome, and a realistic starting point.
+              From a clearer website to a custom cloud platform, each path explains the problem, the build, the outcome, and what it takes to get it done.
             </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg" })}>

@@ -1,6 +1,5 @@
 import AuditWidget from "@/components/AuditWidget";
 import AIPipelinesSection from "@/components/AIPipelinesSection";
-import TestimonialsSection from "@/components/TestimonialsSection";
 import { ArrowRight, FileText, ScanSearch, Sparkles, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
@@ -44,9 +43,9 @@ export default function Home() {
             <ul className="mt-6 grid max-w-3xl gap-3 text-sm sm:grid-cols-2">
               {[
                 "Business memory — it knows your services, hours, and customers",
-                "Missed-call voice capture answers when you can't pick up",
+                "Missed-call voice capture answers every call you miss",
                 "Appointments, customers, and playbooks in one workspace",
-                "Review-gated actions — nothing sends or books without your approval",
+                "Review-gated actions — every send and booking runs on your approval",
               ].map((f) => (
                 <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" /><span>{f}</span></li>
               ))}
@@ -87,7 +86,6 @@ export default function Home() {
       <AIPipelinesSection />
 
       {/* ── TESTIMONIALS ── */}
-      <TestimonialsSection />
 
       {/* ── $5 REPORT BANNER ── */}
       <section className="px-4 pb-16 md:pb-24">
@@ -133,7 +131,7 @@ export default function Home() {
                 <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" /><span>{f}</span></li>
               ))}
             </ul>
-            <p className="mt-6 text-sm text-muted-foreground">One-time $330 · No subscription · Purchases are final — no refunds.</p>
+            <p className="mt-6 text-sm text-muted-foreground">One-time $330 · No subscription</p>
             <Link href="/audit" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-6 min-h-12 w-full sm:w-auto" })}>
               Get the $330 audit <ArrowRight className="ml-2 h-4 w-4" />
             </Link>

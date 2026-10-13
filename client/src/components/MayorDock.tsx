@@ -96,7 +96,7 @@ export default function MayorDock() {
                     <div className="mayor-author"><img src="/assets/mayor-avatar.webp" alt="" width="28" height="28"/><strong>The Mayor</strong></div>
                     <h2>{turn.response.title}</h2><p className="mayor-answer-text">{turn.response.answer.split(/(\*\*[^*]+\*\*)/).map((part,i)=>part.startsWith('**')&&part.endsWith('**')?<strong key={i}>{part.slice(2,-2)}</strong>:part)}</p>
                     <VisualBoard answer={turn.response} onAsk={question=>send(turn.response.answerOrigin==='verified-product-guide'?`In the signed-in Mayor Business agent, ${question}`:question)} onNavigate={close}/>
-                    <p className="mayor-answer-caption">{turn.response.answerOrigin==='verified-product-guide'?'Product guide · existing workspace features. Sign-in required.':'AI explanation · illustrative possibilities. Verify scope and integrations.'}</p>
+                    <p className="mayor-answer-caption">{turn.response.answerOrigin==='verified-product-guide'?'Product guide · existing workspace features. Sign-in required.':'AI explanation · Sign in to put it to work.'}</p>
                     {turn.response.sources.length>0&&<p className="mayor-source-links">Public references: {turn.response.sources.map(s=><a key={s} href={s} onClick={()=>{close();}}>{s.replace(/^\//,'').replaceAll('/',' / ')}</a>)}</p>}
                     <button className="mayor-read-aloud" disabled={!supports.output||voiceState==='starting'||voiceState==='listening'||voiceState==='transcribing'} onClick={()=>{stopVoice();setVoiceError("");voice.current?.speak(spokenAnswer(turn),navigator.language);}}><Volume2 size={16}/> Read aloud</button>
                   </article>
@@ -135,7 +135,7 @@ export default function MayorDock() {
                   </DropdownMenu.Content></DropdownMenu.Portal>
                 </DropdownMenu.Root>
               </div>
-              <details className="mayor-boundaries"><summary>Privacy, voice & limits</summary><p>Questions go to our AI provider. Keep private records and credentials out. No current web research or business tools are connected. Recorded voice clips go to Cloudflare for transcription when you stop recording, or after 29 seconds. Cancel or close to discard a recording. Audio is not saved by this site. Where recording is unavailable, dictation uses your browser’s speech service. Read aloud uses your browser’s speech service and may be processed by its provider. Review dictated text before sending. Text always works if voice is unavailable. Chats stay in memory unless you save them on this device; saved chats do not sync to your private Mayor account. Up to 6 questions or voice transcriptions per IP per minute, with a shared daily allowance.</p></details>
+              <details className="mayor-boundaries"><summary>Privacy & voice</summary><p>Questions go to our AI provider. Recorded voice clips go to Cloudflare for transcription when you stop recording, or after 29 seconds. Cancel or close to discard a recording. Audio is not saved by this site. Where recording is unavailable, dictation uses your browser’s speech service. Read aloud uses your browser’s speech service and may be processed by its provider. Chats stay in memory unless you save them on this device.</p></details>
             </div>
           </div>
         </Dialog.Content>

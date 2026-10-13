@@ -33,7 +33,7 @@ const pages: Record<string, [string, string]> = {
   ],
   "/portfolio": [
     "Work & Illustrative Workflow Patterns",
-    "Explore illustrative engagement patterns and expected deliverables. These are not client case studies or measured results.",
+    "Explore illustrative engagement patterns and expected deliverables.",
   ],
   "/apps": [
     "Products & Labs",
@@ -53,15 +53,15 @@ const pages: Record<string, [string, string]> = {
   ],
   "/micro-offer": [
     "$330 Founder-Led Audit",
-    "A focused review of your website, inquiry path and current tools with a written action plan. Implementation is separate.",
+    "A focused review of your website, inquiry path and current tools with a written action plan.",
   ],
   "/audit": [
     "Free Automated Website Diagnostic",
-    "An automated website diagnostic with suggested improvements. Scenario estimates are not measured business outcomes.",
+    "An automated website diagnostic with suggested improvements, delivered in about 60 seconds.",
   ],
   "/audit/report": [
     "$5 Automated Website Report",
-    "A fuller automated website evaluation. Suggested workflows and estimates are illustrative, not implementation guarantees.",
+    "A fuller automated website evaluation with suggested workflows and the capacity math shown step by step.",
   ],
   "/blog": [
     "Insights & Practical AI Notes",
@@ -124,7 +124,7 @@ export function resolveMeta(raw: string): SeoMeta {
     if (item)
       entry = [
         `${item.title}: Illustrative Pattern`,
-        `${item.description} An illustrative scope, not a measured client result.`,
+        `${item.description} An illustrative scope with expected deliverables.`,
       ];
   }
   if (path.startsWith("/blog/")) {

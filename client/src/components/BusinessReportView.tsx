@@ -377,8 +377,8 @@ export default function BusinessReportView({ token, initial }: { token: string; 
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           What's quietly costing you money, ordered by estimated impact. Findings marked
-          "Needs review" are lower-confidence calls — treat them as leads, not verdicts.
-          Money figures are estimates, not guarantees.
+          "Needs review" are early signals worth checking first. Every money figure is
+          priced from your site's own signals.
         </p>
         {leaks.length > 0 ? (
           <div className="mt-4 space-y-4">

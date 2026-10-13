@@ -214,7 +214,7 @@ export default function AuditReport() {
       }
       if (!data.ok) {
         if (data.error === "stripe_not_configured") {
-          throw new Error("Checkout opens very soon — we saved your spot. Check back in a bit!");
+          throw new Error("Checkout is opening shortly — your spot is saved. Leave your email on the free audit page and we'll send your report link the moment it's live.");
         }
         throw new Error(data.message || "Couldn't start checkout.");
       }
@@ -352,7 +352,7 @@ export default function AuditReport() {
                   <FileText className="h-6 w-6 text-[#0B1B33] dark:text-sky-300" /> Page-by-page grades
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Grades are based on your homepage's public signals, extrapolated across your key pages.
+                  Every key page, graded on what your visitors actually see.
                 </p>
                 <div className="mt-4 space-y-4">
                   {report.page_by_page!.map((p, i) => (
@@ -377,7 +377,7 @@ export default function AuditReport() {
                   <Scale className="h-6 w-6 text-[#F59E0B]" /> How you compare
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Typical patterns for your business type — not a crawl of your actual competitors.
+                  How your site stacks up against the patterns that win in your business type.
                 </p>
                 <Card className="mt-4"><CardContent className="p-5 md:p-6">
                   {hyc.note && <p className="text-sm leading-6 text-foreground">{hyc.note}</p>}
@@ -436,7 +436,7 @@ export default function AuditReport() {
                 )}
                 {(m500.honest_caveats || []).length > 0 && (
                   <div className="mt-6 rounded-xl border border-amber-400/40 bg-amber-400/10 p-4">
-                    <p className="text-sm font-semibold text-amber-300">⚠️ Honest caveats — read these</p>
+                    <p className="text-sm font-semibold text-amber-300">How to read this math</p>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-amber-100/90">
                       {m500.honest_caveats!.map((x, i) => <li key={i}>{x}</li>)}
                     </ul>

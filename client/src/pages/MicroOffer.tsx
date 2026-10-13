@@ -95,7 +95,7 @@ const MicroOffer = () => {
               </a>
             </div>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              The audit has a fixed scope and does not promise a specific revenue result. Approved audits are invoiced manually by email.
+              One fixed scope: your website, booking path, and follow-up, reviewed end to end. Audits are invoiced by email.
             </p>
           </div>
 
@@ -113,7 +113,7 @@ const MicroOffer = () => {
                 </span>
               </div>
               <p className="mt-4 text-sm leading-6 text-white/78">
-              Best when the problem is visible but the fix is not: website trust, booking friction, missed calls, slow response, or messy handoffs. Payment is by manual invoice after review.
+              Best when the problem is visible but the fix is not: website trust, booking friction, missed calls, slow response, or messy handoffs. Payment is by email invoice — simple and direct.
               </p>
             </div>
             <div className="mt-5 space-y-3">

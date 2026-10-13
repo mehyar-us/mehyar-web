@@ -42,7 +42,7 @@ const professionalService = {
   email: "info@mehyar.us",
   founder: { "@type": "Person", name: "Mehyar Swelim" },
   areaServed: "Worldwide",
-  priceRange: "$150-$25,000+",
+  priceRange: "$5-$25,000+",
   knowsAbout: [
     "software consulting",
     "systems engineering",
@@ -186,22 +186,17 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "Is this the same as the founder-led $330 tech audit?",
           answer:
-            "No — same price, different product. The founder-led $330 tech audit is a human review, manually invoiced after a scope check. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email.",
+            "No — same price, different product. The founder-led $330 tech audit is a human review, invoiced by email. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email.",
         },
         {
           question: "Do I need the walkthrough video?",
           answer:
-            "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings it can't get from the site.",
+            "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings drawn from your own words.",
         },
         {
-          question: "What if the AI isn't sure about something?",
+          question: "How thorough is the audit?",
           answer:
-            "It says so. Low-confidence findings carry a “Needs review” flag, and anything the audit couldn't see enough of is marked “couldn't be assessed” instead of guessed at.",
-        },
-        {
-          question: "Can I get a refund?",
-          answer:
-            "Purchases are final — no refunds. Read the honest scope on the page before paying.",
+            "Every finding is tied to something the audit actually saw on your site or in your walkthrough — specific, evidenced, and ranked by impact.",
         },
       ]),
     ],
@@ -252,7 +247,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "What does a first engagement cost?",
           answer:
-            "Start free: the 60-second AI website scan costs nothing, and the full evaluation report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email — while the founder-led audit itself is a human review, manually invoiced after a scope check. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
+            "Start free: the 60-second AI website scan costs nothing, and the full evaluation report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
         },
         {
           question: "Where is MehyarSoft based?",
@@ -402,7 +397,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/newsletter": {
     title: "Free AI Automation Checklist | MehyarSoft",
     description:
-      "Get the free MehyarSoft AI automation checklist for finding missed calls, website leaks, poor follow-up, disconnected systems, and manual work before buying more tools.",
+      "Get the free MehyarSoft AI automation checklist for finding missed calls, website leaks, poor follow-up, disconnected systems, and manual work worth automating first.",
     path: "/newsletter",
     jsonLd: [
       webPage(
@@ -432,7 +427,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/free-checklist": {
     title: "Free AI Automation Checklist | MehyarSoft",
     description:
-      "Get the free MehyarSoft checklist for finding missed-call, website, follow-up, systems, and manual-work leaks before buying more tools.",
+      "Get the free MehyarSoft checklist for finding missed-call, website, follow-up, systems, and manual-work leaks worth fixing first.",
     path: "/newsletter",
   },
   "/about": {
@@ -530,12 +525,12 @@ const staticMeta: Record<string, SeoMeta> = {
           {
             question: "Do I have to commit to a build after the audit?",
             answer:
-              "No. The audit is a standalone deliverable. You can stop after the written plan, request a follow-up call, or only move forward with cleanup, booking setup, AI follow-up, or an automation sprint if it makes sense for your business.",
+              "No — the audit is a standalone deliverable: a written plan you own outright. Most owners use it to green-light the first fix: cleanup, booking setup, AI follow-up, or an automation sprint.",
           },
           {
             question: "How fast do I get the audit results?",
             answer:
-              "The founder-led audit is delivered within a few business days of your intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs.",
+              "The founder-led audit is delivered within a few business days of your intake call.",
           },
           {
             question: "Is the $330 audit safe for regulated or PHI-adjacent businesses?",
@@ -598,7 +593,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "Can I book a call directly?",
           answer:
-            "Use the booking request path to choose a service and preferred time window. MehyarSoft only confirms a calendar event after explicit confirmation; otherwise you will receive available times manually.",
+            "Choose a service and preferred time window in the booking request, and MehyarSoft confirms your calendar event or sends available times.",
         },
       ]),
     ],
@@ -606,13 +601,13 @@ const staticMeta: Record<string, SeoMeta> = {
   "/book": {
     title: "Book a Consulting Call | MehyarSoft",
     description:
-      "Request a MehyarSoft consulting call with service-specific routing and manual scheduling fallback when calendar auth is unavailable.",
+      "Request a MehyarSoft consulting call with service-specific routing and personal scheduling.",
     path: "/booking",
   },
   "/billing/checkout": {
     title: "Manual Invoice Request | MehyarSoft",
     description:
-      "Request a manually reviewed MehyarSoft invoice. Online checkout is disabled; payment details are confirmed by email for ACH, wire, check, or cash.",
+      "Request a MehyarSoft invoice and confirm payment by email for ACH, wire, check, or cash.",
     path: "/billing/checkout",
     robots: "noindex,follow",
     jsonLd: [webPage("/billing/checkout", "Manual Invoice Request | MehyarSoft", "Manual invoice request path for approved service deposits and consulting offers.")],

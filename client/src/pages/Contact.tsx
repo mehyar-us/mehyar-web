@@ -95,9 +95,6 @@ const Contact = () => {
           </div>
           <div className="mx-auto mt-8 flex max-w-3xl flex-col gap-3 text-sm font-medium text-neutral-700 dark:text-neutral-300 sm:flex-row sm:justify-center">
             <span className="rounded-full border border-neutral-200 bg-white/80 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-              No passwords or private records
-            </span>
-            <span className="rounded-full border border-neutral-200 bg-white/80 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
               Cloudflare protected
             </span>
             <span className="rounded-full border border-neutral-200 bg-white/80 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
@@ -108,7 +105,7 @@ const Contact = () => {
       </section>
       <QuickAnswer
         question="Which path should I choose?"
-        answer="Choose a named package when the result is clear, start with the $330 tech audit when the leak is clear but the fix is not, or use this intake when your business needs a custom combination. Do not send passwords, API keys, PHI, payment data, or confidential files through public channels."
+        answer="Choose a named package when the result is clear, start with the $330 tech audit when the leak is clear but the fix is not, or use this intake when your business needs a custom combination."
       />
       <ContactSection {...conversionDefaults} showIntro={false} />
     </>

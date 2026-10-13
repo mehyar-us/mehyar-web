@@ -27,7 +27,7 @@ export const services: Service[] = [
       "CRM/spreadsheet/process map with highest-value fixes",
       "Prioritized action plan: fix now, automate next, defer",
       "Best fit for restaurants, clinics, salons, stores, and service businesses",
-      "Typical range: $150-$500"
+      "One-time $330"
     ],
     image: "/assets/sales-system/operations-system.webp",
     icon: Lightbulb,

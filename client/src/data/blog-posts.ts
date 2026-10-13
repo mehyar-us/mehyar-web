@@ -335,7 +335,7 @@ export const blogPosts: BlogPost[] = [
       {
         title: "Measure response before adding AI",
         content: [
-          "Before adding an assistant, measure request volume, first-response time, assignment failures, and the number of leads with no next task. AI can help summarize and draft; it cannot repair a workflow with no accountable owner.",
+          "Before adding an assistant, measure request volume, first-response time, assignment failures, and the number of leads with no next task. AI summarizes and drafts best when a workflow has an accountable owner.",
         ],
       },
     ],

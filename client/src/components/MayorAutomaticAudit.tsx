@@ -25,7 +25,7 @@ export default function MayorAutomaticAudit({ compact = false, preview = false }
       <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">{offer.separateOffers}</p>
       {canOpen ? <a className="mayor-primary !mt-0 w-full shrink-0 sm:w-auto" href={offer.href} target="_blank" rel="noopener noreferrer">{offer.cta}<ArrowRight size={17} aria-hidden="true"/></a> : <button className="min-h-[44px] w-full shrink-0 rounded-full bg-secondary px-5 py-3 text-sm font-medium text-muted-foreground sm:w-auto" type="button" disabled>Unavailable · draft preview</button>}
     </div>
-    <details className="mt-4 text-xs leading-relaxed text-muted-foreground"><summary className="min-h-[44px] cursor-pointer py-3 font-medium text-foreground">Research scope and limits</summary>
+    <details className="mt-4 text-xs leading-relaxed text-muted-foreground"><summary className="min-h-[44px] cursor-pointer py-3 font-medium text-foreground">Research scope</summary>
       <dl className="mb-5 grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">{offer.scope.map(item => <div key={item.name}><dt className="text-sm font-semibold text-foreground">{item.name}</dt><dd className="mt-1 text-sm leading-relaxed">{item.detail}</dd></div>)}</dl>
       <p className="pb-2">{offer.boundaries}</p>
     </details>

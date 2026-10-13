@@ -22,7 +22,7 @@ export default function IndustryPricingExplorer({ compact = false }: { compact?:
           <div className="max-w-3xl">
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-100">{compact ? "Start with what you do" : "Find your business"}</p>
             <h2 className="text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white md:text-5xl">{compact ? "Pricing built around your kind of business." : "Find the right setup for your business."}</h2>
-            <p className="mt-4 text-base leading-7 text-muted-foreground">Search more than {businessExamples.length} common business types to compare website, customer follow-up, AI phone support, maintenance, and starting prices.</p>
+            <p className="mt-4 text-base leading-7 text-muted-foreground">Search more than {businessExamples.length} common business types to compare website, customer follow-up, AI phone support, maintenance, and prices.</p>
           </div>
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -61,7 +61,7 @@ export default function IndustryPricingExplorer({ compact = false }: { compact?:
         {compact ? <div className="mt-7 text-center"><Link href="/pricing#industry-pricing" className={buttonVariants({ variant: "cta", size: "lg" })}>Browse all business pricing<ArrowRight className="ml-2 h-4 w-4" /></Link></div> : (
           <details className="mt-10 rounded-[1.5rem] border border-border bg-card p-5" open>
             <summary className="cursor-pointer text-lg font-semibold text-foreground">Browse {businessExamples.length} popular business types</summary>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Each business uses the closest operating model, with industry-specific features and starting prices.</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Each business uses the closest operating model, with industry-specific features and prices.</p>
             <div className="mt-5 grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {businessExamples.map(({ name, industry }) => <Link key={`${industry.id}-${name}`} href={`/industries/${industry.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-sm transition hover:border-brand-700/40 hover:bg-brand-100/50"><span className="capitalize font-medium text-foreground">{name}</span><span className="shrink-0 text-xs text-muted-foreground">{industry.packages[0].price}</span></Link>)}
             </div>

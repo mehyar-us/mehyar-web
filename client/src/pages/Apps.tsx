@@ -148,7 +148,7 @@ const managedApps: ManagedApp[] = [
     highlights: [
       "Five fixed-price products at $49 each — teardown, logo, ad creative, social kit, hero rewrite",
       "Free preview before you pay anything — a watermarked sample of your real output",
-      "Delivered in about 15 minutes with a 7-day redo-or-refund guarantee",
+      "Delivered in about 15 minutes with a 7-day redo guarantee",
       "Token-gated download links — no account needed",
     ],
     logo: "/assets/designful-logo.png",
@@ -166,7 +166,7 @@ const managedApps: ManagedApp[] = [
       "Three tracks: AI freelance writing, AI video editing, AI social-media management",
       "Personalized 15-page PDF playbook — niche, offer, pricing, outreach scripts, 30-day plan",
       "Free sample playbook page before you pay anything",
-      "One-time $27 with a 7-day redo-or-refund guarantee — no account needed",
+      "One-time $27 with a 7-day redo guarantee — no account needed",
     ],
     logo: "/assets/hustlekit-logo.png",
     accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
@@ -211,7 +211,7 @@ const managedApps: ManagedApp[] = [
     url: "https://creditfixkit.mehyar.us",
     tagline: "Fix your credit yourself — the letters, the plan, the knowledge.",
     description:
-      "A DIY credit repair kit: personalized dispute letter templates, a 12-month rebuild plan, and a plain-English score-factor explainer — delivered as a PDF for a one-time $47. General information only, never legal advice, no guaranteed outcomes.",
+      "A DIY credit repair kit: personalized dispute letter templates, a 12-month rebuild plan, and a plain-English score-factor explainer — delivered as a PDF for a one-time $47. General information only — a step-by-step plan you run yourself.",
     audience: "Anyone with collections, late payments, or a thin file who wants to do credit repair themselves instead of paying a monthly service.",
     highlights: [
       "Personalized dispute letters with your details merged in",
@@ -268,7 +268,7 @@ const managedApps: ManagedApp[] = [
       "30-day posting plan built around your niche, schedule, and on-camera comfort",
       "30 hook scripts for the first 3 seconds, each with why-it-works and delivery tips",
       "Bio + CTA pack and a trend-jacking playbook — original-content methods only",
-      "5 free hook scripts before you pay — $27 one-time, 7-day redo-or-refund",
+      "5 free hook scripts before you pay — $27 one-time, 7-day redo included",
     ],
     logo: "/assets/tiktokgrowth-logo.png",
     accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
@@ -467,7 +467,7 @@ const managedApps: ManagedApp[] = [
     url: "https://mehyar.us/audit/",
     tagline: "A $330 AI audit that finds where your business is leaking money.",
     description:
-      "Enter your business URL — optionally upload a walkthrough video — and get a professional AI audit: overall score, money leaks, flaws, prioritized fixes, and where AI fits in your business. One-time $330. Purchases are final — no refunds.",
+      "Enter your business URL — optionally upload a walkthrough video — and get a professional AI audit: overall score, money leaks, flaws, prioritized fixes, and where AI fits in your business. One-time $330.",
     audience:
       "Local business owners who suspect leads or revenue are leaking through their website, booking path, or follow-up.",
     highlights: [

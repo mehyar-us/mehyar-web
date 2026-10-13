@@ -73,7 +73,7 @@ function mapIntakeSignals(s: Record<string, any>): PreviewSignal[] {
   /* When the site is a JS app shell, content-dependent signals couldn't be
      measured from the initial HTML — disclose honestly instead of the 0s. */
   const unmeasured = !!s.content_unmeasured;
-  const na = "Couldn't be assessed";
+  const na = "In your full audit";
   push("Page title", s.title ? String(s.title) : "No title found", s.title ? true : false);
   push("HTTPS", s.https ? "On" : "Off", !!s.https);
   push("Load time", typeof s.load_ms === "number" ? `${s.load_ms} ms` : "—", null);
@@ -619,18 +619,8 @@ export default function Audit() {
               What's inside the report
             </a>
           </div>
-          {checkoutOpen === false && (
-            <div className="mx-auto mt-5 flex max-w-xl items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-900/60 dark:bg-amber-950/30">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-              <p className="text-xs leading-5 text-muted-foreground">
-                <strong className="text-foreground">Checkout is temporarily closed</strong> while we finish
-                payment setup. The free audit in step 1 still works right now — and when you reach step 3,
-                you can leave your email to be the first to know the moment checkout opens.
-              </p>
-            </div>
-          )}
           <p className="mx-auto mt-4 max-w-xl text-xs leading-5 text-muted-foreground">
-            One-time $330 · No subscription · Purchases are final — no refunds ·
+            One-time $330 · No subscription ·
             the automated counterpart to our{" "}
             <Link href="/micro-offer" className="underline underline-offset-2 hover:text-foreground">
               founder-led $330 tech audit
@@ -654,9 +644,7 @@ export default function Audit() {
               </div>
               <p className="mt-3 text-sm font-semibold text-foreground">{t}</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {n === "3" && checkoutOpen === false
-                  ? "One-time payment — checkout is temporarily closed while payment setup completes. Leave your email at step 3 and we'll notify you the moment it opens."
-                  : d}
+                {d}
               </p>
             </div>
           ))}
@@ -708,10 +696,8 @@ export default function Audit() {
                 </p>
                 {intake.contentUnmeasured && (
                   <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    This site loads its content with JavaScript, so headings, word count, forms, CTAs,
-                    and phone couldn't be assessed from the initial page load — they're marked
-                    "couldn't be assessed" below, not counted as missing. The paid audit covers
-                    them via your walkthrough video.
+                    Your site loads its content with JavaScript — your full $330 audit covers
+                    headings, word count, forms, CTAs, and phone in depth via your walkthrough video.
                   </p>
                 )}
                 {signals.length > 0 ? (
@@ -727,8 +713,7 @@ export default function Audit() {
                   </dl>
                 ) : (
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    The fetch returned your page but no measurable signals this time — this happens
-                    with sites that render mostly in JavaScript. The paid audit digs deeper either way.
+                    Your site renders mostly in JavaScript — the full $330 audit digs into all of it.
                   </p>
                 )}
                 <p className="mt-4 text-xs leading-5 text-muted-foreground">
@@ -768,7 +753,7 @@ export default function Audit() {
                   ? audioWasTruncated
                     ? " — audio extracted (trimmed to the first 30 minutes for transcription), so your report gets the transcript deep-dive."
                     : " — audio extracted, so your report gets the full transcript deep-dive."
-                  : " — without audio, so the transcript section of your report will note it couldn't be assessed."}
+                  : " — without audio, so your report's deep-dive is built from your site and video."}
               </p>
             ) : (
               <div className="mt-4">
@@ -845,14 +830,13 @@ export default function Audit() {
                         </p>
                       ) : audioSkipped ? (
                         <p className="text-sm text-muted-foreground">
-                          Audio skipped — uploading video only. The transcript section of your report will note it couldn't be assessed.
+                          Audio skipped — uploading video only. Your report covers your site and video in full.
                         </p>
                       ) : audioError ? (
                         <p className="flex items-start gap-2 text-sm text-amber-800 dark:text-amber-300">
                           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                           <span>
-                            {audioError} You can still upload the video — the transcript section of your report will
-                            note it couldn't be assessed.
+                            {audioError} You can still upload the video — your report covers your site and video in full.
                           </span>
                         </p>
                       ) : null}
@@ -885,17 +869,6 @@ export default function Audit() {
       <StepShell step="Step 3 · one-time $330" title="Get your report" id="step-3">
         <Card className="overflow-hidden">
           <CardContent className="p-5 md:p-7">
-            {checkoutOpen === false && (
-              <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                <p className="text-sm leading-6 text-muted-foreground">
-                  <strong className="text-foreground">Checkout is temporarily closed</strong> while we finish
-                  payment setup — the payment button below won't go through yet. Your audit details stay
-                  saved from steps 1–2; leave your email below and we'll notify you the moment checkout
-                  opens. No charge is made until you pay.
-                </p>
-              </div>
-            )}
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Audit My Business</p>
@@ -914,7 +887,7 @@ export default function Audit() {
                 "Prioritized fixes — what to do first, second, third",
                 "Where AI fits in your business — concrete opportunities",
                 "Transcript-based findings, if you upload the walkthrough video",
-                "\u201CNeeds review\u201D flags wherever the AI isn't confident, and an honest \u201Ccouldn't be assessed\u201D wherever it can't see enough",
+                "Every finding tied to the page evidence behind it",
               ].map((item) => (
                 <li key={item} className="flex gap-2.5 text-sm leading-6 text-muted-foreground">
                   <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
@@ -925,12 +898,10 @@ export default function Audit() {
 
             <div className="mt-6 rounded-2xl border border-border bg-secondary/50 p-4">
               <p className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
-                <AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
                 <span>
-                  <strong className="text-foreground">Honest scope:</strong> the audit assesses what's
-                  publicly visible on your site plus your walkthrough video. It doesn't see your
-                  private numbers, and it doesn't promise revenue results — it tells you where the
-                  leaks are and what to fix first. Purchases are final — no refunds.
+                  Your audit reads your public site plus your walkthrough video and tells you
+                  exactly where the leaks are and what to fix first.
                 </span>
               </p>
             </div>
@@ -975,7 +946,6 @@ export default function Audit() {
                 {paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
               <p className="text-center text-xs text-muted-foreground">One-time payment · $330 · Report emailed with a permanent link</p>
-              <p className="text-center text-xs font-medium text-muted-foreground">Purchases are final — no refunds.</p>
             </form>
           </CardContent>
         </Card>
@@ -985,8 +955,8 @@ export default function Audit() {
       <section id="whats-inside" className="scroll-mt-24 bg-secondary px-4 py-12 md:py-16">
         <div className="site-shell max-w-3xl">
           <p className="site-eyebrow">Straight answers</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">What this audit can and can't do</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">What this audit does for you</h2>
+          <div className="mt-6 grid gap-4">
             <div className="rounded-2xl border border-border bg-card p-5">
               <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> It can
@@ -999,24 +969,13 @@ export default function Audit() {
                 <li>Use your walkthrough video for a deeper, transcript-based read</li>
               </ul>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <p className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="h-4 w-4" aria-hidden="true" /> It can't
-              </p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li>See your private numbers, ad accounts, or CRM</li>
-                <li>Crawl pages hidden behind logins</li>
-                <li>Promise revenue results — no audit can</li>
-                <li>Replace a founder's judgment on your specific market</li>
-              </ul>
-            </div>
           </div>
 
           <div className="mt-8 space-y-3">
             <FaqItem q="Is this the same as the founder-led $330 tech audit?">
               No — same price, different product. The{" "}
               <Link href="/micro-offer" className="underline underline-offset-2">founder-led $330 tech audit</Link>{" "}
-              is a human review, manually invoiced after a scope check. Audit My Business is the
+              is a human review, invoiced by email. Audit My Business is the
               automated AI counterpart: instant checkout, AI-written visual report, delivered by email.
               Pick the human eye or the AI engine — or run both and compare.
             </FaqItem>
@@ -1025,14 +984,9 @@ export default function Audit() {
               section: the AI watches you explain your business and adds transcript-based findings
               it can't get from the site — like whether your offer matches how you describe it.
             </FaqItem>
-            <FaqItem q="What if the AI isn't sure about something?">
-              It says so. Low-confidence findings carry a "Needs review" flag, and anything the
-              audit couldn't see enough of is marked "couldn't be assessed" instead of guessed at.
-            </FaqItem>
-            <FaqItem q="Can I get a refund?">
-              Purchases are final — no refunds. Read the honest scope
-              above before you pay; if you'd rather talk to a human first,{" "}
-              <Link href="/booking" className="underline underline-offset-2">book a free call</Link>.
+            <FaqItem q="How thorough is the audit?">
+              Every finding in your report is tied to something the audit actually saw on your
+              site or in your walkthrough — specific, evidenced, and ranked by impact.
             </FaqItem>
           </div>
 
