@@ -90,12 +90,11 @@ it('/sales SSR renders priced plan cards from the live catalog (rot107, tiers ro
   for(const pack of CREDIT_PACKS)expect(rendered).toContain(`$${pack.priceCents/100}`);
   expect(rendered).toContain('1,000 reply attempts');
   expect(rendered).toContain('href="/pricing"');
-  // rot112: anchor order — Free, then the one-time top-ups, then Pro last,
-  // so the top-up prices anchor the Pro subscription instead of undercutting it.
+  // rot116: chief's order — Free, then Pro directly above the Top-up card.
   const iFree=rendered.indexOf('<h3>Free</h3>'),iTop=rendered.indexOf('<h3>Top up</h3>'),iPro=rendered.indexOf('<h3>Pro</h3>');
   expect(iFree).toBeGreaterThanOrEqual(0);
-  expect(iFree).toBeLessThan(iTop);
-  expect(iTop).toBeLessThan(iPro);
+  expect(iFree).toBeLessThan(iPro);
+  expect(iPro).toBeLessThan(iTop);
 });
 
 it('injectSalesPlans fills the real /sales shell and is idempotent (rot107)',()=>{
