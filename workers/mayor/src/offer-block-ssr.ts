@@ -86,7 +86,7 @@ export function pricingCardsSsrHtml():{plans:string;packs:string}|null{
     priceLine(p.priceCents,p.priceCents>0?' / month':'')+
     `<p class="plan-tier">${p.replyLimit.toLocaleString('en-US')} reply attempts · `+
     `${p.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>${blurb}</p><a class="button button-small" href="/">`+
+    `<p>${blurb}</p><a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/'}">`+
     `${p.id==='pro'?`Go Pro — ${escapeHtml(formatPrice(p.priceCents))}/mo`:'Start free'}</a></article>`;
   const packCard=(p:SsrPack)=>
     `<article class="plan-card"><h3>${escapeHtml(p.name)}</h3>`+
@@ -152,7 +152,7 @@ export function salesPlansSsrHtml():string|null{
     priceLine(pro.priceCents,' / month')+
     `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
-    `<a class="button button-small" href="/">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
+    `<a class="button button-small" href="/billing?plan=pro">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+
     `<p class="plan-tier">One-time, as you need it</p>`+
