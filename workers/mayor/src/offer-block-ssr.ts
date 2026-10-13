@@ -12,7 +12,7 @@
  * when data-ssr="catalog" is present on #offer-block, so there is no
  * double-render or flicker.
  */
-import {PLANS,CREDIT_PACKS} from './billing/plans';
+import {PLANS,CREDIT_PACKS,approxConversations} from './billing/plans';
 import {AUDIT_OFFER} from './billing/audit';
 
 function escapeHtml(value:string):string{
@@ -39,7 +39,7 @@ export function offerBlockSsrHtml():string|null{
   const row=(p:SsrPlan,blurb:string)=>
     `<div class="offer-plan"><div class="offer-plan-head"><strong>${escapeHtml(p.name)}</strong>`+
     `<span class="offer-price">${escapeHtml(formatPrice(p.priceCents))}${p.priceCents>0?'<span class="offer-per"> / month</span>':''}</span></div>`+
-    `<p>${p.replyLimit.toLocaleString('en-US')} reply attempts · ${p.voiceMinuteLimit} microphone minutes a month</p>`+
+    `<p>${p.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyLimit)} real conversations a month) · ${p.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p class="offer-blurb">${blurb}</p></div>`;
   return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.')}</div>`+
     `<p class="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>`;
@@ -84,20 +84,20 @@ export function pricingCardsSsrHtml():{plans:string;packs:string}|null{
   const planCard=(p:SsrPlan,blurb:string)=>
     `<article class="plan-card"><h3>${escapeHtml(p.name)}</h3>`+
     priceLine(p.priceCents,p.priceCents>0?' / month':'')+
-    `<p class="plan-tier">${p.replyLimit.toLocaleString('en-US')} reply attempts · `+
+    `<p class="plan-tier">${p.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyLimit)} real conversations a month) · `+
     `${p.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>${blurb}</p><a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/'}">`+
     `${p.id==='pro'?`Go Pro — ${escapeHtml(formatPrice(p.priceCents))}/mo`:'Start free'}</a></article>`;
   const packCard=(p:SsrPack)=>
     `<article class="plan-card"><h3>${escapeHtml(p.name)}</h3>`+
     priceLine(p.priceCents,' one-time')+
-    `<p class="plan-tier">+${p.replyAttempts.toLocaleString('en-US')} reply attempts · `+
+    `<p class="plan-tier">+${p.replyAttempts.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyAttempts)} real conversations) · `+
     `+${p.voiceMinutes} microphone minutes</p>`+
     `<a class="button button-small" href="/billing?pack=${p.id}">Buy ${escapeHtml(p.name)}</a>`+
     `<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>`;
   return {
     plans:planCard(free,'A good place to start. Talk to The Mayor and feel the money loop working.')
-      +planCard(pro,'For the busier business: the full proactive engine watching your book.'),
+      +planCard(pro,'For the busier business: the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected.'),
     packs:packs.map(packCard).join(''),
   };
 }
@@ -145,20 +145,20 @@ export function salesPlansSsrHtml():string|null{
   const start=
     `<article class="plan-card"><h3>Free</h3>`+
     priceLine(free.priceCents,'')+
-    `<p class="plan-tier">${free.replyLimit.toLocaleString('en-US')} reply attempts · ${free.voiceMinuteLimit} microphone minutes a month</p>`+
+    `<p class="plan-tier">${free.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(free.replyLimit)} real conversations a month) · ${free.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs once your number is connected (automatic text-backs send through Telnyx), reminders, and the morning briefing.</p>`+
     `<a class="button button-small" href="/">Start free</a></article>`;
   const grow=
     `<article class="plan-card"><h3>Pro</h3>`+
     priceLine(pro.priceCents,' / month')+
-    `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
+    `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(pro.replyLimit)} real conversations a month) · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
+    `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
     `<a class="button button-small" href="/billing?plan=pro">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+
     `<p class="plan-tier">One-time, as you need it</p>`+
     `<ul class="pack-list">`+
-    packs.map(p=>`<li><strong>${escapeHtml(p.name)} — ${escapeHtml(formatPrice(p.priceCents))}</strong> · +${p.replyAttempts.toLocaleString('en-US')} reply attempts · +${p.voiceMinutes} microphone minutes</li>`).join('')+
+    packs.map(p=>`<li><strong>${escapeHtml(p.name)} — ${escapeHtml(formatPrice(p.priceCents))}</strong> · +${p.replyAttempts.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyAttempts)} real conversations) · +${p.voiceMinutes} microphone minutes</li>`).join('')+
     `</ul>`+
     `<p>Buy only what you use — no subscription change, no overage surprises.</p>`+
     `<a class="button button-small" href="/pricing">See pricing</a></article>`;
