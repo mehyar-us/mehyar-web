@@ -25,7 +25,7 @@ export function offerBlockHtml(catalog:unknown):string|null{
  if(!validPlan(free)||!validPlan(pro))return null;
  const rawCurrency=(catalog as OfferCatalog).currency;
  const currency=typeof rawCurrency==='string'&&rawCurrency.length===3?rawCurrency.toUpperCase():'USD';
- const row=(p:OfferPlan,blurb:string)=>`<div class="offer-plan"><div class="offer-plan-head"><strong>${escapeHtml(p.name)}</strong><span class="offer-price">${escapeHtml(formatPrice(p.priceCents,currency))}${p.priceCents>0?'<span class="offer-per"> / month</span>':''}</span></div><p>${p.replyLimit.toLocaleString()} reply attempts · ${p.voiceMinuteLimit} microphone minutes a month</p><p class="offer-blurb">${blurb}</p></div>`;
+ const row=(p:OfferPlan,blurb:string)=>`<div class="offer-plan"><div class="offer-plan-head"><strong>${escapeHtml(p.name)}</strong><span class="offer-price">${escapeHtml(formatPrice(p.priceCents,currency))}${p.priceCents>0?'<span class="offer-per"> / month</span>':''}</span></div><p>${p.replyLimit.toLocaleString()} reply attempts (≈${Math.max(1,Math.round(p.replyLimit/10))} real conversations a month) · ${p.voiceMinuteLimit} microphone minutes a month</p><p class="offer-blurb">${blurb}</p></div>`;
  return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.')}</div><p class="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>`;
 }
 /** Fetch the live catalog and swap the price-free fallback for catalog-priced plans. Never throws. */

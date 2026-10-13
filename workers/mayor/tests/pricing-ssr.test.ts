@@ -14,7 +14,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
 import {pricingCardsSsrHtml,injectPricingCards,salesPlansSsrHtml,injectSalesPlans,auditCardSsrHtml} from '../src/offer-block-ssr';
-import {PLANS,CREDIT_PACKS} from '../src/billing/plans';
+import {PLANS,CREDIT_PACKS,approxConversations,REPLIES_PER_CONVERSATION} from '../src/billing/plans';
 import {AUDIT_OFFER} from '../src/billing/audit';
 
 const here=dirname(fileURLToPath(import.meta.url));
@@ -275,4 +275,24 @@ it('footers share one canonical brand set',()=>{
   }
   const index=readWeb('index.html');
   expect(index).toContain('The Mayor · MehyarSoft LLC');
+});
+
+it('rot149: Telnyx line on the Pro card itself + attempts translated to conversations everywhere',()=>{
+ const sales=readWeb('sales.html'),pricing=readWeb('pricing.html'),terms=readWeb('public/terms.html');
+ const rendered=pricingCardsSsrHtml(),salesServed=injectSalesPlans(sales);
+ // 1. The Pro card carries the Telnyx-only line on both selling pages.
+ expect(salesServed).toContain('Automatic text-backs are sent through Telnyx once your number is connected. No hidden fees');
+ expect(sales).toContain('Automatic text-backs are sent through Telnyx once your number is connected. No hidden fees');
+ expect(rendered!.plans).toContain('watching your book. Automatic text-backs are sent through Telnyx once your number is connected.');
+ expect(pricing).toContain('watching your book. Automatic text-backs are sent through Telnyx once your number is connected.');
+ // 2. Conversation equivalents derive from the catalog numbers themselves.
+ expect(REPLIES_PER_CONVERSATION).toBe(10);
+ for(const p of PLANS){expect(salesServed).toContain(`(\u2248${approxConversations(p.replyLimit)} real conversations a month)`);expect(rendered!.plans).toContain(`(\u2248${approxConversations(p.replyLimit)} real conversations a month)`);}
+ for(const pk of CREDIT_PACKS){expect(rendered!.packs).toContain(`(\u2248${approxConversations(pk.replyAttempts)} real conversations)`);expect(salesServed).toContain(`(\u2248${approxConversations(pk.replyAttempts)} real conversations)`);}
+ // Basis printed where buyers decide, and the equivalence reaches /terms.
+ expect(sales).toContain('Conversation estimates figure roughly 10 replies per conversation.');
+ expect(pricing).toContain('Conversation estimates figure roughly 10 replies per conversation.');
+ expect(terms).toContain('100 assistant reply attempts (about 10 conversations, figuring roughly 10 replies per conversation)');
+ expect(terms).toContain('1,000 reply attempts (about 100 conversations)');
+ expect(terms).toContain('800 reply attempts (about 80 conversations)');
 });

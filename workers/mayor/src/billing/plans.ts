@@ -10,6 +10,12 @@ export const CREDIT_PACKS=Object.freeze([
  Object.freeze({id:'large',name:'Large',priceCents:1200,currency:'USD',replyAttempts:800,voiceMinutes:90}),
 ] as const);
 export type CreditPackId=typeof CREDIT_PACKS[number]['id'];
+/* Buyer-facing translation of the attempt meter (rot149): allowances are
+ * also shown as approximate conversations, always computed from the same
+ * attempt numbers with this single divisor, and the basis is printed
+ * wherever the equivalence appears ("roughly 10 replies per conversation"). */
+export const REPLIES_PER_CONVERSATION=10;
+export function approxConversations(attempts:number):number{return Math.max(1,Math.round(attempts/REPLIES_PER_CONVERSATION));}
 export const PLANS=Object.freeze([
  Object.freeze({id:'free',name:'Free',priceCents:0,currency:'USD',interval:'calendar_month',replyLimit:100,voiceMinuteLimit:10}),
  Object.freeze({id:'pro',name:'Pro',priceCents:PRO_PRICE_CENTS,currency:'USD',interval:'month',replyLimit:1000,voiceMinuteLimit:120}),
