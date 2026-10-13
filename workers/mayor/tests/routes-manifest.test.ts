@@ -28,7 +28,7 @@ const manifest=()=>JSON.parse(readPublic('manifest.json'));
 
 it('pricing page exists with zero price amounts',()=>{
   const page=pricing();
-  expect(page).toContain('Start free. Grow when you');
+  expect(page).toContain('Start free. Go Pro when you');
   // No dollar amounts anywhere: no $14, no $39, no $NNN.
   expect(page).not.toMatch(/\$\d/);
   // No "per month" attached to an amount.
