@@ -161,6 +161,17 @@ it('/sales discloses the reply-attempt counting rule and the Twilio send path (r
   const page=readWeb('sales.html');
   expect(page).toContain('Usage counts reply attempts — every try counts toward your allowance, not only delivered replies.');
   expect(page).toContain('Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.');
+  // rot125: the Twilio limit also rides the pricing provider sentence, both pages.
+  expect(page.split('Twilio numbers connect for voice calls').length-1).toBeGreaterThanOrEqual(2);
+  expect(readWeb('pricing.html')).toContain('Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.');
+});
+
+it('remaining /sales text-back claims carry the connected-number condition (rot125)',()=>{
+  const page=readWeb('sales.html');
+  expect(page).toContain('Once your business number is connected, every unanswered call gets an instant text-back');
+  expect(page).toContain('an instant text-back from your connected business number');
+  expect(page).toContain('missed-call text-backs once your number is connected');
+  expect(page).not.toContain('Every unanswered call gets an instant text-back in your voice, with');
 });
 
 it('homepage footer links to /sales and /pricing (rot120)',()=>{
