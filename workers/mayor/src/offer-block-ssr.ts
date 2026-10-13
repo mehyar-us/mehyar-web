@@ -125,6 +125,53 @@ export function injectPricingCards(html:string):string{
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
   return out;
 }
+/* ------------------------------------------------------------------ */
+/* /sales SSR — priced plan cards for the pitch page (rot107).          */
+/*                                                                     */
+/* The sales page source stays price-free; amounts render at serve      */
+/* time from PLANS / CREDIT_PACKS — the same catalog source as          */
+/* /pricing — so a catalog price change flows through with no page      */
+/* edit. Returns null when the catalog can't be trusted; the page       */
+/* then keeps its price-free fallback cards.                            */
+/* ------------------------------------------------------------------ */
+export function salesPlansSsrHtml():string|null{
+  const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
+  if(!validPlan(free)||!validPlan(pro))return null;
+  const packs=[...CREDIT_PACKS];
+  if(packs.length===0||!packs.every(validPack))return null;
+  const minPack=packs.reduce((a,b)=>a.priceCents<=b.priceCents?a:b);
+  const maxPack=packs.reduce((a,b)=>a.priceCents>=b.priceCents?a:b);
+  const start=
+    `<article class="plan-card"><h3>Start</h3>`+
+    priceLine(free.priceCents,'')+
+    `<p class="plan-tier">${free.replyLimit.toLocaleString('en-US')} reply attempts · ${free.voiceMinuteLimit} microphone minutes a month</p>`+
+    `<p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs, reminders, and the morning briefing.</p>`+
+    `<a class="button button-small" href="/">Start free</a></article>`;
+  const grow=
+    `<article class="plan-card"><h3>Grow</h3>`+
+    priceLine(pro.priceCents,' / month')+
+    `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
+    `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. No hidden fees.</p>`+
+    `<a class="button button-small" href="/">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
+  const topup=
+    `<article class="plan-card"><h3>Top up</h3>`+
+    `<p class="plan-price"><strong>From ${escapeHtml(formatPrice(minPack.priceCents))}</strong><span> one-time</span></p>`+
+    `<p class="plan-tier">+${minPack.replyAttempts.toLocaleString('en-US')} to +${maxPack.replyAttempts.toLocaleString('en-US')} reply attempts · +${minPack.voiceMinutes} to +${maxPack.voiceMinutes} microphone minutes</p>`+
+    `<p>One-time top-ups for the months that run hot. Buy only what you use — no subscription change, no overage surprises.</p>`+
+    `<a class="button button-small" href="/pricing">See pricing</a></article>`;
+  return start+grow+topup;
+}
+/**
+ * Inject the server-rendered priced cards into the #sales-plan-cards
+ * container of a served /sales page. Returns the HTML UNCHANGED when the
+ * container is missing, already server-rendered, or the catalog can't be
+ * trusted — the price-free fallback cards then stay in place.
+ */
+export function injectSalesPlans(html:string):string{
+  const rendered=salesPlansSsrHtml();
+  if(!rendered)return html;
+  return injectIntoContainer(html,'sales-plan-cards',rendered);
+}
 /**
  * Inject the server-rendered pricing into the #offer-block container of a
  * served home page. Marks the container data-ssr="catalog" so the client

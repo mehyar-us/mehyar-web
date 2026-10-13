@@ -13,7 +13,7 @@ import {expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import {pricingCardsSsrHtml,injectPricingCards} from '../src/offer-block-ssr';
+import {pricingCardsSsrHtml,injectPricingCards,salesPlansSsrHtml,injectSalesPlans} from '../src/offer-block-ssr';
 import {PLANS,CREDIT_PACKS} from '../src/billing/plans';
 
 const here=dirname(fileURLToPath(import.meta.url));
@@ -76,6 +76,36 @@ it('injectPricingCards leaves HTML unchanged when containers are missing',()=>{
 it('injectPricingCards is idempotent (never double-injects)',()=>{
   const once=injectPricingCards(PRICING_SHELL);
   expect(injectPricingCards(once)).toBe(once);
+});
+
+it('/sales SSR renders priced plan cards from the live catalog (rot107)',()=>{
+  const rendered=salesPlansSsrHtml()!;
+  const pro=PLANS.find(p=>p.id==='pro')!;
+  const minPack=CREDIT_PACKS.reduce((a,b)=>a.priceCents<=b.priceCents?a:b);
+  expect(rendered).toContain('Start');
+  expect(rendered).toContain('Grow');
+  expect(rendered).toContain('Top up');
+  expect(rendered).toContain(`$${pro.priceCents/100}`);
+  expect(rendered).toContain(`Go Pro — $${pro.priceCents/100}/mo`);
+  expect(rendered).toContain(`From $${minPack.priceCents/100}`);
+  expect(rendered).toContain('1,000 reply attempts');
+  expect(rendered).toContain('href="/pricing"');
+});
+
+it('injectSalesPlans fills the real /sales shell and is idempotent (rot107)',()=>{
+  const shell=readWeb('sales.html');
+  expect(shell).not.toMatch(/\$\d/); // source stays price-free
+  const out=injectSalesPlans(shell);
+  const pro=PLANS.find(p=>p.id==='pro')!;
+  expect(out).toContain('data-ssr="catalog"');
+  expect(out).toContain(`$${pro.priceCents/100}`);
+  expect(out).toContain(`Go Pro — $${pro.priceCents/100}/mo`);
+  expect(injectSalesPlans(out)).toBe(out);
+  // Static paths to /pricing exist even without injection.
+  expect(shell).toContain('href="/pricing"');
+  // Providers are named where sending is discussed.
+  expect(shell).toContain('Telnyx');
+  expect(shell).toContain('Twilio');
 });
 
 it('src/offer-block-ssr.ts contains no hardcoded dollar amount',()=>{

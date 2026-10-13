@@ -1,8 +1,11 @@
 /**
  * sales-surface.test.ts — the /sales page is a STATIC pitch section around
- * the login form. Until the owner makes the $14-vs-$39 call, the page must
- * carry ZERO price claims anywhere: no dollar amounts, no "per month", no
- * pack pricing, no catalog fetch. All copy is honest: examples labeled
+ * the login form. The page SOURCE carries zero hardcoded price claims: no
+ * dollar amounts, no pack pricing, no catalog fetch. Since rot107
+ * (2026-10-12) the plan-card prices render at SERVE time from the live
+ * billing catalog (SSR injection, same pattern as /pricing), so a catalog
+ * price change flows through with no page edit — that is why the source
+ * must stay price-free. All copy is honest: examples labeled
  * illustrative, no invented revenue, no guaranteed results.
  */
 import {expect,it} from 'vitest';
