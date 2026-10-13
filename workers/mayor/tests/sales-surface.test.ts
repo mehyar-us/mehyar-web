@@ -106,3 +106,8 @@ it('/terms states plainly how provider charges are billed (rot112)',()=>{
  expect(terms).toContain('MehyarSoft does not collect, add to, or mark up provider charges');
  expect(terms).toContain('they never appear on your Mayor bill');
 });
+
+it('hero text-back claim carries the connected-number condition (rot122)',()=>{
+ expect(html).toContain('once your business number is connected — texts back the leads you would lose, automatically through Telnyx');
+ expect(html).not.toContain('It answers the calls you miss, texts back the leads you would lose');
+});
