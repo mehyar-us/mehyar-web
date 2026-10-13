@@ -133,7 +133,7 @@ export default function Home() {
                 <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" /><span>{f}</span></li>
               ))}
             </ul>
-            <p className="mt-6 text-sm text-muted-foreground">One-time $330 · No subscription · Purchases are final (no refunds).</p>
+            <p className="mt-6 text-sm text-muted-foreground">One-time $330 · No subscription · Purchases are final — no refunds.</p>
             <Link href="/audit" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-6 min-h-12 w-full sm:w-auto" })}>
               Get the $330 audit <ArrowRight className="ml-2 h-4 w-4" />
             </Link>

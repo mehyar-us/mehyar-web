@@ -201,7 +201,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "Can I get a refund?",
           answer:
-            "Purchases are final — there are no refunds on the $330 audit. Read the honest scope on the page before paying.",
+            "Purchases are final — no refunds. Read the honest scope on the page before paying.",
         },
       ]),
     ],

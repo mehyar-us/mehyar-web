@@ -630,7 +630,7 @@ export default function Audit() {
             </div>
           )}
           <p className="mx-auto mt-4 max-w-xl text-xs leading-5 text-muted-foreground">
-            One-time $330 · No subscription · Purchases are final (no refunds) ·
+            One-time $330 · No subscription · Purchases are final — no refunds ·
             the automated counterpart to our{" "}
             <Link href="/micro-offer" className="underline underline-offset-2 hover:text-foreground">
               founder-led $330 tech audit
@@ -1030,7 +1030,7 @@ export default function Audit() {
               audit couldn't see enough of is marked "couldn't be assessed" instead of guessed at.
             </FaqItem>
             <FaqItem q="Can I get a refund?">
-              Purchases are final — there are no refunds on the $330 audit. Read the honest scope
+              Purchases are final — no refunds. Read the honest scope
               above before you pay; if you'd rather talk to a human first,{" "}
               <Link href="/booking" className="underline underline-offset-2">book a free call</Link>.
             </FaqItem>
