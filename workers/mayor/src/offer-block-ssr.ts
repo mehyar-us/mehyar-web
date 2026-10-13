@@ -142,20 +142,20 @@ export function salesPlansSsrHtml():string|null{
   const minPack=packs.reduce((a,b)=>a.priceCents<=b.priceCents?a:b);
   const maxPack=packs.reduce((a,b)=>a.priceCents>=b.priceCents?a:b);
   const start=
-    `<article class="plan-card"><h3>Start</h3>`+
+    `<article class="plan-card"><h3>Free</h3>`+
     priceLine(free.priceCents,'')+
     `<p class="plan-tier">${free.replyLimit.toLocaleString('en-US')} reply attempts · ${free.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs, reminders, and the morning briefing.</p>`+
     `<a class="button button-small" href="/">Start free</a></article>`;
   const grow=
-    `<article class="plan-card"><h3>Grow</h3>`+
+    `<article class="plan-card"><h3>Pro</h3>`+
     priceLine(pro.priceCents,' / month')+
     `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. No hidden fees.</p>`+
     `<a class="button button-small" href="/">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+
-    `<p class="plan-price"><strong>From ${escapeHtml(formatPrice(minPack.priceCents))}</strong><span> one-time</span></p>`+
+    `<p class="plan-price"><strong>${packs.map(p=>escapeHtml(formatPrice(p.priceCents))).join(' · ')}</strong><span> one-time</span></p>`+
     `<p class="plan-tier">+${minPack.replyAttempts.toLocaleString('en-US')} to +${maxPack.replyAttempts.toLocaleString('en-US')} reply attempts · +${minPack.voiceMinutes} to +${maxPack.voiceMinutes} microphone minutes</p>`+
     `<p>One-time top-ups for the months that run hot. Buy only what you use — no subscription change, no overage surprises.</p>`+
     `<a class="button button-small" href="/pricing">See pricing</a></article>`;
