@@ -203,6 +203,14 @@ it('/terms carries viewport-fit like the other pages (rot130)',()=>{
   expect(readWeb('public/terms.html')).toContain('viewport-fit=cover');
 });
 
+it('one audit name everywhere it is named (rot133)',()=>{
+  // Canonical: AUDIT_OFFER.name — the cards, the audit page title, and the
+  // Terms heading all carry the same proper name.
+  expect(readWeb('business-audit.html')).toContain(`<title>${AUDIT_OFFER.name} · $330 once · Mehyar US</title>`);
+  expect(readWeb('public/terms.html')).toContain('<h2>The extensive business audit</h2>');
+  expect(readWeb('public/terms.html')).not.toContain('<h2>The $330 business audit</h2>');
+});
+
 it('/sales claim and provider qualification read as one note (rot130)',()=>{
   const page=readWeb('sales.html');
   expect(page).toContain('No hidden fees. The price of your Mayor plan is what you pay us');
