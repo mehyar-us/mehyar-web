@@ -130,6 +130,9 @@ it('audit offer card renders from AUDIT_OFFER and injects on /sales and /pricing
   expect(card).toContain(`$${AUDIT_OFFER.priceCents/100}`);
   expect(card).toContain('one-time');
   expect(card).toContain('30/60/90-day plan');
+  // rot127: review wording matches the Terms phrase ("separate AI review").
+  expect(card).toContain('separate AI review');
+  expect(card).not.toContain('independently reviewed');
   expect(card).toContain('Purchases are final — no refunds.');
   expect(card).toContain('href="/business-audit"');
   const sales=injectSalesPlans(readWeb('sales.html'));
