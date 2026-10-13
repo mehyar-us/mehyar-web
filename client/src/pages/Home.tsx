@@ -91,7 +91,7 @@ export default function Home() {
       <section className="px-4 pb-16 md:pb-24">
         <div className="site-shell">
           <div className="mx-auto max-w-4xl rounded-3xl bg-slate-950 p-8 text-center text-white md:p-12 dark:bg-card dark:text-foreground dark:border dark:border-border">
-            <p className="site-eyebrow !text-slate-300 dark:!text-muted-foreground">The full evaluation</p>
+            <p className="site-eyebrow !text-slate-300 dark:!text-muted-foreground">The full report</p>
             <h2 className="mx-auto mt-3 max-w-2xl text-3xl font-bold tracking-tight md:text-4xl text-balance">
               The complete evaluation. Every leak priced. Your AI blueprint, with the math shown.
             </h2>

@@ -32,7 +32,7 @@ const routeMeta = {
     path: '/audit/free',
   },
   '/audit/report': {
-    title: 'Full AI Website Evaluation — $5 Report | MehyarSoft',
+    title: '$5 Full Report | MehyarSoft',
     description:
       'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.',
     path: '/audit/report',

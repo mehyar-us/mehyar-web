@@ -105,7 +105,7 @@ function gradeColor(g?: string) {
 }
 
 const WHATS_INSIDE = [
-  "Leak map — every leak priced in dollars",
+  "Leak map — every leak priced in estimated dollars",
   "Page-by-page grades (A–F)",
   "How you stack up vs typical sites in your industry",
   "AI automation blueprint for your business type",
@@ -253,8 +253,8 @@ export default function AuditReport() {
           <h1 className="site-display mt-4 text-3xl">{justPaid ? "Payment received — building your report…" : "Loading your report…"}</h1>
           <p className="site-lede mx-auto mt-4 max-w-xl">
             {justPaid
-              ? "Our AI is analyzing your site and writing your full evaluation. This takes about a minute — it's also being emailed to you."
-              : "Fetching your full evaluation…"}
+              ? "Our AI is analyzing your site and writing your full report. This takes about a minute — it's also being emailed to you."
+              : "Fetching your full report…"}
           </p>
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
         </div></section>
@@ -316,7 +316,7 @@ export default function AuditReport() {
             {hasLeaks && (
               <div className="report-print-section mt-10">
                 <h2 className="flex items-center gap-2 text-2xl font-semibold text-[#0B1B33] dark:text-foreground">
-                  <TrendingDown className="h-6 w-6 text-[#DC2626]" /> Leak map — every leak priced
+                  <TrendingDown className="h-6 w-6 text-[#DC2626]" /> Leak map — every leak priced in estimated dollars
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                   What's quietly costing you money, and what each fix is worth. Losses hurt more than gains feel good — that's why we price the pain first.
@@ -507,10 +507,10 @@ export default function AuditReport() {
   return (
     <section className="site-hero px-4">
       <div className="site-shell max-w-4xl">
-        <p className="site-eyebrow mb-4 text-center">The full evaluation</p>
+        <p className="site-eyebrow mb-4 text-center">The full report</p>
         <h1 className="site-display mx-auto max-w-2xl text-balance text-center">The free audit is the trailer — this is the movie.</h1>
         <p className="site-lede mx-auto mt-4 max-w-xl text-balance text-center">
-          The complete professional evaluation of <em>your</em> site — every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.
+          The complete professional report on <em>your</em> site — every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.
         </p>
 
         <div className="mx-auto mt-10 grid max-w-3xl items-start gap-8 md:grid-cols-2">
@@ -519,7 +519,7 @@ export default function AuditReport() {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="rounded-xl bg-[#F59E0B] px-3 py-1 text-4xl font-extrabold text-[#0B1B33]">$5</span>
-              <span className="text-sm text-muted-foreground">one-time · yours forever</span>
+              <span className="text-sm text-muted-foreground">one-time · emailed with a permanent link</span>
             </div>
 
             <h2 className="mt-6 flex items-center gap-2 font-semibold text-foreground">
@@ -558,7 +558,7 @@ export default function AuditReport() {
         <div className="mx-auto mt-10 flex max-w-2xl items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left">
           <Search className="mt-0.5 h-5 w-5 shrink-0 text-[#0B1B33] dark:text-sky-300" />
           <p className="text-sm leading-6 text-muted-foreground">
-            <strong className="text-foreground">How it works:</strong> pay $5 once, our AI writes the full evaluation for your site in about a minute, and it's emailed to you with a permanent link. No subscription, no upsell required to get value.
+            <strong className="text-foreground">How it works:</strong> pay $5 once, our AI writes the full report for your site in about a minute, and it's emailed to you with a permanent link. No subscription, no upsell required to get value.
           </p>
         </div>
 
