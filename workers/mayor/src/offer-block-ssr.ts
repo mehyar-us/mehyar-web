@@ -189,7 +189,7 @@ export function auditCardSsrHtml():string{
   return `<article class="plan-card"><h3>${escapeHtml(AUDIT_OFFER.name)}</h3>`+
     priceLine(AUDIT_OFFER.priceCents,' one-time')+
     `<p class="plan-tier">One business · one focused plan</p>`+
-    `<p>A reviewed report covering ${escapeHtml(scope)} — plus ${escapeHtml(plan)}. Payment queues your audit: the report is generated and independently reviewed after intake, not delivered instantly.</p>`+
+    `<p>A reviewed report covering ${escapeHtml(scope)} — plus ${escapeHtml(plan)}. Payment queues your audit: the report is generated after intake and put through a separate AI review, not delivered instantly.</p>`+
     `<p>Purchases are final — no refunds.</p>`+
     `<a class="button button-small" href="/business-audit">Start your audit</a></article>`;
 }
