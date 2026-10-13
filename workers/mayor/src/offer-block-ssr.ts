@@ -93,7 +93,8 @@ export function pricingCardsSsrHtml():{plans:string;packs:string}|null{
     priceLine(p.priceCents,' one-time')+
     `<p class="plan-tier">+${p.replyAttempts.toLocaleString('en-US')} reply attempts · `+
     `+${p.voiceMinutes} microphone minutes</p>`+
-    `<a class="button button-small" href="/billing?pack=${p.id}">Buy ${escapeHtml(p.name)}</a></article>`;
+    `<a class="button button-small" href="/billing?pack=${p.id}">Buy ${escapeHtml(p.name)}</a>`+
+    `<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>`;
   return {
     plans:planCard(free,'A good place to start. Talk to The Mayor and feel the money loop working.')
       +planCard(pro,'For the busier business: the full proactive engine watching your book.'),
@@ -145,7 +146,7 @@ export function salesPlansSsrHtml():string|null{
     `<article class="plan-card"><h3>Free</h3>`+
     priceLine(free.priceCents,'')+
     `<p class="plan-tier">${free.replyLimit.toLocaleString('en-US')} reply attempts · ${free.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs once your number is connected, reminders, and the morning briefing.</p>`+
+    `<p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs once your number is connected (automatic text-backs send through Telnyx), reminders, and the morning briefing.</p>`+
     `<a class="button button-small" href="/">Start free</a></article>`;
   const grow=
     `<article class="plan-card"><h3>Pro</h3>`+

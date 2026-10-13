@@ -140,6 +140,8 @@ section.page-width{padding-top:2.5rem;padding-bottom:2.5rem}
 .lead-form label{flex:1 1 100%;font-weight:600;font-size:0.95rem}
 .lead-form input[type="email"]{flex:1 1 16rem;padding:0.7rem 0.9rem;border:1px solid #c3d0dd;border-radius:0.6rem;font:inherit;background:#fff;color:var(--ink)}
 .lead-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.decision-note{font-size:1rem;color:var(--ink);max-width:44rem;margin-top:1.25rem}
+.pack-note{color:var(--muted);font-size:0.85rem;margin:0.6rem 0 0}
 .loop-note{color:var(--muted);font-size:0.92rem;margin-top:1.25rem;max-width:44rem}
 
 /* FAQ */

@@ -197,6 +197,28 @@ it('/sales surfaces the email capture right after pricing (rot139)',()=>{
   expect(loopAt).toBeGreaterThan(updatesAt);
 });
 
+it('rot146 garnish: card SMS split, surfaced counting rule, pack expiry, cancel qualifier, second capture',()=>{
+  const sales=readWeb('sales.html'),pricing=readWeb('pricing.html');
+  // Plan cards state the Telnyx-only send split.
+  expect(sales).toContain('missed-call text-backs once your number is connected (automatic text-backs send through Telnyx)');
+  expect(injectSalesPlans(sales)).toContain('(automatic text-backs send through Telnyx)');
+  // Counting rule promoted out of small print on both pages, once each.
+  expect(sales).toContain('<p class="decision-note">Usage counts reply attempts');
+  expect(pricing).toContain('<p class="decision-note">Usage counts reply attempts');
+  expect(sales.split('Usage counts reply attempts').length-1).toBe(1);
+  // Expiry caution at the top-up buy buttons.
+  const rendered=pricingCardsSsrHtml();
+  expect(rendered!.packs.split('Credits expire at the end of the purchased period').length-1).toBe(CREDIT_PACKS.length);
+  // Cancel qualifier aligned on both pages.
+  expect(sales).toContain('Cancel anytime — cancelling stops renewal, and your plan runs to the end of the paid period.');
+  expect(pricing).toContain('Cancel anytime — cancelling stops renewal, and your plan runs to the end of the paid period.');
+  // Strengthened exchange + a second capture after the money loop.
+  expect(sales).toContain('one practical email a month');
+  expect(sales.split('action="/api/leads"').length-1).toBe(2);
+  expect(sales).toContain('value="sales-loop"');
+  expect(sales.indexOf('id="updates-loop"')).toBeGreaterThan(sales.indexOf('id="money-loop"'));
+});
+
 it('structured data: Product JSON-LD injected from the catalog; Organization on home (rot130)',()=>{
   for(const page of ['sales.html','pricing.html']){
     const out=page==='sales.html'?injectSalesPlans(readWeb(page)):injectPricingCards(readWeb(page));
