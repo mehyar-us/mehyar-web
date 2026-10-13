@@ -663,6 +663,13 @@ export default function Audit() {
         </div>
       </section>
 
+      {/* ── LADDER CROSS-LINK ── */}
+      <section className="px-4 pb-2">
+        <p className="site-shell max-w-4xl text-center text-sm text-muted-foreground">
+          Want to start with the site alone? The <Link href="/audit/report" className="font-semibold text-brand-700 underline underline-offset-4 dark:text-brand-100">$5 full report</Link> evaluates every page in about a minute — the free scan shows 3 leaks, the report shows them all.
+        </p>
+      </section>
+
       {/* ── STEP 1: INTAKE ── */}
       <StepShell step="Step 1 · free" title="Tell us about your business" id="step-1">
         <Card>

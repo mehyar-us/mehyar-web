@@ -252,7 +252,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "What does a first engagement cost?",
           answer:
-            "A focused Tech Audit starts at $150 and a written Website Diagnosis Report is $250. Custom builds run $1k-$25k, retainers run $500-$3,500 per month, and hourly advisory is $150 per hour. The first call identifies the smallest useful engagement for the leak.",
+            "Start free: the 60-second AI website scan costs nothing, and the full evaluation report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email — while the founder-led audit itself is a human review, manually invoiced after a scope check. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
         },
         {
           question: "Where is MehyarSoft based?",
@@ -535,7 +535,7 @@ const staticMeta: Record<string, SeoMeta> = {
           {
             question: "How fast do I get the audit results?",
             answer:
-              "Most audits are delivered within a few business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs.",
+              "The founder-led audit is delivered within a few business days of your intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs.",
           },
           {
             question: "Is the $330 audit safe for regulated or PHI-adjacent businesses?",

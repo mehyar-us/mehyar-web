@@ -561,6 +561,14 @@ export default function AuditReport() {
             <strong className="text-foreground">How it works:</strong> pay $5 once, our AI writes the full evaluation for your site in about a minute, and it's emailed to you with a permanent link. No subscription, no upsell required to get value.
           </p>
         </div>
+
+        <div className="mx-auto mt-4 flex max-w-2xl items-start gap-3 rounded-2xl border border-[#0B1B33]/20 bg-[#0B1B33] p-5 text-left text-white">
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
+          <p className="text-sm leading-6 text-slate-200">
+            <strong className="text-white">Want the deepest read?</strong> This report covers your site. <strong className="text-white">Audit My Business ($330)</strong> goes further — add a short CEO walkthrough video and get a transcript-based assessment of the whole business, with a prioritized fix plan.{" "}
+            <Link href="/audit" className="font-semibold text-white underline underline-offset-4 hover:text-sky-200">Explore the $330 audit <ArrowRight className="inline h-4 w-4" /></Link>
+          </p>
+        </div>
       </div>
     </section>
   );
