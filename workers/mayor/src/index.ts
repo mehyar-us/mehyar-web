@@ -47,6 +47,7 @@ import {finishTelnyxConsent} from './auth/telnyx-callback';
 import {telnyxOAuthConfig} from './auth/telnyx-vault';
 import {handleOperationsRequest} from './operations';
 import {handleBillingPublic,handleBillingRequest} from './billing';
+import {handleLeadsPublic} from './leads';
 import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
@@ -73,6 +74,8 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(mcp)return mcp;
   const publicBilling=await handleBillingPublic(request,env);
   if(publicBilling)return publicBilling;
+  const publicLead=await handleLeadsPublic(request,env);
+  if(publicLead)return publicLead;
   if((url.pathname==='/business-audit'||url.pathname==='/business-audit/report')&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The audit page is not built yet.',{status:503});
     // Fetch the clean asset path: ASSETS redirects .html back to this route.
