@@ -37,7 +37,7 @@ const css=()=>readWeb('sales.css');
 it('pricing section exists on /sales with zero amounts',()=>{
   const page=html(),style=css();
   expect(page).toContain('id="plans"');
-  expect(page).toContain('Start free. Grow when you');
+  expect(page).toContain('Start free. Go Pro when you');
   for(const tier of ['Free','Pro','Top up'])expect(page).toContain(`<h3>${tier}</h3>`);
   expect(page).toContain('No credit card to start');
   expect(page).toContain('No hidden fees');
