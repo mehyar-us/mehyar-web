@@ -84,7 +84,7 @@
         <article class="plan-card">
           <h3>Free</h3>
           <p class="plan-tier">Free to start</p>
-          <p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs once your number is connected, reminders, and the morning briefing.</p>
+          <p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs once your number is connected (automatic text-backs send through Telnyx), reminders, and the morning briefing.</p>
         </article>
         <article class="plan-card">
           <h3>Pro</h3>
@@ -97,6 +97,7 @@
           <p>One-time top-ups in three sizes — Small, Medium, and Large — for the months that run hot. Buy only what you use — no subscription change, no overage surprises.</p>
         </article>
       </div>
+      <p class="decision-note">Usage counts reply attempts — every try counts toward your allowance, not only delivered replies.</p>
       <p class="plans-note">Credits activate after verified payment and expire at the end of the purchased Free UTC calendar month or Pro paid period. They do not roll over or transfer when switching plans.</p>
       <div id="sales-audit">
         <article class="plan-card">
@@ -108,15 +109,14 @@
         </article>
       </div>
       <p class="plans-note"><a href="/pricing">See full pricing — plans, top-ups, and terms</a></p>
-      <p class="plans-note">Usage counts reply attempts — every try counts toward your allowance, not only delivered replies.</p>
       <p class="plans-note">No hidden fees. The price of your Mayor plan is what you pay us — and calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates, separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>
-      <p class="plans-note">No credit card to start. Cancel anytime. Purchases are final — no refunds.</p>
+      <p class="plans-note">No credit card to start. Cancel anytime — cancelling stops renewal, and your plan runs to the end of the paid period. Purchases are final — no refunds.</p>
     </section>
 
     <section id="updates" class="page-width" aria-labelledby="updates-heading">
       <span class="section-kicker">STAY IN THE LOOP</span>
       <h2 id="updates-heading">Not ready to start free?</h2>
-      <p class="section-lead">Leave your email and we&rsquo;ll send occasional updates about The Mayor &mdash; new features and practical ideas for your shop. No spam, and you can unsubscribe anytime.</p>
+      <p class="section-lead">Join the list for one practical email a month &mdash; a money-loop idea you can steal for your shop, plus news about The Mayor. No spam, and you can unsubscribe anytime.</p>
       <form class="lead-form" action="/api/leads" method="post">
         <label for="lead-email">Email address</label>
         <input id="lead-email" name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@yourbusiness.com">
@@ -211,6 +211,20 @@
         <ul class="kpi-chips"><li title="Share of clients who rebook within their treatment cycle">Rebooking rate</li><li title="Booked treatment room-hours vs available room-hours">Room utilization</li><li title="Average revenue per visit, per client">Average ticket</li><li title="Share of appointments that never showed — each one is a visit you already staffed for">No-show rate</li></ul>
       </article>
       </div>
+    </section>
+
+    <section id="updates-loop" class="page-width" aria-labelledby="updates-loop-heading">
+      <span class="section-kicker">STAY IN THE LOOP</span>
+      <h2 id="updates-loop-heading">Take one idea with you.</h2>
+      <p class="section-lead">One practical email a month &mdash; a money-loop idea for your trade, plus news about The Mayor. No spam, unsubscribe anytime.</p>
+      <form class="lead-form" action="/api/leads" method="post">
+        <label for="lead-email-2">Email address</label>
+        <input id="lead-email-2" name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@yourbusiness.com">
+        <input type="hidden" name="source" value="sales-loop">
+        <span class="lead-hp" aria-hidden="true"><label>Leave this field empty<input name="website" type="text" tabindex="-1" autocomplete="off"></label></span>
+        <button class="button" type="submit">Keep me posted</button>
+      </form>
+      <p class="plans-note">We store your email only to send these updates, and we never sell it. See the <a href="https://mehyar.us/privacy-policy/">Privacy Policy</a>.</p>
     </section>
 
     <section id="sample" class="page-width" aria-labelledby="sample-heading">
