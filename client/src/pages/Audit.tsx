@@ -626,13 +626,16 @@ export default function Audit() {
               founder-led $330 tech audit
             </Link>
           </p>
-          <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-muted-foreground">
-            Site only? The{" "}
-            <Link href="/audit/report" className="font-semibold text-foreground underline underline-offset-2 hover:text-foreground">
-              $5 full report
-            </Link>{" "}
-            evaluates every page in about a minute.
-          </p>
+          <div className="mx-auto mt-6 flex max-w-xl flex-col items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm sm:flex-row sm:gap-4 sm:p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F59E0B] text-lg font-extrabold text-[#0B1B33]">$5</span>
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <p className="text-sm font-semibold text-foreground">The full report — site only</p>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Every page graded, every leak priced in estimated dollars. Delivered in about a minute.</p>
+            </div>
+            <Link href="/audit/report" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "shrink-0 bg-emerald-500 text-emerald-950 hover:bg-emerald-400")}>
+              Get the $5 report <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -920,6 +923,11 @@ export default function Audit() {
                 </span>
               </p>
             </div>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Delivered by email within a few business days. Results vary by business — this
+              audit shows what's true for your business today, and no audit can guarantee
+              specific revenue results.
+            </p>
 
             <form onSubmit={pay} className="mt-6 space-y-4">
               <div>
@@ -991,7 +999,7 @@ export default function Audit() {
               No — same price, different product. The{" "}
               <Link href="/micro-offer" className="underline underline-offset-2">founder-led $330 tech audit</Link>{" "}
               is a human review, invoiced by email. Audit My Business is the
-              automated AI counterpart: instant checkout, AI-written visual report, delivered by email.
+              automated AI counterpart: instant checkout, AI-written visual report, delivered by email within a few business days.
               Pick the human eye or the AI engine — or run both and compare.
             </FaqItem>
             <FaqItem q="Do I need the walkthrough video?">

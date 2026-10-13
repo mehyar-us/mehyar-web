@@ -186,7 +186,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "Is this the same as the founder-led $330 tech audit?",
           answer:
-            "No — same price, different product. The founder-led $330 tech audit is a human review, invoiced by email. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email.",
+            "No — same price, different product. The founder-led $330 tech audit is a human review, invoiced by email. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email within a few business days.",
         },
         {
           question: "Do I need the walkthrough video?",
@@ -247,7 +247,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "What does a first engagement cost?",
           answer:
-            "Start free: the 60-second AI website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
+            "Start free: the 60-second AI website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email within a few business days — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
         },
         {
           question: "Where is MehyarSoft based?",

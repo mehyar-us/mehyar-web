@@ -280,7 +280,7 @@ export default function BusinessReportView({ token, initial }: { token: string; 
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
           {timedOut
             ? "This is taking longer than usual. Your report is still being written — we'll email you the permanent link as soon as it's ready."
-            : "Our AI is analyzing your site and writing your professional evaluation. This usually takes a few minutes — it's also being emailed to you."}
+            : "Our AI is analyzing your site and writing your professional evaluation — we'll email you the permanent link as soon as it's ready."}
         </p>
         {!timedOut && (
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
