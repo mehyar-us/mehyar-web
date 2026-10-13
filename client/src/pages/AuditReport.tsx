@@ -513,6 +513,12 @@ export default function AuditReport() {
           The complete professional report on <em>your</em> site — every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.
         </p>
 
+        <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border bg-secondary/50 p-4 text-left">
+          <p className="text-sm leading-6 text-muted-foreground">
+            Read this first: this is a one-time scan of your public-facing site. It checks what a visitor (and Google) can see today; it is not a security penetration test and does not look inside your servers or accounts.
+          </p>
+        </div>
+
         <div className="mx-auto mt-10 grid max-w-3xl items-start gap-8 md:grid-cols-2">
           <ReportPreview className="mx-auto w-full max-w-xs rotate-[-2deg]" />
 
@@ -533,11 +539,6 @@ export default function AuditReport() {
               ))}
             </ul>
 
-            <p className="mt-5 text-sm leading-6 text-muted-foreground">
-              Your report reads your public site — every page graded, every leak priced in
-              estimated dollars — and tells you what to fix first.
-            </p>
-
             <Card className="mt-6 border-border bg-card text-left">
               <CardContent className="p-6">
                 <form onSubmit={buy} className="space-y-4">
@@ -551,7 +552,7 @@ export default function AuditReport() {
                   </div>
                   {buyError && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">{buyError}</p>}
                   <Button type="submit" variant="cta" size="lg" className="h-13 w-full bg-emerald-500 py-4 text-base text-emerald-950 hover:bg-emerald-400" disabled={buying}>
-                    {buying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting checkout…</> : <>Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" /></>}
+                    {buying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting checkout…</> : <>Get my $5 report <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>
                   <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                     <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
