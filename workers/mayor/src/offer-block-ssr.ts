@@ -13,6 +13,7 @@
  * double-render or flicker.
  */
 import {PLANS,CREDIT_PACKS} from './billing/plans';
+import {AUDIT_OFFER} from './billing/audit';
 
 function escapeHtml(value:string):string{
   return value.replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string));
@@ -123,6 +124,7 @@ export function injectPricingCards(html:string):string{
   if(!rendered)return html;
   let out=injectIntoContainer(html,'plan-cards',rendered.plans);
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
+  out=injectIntoContainer(out,'audit-card',auditCardSsrHtml());
   return out;
 }
 /* ------------------------------------------------------------------ */
@@ -139,8 +141,6 @@ export function salesPlansSsrHtml():string|null{
   if(!validPlan(free)||!validPlan(pro))return null;
   const packs=[...CREDIT_PACKS];
   if(packs.length===0||!packs.every(validPack))return null;
-  const minPack=packs.reduce((a,b)=>a.priceCents<=b.priceCents?a:b);
-  const maxPack=packs.reduce((a,b)=>a.priceCents>=b.priceCents?a:b);
   const start=
     `<article class="plan-card"><h3>Free</h3>`+
     priceLine(free.priceCents,'')+
@@ -155,9 +155,11 @@ export function salesPlansSsrHtml():string|null{
     `<a class="button button-small" href="/">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+
-    `<p class="plan-price"><strong>${packs.map(p=>escapeHtml(formatPrice(p.priceCents))).join(' · ')}</strong><span> one-time</span></p>`+
-    `<p class="plan-tier">+${minPack.replyAttempts.toLocaleString('en-US')} to +${maxPack.replyAttempts.toLocaleString('en-US')} reply attempts · +${minPack.voiceMinutes} to +${maxPack.voiceMinutes} microphone minutes</p>`+
-    `<p>One-time top-ups for the months that run hot. Buy only what you use — no subscription change, no overage surprises.</p>`+
+    `<p class="plan-tier">One-time, as you need it</p>`+
+    `<ul class="pack-list">`+
+    packs.map(p=>`<li><strong>${escapeHtml(p.name)} — ${escapeHtml(formatPrice(p.priceCents))}</strong> · +${p.replyAttempts.toLocaleString('en-US')} reply attempts · +${p.voiceMinutes} microphone minutes</li>`).join('')+
+    `</ul>`+
+    `<p>Buy only what you use — no subscription change, no overage surprises.</p>`+
     `<a class="button button-small" href="/pricing">See pricing</a></article>`;
   return start+grow+topup;
 }
@@ -170,7 +172,26 @@ export function salesPlansSsrHtml():string|null{
 export function injectSalesPlans(html:string):string{
   const rendered=salesPlansSsrHtml();
   if(!rendered)return html;
-  return injectIntoContainer(html,'sales-plan-cards',rendered);
+  let out=injectIntoContainer(html,'sales-plan-cards',rendered);
+  const audit=auditCardSsrHtml();
+  if(audit)out=injectIntoContainer(out,'sales-audit',audit);
+  return out;
+}
+/* ------------------------------------------------------------------ */
+/* The extensive business audit — a named offer card rendered from       */
+/* AUDIT_OFFER (src/billing/audit), the same source the checkout        */
+/* verifies against Stripe. One-time price, deliverable scope, the      */
+/* queue-not-instant delivery truth, and the no-refunds line.           */
+/* ------------------------------------------------------------------ */
+export function auditCardSsrHtml():string{
+  const scope=AUDIT_OFFER.scope.slice(0,-1).join(', ').toLowerCase();
+  const plan=AUDIT_OFFER.scope[AUDIT_OFFER.scope.length-1].toLowerCase();
+  return `<article class="plan-card"><h3>${escapeHtml(AUDIT_OFFER.name)}</h3>`+
+    priceLine(AUDIT_OFFER.priceCents,' one-time')+
+    `<p class="plan-tier">One business · one focused plan</p>`+
+    `<p>A reviewed report covering ${escapeHtml(scope)} — plus ${escapeHtml(plan)}. Payment queues your audit: the report is generated and independently reviewed after intake, not delivered instantly.</p>`+
+    `<p>Purchases are final — no refunds.</p>`+
+    `<a class="button button-small" href="/business-audit">Start your audit</a></article>`;
 }
 /**
  * Inject the server-rendered pricing into the #offer-block container of a

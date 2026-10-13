@@ -134,6 +134,8 @@ section.page-width{padding-top:2.5rem;padding-bottom:2.5rem}
 .sample-msg{max-width:85%;padding:0.65rem 0.9rem;border-radius:0.9rem;margin:0 0 0.6rem;line-height:1.45}
 .sample-out{background:var(--brand);color:#fff;margin-right:auto}
 .sample-in{background:#e4ebf2;color:var(--ink);margin-left:auto;text-align:right}
+.pack-list{list-style:none;margin:0 0 0.75rem;padding:0;display:grid;gap:0.45rem;font-size:0.94rem}
+.pack-list li{margin:0}
 .loop-note{color:var(--muted);font-size:0.92rem;margin-top:1.25rem;max-width:44rem}
 
 /* FAQ */

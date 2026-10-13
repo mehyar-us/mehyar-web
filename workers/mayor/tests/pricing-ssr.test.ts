@@ -13,8 +13,9 @@ import {expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import {pricingCardsSsrHtml,injectPricingCards,salesPlansSsrHtml,injectSalesPlans} from '../src/offer-block-ssr';
+import {pricingCardsSsrHtml,injectPricingCards,salesPlansSsrHtml,injectSalesPlans,auditCardSsrHtml} from '../src/offer-block-ssr';
 import {PLANS,CREDIT_PACKS} from '../src/billing/plans';
+import {AUDIT_OFFER} from '../src/billing/audit';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const webDir=join(here,'..','web');
@@ -88,6 +89,12 @@ it('/sales SSR renders priced plan cards from the live catalog (rot107, tiers ro
   expect(rendered).toContain(`Go Pro — $${pro.priceCents/100}/mo`);
   // rot109: every top-up price shows, all from the catalog.
   for(const pack of CREDIT_PACKS)expect(rendered).toContain(`$${pack.priceCents/100}`);
+  // rot117: the full named mapping — name, price, and allowances per pack.
+  for(const pack of CREDIT_PACKS){
+    expect(rendered).toContain(`${pack.name} — $${pack.priceCents/100}`);
+    expect(rendered).toContain(`+${pack.replyAttempts.toLocaleString('en-US')} reply attempts`);
+    expect(rendered).toContain(`+${pack.voiceMinutes} microphone minutes`);
+  }
   expect(rendered).toContain('1,000 reply attempts');
   expect(rendered).toContain('href="/pricing"');
   // rot116: chief's order — Free, then Pro directly above the Top-up card.
@@ -111,6 +118,32 @@ it('injectSalesPlans fills the real /sales shell and is idempotent (rot107)',()=
   // Providers are named where sending is discussed.
   expect(shell).toContain('Telnyx');
   expect(shell).toContain('Twilio');
+});
+
+it('audit offer card renders from AUDIT_OFFER and injects on /sales and /pricing (rot117)',()=>{
+  const card=auditCardSsrHtml();
+  expect(card).toContain(AUDIT_OFFER.name);
+  expect(card).toContain(`$${AUDIT_OFFER.priceCents/100}`);
+  expect(card).toContain('one-time');
+  expect(card).toContain('30/60/90-day plan');
+  expect(card).toContain('Purchases are final — no refunds.');
+  expect(card).toContain('href="/business-audit"');
+  const sales=injectSalesPlans(readWeb('sales.html'));
+  expect(sales).toContain(`$${AUDIT_OFFER.priceCents/100}`);
+  expect(sales).toContain(AUDIT_OFFER.name);
+  const pricing=injectPricingCards(readWeb('pricing.html'));
+  expect(pricing).toContain(`$${AUDIT_OFFER.priceCents/100}`);
+  expect(pricing).toContain(AUDIT_OFFER.name);
+  expect(pricing).toContain('href="/business-audit"');
+});
+
+it('/sales surfaces the pricing section before the money-loop walkthroughs (rot117)',()=>{
+  const page=readWeb('sales.html');
+  const plansAt=page.indexOf('id="plans"'),loopAt=page.indexOf('id="money-loop"');
+  expect(plansAt).toBeGreaterThanOrEqual(0);
+  expect(loopAt).toBeGreaterThan(plansAt);
+  // The expiry sentence lives on /sales too (rot117, copied from /pricing).
+  expect(page).toContain('Credits activate after verified payment and expire at the end of the purchased Free UTC calendar month or Pro paid period. They do not roll over or transfer when switching plans.');
 });
 
 it('src/offer-block-ssr.ts contains no hardcoded dollar amount',()=>{
