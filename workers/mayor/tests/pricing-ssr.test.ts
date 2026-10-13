@@ -183,6 +183,35 @@ it('homepage footer links to /sales and /pricing (rot120)',()=>{
   expect(home).toContain('href="/pricing"');
 });
 
+it('structured data: Product JSON-LD injected from the catalog; Organization on home (rot130)',()=>{
+  for(const page of ['sales.html','pricing.html']){
+    const out=page==='sales.html'?injectSalesPlans(readWeb(page)):injectPricingCards(readWeb(page));
+    const m=out.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    expect(m).not.toBeNull();
+    const data=JSON.parse(m![1]);
+    expect(data['@type']).toBe('Product');
+    const prices=(data.offers as {price:number}[]).map(o=>o.price);
+    for(const p of [...PLANS,...CREDIT_PACKS])expect(prices).toContain(p.priceCents/100);
+    expect(prices).toContain(AUDIT_OFFER.priceCents/100);
+  }
+  const home=readWeb('index.html');
+  expect(home).toContain('"@type":"Organization"');
+  expect(home).toContain('MehyarSoft LLC');
+});
+
+it('/terms carries viewport-fit like the other pages (rot130)',()=>{
+  expect(readWeb('public/terms.html')).toContain('viewport-fit=cover');
+});
+
+it('/sales claim and provider qualification read as one note (rot130)',()=>{
+  const page=readWeb('sales.html');
+  expect(page).toContain('No hidden fees. The price of your Mayor plan is what you pay us');
+  const claimAt=page.indexOf('No hidden fees. The price of your Mayor plan');
+  const qualAt=page.indexOf(PROVIDER_LINE);
+  expect(claimAt).toBeGreaterThanOrEqual(0);
+  expect(qualAt).toBeGreaterThan(claimAt);
+});
+
 it('src/offer-block-ssr.ts contains no hardcoded dollar amount',()=>{
   const source=readFileSync(join(srcDir,'offer-block-ssr.ts'),'utf8');
   expect(source).not.toMatch(/\$\d/);

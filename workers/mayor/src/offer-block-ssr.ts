@@ -125,7 +125,7 @@ export function injectPricingCards(html:string):string{
   let out=injectIntoContainer(html,'plan-cards',rendered.plans);
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
   out=injectIntoContainer(out,'audit-card',auditCardSsrHtml());
-  return out;
+  return injectStructuredData(out);
 }
 /* ------------------------------------------------------------------ */
 /* /sales SSR — priced plan cards for the pitch page (rot107).          */
@@ -175,7 +175,42 @@ export function injectSalesPlans(html:string):string{
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
   const audit=auditCardSsrHtml();
   if(audit)out=injectIntoContainer(out,'sales-audit',audit);
-  return out;
+  return injectStructuredData(out);
+}
+/* ------------------------------------------------------------------ */
+/* Structured data (rot130): a Product record for the selling pages,    */
+/* built at serve time from the same catalog objects the cards render   */
+/* from, so a price in the JSON-LD can never drift from the charged     */
+/* price. Amounts are schema numbers (price + priceCurrency), never     */
+/* display strings.                                                     */
+/* ------------------------------------------------------------------ */
+export function structuredDataSsrHtml():string{
+  const offers:Record<string,unknown>[]=[];
+  for(const p of PLANS){
+    if(!validPlan(p))continue;
+    const offer:Record<string,unknown>={
+      '@type':'Offer',name:p.name,price:p.priceCents/100,priceCurrency:p.currency,
+      availability:'https://schema.org/InStock',url:'https://mayor.mehyar.us/pricing',
+    };
+    if(p.priceCents>0)offer.priceSpecification={'@type':'UnitPriceSpecification',price:p.priceCents/100,priceCurrency:p.currency,unitText:'MON'};
+    offers.push(offer);
+  }
+  for(const p of CREDIT_PACKS){
+    if(!validPack(p))continue;
+    offers.push({'@type':'Offer',name:`${p.name} top-up`,price:p.priceCents/100,priceCurrency:p.currency,availability:'https://schema.org/InStock',url:'https://mayor.mehyar.us/pricing'});
+  }
+  offers.push({'@type':'Offer',name:AUDIT_OFFER.name,price:AUDIT_OFFER.priceCents/100,priceCurrency:AUDIT_OFFER.currency,availability:'https://schema.org/InStock',url:'https://mayor.mehyar.us/business-audit'});
+  const data={
+    '@context':'https://schema.org','@type':'Product',name:'The Mayor',
+    description:'An AI chief of staff for local business owners. Once a business number is connected, it answers missed calls and texts back leads, and keeps the day\'s money in view.',
+    brand:{'@type':'Brand',name:'The Mayor'},
+    offers,
+  };
+  return `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
+}
+export function injectStructuredData(html:string):string{
+  if(html.includes('application/ld+json'))return html;
+  return html.replace('</head>',`${structuredDataSsrHtml()}</head>`);
 }
 /* ------------------------------------------------------------------ */
 /* The extensive business audit — a named offer card rendered from       */
