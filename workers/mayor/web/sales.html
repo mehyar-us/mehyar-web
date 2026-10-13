@@ -89,7 +89,7 @@
         <article class="plan-card">
           <h3>Pro</h3>
           <p class="plan-tier">One simple plan</p>
-          <p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. No hidden fees.</p>
+          <p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. No hidden fees — phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>
         </article>
         <article class="plan-card">
           <h3>Top up</h3>
@@ -231,6 +231,20 @@
           <p>You connect a business number you own through Telnyx or Twilio. Once a Telnyx number is connected, missed-call text-backs are sent automatically from that number; until a number is connected, The Mayor prepares drafts you can copy into your own messaging app. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>
         </details>
       </div>
+    </section>
+
+    <section id="updates" class="page-width" aria-labelledby="updates-heading">
+      <span class="section-kicker">STAY IN THE LOOP</span>
+      <h2 id="updates-heading">Not ready to start free?</h2>
+      <p class="section-lead">Leave your email and we&rsquo;ll send occasional updates about The Mayor &mdash; new features and practical ideas for your shop. No spam, and you can unsubscribe anytime.</p>
+      <form class="lead-form" action="/api/leads" method="post">
+        <label for="lead-email">Email address</label>
+        <input id="lead-email" name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@yourbusiness.com">
+        <input type="hidden" name="source" value="sales">
+        <span class="lead-hp" aria-hidden="true"><label>Leave this field empty<input name="website" type="text" tabindex="-1" autocomplete="off"></label></span>
+        <button class="button" type="submit">Keep me posted</button>
+      </form>
+      <p class="plans-note">We store your email only to send these updates, and we never sell it. See the <a href="https://mehyar.us/privacy-policy/">Privacy Policy</a>.</p>
     </section>
 
     <section class="cta-band page-width" aria-labelledby="cta-heading">

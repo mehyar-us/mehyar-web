@@ -111,3 +111,9 @@ it('hero text-back claim carries the connected-number condition (rot122)',()=>{
  expect(html).toContain('Once your business number is connected, it answers the calls you miss and texts back the leads you would lose, automatically through Telnyx');
  expect(html).not.toContain('It answers the calls you miss, texts back the leads you would lose');
 });
+
+it('carries the email capture form with its disclosure (rot136)',()=>{
+ expect(html).toContain('<form class="lead-form" action="/api/leads" method="post">');
+ expect(html).toContain('name="email" type="email" required');
+ expect(html).toContain('We store your email only to send these updates, and we never sell it.');
+});

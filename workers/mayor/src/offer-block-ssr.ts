@@ -151,7 +151,7 @@ export function salesPlansSsrHtml():string|null{
     `<article class="plan-card"><h3>Pro</h3>`+
     priceLine(pro.priceCents,' / month')+
     `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. No hidden fees.</p>`+
+    `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
     `<a class="button button-small" href="/">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+
