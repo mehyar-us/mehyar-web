@@ -46,7 +46,7 @@
       <div id="plan-cards" class="plan-grid" aria-live="polite">
         <p class="plans-note">Loading plans…</p>
       </div>
-      <p class="decision-note">Usage counts reply attempts — every try counts toward your allowance, not only delivered replies. Conversation estimates figure roughly 10 replies per conversation.</p>
+      <p class="decision-note">Usage counts reply attempts — every try counts toward your allowance, not only delivered replies. Conversation estimates figure roughly 10 replies per conversation. Microphone minutes count from the moment the mic opens — startup and silence included.</p>
       <p class="plans-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates — separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>
       <!-- OFFER SLOT: the priced offer hydrates here when the owner sets the price.
            Rendered from GET /api/billing/catalog by pricing-offer.js (future).
@@ -122,7 +122,7 @@
     function planCard(p){
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'
         +'<p class="plan-tier">'+Number(p.replyLimit).toLocaleString()+' reply attempts (≈'+Math.round(Number(p.replyLimit)/10)+' real conversations a month) · '+Number(p.voiceMinuteLimit)+' microphone minutes a month</p>'
-        +'<p>'+(p.id==='free'?'A good place to start. Talk to The Mayor and feel the money loop working.':'For the busier business: the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected.')+'</p>'
+        +'<p>'+(p.id==='free'?'A good place to start. Talk to The Mayor and feel the money loop working.':'For the busier business: the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls.')+'</p>'
         +'<a class="button button-small" href="'+(p.id==='pro'?'/billing?plan=pro':'/')+'">'+(p.id==='pro'?'Go Pro — $'+Math.round(Number(p.priceCents)/100)+'/mo':'Start free')+'</a></article>';
     }
     function topupCard(p){

@@ -42,7 +42,8 @@ export function offerBlockSsrHtml():string|null{
     `<p>${p.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyLimit)} real conversations a month) · ${p.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p class="offer-blurb">${blurb}</p></div>`;
   return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.')}</div>`+
-    `<p class="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>`;
+    `<p class="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>`+
+    `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`;
 }
 
 const OFFER_OPEN='<div id="offer-block"';
@@ -97,7 +98,7 @@ export function pricingCardsSsrHtml():{plans:string;packs:string}|null{
     `<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>`;
   return {
     plans:planCard(free,'A good place to start. Talk to The Mayor and feel the money loop working.')
-      +planCard(pro,'For the busier business: the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected.'),
+      +planCard(pro,'For the busier business: the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls.'),
     packs:packs.map(packCard).join(''),
   };
 }
@@ -152,7 +153,7 @@ export function salesPlansSsrHtml():string|null{
     `<article class="plan-card"><h3>Pro</h3>`+
     priceLine(pro.priceCents,' / month')+
     `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(pro.replyLimit)} real conversations a month) · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
+    `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
     `<a class="button button-small" href="/billing?plan=pro">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+

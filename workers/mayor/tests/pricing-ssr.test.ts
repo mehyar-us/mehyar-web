@@ -13,7 +13,7 @@ import {expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import {pricingCardsSsrHtml,injectPricingCards,salesPlansSsrHtml,injectSalesPlans,auditCardSsrHtml} from '../src/offer-block-ssr';
+import {pricingCardsSsrHtml,injectPricingCards,salesPlansSsrHtml,injectSalesPlans,auditCardSsrHtml,offerBlockSsrHtml} from '../src/offer-block-ssr';
 import {PLANS,CREDIT_PACKS,approxConversations,REPLIES_PER_CONVERSATION} from '../src/billing/plans';
 import {AUDIT_OFFER} from '../src/billing/audit';
 
@@ -281,10 +281,10 @@ it('rot149: Telnyx line on the Pro card itself + attempts translated to conversa
  const sales=readWeb('sales.html'),pricing=readWeb('pricing.html'),terms=readWeb('public/terms.html');
  const rendered=pricingCardsSsrHtml(),salesServed=injectSalesPlans(sales);
  // 1. The Pro card carries the Telnyx-only line on both selling pages.
- expect(salesServed).toContain('Automatic text-backs are sent through Telnyx once your number is connected. No hidden fees');
- expect(sales).toContain('Automatic text-backs are sent through Telnyx once your number is connected. No hidden fees');
- expect(rendered!.plans).toContain('watching your book. Automatic text-backs are sent through Telnyx once your number is connected.');
- expect(pricing).toContain('watching your book. Automatic text-backs are sent through Telnyx once your number is connected.');
+ expect(salesServed).toContain('Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls. No hidden fees');
+ expect(sales).toContain('Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls. No hidden fees');
+ expect(rendered!.plans).toContain('watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls.');
+ expect(pricing).toContain('watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls.');
  // 2. Conversation equivalents derive from the catalog numbers themselves.
  expect(REPLIES_PER_CONVERSATION).toBe(10);
  for(const p of PLANS){expect(salesServed).toContain(`(\u2248${approxConversations(p.replyLimit)} real conversations a month)`);expect(rendered!.plans).toContain(`(\u2248${approxConversations(p.replyLimit)} real conversations a month)`);}
@@ -295,4 +295,12 @@ it('rot149: Telnyx line on the Pro card itself + attempts translated to conversa
  expect(terms).toContain('100 assistant reply attempts (about 10 conversations, figuring roughly 10 replies per conversation)');
  expect(terms).toContain('1,000 reply attempts (about 100 conversations)');
  expect(terms).toContain('800 reply attempts (about 80 conversations)');
+});
+
+it('rot152: counting notes reach the homepage offer block + mic-minutes counting beside the figures',()=>{
+ const mic='Microphone minutes count from the moment the mic opens \u2014 startup and silence included.';
+ expect(offerBlockSsrHtml()).toContain('Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies.');
+ expect(offerBlockSsrHtml()).toContain(mic);
+ expect(readWeb('sales.html')).toContain(mic);
+ expect(readWeb('pricing.html')).toContain(mic);
 });
