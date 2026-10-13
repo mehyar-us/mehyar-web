@@ -132,6 +132,7 @@ export function verticalPage(vertical, profile) {
       <p>Sign in to open The Mayor and put it to work on your next missed call.</p>
       <div class="hero-ctas">
         <a class="button" href="/">Start free</a>
+        <a class="button button-outline" href="/pricing">See pricing</a>
         <a class="button button-outline" href="/">Sign in</a>
       </div>
     </section>

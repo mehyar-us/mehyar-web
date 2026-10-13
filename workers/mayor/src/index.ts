@@ -1,7 +1,7 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
-import {injectOfferBlock,injectPricingCards} from './offer-block-ssr';
+import {injectOfferBlock,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
@@ -103,7 +103,20 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
     // Fetch the clean asset path: ASSETS redirects .html back to this route.
     const target=new URL('/sales',request.url);
-    return env.ASSETS.fetch(new Request(target,request));
+    const assetRes=await env.ASSETS.fetch(new Request(target,request));
+    const contentType=assetRes.headers.get('content-type')??'';
+    if(assetRes.ok&&contentType.includes('text/html')){
+      // Server-render the plan-card prices from the live billing catalog
+      // (rot107) — the page source stays price-free, amounts are never
+      // hardcoded. If injection changes nothing, serve the asset as-is.
+      const original=await assetRes.text(),injected=injectSalesPlans(original);
+      if(injected!==original){
+        const headers=new Headers(assetRes.headers);
+        headers.set('content-type','text/html; charset=utf-8');
+        return new Response(injected,{status:assetRes.status,headers});
+      }
+    }
+    return assetRes;
   }
   // Pricing page: server-render the plan cards from the live billing catalog
   // (amounts never hardcoded), same pattern as the home-page offer slot.
