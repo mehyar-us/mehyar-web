@@ -52,7 +52,11 @@ it('pricing SSR renders plan cards from the live catalog (no hardcoded amounts)'
   expect(rendered.plans).toContain(`Go Pro — $${pro.priceCents/100}/mo`);
   expect(rendered.plans).toContain('>Start free</a>');
   // rot105: every top-up card carries a Buy CTA.
-  expect(rendered.packs.split('>Buy</a>').length-1).toBe(CREDIT_PACKS.length);
+  // rot120: each top-up CTA carries its pack — distinct label + destination.
+  expect(rendered.packs.split('href="/billing?pack=').length-1).toBe(CREDIT_PACKS.length);
+  for(const pack of CREDIT_PACKS){
+    expect(rendered.packs).toContain(`href="/billing?pack=${pack.id}">Buy ${pack.name}</a>`);
+  }
 });
 
 it('pricing page carries the credit expiry sentence and the attempts disclosure (rot105)',()=>{
@@ -144,6 +148,25 @@ it('/sales surfaces the pricing section before the money-loop walkthroughs (rot1
   expect(loopAt).toBeGreaterThan(plansAt);
   // The expiry sentence lives on /sales too (rot117, copied from /pricing).
   expect(page).toContain('Credits activate after verified payment and expire at the end of the purchased Free UTC calendar month or Pro paid period. They do not roll over or transfer when switching plans.');
+});
+
+const PROVIDER_LINE='your provider bills you directly for number rental, calls, and messages at its own rates';
+
+it('provider charges are qualified at the pricing section on both selling pages (rot120)',()=>{
+  expect(readWeb('sales.html')).toContain(PROVIDER_LINE);
+  expect(readWeb('pricing.html')).toContain(PROVIDER_LINE);
+});
+
+it('/sales discloses the reply-attempt counting rule and the Twilio send path (rot120)',()=>{
+  const page=readWeb('sales.html');
+  expect(page).toContain('Usage counts reply attempts — every try counts toward your allowance, not only delivered replies.');
+  expect(page).toContain('Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.');
+});
+
+it('homepage footer links to /sales and /pricing (rot120)',()=>{
+  const home=readWeb('index.html');
+  expect(home).toContain('href="/sales"');
+  expect(home).toContain('href="/pricing"');
 });
 
 it('src/offer-block-ssr.ts contains no hardcoded dollar amount',()=>{
