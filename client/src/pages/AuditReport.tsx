@@ -548,7 +548,7 @@ export default function AuditReport() {
                   <Button type="submit" variant="cta" size="lg" className="h-13 w-full bg-emerald-500 py-4 text-base text-emerald-950 hover:bg-emerald-400" disabled={buying}>
                     {buying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting checkout…</> : <>Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>
-                  <p className="text-center text-xs text-muted-foreground">One-time · Instant delivery · Less than a coffee</p>
+                  <p className="text-center text-xs text-muted-foreground">One-time · Delivered in about a minute · Less than a coffee</p>
                 </form>
               </CardContent>
             </Card>

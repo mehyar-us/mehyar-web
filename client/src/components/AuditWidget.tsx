@@ -317,7 +317,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
                 <Link href={`/audit/report?email=${encodeURIComponent(email)}&url=${encodeURIComponent(url)}`} className={buttonVariants({ variant: "cta", size: "lg", className: "bg-[#F59E0B] text-[#0B1B33] hover:bg-amber-400" })}>
                   Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
-                <span className="text-xs text-slate-400">One-time · Instant delivery · Less than a coffee</span>
+                <span className="text-xs text-slate-400">One-time · Delivered in about a minute · Less than a coffee</span>
               </div>
             </div>
           </div>
