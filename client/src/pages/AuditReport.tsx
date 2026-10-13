@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ArrowRight, Bot, CalendarClock, CheckCircle2, FileText, ListChecks,
-  Loader2, Printer, Scale, Search, ShieldCheck, Sparkles, Target, TrendingDown, AlertTriangle,
+  Loader2, Lock, Printer, Scale, Search, ShieldCheck, Sparkles, Target, TrendingDown, AlertTriangle,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -533,6 +533,11 @@ export default function AuditReport() {
               ))}
             </ul>
 
+            <p className="mt-5 text-sm leading-6 text-muted-foreground">
+              Your report reads your public site — every page graded, every leak priced in
+              estimated dollars — and tells you what to fix first.
+            </p>
+
             <Card className="mt-6 border-border bg-card text-left">
               <CardContent className="p-6">
                 <form onSubmit={buy} className="space-y-4">
@@ -548,6 +553,9 @@ export default function AuditReport() {
                   <Button type="submit" variant="cta" size="lg" className="h-13 w-full bg-emerald-500 py-4 text-base text-emerald-950 hover:bg-emerald-400" disabled={buying}>
                     {buying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting checkout…</> : <>Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>
+                  <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
+                  </p>
                   <p className="text-center text-xs text-muted-foreground">One-time · Delivered in about a minute · Less than a coffee</p>
                 </form>
               </CardContent>
