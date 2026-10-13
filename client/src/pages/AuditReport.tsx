@@ -123,6 +123,9 @@ export default function AuditReport() {
   const [url, setUrl] = useState(q.get("url") || "");
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState("");
+  const [payBlocked, setPayBlocked] = useState(false);
+  const [notifyState, setNotifyState] = useState<"idle" | "saving" | "saved">("idle");
+  const [notifyMsg, setNotifyMsg] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [report, setReport] = useState<FullReport | null>(null);
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
@@ -214,7 +217,9 @@ export default function AuditReport() {
       }
       if (!data.ok) {
         if (data.error === "stripe_not_configured") {
-          throw new Error("Checkout is opening shortly — your spot is saved. Leave your email on the free audit page and we'll send your report link the moment it's live.");
+          setPayBlocked(true);
+          setBuying(false);
+          return;
         }
         throw new Error(data.message || "Couldn't start checkout.");
       }
@@ -223,6 +228,33 @@ export default function AuditReport() {
       setBuyError(err?.message || "Something went wrong.");
       setBuying(false);
     }
+  };
+
+  /* Blocked-checkout fallback: capture the notify-me click (the click is the
+     consent) via /api/audit/full-report/pay-blocked. */
+  const notifyWhenBack = async () => {
+    setNotifyMsg("");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      setNotifyMsg("Enter your email above so we can notify you.");
+      return;
+    }
+    setNotifyState("saving");
+    try {
+      const r = await fetch("/api/audit/full-report/pay-blocked", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), url }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (data.ok) {
+        setNotifyState("saved");
+        return;
+      }
+      setNotifyMsg("Couldn't save that just now — try again in a moment.");
+    } catch {
+      setNotifyMsg("Couldn't save that just now — try again in a moment.");
+    }
+    setNotifyState("idle");
   };
 
   /* ── REPORT VIEW ── */
@@ -519,6 +551,10 @@ export default function AuditReport() {
           </p>
         </div>
 
+        <p className="mx-auto mt-3 max-w-2xl text-xs leading-5 text-muted-foreground">
+          Results vary by business — this report shows what's true for your site today, and no audit can guarantee specific revenue results.
+        </p>
+
         <div className="mx-auto mt-10 grid max-w-3xl items-start gap-8 md:grid-cols-2">
           <ReportPreview className="mx-auto w-full max-w-xs rotate-[-2deg]" />
 
@@ -551,6 +587,27 @@ export default function AuditReport() {
                     <Input id="r-email" type="email" autoComplete="email" required placeholder="you@youremail.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
                   </div>
                   {buyError && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">{buyError}</p>}
+                  {payBlocked && (
+                    <div className="rounded-2xl border border-border bg-secondary/50 p-4">
+                      <p className="text-sm font-semibold text-foreground">Don't lose your report</p>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        Checkout is opening shortly. Tap below and we'll send you one message the
+                        moment it's live — nothing else, ever. No charge is made until you pay.
+                      </p>
+                      {notifyState === "saved" ? (
+                        <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          You're on the list — we'll email {email.trim()} the moment checkout opens.
+                        </p>
+                      ) : (
+                        <>
+                          <Button type="button" variant="outline" size="lg" className="mt-3 w-full" onClick={notifyWhenBack} disabled={notifyState === "saving"}>
+                            {notifyState === "saving" ? "Saving…" : "Notify me when checkout opens"}
+                          </Button>
+                          {notifyMsg && <p role="alert" className="mt-2 text-sm text-amber-700 dark:text-amber-300">{notifyMsg}</p>}
+                        </>
+                      )}
+                    </div>
+                  )}
                   <Button type="submit" variant="cta" size="lg" className="h-13 w-full bg-emerald-500 py-4 text-base text-emerald-950 hover:bg-emerald-400" disabled={buying}>
                     {buying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting checkout…</> : <>Get my $5 report <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>

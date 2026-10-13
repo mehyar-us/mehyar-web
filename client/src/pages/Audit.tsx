@@ -626,6 +626,13 @@ export default function Audit() {
               founder-led $330 tech audit
             </Link>
           </p>
+          <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-muted-foreground">
+            Site only? The{" "}
+            <Link href="/audit/report" className="font-semibold text-foreground underline underline-offset-2 hover:text-foreground">
+              $5 full report
+            </Link>{" "}
+            evaluates every page in about a minute.
+          </p>
         </div>
       </section>
 
