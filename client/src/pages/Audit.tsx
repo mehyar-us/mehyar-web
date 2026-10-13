@@ -654,7 +654,7 @@ export default function Audit() {
       {/* ── LADDER CROSS-LINK ── */}
       <section className="px-4 pb-2">
         <p className="site-shell max-w-4xl text-center text-sm text-muted-foreground">
-          Want to start with the site alone? The <Link href="/audit/report" className="font-semibold text-brand-700 underline underline-offset-4 dark:text-brand-100">$5 full report</Link> evaluates every page in about a minute — the free scan shows 3 leaks, the report shows them all.
+          Want to start with the site alone? The <Link href="/audit/report" className="font-semibold text-brand-700 underline underline-offset-4 dark:text-brand-100">$5 full report</Link> evaluates every page in about a minute — the free scan shows 3 leaks, the report shows them all. Audit My Business goes further: add your CEO walkthrough video and it assesses the whole business — transcript-based findings on how you sell, book, and follow up, not just the site.
         </p>
       </section>
 
@@ -739,6 +739,14 @@ export default function Audit() {
               customers, what's working and what isn't. The AI uses it for a deeper assessment,
               including transcript-based findings in your report. Skip it and the audit covers
               your public site alone.
+            </p>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              <strong className="text-foreground">Video terms:</strong> your walkthrough and its
+              audio track upload to our secure Cloudflare storage with your audit. The audio
+              is transcribed by Cloudflare AI, and the transcript is used only to write your
+              report's deep-dive section. Your video and transcript stay with your audit record
+              so we can re-send your report — never sold, never used for marketing, and never
+              used to train AI models.
             </p>
 
             {!intake ? (
