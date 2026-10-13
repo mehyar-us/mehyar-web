@@ -78,16 +78,16 @@ it('injectPricingCards is idempotent (never double-injects)',()=>{
   expect(injectPricingCards(once)).toBe(once);
 });
 
-it('/sales SSR renders priced plan cards from the live catalog (rot107)',()=>{
+it('/sales SSR renders priced plan cards from the live catalog (rot107, tiers rot109)',()=>{
   const rendered=salesPlansSsrHtml()!;
   const pro=PLANS.find(p=>p.id==='pro')!;
-  const minPack=CREDIT_PACKS.reduce((a,b)=>a.priceCents<=b.priceCents?a:b);
-  expect(rendered).toContain('Start');
-  expect(rendered).toContain('Grow');
+  expect(rendered).toContain('<h3>Free</h3>');
+  expect(rendered).toContain('<h3>Pro</h3>');
   expect(rendered).toContain('Top up');
   expect(rendered).toContain(`$${pro.priceCents/100}`);
   expect(rendered).toContain(`Go Pro — $${pro.priceCents/100}/mo`);
-  expect(rendered).toContain(`From $${minPack.priceCents/100}`);
+  // rot109: every top-up price shows, all from the catalog.
+  for(const pack of CREDIT_PACKS)expect(rendered).toContain(`$${pack.priceCents/100}`);
   expect(rendered).toContain('1,000 reply attempts');
   expect(rendered).toContain('href="/pricing"');
 });
