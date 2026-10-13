@@ -129,6 +129,11 @@ section.page-width{padding-top:2.5rem;padding-bottom:2.5rem}
 .plan-card p{margin:0;color:var(--ink)}
 .plan-card p+p{margin-top:0.8rem}
 .plans-note{color:var(--muted);font-size:0.92rem;margin-top:1.25rem;max-width:44rem}
+.sample-thread{max-width:34rem;margin:1.5rem auto;background:#f6f8fa;border:1px solid #dde4ec;border-radius:1rem;padding:1.25rem}
+.sample-meta{font-size:0.85rem;color:var(--muted);text-align:center;margin:0 0 0.9rem}
+.sample-msg{max-width:85%;padding:0.65rem 0.9rem;border-radius:0.9rem;margin:0 0 0.6rem;line-height:1.45}
+.sample-out{background:var(--brand);color:#fff;margin-right:auto}
+.sample-in{background:#e4ebf2;color:var(--ink);margin-left:auto;text-align:right}
 .loop-note{color:var(--muted);font-size:0.92rem;margin-top:1.25rem;max-width:44rem}
 
 /* FAQ */

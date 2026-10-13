@@ -90,3 +90,19 @@ it('links the Sign in / Start free CTAs to the login surface',()=>{
  expect(ctaHrefs.length).toBeGreaterThanOrEqual(4);
  for(const href of ctaHrefs)expect(href).toBe('/');
 });
+
+it('shows one clearly-labeled sample text-back thread in the real template wording (rot112)',()=>{
+ expect(html).toContain('id="sample"');
+ expect(html).toContain('Sample only — not a real customer conversation.');
+ // The verbatim salon text-back + confirm templates (src/verticals.ts),
+ // with the placeholder business name swapped in.
+ expect(html).toContain('Hi, this is Glow Studio. Sorry we missed your call! Want to book an appointment? Reply YES and we will find you a time. Reply STOP to opt out.');
+ expect(html).toContain('Thanks! We will text you shortly with available times.');
+ expect(html).toContain('No booking or result is shown or promised.');
+});
+
+it('/terms states plainly how provider charges are billed (rot112)',()=>{
+ const terms=readFileSync(join(webDir,'public','terms.html'),'utf8');
+ expect(terms).toContain('MehyarSoft does not collect, add to, or mark up provider charges');
+ expect(terms).toContain('they never appear on your Mayor bill');
+});

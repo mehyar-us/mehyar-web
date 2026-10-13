@@ -159,7 +159,7 @@ export function salesPlansSsrHtml():string|null{
     `<p class="plan-tier">+${minPack.replyAttempts.toLocaleString('en-US')} to +${maxPack.replyAttempts.toLocaleString('en-US')} reply attempts · +${minPack.voiceMinutes} to +${maxPack.voiceMinutes} microphone minutes</p>`+
     `<p>One-time top-ups for the months that run hot. Buy only what you use — no subscription change, no overage surprises.</p>`+
     `<a class="button button-small" href="/pricing">See pricing</a></article>`;
-  return start+grow+topup;
+  return start+topup+grow;
 }
 /**
  * Inject the server-rendered priced cards into the #sales-plan-cards
