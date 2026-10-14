@@ -1053,7 +1053,15 @@ async function init(){
     // The view is a clean sign-in landing with a single primary CTA.
     document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')!.hidden=true;
     $('business-identity').hidden=true;
-    if(new URLSearchParams(location.search).has('auth_error'))notice('Sign-in could not finish. Please try again.');return;
+    if(new URLSearchParams(location.search).has('auth_error'))notice('Sign-in could not finish. Please try again.');
+    if(new URLSearchParams(location.search).has('start')){
+      // Start path (rot159): the /sales hero's 'Start free' lands a new
+      // visitor at the start — sign-in panel in view, primary button
+      // focused. Signed-in users never reach this logged-out branch.
+      $('chat-sign-in').scrollIntoView({block:'center'});
+      $<HTMLButtonElement>('chat-google-sign-in').focus({preventScroll:true});
+    }
+    return;
   }
   sessionUserId=session.user.id;loggedIn=true;$('sign-in').hidden=true;$('sign-in-microsoft').hidden=true;$('chat-sign-in').hidden=true;$('chat-empty').hidden=false;$('logout').hidden=false;$('user-detail').textContent=session.user.email;
   document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')!.hidden=false;

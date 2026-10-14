@@ -88,7 +88,10 @@ it('links the Sign in / Start free CTAs to the login surface',()=>{
  expect(html).toContain('>Start free</a>');
  const ctaHrefs=[...html.matchAll(/<a[^>]*href="([^"]*)"[^>]*>(?:Sign in|Start free)<\/a>/g)].map(m=>m[1]);
  expect(ctaHrefs.length).toBeGreaterThanOrEqual(4);
- for(const href of ctaHrefs)expect(href).toBe('/');
+ // All CTAs land on the login surface; Start free may carry the start
+ // intent (/?start=1, rot159) — no CTA may point anywhere else.
+ for(const href of ctaHrefs)expect(['/','/?start=1']).toContain(href);
+ expect(ctaHrefs).toContain('/?start=1');
 });
 
 it('shows one clearly-labeled sample text-back thread in the real template wording (rot112)',()=>{
@@ -116,4 +119,12 @@ it('carries the email capture form with its disclosure (rot136)',()=>{
  expect(html).toContain('<form class="lead-form" action="/api/leads" method="post">');
  expect(html).toContain('name="email" type="email" required');
  expect(html).toContain('We store your email only to send these updates, and we never sell it.');
+});
+
+it('hero CTAs take different paths: Start free to the start entry, Sign in to the app (rot159)',()=>{
+ expect(html).toContain('<a class="button" href="/?start=1">Start free</a>');
+ expect(html).toContain('<a class="button button-outline" href="/">Sign in</a>');
+ const main=readFileSync(join(webDir,'main.ts'),'utf8');
+ expect(main).toContain("has('start')");
+ expect(main).toContain("$('chat-sign-in').scrollIntoView");
 });
