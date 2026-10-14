@@ -54,3 +54,11 @@ export function offerBlockHtml(catalog:unknown):string|null{
  if(!offer)return null;
  return renderToStaticMarkup(<OfferBlock free={offer.free} pro={offer.pro} currency={offer.currency}/>);
 }
+
+/** Homepage hero price anchor text from a catalog (rot156), or null when
+ * the catalog can't be trusted — mirrors heroPriceSsrText in the worker. */
+export function heroPriceText(catalog:unknown):string|null{
+ const offer=catalogOffer(catalog);
+ if(!offer)return null;
+ return `Start free \u00b7 Pro ${formatPrice(offer.pro.priceCents,offer.currency)}/mo`;
+}

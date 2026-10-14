@@ -13,7 +13,8 @@ import {expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import {pricingCardsSsrHtml,injectPricingCards,salesPlansSsrHtml,injectSalesPlans,auditCardSsrHtml,offerBlockSsrHtml} from '../src/offer-block-ssr';
+import {pricingCardsSsrHtml,injectPricingCards,salesPlansSsrHtml,injectSalesPlans,auditCardSsrHtml,offerBlockSsrHtml,injectHeroPrice,heroPriceSsrText} from '../src/offer-block-ssr';
+import {heroPriceText} from '../web/offer-block';
 import {PLANS,CREDIT_PACKS,approxConversations,REPLIES_PER_CONVERSATION} from '../src/billing/plans';
 import {AUDIT_OFFER} from '../src/billing/audit';
 
@@ -303,4 +304,17 @@ it('rot152: counting notes reach the homepage offer block + mic-minutes counting
  expect(offerBlockSsrHtml()).toContain(mic);
  expect(readWeb('sales.html')).toContain(mic);
  expect(readWeb('pricing.html')).toContain(mic);
+});
+
+it('rot156: slogan on all three heroes + homepage hero price anchor from the catalog',()=>{
+ const pro=PLANS.find(p=>p.id==='pro')!;
+ for(const f of ['index.html','sales.html','pricing.html'])expect(readWeb(f)).toContain('<p class="hero-slogan">Mayor. Talk to your business.</p>');
+ const home=readWeb('index.html');
+ expect(home).toContain('<p class="hero-price" id="hero-price"></p>'); // ships empty; SSR fills it
+ const filled=injectHeroPrice(home);
+ expect(filled).toContain(`<p class="hero-price" id="hero-price">Start free \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
+ // Client fallback derives the identical string from a fetched catalog.
+ const catalog={currency:'USD',plans:PLANS.map(p=>({id:p.id,name:p.name,priceCents:p.priceCents,interval:'month',replyLimit:p.replyLimit,voiceMinuteLimit:p.voiceMinuteLimit}))};
+ expect(heroPriceText(catalog)).toBe(heroPriceSsrText());
+ expect(heroPriceText(null)).toBeNull();
 });
