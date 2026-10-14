@@ -38,6 +38,7 @@ import { fulfillBeachCall } from "../_shared/fulfillBeachCall.js";
 import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
 import { fulfillMoonroom } from "../_shared/fulfillMoonroom.js";
 import { fulfillAuditBusiness } from "../_shared/fulfillAuditBusiness.js";
+import { fulfillBillcut } from "../_shared/fulfillBillcut.js";
 
 // Buyer CRM hardening (tracking-crm-fix, 2026-10-05).
 //
@@ -482,6 +483,14 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillAuditBusiness({ db, env, waitUntil, sendEmail }, payment);
   },
+
+  // Billcut statement audit ($9 one-time / $7/mo monitoring). Marks the
+  // billcut_audits row paid/monitor (idempotent on payment_id), unifies
+  // the access token onto the audit token, emails the report link.
+  async billcut({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillBillcut({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -520,7 +529,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
