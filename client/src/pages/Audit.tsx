@@ -60,6 +60,31 @@ type IntakeResult = {
   contentUnmeasured: boolean;
 };
 
+/** URL-first intake: what /api/audit/business/peek reads off the site itself. */
+type PeekResult = {
+  identity: {
+    name: string;
+    name_source: string | null;
+    title: string;
+    tagline: string;
+    favicon: string | null;
+    og_image: string | null;
+    theme_color: string | null;
+    emails: string[];
+    phones: string[];
+    url: string;
+  };
+  found: {
+    https: boolean;
+    load_ms: number;
+    has_phone: boolean;
+    has_contact_path: boolean;
+    has_schema: boolean;
+    socials: string[];
+    content_unmeasured: boolean;
+  };
+};
+
 function joinList(v: unknown): string {
   if (!Array.isArray(v) || v.length === 0) return "None found";
   return v.map(String).filter(Boolean).join(", ") || "None found";
@@ -308,6 +333,12 @@ export default function Audit() {
   const [intaking, setIntaking] = useState(false);
   const [intakeError, setIntakeError] = useState("");
   const [intake, setIntake] = useState<IntakeResult | null>(null);
+  /* URL-first Step 1: "url" → peek → "confirm" card; "manual" = classic form. */
+  const [step1Phase, setStep1Phase] = useState<"url" | "confirm" | "manual">("url");
+  const [peeking, setPeeking] = useState(false);
+  const [peek, setPeek] = useState<PeekResult | null>(null);
+  const [peekNote, setPeekNote] = useState("");
+
 
   /* ── Step 2: video upload (optional) ── */
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -384,8 +415,43 @@ export default function Audit() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intake]);
 
+  /* Step zero of the URL-first flow: read the business off its own site.
+     On any failure we fall back to the classic form — never a dead end. */
+  const submitPeek = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIntakeError("");
+    setPeekNote("");
+    const url = normalizeUrl(siteUrl);
+    if (!url || !/^https?:\/\/[^/\s]+\.[^/\s]+/.test(url)) {
+      return setIntakeError("That URL doesn't look right — try yourbusiness.com.");
+    }
+    setPeeking(true);
+    try {
+      const r = await fetch("/api/audit/business/peek", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!data.ok || !data.identity) throw new Error(data.message || "fetch_failed");
+      setPeek(data as PeekResult);
+      if (data.identity.name && !businessName.trim()) setBusinessName(String(data.identity.name));
+      if (data.identity.url) setSiteUrl(String(data.identity.url));
+      setStep1Phase("confirm");
+    } catch {
+      setPeekNote("We couldn't read that site automatically — no problem. Type your details here and we'll take it from there.");
+      setStep1Phase("manual");
+    } finally {
+      setPeeking(false);
+    }
+  };
+
   const submitIntake = async (e: React.FormEvent) => {
     e.preventDefault();
+    await doIntake();
+  };
+
+  const doIntake = async () => {
     setIntakeError("");
     const url = normalizeUrl(siteUrl);
     if (!businessName.trim()) return setIntakeError("Please tell us your business name.");
@@ -643,7 +709,7 @@ export default function Audit() {
       <section className="px-4 pb-4 pt-2">
         <div className="site-shell grid max-w-4xl gap-4 sm:grid-cols-3">
           {[
-            { n: "1", t: "Share your URL", d: "Business name, URL, and email. We fetch your site and show you the honest signals we found — free.", icon: FileSearch },
+            { n: "1", t: "Share your URL", d: "Just your URL — we fetch your site, find your business details ourselves, and show you the honest signals we found. Free.", icon: FileSearch },
             { n: "2", t: "Add your walkthrough (optional)", d: "Even 2 minutes works (up to 30 min MP4): talk us through your business like you're showing a friend. The AI uses it for a deeper read.", icon: Video },
             { n: "3", t: "Pay $330, get the report", d: "One-time payment. The AI writes your visual report and emails you a permanent link.", icon: BadgeCheck },
           ].map(({ n, t, d, icon: Icon }) => (
@@ -669,34 +735,149 @@ export default function Audit() {
       </section>
 
       {/* ── STEP 1: INTAKE ── */}
-      <StepShell step="Step 1 · free" title="Tell us about your business" id="step-1">
+      <StepShell step="Step 1 · free" title="Start with your website" id="step-1">
         <Card>
           <CardContent className="p-5 md:p-7">
-            <form onSubmit={submitIntake} className="space-y-4">
-              <div>
-                <Label htmlFor="ab-name">Business name</Label>
-                <Input id="ab-name" type="text" autoComplete="organization" required placeholder="Acme Plumbing Co." value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-2 h-12 text-base" />
-              </div>
-              <div>
-                <Label htmlFor="ab-url">Business website URL</Label>
-                <Input id="ab-url" type="text" inputMode="url" autoComplete="url" required placeholder="acmeplumbing.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-12 text-base" />
-              </div>
-              <div>
-                <Label htmlFor="ab-email">Email</Label>
-                <Input id="ab-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  We use your email only to deliver your report and updates about this audit.
+            {step1Phase === "url" && (
+              <form onSubmit={submitPeek} className="space-y-4">
+                <div>
+                  <Label htmlFor="ab-url">Your business website</Label>
+                  <Input id="ab-url" type="text" inputMode="url" autoComplete="url" required placeholder="acmeplumbing.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-14 text-lg" />
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    Just the URL. We read your site and fill in your business details ourselves — free, about 10 seconds.
+                  </p>
+                </div>
+                {intakeError && (
+                  <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                    {intakeError}
+                  </p>
+                )}
+                <Button type="submit" variant="cta" size="lg" className="w-full" disabled={peeking}>
+                  {peeking ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Reading your site…</>) : (<><Sparkles className="mr-2 h-4 w-4" aria-hidden="true" /> Find my business <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  <button type="button" className="underline underline-offset-2" onClick={() => { setPeekNote(""); setIntakeError(""); setStep1Phase("manual"); }}>
+                    Rather type it? Enter details manually
+                  </button>
                 </p>
-              </div>
-              {intakeError && (
-                <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                  {intakeError}
+              </form>
+            )}
+
+            {step1Phase === "confirm" && peek && (
+              <form onSubmit={submitIntake} className="space-y-4">
+                <div className="overflow-hidden rounded-2xl border border-border">
+                  {peek.identity.og_image ? (
+                    <img src={peek.identity.og_image} alt="" className="h-36 w-full object-cover" />
+                  ) : (
+                    <div className="h-14 w-full" style={peek.identity.theme_color ? { backgroundColor: peek.identity.theme_color } : undefined} aria-hidden="true" />
+                  )}
+                  <div className="space-y-4 p-5">
+                    <div className="flex items-start gap-3">
+                      {peek.identity.favicon && (
+                        <img src={peek.identity.favicon} alt="" className="mt-1 h-10 w-10 shrink-0 rounded-lg border border-border bg-white object-contain p-1" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <Label htmlFor="ab-name-confirm">We found this business — is it yours?</Label>
+                        <Input id="ab-name-confirm" type="text" autoComplete="organization" required value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-2 h-12 text-base font-semibold" />
+                        {peek.identity.tagline && <p className="mt-2 truncate text-sm text-muted-foreground">{peek.identity.tagline}</p>}
+                        <p className="mt-1 truncate text-xs text-muted-foreground">{peek.identity.url}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        peek.found.https ? "HTTPS on" : null,
+                        peek.found.has_phone ? "Phone number found" : null,
+                        peek.found.has_contact_path ? "Contact path found" : null,
+                        peek.found.has_schema ? "Structured data found" : null,
+                        ...peek.found.socials.map((s) => `${s} linked`),
+                        typeof peek.found.load_ms === "number" ? `Loaded in ${peek.found.load_ms} ms` : null,
+                      ].filter(Boolean).map((chip) => (
+                        <span key={chip as string} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> {chip}
+                        </span>
+                      ))}
+                    </div>
+                    {peek.found.content_unmeasured && (
+                      <p className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                        Your site builds its pages with JavaScript — your full audit reads all of it.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {peek.identity.emails.length > 0 && !email && (
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    We found <strong className="text-foreground">{peek.identity.emails[0]}</strong> on your site —{" "}
+                    <button type="button" className="font-medium text-foreground underline underline-offset-2" onClick={() => setEmail(peek.identity.emails[0])}>
+                      use it for my report
+                    </button>
+                  </p>
+                )}
+                <div>
+                  <Label htmlFor="ab-email">Email for your report</Label>
+                  <Input id="ab-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    We use your email only to deliver your report and updates about this audit.
+                  </p>
+                </div>
+                {intakeError && (
+                  <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                    {intakeError}
+                  </p>
+                )}
+                <Button type="submit" variant="cta" size="lg" className="w-full" disabled={intaking}>
+                  {intaking ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Fetching your site…</>) : (<>Yes, that&rsquo;s us — start my free preview <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  <button type="button" className="underline underline-offset-2" onClick={() => { setStep1Phase("url"); setPeek(null); setIntakeError(""); }}>
+                    Not your site? Start over
+                  </button>
+                  {" · "}
+                  <button type="button" className="underline underline-offset-2" onClick={() => { setPeekNote(""); setIntakeError(""); setStep1Phase("manual"); }}>
+                    Enter details manually
+                  </button>
                 </p>
-              )}
-              <Button type="submit" variant="cta" size="lg" className="w-full" disabled={intaking}>
-                {intaking ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Fetching your site…</>) : (<>Fetch my site — free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
-              </Button>
-            </form>
+              </form>
+            )}
+
+            {step1Phase === "manual" && (
+              <>
+                {peekNote && (
+                  <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                    {peekNote}
+                  </p>
+                )}
+                <form onSubmit={submitIntake} className="space-y-4">
+                  <div>
+                    <Label htmlFor="ab-name">Business name</Label>
+                    <Input id="ab-name" type="text" autoComplete="organization" required placeholder="Acme Plumbing Co." value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-2 h-12 text-base" />
+                  </div>
+                  <div>
+                    <Label htmlFor="ab-url-manual">Business website URL</Label>
+                    <Input id="ab-url-manual" type="text" inputMode="url" autoComplete="url" required placeholder="acmeplumbing.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-12 text-base" />
+                  </div>
+                  <div>
+                    <Label htmlFor="ab-email-manual">Email</Label>
+                    <Input id="ab-email-manual" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                      We use your email only to deliver your report and updates about this audit.
+                    </p>
+                  </div>
+                  {intakeError && (
+                    <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                      {intakeError}
+                    </p>
+                  )}
+                  <Button type="submit" variant="cta" size="lg" className="w-full" disabled={intaking}>
+                    {intaking ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Fetching your site…</>) : (<>Fetch my site — free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
+                  </Button>
+                </form>
+                <p className="mt-4 text-center text-xs text-muted-foreground">
+                  <button type="button" className="underline underline-offset-2" onClick={() => { setPeekNote(""); setIntakeError(""); setStep1Phase("url"); }}>
+                    ← Use the smart start instead
+                  </button>
+                </p>
+              </>
+            )}
 
             {/* ── Free honest-signals preview: only what the fetch measured ── */}
             {intake && (

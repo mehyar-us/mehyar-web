@@ -462,3 +462,59 @@ export async function parseMultipartStream(stream, boundary, cb) {
 
   return { fields, videoBytes, audioBytes, audioTruncated };
 }
+
+// ── Identity extraction (URL-first intake) ────────────────────────────────
+// What a business's own site declares about itself, for the "is this you?"
+// confirmation card: name (JSON-LD → og:site_name → cleaned title), logo,
+// share image, brand color, and the contact details printed on the page.
+// Only what the markup actually contains — a guess is labeled by its source
+// and the buyer can edit it before anything is stored.
+export function extractIdentity(html, finalUrl) {
+  const get = (re) => { const m = html.match(re); return m ? m[1].trim() : ""; };
+  const abs = (u) => {
+    if (!u) return null;
+    try { return new URL(u, finalUrl).toString(); } catch { return null; }
+  };
+
+  // Business name from JSON-LD: the first named Organization/LocalBusiness.
+  let ldName = "";
+  for (const block of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const data = JSON.parse(block[1].trim());
+      const nodes = Array.isArray(data) ? data : (Array.isArray(data["@graph"]) ? data["@graph"] : [data]);
+      for (const n of nodes) {
+        const t = String(n?.["@type"] || "");
+        if (n?.name && /organization|localbusiness|store|restaurant|professionalservice|company/i.test(t)) {
+          ldName = sanitize(n.name, 120);
+          break;
+        }
+      }
+    } catch { /* malformed JSON-LD — fall through to the next source */ }
+    if (ldName) break;
+  }
+
+  const ogSiteName = get(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']{1,120})/i)
+    || get(/<meta[^>]+content=["']([^"']{1,120})["'][^>]+property=["']og:site_name["']/i);
+  const rawTitle = get(/<title[^>]*>([^<]{1,200})<\/title>/i);
+  // "Acme Plumbing Co. | Brooklyn Plumber" → "Acme Plumbing Co."
+  const cleanedTitle = rawTitle.split(/\s+[|–—-]\s+/)[0].trim();
+
+  const name = ldName || sanitize(ogSiteName, 120) || sanitize(cleanedTitle, 120);
+  const nameSource = ldName ? "schema" : ogSiteName ? "og" : rawTitle ? "title" : null;
+
+  const icon = get(/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)/i)
+    || get(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']apple-touch-icon["']/i)
+    || get(/<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']+)/i)
+    || get(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["'](?:shortcut )?icon["']/i);
+  const favicon = abs(icon) || abs("/favicon.ico");
+
+  const ogImage = abs(get(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']{1,500})/i)
+    || get(/<meta[^>]+content=["']([^"']{1,500})["'][^>]+property=["']og:image["']/i));
+  const themeColor = get(/<meta[^>]+name=["']theme-color["'][^>]+content=["'](#[0-9a-fA-F]{3,8})/i) || null;
+
+  const emails = [...new Set([...html.matchAll(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi)].map((m) => m[0].toLowerCase()))]
+    .filter((e) => !e.includes("example.") && !e.includes("sentry") && !/\.(png|jpg|jpeg|gif|svg|webp)$/.test(e)).slice(0, 3);
+  const phones = [...new Set([...html.matchAll(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g)].map((m) => m[0]))].slice(0, 2);
+
+  return { name, nameSource, favicon, ogImage, themeColor, emails, phones };
+}
