@@ -84,15 +84,20 @@ export async function onRequestPost({ request, env }) {
 
       const accounts = [];
       const transactions = [];
+      const errors = [];
       for (const id of ids.slice(0, 6)) {
-        accounts.push(await getAccountSummary(env, testMode, id));
-        transactions.push(...await syncAccountTransactions(env, testMode, id));
+        try {
+          accounts.push(await getAccountSummary(env, testMode, id));
+          transactions.push(...await syncAccountTransactions(env, testMode, id));
+        } catch (e) {
+          errors.push({ account: id, message: String((e && e.message) || e).slice(0, 160) });
+        }
       }
       transactions.sort((a, b) => (a.date < b.date ? -1 : 1));
       const range = transactions.length
         ? { from: transactions[0].date, to: transactions[transactions.length - 1].date, count: transactions.length }
         : { from: null, to: null, count: 0 };
-      return J({ ok: true, accounts, transactions, range });
+      return J({ ok: true, accounts, transactions, range, errors });
     }
 
     return J({ ok: false, error: "unknown_action" }, 400);
