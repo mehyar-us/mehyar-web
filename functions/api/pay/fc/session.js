@@ -37,6 +37,12 @@ export async function onRequestPost({ request, env }) {
 
     // Reuse or create the Stripe customer that holds the FC accounts.
     let customerId = audit.fc_customer_id || null;
+    if (customerId) {
+      // A stored customer id minted under the other mode's key (test vs
+      // live) does not resolve here — recreate instead of failing.
+      const alive = await stripeFC(env, testMode, "GET", "/v1/customers/" + customerId).catch(() => null);
+      if (!alive || alive.deleted) customerId = null;
+    }
     if (!customerId) {
       const sp = new URLSearchParams();
       if (audit.email) sp.set("email", audit.email);
