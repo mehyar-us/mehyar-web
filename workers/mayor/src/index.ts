@@ -112,7 +112,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       // Server-render the plan-card prices from the live billing catalog
       // (rot107) — the page source stays price-free, amounts are never
       // hardcoded. If injection changes nothing, serve the asset as-is.
-      const original=await assetRes.text(),injected=injectSalesPlans(original);
+      const original=await assetRes.text(),injected=injectHeroPrice(injectSalesPlans(original));
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');

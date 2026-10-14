@@ -318,3 +318,14 @@ it('rot156: slogan on all three heroes + homepage hero price anchor from the cat
  expect(heroPriceText(catalog)).toBe(heroPriceSsrText());
  expect(heroPriceText(null)).toBeNull();
 });
+
+it('rot157: /sales hero carries the same catalog-rendered price anchor',()=>{
+ const pro=PLANS.find(p=>p.id==='pro')!;
+ const sales=readWeb('sales.html');
+ expect(sales).toContain('<p class="hero-price" id="hero-price"></p>');
+ const served=injectHeroPrice(injectSalesPlans(sales));
+ const heroAt=served.indexOf('class="hero page-width"'),priceAt=served.indexOf('id="hero-price"'),loopAt=served.indexOf('id="how"');
+ expect(served).toContain(`<p class="hero-price" id="hero-price">Start free \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
+ expect(priceAt).toBeGreaterThan(heroAt);
+ expect(loopAt).toBeGreaterThan(priceAt); // inside the hero block, above the fold sections
+});
