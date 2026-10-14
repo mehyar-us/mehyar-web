@@ -606,6 +606,11 @@ export default function AuditReport() {
                           {notifyMsg && <p role="alert" className="mt-2 text-sm text-amber-700 dark:text-amber-300">{notifyMsg}</p>}
                         </>
                       )}
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                        Rather talk to a human?{" "}
+                        <a href="mailto:info@mehyar.us" className="font-semibold text-foreground underline underline-offset-2">Email info@mehyar.us</a>{" "}
+                        — we'll sort it out personally.
+                      </p>
                     </div>
                   )}
                   <Button type="submit" variant="cta" size="lg" className="h-13 w-full bg-emerald-500 py-4 text-base text-emerald-950 hover:bg-emerald-400" disabled={buying}>

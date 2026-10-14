@@ -210,8 +210,34 @@ const staticMeta: Record<string, SeoMeta> = {
   "/audit/report": {
     title: "$5 Full Report | MehyarSoft",
     description:
-      "The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.",
+      "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.",
     path: "/audit/report",
+    jsonLd: [
+      webPage(
+        "/audit/report",
+        "$5 Full Report | MehyarSoft",
+        "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, and your 90-day plan.",
+      ),
+      breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Audit My Business", path: "/audit" },
+        { name: "$5 Full Report", path: "/audit/report" },
+      ]),
+      {
+        "@type": "Service",
+        name: "$5 Full Report",
+        description:
+          "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.",
+        provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
+        areaServed: "Worldwide",
+        offers: {
+          "@type": "Offer",
+          price: "5",
+          priceCurrency: "USD",
+          url: absoluteUrl("/audit/report"),
+        },
+      },
+    ],
   },
   "/": {
     title: "MehyarSoft LLC | Software, Systems & AI Automation",

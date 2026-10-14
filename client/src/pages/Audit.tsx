@@ -963,6 +963,11 @@ export default function Audit() {
                       )}
                     </>
                   )}
+                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                    Rather talk to a human?{" "}
+                    <a href="mailto:info@mehyar.us" className="font-semibold text-foreground underline underline-offset-2">Email info@mehyar.us</a>{" "}
+                    — we'll sort it out personally.
+                  </p>
                 </div>
               )}
               <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying}>
