@@ -933,6 +933,7 @@ export default function Audit() {
               <div>
                 <Label htmlFor="ab-pay-email">Email for delivery</Label>
                 <Input id="ab-pay-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={payEmail} onChange={(e) => setPayEmail(e.target.value)} className="mt-2 h-12 text-base" />
+                <p className="mt-2 text-xs text-muted-foreground">Use the same email as Step 1 — your audit is linked to it.</p>
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
                 </p>
