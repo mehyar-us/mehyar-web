@@ -456,6 +456,47 @@ const staticMeta: Record<string, SeoMeta> = {
       "Get the free MehyarSoft checklist for finding missed-call, website, follow-up, systems, and manual-work leaks worth fixing first.",
     path: "/newsletter",
   },
+  "/apps": {
+    title: "Products We Own | MehyarSoft LLC",
+    description:
+      "Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy.",
+    path: "/apps",
+    jsonLd: [
+      webPage(
+        "/apps",
+        "Products We Own | MehyarSoft LLC",
+        "Every product MehyarSoft builds and operates, with what each one does, live pricing, and links to buy.",
+      ),
+      breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Products We Own", path: "/apps" },
+      ]),
+      {
+        "@type": "CollectionPage",
+        name: "Products We Own",
+        description:
+          "Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy.",
+        url: absoluteUrl("/apps"),
+      },
+    ],
+  },
+  "/data-deletion": {
+    title: "Data Deletion | MehyarSoft LLC",
+    description:
+      "Request deletion of your data from any MehyarSoft app (Rizza, AiMech). In-app controls plus a plain-English email fallback.",
+    path: "/data-deletion",
+    jsonLd: [
+      webPage(
+        "/data-deletion",
+        "Data Deletion | MehyarSoft LLC",
+        "Request deletion of your data from any MehyarSoft app (Rizza, AiMech). In-app controls plus a plain-English email fallback.",
+      ),
+      breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Data Deletion", path: "/data-deletion" },
+      ]),
+    ],
+  },
   "/about": {
     title: "Founder Story | MehyarSoft LLC NYC Software Consultant",
     description:

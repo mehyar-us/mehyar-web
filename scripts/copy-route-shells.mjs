@@ -181,9 +181,9 @@ const routeMeta = {
       path: '/about',
     },
     '/apps': {
-      title: 'Apps MehyarSoft Builds and Operates | MehyarSoft',
+      title: 'Products We Own | MehyarSoft LLC',
       description:
-        'Live apps shipped by MehyarSoft: Rizza (AI dating-app wingman) and AiMech (AI mechanic for everyday car owners). See the apps, the launch notes, and the app-launch playbook behind them.',
+        'Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy.',
       path: '/apps',
     },
     '/330': {

@@ -73,6 +73,77 @@
       ]
     }
   ],
+  "/apps": [
+    {
+      "@type": "WebPage",
+      "@id": "https://mehyar.us/apps/#webpage",
+      "url": "https://mehyar.us/apps/",
+      "name": "Products We Own | MehyarSoft LLC",
+      "description": "Every product MehyarSoft builds and operates, with what each one does, live pricing, and links to buy.",
+      "isPartOf": {
+        "@id": "https://mehyar.us/#website"
+      },
+      "about": {
+        "@id": "https://mehyar.us/#professional-service"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://mehyar.us/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Products We Own",
+          "item": "https://mehyar.us/apps/"
+        }
+      ]
+    },
+    {
+      "@type": "CollectionPage",
+      "@id": "https://mehyar.us/apps/#collection",
+      "url": "https://mehyar.us/apps/",
+      "name": "Products We Own",
+      "description": "Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy."
+    }
+  ],
+  "/data-deletion": [
+    {
+      "@type": "WebPage",
+      "@id": "https://mehyar.us/data-deletion/#webpage",
+      "url": "https://mehyar.us/data-deletion/",
+      "name": "Data Deletion | MehyarSoft LLC",
+      "description": "Request deletion of your data from any MehyarSoft app (Rizza, AiMech). In-app controls plus a plain-English email fallback.",
+      "isPartOf": {
+        "@id": "https://mehyar.us/#website"
+      },
+      "about": {
+        "@id": "https://mehyar.us/#professional-service"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://mehyar.us/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Data Deletion",
+          "item": "https://mehyar.us/data-deletion/"
+        }
+      ]
+    }
+  ],
   "/blog": [
     {
       "@type": "WebPage",
