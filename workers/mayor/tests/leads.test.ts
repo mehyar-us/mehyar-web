@@ -45,6 +45,18 @@ describe('sales lead capture',()=>{
     expect(leadRows(inserts)).toHaveLength(0);
   });
 
+  it('success copy states the timeframe; the loop source names the checklist (rot173)',async()=>{
+    const {db}=fakeDb();
+    const loop=await handleLeadsPublic(post({email:'loop@example.com',source:'sales-loop'}),{AGENT_DB:db});
+    const loopText=await loop!.text();
+    expect(loopText).toContain('Missed-Call Revenue Checklist');
+    expect(loopText).toContain('within 30 days');
+    const plain=await handleLeadsPublic(post({email:'plain@example.com',source:'sales'}),{AGENT_DB:db});
+    const plainText=await plain!.text();
+    expect(plainText).toContain('within 30 days');
+    expect(plainText).not.toContain('Checklist');
+  });
+
   it('ignores other paths and refuses GET',async()=>{
     const {db}=fakeDb();
     expect(await handleLeadsPublic(new Request('https://mayor.mehyar.us/api/other'),{AGENT_DB:db})).toBeNull();

@@ -20,12 +20,14 @@ async function leadRate(env:LeadsEnv,request:Request,max:number){
   if(!row)throw new HttpError(429,'lead_rate_limited','Please wait a minute and try again.');
 }
 
-function leadPage(ok:boolean,slowDown=false):Response{
+function leadPage(ok:boolean,slowDown=false,source='sales'):Response{
   const title=slowDown?'One moment.':ok?'You\u2019re on the list.':'That email doesn\u2019t look right.';
   const body=slowDown
     ?'Too many tries in a minute. Wait a moment, then try once more.'
     :ok
-    ?'Thanks \u2014 we\u2019ll send occasional updates about The Mayor to that address. You can unsubscribe anytime.'
+    ?source==='sales-loop'
+      ?'Thanks \u2014 you\u2019re on the list. Your first email brings the Missed-Call Revenue Checklist, and it goes out with the monthly email \u2014 within 30 days. After that, one practical email a month. You can unsubscribe anytime.'
+      :'Thanks \u2014 you\u2019re on the list. Your first email arrives with the monthly send \u2014 within 30 days \u2014 then one practical email a month. You can unsubscribe anytime.'
     :'Go back and check the address, then try again. Nothing was saved.';
   const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${title} \u00b7 The Mayor</title><style>body{margin:0;background:#f4f7fb;color:#102b47;font:17px/1.7 system-ui,sans-serif}main{max-width:640px;margin:auto;padding:64px 24px 80px}a{color:#315d86}h1{font-size:2.2rem;line-height:1.2}</style></head><body><main><h1>${title}</h1><p>${body}</p><p><a href="/sales">Back to The Mayor</a></p></main></body></html>`;
   return new Response(html,{status:slowDown?429:ok?200:400,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
@@ -43,14 +45,15 @@ export async function handleLeadsPublic(request:Request,env:LeadsEnv):Promise<Re
     try{form=await request.formData();}catch{throw new HttpError(400,'invalid_form','The form could not be read.');}
     // Honeypot: a field real visitors never see or fill. Bots that fill it
     // get the success page and nothing is stored.
+    const rawSourceEarly=String(form.get('source')??'sales');
     const honeypot=form.get('website');
-    if(typeof honeypot==='string'&&honeypot.trim()!=='')return leadPage(true);
+    if(typeof honeypot==='string'&&honeypot.trim()!=='')return leadPage(true,false,rawSourceEarly);
     const email=emailSchema.parse(String(form.get('email')??''));
-    const rawSource=String(form.get('source')??'sales');
+    const rawSource=rawSourceEarly;
     const source=sourceSchema.safeParse(rawSource).success?rawSource:'sales';
     await env.AGENT_DB.prepare('INSERT OR IGNORE INTO mayor_sales_leads(id,email,source,created_at) VALUES(?1,?2,?3,?4)')
       .bind(crypto.randomUUID(),email,source,Date.now()).run();
-    return leadPage(true);
+    return leadPage(true,false,source);
   }catch(error){
     if(error instanceof z.ZodError)return leadPage(false);
     if(error instanceof HttpError&&error.status===400)return leadPage(false);

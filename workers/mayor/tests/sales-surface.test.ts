@@ -129,6 +129,12 @@ it('sales-loop form names the lead magnet; the checklist page exists (rot168)',(
  expect(checklist).not.toMatch(/\d+%/); // no invented statistics
 });
 
+it('loop form button asks for the checklist; mid-page button unchanged (rot173)',()=>{
+ const loopAt=html.indexOf('id="updates-loop"');
+ expect(html.slice(loopAt)).toContain('>Send my checklist</button>');
+ expect(html.slice(0,loopAt)).toContain('>Keep me posted</button>');
+});
+
 it('hero CTAs take different paths: Start free to the start entry, Sign in to the app (rot159)',()=>{
  expect(html).toContain('<a class="button" href="/?start=1">Start free</a>');
  expect(html).toContain('<a class="button button-outline" href="/">Sign in</a>');
