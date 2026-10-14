@@ -336,7 +336,7 @@ it('rot165: /pricing hero carries the same catalog-rendered price anchor',()=>{
  expect(pricing).toContain('<p class="hero-price" id="hero-price"></p>');
  const served=injectHeroPrice(injectPricingCards(pricing));
  expect(served).toContain(`<p class="hero-price" id="hero-price">Start free \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
- const heroAt=served.indexOf('id="pricing-heading"'),priceAt=served.indexOf('id="hero-price"'),plansAt=served.indexOf('id="plans"');
+ const heroAt=served.indexOf('id="pricing-heading"'),priceAt=served.indexOf('id="hero-price"'),plansAt=served.indexOf('id="plan-cards"');
  expect(priceAt).toBeGreaterThan(heroAt);
- expect(plansAt).toBeGreaterThan(priceAt); // inside the hero, before the plans section
+ expect(plansAt).toBeGreaterThan(priceAt); // inside the hero, before the plan cards
 });
