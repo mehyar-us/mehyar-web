@@ -252,3 +252,20 @@ export function injectOfferBlock(html:string):string{
   const tagged=openingTag.replace(OFFER_OPEN,`${OFFER_OPEN} data-ssr="catalog"`);
   return html.slice(0,openAt)+tagged+rendered+html.slice(closeAt);
 }
+
+/* Homepage hero price anchor (rot156): the Pro price above the fold,
+ * rendered from the same catalog as every other figure. The placeholder
+ * ships empty; if the catalog can't be trusted the anchor stays empty —
+ * never a stale or hardcoded price. */
+export function heroPriceSsrText():string|null{
+  const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
+  if(!validPlan(free)||!validPlan(pro))return null;
+  return `Start free \u00b7 Pro ${formatPrice(pro.priceCents)}/mo`;
+}
+const HERO_PRICE_EMPTY='<p class="hero-price" id="hero-price"></p>';
+export function injectHeroPrice(html:string):string{
+  if(!html.includes(HERO_PRICE_EMPTY))return html;
+  const text=heroPriceSsrText();
+  if(!text)return html;
+  return html.replace(HERO_PRICE_EMPTY,`<p class="hero-price" id="hero-price">${escapeHtml(text)}</p>`);
+}

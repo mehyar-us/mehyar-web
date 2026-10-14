@@ -1,7 +1,7 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
-import {injectOfferBlock,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
+import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
@@ -91,7 +91,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const assetRes=await env.ASSETS.fetch(new Request(new URL('/',request.url),request));
     const contentType=assetRes.headers.get('content-type')??'';
     if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),injected=injectOfferBlock(original);
+      const original=await assetRes.text(),injected=injectHeroPrice(injectOfferBlock(original));
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');

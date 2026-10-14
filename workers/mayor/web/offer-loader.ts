@@ -13,9 +13,12 @@ export async function loadOfferBlock():Promise<void>{
   try{
    const res=await fetch('/api/billing/catalog',{headers:{accept:'application/json'},signal:controller.signal});
    if(!res.ok)return;
-   const {offerBlockHtml}=await import('./offer-block');
-   const html=offerBlockHtml(await res.json());
+   const {offerBlockHtml,heroPriceText}=await import('./offer-block');
+   const catalog=await res.json();
+   const html=offerBlockHtml(catalog);
    if(html)el.innerHTML=html;
+   const hero=document.getElementById('hero-price');
+   if(hero&&!hero.textContent){const text=heroPriceText(catalog);if(text)hero.textContent=text;}
   }finally{clearTimeout(timer);}
  }catch{/* keep the price-free fallback */}
 }
