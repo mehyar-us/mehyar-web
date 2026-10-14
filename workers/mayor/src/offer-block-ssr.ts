@@ -87,7 +87,7 @@ export function pricingCardsSsrHtml():{plans:string;packs:string}|null{
     priceLine(p.priceCents,p.priceCents>0?' / month':'')+
     `<p class="plan-tier">${p.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyLimit)} real conversations a month) · `+
     `${p.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>${blurb}</p><a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/'}">`+
+    `<p>${blurb}</p><a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/?start=1'}">`+
     `${p.id==='pro'?`Go Pro — ${escapeHtml(formatPrice(p.priceCents))}/mo`:'Start free'}</a></article>`;
   const packCard=(p:SsrPack)=>
     `<article class="plan-card"><h3>${escapeHtml(p.name)}</h3>`+
@@ -148,7 +148,7 @@ export function salesPlansSsrHtml():string|null{
     priceLine(free.priceCents,'')+
     `<p class="plan-tier">${free.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(free.replyLimit)} real conversations a month) · ${free.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs once your number is connected (automatic text-backs send through Telnyx), reminders, and the morning briefing.</p>`+
-    `<a class="button button-small" href="/">Start free</a></article>`;
+    `<a class="button button-small" href="/?start=1">Start free</a></article>`;
   const grow=
     `<article class="plan-card"><h3>Pro</h3>`+
     priceLine(pro.priceCents,' / month')+

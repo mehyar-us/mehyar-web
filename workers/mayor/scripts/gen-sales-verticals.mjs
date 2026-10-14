@@ -86,7 +86,7 @@ export function verticalPage(vertical, profile) {
     </nav>
     <div class="header-ctas">
       <a class="text-link" href="/">Sign in</a>
-      <a class="button button-small" href="/">Start free</a>
+      <a class="button button-small" href="/?start=1">Start free</a>
     </div>
   </header>
 
@@ -97,7 +97,7 @@ export function verticalPage(vertical, profile) {
         <h1 id="sales-heading">The Mayor talks to you, the business owner.</h1>
         <p class="hero-description">Your AI chief of staff for your ${esc(label.toLowerCase())} — in your language, running the place with you. It answers the calls you miss, texts back the ${esc(v.customer)}s you would lose, and keeps the day's money where you can see it.</p>
         <div class="hero-ctas">
-          <a class="button" href="/">Start free</a>
+          <a class="button" href="/?start=1">Start free</a>
           <a class="button button-outline" href="/">Sign in</a>
         </div>
         <p class="hero-note">No credit card to start. The app itself opens after sign-in.</p>
@@ -131,7 +131,7 @@ export function verticalPage(vertical, profile) {
       <h2 id="cta-heading">Meet your chief of staff.</h2>
       <p>Sign in to open The Mayor and put it to work on your next missed call.</p>
       <div class="hero-ctas">
-        <a class="button" href="/">Start free</a>
+        <a class="button" href="/?start=1">Start free</a>
         <a class="button button-outline" href="/pricing">See pricing</a>
         <a class="button button-outline" href="/">Sign in</a>
       </div>
