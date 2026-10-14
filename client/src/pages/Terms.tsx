@@ -166,7 +166,7 @@ const sections: Section[] = [
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Billcut — <a className="text-brand-700 underline dark:text-brand-100" href="https://billcut.mehyar.us" target="_blank" rel="noreferrer">billcut.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Statement audit: upload a bank or card statement and get every recurring charge ranked by yearly cost, with a cancel or negotiation script for each. $9 one-time full audit; $7/month monitoring. No bank login; your file is deleted right after it's read.</div>
+            <div className="text-sm text-muted-foreground">Statement audit: upload a bank or card statement and get every recurring charge ranked by yearly cost, with a cancel or negotiation script for each. $9 one-time full audit; $7/month monitoring. No bank login is required; your file is deleted right after it's read. Optional: after purchase you may connect an account read-only through Stripe Financial Connections — the login happens on Stripe's hosted window, Billcut never receives bank credentials, only the transactions permission is requested, raw transactions are processed and discarded (only the connection identifier and the audit summary are kept), and you can disconnect anytime from your report page.</div>
           </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites</div>

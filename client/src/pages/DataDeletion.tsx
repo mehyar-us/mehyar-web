@@ -406,9 +406,9 @@ id: "hustlekit",
     icon: Receipt,
     inAppPath: "Report page (billcut.mehyar.us/?token=...) — Delete my data button; email fallback (info@mehyar.us)",
     whatWeCollect:
-      "The statement file you upload (PDF or CSV) is processed in memory and deleted immediately after parsing — it is never stored. Account and card numbers are masked at parse time. We keep only the audit summary (merchant names, amounts, frequencies, dates) behind a private token link, plus your email for report delivery and, only with your separate opt-in, a monthly reminder.",
+      "The statement file you upload (PDF or CSV) is processed in memory and deleted immediately after parsing — it is never stored. Account and card numbers are masked at parse time. We keep only the audit summary (merchant names, amounts, frequencies, dates) behind a private token link, plus your email for report delivery and, only with your separate opt-in, a monthly reminder. If you connect an account through Stripe Financial Connections, we additionally keep the connection identifier; the raw transactions are processed in-request and discarded, never stored.",
     whatWeDelete:
-      "The audit summary (charges and report) and delivery email — deleted immediately by the in-product Delete my data action; email fallback actions within 14 days. The uploaded file itself is already gone: it is deleted at parse time.",
+      "The audit summary (charges and report), delivery email, and any Stripe Financial Connections link — Delete my data disconnects the bank at Stripe and wipes the link immediately; email fallback actions within 14 days. The uploaded file itself is already gone: it is deleted at parse time.",
   },
 ];
 
