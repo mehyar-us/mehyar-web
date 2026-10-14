@@ -93,36 +93,39 @@ export async function syncAccountTransactions(env, testMode, accountId) {
   sp.append("features[]", "transactions");
   await stripeFC(env, testMode, "POST", `/v1/financial_connections/accounts/${accountId}/refresh`, sp);
 
-  // Refresh is async; poll briefly. Keep the whole sync well inside
-  // the Pages CPU/wall limits — a long sleep loop here used to kill
-  // the function (bare 502s). Callers can re-sync to get more.
-  let txns = [];
-  for (let attempt = 0; attempt < 4; attempt++) {
-    txns = [];
-    let startingAfter = null;
-    for (let page = 0; page < 10; page++) {
-      const q = new URLSearchParams({ limit: "100" });
-      if (startingAfter) q.set("starting_after", startingAfter);
-      const list = await stripeFC(env, testMode, "GET",
-        `/v1/financial_connections/accounts/${accountId}/transactions?${q.toString()}`);
-      const rows = list.data || [];
-      for (const t of rows) {
-        if (t.status && t.status !== "posted") continue;
-        const amt = Number(t.amount) || 0;
-        if (amt >= 0) continue; // credits/inflows are not charges
-        const date = (t.transacted_at || t.posted_at || "").slice(0, 10);
-        if (!date) continue;
-        txns.push({
-          date,
-          amount_cents: Math.abs(Math.round(amt)),
-          description: String(t.description || "Card charge").slice(0, 140),
-        });
-      }
-      if (!list.has_more || !rows.length) break;
-      startingAfter = rows[rows.length - 1].id;
+  // Refresh is async: poll the account's transaction_refresh status,
+  // bounded so the whole sync stays well inside function limits.
+  for (let i = 0; i < 5; i++) {
+    const acct = await stripeFC(env, testMode, "GET", `/v1/financial_connections/accounts/${accountId}`).catch(() => null);
+    const st = acct && acct.transaction_refresh && acct.transaction_refresh.status;
+    if (st !== "pending") break;
+    await sleep(1200);
+  }
+
+  // Transactions are a TOP-LEVEL list filtered by account (there is no
+  // /accounts/{id}/transactions subresource). Dates arrive as unix
+  // timestamps. Stripe returns up to ~180 days of history.
+  const txns = [];
+  let startingAfter = null;
+  for (let page = 0; page < 10; page++) {
+    const q = new URLSearchParams({ account: accountId, limit: "100" });
+    if (startingAfter) q.set("starting_after", startingAfter);
+    const list = await stripeFC(env, testMode, "GET", `/v1/financial_connections/transactions?${q.toString()}`);
+    const rows = list.data || [];
+    for (const t of rows) {
+      if (t.status && t.status !== "posted") continue;
+      const amt = Number(t.amount) || 0;
+      if (amt >= 0) continue; // credits/inflows are not charges
+      const ts = Number(t.transacted_at) || Number(t.status_transitions && t.status_transitions.posted_at) || 0;
+      if (!ts) continue;
+      txns.push({
+        date: new Date(ts * 1000).toISOString().slice(0, 10),
+        amount_cents: Math.abs(Math.round(amt)),
+        description: String(t.description || "Card charge").slice(0, 140),
+      });
     }
-    if (txns.length) break;
-    if (attempt < 3) await sleep(1200);
+    if (!list.has_more || !rows.length) break;
+    startingAfter = rows[rows.length - 1].id;
   }
   return txns;
 }
