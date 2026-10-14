@@ -36,6 +36,7 @@
 //  26. Moonroom — https://moonroom.mehyar.us (AI photo studio: headshot/product/theme packs from one selfie)
 //  27. Audit My Business — https://mehyar.us/audit/ ($330 AI audit: score, money leaks, fixes, AI opportunities)
 //  28. DUST — https://dust.mehyar.us (meme-coin experiment: 7-day Great Sweep, 100% supply pro-rata to sweepers; testnet only)
+//  29. Billcut — https://billcut.mehyar.us (statement audit: recurring charges ranked + cancel/negotiation scripts; uploaded file deleted at parse)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -46,7 +47,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -396,6 +397,18 @@ id: "hustlekit",
       "Email address only, if you join the sweep notify list. No accounts, no wallets, no on-chain data collected by the site.",
     whatWeDelete:
       "Notify-list email on one-click unsubscribe (record flagged immediately, excluded from all sends). Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "billcut",
+    name: "Billcut",
+    url: "https://billcut.mehyar.us",
+    tagline: "Find money you're missing.",
+    icon: Receipt,
+    inAppPath: "Report page (billcut.mehyar.us/?token=...) — Delete my data button; email fallback (info@mehyar.us)",
+    whatWeCollect:
+      "The statement file you upload (PDF or CSV) is processed in memory and deleted immediately after parsing — it is never stored. Account and card numbers are masked at parse time. We keep only the audit summary (merchant names, amounts, frequencies, dates) behind a private token link, plus your email for report delivery and, only with your separate opt-in, a monthly reminder.",
+    whatWeDelete:
+      "The audit summary (charges and report) and delivery email — deleted immediately by the in-product Delete my data action; email fallback actions within 14 days. The uploaded file itself is already gone: it is deleted at parse time.",
   },
 ];
 

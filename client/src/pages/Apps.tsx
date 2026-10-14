@@ -497,6 +497,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/dust-logo.png",
     accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
+  {
+    id: "billcut",
+    name: "Billcut",
+    url: "https://billcut.mehyar.us",
+    tagline: "Find money you're missing.",
+    description:
+      "Upload a bank or card statement (PDF or CSV) and Billcut finds every recurring charge, ranks it by yearly cost, and gives you a cancel or negotiation script for each one. $9 one-time full audit, $7/month monitoring. No bank login — your file is deleted right after it's read.",
+    audience: "Anyone with subscriptions and autopay bills who wants to see what actually repeats — and what to cut — from their own statement.",
+    highlights: [
+      "Recurring charges extracted from your own statement — no bank login, no Plaid",
+      "Ranked by yearly cost, with price-increase and duplicate-service flags",
+      "A cancel script or negotiation script for every charge",
+      "Your file is deleted immediately after it's read; delete the report anytime",
+    ],
+    logo: "/assets/billcut-logo.png",
+    accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+  },
 ];
 
 const buildPillars = [
@@ -738,7 +755,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut), and the request form.
           </p>
         </div>
       </section>

@@ -164,6 +164,11 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Meme-coin experiment: the 7-day Great Sweep distributes 100% of the $DUST supply pro-rata to sweepers — no presale, no insiders. Currently testnet only; nothing for sale. 18+.</div>
           </li>
 
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Billcut — <a className="text-brand-700 underline dark:text-brand-100" href="https://billcut.mehyar.us" target="_blank" rel="noreferrer">billcut.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Statement audit: upload a bank or card statement and get every recurring charge ranked by yearly cost, with a cancel or negotiation script for each. $9 one-time full audit; $7/month monitoring. No bank login; your file is deleted right after it's read.</div>
+          </li>
+
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and white-label hosted PWAs under <code>connectree-*</code> / <code>blue-apple-space-*</code>.</div>
           </li>
