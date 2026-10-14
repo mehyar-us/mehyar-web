@@ -311,6 +311,9 @@ it('rot156: slogan on all three heroes + homepage hero price anchor from the cat
  for(const f of ['index.html','sales.html','pricing.html'])expect(readWeb(f)).toContain('<p class="hero-slogan">Mayor. Talk to your business.</p>');
  const home=readWeb('index.html');
  expect(home).toContain('<p class="hero-price" id="hero-price"></p>'); // ships empty; SSR fills it
+ // rot173: the anchor is a direct #chat-view child, NOT inside .page-heading
+ // (heading-scoped CSS in the chat layout can clip it there).
+ expect(home).toContain('</div><p class="hero-price" id="hero-price"></p><div class="voice-stage">');
  const filled=injectHeroPrice(home);
  expect(filled).toContain(`<p class="hero-price" id="hero-price">Start free \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
  // Client fallback derives the identical string from a fetched catalog.
