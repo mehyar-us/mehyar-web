@@ -329,3 +329,14 @@ it('rot157: /sales hero carries the same catalog-rendered price anchor',()=>{
  expect(priceAt).toBeGreaterThan(heroAt);
  expect(loopAt).toBeGreaterThan(priceAt); // inside the hero block, above the fold sections
 });
+
+it('rot165: /pricing hero carries the same catalog-rendered price anchor',()=>{
+ const pro=PLANS.find(p=>p.id==='pro')!;
+ const pricing=readWeb('pricing.html');
+ expect(pricing).toContain('<p class="hero-price" id="hero-price"></p>');
+ const served=injectHeroPrice(injectPricingCards(pricing));
+ expect(served).toContain(`<p class="hero-price" id="hero-price">Start free \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
+ const heroAt=served.indexOf('id="pricing-heading"'),priceAt=served.indexOf('id="hero-price"'),plansAt=served.indexOf('id="plan-cards"');
+ expect(priceAt).toBeGreaterThan(heroAt);
+ expect(plansAt).toBeGreaterThan(priceAt); // inside the hero, before the plan cards
+});
