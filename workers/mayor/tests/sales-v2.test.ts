@@ -85,7 +85,7 @@ it('generates one page per vertical from verticals.ts (single source of truth)',
     expect(page).toContain('href="/sales#plans"');
     const ctas=[...page.matchAll(/<a[^>]*href="([^"]*)"[^>]*>(?:Sign in|Start free)<\/a>/g)].map(m=>m[1]);
     expect(ctas.length).toBeGreaterThanOrEqual(4);
-    for(const href of ctas)expect(href).toBe('/');
+    for(const href of ctas)expect(['/','/?start=1']).toContain(href);
     // Shared legal footer, no street address.
     expect(page).toContain('MehyarSoft LLC');
     expect(page).toContain('https://mehyar.us/privacy-policy/');

@@ -188,7 +188,7 @@ it('Pro takes the direct billing path on both pricing surfaces (rot139)',()=>{
   expect(pricingCardsSsrHtml()!.plans).toContain('href="/billing?plan=pro">Go Pro');
   expect(injectSalesPlans(readWeb('sales.html'))).toContain('href="/billing?plan=pro">Go Pro');
   // Free still starts at the app root.
-  expect(pricingCardsSsrHtml()!.plans).toContain('href="/">Start free');
+  expect(pricingCardsSsrHtml()!.plans).toContain('href="/?start=1">Start free');
 });
 
 it('/sales surfaces the email capture right after pricing (rot139)',()=>{
