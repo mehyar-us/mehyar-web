@@ -134,7 +134,7 @@ it('ships a real favicon.ico and a clean 404 page',()=>{
 });
 
 it('isPublicAssetPath allows the public surface and nothing else',()=>{
-  for(const ok of ['/','/index.html','/terms','/terms.html','/robots.txt','/sitemap.xml','/favicon.ico','/sw.js','/manifest.webmanifest','/microphone-worklet.js','/icon-192.png','/mayor-avatar.png','/device-check','/404.html','/assets/sales-abc123.css']){
+  for(const ok of ['/','/index.html','/terms','/terms.html','/missed-call-checklist','/missed-call-checklist.html','/robots.txt','/sitemap.xml','/favicon.ico','/sw.js','/manifest.webmanifest','/microphone-worklet.js','/icon-192.png','/mayor-avatar.png','/device-check','/404.html','/assets/sales-abc123.css']){
     expect(isPublicAssetPath(ok),ok).toBe(true);
   }
   for(const bad of ['/nope','/sales/saloon','/admin','/api/billing/catalog','.env','/sales/../etc']){
