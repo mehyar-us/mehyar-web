@@ -333,6 +333,15 @@ it('rot157: /sales hero carries the same catalog-rendered price anchor',()=>{
  expect(loopAt).toBeGreaterThan(priceAt); // inside the hero block, above the fold sections
 });
 
+it('rot174: /pricing carries the full social meta set, front-desk aligned',()=>{
+ const pricing=readWeb('pricing.html');
+ expect(pricing).toContain('<meta property="og:title" content="The Mayor · Your AI Front Desk for Local Business">');
+ expect(pricing).toContain('<meta property="og:description" content="The Mayor pricing: start free');
+ expect(pricing).toContain('<meta property="og:url" content="https://mayor.mehyar.us/pricing">');
+ expect(pricing).toContain('<meta name="twitter:title" content="The Mayor · Your AI Front Desk for Local Business">');
+ expect(pricing).toContain('<meta name="twitter:card" content="summary_large_image">');
+});
+
 it('rot165: /pricing hero carries the same catalog-rendered price anchor',()=>{
  const pro=PLANS.find(p=>p.id==='pro')!;
  const pricing=readWeb('pricing.html');

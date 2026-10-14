@@ -31,7 +31,7 @@ export function isPublicAssetPath(path:string):boolean{
   if(path==='/terms'||path==='/terms.html')return true;
   if(path==='/missed-call-checklist'||path==='/missed-call-checklist.html')return true;
   if(path==='/pricing'||path==='/pricing.html')return true;
-  if(path==='/robots.txt'||path==='/sitemap.xml'||path==='/favicon.ico')return true;
+  if(path==='/robots.txt'||path==='/sitemap.xml'||path==='/llms.txt'||path==='/favicon.ico')return true;
   if(path==='/sw.js'||path==='/manifest.webmanifest'||path==='/manifest.json'||path==='/microphone-worklet.js')return true;
   if(path==='/analytics-consent.js'||path==='/analytics-consent.css')return true;
   if(path==='/icon-180.png'||path==='/icon-192.png'||path==='/icon-512.png'||path==='/mayor-avatar.png')return true;
