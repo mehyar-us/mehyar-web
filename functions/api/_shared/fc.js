@@ -36,11 +36,21 @@ export async function getBillcutAudit(db, token) {
   if (!token || typeof token !== "string" || token.length > 80) return null;
   const audit = await db.prepare("SELECT * FROM billcut_audits WHERE token = ?").bind(token).first();
   if (!audit) return null;
-  let testMode = false;
+  // Mode detection: billing_payments has no test flag column — the
+  // Stripe session id prefix is the reliable signal (cs_test_ vs
+  // cs_live_). Find the payment by id when stamped, else by the
+  // audit_token recorded in its metadata at checkout.
+  let pay = null;
   if (audit.payment_id) {
-    const pay = await db.prepare("SELECT test FROM billing_payments WHERE id = ?").bind(audit.payment_id).first();
-    if (pay) testMode = !!pay.test;
+    pay = await db.prepare("SELECT stripe_session_id FROM billing_payments WHERE id = ?")
+      .bind(audit.payment_id).first().catch(() => null);
   }
+  if (!pay) {
+    pay = await db.prepare(
+      "SELECT stripe_session_id FROM billing_payments WHERE product_id IN ('billcut-audit','billcut-monitoring') AND status='paid' AND metadata_json LIKE ? ORDER BY id DESC LIMIT 1"
+    ).bind("%" + token + "%").first().catch(() => null);
+  }
+  const testMode = !!(pay && String(pay.stripe_session_id || "").startsWith("cs_test_"));
   return { audit, testMode };
 }
 
