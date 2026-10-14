@@ -245,10 +245,6 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">DIY credit repair kit — dispute letters and rebuild plan.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">TikTok Growth System — <a className="text-brand-700 underline dark:text-brand-100" href="https://tiktokgrowth.mehyar.us" target="_blank" rel="noreferrer">tiktokgrowth.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI-generated organic short-form growth playbook.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">PLR Vault — <a className="text-brand-700 underline dark:text-brand-100" href="https://plrvault.mehyar.us" target="_blank" rel="noreferrer">plrvault.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Private-label-rights digital product vault — planner pack, content calendar, email swipes, course outlines.</div>
           </li>
@@ -266,18 +262,10 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized household preparedness playbook — calm, practical, no fear-mongering.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">OpenSeason — <a className="text-brand-700 underline dark:text-brand-100" href="https://openseason.mehyar.us" target="_blank" rel="noreferrer">openseason.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Every hunting-season date for your state, in plain English — free next-3 openers, $12 state packs.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">BeachCall — <a className="text-brand-700 underline dark:text-brand-100" href="https://beachcall.mehyar.us" target="_blank" rel="noreferrer">beachcall.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Daily go/no-go beach verdicts with best-hours windows — free for one beach a day, $9 summer pass for all your beaches.</div>
           </li>
 
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-<div className="font-semibold">CareRank — <a className="text-brand-700 underline dark:text-brand-100" href="https://carerank.mehyar.us" target="_blank" rel="noreferrer">carerank.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Nursing-home shortlist from real CMS data — free quiz with blurred top 3, $29 one-time for the full ranked 12-page PDF.</div>
-          </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">PureTap — <a className="text-brand-700 underline dark:text-brand-100" href="https://puretap.mehyar.us" target="_blank" rel="noreferrer">puretap.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
@@ -314,6 +302,22 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Statement audit: upload a bank or card statement and get every recurring charge ranked by yearly cost, with a cancel or negotiation script for each. $9 one-time full audit; $7/month monitoring. No bank login is required; your file is deleted right after it's read. Optional: after purchase you may connect an account read-only through Stripe Financial Connections — the login happens on Stripe's hosted window, Billcut never receives bank credentials, only the transactions permission is requested, raw transactions are processed and discarded (only the connection identifier and the audit summary are kept), and you can disconnect anytime from your report page.</div>
           </li>
 
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Legit — <a className="text-brand-700 underline dark:text-brand-100" href="https://legit.mehyar.us" target="_blank" rel="noreferrer">legit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI LLC-formation advisor — free name check, filing guidance, and generated documents ($29 session). Self-help software, not a law firm.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">SproutScore — <a className="text-brand-700 underline dark:text-brand-100" href="https://sproutscore.mehyar.us" target="_blank" rel="noreferrer">sproutscore.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">NYC daycare inspection decoder — free center search, $19 full decoded report.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Playbook — <a className="text-brand-700 underline dark:text-brand-100" href="https://playbook.mehyar.us" target="_blank" rel="noreferrer">playbook.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">The 30-Day Content Playbook — free hook teaser, $27 full playbook with posting plan.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Clipnote — <a className="text-brand-700 underline dark:text-brand-100" href="https://clipnote.mehyar.us" target="_blank" rel="noreferrer">clipnote.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Release notes → 60-second narrated launch video. Free script preview; $29/video or $19/mo for 4.</div>
+          </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>

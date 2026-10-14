@@ -257,23 +257,6 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
   },
   {
-    id: "tiktokgrowth",
-    name: "TikTok Growth System",
-    url: "https://tiktokgrowth.mehyar.us",
-    tagline: "A 30-day organic TikTok playbook, generated for your niche.",
-    description:
-      "An AI playbook builder for organic short-form growth: tell it your niche, camera comfort, and hours per week, and it generates a 30-day posting plan, 30 first-3-second hook scripts, a bio + CTA pack, and a trend-jacking playbook — one-time $27 with 5 free hook scripts before you pay.",
-    audience: "Creators, founders, and small businesses starting or restarting organic TikTok growth.",
-    highlights: [
-      "30-day posting plan built around your niche, schedule, and on-camera comfort",
-      "30 hook scripts for the first 3 seconds, each with why-it-works and delivery tips",
-      "Bio + CTA pack and a trend-jacking playbook — original-content methods only",
-      "5 free hook scripts before you pay — $27 one-time, 7-day redo included",
-    ],
-    logo: "/assets/tiktokgrowth-logo.png",
-    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
-  },
-  {
     id: "plrvault",
     name: "PLR Vault",
     url: "https://plrvault.mehyar.us",
@@ -325,23 +308,6 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
   {
-    id: "openseason",
-    name: "OpenSeason",
-    url: "https://openseason.mehyar.us",
-    tagline: "Every hunting-season date for your state, in plain English.",
-    description:
-      "Pick your state and get the next three verified season openers free — every date traced to the official state wildlife agency and stamped with its verification. The $12 state pack unlocks every season, deadline, bag limit, and license/tag date plus printable pack and reminders all season.",
-    audience: "Weekend deer hunters asking “is muzzleloader open this weekend?” or “did I miss the deadline?”",
-    highlights: [
-      "Next 3 verified season openers free — no signup, no payment",
-      "Every date carries its official state-agency source and verification stamp",
-      "$12 state pack: all seasons, deadlines, bag limits, license/tag dates",
-      "Printable pack + email reminders all season; one-click unsubscribe everywhere",
-    ],
-    logo: "/assets/openseason-logo.png",
-    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
-  },
-  {
     id: "beachcall",
     name: "BeachCall",
     url: "https://beachcall.mehyar.us",
@@ -356,23 +322,6 @@ const managedApps: ManagedApp[] = [
       "Morning go/no-go emails before the kids wake up, plus a Friday weekend outlook",
     ],
     logo: "/assets/beachcall-logo.png",
-    accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",
-  },
-  {
-    id: "carerank",
-    name: "CareRank",
-    url: "https://carerank.mehyar.us",
-    tagline: "Nursing-home shortlist that works for your family, not the facilities.",
-    description:
-      "A 4-minute quiz about your parent's needs, scored deterministically against real CMS nursing-home data. Free: your match count and blurred top 3. $29 one-time unlocks the full ranked shortlist — per-facility strengths, red flags, decoded CMS ratings, tour questions, and a printable 12-page PDF to share with siblings.",
-    audience: "Adult children who need to pick a nursing home this week under discharge-planner pressure.",
-    highlights: [
-      "Free 4-minute quiz — see how many homes fit, top 3 names blurred",
-      "Deterministic scoring over real CMS data — no invented ratings, ever",
-      "$29 one-time: full ranked shortlist + printable 12-page PDF",
-      "Per-facility strengths, red flags, and what to ask on the tour",
-    ],
-    logo: "/assets/carerank-logo.png",
     accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",
   },
   {
@@ -448,18 +397,18 @@ const managedApps: ManagedApp[] = [
     id: "legit",
     name: "Legit",
     url: "https://legit.mehyar.us",
-    tagline: "Start your business the legit way.",
+    tagline: "An AI advisor for forming your LLC.",
     description:
-      "Legit is an AI advisor that walks you through starting your business: check your business name in your state, get guided through formation step by step in a live session, and leave with your documents generated as PDFs. $29 for a 60-minute advisor session; $39 for the Launch Kit.",
-    audience: "First-time founders and side-hustlers who want their business formed properly — without a lawyer's hourly bill or a blank government form.",
+      "Chat with Legit to check your LLC name free, then get step-by-step filing guidance for your state. A 60-minute advisor session ($29) generates your documents — operating agreement, articles of organization, EIN checklist — as PDFs. Self-help software, not a law firm.",
+    audience: "First-time founders forming an LLC who want guidance and documents without a law-firm bill.",
     highlights: [
-      "Live business-name availability check in your state",
-      "A guided 60-minute session with the AI advisor",
-      "Your formation documents generated as PDFs as you go",
-      "$29 a session — plain pricing, no hourly legal bills",
+      "Free LLC name check in chat — no sign-in needed",
+      "Step-by-step filing guidance for your state",
+      "60-minute advisor session with documents generated for $29",
+      "Operating agreement, articles & EIN checklist as ready PDFs",
     ],
     logo: "/assets/legit-logo.png",
-    accentClass: "from-sky-100 to-white dark:from-sky-900 dark:to-sky-950",
+    accentClass: "from-yellow-100 to-white dark:from-yellow-900 dark:to-yellow-950",
   },
   {
     id: "moonroom",
@@ -530,6 +479,57 @@ const managedApps: ManagedApp[] = [
     ],
     logo: "/assets/billcut-logo.png",
     accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+  },
+  {
+    id: "sproutscore",
+    name: "SproutScore",
+    url: "https://sproutscore.mehyar.us",
+    tagline: "NYC daycare inspection records, decoded for parents.",
+    description:
+      "Every NYC daycare violation the city published, decoded in plain English. Search any of 3,014 licensed centers free; the full decoded report — every violation, severity ratings, correction status, nearby-center comparison and tour questions — is $19 one-time.",
+    audience: "NYC parents choosing a daycare who refuse to sign a $30k/year contract blind.",
+    highlights: [
+      "Free search across 3,014 licensed NYC daycare centers",
+      "Every published violation decoded in plain English",
+      "Severity ratings, correction status, and exact questions for your tour",
+      "Full decoded report $19 one-time — inspection history 2020–2023, the latest the city publishes",
+    ],
+    logo: "/assets/sproutscore-logo.png",
+    accentClass: "from-green-100 to-white dark:from-green-900 dark:to-green-950",
+  },
+  {
+    id: "playbook",
+    name: "Playbook",
+    url: "https://playbook.mehyar.us",
+    tagline: "30 days of content, planned for your niche.",
+    description:
+      "Tell Playbook your niche and get 5 free hook scripts right away. The full 30-Day Content Playbook ($27 one-time) adds a 30-day posting plan, 30 hook scripts, a bio pack and a trend-jacking guide — delivered as a private playbook page you can download as a PDF.",
+    audience: "Creators and small brands who want a month of short-form content planned around their niche, camera comfort, and hours.",
+    highlights: [
+      "5 free hook scripts for your niche — no card required",
+      "30-day posting plan built around the hours you actually have",
+      "30 hooks, a bio pack, and the trend-jacking playbook",
+      "$27 one-time — private playbook page plus PDF download",
+    ],
+    logo: "/assets/playbook-logo.png",
+    accentClass: "from-pink-100 to-white dark:from-pink-900 dark:to-pink-950",
+  },
+  {
+    id: "clipnote",
+    name: "Clipnote",
+    url: "https://clipnote.mehyar.us",
+    tagline: "Paste your release notes. Get a launch video.",
+    description:
+      "SaaS teams ship features weekly and announce them with a wall of text nobody reads. Clipnote turns your changelog into a polished 60-second narrated launch video — AI script drafted from your notes (free preview before you pay), narrated and animated scene by scene, with your own screenshots composited in. $29 per video, or $19/mo for 4 videos a month; delivered on a shareable watch page with an MP4 download, most within a few hours and always within 24.",
+    audience: "SaaS founders and indie hackers who ship weekly and need launch announcements people actually watch.",
+    highlights: [
+      "Free AI script preview from your release notes — see it before you pay",
+      "60-second narrated launch video, animated scene by scene",
+      "Your own product screenshots composited into the video",
+      "$29 per video or $19/mo for 4 — watch page + MP4, no watermark",
+    ],
+    logo: "/assets/clipnote-logo.png",
+    accentClass: "from-red-100 to-white dark:from-red-900 dark:to-red-950",
   },
 ];
 
@@ -772,7 +772,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Legit, SproutScore, Playbook, Clipnote), and the request form.
           </p>
         </div>
       </section>

@@ -8,35 +8,36 @@
 //
 // This page is part of the Mehyar.us "Products that access user data" compliance
 // set (see /privacy-policy, /terms). It applies to:
-//   1. Rizza — https://rizza.app (conversational AI for dating-app replies)
-//   2. AiMech — https://aimech.app (AI car diagnostics for everyday drivers)
-//   3. Crayon Kid — https://crayonkid.mehyar.us (personalized AI coloring books)
-//   4. RoastMe — https://roast.mehyar.us (AI photo roasts)
-//   5. BabyPeek — https://baby.mehyar.us (AI future-baby portraits)
-//   6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
-//   7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
-//   8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
+//  1. Rizza — https://rizza.app (conversational AI for dating-app replies)
+//  2. AiMech — https://aimech.app (AI car diagnostics for everyday drivers)
+//  3. Crayon Kid — https://crayonkid.mehyar.us (personalized AI coloring books)
+//  4. RoastMe — https://roast.mehyar.us (AI photo roasts)
+//  5. BabyPeek — https://baby.mehyar.us (AI future-baby portraits)
+//  6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
+//  7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
+//  8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
 //  9. FreelancerOS — https://freelanceros.mehyar.us (freelancer OS: clients, invoices, content, templates)
 //  10. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
 //  11. BizBuilder — https://bizbuilder.mehyar.us (AI business builder: idea to launch-ready plan)
 //  12. CreditFix Kit — https://creditfixkit.mehyar.us (DIY credit repair kit: dispute letters + rebuild plan)
 //  13. HustleKit — https://hustlekit.mehyar.us (AI side-hustle starter kits: personalized playbook PDFs)
-//  14. TikTok Growth System — https://tiktokgrowth.mehyar.us (AI-generated organic short-form growth playbook)
-//  15. PLR Vault — https://plrvault.mehyar.us (private-label-rights digital product vault)
-//  16. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
-//  17. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
-//  18. PrepGuide — https://prepguide.mehyar.us (personalized household preparedness playbook)
-//  19. OpenSeason — https://openseason.mehyar.us (hunting-season dates, free openers + $12 state packs)
-//  20. BeachCall — https://beachcall.mehyar.us (daily go/no-go beach verdicts + $9 summer pass)
-//  21. CareRank — https://carerank.mehyar.us (nursing-home shortlist: deterministic CMS-data ranking)
-//  22. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
-//  23. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
-//  24. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
-//  25. The Mayor — https://mayor.mehyar.us (AI business assistant for local service businesses)
-//  26. Moonroom — https://moonroom.mehyar.us (AI photo studio: headshot/product/theme packs from one selfie)
-//  27. Audit My Business — https://mehyar.us/audit/ ($330 AI audit: score, money leaks, fixes, AI opportunities)
-//  28. DUST — https://dust.mehyar.us (meme-coin experiment: 7-day Great Sweep, 100% supply pro-rata to sweepers; testnet only)
-//  29. Billcut — https://billcut.mehyar.us (statement audit: recurring charges ranked + cancel/negotiation scripts; uploaded file deleted at parse)
+//  14. PLR Vault — https://plrvault.mehyar.us (private-label-rights digital product vault)
+//  15. TrueSketch — https://truesketch.mehyar.us (personalized AI portrait sketch + 2-page reading)
+//  16. PromptPack Pro — https://promptpack.mehyar.us (niche AI prompt packs + swipe files)
+//  17. PrepGuide — https://prepguide.mehyar.us (personalized household preparedness playbook)
+//  18. BeachCall — https://beachcall.mehyar.us (daily go/no-go beach verdicts + $9 summer pass)
+//  19. PureTap — https://puretap.mehyar.us (tap-water safety verdicts: free EPA-data check + $19 full report)
+//  20. TicketBeat — https://ticketbeat.mehyar.us (NYC parking-ticket odds + dispute letters: free odds, $9.99 letter, $6.99/mo)
+//  21. FloodLens — https://floodlens.mehyar.us (FEMA flood-zone lookups + reports: free lookup, $19 report, $39 3-pack)
+//  22. The Mayor — https://mayor.mehyar.us (AI business assistant for local service businesses)
+//  23. Moonroom — https://moonroom.mehyar.us (AI photo studio: headshot/product/theme packs from one selfie)
+//  24. Audit My Business — https://mehyar.us/audit/ ($330 AI audit: score, money leaks, fixes, AI opportunities)
+//  25. DUST — https://dust.mehyar.us (meme-coin experiment: 7-day Great Sweep, 100% supply pro-rata to sweepers; testnet only)
+//  26. Billcut — https://billcut.mehyar.us (statement audit: recurring charges ranked + cancel/negotiation scripts; uploaded file deleted at parse)
+//  27. Legit — https://legit.mehyar.us (AI LLC-formation advisor: free name check, filing guidance, generated documents)
+//  28. SproutScore — https://sproutscore.mehyar.us (NYC daycare inspection records decoded: free search, $19 full report)
+//  29. Playbook — https://playbook.mehyar.us (the 30-Day Content Playbook: free hook scripts, $27 full playbook)
+//  30. Clipnote — https://clipnote.mehyar.us (release notes turned into a 60-second narrated launch video)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -47,7 +48,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt, Scale, Sprout, ListVideo, Video} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -208,18 +209,6 @@ id: "hustlekit",
       "Email address, submitted intake details, generated kit, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
-    id: "tiktokgrowth",
-    name: "TikTok Growth System",
-    url: "https://tiktokgrowth.mehyar.us",
-    tagline: "AI-generated organic short-form growth playbook.",
-    icon: TrendingUp,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "Email address (to deliver your purchase and send the playbook link), your niche, on-camera comfort level, hours per week, optional handle, the generated playbook, and checkout records.",
-    whatWeDelete:
-      "Email address, submitted inputs, generated playbook, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
     id: "plrvault",
     name: "PLR Vault",
     url: "https://plrvault.mehyar.us",
@@ -279,18 +268,6 @@ id: "hustlekit",
       "Email address, household intake answers, generated playbook, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
-    id: "openseason",
-    name: "OpenSeason",
-    url: "https://openseason.mehyar.us",
-    tagline: "Every hunting-season date for your state, in plain English.",
-    icon: Crosshair,
-    inAppPath: "One-click unsubscribe on every email (immediate product-level suppression); deletion via email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "Email address (for the free opener results and, when you buy, the $12 state pack delivery plus season reminders), your chosen state, and checkout records.",
-    whatWeDelete:
-      "Email address, chosen state, subscription and suppression records, and purchase records tied to your email. Unsubscribe is instant; full deletion via the email fallback within 14 days.",
-  },
-  {
     id: "beachcall",
     name: "BeachCall",
     url: "https://beachcall.mehyar.us",
@@ -301,18 +278,6 @@ id: "hustlekit",
       "Email address (to deliver your pass and send verdict emails), your saved beach list, your free/paid tier, and purchase records.",
     whatWeDelete:
       "Email address, saved beach list, tier, and purchase records tied to your email. Unsubscribing adds you to the product's do-not-mail list immediately. Full deletion via the email fallback within 14 days.",
-  },
-  {
-    id: "carerank",
-    name: "CareRank",
-    url: "https://carerank.mehyar.us",
-    tagline: "Nursing-home shortlist that works for your family, not the facilities.",
-    icon: HeartHandshake,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "Email address (to deliver your free matches and paid report), the quiz answers you submit (ZIP, care priorities, needs), the ranked shortlist generated for you, and checkout records.",
-    whatWeDelete:
-      "Email address, quiz answers, generated shortlist, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
     id: "puretap",
@@ -409,6 +374,66 @@ id: "hustlekit",
       "The statement file you upload (PDF or CSV) is processed in memory and deleted immediately after parsing — it is never stored. Account and card numbers are masked at parse time. We keep only the audit summary (merchant names, amounts, frequencies, dates) behind a private token link, plus your email for report delivery and, only with your separate opt-in, a monthly reminder. If you connect an account through Stripe Financial Connections, we additionally keep the connection identifier; the raw transactions are processed in-request and discarded, never stored.",
     whatWeDelete:
       "The audit summary (charges and report), delivery email, and any Stripe Financial Connections link — Delete my data disconnects the bank at Stripe and wipes the link immediately; email fallback actions within 14 days. The uploaded file itself is already gone: it is deleted at parse time.",
+  },
+  {
+    id: "hustlekit",
+    name: "HustleKit",
+    url: "https://hustlekit.mehyar.us",
+    tagline: "AI side-hustle starter kits: personalized playbook PDFs.",
+    icon: Rocket,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to deliver your purchase), your intake answers (skills, interests, available time), the generated starter-kit PDF, and checkout records.",
+    whatWeDelete:
+      "Email address, intake answers, generated kit, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
+  },
+  {
+    id: "legit",
+    name: "Legit",
+    url: "https://legit.mehyar.us",
+    tagline: "An AI advisor for forming your LLC.",
+    icon: Scale,
+    inAppPath: "Data deletion page on legit.mehyar.us (linked in its footer) — email fallback (info@mehyar.us)",
+    whatWeCollect:
+      "Chat session content, the company name / your name / state you provide for documents, email address (session report + PDFs are emailed to you), optional Google sign-in identity, and checkout records.",
+    whatWeDelete:
+      "Session transcripts, document inputs and generated PDFs, and purchase records tied to your email.",
+  },
+  {
+    id: "sproutscore",
+    name: "SproutScore",
+    url: "https://sproutscore.mehyar.us",
+    tagline: "NYC daycare inspection records, decoded for parents.",
+    icon: Sprout,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
+    whatWeCollect:
+      "Email address (to reveal and deliver your result), the daycare names you search, and checkout records.",
+    whatWeDelete:
+      "Email address, search history tied to your email, and purchase records.",
+  },
+  {
+    id: "playbook",
+    name: "Playbook",
+    url: "https://playbook.mehyar.us",
+    tagline: "30 days of content, planned for your niche.",
+    icon: ListVideo,
+    inAppPath: "Email fallback (info@mehyar.us) — token access, no accounts on this product",
+    whatWeCollect:
+      "Email address (delivery + access token), your intake answers (niche, camera comfort, available hours), the generated hooks and playbook, and checkout records.",
+    whatWeDelete:
+      "Email address, intake answers, generated playbook, and purchase records tied to your email.",
+  },
+  {
+    id: "clipnote",
+    name: "Clipnote",
+    url: "https://clipnote.mehyar.us",
+    tagline: "Paste your release notes. Get a launch video.",
+    icon: Video,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts; credits are keyed to buyer email",
+    whatWeCollect:
+      "The release-notes text and product name you paste, up to 3 screenshots you attach, buyer email (plan credits are keyed to it), generated scripts and rendered video files, and checkout records.",
+    whatWeDelete:
+      "Pasted notes, screenshots, drafts, generated scripts/videos, and purchase records tied to your email.",
   },
 ];
 
