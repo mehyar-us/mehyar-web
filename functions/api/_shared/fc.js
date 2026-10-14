@@ -83,15 +83,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // description}. Credits and pending rows are dropped here so the caller
 // never sees raw account data beyond what the audit needs.
 export async function syncAccountTransactions(env, testMode, accountId) {
+  // The transactions feature must be subscribed before a refresh does
+  // anything; subscribing is safe to repeat (errors are non-fatal).
+  const sub = new URLSearchParams();
+  sub.append("features[]", "transactions");
+  await stripeFC(env, testMode, "POST", `/v1/financial_connections/accounts/${accountId}/subscribe`, sub).catch(() => null);
+
   const sp = new URLSearchParams();
   sp.append("features[]", "transactions");
   await stripeFC(env, testMode, "POST", `/v1/financial_connections/accounts/${accountId}/refresh`, sp);
 
+  // Refresh is async; poll briefly. Keep the whole sync well inside
+  // the Pages CPU/wall limits — a long sleep loop here used to kill
+  // the function (bare 502s). Callers can re-sync to get more.
   let txns = [];
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     txns = [];
     let startingAfter = null;
-    for (let page = 0; page < 15; page++) {
+    for (let page = 0; page < 10; page++) {
       const q = new URLSearchParams({ limit: "100" });
       if (startingAfter) q.set("starting_after", startingAfter);
       const list = await stripeFC(env, testMode, "GET",
@@ -113,7 +122,7 @@ export async function syncAccountTransactions(env, testMode, accountId) {
       startingAfter = rows[rows.length - 1].id;
     }
     if (txns.length) break;
-    await sleep(2500); // refresh is async; first pulls can lag
+    if (attempt < 3) await sleep(1200);
   }
   return txns;
 }
