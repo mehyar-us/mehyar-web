@@ -52,6 +52,7 @@ import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
 import {runProactiveCycle,buildBriefing,buildRoi,setRoiConfig,roiConfigSchema,recordNoShow,noShowSchema,listSuggestionCards,sendSuggestionCard,editSuggestionCard,dismissSuggestionCard,setProactiveSettings,proactiveSettingsSchema} from './proactive';
+import {generateTrendpostPlan,getTrendpostPlan,decideTrendpostPost,editTrendpostPost,editTrendpostPostSchema,trendpostAccessView} from './trendpost';
 import {handleInstagramWebhook} from './instagram-dm';
 import {voiceReadinessResponse} from './voice-readiness';
 export {MayorPhone} from './phone-voice';
@@ -401,6 +402,18 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   }
   const proactiveSettings=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/proactive\/settings$/);
   if(proactiveSettings&&request.method==='POST')return json(await setProactiveSettings(env,{tenantId:proactiveSettings[1],userId:session.user.id},proactiveSettingsSchema.parse(await readJson(request,512))));
+  // Trendpost (2026-10-14): weekly posting plan — generate, read, and the
+  // per-post review gate (approve / edit / skip). Nothing publishes here.
+  const trendpost=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/trendpost(?:\/(generate|plan)|\/posts\/([a-f0-9]{32})\/(approve|edit|skip))?$/);
+  if(trendpost){
+   const actor={tenantId:trendpost[1],userId:session.user.id};
+   if(trendpost[2]==='generate'&&request.method==='POST')return json({plan:await generateTrendpostPlan(env,actor),access:await trendpostAccessView(env,actor)});
+   if(trendpost[2]==='plan'&&request.method==='GET')return json({plan:await getTrendpostPlan(env,actor),access:await trendpostAccessView(env,actor)});
+   const postId=trendpost[3],action=trendpost[4];
+   if(postId&&action==='approve'&&request.method==='POST')return json({plan:await decideTrendpostPost(env,actor,postId,'approve')});
+   if(postId&&action==='skip'&&request.method==='POST')return json({plan:await decideTrendpostPost(env,actor,postId,'skip')});
+   if(postId&&action==='edit'&&request.method==='POST')return json({plan:await editTrendpostPost(env,actor,postId,editTrendpostPostSchema.parse(await readJson(request,2048)).draft)});
+  }
   const bookings=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/bookings(?:\/([a-f0-9-]{36})\/check)?$/);
   if(bookings){
     const actor={tenantId:bookings[1],userId:session.user.id};

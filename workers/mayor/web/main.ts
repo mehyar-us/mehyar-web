@@ -26,6 +26,7 @@ import {VERTICAL_PROFILES} from '../src/verticals';
 import {verticalMappingNote} from '../src/vertical-mapping';
 import {createPlacesOnboarding} from './places-onboarding';
 import {loadOfferBlock} from './offer-loader';
+import {loadTrendpost} from './trendpost-loader';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -1072,6 +1073,8 @@ async function init(){
   // ever sent to POST /api/businesses (see claimBusinessName).
   if(!business){enterNamingMode();return;}
   await enterBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,business);
+  // Trendpost panel (2026-10-14): lazy React island in the Today view.
+  void loadTrendpost(business.id);
 }
 
 /** First-run: the conversation asks "What's your business called?" and the
