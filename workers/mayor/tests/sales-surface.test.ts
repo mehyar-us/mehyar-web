@@ -121,6 +121,14 @@ it('carries the email capture form with its disclosure (rot136)',()=>{
  expect(html).toContain('We store your email only to send these updates, and we never sell it.');
 });
 
+it('sales-loop form names the lead magnet; the checklist page exists (rot168)',()=>{
+ expect(html).toContain('Your first email brings the one-page Missed-Call Revenue Checklist.');
+ const checklist=readFileSync(join(webDir,'missed-call-checklist.html'),'utf8');
+ expect(checklist).toContain('<title>Missed-Call Revenue Checklist · The Mayor</title>');
+ expect(checklist).toContain('Count the unanswered calls');
+ expect(checklist).not.toMatch(/\d+%/); // no invented statistics
+});
+
 it('hero CTAs take different paths: Start free to the start entry, Sign in to the app (rot159)',()=>{
  expect(html).toContain('<a class="button" href="/?start=1">Start free</a>');
  expect(html).toContain('<a class="button button-outline" href="/">Sign in</a>');

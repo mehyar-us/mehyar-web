@@ -29,6 +29,7 @@ const SALES_VERTICAL_PATHS=new Set(
 export function isPublicAssetPath(path:string):boolean{
   if(path==='/'||path==='/index.html')return true;
   if(path==='/terms'||path==='/terms.html')return true;
+  if(path==='/missed-call-checklist'||path==='/missed-call-checklist.html')return true;
   if(path==='/pricing'||path==='/pricing.html')return true;
   if(path==='/robots.txt'||path==='/sitemap.xml'||path==='/favicon.ico')return true;
   if(path==='/sw.js'||path==='/manifest.webmanifest'||path==='/manifest.json'||path==='/microphone-worklet.js')return true;
