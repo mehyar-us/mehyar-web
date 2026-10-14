@@ -14,7 +14,14 @@
 // Test vs live follows the audit's billing_payments row (test flag).
 
 export async function stripeFC(env, testMode, method, path, params) {
-  const key = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
+  // Test mode: STRIPE_TEST_PUBLISHABLE_KEY belongs to the sandbox
+  // account (acct_…Oc3Kf), NOT the account STRIPE_TEST_SECRET_KEY lives
+  // on — Stripe.js rejects cross-account pairs. FC test traffic uses
+  // the sandbox account's own secret so the pair matches. Live mode is
+  // unaffected (its pair already matches on the main account).
+  const key = testMode
+    ? (env.STRIPE_FC_TEST_SECRET_KEY || env.STRIPE_TEST_SECRET_KEY)
+    : env.STRIPE_SECRET_KEY;
   if (!key) throw new Error(testMode ? "stripe_test_not_configured" : "stripe_not_configured");
   const opts = { method, headers: { authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) };
   if (params) {
