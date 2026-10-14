@@ -623,15 +623,18 @@ export default function Audit() {
           email: payEmail.trim(),
           /* The server mints the 64-hex report token at checkout and APPENDS
              ?token= to this URL. Never put a token here ourselves — a
-             pre-existing ?token= would NOT be overwritten. */
-          success_url: "https://mehyar.us/audit/report",
+             pre-existing ?token= would NOT be overwritten. Lands on THIS
+             page (/audit/?token= renders BusinessReportView under the
+             Audit My Business title) — never /audit/report, which is the
+             $5 Full Report's page and title. */
+          success_url: "https://mehyar.us/audit",
           cancel_url: "https://mehyar.us/audit/",
           params: { audit_id: intake.auditId },
         }),
       });
       const data = await r.json();
       if (data.already_ready && data.token) {
-        window.location.href = `/audit/report?token=${encodeURIComponent(data.token)}`;
+        window.location.href = `/audit?token=${encodeURIComponent(data.token)}`;
         return;
       }
       if (!data.ok) {

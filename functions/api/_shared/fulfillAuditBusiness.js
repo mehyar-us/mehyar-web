@@ -27,7 +27,10 @@
 import { sha256hex } from "./auditBusinessShared.js";
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-const REPORT_URL = "https://mehyar.us/audit/report?token=";
+/* The buyer's permanent report link lives on the Audit My Business page
+   itself (/audit/?token= renders the report view) — never /audit/report,
+   which is titled for the $5 Full Report. */
+const REPORT_URL = "https://mehyar.us/audit?token=";
 
 function randomHex(bytes) {
   const b = new Uint8Array(bytes);

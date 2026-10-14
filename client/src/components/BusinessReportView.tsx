@@ -275,13 +275,14 @@ export default function BusinessReportView({ token, initial }: { token: string; 
       <div className="mx-auto max-w-2xl py-10 text-center">
         <Loader2 className="mx-auto h-10 w-10 animate-spin text-brand-700" aria-hidden="true" />
         <h1 className="mt-4 text-2xl font-semibold text-foreground md:text-3xl">
-          {timedOut ? "Still working on it…" : "Building your audit report…"}
+          {timedOut ? "Still working on it…" : "Building your Audit My Business report…"}
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
           {timedOut
             ? "This is taking longer than usual. Your report is still being written — we'll email you the permanent link as soon as it's ready."
             : "Our AI is analyzing your site and writing your professional evaluation — we'll email you the permanent link as soon as it's ready."}
         </p>
+        <p className="mt-3 text-sm text-muted-foreground">Delivered by email within a few business days.</p>
         {!timedOut && (
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
         )}
