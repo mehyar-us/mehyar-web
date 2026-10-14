@@ -53,6 +53,16 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
+    if (body.action === "list") {
+      if (!audit.fc_customer_id) return J({ ok: true, accounts: [] });
+      const owned = await stripeFC(env, testMode, "GET",
+        `/v1/financial_connections/accounts?account_holder[customer]=${encodeURIComponent(audit.fc_customer_id)}&limit=50`);
+      return J({ ok: true, accounts: (owned.data || []).map((a) => ({
+        id: a.id, institution: a.institution_name, status: a.status,
+        permissions: a.permissions, features: a.features ? Object.keys(a.features) : [],
+      })) });
+    }
+
     if (body.action === "disconnect") {
       let n = 0;
       for (const id of linkedIds) { if (await disconnectAccount(env, testMode, id)) n++; }
