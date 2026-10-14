@@ -49,6 +49,7 @@ export async function onRequestPost({ request, env }) {
         test_publishable: await probe(env.STRIPE_TEST_PUBLISHABLE_KEY),
         live_secret: await probe(env.STRIPE_SECRET_KEY),
         live_publishable: await probe(env.STRIPE_PUBLISHABLE_KEY),
+        qa_secret: await probe(env.STRIPE_QA_SECRET_KEY),
       });
     }
 
