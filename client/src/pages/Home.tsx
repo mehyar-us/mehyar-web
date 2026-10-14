@@ -1,6 +1,6 @@
 import AuditWidget from "@/components/AuditWidget";
 import AIPipelinesSection from "@/components/AIPipelinesSection";
-import { ArrowRight, FileText, ScanSearch, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowRight, FileText, ScanSearch, Sparkles, CheckCircle2, PhoneMissed } from "lucide-react";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
 import HomeCtaSection from "@/components/HomeCtaSection";
@@ -58,6 +58,31 @@ export default function Home() {
               className={buttonVariants({ variant: "cta", size: "lg", className: "mt-6 min-h-12 w-full sm:w-auto" })}
             >
               Visit The Mayor <ArrowRight className="ml-2 h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── THE MAYOR: FREE MISSED-CALL CHECKLIST ── */}
+      <section className="px-4 pb-12 md:pb-16">
+        <div className="site-shell">
+          <div className="mx-auto flex max-w-4xl flex-col gap-5 rounded-3xl border border-emerald-600/30 bg-emerald-50 p-6 dark:bg-emerald-950/20 sm:flex-row sm:items-center md:p-8">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600/15 text-emerald-800 dark:text-emerald-300">
+              <PhoneMissed className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-foreground">Free from The Mayor: the Missed-Call Revenue Checklist</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Every missed call is revenue walking to a competitor. This free checklist shows where the calls slip away — and what to fix first.
+              </p>
+            </div>
+            <a
+              href="https://mayor.mehyar.us/missed-call-checklist?utm_source=mehyar-home&utm_medium=homepage&utm_campaign=mayor-checklist"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "cta", size: "lg", className: "min-h-12 w-full shrink-0 sm:w-auto" })}
+            >
+              Get the free checklist <ArrowRight className="ml-2 h-4 w-4" />
             </a>
           </div>
         </div>

@@ -445,6 +445,23 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-neutral-100 to-white dark:from-neutral-900 dark:to-neutral-950",
   },
   {
+    id: "legit",
+    name: "Legit",
+    url: "https://legit.mehyar.us",
+    tagline: "Start your business the legit way.",
+    description:
+      "Legit is an AI advisor that walks you through starting your business: check your business name in your state, get guided through formation step by step in a live session, and leave with your documents generated as PDFs. $29 for a 60-minute advisor session; $39 for the Launch Kit.",
+    audience: "First-time founders and side-hustlers who want their business formed properly — without a lawyer's hourly bill or a blank government form.",
+    highlights: [
+      "Live business-name availability check in your state",
+      "A guided 60-minute session with the AI advisor",
+      "Your formation documents generated as PDFs as you go",
+      "$29 a session — plain pricing, no hourly legal bills",
+    ],
+    logo: "/assets/legit-logo.png",
+    accentClass: "from-sky-100 to-white dark:from-sky-900 dark:to-sky-950",
+  },
+  {
     id: "moonroom",
     name: "Moonroom",
     url: "https://moonroom.mehyar.us",
