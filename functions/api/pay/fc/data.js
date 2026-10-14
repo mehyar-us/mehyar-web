@@ -31,6 +31,27 @@ export async function onRequestPost({ request, env }) {
     let linkedIds = [];
     try { linkedIds = (JSON.parse(audit.fc_accounts_json || "[]") || []).map((a) => a.id).filter(Boolean); } catch {}
 
+    if (body.action === "diag") {
+      // Diagnostic: which Stripe account does each key belong to?
+      // A failing call's request_log_url embeds the account id.
+      const probe = async (key) => {
+        const r = await fetch("https://api.stripe.com/v1/charges/ch_diag_probe", {
+          headers: { authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000),
+        });
+        const d = await r.json().catch(() => ({}));
+        const url = (d && d.error && d.error.request_log_url) || "";
+        const m = url.match(/acct_[A-Za-z0-9]+/);
+        return { status: r.status, acct: m ? m[0] : null, err: (d && d.error && d.error.message) || null };
+      };
+      return J({
+        ok: true,
+        test_secret: await probe(env.STRIPE_TEST_SECRET_KEY),
+        test_publishable: await probe(env.STRIPE_TEST_PUBLISHABLE_KEY),
+        live_secret: await probe(env.STRIPE_SECRET_KEY),
+        live_publishable: await probe(env.STRIPE_PUBLISHABLE_KEY),
+      });
+    }
+
     if (body.action === "disconnect") {
       let n = 0;
       for (const id of linkedIds) { if (await disconnectAccount(env, testMode, id)) n++; }
