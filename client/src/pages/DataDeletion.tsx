@@ -39,6 +39,7 @@
 //  29. Playbook — https://playbook.mehyar.us (the 30-Day Content Playbook: free hook scripts, $27 full playbook)
 //  30. Clipnote — https://clipnote.mehyar.us (release notes turned into a 60-second narrated launch video)
 //  31. WattWise — https://wattwise.mehyar.us (electric-bill checker: free rate gauge from a bill photo, $14.99 audit, $7.99/mo monitoring)
+//  32. Memoir — https://memoir.mehyar.us (AI-guided memoir interviewer: 12-chapter interview compiled into a book from the storyteller's own words; free sample chapter, $79 Digital / $149 Complete one-time)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -49,7 +50,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt, Scale, Sprout, ListVideo, Video} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt, Scale, Sprout, ListVideo, Video, BookOpen} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -459,6 +460,18 @@ id: "hustlekit",
       "The bill photo you upload — read once to extract numbers, then discarded; the image is never stored — the extracted bill numbers (rate, usage, charges), and email/checkout records for the paid audit and monitoring.",
     whatWeDelete:
       "Extracted bill numbers and purchase records tied to your email.",
+  },
+  {
+    id: "memoir",
+    name: "Memoir",
+    url: "https://memoir.mehyar.us",
+    tagline: "Their stories, in their own words — a book in days, not a year.",
+    icon: BookOpen,
+    inAppPath: "Memoir project page (memoir.mehyar.us/m/<your link>) — Delete my memoir button; email fallback (info@mehyar.us)",
+    whatWeCollect:
+      "The storyteller's name and relationship to the buyer, the buyer's email (for the purchase and book link), and the interview answers the storyteller gives — nothing else. No accounts or passwords, no health, financial, or government data. Stories stay behind a private token link and are never used for marketing.",
+    whatWeDelete:
+      "Every interview answer and the project record are wiped immediately by the Delete my memoir button on the project page; the payer email is cleared with the project. Email fallback (info@mehyar.us) actions within 14 days.",
   },
 ];
 

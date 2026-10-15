@@ -41,6 +41,7 @@ import { fulfillAuditBusiness } from "../_shared/fulfillAuditBusiness.js";
 import { fulfillBillcut } from "../_shared/fulfillBillcut.js";
 import { fulfillCoach } from "../_shared/fulfillCoach.js";
 import { fulfillClipnote } from "../_shared/fulfillClipnote.js";
+import { fulfillMemoir } from "../_shared/fulfillMemoir.js";
 
 // Buyer CRM hardening (tracking-crm-fix, 2026-10-05).
 //
@@ -509,6 +510,15 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillClipnote({ db, env, waitUntil, sendEmail }, payment);
   },
+
+  // Memoir ($79 Digital / $149 Complete, one-time). Marks the
+  // memoir_projects row paid + stamps the SKU (idempotent on
+  // payment_id), unifies the access token onto the project token,
+  // emails the buyer their personal memoir link.
+  async memoir({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillMemoir({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -547,7 +557,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut","coach","clipnote"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut","coach","clipnote","memoir"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(

@@ -324,6 +324,10 @@ const sections: Section[] = [
             <div className="font-semibold">WattWise — <a className="text-brand-700 underline dark:text-brand-100" href="https://wattwise.mehyar.us" target="_blank" rel="noreferrer">wattwise.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Electric-bill checker — free rate gauge from a bill photo, $14.99 full audit, $7.99/mo monitoring.</div>
           </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Memoir — <a className="text-brand-700 underline dark:text-brand-100" href="https://memoir.mehyar.us" target="_blank" rel="noreferrer">memoir.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI-guided memoir interviewer: a 12-chapter interview compiles a storyteller's own answers into a finished book (web + PDF + print-ready files). Free Sample Chapter; $79 Digital or $149 Complete, one-time — no subscription. We collect only the storyteller's name and relationship, the buyer's email, and the interview answers; stories live behind a private link, are never used for marketing or sold, and can be deleted in-product at any time. Complete includes print-ready files only — no book is mailed.</div>
+          </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
           </li>

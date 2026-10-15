@@ -565,6 +565,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/wattwise-logo.png",
     accentClass: "from-gray-100 to-white dark:from-gray-900 dark:to-gray-950",
   },
+  {
+    id: "memoir",
+    name: "Memoir",
+    url: "https://memoir.mehyar.us",
+    tagline: "Their stories, in their own words — a book in days, not a year.",
+    description:
+      "Memoir interviews a storyteller chapter by chapter — a parent, a grandparent, or yourself — with follow-up questions that react to what they actually said, then compiles their own words into a finished memoir book to read, share, download, and print. The first chapter is a free sample; the full book is $79 one-time (Digital) or $149 (Complete: up to three storytellers plus a hardcover print-ready edition). No subscription. The storyteller never creates an account and never pays — one private link and they talk.",
+    audience: "Adult children preserving a parent's stories, and anyone 55+ who wants their own life story in a book without writing it.",
+    highlights: [
+      "A guided 12-chapter interview — done in days, not a year of weekly prompts",
+      "Follow-ups react to the names, places, and years in their answers",
+      "The book is compiled from the storyteller's own words — never invented, editable anytime",
+      "Free Sample Chapter first; the storyteller never sees a paywall and never pays",
+    ],
+    logo: "/assets/memoir-logo.png",
+    accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
+  },
 ];
 
 const buildPillars = [
@@ -806,7 +823,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise, Memoir), and the request form.
           </p>
         </div>
       </section>
