@@ -105,14 +105,14 @@ const managedApps: ManagedApp[] = [
   },
   {
     id: "mehyarjobs",
-    name: "mehyar.jobs",
+    name: "jobs.mehyar",
     url: "https://jobs.mehyar.us",
-    tagline: "7,000+ careers, fit-scored.",
+    tagline: "Tell it the job you want.",
     description:
-      "Daily scan of Fortune 500, Forbes Global 2000, Inc 5000, and S&P 500 career pages — ranked by fit to your profile, not by who paid to promote.",
+      "Tell it the job you want — AI scores every new posting against your resume. Free.",
     audience: "Job seekers who are tired of scrolling the same 50 listings on every board.",
     highlights: [
-      "7,000+ careers scanned daily from top employer career pages",
+      "Every new posting scored against your resume",
       "Fit-scored against your profile, not keyword-matched",
       "Covers Fortune 500, Forbes Global 2000, Inc 5000, and S&P 500",
       "Fresh every morning — no stale reposts",

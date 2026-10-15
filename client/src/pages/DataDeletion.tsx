@@ -14,7 +14,7 @@
 //  4. RoastMe — https://roast.mehyar.us (AI photo roasts)
 //  5. BabyPeek — https://baby.mehyar.us (AI future-baby portraits)
 //  6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
-//  7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
+//  7. jobs.mehyar — https://jobs.mehyar.us (automated personal jobs dashboard)
 //  8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
 //  9. FreelancerOS — https://freelanceros.mehyar.us (freelancer OS: clients, invoices, content, templates)
 //  10. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
@@ -139,7 +139,7 @@ const apps: AppInfo[] = [
   },
   {
     id: "mehyarjobs",
-    name: "Mehyar Jobs",
+    name: "jobs.mehyar",
     url: "https://jobs.mehyar.us",
     tagline: "Automated personal jobs dashboard.",
     icon: Briefcase,

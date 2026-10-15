@@ -6,7 +6,7 @@ export const BRANDS: BrandMeta[] = [
   { id: "babypeek", name: "BabyPeek", domain: "baby.mehyar.us", url: "https://baby.mehyar.us", kind: "digital-product", price: "$5 portrait", status: "live" },
   { id: "roastme", name: "RoastMe", domain: "roast.mehyar.us", url: "https://roast.mehyar.us", kind: "digital-product", price: "$5 roast card", instagram: "@roastme", status: "live" },
   { id: "crayonkid", name: "Crayon Kid", domain: "crayonkid.mehyar.us", url: "https://crayonkid.mehyar.us", kind: "digital-product", price: "$6 coloring book", status: "live" },
-  { id: "mehyarjobs", name: "mehyar.jobs", domain: "jobs.mehyar.us", url: "https://jobs.mehyar.us", kind: "tool", status: "live" },
+  { id: "mehyarjobs", name: "jobs.mehyar", domain: "jobs.mehyar.us", url: "https://jobs.mehyar.us", kind: "tool", status: "live" },
   { id: "spg", name: "Stuff Pretty Good", domain: "stuffprettygood.com", url: "https://stuffprettygood.com", kind: "digital-product", price: "$7–9 guides", status: "live" },
   { id: "rizza", name: "Rizza", domain: "rizza.app", url: "https://rizza.app", kind: "app", status: "parked" },
   { id: "designful", name: "Designful", domain: "designful.mehyar.us", url: "https://designful.mehyar.us", kind: "tool", status: "building" },

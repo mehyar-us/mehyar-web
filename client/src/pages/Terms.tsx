@@ -72,7 +72,7 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized coloring books.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">mehyar.jobs — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="font-semibold">jobs.mehyar — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Fit-scored career listings.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
