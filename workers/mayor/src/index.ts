@@ -3,6 +3,7 @@ import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} 
 import {NOT_FOUND_HTML} from './not-found-page';
 import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
+import {handleConnectorEngineRequest} from './connector-engine';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
 import {runTelnyxRecovery} from './telnyx-recovery';
@@ -221,6 +222,8 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const actor={tenantId:businessRoute[1],userId:session.user.id};
     const connections=await handleConnectionsRequest(request,env,actor);
     if(connections)return connections;
+    const connectorEngine=await handleConnectorEngineRequest(request,env,actor);
+    if(connectorEngine)return connectorEngine;
     const mcpTokens=await handleMcpTokens(request,env,actor);
     if(mcpTokens)return mcpTokens;
     const billing=await handleBillingRequest(request,env,actor);

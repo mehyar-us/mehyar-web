@@ -1,0 +1,241 @@
+import {z} from 'zod';
+import type {Actor,Env} from './env';
+import {providerConfigured,grantedCapabilities} from './auth/capabilities';
+import {checkCustomConnection,listCustomConnections} from './custom-connectors';
+import {resolveConnectorService} from './connector-guides';
+import {OPERATORS,requireMembership} from './permissions';
+import {HttpError,json,readJson} from './http';
+import {getRecipe,genericRecipe,listRecipes,type ConnectorRecipe,type ConnectMethod,type FailureKind} from './connector-recipes';
+
+/**
+ * One Connector engine (design: one-connector-design.md, 2026-10-15).
+ * ONE state machine connects a business to anything:
+ *   offered -> capturing -> verifying -> connected
+ *   a failed method records its failure kind and walks DOWN the recipe's
+ *   ranked method list; exhausting the list is 'gave_up'. A connection
+ *   counts only when verification passes against the REAL stores: OAuth
+ *   grants in auth_provider_grants, credentials via the custom-connector
+ *   module's own check (secrets never leave that module), or the owner's
+ *   explicit confirmation for an assisted method.
+ */
+
+export type SessionState='offered'|'capturing'|'verifying'|'connected'|'gave_up';
+interface SessionRow{id:string;tenant_id:string;service:string;method_index:number;method_kind:string;state:SessionState;failure_kind:string|null;connection_id:string|null;created_at:number;updated_at:number}
+
+const FAILURE_KINDS:readonly FailureKind[]=['bad_credential','insufficient_scope','method_removed','platform_gate','network','owner_abandoned','unknown'];
+
+/** First method at/after `from` the owner can actually use right now:
+ * an OAuth method counts only when that provider is configured. */
+function nextViableIndex(env:Env,recipe:ConnectorRecipe,from:number):number{
+ for(let i=from;i<recipe.methods.length;i++){
+  const method=recipe.methods[i];
+  if(method.kind==='oauth'&&!providerConfigured(env,method.provider))continue;
+  return i;
+ }
+ return -1;
+}
+
+async function recordEvent(env:Env,tenantId:string,service:string,version:number,outcome:string,failureKind?:FailureKind){
+ // Telemetry must never break the owner's connect flow.
+ try{
+  await env.AGENT_DB.prepare('INSERT INTO connector_recipe_events(tenant_id,service,version,outcome,failure_kind,created_at) VALUES(?,?,?,?,?,?)')
+   .bind(tenantId,service,version,outcome,failureKind??null,Date.now()).run();
+ }catch{/* table not migrated yet */}
+}
+
+function publicMethod(method:ConnectMethod){
+ // Methods are declarative and secret-free by construction.
+ return method;
+}
+
+function sessionView(row:SessionRow,recipe:ConnectorRecipe){
+ const method=recipe.methods[row.method_index];
+ return {
+  id:row.id,service:row.service,name:recipe.name,source:recipe.source,
+  state:row.state,method:method?publicMethod(method):null,
+  methodIndex:row.method_index,methodsTotal:recipe.methods.length,
+  failureKind:row.failure_kind,connectionId:row.connection_id,
+  unlocks:recipe.unlocks,platformGate:recipe.platformGate??null,
+  createdAt:row.created_at,updatedAt:row.updated_at,
+ };
+}
+
+async function ownedSession(env:Env,actor:Actor,id:string):Promise<SessionRow>{
+ const row=await env.AGENT_DB.prepare('SELECT * FROM mayor_connector_sessions WHERE id=? AND tenant_id=?')
+  .bind(z.uuid().parse(id),actor.tenantId).first<SessionRow>();
+ if(!row)throw new HttpError(404,'session_not_found','That connection attempt could not be found.');
+ return row;
+}
+
+async function recipeFor(env:Env,row:SessionRow):Promise<ConnectorRecipe>{
+ return (await getRecipe(env,row.service))??genericRecipe(row.service);
+}
+
+async function updateSession(env:Env,row:SessionRow,patch:Partial<SessionRow>):Promise<SessionRow>{
+ const next={...row,...patch,updated_at:Date.now()};
+ await env.AGENT_DB.prepare('UPDATE mayor_connector_sessions SET method_index=?,method_kind=?,state=?,failure_kind=?,connection_id=?,updated_at=? WHERE id=? AND tenant_id=?')
+  .bind(next.method_index,next.method_kind,next.state,next.failure_kind,next.connection_id,next.updated_at,row.id,row.tenant_id).run();
+ return next;
+}
+
+/** Record a method failure and walk down to the next viable method. */
+async function advanceAfterFailure(env:Env,row:SessionRow,recipe:ConnectorRecipe,kind:FailureKind):Promise<SessionRow>{
+ await recordEvent(env,row.tenant_id,row.service,recipe.version,'method_failed',kind);
+ const next=nextViableIndex(env,recipe,row.method_index+1);
+ if(next>=0){
+  return updateSession(env,row,{method_index:next,method_kind:recipe.methods[next].kind,state:'offered',failure_kind:kind,connection_id:null});
+ }
+ await recordEvent(env,row.tenant_id,row.service,recipe.version,'gave_up',kind);
+ return updateSession(env,row,{state:'gave_up',failure_kind:kind});
+}
+
+function failureKindFor(err:unknown):FailureKind{
+ if(err instanceof HttpError){
+  // The custom-connector module reports provider rejections under its own
+  // code; a rejection from the platform is, in practice, the credential.
+  if(err.code==='connection_provider_rejected')return 'bad_credential';
+  if(err.code==='connection_transport_unknown'||err.code==='connection_redirect_refused'||err.code==='connection_response_too_large')return 'network';
+  if(err.status===401||err.status===403)return 'bad_credential';
+  if(err.status>=500)return 'network';
+  return 'unknown';
+ }
+ return 'network';
+}
+
+export async function startConnectorSession(env:Env,actor:Actor,rawService:unknown){
+ await requireMembership(env,actor,OPERATORS);
+ const input=z.object({service:z.string().trim().min(1).max(80)}).strict().parse(rawService);
+ const canonical=resolveConnectorService(input.service);
+ const recipe=(canonical?await getRecipe(env,canonical):null)??genericRecipe(canonical??input.service);
+ const index=nextViableIndex(env,recipe,0);
+ if(index<0)throw new HttpError(422,'no_method_available',`There is no way to connect ${recipe.name} right now.`);
+ const now=Date.now();
+ const row:SessionRow={id:crypto.randomUUID(),tenant_id:actor.tenantId,service:recipe.service,
+  method_index:index,method_kind:recipe.methods[index].kind,state:'offered',failure_kind:null,
+  connection_id:null,created_at:now,updated_at:now};
+ await env.AGENT_DB.prepare('INSERT INTO mayor_connector_sessions(id,tenant_id,service,method_index,method_kind,state,failure_kind,connection_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
+  .bind(row.id,row.tenant_id,row.service,row.method_index,row.method_kind,row.state,row.failure_kind,row.connection_id,row.created_at,row.updated_at).run();
+ await recordEvent(env,actor.tenantId,recipe.service,recipe.version,'session_started');
+ return sessionView(row,recipe);
+}
+
+export async function listConnectorSessions(env:Env,actor:Actor){
+ await requireMembership(env,actor,OPERATORS);
+ const rows=await env.AGENT_DB.prepare('SELECT * FROM mayor_connector_sessions WHERE tenant_id=? ORDER BY updated_at DESC LIMIT 25')
+  .bind(actor.tenantId).all<SessionRow>();
+ const recipes=await listRecipes(env);
+ const byService=new Map(recipes.map(r=>[r.service,r]));
+ return {sessions:(rows.results??[]).map(row=>sessionView(row,byService.get(row.service)??genericRecipe(row.service)))};
+}
+
+export async function beginConnectorSession(env:Env,actor:Actor,id:string){
+ await requireMembership(env,actor,OPERATORS);
+ const row=await ownedSession(env,actor,id);
+ const recipe=await recipeFor(env,row);
+ if(row.state==='capturing')return sessionView(row,recipe);
+ if(row.state!=='offered')throw new HttpError(409,'session_not_offered','This connection attempt is no longer waiting to start.');
+ const next=await updateSession(env,row,{state:'capturing'});
+ return sessionView(next,recipe);
+}
+
+export async function attachConnectorConnection(env:Env,actor:Actor,id:string,raw:unknown){
+ await requireMembership(env,actor,OPERATORS);
+ const row=await ownedSession(env,actor,id);
+ const recipe=await recipeFor(env,row);
+ const method=recipe.methods[row.method_index];
+ if(row.state!=='capturing'||!method||method.kind==='oauth'||method.kind==='assisted'){
+  throw new HttpError(409,'attach_not_applicable','This step does not take a saved connection.');
+ }
+ const input=z.object({connectionId:z.uuid()}).strict().parse(raw);
+ // The connection must be one of THIS user's own custom connections.
+ const {connections}=await listCustomConnections(env,actor);
+ if(!connections.some(c=>c.id===input.connectionId))throw new HttpError(404,'connection_not_found','That saved connection could not be found.');
+ const next=await updateSession(env,row,{connection_id:input.connectionId});
+ return sessionView(next,recipe);
+}
+
+/** Verify the current method against the real store. Only a pass connects. */
+export async function verifyConnectorSession(env:Env,actor:Actor,id:string,transport:typeof fetch=fetch){
+ await requireMembership(env,actor,OPERATORS);
+ const row=await ownedSession(env,actor,id);
+ const recipe=await recipeFor(env,row);
+ const method=recipe.methods[row.method_index];
+ if(row.state!=='capturing'||!method)throw new HttpError(409,'session_not_capturing','Start this step before verifying it.');
+ await updateSession(env,row,{state:'verifying'});
+
+ if(method.kind==='assisted'){
+  // For an assisted method, the owner's verify call IS the confirmation
+  // that they completed the guided steps on the platform itself.
+  const next=await updateSession(env,row,{state:'connected'});
+  await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected');
+  return sessionView(next,recipe);
+ }
+
+ if(method.kind==='oauth'){
+  const grant=await env.AGENT_DB.prepare("SELECT selected_capabilities,granted_scopes FROM auth_provider_grants WHERE tenant_id=? AND user_id=? AND provider=? AND status='authorized'")
+   .bind(actor.tenantId,actor.userId,method.provider).first<{selected_capabilities:string;granted_scopes:string}>();
+  if(!grant){
+   // Not a recipe failure: the owner simply has not finished sign-in yet.
+   await updateSession(env,row,{state:'capturing'});
+   throw new HttpError(409,'oauth_incomplete',`Finish signing in with ${method.provider} first, then verify.`);
+  }
+  let capabilities:string[]=[];
+  try{capabilities=grantedCapabilities(method.provider,JSON.parse(grant.granted_scopes),JSON.parse(grant.selected_capabilities));}catch{capabilities=[];}
+  if(!capabilities.length){
+   const next=await advanceAfterFailure(env,row,recipe,'insufficient_scope');
+   return sessionView(next,recipe);
+  }
+  const next=await updateSession(env,row,{state:'connected'});
+  await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected');
+  return sessionView(next,recipe);
+ }
+
+ // api_key / webhook / mcp: verify runs through the attached custom
+ // connection; the secret never leaves the custom-connector module.
+ if(!row.connection_id){
+  await updateSession(env,row,{state:'capturing'});
+  throw new HttpError(409,'connection_required','Save the connection first, then verify.');
+ }
+ try{
+  await checkCustomConnection(env,actor,row.connection_id,transport);
+ }catch(err){
+  const next=await advanceAfterFailure(env,row,recipe,failureKindFor(err));
+  return sessionView(next,recipe);
+ }
+ const next=await updateSession(env,row,{state:'connected'});
+ await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected');
+ return sessionView(next,recipe);
+}
+
+/** The UI/owner reports the current method failed; walk down the ladder. */
+export async function failConnectorSession(env:Env,actor:Actor,id:string,raw:unknown){
+ await requireMembership(env,actor,OPERATORS);
+ const row=await ownedSession(env,actor,id);
+ const recipe=await recipeFor(env,row);
+ if(row.state==='connected'||row.state==='gave_up')throw new HttpError(409,'session_finished','This connection attempt is already finished.');
+ const input=z.object({kind:z.enum(FAILURE_KINDS)}).strict().parse(raw);
+ const next=await advanceAfterFailure(env,row,recipe,input.kind);
+ return sessionView(next,recipe);
+}
+
+export async function handleConnectorEngineRequest(request:Request,env:Env,actor:Actor):Promise<Response|null>{
+ const url=new URL(request.url);
+ const base=`/api/businesses/${actor.tenantId}/connector-engine`;
+ if(url.pathname===`${base}/recipes`&&request.method==='GET'){
+  await requireMembership(env,actor,OPERATORS);
+  const recipes=await listRecipes(env);
+  return json({recipes:recipes.map(r=>({service:r.service,name:r.name,capabilities:r.capabilities,unlocks:r.unlocks,
+   methods:r.methods.map(m=>m.kind),platformGate:r.platformGate??null,source:r.source,version:r.version}))});
+ }
+ if(url.pathname===`${base}/sessions`&&request.method==='GET')return json(await listConnectorSessions(env,actor));
+ if(url.pathname===`${base}/sessions`&&request.method==='POST')return json(await startConnectorSession(env,actor,await readJson(request,4096)),201);
+ const action=url.pathname.match(new RegExp(`^${base.replace(/[/]/g,'\\/')}\\/sessions\\/([a-f0-9-]{36})\\/(begin|attach|verify|fail)$`));
+ if(action&&request.method==='POST'){
+  const [,sessionId,verb]=action;
+  if(verb==='begin')return json(await beginConnectorSession(env,actor,sessionId));
+  if(verb==='attach')return json(await attachConnectorConnection(env,actor,sessionId,await readJson(request,4096)));
+  if(verb==='verify')return json(await verifyConnectorSession(env,actor,sessionId));
+  if(verb==='fail')return json(await failConnectorSession(env,actor,sessionId,await readJson(request,4096)));
+ }
+ return null;
+}

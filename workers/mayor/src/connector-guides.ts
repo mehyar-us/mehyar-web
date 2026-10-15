@@ -165,6 +165,11 @@ export function guideForService(service:string):ConnectorGuide|null{
  return GUIDES.find(g=>g.service===service)??null;
 }
 
+/** The full builtin guide catalog (One Connector recipes seed from this). */
+export function listGuides():ConnectorGuide[]{
+ return [...GUIDES];
+}
+
 /** Generic fallback guide for a service we have no specific guide for. */
 export function genericConnectorGuide(serviceName:string):ConnectorGuide{
  const name=serviceName.trim().slice(0,60)||'that service';
