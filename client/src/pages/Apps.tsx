@@ -531,6 +531,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/clipnote-logo.png",
     accentClass: "from-red-100 to-white dark:from-red-900 dark:to-red-950",
   },
+  {
+    id: "wattwise",
+    name: "WattWise",
+    url: "https://wattwise.mehyar.us",
+    tagline: "Is your electric bill ripping you off?",
+    description:
+      "Photo your electric bill and WattWise gives you a free 30-second verdict — overpaying, fair, or good — measured against real rate data for your area (OpenEI utility rates / EIA state averages), plus the one thing costing you most. The full audit ($14.99 one-time) decodes every line, recommends a cheaper plan, and gives you a call script to switch; monitoring ($7.99/mo) checks every new bill automatically.",
+    audience: "Anyone paying a residential electric bill who suspects they're overpaying and wants proof before switching suppliers.",
+    highlights: [
+      "Free gauge from a photo of your bill — verdict in ~30 seconds, no account needed",
+      "Your effective ¢/kWh benchmarked against real area rate data (OpenEI / EIA)",
+      "$14.99 full audit: every line decoded, cheaper plan + call script to switch",
+      "$7.99/mo monitoring — every new bill checked, alerts when you're overpaying",
+    ],
+    logo: "/assets/wattwise-logo.png",
+    accentClass: "from-gray-100 to-white dark:from-gray-900 dark:to-gray-950",
+  },
 ];
 
 const buildPillars = [
@@ -772,7 +789,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Legit, SproutScore, Playbook, Clipnote), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Legit, SproutScore, Playbook, Clipnote, WattWise), and the request form.
           </p>
         </div>
       </section>

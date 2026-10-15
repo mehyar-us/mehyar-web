@@ -38,6 +38,7 @@
 //  28. SproutScore — https://sproutscore.mehyar.us (NYC daycare inspection records decoded: free search, $19 full report)
 //  29. Playbook — https://playbook.mehyar.us (the 30-Day Content Playbook: free hook scripts, $27 full playbook)
 //  30. Clipnote — https://clipnote.mehyar.us (release notes turned into a 60-second narrated launch video)
+//  31. WattWise — https://wattwise.mehyar.us (electric-bill checker: free rate gauge from a bill photo, $14.99 audit, $7.99/mo monitoring)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -434,6 +435,18 @@ id: "hustlekit",
       "The release-notes text and product name you paste, up to 3 screenshots you attach, buyer email (plan credits are keyed to it), generated scripts and rendered video files, and checkout records.",
     whatWeDelete:
       "Pasted notes, screenshots, drafts, generated scripts/videos, and purchase records tied to your email.",
+  },
+  {
+    id: "wattwise",
+    name: "WattWise",
+    url: "https://wattwise.mehyar.us",
+    tagline: "Is your electric bill ripping you off?",
+    icon: Zap,
+    inAppPath: "Privacy page on wattwise.mehyar.us — email fallback (info@mehyar.us)",
+    whatWeCollect:
+      "The bill photo you upload — read once to extract numbers, then discarded; the image is never stored — the extracted bill numbers (rate, usage, charges), and email/checkout records for the paid audit and monitoring.",
+    whatWeDelete:
+      "Extracted bill numbers and purchase records tied to your email.",
   },
 ];
 
