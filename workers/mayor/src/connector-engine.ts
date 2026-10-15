@@ -35,12 +35,36 @@ function nextViableIndex(env:Env,recipe:ConnectorRecipe,from:number):number{
  return -1;
 }
 
-async function recordEvent(env:Env,tenantId:string,service:string,version:number,outcome:string,failureKind?:FailureKind){
+async function recordEvent(env:Env,tenantId:string,service:string,version:number,outcome:string,failureKind?:FailureKind,methodKind?:string){
  // Telemetry must never break the owner's connect flow.
  try{
-  await env.AGENT_DB.prepare('INSERT INTO connector_recipe_events(tenant_id,service,version,outcome,failure_kind,created_at) VALUES(?,?,?,?,?,?)')
-   .bind(tenantId,service,version,outcome,failureKind??null,Date.now()).run();
+  await env.AGENT_DB.prepare('INSERT INTO connector_recipe_events(tenant_id,service,version,outcome,failure_kind,method_kind,created_at) VALUES(?,?,?,?,?,?,?)')
+   .bind(tenantId,service,version,outcome,failureKind??null,methodKind??null,Date.now()).run();
  }catch{/* table not migrated yet */}
+}
+
+/** Queue a platform for the crew's docs-research pass (the learning loop's
+ * input). Deduped while a request is open. Never breaks the connect flow. */
+async function enqueueResearch(env:Env,tenantId:string,service:string,reason:'unknown_platform'|'method_removed'){
+ try{
+  const now=Date.now();
+  await env.AGENT_DB.prepare(`INSERT INTO connector_research_requests(id,service,reason,status,tenant_id,created_at,updated_at)
+   SELECT ?,?,?, 'queued', ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM connector_research_requests WHERE service=? AND status IN ('queued','researched'))`)
+   .bind(crypto.randomUUID(),service,reason,tenantId,now,now,service).run();
+ }catch{/* table not migrated yet */}
+}
+
+/** A draft learned recipe whose NON-assisted method just verified live is
+ * promoted into the shared catalog (design §6.4). Assisted success proves
+ * nothing about the platform's API, so it never promotes. */
+async function promoteRecipeIfDraft(env:Env,row:SessionRow,recipe:ConnectorRecipe){
+ if(recipe.source!=='learned'||recipe.learnedState!=='draft')return;
+ try{
+  await env.AGENT_DB.prepare("UPDATE connector_recipes SET state='promoted',updated_at=? WHERE service=? AND state='draft'")
+   .bind(Date.now(),recipe.service).run();
+  recipe.learnedState='promoted';
+  await recordEvent(env,row.tenant_id,row.service,recipe.version,'recipe_promoted');
+ }catch{/* promotion is bookkeeping; the connection itself already succeeded */}
 }
 
 function publicMethod(method:ConnectMethod){
@@ -56,6 +80,7 @@ function sessionView(row:SessionRow,recipe:ConnectorRecipe){
   methodIndex:row.method_index,methodsTotal:recipe.methods.length,
   failureKind:row.failure_kind,connectionId:row.connection_id,
   unlocks:recipe.unlocks,platformGate:recipe.platformGate??null,
+  firstAttempt:recipe.learnedState==='draft',
   createdAt:row.created_at,updatedAt:row.updated_at,
  };
 }
@@ -78,14 +103,54 @@ async function updateSession(env:Env,row:SessionRow,patch:Partial<SessionRow>):P
  return next;
 }
 
+function sameMethod(a:ConnectMethod,b:ConnectMethod):boolean{
+ return a.kind===b.kind&&(a.kind!=='oauth'||(a as {provider:string}).provider===(b as {provider:string}).provider);
+}
+
+/** Learning-loop revision (design §6.5): a LEARNED recipe method that keeps
+ * failing (3+ failures and more failures than successes at this version)
+ * is demoted to just above the assisted last resort, and the version
+ * bumps. Builtins never self-revise — a human ships those. Returns the
+ * revised recipe, or null when no revision is warranted. */
+async function maybeDemoteMethod(env:Env,row:SessionRow,recipe:ConnectorRecipe,failed:ConnectMethod):Promise<ConnectorRecipe|null>{
+ if(recipe.source!=='learned')return null;
+ let failures=0,successes=0;
+ try{
+  const counts=await env.AGENT_DB.prepare("SELECT outcome,COUNT(*) AS n FROM connector_recipe_events WHERE service=? AND version=? AND method_kind=? AND outcome IN ('method_failed','connected') GROUP BY outcome")
+   .bind(recipe.service,recipe.version,failed.kind).all<{outcome:string;n:number}>();
+  for(const c of counts.results??[]){if(c.outcome==='method_failed')failures=c.n;else successes=c.n;}
+ }catch{return null;}
+ if(failures<3||failures<=successes)return null;
+ const from=recipe.methods.findIndex(m=>sameMethod(m,failed));
+ if(from<0)return null;
+ const landing=recipe.methods[recipe.methods.length-1]?.kind==='assisted'?recipe.methods.length-2:recipe.methods.length-1;
+ if(from>=landing)return null;
+ const methods=[...recipe.methods];
+ const [moved]=methods.splice(from,1);
+ methods.splice(landing,0,moved);
+ const revised:ConnectorRecipe={...recipe,methods,version:recipe.version+1};
+ try{
+  const stored:Record<string,unknown>={...revised};delete stored.learnedState;
+  await env.AGENT_DB.prepare('UPDATE connector_recipes SET recipe_json=?,version=?,updated_at=? WHERE service=?')
+   .bind(JSON.stringify(stored),revised.version,Date.now(),recipe.service).run();
+ }catch{return null;}
+ await recordEvent(env,row.tenant_id,recipe.service,revised.version,'recipe_revised');
+ return revised;
+}
+
 /** Record a method failure and walk down to the next viable method. */
 async function advanceAfterFailure(env:Env,row:SessionRow,recipe:ConnectorRecipe,kind:FailureKind):Promise<SessionRow>{
- await recordEvent(env,row.tenant_id,row.service,recipe.version,'method_failed',kind);
- const next=nextViableIndex(env,recipe,row.method_index+1);
+ const failed=recipe.methods[row.method_index];
+ await recordEvent(env,row.tenant_id,row.service,recipe.version,'method_failed',kind,failed?.kind);
+ if(kind==='method_removed')await enqueueResearch(env,row.tenant_id,row.service,'method_removed');
+ let current=recipe;
+ if(failed){const revised=await maybeDemoteMethod(env,row,recipe,failed);if(revised)current=revised;}
+ const failedAt=failed?current.methods.findIndex(m=>sameMethod(m,failed)):row.method_index;
+ const next=nextViableIndex(env,current,failedAt+1);
  if(next>=0){
-  return updateSession(env,row,{method_index:next,method_kind:recipe.methods[next].kind,state:'offered',failure_kind:kind,connection_id:null});
+  return updateSession(env,row,{method_index:next,method_kind:current.methods[next].kind,state:'offered',failure_kind:kind,connection_id:null});
  }
- await recordEvent(env,row.tenant_id,row.service,recipe.version,'gave_up',kind);
+ await recordEvent(env,row.tenant_id,row.service,current.version,'gave_up',kind,failed?.kind);
  return updateSession(env,row,{state:'gave_up',failure_kind:kind});
 }
 
@@ -106,7 +171,15 @@ export async function startConnectorSession(env:Env,actor:Actor,rawService:unkno
  await requireMembership(env,actor,OPERATORS);
  const input=z.object({service:z.string().trim().min(1).max(80)}).strict().parse(rawService);
  const canonical=resolveConnectorService(input.service);
- const recipe=(canonical?await getRecipe(env,canonical):null)??genericRecipe(canonical??input.service);
+ let recipe=canonical?await getRecipe(env,canonical):null;
+ if(!recipe){
+  // A learned recipe may be the ONLY trace of a platform (it was never a
+  // builtin guide) — search the merged catalog by service, name, alias.
+  const q=input.service.trim().toLowerCase();
+  const all=await listRecipes(env);
+  recipe=all.find(r=>r.service===q||r.name.toLowerCase()===q||r.aliases.some(a=>a.toLowerCase()===q))??null;
+ }
+ if(!recipe)recipe=genericRecipe(canonical??input.service);
  const index=nextViableIndex(env,recipe,0);
  if(index<0)throw new HttpError(422,'no_method_available',`There is no way to connect ${recipe.name} right now.`);
  const now=Date.now();
@@ -115,7 +188,11 @@ export async function startConnectorSession(env:Env,actor:Actor,rawService:unkno
   connection_id:null,created_at:now,updated_at:now};
  await env.AGENT_DB.prepare('INSERT INTO mayor_connector_sessions(id,tenant_id,service,method_index,method_kind,state,failure_kind,connection_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
   .bind(row.id,row.tenant_id,row.service,row.method_index,row.method_kind,row.state,row.failure_kind,row.connection_id,row.created_at,row.updated_at).run();
- await recordEvent(env,actor.tenantId,recipe.service,recipe.version,'session_started');
+ await recordEvent(env,actor.tenantId,recipe.service,recipe.version,'session_started',undefined,row.method_kind);
+ // A platform the catalog doesn't know queues a docs-research pass — the
+ // owner's generic flow proceeds meanwhile; the learned recipe replaces
+ // it for the next business (design §6).
+ if(recipe.source==='generic')await enqueueResearch(env,actor.tenantId,recipe.service,'unknown_platform');
  return sessionView(row,recipe);
 }
 
@@ -165,9 +242,10 @@ export async function verifyConnectorSession(env:Env,actor:Actor,id:string,trans
 
  if(method.kind==='assisted'){
   // For an assisted method, the owner's verify call IS the confirmation
-  // that they completed the guided steps on the platform itself.
+  // that they completed the guided steps on the platform itself. (It
+  // never promotes a draft recipe — see promoteRecipeIfDraft.)
   const next=await updateSession(env,row,{state:'connected'});
-  await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected');
+  await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected',undefined,method.kind);
   return sessionView(next,recipe);
  }
 
@@ -186,7 +264,8 @@ export async function verifyConnectorSession(env:Env,actor:Actor,id:string,trans
    return sessionView(next,recipe);
   }
   const next=await updateSession(env,row,{state:'connected'});
-  await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected');
+  await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected',undefined,method.kind);
+  await promoteRecipeIfDraft(env,row,recipe);
   return sessionView(next,recipe);
  }
 
@@ -203,7 +282,8 @@ export async function verifyConnectorSession(env:Env,actor:Actor,id:string,trans
   return sessionView(next,recipe);
  }
  const next=await updateSession(env,row,{state:'connected'});
- await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected');
+ await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected',undefined,method.kind);
+ await promoteRecipeIfDraft(env,row,recipe);
  return sessionView(next,recipe);
 }
 
@@ -225,7 +305,7 @@ export async function handleConnectorEngineRequest(request:Request,env:Env,actor
   await requireMembership(env,actor,OPERATORS);
   const recipes=await listRecipes(env);
   return json({recipes:recipes.map(r=>({service:r.service,name:r.name,capabilities:r.capabilities,unlocks:r.unlocks,
-   methods:r.methods.map(m=>m.kind),platformGate:r.platformGate??null,source:r.source,version:r.version}))});
+   methods:r.methods.map(m=>m.kind),platformGate:r.platformGate??null,source:r.source,version:r.version,learnedState:r.learnedState??null}))});
  }
  if(url.pathname===`${base}/sessions`&&request.method==='GET')return json(await listConnectorSessions(env,actor));
  if(url.pathname===`${base}/sessions`&&request.method==='POST')return json(await startConnectorSession(env,actor,await readJson(request,4096)),201);
