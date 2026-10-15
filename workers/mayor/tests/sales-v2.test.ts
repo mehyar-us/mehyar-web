@@ -76,10 +76,11 @@ it('generates one page per vertical from verticals.ts (single source of truth)',
     expect(page).toContain('not a customer story');
     expect(page).toContain('nothing here promises revenue');
     expect(page).not.toMatch(/\$\d/);
-    // The only script allowed is the consent-gated analytics snippet —
-    // no product JavaScript on the generated sales pages.
+    // The only scripts allowed are the consent-gated analytics snippet and
+    // the audience beacon tag (merged 2026-10-15) — no product JavaScript
+    // on the generated sales pages.
     const scripts=[...page.matchAll(/<script\b[^>]*>/g)].map(m=>m[0]);
-    expect(scripts).toEqual(['<script src="/analytics-consent.js">']);
+    expect(scripts).toEqual(['<script src="/analytics-consent.js">','<script async src="https://audience.mehyar.us/b.js" data-product="mayor">']);
     // SEO + CTA plumbing.
     expect(page).toContain(`<link rel="canonical" href="https://mayor.mehyar.us/sales/${slug}">`);
     expect(page).toContain('href="/sales#plans"');
