@@ -22,6 +22,9 @@ export type ConnectMethod=
 export interface ConnectorRecipe{
  service:string;name:string;aliases:string[];capabilities:string[];unlocks:string;
  methods:ConnectMethod[];platformGate?:string;source:'builtin'|'learned'|'generic';version:number;
+ /** Learned recipes only: 'draft' until the first verified live connection
+  * promotes them (Phase 2). Row metadata — never part of the stored JSON. */
+ learnedState?:'draft'|'promoted';
 }
 
 /** Semantic capability tags per service (mirrors connections.ts so a
@@ -98,9 +101,13 @@ export const recipeSchema:z.ZodType<ConnectorRecipe>=z.lazy(()=>z.object({
 export async function listRecipes(env:Pick<Env,'AGENT_DB'>):Promise<ConnectorRecipe[]>{
  const byService=new Map(BUILTIN_RECIPES.map(r=>[r.service,r]));
  try{
-  const rows=await env.AGENT_DB.prepare('SELECT service,recipe_json FROM connector_recipes').all<{service:string;recipe_json:string}>();
+  const rows=await env.AGENT_DB.prepare('SELECT service,recipe_json,state FROM connector_recipes').all<{service:string;recipe_json:string;state?:string}>();
   for(const row of rows.results??[]){
-   try{const parsed=recipeSchema.parse(JSON.parse(row.recipe_json));byService.set(parsed.service,parsed);}catch{/* a malformed learned recipe never breaks the catalog */}
+   try{
+    const parsed=recipeSchema.parse(JSON.parse(row.recipe_json));
+    if(parsed.source==='learned')parsed.learnedState=row.state==='draft'?'draft':'promoted';
+    byService.set(parsed.service,parsed);
+   }catch{/* a malformed learned recipe never breaks the catalog */}
   }
  }catch{/* table not migrated yet: builtins only */}
  return [...byService.values()];
