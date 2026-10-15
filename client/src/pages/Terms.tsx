@@ -151,6 +151,10 @@ const sections: Section[] = [
             <div className="font-semibold">DUST — <a className="text-brand-700 underline dark:text-brand-100" href="https://dust.mehyar.us" target="_blank" rel="noreferrer">dust.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Meme-coin experiment: the 7-day Great Sweep distributes 100% of the $DUST supply pro-rata to sweepers — no presale, no insiders. Currently testnet only; nothing for sale. 18+.</div>
           </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Clipnote — <a className="text-brand-700 underline dark:text-brand-100" href="https://clipnote.mehyar.us" target="_blank" rel="noreferrer">clipnote.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Release notes in, a polished 60-second narrated launch video out — free script preview, $29 per video or $19/mo for 4 videos.</div>
+          </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Billcut — <a className="text-brand-700 underline dark:text-brand-100" href="https://billcut.mehyar.us" target="_blank" rel="noreferrer">billcut.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
@@ -170,10 +174,6 @@ const sections: Section[] = [
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Playbook — <a className="text-brand-700 underline dark:text-brand-100" href="https://playbook.mehyar.us" target="_blank" rel="noreferrer">playbook.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">The 30-Day Content Playbook — free hook teaser, $27 full playbook with posting plan.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Clipnote — <a className="text-brand-700 underline dark:text-brand-100" href="https://clipnote.mehyar.us" target="_blank" rel="noreferrer">clipnote.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Release notes → 60-second narrated launch video. Free script preview; $29/video or $19/mo for 4.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">WattWise — <a className="text-brand-700 underline dark:text-brand-100" href="https://wattwise.mehyar.us" target="_blank" rel="noreferrer">wattwise.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>

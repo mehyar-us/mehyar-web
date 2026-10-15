@@ -40,6 +40,7 @@ import { fulfillMoonroom } from "../_shared/fulfillMoonroom.js";
 import { fulfillAuditBusiness } from "../_shared/fulfillAuditBusiness.js";
 import { fulfillBillcut } from "../_shared/fulfillBillcut.js";
 import { fulfillCoach } from "../_shared/fulfillCoach.js";
+import { fulfillClipnote } from "../_shared/fulfillClipnote.js";
 
 // Buyer CRM hardening (tracking-crm-fix, 2026-10-05).
 //
@@ -500,6 +501,14 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillCoach({ db, env, waitUntil, sendEmail }, payment);
   },
+
+  // Clipnote (clipnote.mehyar.us). Creates the clipnote_orders render row
+  // (idempotent on payment_id via idx_clipnote_orders_payment) for the
+  // one-off video, or grants 4 plan credits for the subscription.
+  async clipnote({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillClipnote({ db, env, waitUntil, sendEmail }, payment);
+  },
 };
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -538,7 +547,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut","coach"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut","coach","clipnote"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
