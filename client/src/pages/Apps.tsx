@@ -481,6 +481,23 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
   },
   {
+    id: "coach",
+    name: "Coach",
+    url: "https://coach.mehyar.us",
+    tagline: "Your resume, aimed at this job. Your interview, rehearsed.",
+    description:
+      "Paste your resume and the job post. Coach tailors your resume to that exact job — rewritten summary, re-aimed bullets, an honest keyword-gap list — then rehearses you for the interview with STAR practice scored element by element. Free preview; Coach Pro is $19/month with unlimited tailoring, cover letters, and model answers. No job guarantees — just better-targeted applications and structured practice.",
+    audience: "Job seekers applying with one generic resume and walking into interviews unrehearsed.",
+    highlights: [
+      "Resume tailored to the exact job post — summary and bullets re-aimed, never fabricated",
+      "An honest keyword-gap list: what the post asks for that your resume doesn't cover",
+      "STAR interview practice — answer out loud or typed, scored on Situation, Task, Action, Result",
+      "Pro adds the full bullet set, cover letter drafts, and a stronger model answer for every practice run",
+    ],
+    logo: "/assets/coach-logo.png",
+    accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
+  },
+  {
     id: "sproutscore",
     name: "SproutScore",
     url: "https://sproutscore.mehyar.us",
@@ -789,7 +806,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Legit, SproutScore, Playbook, Clipnote, WattWise), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise), and the request form.
           </p>
         </div>
       </section>

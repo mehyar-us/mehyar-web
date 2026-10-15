@@ -377,6 +377,18 @@ id: "hustlekit",
       "The audit summary (charges and report), delivery email, and any Stripe Financial Connections link — Delete my data disconnects the bank at Stripe and wipes the link immediately; email fallback actions within 14 days. The uploaded file itself is already gone: it is deleted at parse time.",
   },
   {
+    id: "coach",
+    name: "Coach",
+    url: "https://coach.mehyar.us",
+    tagline: "Your resume, aimed at this job. Your interview, rehearsed.",
+    icon: Briefcase,
+    inAppPath: "Tool result area (coach.mehyar.us) — Delete my session data button; email fallback (info@mehyar.us)",
+    whatWeCollect:
+      "The resume text and job-post text you paste (stored only behind your private session token so Coach Pro can unlock your work), your email if you subscribe or buy Pro, and free-tier usage counts by hashed IP for the daily limit. No file uploads, no accounts or passwords in v1.",
+    whatWeDelete:
+      "Your session content (resume text, job-post text, tailored output, cover letter) is wiped immediately by the in-product Delete my session data button; your subscriber email is removed on unsubscribe or via the email fallback within 14 days.",
+  },
+  {
     id: "hustlekit",
     name: "HustleKit",
     url: "https://hustlekit.mehyar.us",
