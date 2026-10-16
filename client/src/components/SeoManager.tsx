@@ -239,6 +239,24 @@ const staticMeta: Record<string, SeoMeta> = {
       },
     ],
   },
+  "/audit/sample-report": {
+    title: "Sample Report — Audit My Business | MehyarSoft",
+    description:
+      "See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.",
+    path: "/audit/sample-report",
+    jsonLd: [
+      webPage(
+        "/audit/sample-report",
+        "Sample Report — Audit My Business | MehyarSoft",
+        "A labelled sample of the $330 Audit My Business report with a fictional business: score, money leaks priced in dollars, and prioritized fixes.",
+      ),
+      breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Audit My Business", path: "/audit" },
+        { name: "Sample Report", path: "/audit/sample-report" },
+      ]),
+    ],
+  },
   "/": {
     title: "MehyarSoft LLC | Software, Systems & AI Automation",
     description:

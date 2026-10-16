@@ -37,6 +37,12 @@ const routeMeta = {
       'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.',
     path: '/audit/report',
   },
+  '/audit/sample-report': {
+    title: 'Sample Report — Audit My Business | MehyarSoft',
+    description:
+      'See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.',
+    path: '/audit/sample-report',
+  },
   '/': {
     title: 'MehyarSoft LLC | Software, Systems & AI Automation',
     description:
@@ -385,6 +391,7 @@ const directRoutes = [
   'audit',
   'audit/free',
   'audit/report',
+  'audit/sample-report',
   'services',
   'pricing',
   'proposals',

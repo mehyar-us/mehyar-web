@@ -1099,6 +1099,14 @@ export default function Audit() {
               ))}
             </ul>
 
+            <p className="mt-4 text-sm leading-6 text-muted-foreground">
+              Curious what lands in your inbox?{" "}
+              <Link href="/audit/sample-report" className="font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-100">
+                See a sample report
+              </Link>{" "}
+              — a labelled illustration in the real format, with a fictional business.
+            </p>
+
             <div className="mt-6 rounded-2xl border border-border bg-secondary/50 p-4">
               <p className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
                 <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />

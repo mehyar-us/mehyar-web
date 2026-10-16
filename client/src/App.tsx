@@ -5,6 +5,7 @@ import Home from "@/pages/Home";
 import Audit from "@/pages/Audit";
 import AuditFree from "@/pages/AuditFree";
 import AuditReport from "@/pages/AuditReport";
+import AuditSampleReport from "@/pages/AuditSampleReport";
 import Services from "@/pages/Services";
 import Pricing from "@/pages/Pricing";
 import IndustryDetail from "@/pages/IndustryDetail";
@@ -168,6 +169,8 @@ function App({ ssrPath }: { ssrPath?: string }) {
             <Route path="/audit/free" component={AuditFree} />
             <Route path="/audit/free/" component={AuditFree} />
             <Route path="/audit/report" component={AuditReport} />
+            <Route path="/audit/sample-report" component={AuditSampleReport} />
+            <Route path="/audit/sample-report/" component={AuditSampleReport} />
             <Route path="/audit/report/" component={AuditReport} />
             <Route path="/billing/checkout" component={BillingCheckout} />
             <Route path="/billing/checkout/" component={BillingCheckout} />
