@@ -2,6 +2,7 @@ import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
 import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
+import {auditOffer} from './billing/audit';
 import {handleConnectionsRequest} from './connections';
 import {handleConnectorEngineRequest,getConnectorSession} from './connector-engine';
 import {sessionCardFor,ensureSessionCard} from './connector-session-card';
@@ -116,7 +117,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       // Server-render the plan-card prices from the live billing catalog
       // (rot107) — the page source stays price-free, amounts are never
       // hardcoded. If injection changes nothing, serve the asset as-is.
-      const original=await assetRes.text(),injected=injectHeroPrice(injectSalesPlans(original));
+      const original=await assetRes.text(),injected=injectHeroPrice(injectSalesPlans(original,auditOffer(env).available));
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');
@@ -136,7 +137,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const assetRes=await env.ASSETS.fetch(new Request(target,request));
     const contentType=assetRes.headers.get('content-type')??'';
     if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),injected=injectHeroPrice(injectPricingCards(original));
+      const original=await assetRes.text(),injected=injectHeroPrice(injectPricingCards(original,auditOffer(env).available));
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');
