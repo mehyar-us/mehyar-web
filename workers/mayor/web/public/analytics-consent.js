@@ -24,6 +24,13 @@
 
   var GA4_MEASUREMENT_ID = 'G-6RCJMF73VJ';
   var GTM_CONTAINER_ID = 'GTM-PZLMLZ5C';
+  /* Meta pixel: none exists for The Mayor yet (checked against the
+   * MehyarSoft LLC Meta business 2026-10-15 — ten product pixels, none for
+   * this product). The loader below stays inert while this is empty; set
+   * the ID once a pixel is created and it loads on the same granted path
+   * as GTM/GA4. Enabling it also needs a consent-copy review first,
+   * because a pixel is advertising tech, not analytics. */
+  var META_PIXEL_ID = '';
   var STORAGE_KEY = 'mayor.analytics-consent.v1';
   var BANNER_ID = 'mayor-consent-banner';
 
@@ -109,6 +116,21 @@
     document.head.appendChild(g);
     gtag('js', new Date());
     gtag('config', GA4_MEASUREMENT_ID);
+    /* Meta pixel (standard snippet) — inert until META_PIXEL_ID is set. */
+    if (META_PIXEL_ID) {
+      (function (f, b, e, v, n, t, s) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n; n.loaded = true; n.version = '2.0'; n.queue = [];
+        t = b.createElement(e); t.async = true; t.src = v;
+        s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+      })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+      window.fbq('init', META_PIXEL_ID);
+      window.fbq('track', 'PageView');
+    }
   }
 
   function enableGrantedAnalytics() {
