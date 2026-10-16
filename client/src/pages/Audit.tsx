@@ -365,6 +365,7 @@ export default function Audit() {
 
   /* ── Step 3: pay ── */
   const [payEmail, setPayEmail] = useState("");
+  const [payEmailEditing, setPayEmailEditing] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
   /* True while live checkout is unavailable: show notify-me instead of letting
@@ -412,7 +413,10 @@ export default function Audit() {
   };
 
   useEffect(() => {
-    if (intake && !payEmail) setPayEmail(email);
+    if (intake) {
+      setPayEmail(email);
+      setPayEmailEditing(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intake]);
 
@@ -1125,8 +1129,65 @@ export default function Audit() {
             <form onSubmit={pay} className="mt-6 space-y-4">
               <div>
                 <Label htmlFor="ab-pay-email">Email for delivery</Label>
-                <Input id="ab-pay-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={payEmail} onChange={(e) => setPayEmail(e.target.value)} className="mt-2 h-12 text-base" />
-                <p className="mt-2 text-xs text-muted-foreground">Use the same email as Step 1 — your audit is linked to it.</p>
+                {intake && !payEmailEditing ? (
+                  <>
+                    <div className="mt-2 flex h-12 items-center justify-between gap-3 rounded-md border border-input bg-secondary/40 px-3">
+                      <span className="min-w-0 truncate text-base text-foreground">{payEmail}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPayEmailEditing(true)}
+                        className="shrink-0 text-sm font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-100"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Carried from Step 1 — your audit is linked to this email, and your report is delivered here.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Input id="ab-pay-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={payEmail} onChange={(e) => setPayEmail(e.target.value)} className="mt-2 h-12 text-base" />
+                    {intake && payEmail.trim() && !EMAIL_RE.test(payEmail.trim()) && (
+                      <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">Enter a valid email address.</p>
+                    )}
+                    {intake && payEmail.trim() && EMAIL_RE.test(payEmail.trim()) && payEmail.trim().toLowerCase() !== email.trim().toLowerCase() && (
+                      <div className="mt-2 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" role="alert">
+                        <p>
+                          This doesn't match your Step 1 email ({email.trim()}). Checkout needs the same
+                          email so your audit stays linked — the mismatch is flagged now, before you pay.
+                        </p>
+                        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                          <button
+                            type="button"
+                            className="font-semibold underline underline-offset-2"
+                            onClick={() => {
+                              setEmail(payEmail.trim());
+                              setIntake(null);
+                              setPayEmailEditing(false);
+                              document.getElementById("step-1")?.scrollIntoView({ behavior: "smooth" });
+                            }}
+                          >
+                            Use this email instead — restart Step 1 with it
+                          </button>
+                          <button
+                            type="button"
+                            className="font-semibold underline underline-offset-2"
+                            onClick={() => { setPayEmail(email); setPayEmailEditing(false); }}
+                          >
+                            Back to my Step 1 email
+                          </button>
+                        </p>
+                      </div>
+                    )}
+                    {intake && payEmailEditing && payEmail.trim().toLowerCase() === email.trim().toLowerCase() && EMAIL_RE.test(payEmail.trim()) && (
+                      <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">Matches your Step 1 email — you're good to pay.</p>
+                    )}
+                    {!intake && (
+                      <p className="mt-2 text-xs text-muted-foreground">Use the same email as Step 1 — your audit is linked to it.</p>
+                    )}
+                  </>
+                )}
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
                 </p>
