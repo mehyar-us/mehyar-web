@@ -134,7 +134,7 @@ describe('slow-day detector',()=>{
 });
 
 describe('lapsed-regular detector',()=>{
- it('finds customers past the salon 45-day window only',async()=>{
+ it('finds customers past the salon lapsed window only',async()=>{
   const actor=await fixture();
   const lapsed=await addCustomer(actor,'Lapsed Laura','+17185550001');
   const fresh=await addCustomer(actor,'Fresh Fred','+17185550002');

@@ -1,0 +1,15 @@
+.cs-panel{margin:0 0 28px;text-align:left}
+.cs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.cs-head h2{margin:0 0 6px;font-size:22px;color:#142e46}
+.cs-summary{margin:0;max-width:44rem;color:#3d5872}
+.cs-error{color:#8c2f1b;background:#fbe9e2;border:1px solid #efc4b4;border-radius:8px;padding:8px 10px;max-width:44rem}
+.cs-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.cs-label{font-weight:600;color:#142e46}
+.cs-select{font:inherit;color:#20394f;border:1px solid #b9cbdc;border-radius:8px;padding:7px 10px;background:#fff;max-width:100%}
+.cs-btn{font:inherit;font-size:14px;border:1px solid #b9cbdc;background:#fff;color:#142e46;border-radius:8px;padding:7px 12px;cursor:pointer}
+.cs-btn:disabled{opacity:.5;cursor:default}
+.cs-primary{background:#142e46;color:#fff;border-color:#142e46}
+.cs-quiet{border-color:transparent;color:#61809c}
+.cs-hint{margin:10px 0 0;color:#61809c;font-size:14px;max-width:44rem}
+.cs-host{margin-top:6px;max-width:44rem}
+.cs-host:empty{margin-top:0}

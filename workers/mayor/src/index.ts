@@ -4,7 +4,7 @@ import {NOT_FOUND_HTML} from './not-found-page';
 import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
 import {handleConnectorEngineRequest,getConnectorSession} from './connector-engine';
-import {sessionCardFor} from './connector-session-card';
+import {sessionCardFor,ensureSessionCard} from './connector-session-card';
 import {toString as qrSvg} from 'qrcode';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
@@ -228,6 +228,13 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     if(connectorEngine)return connectorEngine;
     const sessionCardRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/card$/);
     if(sessionCardRoute&&request.method==='GET'&&sessionCardRoute[1]===actor.tenantId)return json(await sessionCardFor(env,actor,sessionCardRoute[2]));
+    const sessionEnsureRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/ensure$/);
+    if(sessionEnsureRoute&&request.method==='POST'&&sessionEnsureRoute[1]===actor.tenantId){
+      const input=z.object({service:z.string().trim().min(1).max(80)}).strict().parse(await readJson(request,4096));
+      const event=await ensureSessionCard(env,actor,input.service);
+      if(!event)throw new HttpError(422,'connector_unavailable','That connection could not be started. Please try again.');
+      return json(event);
+    }
     const sessionQrRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/qr\.svg$/);
     if(sessionQrRoute&&request.method==='GET'&&sessionQrRoute[1]===actor.tenantId){
       // Ownership is proven by the session read itself (tenant-scoped, 404
