@@ -22,7 +22,7 @@ export default function MayorBait({ campaign }: { campaign: string }) {
             <p className="font-semibold text-foreground">The Mayor — talk to your business</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               The AI workspace that answers the calls you miss and keeps customers,
-              appointments, and playbooks in one place. Free to start — Pro $14/month.
+              appointments, and playbooks in one place. Free to start — Pro $99/month (founding cohort $79.20 for life).
             </p>
           </div>
           <a

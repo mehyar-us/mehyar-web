@@ -34,7 +34,7 @@ export default function Home() {
               Scan your website free
             </a>
           </div>
-          <p className="mt-5 text-center text-sm text-muted-foreground">Free $0 · Pro $14/month · No credit card to start</p>
+          <p className="mt-5 text-center text-sm text-muted-foreground">Free $0 · Pro $99/month — founding cohort $79.20/month for life (first 25) · No credit card to start</p>
           <ul className="mx-auto mt-8 grid max-w-3xl gap-3 text-left text-sm sm:grid-cols-2">
             {[
               "Business memory — it knows your services, hours, and customers",
