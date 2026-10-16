@@ -1,5 +1,7 @@
 import {createIcons,ArrowUpRight,ArrowRight,NotebookTabs,MonitorSmartphone,CalendarCheck,UsersRound,MapPin,ListTodo,Route,Check,LockKeyhole,RefreshCw,FileText} from 'lucide';
 import {mountAuditReport} from './audit-report';
+import {loadAuditReceipt} from './audit-receipt-loader';
+import type {ReceiptView} from './audit-receipt';
 
 export type AuditIntake={contactName:string;email:string;businessName:string;website:string;goals:string;notes?:string;links?:string[];acceptedTerms:true};
 export type AuditOfferResponse={offer:{name:string;priceCents:number;currency:string;payment:string;scope?:string[]};available:boolean;mode:'test'|'live'|null;message:string|null};
@@ -58,8 +60,7 @@ export function validAuditToken(raw:unknown):raw is string{return typeof raw==='
 function mountAuditPage(){
  const element=<T extends HTMLElement>(id:string)=>{const value=document.getElementById(id);if(!value)throw new Error(`Missing audit control: ${id}`);return value as T;};
  const form=element<HTMLFormElement>('audit-intake-form'),checkout=element<HTMLButtonElement>('audit-checkout-button'),availability=element('audit-availability'),testNotice=element('audit-test-notice'),formStatus=element('audit-form-status');
- const receiptPanel=element('audit-receipt'),receiptHeading=element('receipt-heading'),receiptSummary=element('receipt-summary'),receiptDetails=element('receipt-details'),receiptRefresh=element<HTMLButtonElement>('receipt-refresh'),reportLink=element<HTMLAnchorElement>('audit-report-link');
- const supportLink=document.createElement('a');supportLink.className='button button-outline';supportLink.textContent='Contact support';supportLink.target='_blank';supportLink.rel='noopener noreferrer';supportLink.referrerPolicy='no-referrer';supportLink.setAttribute('aria-label','Contact support (opens in a new tab)');supportLink.hidden=true;reportLink.insertAdjacentElement('afterend',supportLink);
+ const receiptPanel=element('audit-receipt');
  let offer:AuditOfferResponse|null=null,statusToken:string|null=null,submitting=false,previousSubmission:{payload:string;key:string}|null=null;
  const decorate=()=>createIcons({icons});
  const setButton=(label:string)=>{checkout.textContent=label;};
@@ -73,19 +74,16 @@ function mountAuditPage(){
   try{offer=await api('/api/business-audit/offer') as AuditOfferResponse;const state=checkoutAvailability(offer);availability.textContent=state.message;testNotice.hidden=!state.test;checkout.disabled=!state.available;setButton(state.label);}
   catch{availability.textContent='Checkout availability could not be verified. Please refresh to try again.';setButton('Checkout unavailable');checkout.disabled=true;}
  }
- function detail(label:string,value:string){const group=document.createElement('div'),term=document.createElement('dt'),description=document.createElement('dd');term.textContent=label;description.textContent=value;group.append(term,description);return group;}
+ const pushReceipt=(view:ReceiptView)=>loadAuditReceipt(receiptPanel,{view,onRefresh:()=>void loadReceipt()});
  async function loadReceipt(){
-  if(!statusToken)return;receiptPanel.hidden=false;receiptRefresh.disabled=true;reportLink.hidden=true;supportLink.hidden=true;
-  receiptHeading.textContent='Checking your request…';receiptSummary.textContent='Verifying the saved payment and report status.';
+  if(!statusToken)return;receiptPanel.hidden=false;
+  pushReceipt({heading:'Checking your request…',summary:'Verifying the saved payment and report status.',details:[],refreshDisabled:true,reportHref:null,supportHref:null});
   try{
    const receipt=await api('/api/business-audit/status',{headers:{authorization:`Bearer ${statusToken}`}}) as AuditReceipt;
    if(!['pending','paid','failed','expired','refunded'].includes(receipt.paymentStatus)||!['awaiting_payment','queued','in_review','report_ready','needs_review'].includes(receipt.fulfillmentStatus)||!['test','live'].includes(receipt.mode)||receipt.priceCents!==33000||receipt.currency!=='USD')throw new Error('The saved receipt details could not be verified.');
-   const presentation=receiptPresentation(receipt);receiptHeading.textContent=presentation.payment;receiptSummary.textContent=presentation.summary;
-   receiptDetails.replaceChildren(detail('Audit request',receipt.orderId),detail('Purchase',`${presentation.test?'Test · ':''}$330 USD · one-time`),detail('Report status',presentation.fulfillment));
-   if(presentation.supportUrl){supportLink.href=presentation.supportUrl;supportLink.hidden=false;}
-   if(receipt.paymentStatus==='paid'&&receipt.fulfillmentStatus==='report_ready'&&receipt.reportAvailable){reportLink.href=`/business-audit/report#receipt=${encodeURIComponent(statusToken!)}`;reportLink.hidden=false;}
-  }catch(error){receiptHeading.textContent='We couldn’t verify this request';receiptSummary.textContent=error instanceof Error?error.message:'Please retry the saved receipt link.';receiptDetails.replaceChildren();}
-  finally{receiptRefresh.disabled=false;decorate();}
+   const presentation=receiptPresentation(receipt);
+   pushReceipt({heading:presentation.payment,summary:presentation.summary,details:[{label:'Audit request',value:receipt.orderId},{label:'Purchase',value:`${presentation.test?'Test · ':''}$330 USD · one-time`},{label:'Report status',value:presentation.fulfillment}],refreshDisabled:false,reportHref:receipt.paymentStatus==='paid'&&receipt.fulfillmentStatus==='report_ready'&&receipt.reportAvailable?`/business-audit/report#receipt=${encodeURIComponent(statusToken!)}`:null,supportHref:presentation.supportUrl});
+  }catch(error){pushReceipt({heading:'We couldn’t verify this request',summary:error instanceof Error?error.message:'Please retry the saved receipt link.',details:[],refreshDisabled:false,reportHref:null,supportHref:null});}
  }
  form.addEventListener('submit',async event=>{
   event.preventDefault();if(submitting)return;
@@ -104,7 +102,6 @@ function mountAuditPage(){
    window.location.assign(checkoutUrl);
   }catch(error){showFormError(error instanceof Error?error.message:'Checkout could not be opened. Please try again.');submitting=false;checkout.disabled=false;setButton(checkoutAvailability(offer).label);}
  });
- receiptRefresh.addEventListener('click',()=>void loadReceipt());
  const currentUrl=new URL(window.location.href),returnedToken=currentUrl.searchParams.get('receipt');
  if(returnedToken){
   if(validAuditToken(returnedToken)){statusToken=returnedToken;try{sessionStorage.setItem(statusTokenKey,statusToken);}catch{}}
