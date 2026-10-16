@@ -341,7 +341,7 @@ export default function BusinessReportView({ token, initial }: { token: string; 
             ? "This is taking longer than usual. Your report is still being written — we'll email you the permanent link as soon as it's ready."
             : "Our AI is analyzing your site and writing your professional evaluation — we'll email you the permanent link as soon as it's ready."}
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">Delivered by email within a few business days.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Delivered by email within 3–5 business days.</p>
         {!timedOut && (
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
         )}

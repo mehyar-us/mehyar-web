@@ -99,7 +99,7 @@ function mapIntakeSignals(s: Record<string, any>): PreviewSignal[] {
   /* When the site is a JS app shell, content-dependent signals couldn't be
      measured from the initial HTML — disclose honestly instead of the 0s. */
   const unmeasured = !!s.content_unmeasured;
-  const na = "In your full audit";
+  const na = "In your $330 audit";
   push("Page title", s.title ? String(s.title) : "No title found", s.title ? true : false);
   push("HTTPS", s.https ? "On" : "Off", !!s.https);
   push("Load time", typeof s.load_ms === "number" ? `${s.load_ms} ms` : "—", null);
@@ -700,16 +700,6 @@ export default function Audit() {
               founder-led $330 tech audit
             </Link>
           </p>
-          <div className="mx-auto mt-6 flex max-w-xl flex-col items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm sm:flex-row sm:gap-4 sm:p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F59E0B] text-lg font-extrabold text-[#0B1B33]">$5</span>
-            <div className="min-w-0 flex-1 text-center sm:text-left">
-              <p className="text-sm font-semibold text-foreground">The full report — site only</p>
-              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Every page graded, every leak priced in estimated dollars. Delivered in about a minute.</p>
-            </div>
-            <Link href="/audit/report" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "shrink-0 bg-emerald-500 text-emerald-950 hover:bg-emerald-400")}>
-              Get the $5 report <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -735,11 +725,58 @@ export default function Audit() {
         </div>
       </section>
 
-      {/* ── LADDER CROSS-LINK ── */}
-      <section className="px-4 pb-2">
-        <p className="site-shell max-w-4xl text-center text-sm text-muted-foreground">
-          Want to start with the site alone? The <Link href="/audit/report" className="font-semibold text-brand-700 underline underline-offset-4 dark:text-brand-100">$5 full report</Link> evaluates every page in about a minute — the free scan shows 3 leaks, the report shows them all. Audit My Business goes further: add your CEO walkthrough video and it assesses the whole business — transcript-based findings on how you sell, book, and follow up, not just the site.
-        </p>
+      {/* ── THE LADDER: free scan / $5 Full Report / $330 Audit My Business ── */}
+      <section className="px-4 pb-2" aria-label="Compare the free scan, the $5 Full Report, and Audit My Business">
+        <div className="site-shell max-w-4xl">
+          <h2 className="text-center text-2xl font-semibold tracking-tight text-foreground">Three depths — pick yours</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="flex flex-col rounded-2xl border border-border bg-card p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Free scan</p>
+              <p className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">$0</p>
+              <p className="mt-1 text-xs text-muted-foreground">60 seconds · no card</p>
+              <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-muted-foreground">
+                <li>Overall site score snapshot</li>
+                <li>3 money leaks, priced in dollars</li>
+                <li>3 quick wins you can do today</li>
+              </ul>
+              <a href="#step-1" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "mt-5 w-full")}>
+                Start the free scan
+              </a>
+            </div>
+            <div className="flex flex-col rounded-2xl border border-border bg-card p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Full Report</p>
+              <p className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">$5</p>
+              <p className="mt-1 text-xs text-muted-foreground">one-time · your website only</p>
+              <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-muted-foreground">
+                <li>Every page graded, not just the homepage</li>
+                <li>Every leak priced, with the math shown</li>
+                <li>AI capacity blueprint + 90-day plan</li>
+                <li>Delivered in about a minute</li>
+              </ul>
+              <Link href="/audit/report" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5 w-full bg-emerald-500 text-emerald-950 hover:bg-emerald-400")}>
+                Get the $5 report <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="flex flex-col rounded-2xl border-2 border-brand-600 bg-card p-5 shadow-sm dark:border-brand-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">Audit My Business</p>
+              <p className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">$330</p>
+              <p className="mt-1 text-xs text-muted-foreground">one-time · your whole business</p>
+              <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-muted-foreground">
+                <li>The full site read — plus your CEO walkthrough video, transcribed and assessed</li>
+                <li>Findings on how you sell, book, and follow up — not just the site</li>
+                <li>Money leaks ranked by dollar impact, fixes in priority order</li>
+                <li>Delivered by email within 3–5 business days</li>
+              </ul>
+              <a href="#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5 w-full")}>
+                Start Step 1 — it's free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            Already bought the $5 Full Report? Its $5 is credited toward Audit My Business when you
+            check out with the same email — the discount shows on the checkout page before you pay.
+          </p>
+        </div>
       </section>
 
       {/* ── STEP 1: INTAKE ── */}
@@ -1121,7 +1158,7 @@ export default function Audit() {
               </p>
             </div>
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Delivered by email within a few business days. Results vary by business — this
+              Delivered by email within 3–5 business days. Results vary by business — this
               audit shows what's true for your business today, and no audit can guarantee
               specific revenue results.
             </p>
@@ -1260,7 +1297,7 @@ export default function Audit() {
               No — same price, different product. The{" "}
               <Link href="/micro-offer" className="underline underline-offset-2">founder-led $330 tech audit</Link>{" "}
               is a human review, invoiced by email. Audit My Business is the
-              automated AI counterpart: instant checkout, AI-written visual report, delivered by email within a few business days.
+              automated AI counterpart: instant checkout, AI-written visual report, delivered by email within 3–5 business days.
               Pick the human eye or the AI engine — or run both and compare.
             </FaqItem>
             <FaqItem q="Do I need the walkthrough video?">

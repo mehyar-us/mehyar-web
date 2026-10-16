@@ -225,13 +225,35 @@ const orderHooks = {
     if (row.status !== "intake" && row.status !== "failed") {
       return { error: "audit_not_payable" };
     }
+    // $5 Full Report credit (rot294 ladder, 2026-10-16): a buyer who already
+    // PAID for the $5 Full Report (product audit-full-report) with this same
+    // email gets its $5 credited toward the $330 — once per buyer (a prior
+    // PAID $330 row carrying the credit marker blocks a second dip). The
+    // main flow converts creditCents into a visible Stripe discount, so the
+    // buyer sees the credit on the checkout page before paying. A lookup
+    // failure never blocks checkout — it just skips the credit.
+    let creditCents = 0;
+    try {
+      const five = await db.prepare(
+        "SELECT id FROM billing_payments WHERE product_id = 'audit-full-report' AND email = ? AND status = 'paid' LIMIT 1"
+      ).bind(email).first();
+      if (five) {
+        const used = await db.prepare(
+          "SELECT id FROM billing_payments WHERE product_id = 'audit-my-business' AND email = ? AND status = 'paid' AND json_extract(metadata_json, '$.credit_applied') IS NOT NULL LIMIT 1"
+        ).bind(email).first();
+        if (!used) creditCents = 500;
+      }
+    } catch (e) { /* credit is best-effort; checkout proceeds without it */ }
+    if (creditCents > 0) params.credit_applied = creditCents;
     const accessToken = randomHex(32);
     await db.prepare(
       "UPDATE audit_business_reports SET access_token=?, status_changed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?"
     ).bind(accessToken, auditId).run();
     return {
-      orderExtra: { audit_id: auditId, accessToken },
-      metadataExtra: { audit_id: auditId },
+      orderExtra: { audit_id: auditId, accessToken, creditCents },
+      metadataExtra: creditCents > 0
+        ? { audit_id: auditId, credit_applied: String(creditCents) }
+        : { audit_id: auditId },
     };
   },
 };
@@ -293,6 +315,10 @@ export async function onRequestPost({ request, env }) {
 
     const orderExtra = hookResult.orderExtra || {};
     const metadataExtra = hookResult.metadataExtra || {};
+    // Server-granted credit (today only the $5 Full Report credit on
+    // Audit My Business). Capped at the product price; 0 for every other
+    // product, leaving their checkout behavior unchanged.
+    const creditCents = Math.max(0, Math.min(Number(orderExtra.creditCents) || 0, Number(product.price_cents) || 0));
     const accessToken = orderExtra.accessToken || randomHex(32);
     const reportId = orderExtra.report_id || null;
 
@@ -314,7 +340,8 @@ export async function onRequestPost({ request, env }) {
     }
     const totalCents =
       Number(product.price_cents) +
-      (bumpProduct ? Number(bumpProduct.price_cents) : 0);
+      (bumpProduct ? Number(bumpProduct.price_cents) : 0) -
+      creditCents;
 
     // Idempotency: reuse a pending payment row for the same product+email
     // created within the last hour. A fresh Stripe session is attached to it.
@@ -417,6 +444,41 @@ export async function onRequestPost({ request, env }) {
       if (trialDays > 0) sp.set("subscription_data[trial_period_days]", String(trialDays));
     }
     sp.set("line_items[0][quantity]", "1");
+    if (creditCents > 0) {
+      // Show the credit as its own discount line on the Stripe page via a
+      // durable coupon (created once per Stripe account/mode, then reused).
+      // If the coupon cannot be ensured, fall back to reducing the line
+      // price so the promised credit ALWAYS holds.
+      const couponId = "CREDIT" + creditCents;
+      let couponOk = false;
+      try {
+        const auth = { authorization: "Bearer " + stripeKey };
+        const got = await fetch("https://api.stripe.com/v1/coupons/" + couponId, { headers: auth, signal: AbortSignal.timeout(10000) });
+        if (got.ok) {
+          couponOk = true;
+        } else {
+          const cs = new URLSearchParams();
+          cs.set("id", couponId);
+          cs.set("amount_off", String(creditCents));
+          cs.set("currency", product.currency || "usd");
+          cs.set("duration", "once");
+          cs.set("name", "$5 Full Report credit");
+          const made = await fetch("https://api.stripe.com/v1/coupons", {
+            method: "POST",
+            headers: { ...auth, "content-type": "application/x-www-form-urlencoded" },
+            body: cs.toString(),
+            signal: AbortSignal.timeout(10000),
+          });
+          couponOk = made.ok;
+        }
+      } catch (e) { couponOk = false; }
+      if (couponOk) {
+        sp.set("discounts[0][coupon]", couponId);
+      } else {
+        sp.set("line_items[0][price_data][unit_amount]", String(Number(product.price_cents) - creditCents));
+      }
+      sp.set("metadata[credit_applied]", String(creditCents));
+    }
     if (bumpProduct) {
       // Order-bump second line item (BabyPeek $9 Couple Pack). The buyer
       // opted in on the product page (unchecked by default); the Stripe
