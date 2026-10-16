@@ -28,6 +28,7 @@ import {createPlacesOnboarding} from './places-onboarding';
 import {loadOfferBlock} from './offer-loader';
 import {loadTrendpost} from './trendpost-loader';
 import {loadConnectorSessions} from './connector-sessions-loader';
+import {loadAccountCards} from './account-cards-loader';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -140,51 +141,44 @@ async function refreshInbox(){
 inboxRefresh.onclick=()=>void refreshInbox();
 $('notifications-button').onclick=()=>{inbox.hidden=!inbox.hidden;inbox.open=!inbox.hidden;};
 inbox.addEventListener('toggle',()=>{if(inbox.open)void refreshInbox();});
-const routineCard=document.createElement('div'),routineHeading=document.createElement('h2'),routineDescription=document.createElement('p'),routineState=document.createElement('p'),routinePause=document.createElement('button'),routineTalk=document.createElement('button');
-routineCard.className='account-card';routineCard.hidden=true;routineHeading.textContent='Recurring account check';
-routineDescription.textContent='Ask The Mayor to check your business profile and live calendar connection every day or on weekdays. Choose a time by talking. Issues appear in Notifications and follow your email alert preferences. This check does not monitor your email inbox or reviews.';
-routineState.setAttribute('role','status');routinePause.type='button';routinePause.className='secondary';routinePause.textContent='Pause check';routinePause.hidden=true;
-routineTalk.type='button';routineTalk.className='secondary';routineTalk.textContent='Set up or change in chat';routineTalk.onclick=()=>{show('chat');$('talk').focus();};
-routineCard.append(routineHeading,routineDescription,routineState,routineTalk,routinePause);$('logout').before(routineCard);
+// React migration S2a: the Settings account cards (recurring check, email
+// notifications, Business agent) render via React from these snapshots;
+// fetching and actions stay here. The host uses display:contents so the
+// cards sit in the account view exactly where the imperative ones did.
+const accountCardsHost=document.createElement('div');accountCardsHost.style.display='contents';$('logout').before(accountCardsHost);
+let accountCardsVisible=false;
+let routineSnapshot={stateText:'',pauseVisible:false,pauseDisabled:false};
+let emailSnapshot={statusText:'',toggleLabel:'',toggleVisible:false,toggleDisabled:true};
+let emailsEnabled=false;
+function pushAccountCards(){loadAccountCards(accountCardsHost,{visible:accountCardsVisible,routine:routineSnapshot,email:emailSnapshot,onPauseCheck:()=>void pauseRoutine(),onTalkAboutCheck:()=>{show('chat');$('talk').focus();},onToggleEmail:()=>void toggleEmail(),onOpenAgent:()=>workday.openBusinessAgent()});}
 async function refreshRoutine(){
- if(!canManage())return;routineCard.hidden=false;routineState.textContent='Loading your check…';routinePause.hidden=true;
+ if(!canManage())return;routineSnapshot={stateText:'Loading your check\u2026',pauseVisible:false,pauseDisabled:false};pushAccountCards();
  try{
   const check=await api(`/api/businesses/${tenantId}/recurring-check`);
   const schedule=check.schedule;
   const parts=[check.enabled?'Enabled':check.revision?'Paused':'Not set up'];
-  if(schedule)parts.push(`${schedule.frequency==='daily'?'Daily':'Weekdays'} at ${String(schedule.hour).padStart(2,'0')}:${String(schedule.minute).padStart(2,'0')} · ${schedule.timeZone}`);
+  if(schedule)parts.push(`${schedule.frequency==='daily'?'Daily':'Weekdays'} at ${String(schedule.hour).padStart(2,'0')}:${String(schedule.minute).padStart(2,'0')} \u00b7 ${schedule.timeZone}`);
   if(check.running)parts.push('A check is in progress');
   else if(check.nextRunAt)parts.push(`Next check after: ${new Date(check.nextRunAt).toLocaleString(undefined,{timeZone:schedule.timeZone})} (${schedule.timeZone})`);
-  if(check.lastRunAt)parts.push(`Last attempt: ${new Date(check.lastRunAt).toLocaleString()} · ${check.lastStatus==='ok'?'Completed':'Could not finish; review Notifications'}`);
+  if(check.lastRunAt)parts.push(`Last attempt: ${new Date(check.lastRunAt).toLocaleString()} \u00b7 ${check.lastStatus==='ok'?'Completed':'Could not finish; review Notifications'}`);
   else parts.push('No completed attempts yet.');
-  routineState.textContent=parts.join('. ');routinePause.hidden=!check.enabled;
- }catch(error){routineState.textContent=error instanceof Error?error.message:'Could not load your recurring check.';}
+  routineSnapshot={stateText:parts.join('. '),pauseVisible:Boolean(check.enabled),pauseDisabled:false};pushAccountCards();
+ }catch(error){routineSnapshot={...routineSnapshot,stateText:error instanceof Error?error.message:'Could not load your recurring check.'};pushAccountCards();}
 }
-routinePause.onclick=async()=>{routinePause.disabled=true;try{await api(`/api/businesses/${tenantId}/recurring-check/pause`,{});await refreshRoutine();}catch(error){routineState.textContent=error instanceof Error?error.message:'Could not pause the check.';}finally{routinePause.disabled=false;}};
-const emailCard=document.createElement('div'),emailHeading=document.createElement('h2'),emailDescription=document.createElement('p'),emailStatus=document.createElement('p'),emailToggle=document.createElement('button');
-emailCard.className='account-card';emailCard.hidden=true;emailHeading.textContent='Email notifications';
-emailDescription.textContent='Get a link to The Mayor when unread issues need your attention. You can also ask The Mayor to turn these emails on or off. Email delivery is currently a pilot for approved recipient addresses. At most one email every 24 hours per business. Your business details stay in the app. Turning this off cancels queued messages; mail already being sent cannot be recalled.';
-emailStatus.setAttribute('role','status');emailToggle.className='secondary';emailToggle.type='button';emailToggle.hidden=true;let emailsEnabled=false;
-emailCard.append(emailHeading,emailDescription,emailStatus,emailToggle);routineCard.after(emailCard);
+async function pauseRoutine(){routineSnapshot={...routineSnapshot,pauseDisabled:true};pushAccountCards();try{await api(`/api/businesses/${tenantId}/recurring-check/pause`,{});await refreshRoutine();}catch(error){routineSnapshot={...routineSnapshot,stateText:error instanceof Error?error.message:'Could not pause the check.',pauseDisabled:false};pushAccountCards();}}
 async function refreshEmailPreference(){
- if(!canManage())return;emailCard.hidden=false;emailToggle.disabled=true;emailToggle.hidden=true;emailStatus.textContent='Loading email preferences…';
+ if(!canManage())return;emailSnapshot={statusText:'Loading email preferences\u2026',toggleLabel:emailSnapshot.toggleLabel,toggleVisible:false,toggleDisabled:true};pushAccountCards();
  try{
   const preference=await api(`/api/businesses/${tenantId}/email-preferences`);emailsEnabled=preference.enabled;
   const states:Record<string,string>={pending:'A notification email is queued.',sending:'An email is being submitted.',accepted:'The email provider accepted the latest message; inbox delivery is not confirmed.',uncertain:'The send outcome is unknown. It will not be automatically resent.',failed:'The latest email could not be sent.',cancelled:'The queued email was cancelled.'};
-  emailStatus.textContent=preference.available?`${emailsEnabled?'Enabled':'Off'}${preference.email?` · ${preference.email}`:' · A verified sign-in email is required'}. ${preference.lastDelivery?states[preference.lastDelivery.state]??'':''}`:'Email sending is not configured yet.';
-  emailToggle.textContent=emailsEnabled?'Turn off email alerts':'Enable email alerts';emailToggle.disabled=!emailsEnabled&&(!preference.available||!preference.email);emailToggle.hidden=false;
- }catch(error){emailStatus.textContent=error instanceof Error?error.message:'Could not load email preferences.';}
+  emailSnapshot={statusText:preference.available?`${emailsEnabled?'Enabled':'Off'}${preference.email?` \u00b7 ${preference.email}`:' \u00b7 A verified sign-in email is required'}. ${preference.lastDelivery?states[preference.lastDelivery.state]??'':''}`:'Email sending is not configured yet.',toggleLabel:emailsEnabled?'Turn off email alerts':'Enable email alerts',toggleVisible:true,toggleDisabled:!emailsEnabled&&(!preference.available||!preference.email)};pushAccountCards();
+ }catch(error){emailSnapshot={...emailSnapshot,statusText:error instanceof Error?error.message:'Could not load email preferences.'};pushAccountCards();}
 }
-emailToggle.onclick=async()=>{emailToggle.disabled=true;try{await api(`/api/businesses/${tenantId}/email-preferences`,{enabled:!emailsEnabled});await refreshEmailPreference();}catch(error){emailStatus.textContent=error instanceof Error?error.message:'Could not save email preferences.';emailToggle.disabled=false;}};
+async function toggleEmail(){emailSnapshot={...emailSnapshot,toggleDisabled:true};pushAccountCards();try{await api(`/api/businesses/${tenantId}/email-preferences`,{enabled:!emailsEnabled});await refreshEmailPreference();}catch(error){emailSnapshot={...emailSnapshot,statusText:error instanceof Error?error.message:'Could not save email preferences.',toggleDisabled:false};pushAccountCards();}}
 // Harness entry point: goals, saved skills and the agent review schedule live
 // in Today's Business agent section; Settings links there instead of
 // duplicating the surface.
-const agentCard=document.createElement('div'),agentHeading=document.createElement('h2'),agentDescription=document.createElement('p'),agentOpen=document.createElement('button');
-agentCard.className='account-card';agentCard.hidden=true;agentHeading.textContent='Business agent';
-agentDescription.textContent='Goals, saved skills, the review schedule and your latest AI review. Manage them in Today.';
-agentOpen.type='button';agentOpen.className='secondary';agentOpen.textContent='Open Business agent';
-agentOpen.onclick=()=>workday.openBusinessAgent();
-agentCard.append(agentHeading,agentDescription,agentOpen);emailCard.after(agentCard);
+
 const permissionDetail=document.createElement('p');permissionDetail.id='permission-detail';
 $('user-detail').after(permissionDetail);
 const timezoneSuggestion=createTimeZoneSuggestion(text=>{show('chat');void sendTextMessage(text);});
@@ -786,7 +780,7 @@ function endWorkspaceAccess(){
  $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
  for(const node of [$('profile'),inboxItems,phoneGuide,phoneControls])node.replaceChildren();
  for(const id of ['chat-website-source','chat-phone-guide','chat-connections-guide'])document.getElementById(id)?.remove();
- $('user-detail').textContent='';permissionDetail.textContent='';routineState.textContent='';emailStatus.textContent='';timezoneSuggestion.element.hidden=true;
+ $('user-detail').textContent='';permissionDetail.textContent='';accountCardsVisible=false;routineSnapshot={stateText:'',pauseVisible:false,pauseDisabled:false};emailSnapshot={statusText:'',toggleLabel:'',toggleVisible:false,toggleDisabled:true};pushAccountCards();timezoneSuggestion.element.hidden=true;
  $('notice').hidden=true;networkStatus.hidden=true;inbox.hidden=true;
  $('calendar-status').querySelector('span')!.textContent='Calendar unavailable';$<HTMLButtonElement>('calendar-status').disabled=true;
  $('notifications-button').hidden=true;$<HTMLButtonElement>('notifications-button').disabled=true;
@@ -909,9 +903,7 @@ $('logout').onclick=async()=>{endWorkspaceAccess();try{await api('/api/auth/sign
 async function account(){
   if(!loggedIn||accessEnded)return;
   if(membershipRole==='billing'){show('billing');return;}
-  routineCard.hidden=!canManage();if(canManage())void refreshRoutine();
-  emailCard.hidden=!canManage();if(canManage())void refreshEmailPreference();
-  agentCard.hidden=!canManage();
+  accountCardsVisible=canManage();pushAccountCards();if(canManage()){void refreshRoutine();void refreshEmailPreference();}
   phoneCard.hidden=!canManage();
   const memory=await api(`/api/businesses/${tenantId}/profile`);
   if(memory.profile.name)permissionDetail.textContent=`${memory.profile.name} · ${membershipRole}`;
