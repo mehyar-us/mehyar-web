@@ -1160,6 +1160,7 @@ export default function Audit() {
                 {paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
               <p className="text-center text-xs text-muted-foreground">One-time payment · $330 · Report emailed with a permanent link</p>
+              <p className="text-center text-xs text-muted-foreground">All sales are final — the audit is a one-time digital service and purchases are not refundable.</p>
             </form>
           </CardContent>
         </Card>
