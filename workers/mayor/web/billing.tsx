@@ -40,6 +40,8 @@ export interface BillingData {
     purchases?: { packId: string; status: string; paidAt?: string | null }[];
   } | null;
   creditPacks?: CreditPack[];
+  founding?: { available: boolean; seats_total: number; seats_taken: number | null; seats_remaining: number | null };
+  foundingPriceCents?: number;
   plans: BillingPlan[];
   checkout: { pending?: boolean; requestId?: string };
   readiness: { checkout: boolean; creditPacks: boolean; portal: boolean; mode?: string; message?: string };
@@ -57,6 +59,8 @@ export interface BillingPanelProps {
 
 const money = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 0 }).format(cents / 100);
+const moneyExact = (cents: number, currency: string) =>
+  new Intl.NumberFormat(undefined, { style: 'currency', currency: currency.toUpperCase(), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
 const approxConversations = (attempts: number) => Math.max(1, Math.round(attempts / 10));
 
 export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, onCreditCheckout, onPortal }: BillingPanelProps) {
@@ -167,6 +171,9 @@ export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, 
                   </li>
                 ))}
               </ul>
+              {plan.id === 'pro' && data.founding?.available && (data.founding.seats_remaining ?? 0) > 0 && data.foundingPriceCents ? (
+                <p className="inline-note">Founding cohort: {moneyExact(data.foundingPriceCents, plan.currency)}/month locked for life — {data.founding.seats_remaining} of {data.founding.seats_total} seats left. Choose Founding in the upgrade dialog.</p>
+              ) : null}
               {plan.id === data.plan.id ? (
                 <p className="current-plan">Your current plan</p>
               ) : plan.id === 'pro' ? (

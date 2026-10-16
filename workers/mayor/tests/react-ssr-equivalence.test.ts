@@ -9,6 +9,6 @@ import {offerBlockSsrHtml} from '../src/offer-block-ssr';
 it('React client offer markup is byte-identical to the SSR renderer',()=>{
  const catalog={currency:'USD',plans:[
   {id:'free',name:'Free',priceCents:0,interval:'calendar_month',replyLimit:100,voiceMinuteLimit:10},
-  {id:'pro',name:'Pro',priceCents:1400,interval:'month',replyLimit:1000,voiceMinuteLimit:120}]};
+  {id:'pro',name:'Pro',priceCents:9900,interval:'month',replyLimit:1000,voiceMinuteLimit:120}]};
  expect(offerBlockHtml(catalog)).toBe(offerBlockSsrHtml());
 });
