@@ -26,13 +26,13 @@ it.each(['owner','manager'])('introduces itself before setup and persists a conf
  expect(await first.turn('Yes.')).toContain('Saved. You can call me Mayor Michael. What is your business called?');
  expect((await readMemory(env,actor)).profile.assistantName).toBe('Mayor Michael');
  expect(first.events.filter(event=>event.type==='business_context').at(-1).profile.assistantName).toBe('Mayor Michael');
- const reloaded=instance(actor);expect(await reloaded.greet()).toBe('Hey, I’m Mayor Michael, your AI business assistant. What would you like to work on today?');
- expect(await reloaded.turn('Call yourself Maya')).toContain('I can use Maya');await reloaded.turn('yes');
+ const reloaded=instance(actor);expect(await reloaded.greet()).toBe('Hey — I’m Mayor Michael. I run the front of this place: the bookings, the customers, the day-to-day. What are we working on?');
+ expect(await reloaded.turn('Call yourself Maya')).toContain('I can go by Maya around here');await reloaded.turn('yes');
  expect((await readMemory(env,actor)).revision).toBe(2);expect(await instance(actor).greet()).toContain('I’m Maya');
 });
 it('keeps the default explicitly and refuses staff configuration without disturbing saved business facts',async()=>{
  const owner=await business(),first=instance(owner);await confirmProfile(env,owner,{name:'Real business',services:['Advice']},0);
- await first.turn('Keep Mayor');await first.turn('yes');expect((await readMemory(env,owner)).profile).toEqual({name:'Real business',services:['Advice'],assistantName:'Mayor'});
+ await first.turn('Keep Mayor');await first.turn('yes');expect((await readMemory(env,owner)).profile).toEqual({name:'Real business',services:['Advice'],assistantName:'Mayor',language:'en'});
  const staff={tenantId:owner.tenantId,userId:crypto.randomUUID()};await env.AGENT_DB.prepare("INSERT INTO agent_memberships(tenant_id,user_id,role) VALUES(?,?,'staff')").bind(staff.tenantId,staff.userId).run();
  const colleague=instance(staff);expect(await colleague.greet()).not.toContain('give me a name');
  expect(await colleague.turn('Your name is Somebody Else')).toContain('Only a business owner or manager');expect(colleague.voice.pending.size).toBe(0);
