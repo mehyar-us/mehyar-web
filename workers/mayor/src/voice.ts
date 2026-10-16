@@ -55,7 +55,6 @@ import {emailPreferenceSchema,readEmailPreference,prepareEmailPreference,confirm
 
 import {gmailConnections,gmailReadSchema,readUnreadGmail} from './gmail';
 import {detectConnectorNeed,connectorOfferEvent,connectorOfferForName,guideCardEvent,reconnectCardEvent,isConnectorAuthFailure,assertNoSecretLeak,CONNECTOR_CARD_DEDUPE_MS} from './connector-cards';
-import {ensureSessionCard} from './connector-session-card';
 import {guideForService,resolveConnectorService} from './connector-guides';
 
 const Base = withVoice(Agent,{historyLimit:20,maxMessageCount:200});
@@ -142,15 +141,8 @@ export class MayorVoice extends Base<Env> {
           stage='connector_card';
           const connectorNeed=detectConnectorNeed(input.text);
           if(connectorNeed){
-            // One Connector P3: the card is a live engine session (the same
-            // session the harness tools drive). Any engine failure falls back
-            // to the guide offer card so the turn never breaks.
-            const sessionEvent=await ensureSessionCard(this.env,{tenantId:identity.tenantId,userId:identity.userId},connectorNeed.service);
-            if(sessionEvent)this.showConnectorCardOnce(id,connection,connectorNeed.service,sessionEvent);
-            else{
-              const needGuide=guideForService(connectorNeed.service);
-              if(needGuide)this.showConnectorCardOnce(id,connection,connectorNeed.service,connectorOfferEvent(needGuide));
-            }
+            const needGuide=guideForService(connectorNeed.service);
+            if(needGuide)this.showConnectorCardOnce(id,connection,connectorNeed.service,connectorOfferEvent(needGuide));
           }
           stage='turn';
           const reply=await collectTextTurn(this.onTurn(input.text,{connection,messages,signal:controller.signal,imageIds:input.imageIds}),controller.signal);
