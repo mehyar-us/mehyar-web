@@ -30,6 +30,7 @@ import {loadTrendpost} from './trendpost-loader';
 import {loadConnectorSessions} from './connector-sessions-loader';
 import {loadAccountCards} from './account-cards-loader';
 import {loadComposerCluster} from './composer-cluster-loader';
+import {loadNotificationsInbox} from './notifications-inbox-loader';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -91,57 +92,42 @@ $('today-sign-in').onclick=()=>signIn();
 $('today-microsoft-sign-in').onclick=()=>signIn('microsoft');
 $('calendar-status').onclick=()=>{show('connections');$('connections-heading').focus();};
 $('dock-voice-label').onclick=()=>{show('chat');$('talk').click();};
-const inbox=document.createElement('details'),inboxSummary=document.createElement('summary'),inboxItems=document.createElement('div'),inboxRefresh=document.createElement('button'),inboxStatus=document.createElement('p');
-inbox.className='account-card notification-inbox';inbox.hidden=true;
-inboxSummary.textContent='Notifications';inboxRefresh.textContent='Check account';inboxRefresh.type='button';inboxRefresh.className='secondary';
-inboxStatus.setAttribute('role','status');
-inbox.append(inboxSummary,inboxStatus,inboxItems,inboxRefresh);$('notice').after(inbox);
+// React migration S2c: the notifications inbox renders via React from
+// this snapshot; fetching, label logic, and navigation stay here.
+const inboxHost=document.createElement('div');inboxHost.style.display='contents';$('notice').after(inboxHost);
+interface InboxItemView{id:string;title:string;message:string;actionLabel:string;unread:boolean;destination:'today'|'tasks'|'chat'|'missed-calls'|'account';anchor:string}
+let inboxSnapshot:{hidden:boolean;open:boolean;summaryText:string;statusText:string;items:InboxItemView[];hasMore:boolean;showReconnect:boolean;refreshDisabled:boolean;markingReadId:string|null}={hidden:true,open:false,summaryText:'Notifications',statusText:'',items:[],hasMore:false,showReconnect:false,refreshDisabled:false,markingReadId:null};
+function pushInbox(){loadNotificationsInbox(inboxHost,{...inboxSnapshot,onToggle:(open)=>{inboxSnapshot={...inboxSnapshot,open};if(open)void refreshInbox();},onRefresh:()=>void refreshInbox(),onItemAction:(item)=>inboxItemAction(item),onMarkRead:(item)=>void markInboxRead(item),onReconnect:()=>{show('connections');$('connections-heading').focus();}});}
 let inboxLoading=false;
 async function refreshInbox(){
  if(!tenantId||!canManage())return;
  if(inboxLoading)return;
- inboxLoading=true;inboxRefresh.disabled=true;inboxStatus.textContent='Checking your business profile and saved calendar connection…';
+ inboxLoading=true;inboxSnapshot={...inboxSnapshot,refreshDisabled:true,statusText:'Checking your business profile and saved calendar connection\u2026'};pushInbox();
  try{
   // api() already bounds requests at 15s: a hanging provider check can never
   // leave the button permanently disabled. The finally below always re-enables.
   const result=await api(`/api/businesses/${tenantId}/notifications/refresh`,{});
-  inboxItems.replaceChildren();
   const unread=result.notifications.filter((item:any)=>!item.read).length;
-  inboxSummary.textContent=`Notifications${unread?` (${unread} unread)`:''}`;
-  inboxStatus.textContent=result.notifications.length?'Account items needing attention. Manage recurring checks and email alerts in Account.':'No account alerts are open. Manage recurring checks and email alerts in Account.';
-  for(const item of result.notifications){
-   const card=document.createElement('article'),title=document.createElement('h3'),message=document.createElement('p'),action=document.createElement('button');
+  const items:InboxItemView[]=result.notifications.map((item:any)=>{
    const destination=item.action==='today'||item.action==='briefing'||item.action==='suggestions'?'today':item.action==='tasks'?'tasks':item.action==='chat'?'chat':item.action==='missed-calls'?'missed-calls':'account';
    // Real backend kinds (src/notifications.ts): action 'briefing' | 'suggestions'
    // deep-link into the Today proactive sections; a future item.anchor
    // ('briefing'|'suggestions'|'roi'|'suggestion:<cardId>') overrides either.
    const anchor=typeof item.anchor==='string'&&item.anchor?item.anchor:item.action==='briefing'?'briefing':item.action==='suggestions'?'suggestions':'';
    const anchorLabel=anchor==='briefing'?'Open morning briefing':anchor==='suggestions'?'Open suggestions':anchor==='roi'?'Open ROI dashboard':anchor.startsWith('suggestion')?'Open suggestion':undefined;
-   title.textContent=item.title;message.textContent=item.message;action.type='button';action.className='secondary';action.textContent=anchorLabel??(destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':destination==='missed-calls'?'Review missed call':'Talk to '+assistantName(confirmedProfile));
-   action.onclick=()=>{inbox.open=false;if(destination==='missed-calls'){show('today');workday.openMissedCalls();return;}if(destination==='tasks'){workday.openTasks();return;}const target=anchor==='roi'?'feed':destination;show(target);if(anchor&&(target==='today'||target==='feed'))workday.proactive.highlight(anchor);else(target==='today'?$('today-heading'):target==='feed'?$('feed-heading'):target==='account'?$('account-heading'):$('talk')).focus();};
-   card.append(title,message,action);
-   if(!item.read){
-    const read=document.createElement('button');read.type='button';read.className='secondary';read.textContent='Mark read';
-    read.onclick=async()=>{read.disabled=true;try{await api(`/api/businesses/${tenantId}/notifications/${item.id}/read`,{});await refreshInbox();}catch(error){inboxStatus.textContent=error instanceof Error?error.message:'Could not mark this notification read.';read.disabled=false;}};
-    card.append(read);
-   }
-   inboxItems.append(card);
-  }
-  if(result.hasMore){const more=document.createElement('p');more.textContent='Showing the latest 50 items.';inboxItems.append(more);}
- }catch(error){inboxItems.replaceChildren();inboxSummary.textContent='Notifications';
+   const actionLabel=anchorLabel??(destination==='today'?'Open agent report':destination==='tasks'?'Open business playbook':destination==='account'?'Review account':destination==='missed-calls'?'Review missed call':'Talk to '+assistantName(confirmedProfile));
+   return {id:item.id,title:item.title,message:item.message,actionLabel,unread:!item.read,destination,anchor};
+  });
+  inboxSnapshot={...inboxSnapshot,summaryText:`Notifications${unread?` (${unread} unread)`:''}`,statusText:result.notifications.length?'Account items needing attention. Manage recurring checks and email alerts in Account.':'No account alerts are open. Manage recurring checks and email alerts in Account.',items,hasMore:Boolean(result.hasMore),showReconnect:false};pushInbox();
+ }catch(error){
   const message=error instanceof Error?error.message:'Notifications could not be checked. Try again.';
-  inboxStatus.textContent=message;
   // Never a dead end: on calendar/connection failures offer the reconnect path.
-  if(/calendar|connection|verify|reconnect/i.test(message)){
-   const reconnect=document.createElement('button');reconnect.type='button';reconnect.className='secondary';
-   reconnect.textContent='Reconnect calendar';reconnect.onclick=()=>{show('connections');$('connections-heading').focus();};
-   inboxItems.append(reconnect);
-  }
- }finally{inboxLoading=false;inboxRefresh.disabled=false;}
+  inboxSnapshot={...inboxSnapshot,summaryText:'Notifications',statusText:message,items:[],hasMore:false,showReconnect:/calendar|connection|verify|reconnect/i.test(message)};pushInbox();
+ }finally{inboxLoading=false;inboxSnapshot={...inboxSnapshot,refreshDisabled:false};pushInbox();}
 }
-inboxRefresh.onclick=()=>void refreshInbox();
-$('notifications-button').onclick=()=>{inbox.hidden=!inbox.hidden;inbox.open=!inbox.hidden;};
-inbox.addEventListener('toggle',()=>{if(inbox.open)void refreshInbox();});
+function inboxItemAction(item:InboxItemView){inboxSnapshot={...inboxSnapshot,open:false};pushInbox();const destination=item.destination,anchor=item.anchor;if(destination==='missed-calls'){show('today');workday.openMissedCalls();return;}if(destination==='tasks'){workday.openTasks();return;}const target=anchor==='roi'?'feed':destination;show(target);if(anchor&&(target==='today'||target==='feed'))workday.proactive.highlight(anchor);else(target==='today'?$('today-heading'):target==='feed'?$('feed-heading'):target==='account'?$('account-heading'):$('talk')).focus();}
+async function markInboxRead(item:InboxItemView){inboxSnapshot={...inboxSnapshot,markingReadId:item.id};pushInbox();try{await api(`/api/businesses/${tenantId}/notifications/${item.id}/read`,{});inboxSnapshot={...inboxSnapshot,markingReadId:null};await refreshInbox();}catch(error){inboxSnapshot={...inboxSnapshot,markingReadId:null,statusText:error instanceof Error?error.message:'Could not mark this notification read.'};pushInbox();}}
+$('notifications-button').onclick=()=>{const hidden=!inboxSnapshot.hidden;inboxSnapshot={...inboxSnapshot,hidden,open:!hidden};pushInbox();};
 // React migration S2a: the Settings account cards (recurring check, email
 // notifications, Business agent) render via React from these snapshots;
 // fetching and actions stay here. The host uses display:contents so the
@@ -780,10 +766,10 @@ function endWorkspaceAccess(){
  savedTranscript=[];confirmedProfile={};voiceRows.clear();$('transcript').replaceChildren();$('interim').textContent='';
  workspace.clear();workday.clear();connectionHub.reset();voiceHealth.clear();calendarChat.clear();calendarLauncher.hidden=true;$('calendar-status').hidden=true;voiceHelp.open=false;voiceHelp.hidden=true;micLevel.hidden=true;micLevel.value=0;
  $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
- for(const node of [$('profile'),inboxItems,phoneGuide,phoneControls])node.replaceChildren();
+ for(const node of [$('profile'),phoneGuide,phoneControls])node.replaceChildren();inboxSnapshot={...inboxSnapshot,items:[],hasMore:false,showReconnect:false};pushInbox();
  for(const id of ['chat-website-source','chat-phone-guide','chat-connections-guide'])document.getElementById(id)?.remove();
  $('user-detail').textContent='';permissionDetail.textContent='';accountCardsVisible=false;routineSnapshot={stateText:'',pauseVisible:false,pauseDisabled:false};emailSnapshot={statusText:'',toggleLabel:'',toggleVisible:false,toggleDisabled:true};pushAccountCards();timezoneSuggestion.element.hidden=true;
- $('notice').hidden=true;networkStatus.hidden=true;inbox.hidden=true;
+ $('notice').hidden=true;networkStatus.hidden=true;inboxSnapshot={...inboxSnapshot,hidden:true,open:false};pushInbox();
  $('calendar-status').querySelector('span')!.textContent='Calendar unavailable';$<HTMLButtonElement>('calendar-status').disabled=true;
  $('notifications-button').hidden=true;$<HTMLButtonElement>('notifications-button').disabled=true;
  document.querySelector('main')!.hidden=true;document.querySelector('nav')!.hidden=true;
@@ -1123,8 +1109,8 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
   }
   else if(canManage()&&connectedProvider&&['google','microsoft','zoho'].includes(connectedProvider)){void calendarChat.open(undefined,connectedProvider);$('conversation').setAttribute('open','');}
   else if(canManage()&&connectionError){notice('The calendar connection did not finish. Your existing business details are safe. Try connecting again below.');void calendarChat.open(undefined,connectionError.startsWith('zoho_')?'zoho':undefined);$('conversation').setAttribute('open','');}
-  inbox.hidden=true;$('notifications-button').hidden=!canManage();if(canManage())void refreshInbox();
-  if(canManage()&&new URLSearchParams(location.search).get('notifications')==='1'){inbox.hidden=false;inbox.open=true;}
+  inboxSnapshot={...inboxSnapshot,hidden:true};pushInbox();$('notifications-button').hidden=!canManage();if(canManage())void refreshInbox();
+  if(canManage()&&new URLSearchParams(location.search).get('notifications')==='1'){inboxSnapshot={...inboxSnapshot,hidden:false,open:true};pushInbox();void refreshInbox();}
   timezoneSuggestion.element.hidden=!canChat();timezoneSuggestion.ready(canChat());
   permissionDetail.textContent=`${business.name} · Role: ${membershipRole}. ${canManage()?'You can manage business details, scheduling, and connections.':canChat()?'You can talk to The Mayor and read business details. An owner or manager confirms business and scheduling changes.':membershipRole==='billing'?'You can manage the subscription and read shared usage in Plan & usage.':'You can read business details. Voice chat and connection management are not available for this role.'}`;
   phoneCard.hidden=!canManage();
