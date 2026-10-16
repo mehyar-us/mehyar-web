@@ -152,6 +152,12 @@ function sessionView(env:Env,row:SessionRow,recipe:ConnectorRecipe){
  };
 }
 
+export async function getConnectorSession(env:Env,actor:Actor,id:string){
+ await requireMembership(env,actor,OPERATORS);
+ const row=await ownedSession(env,actor,id);
+ return sessionView(env,row,await recipeFor(env,row));
+}
+
 async function ownedSession(env:Env,actor:Actor,id:string):Promise<SessionRow>{
  const row=await env.AGENT_DB.prepare('SELECT * FROM mayor_connector_sessions WHERE id=? AND tenant_id=?')
   .bind(z.uuid().parse(id),actor.tenantId).first<SessionRow>();
