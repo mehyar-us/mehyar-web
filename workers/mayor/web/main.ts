@@ -29,6 +29,7 @@ import {loadOfferBlock} from './offer-loader';
 import {loadTrendpost} from './trendpost-loader';
 import {loadConnectorSessions} from './connector-sessions-loader';
 import {loadAccountCards} from './account-cards-loader';
+import {loadComposerCluster} from './composer-cluster-loader';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -264,13 +265,15 @@ async function refreshBusinessProfile(){
   });
  }catch(error){notice(error instanceof Error?error.message:'Could not preview the profile refresh.');}
 }
-const composerStatus=document.createElement('p');composerStatus.id='composer-status';composerStatus.setAttribute('role','status');
-const stopWaiting=document.createElement('button');stopWaiting.type='button';stopWaiting.className='secondary';stopWaiting.textContent='Stop waiting';stopWaiting.hidden=true;
-const chatActions=document.createElement('div');chatActions.className='chat-actions';chatActions.append(stopWaiting);$('text-form').after(composerStatus,chatActions);
-// New chat control in the global chat bar (assistant dock), desktop and mobile.
-// Same action as the header control: archive the server thread, clear the local
-// transcript, and re-render the business-first greeting.
-const newChatDock=document.createElement('button');newChatDock.type='button';newChatDock.className='secondary';newChatDock.textContent='New chat';newChatDock.setAttribute('aria-label','Start a new conversation');newChatDock.onclick=()=>void startNewChat();chatActions.append(newChatDock);
+// React migration S2b: the composer cluster (status line, startup Retry,
+// Stop waiting / New chat actions) renders via React from this snapshot;
+// the text-chat engine and flows stay here. display:contents keeps the
+// cluster in the composer column exactly where the elements sat.
+const composerHost=document.createElement('div');composerHost.style.display='contents';$('text-form').after(composerHost);
+let composerSnapshot={statusText:'',stopWaitingVisible:false,actionsHidden:false,newChatHidden:false,retryVisible:false};
+function pushComposer(){loadComposerCluster(composerHost,{...composerSnapshot,onStopWaiting:()=>textChat.cancel(),onNewChat:()=>void startNewChat(),onRetry:()=>void start()});}
+function setComposerStatus(text:string){composerSnapshot={...composerSnapshot,statusText:text};pushComposer();}
+function setRetryVisible(visible:boolean){composerSnapshot={...composerSnapshot,retryVisible:visible};pushComposer();}
 const textChat=createTextChat(async(text,requestId,signal,imageIds)=>{
  const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/conversation`;
  const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId,imageIds}),signal});
@@ -283,12 +286,11 @@ const textChat=createTextChat(async(text,requestId,signal,imageIds)=>{
   const err=new Error(result.message??'Could not send. Your draft is still here.') as Error&{status?:number};
   err.status=response.status;throw err;
  }return result;
-},(busy,message)=>{if(accessEnded)return;composerStatus.textContent=message;stopWaiting.hidden=!busy;updateNetwork();renderVoiceState();},{
+},(busy,message)=>{if(accessEnded)return;composerSnapshot={...composerSnapshot,statusText:message,stopWaitingVisible:busy};pushComposer();updateNetwork();renderVoiceState();},{
  serviceDownCopy:(status)=>status===502
   ?'The assistant couldn\u2019t reach the AI service — try again in a moment.'
   :undefined,
 });
-stopWaiting.onclick=()=>textChat.cancel();
 // Crew 6j — chat photo attach (mobile-first: camera + photo library).
 // Photos upload first to tenant-scoped storage; the turn references the ids.
 const MAX_CHAT_PHOTOS=2;
@@ -333,15 +335,15 @@ async function uploadAttachedPhoto(file:File){
  if(attachedPhotos.length>=MAX_CHAT_PHOTOS){notice('Two photos max per message.');return;}
  if(!/^image\//.test(file.type)){notice('Send a photo file (JPEG, PNG, or WebP).');return;}
  try{
-  composerStatus.textContent='Uploading photo…';
+  setComposerStatus('Uploading photo…');
   const blob=await downscalePhoto(file);
   const form=new FormData();form.append('image',blob,'photo.jpg');
   const response=await fetch(`/api/businesses/${tenantId}/conversation/images`,{method:'POST',body:form});
   const result=await response.json();
   if(!response.ok)throw new Error(result.message??'Photo upload failed.');
   attachedPhotos.push({id:result.id,thumbUrl:URL.createObjectURL(blob)});
-  renderPhotoChips();composerStatus.textContent='';
- }catch(error){composerStatus.textContent='';notice(error instanceof Error?error.message:'Photo upload failed.');}
+  renderPhotoChips();setComposerStatus('');
+ }catch(error){setComposerStatus('');notice(error instanceof Error?error.message:'Photo upload failed.');}
 }
 async function removeAttachedPhoto(id:string){
  const index=attachedPhotos.findIndex(p=>p.id===id);
@@ -787,7 +789,7 @@ function endWorkspaceAccess(){
  document.querySelector('main')!.hidden=true;document.querySelector('nav')!.hidden=true;
  $<HTMLTextAreaElement>('message').value='';$<HTMLTextAreaElement>('message').disabled=true;
  $<HTMLButtonElement>('send-message').disabled=true;$<HTMLButtonElement>('talk').disabled=true;$<HTMLButtonElement>('attach-photo').disabled=true;
- document.querySelector<HTMLElement>('.assistant-dock')!.hidden=true;composerStatus.textContent='';chatActions.hidden=true;newChatHeader.hidden=true;
+ document.querySelector<HTMLElement>('.assistant-dock')!.hidden=true;composerSnapshot={...composerSnapshot,statusText:'',actionsHidden:true};pushComposer();newChatHeader.hidden=true;
  accessRecovery.show();
 }
 function handleMessage(data:unknown){
@@ -1075,9 +1077,8 @@ async function init(){
 function enterNamingMode(){
   namingMode=true;
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=false;
-  chatActions.hidden=false;
+  composerSnapshot={...composerSnapshot,actionsHidden:false,newChatHidden:true};pushComposer();
   // No conversation exists yet — a reset would hit a tenant-less endpoint.
-  newChatDock.hidden=true;
   show('chat');
   savedTranscript=[{role:'assistant',text:namingGreeting()}];
   // The composer is the naming input; there is no conversation history yet.
@@ -1105,10 +1106,10 @@ async function claimBusinessName(name:string){
 }
 
 async function enterBusiness(businesses:Array<{id:string;name:string;role:string}>,business:{id:string;name:string;role:string}){
-  tenantId=business.id;membershipRole=business.role;newChatDock.hidden=false;
+  tenantId=business.id;membershipRole=business.role;composerSnapshot={...composerSnapshot,newChatHidden:false};pushComposer();
   $('business-identity').hidden=false;
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
-  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();chatActions.hidden=false;
+  document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();composerSnapshot={...composerSnapshot,actionsHidden:false};pushComposer();
   workday.ready(business.name,membershipRole);
   setupBusinessSwitcher(businesses,business.id);
   $('calendar-status').hidden=!canManage();
@@ -1156,7 +1157,6 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
     }catch{notice('That connection link did not match an attempt on this account.');}
   }
 }
-const retryStartup=document.createElement('button');retryStartup.type='button';retryStartup.className='secondary';retryStartup.textContent='Retry loading';retryStartup.hidden=true;composerStatus.after(retryStartup);
-async function start(){if(accessEnded)return;retryStartup.hidden=true;try{await init();}catch(error){if(accessEnded)return;notice((error as Error).message);retryStartup.hidden=false;$('status').textContent='Could not load your workspace';}}
-retryStartup.onclick=()=>void start();show('chat');void start();
+async function start(){if(accessEnded)return;setRetryVisible(false);try{await init();}catch(error){if(accessEnded)return;notice((error as Error).message);setRetryVisible(true);$('status').textContent='Could not load your workspace';}}
+pushComposer();show('chat');void start();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(()=>{});
