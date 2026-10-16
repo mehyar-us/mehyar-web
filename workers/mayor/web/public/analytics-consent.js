@@ -9,8 +9,10 @@
  *    (G-6RCJMF73VJ) are injected ONLY after the visitor accepts. GA4 is
  *    loaded as direct gtag.js ONLY — never configured inside GTM, so
  *    pageviews can never double-count.
- *  - This site runs no ads: ad_storage / ad_user_data / ad_personalization
- *    stay denied even after acceptance.
+ *  - Google ad features are unused: ad_storage / ad_user_data /
+ *    ad_personalization stay denied even after acceptance. The Meta
+ *    pixel is separate ad tech: it loads only on the granted path, under
+ *    a banner that discloses Meta advertising measurement by name.
  *  - No external request leaves the browser before consent: this file is
  *    same-origin, and the measurement-library URLs appear only inside
  *    loadGrantedTags(), which is reachable only from the consent-granted
@@ -24,13 +26,13 @@
 
   var GA4_MEASUREMENT_ID = 'G-6RCJMF73VJ';
   var GTM_CONTAINER_ID = 'GTM-PZLMLZ5C';
-  /* Meta pixel: none exists for The Mayor yet (checked against the
-   * MehyarSoft LLC Meta business 2026-10-15 — ten product pixels, none for
-   * this product). The loader below stays inert while this is empty; set
-   * the ID once a pixel is created and it loads on the same granted path
-   * as GTM/GA4. Enabling it also needs a consent-copy review first,
-   * because a pixel is advertising tech, not analytics. */
-  var META_PIXEL_ID = '';
+  /* Meta pixel: dataset "The Mayor" in the MehyarSoft LLC Meta business,
+   * created 2026-10-16 and verified through the Meta connector. It loads
+   * on the same granted path as GTM/GA4 — only after an explicit accept.
+   * The consent-copy review ran before activation (2026-10-16): the
+   * banner names Meta advertising measurement alongside Google
+   * Analytics, because a pixel is advertising tech, not analytics. */
+  var META_PIXEL_ID = '1773921077163350';
   var STORAGE_KEY = 'mayor.analytics-consent.v1';
   var BANNER_ID = 'mayor-consent-banner';
 
@@ -77,7 +79,7 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* 2. Granted path: update Consent Mode (ads stay denied — no ads on   */
+  /* 2. Granted path: update Consent Mode (Google ad categories stay    */
   /*    this site), then load the measurement tags exactly once.          */
   /* ------------------------------------------------------------------ */
   function applyGrantedConsent() {
@@ -89,7 +91,8 @@
   }
 
   /**
-   * The ONLY place googletagmanager.com is ever touched. Called solely from
+   * The ONLY place googletagmanager.com or connect.facebook.net is ever
+   * touched. Called solely from
    * enableGrantedAnalytics(), which runs only after an explicit accept (or a
    * stored 'granted' choice).
    */
@@ -116,7 +119,7 @@
     document.head.appendChild(g);
     gtag('js', new Date());
     gtag('config', GA4_MEASUREMENT_ID);
-    /* Meta pixel (standard snippet) — inert until META_PIXEL_ID is set. */
+    /* Meta pixel (standard snippet) — granted path only. */
     if (META_PIXEL_ID) {
       (function (f, b, e, v, n, t, s) {
         if (f.fbq) return;
@@ -167,13 +170,13 @@
     bar.id = BANNER_ID;
     bar.className = 'mayor-consent-bar';
     bar.setAttribute('role', 'dialog');
-    bar.setAttribute('aria-label', 'Analytics consent');
+    bar.setAttribute('aria-label', 'Analytics and advertising consent');
     bar.setAttribute('aria-live', 'polite');
 
     var copy = document.createElement('p');
     copy.className = 'mayor-consent-copy';
     copy.textContent =
-      'We use Google Analytics to understand aggregate site traffic. It only loads if you accept.';
+      'We use Google Analytics and Meta (Facebook) tools to understand site traffic and measure our ads. They only load if you accept.';
     bar.appendChild(copy);
 
     var actions = document.createElement('div');
