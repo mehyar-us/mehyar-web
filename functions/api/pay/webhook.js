@@ -520,6 +520,93 @@ const fulfillHooks = {
   },
 };
 
+
+// ── Payment Link (mirror) resolution ─────────────────────────────────────
+// Mirror objects are link-only Stripe Product+Price pairs created for
+// Payment Link sales (the WhatsApp flights). Their product carries
+// metadata.mirror_of = the billing_products sku. A link purchase has no
+// pre-created billing_payments row and no metadata.payment_id, so the
+// native path above cannot see it. Resolution: read the session's line
+// items from Stripe, map the purchased product's mirror_of to the D1
+// product, verify the amount against the D1 price, create the payment
+// row (idempotent on the Stripe session id), then run the same buyer-CRM
+// capture + fulfillment-hook dispatch as a native checkout.
+function mirrorRandomHex(bytes) {
+  const b = new Uint8Array(bytes);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+async function resolveMirrorPurchase({ db, request, env, waitUntil }, sess) {
+  if (!sess.id || sess.payment_status !== "paid") return;
+  const existing = await db.prepare(
+    "SELECT id FROM billing_payments WHERE stripe_session_id = ?"
+  ).bind(sess.id).first();
+  if (existing) return; // first delivery already created + dispatched
+  const key = sess.livemode === false
+    ? (env.STRIPE_TEST_SECRET_KEY || env.STRIPE_SECRET_KEY)
+    : env.STRIPE_SECRET_KEY;
+  if (!key) { console.error("pay/webhook mirror: no Stripe key for session", sess.id); return; }
+  const api = async (path) => {
+    const r = await fetch("https://api.stripe.com" + path, {
+      headers: { authorization: "Bearer " + key },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) throw new Error("stripe " + r.status + " " + path);
+    return r.json();
+  };
+  const items = await api("/v1/checkout/sessions/" + encodeURIComponent(sess.id) + "/line_items?expand[]=data.price.product&limit=10");
+  const line = items && items.data && items.data[0];
+  const price = line && line.price;
+  const productObj = price && typeof price.product === "object" ? price.product : null;
+  const sku = String((productObj && productObj.metadata && productObj.metadata.mirror_of) || (price && price.metadata && price.metadata.mirror_of) || "").trim();
+  if (!sku) return; // not a mirror purchase — nothing to resolve
+  const product = await db.prepare(
+    "SELECT * FROM billing_products WHERE id = ? AND active = 1"
+  ).bind(sku).first();
+  if (!product) { console.error("pay/webhook mirror: unknown sku", sku); return; }
+  if (Number(sess.amount_total) !== Number(product.price_cents)) {
+    console.error("pay/webhook mirror: amount mismatch", sku, sess.amount_total, product.price_cents);
+    return;
+  }
+  const email = String((sess.customer_details && sess.customer_details.email) || sess.customer_email || "").toLowerCase().trim();
+  const isSub = sess.mode === "subscription" && sess.subscription;
+  const ins = await db.prepare(
+    "INSERT INTO billing_payments (product_id, brand, email, amount_cents, currency, access_token, metadata_json, attribution_json, status, stripe_payment_intent, stripe_session_id, stripe_subscription_id, subscription_status, paid_at) " +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 'paid', ?, ?, ?, ?, " + nowSql + ")"
+  ).bind(
+    product.id, product.brand, email, Number(product.price_cents), product.currency || "usd",
+    mirrorRandomHex(32),
+    JSON.stringify({ mirror_of: sku, via: "payment_link", stripe_price_id: price.id, stripe_product_id: productObj ? productObj.id : null }),
+    sess.payment_intent || null, sess.id,
+    isSub ? String(sess.subscription) : null, isSub ? "active" : null
+  ).run();
+  const paymentId = ins && ins.meta && ins.meta.last_row_id;
+  if (!paymentId) return;
+  const payment = await db.prepare("SELECT * FROM billing_payments WHERE id = ?").bind(paymentId).first();
+  if (!payment) return;
+  try {
+    await recordCustomerDetails(db, paymentId, sess);
+    if (email) {
+      await recordBuyerCRM(db, { email, brand: product.brand, amountCents: Number(product.price_cents), attributionJson: null });
+    }
+  } catch (e) {
+    console.error("pay/webhook mirror CRM failed", e && e.message);
+  }
+  const fulfillment = product.fulfillment || "none";
+  try {
+    await db.prepare(
+      "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (" + nowSql + ", ?, 'mirror_resolved', ?)"
+    ).bind(payment.id, JSON.stringify({ sku, fulfillment }).slice(0, 300)).run();
+  } catch {}
+  const hook = fulfillHooks[fulfillment] || fulfillHooks.none;
+  try {
+    await hook({ db, request, env, waitUntil }, payment, sess);
+  } catch (e) {
+    console.error("pay/webhook mirror fulfillment failed", product.id, e && e.message);
+  }
+}
+
 export async function onRequestPost({ request, env, waitUntil }) {
   try {
     if (!env?.LEADS_DB) return json({ ok: false }, 503);
@@ -609,6 +696,14 @@ export async function onRequestPost({ request, env, waitUntil }) {
               } catch {}
             }
           }
+        }
+      } else if (sess.id) {
+        // Payment Link purchase (mirror object): no payment_id metadata
+        // and no pre-created payment row — resolve via mirror_of.
+        try {
+          await resolveMirrorPurchase({ db, request, env, waitUntil }, sess);
+        } catch (e) {
+          console.error("pay/webhook mirror resolution failed", e && e.message);
         }
       }
     } else if (event.type === "invoice.payment_succeeded") {
