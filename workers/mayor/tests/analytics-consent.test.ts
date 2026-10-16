@@ -243,4 +243,15 @@ describe('worker and headers plumbing',()=>{
     // The consent file itself stays same-origin: no unsafe-inline added.
     expect(cspLine).not.toContain('unsafe-inline');
   });
+
+  it('CSP allows the consent-gated Meta hosts (script/connect/img)',()=>{
+    const headers=readFileSync(join(publicDir,'_headers'),'utf8');
+    const cspLine=headers.split('\n').find(l=>l.includes('Content-Security-Policy'))??'';
+    // fbevents.js loads from connect.facebook.net (script-src); the /tr
+    // PageView beacon goes to www.facebook.com (connect-src + img-src).
+    // Without these the pixel tag injects but the browser refuses the
+    // fetch — the AIMech defect (rot286 order #1).
+    expect(cspLine).toContain("script-src 'self' 'wasm-unsafe-eval' https://www.googletagmanager.com https://connect.facebook.net");
+    expect(cspLine).toContain('https://www.facebook.com');
+  });
 });
