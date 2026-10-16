@@ -759,10 +759,10 @@ async function connect(){
     if(connected&&$('notice').textContent==='Connection lost. Reconnecting...')notice('');
     voiceConnected=connected;if(!connected)voiceCall?.stop();updateNetwork();renderVoiceState();
   });
-  client.addEventListener('transcriptchange',()=>{if(active())transcripts();});
+  client.addEventListener('transcriptchange',()=>{if(active()){transcripts();call.activity();}});
   client.addEventListener('audiolevelchange',level=>{if(active())micLevel.value=Math.min(1,Math.max(0,level*5));});
   client.addEventListener('turnmetrics',metrics=>{if(active()){diagnostics.record(metrics);voiceHealth.refresh();}});
-  client.addEventListener('interimtranscript',text=>{if(active())$('interim').textContent=text??'';});
+  client.addEventListener('interimtranscript',text=>{if(active()){$('interim').textContent=text??'';call.activity();}});
   client.addEventListener('error',message=>{if(active())call.error(message);});
   client.addEventListener('mutechange',muted=>{if(active())$('mute').textContent=muted?'Unmute':'Mute';});
   client.addEventListener('custommessage',data=>{if(active())handleMessage(data);});
