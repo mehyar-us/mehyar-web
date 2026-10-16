@@ -12,7 +12,7 @@
  * when data-ssr="catalog" is present on #offer-block, so there is no
  * double-render or flicker.
  */
-import {PLANS,CREDIT_PACKS,approxConversations} from './billing/plans';
+import {PLANS,CREDIT_PACKS,approxConversations,FOUNDING_PRICE_CENTS} from './billing/plans';
 import {AUDIT_OFFER} from './billing/audit';
 
 function escapeHtml(value:string):string{
@@ -20,6 +20,10 @@ function escapeHtml(value:string):string{
 }
 function formatPrice(cents:number):string{
   return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(cents/100);
+}
+/** The founding price is not a whole-dollar amount — always show its cents. */
+function formatPriceExact(cents:number):string{
+  return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100);
 }
 interface SsrPlan{id:string;name:string;priceCents:number;replyLimit:number;voiceMinuteLimit:number}
 function validPlan(p:unknown):p is SsrPlan{
@@ -78,7 +82,20 @@ function priceLine(cents:number,suffix:string):string{
  * catalog can't be trusted (the caller keeps the client fallback instead
  * of showing a stale or invented amount).
  */
-export function pricingCardsSsrHtml():{plans:string;packs:string}|null{
+export interface FoundingSsrBlock {available:boolean;seats_total:number;seats_taken:number|null;seats_remaining:number|null;}
+/** The founding line inside the Pro card (locked seam): a live remaining
+ * count only when the count was computable and seats remain; the static
+ * cohort line (no live number) when the count is unavailable; nothing
+ * once the cohort is full — the list block stands alone. */
+export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
+ if(!founding)return '';
+ if(founding.available){
+  if(founding.seats_remaining===null||founding.seats_remaining<=0)return '';
+  return `<p class="plan-founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</p>`;
+ }
+ return `<p class="plan-founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</p>`;
+}
+export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:string;packs:string}|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
   if(!validPlan(free)||!validPlan(pro))return null;
   const packs=[...CREDIT_PACKS];
@@ -88,7 +105,7 @@ export function pricingCardsSsrHtml():{plans:string;packs:string}|null{
     priceLine(p.priceCents,p.priceCents>0?' / month':'')+
     `<p class="plan-tier">${p.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyLimit)} real conversations a month) · `+
     `${p.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>${blurb}</p><a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/?start=1'}">`+
+    `<p>${blurb}</p>${p.id==='pro'?foundingLineSsrHtml(founding):''}<a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/?start=1'}">`+
     `${p.id==='pro'?`Go Pro — ${escapeHtml(formatPrice(p.priceCents))}/mo`:'Start free'}</a></article>`;
   const packCard=(p:SsrPack)=>
     `<article class="plan-card"><h3>${escapeHtml(p.name)}</h3>`+
@@ -122,8 +139,8 @@ function injectIntoContainer(html:string,containerId:string,rendered:string):str
  * missing, already server-rendered, or the catalog can't be trusted — the
  * client fallback then stays in place.
  */
-export function injectPricingCards(html:string,auditAvailable=false):string{
-  const rendered=pricingCardsSsrHtml();
+export function injectPricingCards(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null):string{
+  const rendered=pricingCardsSsrHtml(founding);
   if(!rendered)return html;
   let out=injectIntoContainer(html,'plan-cards',rendered.plans);
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
@@ -139,7 +156,7 @@ export function injectPricingCards(html:string,auditAvailable=false):string{
 /* edit. Returns null when the catalog can't be trusted; the page       */
 /* then keeps its price-free fallback cards.                            */
 /* ------------------------------------------------------------------ */
-export function salesPlansSsrHtml():string|null{
+export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null):string|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
   if(!validPlan(free)||!validPlan(pro))return null;
   const packs=[...CREDIT_PACKS];
@@ -155,6 +172,7 @@ export function salesPlansSsrHtml():string|null{
     priceLine(pro.priceCents,' / month')+
     `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(pro.replyLimit)} real conversations a month) · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
+    foundingLineSsrHtml(founding)+
     `<a class="button button-small" href="/billing?plan=pro">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+
@@ -173,8 +191,8 @@ export function salesPlansSsrHtml():string|null{
  * container is missing, already server-rendered, or the catalog can't be
  * trusted — the price-free fallback cards then stay in place.
  */
-export function injectSalesPlans(html:string,auditAvailable=false):string{
-  const rendered=salesPlansSsrHtml();
+export function injectSalesPlans(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null):string{
+  const rendered=salesPlansSsrHtml(founding);
   if(!rendered)return html;
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
   const audit=auditCardSsrHtml();

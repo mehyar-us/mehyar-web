@@ -1,7 +1,14 @@
 export const BILLING_DOMAIN='mayor_pwa';
 export const BILLING_VERSION='2026-10-03.1';
-export const PRO_PRICE_VERSION='2026-10-03.2';
-export const PRO_PRICE_CENTS=1400;
+export const PRO_PRICE_VERSION='2026-10-16.1';
+export const PRO_PRICE_CENTS=9900;
+/* Founding cohort (Mayor's resolution 2026-10-16): the first 25
+ * businesses lock $79.20/mo (9900 x 0.80 exactly) FOR LIFE on a separate
+ * dedicated Price. Existing $14 subscribers are grandfathered — never
+ * migrated; the cohort and the $99 list apply to new checkouts only. */
+export const FOUNDING_PRICE_CENTS=7920;
+export const FOUNDING_PRICE_VERSION='2026-10-16.1';
+export const FOUNDING_SEATS_TOTAL=25;
 export const CREDIT_PACK_VERSION='2026-10-03.1';
 export const CREDIT_PACK_DOMAIN='mayor_credit_pack';
 export const CREDIT_PACKS=Object.freeze([

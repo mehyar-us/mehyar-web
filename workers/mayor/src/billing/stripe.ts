@@ -1,12 +1,12 @@
 import type {Env} from '../env';
 import {HttpError} from '../http';
-import {BILLING_DOMAIN,BILLING_VERSION,PRO_PRICE_CENTS,PRO_PRICE_VERSION,type BillingMode} from './plans';
+import {BILLING_DOMAIN,BILLING_VERSION,FOUNDING_PRICE_CENTS,PRO_PRICE_CENTS,PRO_PRICE_VERSION,type BillingMode} from './plans';
 
 // Pin request and dedicated webhook versions together. See docs.stripe.com/api/versioning.
 export const STRIPE_API_VERSION='2026-09-30.endive';
 export type StripeObject=Record<string,any>;
 export interface StripeEvent {id:string;type:string;created:number;livemode:boolean;account?:string;data:{object:StripeObject};}
-export type BillingEnv=Pick<Env,'AGENT_DB'|'APP_ORIGIN'|'MAYOR_STRIPE_MODE'|'MAYOR_STRIPE_SECRET_KEY'|'MAYOR_STRIPE_WEBHOOK_SECRET'|'MAYOR_STRIPE_PRICE_ID'|'MAYOR_STRIPE_PORTAL_CONFIGURATION'|'MAYOR_STRIPE_ACCOUNT_ID'|'MAYOR_STRIPE_AUDIT_PRICE_ID'|'MAYOR_STRIPE_CREDIT_PRICE_SMALL'|'MAYOR_STRIPE_CREDIT_PRICE_MEDIUM'|'MAYOR_STRIPE_CREDIT_PRICE_LARGE'|'MAYOR_AUDIT_STATUS_SECRET'|'MAYOR_AUDIT_ALLOWED_ORIGINS'|'MAYOR_AUDIT_OPERATOR_USER_IDS'|'MAYOR_AUDIT_FULFILLMENT_READY'>;
+export type BillingEnv=Pick<Env,'AGENT_DB'|'APP_ORIGIN'|'MAYOR_STRIPE_MODE'|'MAYOR_STRIPE_SECRET_KEY'|'MAYOR_STRIPE_WEBHOOK_SECRET'|'MAYOR_STRIPE_PRICE_ID'|'MAYOR_STRIPE_FOUNDING_PRICE_ID'|'MAYOR_STRIPE_PORTAL_CONFIGURATION'|'MAYOR_STRIPE_ACCOUNT_ID'|'MAYOR_STRIPE_AUDIT_PRICE_ID'|'MAYOR_STRIPE_CREDIT_PRICE_SMALL'|'MAYOR_STRIPE_CREDIT_PRICE_MEDIUM'|'MAYOR_STRIPE_CREDIT_PRICE_LARGE'|'MAYOR_AUDIT_STATUS_SECRET'|'MAYOR_AUDIT_ALLOWED_ORIGINS'|'MAYOR_AUDIT_OPERATOR_USER_IDS'|'MAYOR_AUDIT_FULFILLMENT_READY'>;
 export function mode(env:Pick<Env,'MAYOR_STRIPE_MODE'>):BillingMode|null{return env.MAYOR_STRIPE_MODE==='test'||env.MAYOR_STRIPE_MODE==='live'?env.MAYOR_STRIPE_MODE:null;}
 export function baseConfiguration(env:BillingEnv){
  const selected=mode(env),key=env.MAYOR_STRIPE_SECRET_KEY;
@@ -14,7 +14,7 @@ export function baseConfiguration(env:BillingEnv){
  return {mode:selected,key};
 }
 export function configuration(env:BillingEnv){const base=baseConfiguration(env);if(!/^price_[A-Za-z0-9]+$/.test(env.MAYOR_STRIPE_PRICE_ID??''))throw new HttpError(503,'billing_not_ready','Payments are being prepared. You can keep using Free.');return {...base,priceId:env.MAYOR_STRIPE_PRICE_ID!};}
-export function metadata(tenantId:string,checkoutId?:string){return {mayor_billing_domain:BILLING_DOMAIN,mayor_tenant_id:tenantId,mayor_catalog_version:BILLING_VERSION,...(checkoutId?{mayor_checkout_id:checkoutId,mayor_price_version:PRO_PRICE_VERSION}:{})};}
+export function metadata(tenantId:string,checkoutId?:string,cohort?:'founding'){return {mayor_billing_domain:BILLING_DOMAIN,mayor_tenant_id:tenantId,mayor_catalog_version:BILLING_VERSION,...(checkoutId?{mayor_checkout_id:checkoutId,mayor_price_version:PRO_PRICE_VERSION,...(cohort?{mayor_cohort:cohort}:{})}:{})};}
 export function objectId(value:unknown):string|undefined{return typeof value==='string'?value:typeof (value as StripeObject)?.id==='string'?(value as StripeObject).id:undefined;}
 export function parameters(data:Record<string,unknown>){
  const result=new URLSearchParams();
@@ -40,6 +40,8 @@ export class StripeClient {
 export function clientFor(env:BillingEnv,injected?:StripeClient){return injected??new StripeClient(baseConfiguration(env).key);}
 export function assertMode(value:StripeObject,selected:BillingMode){if(value.livemode!==(selected==='live'))throw new HttpError(409,'stripe_mode_mismatch','The billing environment could not be verified.');}
 export function assertPrice(price:StripeObject,env:BillingEnv){const config=configuration(env);assertMode(price,config.mode);if(price.id!==config.priceId||price.active!==true||price.currency!=='usd'||price.unit_amount!==PRO_PRICE_CENTS||price.type!=='recurring'||price.recurring?.interval!=='month'||price.recurring?.interval_count!==1||price.billing_scheme!=='per_unit'||price.tax_behavior==='inclusive')throw new HttpError(409,'price_mismatch','The Pro price could not be verified.');}
+export function foundingConfiguration(env:BillingEnv){const base=baseConfiguration(env);if(!/^price_[A-Za-z0-9]+$/.test(env.MAYOR_STRIPE_FOUNDING_PRICE_ID??''))throw new HttpError(503,'billing_not_ready','Payments are being prepared. You can keep using Free.');return {...base,priceId:env.MAYOR_STRIPE_FOUNDING_PRICE_ID!};}
+export function assertFoundingPrice(price:StripeObject,env:BillingEnv){const config=foundingConfiguration(env);assertMode(price,config.mode);if(price.id!==config.priceId||price.active!==true||price.currency!=='usd'||price.unit_amount!==FOUNDING_PRICE_CENTS||price.type!=='recurring'||price.recurring?.interval!=='month'||price.recurring?.interval_count!==1||price.billing_scheme!=='per_unit'||price.tax_behavior==='inclusive')throw new HttpError(409,'price_mismatch','The founding price could not be verified.');}
 export function stripeUrl(value:unknown,host:'checkout.stripe.com'|'billing.stripe.com'){
  let parsed:URL;try{parsed=new URL(String(value));}catch{throw new HttpError(502,'billing_url_invalid','Stripe did not return a valid destination.');}
  if(parsed.protocol!=='https:'||parsed.hostname!==host||parsed.username||parsed.password||parsed.port)throw new HttpError(502,'billing_url_invalid','Stripe did not return a valid destination.');return parsed.href;
