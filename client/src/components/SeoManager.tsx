@@ -615,7 +615,7 @@ const staticMeta: Record<string, SeoMeta> = {
           {
             question: "How fast do I get the audit results?",
             answer:
-              "The founder-led audit is delivered within a few business days of your intake call.",
+              "The founder-led audit is delivered within 3 business days of your intake call.",
           },
           {
             question: "Is the $330 audit safe for regulated or PHI-adjacent businesses?",
