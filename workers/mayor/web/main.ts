@@ -27,6 +27,7 @@ import {verticalMappingNote} from '../src/vertical-mapping';
 import {createPlacesOnboarding} from './places-onboarding';
 import {loadOfferBlock} from './offer-loader';
 import {loadTrendpost} from './trendpost-loader';
+import {loadConnectorSessions} from './connector-sessions-loader';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -1029,7 +1030,7 @@ function show(tab:WorkdayView){
   chatKeyboard.sync();
   if(tab==='chat'&&!conversationPositioned)requestAnimationFrame(()=>{if(document.body.dataset.view==='chat')transcripts();});
   if(tab==='account')account().catch(error=>notice(error.message));
-  if(tab==='connections'&&canManage())void connectionHub.activate().catch(error=>notice(error.message));
+  if(tab==='connections'&&canManage()){void connectionHub.activate().catch(error=>notice(error.message));loadConnectorSessions({api,tenant:()=>tenantId,signIn,onNotice:message=>notice(message)});}
 }
 async function init(){
   // Public offer block: catalog-priced plans on the logged-out view. Non-blocking;
