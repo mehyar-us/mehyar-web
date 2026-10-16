@@ -9,6 +9,7 @@ import MaintenanceSupportSection from "@/components/maintenance-support-section"
 import { managedAgentOffers } from "@/data/agent-services";
 import { Bot, BrainCircuit } from "lucide-react";
 import ServiceDecisionGuide from "@/components/ServiceDecisionGuide";
+import MayorBait from "@/components/MayorBait";
 
 const steps = ["Find the leak", "Ship the smallest useful fix", "Measure and document the handoff"];
 
@@ -112,6 +113,8 @@ const Services = () => {
           <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-muted-foreground">Tools are selected for the workflow, not trend value: React/TypeScript frontends, Node/Python backends, CRM/email/scheduling integrations, Cloudflare-native hosting, SQL databases, dashboards, and AI-assisted workflow automation.</p>
         </div>
       </section>
+
+      <MayorBait campaign="services" />
 
       <CTASection />
     </>

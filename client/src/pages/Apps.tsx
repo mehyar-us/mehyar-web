@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import CTASection from "@/components/cta-section";
 import QuickAnswer from "@/components/QuickAnswer";
+import MayorBait from "@/components/MayorBait";
 
 interface ManagedApp {
   id: string;
@@ -827,6 +828,7 @@ const Apps = () => {
           </p>
         </div>
       </section>
+      <MayorBait campaign="apps" />
     </>
   );
 };

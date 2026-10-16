@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import BusinessReportView from "@/components/BusinessReportView";
+import MayorBait from "@/components/MayorBait";
 
 /* ── API contract (matches functions/api/audit/business/*, commit 8cbc372) ──
    POST /api/audit/business/intake   { business_name, url, email }
@@ -1216,6 +1217,7 @@ export default function Audit() {
           </div>
         </div>
       </section>
+      <MayorBait campaign="audit" />
     </>
   );
 }

@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/utils";
 import { blogPosts } from "@/data/blog-posts";
 import QuickAnswer from "@/components/QuickAnswer";
 import NewsletterSignup from "@/components/NewsletterSignup";
+import MayorBait from "@/components/MayorBait";
 
 const Blog = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -214,6 +215,7 @@ const Blog = () => {
           </aside>
         </div>
       </section>
+      <MayorBait campaign="blog" />
     </>
   );
 };
