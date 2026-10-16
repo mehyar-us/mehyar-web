@@ -224,6 +224,23 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
   },
   {
+    id: "billcut",
+    name: "Billcut",
+    url: "https://billcut.mehyar.us",
+    tagline: "Find money you're missing.",
+    description:
+      "A subscription & bill audit run from your own bank statement: upload a statement and Billcut reviews your recurring charges and bills to find money you're missing — a $9 one-time audit, no bank login required.",
+    audience: "Anyone whose subscriptions and bills renew quietly month after month without a line-by-line look.",
+    highlights: [
+      "$9 one-time audit — no subscription and no ongoing fees",
+      "Runs from your own statement upload — no bank login required",
+      "Optional read-only bank connect through Stripe after your audit",
+      "Surfaces the recurring charges you forgot you are paying for",
+    ],
+    logo: "/assets/billcut-logo.svg",
+    accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
+  },
+  {
     id: "prepguide",
     name: "PrepGuide",
     url: "https://prepguide.mehyar.us",
