@@ -122,13 +122,13 @@ function injectIntoContainer(html:string,containerId:string,rendered:string):str
  * missing, already server-rendered, or the catalog can't be trusted — the
  * client fallback then stays in place.
  */
-export function injectPricingCards(html:string):string{
+export function injectPricingCards(html:string,auditAvailable=false):string{
   const rendered=pricingCardsSsrHtml();
   if(!rendered)return html;
   let out=injectIntoContainer(html,'plan-cards',rendered.plans);
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
   out=injectIntoContainer(out,'audit-card',auditCardSsrHtml());
-  return injectStructuredData(out);
+  return injectStructuredData(out,auditAvailable);
 }
 /* ------------------------------------------------------------------ */
 /* /sales SSR — priced plan cards for the pitch page (rot107).          */
@@ -173,13 +173,13 @@ export function salesPlansSsrHtml():string|null{
  * container is missing, already server-rendered, or the catalog can't be
  * trusted — the price-free fallback cards then stay in place.
  */
-export function injectSalesPlans(html:string):string{
+export function injectSalesPlans(html:string,auditAvailable=false):string{
   const rendered=salesPlansSsrHtml();
   if(!rendered)return html;
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
   const audit=auditCardSsrHtml();
   if(audit)out=injectIntoContainer(out,'sales-audit',audit);
-  return injectFaqPage(injectStructuredData(out));
+  return injectFaqPage(injectStructuredData(out,auditAvailable));
 }
 /* ------------------------------------------------------------------ */
 /* Structured data (rot130): a Product record for the selling pages,    */
@@ -188,7 +188,7 @@ export function injectSalesPlans(html:string):string{
 /* price. Amounts are schema numbers (price + priceCurrency), never     */
 /* display strings.                                                     */
 /* ------------------------------------------------------------------ */
-export function structuredDataSsrHtml():string{
+export function structuredDataSsrHtml(auditAvailable:boolean):string{
   const offers:Record<string,unknown>[]=[];
   for(const p of PLANS){
     if(!validPlan(p))continue;
@@ -203,7 +203,7 @@ export function structuredDataSsrHtml():string{
     if(!validPack(p))continue;
     offers.push({'@type':'Offer',name:`${p.name} top-up`,price:p.priceCents/100,priceCurrency:p.currency,availability:'https://schema.org/InStock',url:'https://mayor.mehyar.us/pricing'});
   }
-  offers.push({'@type':'Offer',name:AUDIT_OFFER.name,price:AUDIT_OFFER.priceCents/100,priceCurrency:AUDIT_OFFER.currency,availability:'https://schema.org/InStock',url:'https://mayor.mehyar.us/business-audit'});
+  offers.push({'@type':'Offer',name:AUDIT_OFFER.name,price:AUDIT_OFFER.priceCents/100,priceCurrency:AUDIT_OFFER.currency,availability:auditAvailable?'https://schema.org/InStock':'https://schema.org/OutOfStock',url:'https://mayor.mehyar.us/business-audit'});
   const data={
     '@context':'https://schema.org','@type':'Product',name:'The Mayor',
     description:'An AI chief of staff for local business owners. Once a business number is connected, it answers missed calls and texts back leads, and keeps the day\'s money in view.',
@@ -212,9 +212,9 @@ export function structuredDataSsrHtml():string{
   };
   return `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
 }
-export function injectStructuredData(html:string):string{
+export function injectStructuredData(html:string,auditAvailable=false):string{
   if(html.includes('"@type":"Product"'))return html;
-  return html.replace('</head>',`${structuredDataSsrHtml()}</head>`);
+  return html.replace('</head>',`${structuredDataSsrHtml(auditAvailable)}</head>`);
 }
 /* FAQPage structured data: built from the same Q&A text the /sales page
  * shows in its visible FAQ (a unit test pins the two to the same strings,
