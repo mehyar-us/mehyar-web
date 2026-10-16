@@ -43,7 +43,8 @@ export function offerBlockSsrHtml():string|null{
     `<p class="offer-blurb">${blurb}</p></div>`;
   return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.')}</div>`+
     `<p class="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>`+
-    `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`;
+    `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`+
+    `<p class="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates \u2014 separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>`;
 }
 
 const OFFER_OPEN='<div id="offer-block"';
@@ -162,6 +163,7 @@ export function salesPlansSsrHtml():string|null{
     packs.map(p=>`<li><strong>${escapeHtml(p.name)} — ${escapeHtml(formatPrice(p.priceCents))}</strong> · +${p.replyAttempts.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyAttempts)} real conversations) · +${p.voiceMinutes} microphone minutes</li>`).join('')+
     `</ul>`+
     `<p>Buy only what you use — no subscription change, no overage surprises.</p>`+
+    `<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p>`+
     `<a class="button button-small" href="/pricing">See pricing</a></article>`;
   return start+grow+topup;
 }
@@ -177,7 +179,7 @@ export function injectSalesPlans(html:string):string{
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
   const audit=auditCardSsrHtml();
   if(audit)out=injectIntoContainer(out,'sales-audit',audit);
-  return injectStructuredData(out);
+  return injectFaqPage(injectStructuredData(out));
 }
 /* ------------------------------------------------------------------ */
 /* Structured data (rot130): a Product record for the selling pages,    */
@@ -211,8 +213,24 @@ export function structuredDataSsrHtml():string{
   return `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
 }
 export function injectStructuredData(html:string):string{
-  if(html.includes('application/ld+json'))return html;
+  if(html.includes('"@type":"Product"'))return html;
   return html.replace('</head>',`${structuredDataSsrHtml()}</head>`);
+}
+/* FAQPage structured data: built from the same Q&A text the /sales page
+ * shows in its visible FAQ (a unit test pins the two to the same strings,
+ * so the markup can never drift from what visitors read). */
+const SALES_FAQ:{q:string;a:string}[]=[
+  {q:'Do you guarantee more bookings or revenue?',a:'No. The examples on this page are illustrative walkthroughs of the missed-call text-back flow \u2014 not customer stories and not promises. The Mayor answers faster and keeps your day organized; results vary by business.'},
+  {q:'What happens after I sign up?',a:'You sign in, tell The Mayor about your business, and it starts with your real book: missed-call text-back, reminders, and a daily briefing in your language.'},
+  {q:'Which phone providers does The Mayor work with?',a:'You connect a business number you own through Telnyx or Twilio. Once a Telnyx number is connected, missed-call text-backs are sent automatically from that number; until a number is connected, The Mayor prepares drafts you can copy into your own messaging app. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.'},
+];
+export function faqPageSsrHtml():string{
+  const data={'@context':'https://schema.org','@type':'FAQPage',mainEntity:SALES_FAQ.map(({q,a})=>({'@type':'Question',name:q,acceptedAnswer:{'@type':'Answer',text:a}}))};
+  return `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
+}
+export function injectFaqPage(html:string):string{
+  if(html.includes('"@type":"FAQPage"'))return html;
+  return html.replace('</head>',`${faqPageSsrHtml()}</head>`);
 }
 /* ------------------------------------------------------------------ */
 /* The extensive business audit — a named offer card rendered from       */
