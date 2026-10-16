@@ -295,6 +295,9 @@ it('rot149: Telnyx line on the Pro card itself + attempts translated to conversa
  expect(pricing).toContain('Conversation estimates figure roughly 10 replies per conversation.');
  expect(terms).toContain('100 assistant reply attempts (about 10 conversations, figuring roughly 10 replies per conversation)');
  expect(terms).toContain('1,000 reply attempts (about 100 conversations)');
+ expect(terms).toContain('Pro costs $99 USD per month');
+ expect(terms).toContain('lock $79.20 USD per month for life');
+ expect(terms).not.toContain('$14');
  expect(terms).toContain('800 reply attempts (about 80 conversations)');
 });
 
