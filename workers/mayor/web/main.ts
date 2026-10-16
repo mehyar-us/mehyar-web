@@ -31,6 +31,7 @@ import {loadConnectorSessions} from './connector-sessions-loader';
 import {loadAccountCards} from './account-cards-loader';
 import {loadComposerCluster} from './composer-cluster-loader';
 import {loadNotificationsInbox} from './notifications-inbox-loader';
+import {loadTranscriptList} from './transcript-list-loader';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
@@ -362,7 +363,7 @@ async function startNewChat(){
   savedTranscript=[];
   if(canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});
   voiceRows.clear();voiceSeen=voice?.transcript.length??0;
-  $('transcript').replaceChildren();$('interim').textContent='';
+  clearTranscriptRender();$('interim').textContent='';
   historyReady=true;transcripts();updateNetwork();
   show('chat');$('transcript').scrollTop=0;
   notice('Started a new conversation. Your earlier messages stay saved with this business.');
@@ -708,6 +709,7 @@ new ResizeObserver(()=>{
  if(!conversationPositioned||conversationAtEnd)conversationScroll.scrollTop=conversationScroll.scrollHeight;
  conversationHeight=conversationScroll.clientHeight;conversationWidth=conversationScroll.clientWidth;
 }).observe(conversationScroll);
+function clearTranscriptRender(){loadTranscriptList($('transcript'),{rows:[],assistantLabel:assistantName(confirmedProfile),onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.')});}
 function transcripts(){
  if(accessEnded)return;
  const list=$('transcript'),follow=list.scrollHeight-list.scrollTop-list.clientHeight<80;
@@ -715,12 +717,15 @@ function transcripts(){
  for(let i=voiceSeen;i<live.length;i++){let row=voiceRows.get(i);if(!row){row={role:live[i].role,text:live[i].text};voiceRows.set(i,row);savedTranscript.push(row);}else row.text=live[i].text;}
  $('chat-empty').hidden=!loggedIn||savedTranscript.length>0;
  const messages=savedTranscript.slice(-200);
- while(list.children.length>messages.length)list.lastElementChild?.remove();
-  messages.forEach((message,i)=>{let li=list.children[i] as HTMLElement;if(!li){li=document.createElement('li');li.append(document.createElement('b'),document.createElement('span'));list.append(li);}li.className=message.role==='user'?'message-user':'message-mayor';li.firstElementChild!.textContent=message.role==='user'?'You':assistantName(confirmedProfile);const content=li.querySelector('span')!;if(content.textContent!==message.text)content.textContent=message.text;let copy=li.querySelector<HTMLButtonElement>('.copy-reply');if(message.role!=='user'&&!copy){copy=document.createElement('button');copy.type='button';copy.className='copy-reply';copy.textContent='Copy reply';li.append(copy);}if(copy){copy.hidden=message.role==='user';copy.onclick=async()=>{try{await navigator.clipboard.writeText(content.textContent??'');copy!.textContent='Copied';}catch{notice('Copy could not finish. Select the reply text to copy it.');}};}});
+ // React migration S2d: the rows render via React from this model; the
+ // list element, its scroll bookkeeping, and the ResizeObserver follow
+ // logic stay here. Cards and guides mount before/after the list, never
+ // inside it, so the React root owns the rows alone.
+ loadTranscriptList(list,{rows:messages.map(m=>({role:m.role,text:m.text})),assistantLabel:assistantName(confirmedProfile),onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.')});
  // History can load while Today is visible, when the chat has no scrollable
  // height. Position it once after it becomes visible; preserve earlier-reading
  // positions on later tab switches and incremental transcript updates.
- if(list.clientHeight>0){if(follow||!conversationPositioned){list.scrollTop=list.scrollHeight;conversationAtEnd=true;}conversationPositioned=true;}
+ requestAnimationFrame(()=>{if(list.clientHeight>0){if(follow||!conversationPositioned){list.scrollTop=list.scrollHeight;conversationAtEnd=true;}conversationPositioned=true;}});
 }
 async function connect(){
   const session=await api('/api/voice/session',{tenantId});
@@ -763,7 +768,7 @@ function endWorkspaceAccess(){
  chatKeyboard.dispose();
  closeConsentSheet();
  accessEnded=true;namingMode=false;workspaceAccess.end();textChat.cancel();voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
- savedTranscript=[];confirmedProfile={};voiceRows.clear();$('transcript').replaceChildren();$('interim').textContent='';
+ savedTranscript=[];confirmedProfile={};voiceRows.clear();clearTranscriptRender();$('interim').textContent='';
  workspace.clear();workday.clear();connectionHub.reset();voiceHealth.clear();calendarChat.clear();calendarLauncher.hidden=true;$('calendar-status').hidden=true;voiceHelp.open=false;voiceHelp.hidden=true;micLevel.hidden=true;micLevel.value=0;
  $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
  for(const node of [$('profile'),phoneGuide,phoneControls])node.replaceChildren();inboxSnapshot={...inboxSnapshot,items:[],hasMore:false,showReconnect:false};pushInbox();
