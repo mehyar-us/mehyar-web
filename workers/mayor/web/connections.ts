@@ -206,7 +206,7 @@ export function createConnections(hooks:ConnectionsHooks){
  // React migration S5a: the hub's main render is React (connections-hub.tsx)
  // driven by this view model; the dialog system below stays imperative.
  let hubRendered=false;
- const hubActions:ConnectionsHubActions={refresh:()=>void activate(),addConnection:()=>addConnection(),copyEndpoint:()=>void copy(endpoint,'Endpoint copied.'),createToken:()=>createToken()};
+ const hubActions:ConnectionsHubActions={refresh:()=>void activate(),addConnection:()=>addConnection(),copyText:(text:string)=>copyValue(text),createToken:()=>createToken()};
  function pushHub(view:ConnectionsHubView){hubRendered=true;loadConnectionsHub(element,{view,actions:hubActions});}
  function loadingHubView():ConnectionsHubView{return {loading:true,canManage:false,builtInError:'',providers:[],pending:[],customError:'',customEmpty:true,customs:[],mcpError:'',mcpEndpoint:'',tokens:[],activeTokenCount:0};}
  function buildHubView():ConnectionsHubView{
@@ -264,10 +264,11 @@ export function createConnections(hooks:ConnectionsHooks){
   const stateText=connection.status==='connected'?'Configured':connection.status==='disconnected'?'Disconnected':connection.status==='error'?'Needs attention':connection.status==='ready'?'Ready':connection.status.replace(/_/g,' ');
   const lastCheckLine=connection.lastCheckedAt?`${connection.lastCheckStatus==='reachable'?'Reachable':connection.lastCheckStatus==='configured'?'Configuration checked':'Last check'} \u00b7 ${dateText(connection.lastCheckedAt)}`:undefined;
   const icon=connection.type==='webhook'?'webhook':connection.type==='mcp'?'server':'braces';
-  if(connection.status==='disconnected')return {key:connection.id,title:connection.label,detail,icon,stateText,lastCheckLine,actions:null};
+  const endpointRef=connection.endpoint??connection.origin;
+  if(connection.status==='disconnected')return {key:connection.id,title:connection.label,detail,icon,stateText,lastCheckLine,endpointRef,actions:null};
   const saved=stamp();
   const check:HubAction={label:'Check',icon:'refresh',className:'secondary',disabled:checkingIds.has(connection.id),run:()=>{if(!managed(saved))return;checkingIds.add(connection.id);pushHub(buildHubView());void(async()=>{try{const result=await hooks.api(base()+`/connections/${encodeURIComponent(connection.id)}/check`,{});if(!managed(saved))return;await activate();if(current(saved)){announce(typeof result.message==='string'?result.message:result.status==='configured'?'Configuration checked. No external action was sent.':'Connection checked.');focusHeading();}}catch(error){if(current(saved))announce(errorText(error),true);}finally{checkingIds.delete(connection.id);if(element.isConnected&&hubRendered)pushHub(buildHubView());}})();}};
-  return {key:connection.id,title:connection.label,detail,icon,stateText,lastCheckLine,actions:[{label:'Tools',icon:'play',className:'secondary',run:()=>void toolList(connection)},check,{label:'Disconnect',icon:'unplug',className:'quiet',run:()=>disconnectCustom(connection)}]};
+  return {key:connection.id,title:connection.label,detail,icon,stateText,lastCheckLine,endpointRef,actions:[{label:'Tools',icon:'play',className:'secondary',run:()=>void toolList(connection)},check,{label:'Disconnect',icon:'unplug',className:'quiet',run:()=>disconnectCustom(connection)}]};
  }
  function addConnection(){
   if(!hooks.canManage())return;const modal=dialog('Add a connection'),session=sessions.get(modal)!;
@@ -295,6 +296,7 @@ export function createConnections(hooks:ConnectionsHooks){
   setScreen(session,tool.title??tool.name,{kind:'tool-form',connectionLabel:connection.label,schemaPretty:tool.inputSchema?pretty(tool.inputSchema):null,message:'',alert:false,saveDisabled:false});
  }
 
+ async function copyValue(text:string):Promise<boolean>{const saved=stamp();try{await navigator.clipboard.writeText(text);return current(saved);}catch{if(current(saved))announce('Copy is unavailable in this browser.',true);return false;}}
  async function copy(text:string,success:string,status?:HTMLElement){const saved=stamp();try{await navigator.clipboard.writeText(text);if(current(saved)){if(status)status.textContent=success;else announce(success);}}catch{if(current(saved)){if(status)status.textContent='Copy is unavailable. Select the text and copy it.';else announce('Copy is unavailable in this browser.',true);}}}
  function createToken(){
   const modal=dialog('Create a Mayor token'),session=sessions.get(modal)!;
