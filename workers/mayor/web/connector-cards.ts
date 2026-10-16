@@ -18,7 +18,7 @@
 import './connector-cards.css';
 
 export interface ConnectorCardAction {
-  id: 'connect_oauth' | 'show_guide' | 'enter_key' | 'reconnect' | 'dismiss' | 'open_connections';
+  id: 'connect_oauth' | 'show_guide' | 'enter_key' | 'reconnect' | 'dismiss' | 'open_connections' | 'confirm_done';
   label: string;
   provider?: 'google' | 'microsoft' | 'zoho';
   capabilities?: string[];
@@ -26,7 +26,7 @@ export interface ConnectorCardAction {
 }
 export interface ConnectorCardPayload {
   id: string;
-  kind: 'offer' | 'guide' | 'credential' | 'reconnect' | 'oauth';
+  kind: 'offer' | 'guide' | 'credential' | 'reconnect' | 'oauth' | 'status';
   service: string;
   name: string;
   title: string;
@@ -36,6 +36,9 @@ export interface ConnectorCardPayload {
   endpoint?: string;
   actions: ConnectorCardAction[];
   state: string;
+  /** One Connector session backing (P3): actions drive this engine session. */
+  sessionId?: string;
+  sessionState?: string;
 }
 export interface ConnectorCardHooks {
   api: (path: string, body?: unknown) => Promise<any>;
@@ -80,6 +83,31 @@ export function renderConnectorCard(card: ConnectorCardPayload, hooks: Connector
   const status = node('p', '', 'connector-card-status');
   status.setAttribute('aria-live', 'polite');
   root.append(status);
+
+  /* One Connector session cards (P3): actions drive the engine session and
+   * the card re-reads itself from the server after each step, so a failed
+   * verify that walks to the next method simply renders the next card. */
+  const sessionBase = card.sessionId
+    ? `/api/businesses/${encodeURIComponent(hooks.tenant())}/connector-engine/sessions/${card.sessionId}`
+    : null;
+  const refreshCard = async () => {
+    if (!sessionBase) return;
+    const event = await hooks.api(`${sessionBase}/card`);
+    const fresh = (event as { card?: unknown })?.card;
+    if (fresh && isConnectorCardPayload(fresh)) {
+      root.replaceWith(renderConnectorCard(fresh, hooks));
+    }
+  };
+  const driveSession = async () => {
+    if (!sessionBase) return;
+    try { await hooks.api(`${sessionBase}/begin`, {}); } catch { /* begin is idempotent; a moved-on state still gets verified and re-read */ }
+    try {
+      await hooks.api(`${sessionBase}/verify`, {});
+    } catch (error) {
+      hooks.onNotice(error instanceof Error ? error.message : 'The connection could not be verified yet.');
+    }
+    await refreshCard().catch(() => { /* the pre-action card stays if the re-read fails */ });
+  };
 
   const showGuide = () => {
     actions.replaceChildren();
@@ -158,6 +186,28 @@ export function renderConnectorCard(card: ConnectorCardPayload, hooks: Connector
           // Clear the DOM immediately: nothing secret lingers in the page.
           keyInput.value = '';
           (body as { secret?: string }).secret = '';
+          if (sessionBase) {
+            // Session card: link the saved connection to the engine session
+            // and let the engine's verify be the only "connected" truth.
+            const connectionId = (result as { id?: string; connection?: { id?: string } })?.id
+              ?? (result as { connection?: { id?: string } })?.connection?.id;
+            if (!connectionId) throw new Error('Your key was saved, but it could not be linked to this connection attempt. Open Connections to finish it.');
+            status.textContent = 'Key saved — checking it now…';
+            try { await hooks.api(`${sessionBase}/begin`, {}); } catch { /* idempotent */ }
+            await hooks.api(`${sessionBase}/attach`, { connectionId });
+            try {
+              await hooks.api(`${sessionBase}/verify`, {});
+            } catch (error) {
+              hooks.onNotice(error instanceof Error ? error.message : 'The key could not be verified.');
+            }
+            await refreshCard().catch(() => {
+              root.replaceChildren();
+              root.append(node('h2', `${card.name} key saved`));
+              root.append(node('p', 'Your key is saved in secure storage. Ask The Mayor in chat to finish checking the connection.', 'connector-card-body'));
+            });
+            void masked;
+            return;
+          }
           root.replaceChildren();
           root.append(node('h2', `${card.name} connected`));
           root.append(node('p', `Your key is saved in secure storage and will never be shown again (${masked}).`, 'connector-card-body'));
@@ -176,9 +226,17 @@ export function renderConnectorCard(card: ConnectorCardPayload, hooks: Connector
   const connectOAuth = (action: ConnectorCardAction) => {
     if (!action.provider) return;
     status.textContent = 'Opening secure sign-in…';
-    void hooks.signIn(action.provider, action.capabilities ?? []).catch(() => {
-      status.textContent = 'Sign-in could not start. Please try again.';
-    });
+    void (async () => {
+      try {
+        await hooks.signIn(action.provider, action.capabilities ?? []);
+        if (sessionBase) {
+          status.textContent = 'Checking the connection…';
+          await driveSession();
+        }
+      } catch {
+        status.textContent = 'Sign-in could not start. Please try again.';
+      }
+    })();
   };
 
   for (const action of card.actions ?? []) {
@@ -192,6 +250,12 @@ export function renderConnectorCard(card: ConnectorCardPayload, hooks: Connector
         break;
       case 'enter_key':
         actions.append(button(action.label, showCapture, 'secondary'));
+        break;
+      case 'confirm_done':
+        actions.append(button(action.label, () => {
+          status.textContent = 'Checking…';
+          void driveSession();
+        }, 'primary'));
         break;
       case 'open_connections':
         actions.append(button(action.label, () => document.getElementById('open-connections')?.click(), 'secondary'));
@@ -213,6 +277,6 @@ export function isConnectorCardPayload(value: unknown): value is ConnectorCardPa
   if (!value || typeof value !== 'object') return false;
   const card = value as Record<string, unknown>;
   return typeof card.id === 'string' && typeof card.title === 'string' && typeof card.body === 'string'
-    && ['offer', 'guide', 'credential', 'reconnect', 'oauth'].includes(card.kind as string)
+    && ['offer', 'guide', 'credential', 'reconnect', 'oauth', 'status'].includes(card.kind as string)
     && Array.isArray(card.actions);
 }
