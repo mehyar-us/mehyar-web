@@ -1,5 +1,7 @@
-import {createElement,Plug,CalendarDays,Mail,Globe,Webhook,Braces,Server,Plus,Check,Copy,X,ArrowLeft,RefreshCw,Unplug,KeyRound,ChevronRight,Play} from 'lucide';
+import {createElement,Webhook,Check,Copy,X,ArrowLeft,ChevronRight,Play} from 'lucide';
 import './connections.css';
+import {loadConnectionsHub,unloadConnectionsHub} from './connections-hub-loader';
+import type {ConnectionsHubActions,ConnectionsHubView,CustomCardView,HubAction,ProviderCardView} from './connections-hub';
 
 type Provider='google'|'microsoft'|'zoho';
 type Icon=Parameters<typeof createElement>[0];
@@ -42,13 +44,13 @@ export function createConnections(hooks:ConnectionsHooks){
  function current(saved:ReturnType<typeof stamp>){return active&&saved.epoch===epoch&&saved.tenant===activeTenant&&saved.tenant===hooks.tenant()&&saved.actor===activeActor&&saved.actor===(hooks.actor?.()??'');}
  function managed(saved:ReturnType<typeof stamp>){return current(saved)&&hooks.canManage();}
  function announce(message:string,alert=false){const status=element.querySelector<HTMLElement>('.connections-status');if(status){status.textContent=message;status.setAttribute('role',alert?'alert':'status');}}
- function focusHeading(){const heading=element.querySelector<HTMLElement>('.connections-heading h2');if(heading&&element.getClientRects().length){heading.tabIndex=-1;heading.focus({preventScroll:true});}}
- function reset(){active=false;epoch++;version++;for(const modal of dialogs){if(modal.open)modal.close();modal.replaceChildren();modal.remove();}dialogs.clear();providers={};grants=[];selection=null;custom=[];tokens=[];endpoint='';builtInError=customError=tokenError='';activeTenant=activeActor='';element.replaceChildren();}
+ function focusHeading(){requestAnimationFrame(()=>{const heading=element.querySelector<HTMLElement>('.connections-heading h2');if(heading&&element.getClientRects().length){heading.tabIndex=-1;heading.focus({preventScroll:true});}});}
+ function reset(){active=false;epoch++;version++;for(const modal of dialogs){if(modal.open)modal.close();modal.replaceChildren();modal.remove();}dialogs.clear();providers={};grants=[];selection=null;custom=[];tokens=[];endpoint='';builtInError=customError=tokenError='';activeTenant=activeActor='';element.replaceChildren();hubRendered=false;unloadConnectionsHub(element);}
  async function activate(){
   const tenant=hooks.tenant(),actor=hooks.actor?.()??'';if(!tenant){reset();return;}
   if(activeTenant!==tenant||activeActor!==actor){reset();activeTenant=tenant;activeActor=actor;}
   active=true;const saved=stamp(),load=++version;
-  if(!element.childElementCount)element.append(node('p','Loading connections…','connections-status'));
+  if(!hubRendered)pushHub(loadingHubView());
   const requests=await Promise.allSettled([
    hooks.canManage()?Promise.all([hooks.api('/api/auth/capabilities'),hooks.api('/api/auth/grants'),hooks.api(base()+'/calendars/selected')]):Promise.resolve(null),
    hooks.canManage()?hooks.api(base()+'/connections'):Promise.resolve(null),
@@ -84,61 +86,72 @@ export function createConnections(hooks:ConnectionsHooks){
   const confirm=button(confirmLabel,()=>{if(confirm.disabled||!current(saved))return;confirm.disabled=goBack.disabled=true;pending(modal,true);message.textContent='Working…';void(async()=>{try{const result=await apply();if(!current(saved)||!modal.isConnected)return;if(onSaved){onSaved(result);return;}await closeDialog(modal);if(!current(saved))return;hooks.onChanged?.();await activate();if(current(saved)){announce('Saved.');focusHeading();}}catch(error){if(current(saved)&&modal.isConnected){message.textContent=retrySafe?errorText(error):'Token creation could not be confirmed. Close this window and check your token list before creating another.';message.setAttribute('role','alert');if(retrySafe)confirm.disabled=goBack.disabled=false;else modal.addEventListener('close',()=>{if(current(saved))void activate();},{once:true});}}finally{if(modal.isConnected)pending(modal,false);}})();},'primary',Check);
   actions.append(goBack,confirm);modal.append(actions);confirm.focus();
  }
- function card(title:string,detail:string,shape:Icon,status:string){const item=node('article','','connection-card'),header=node('div','','connection-card-header'),mark=node('span','','connection-mark'),copy=node('div');mark.append(icon(shape));copy.append(node('h3',title),node('p',detail,'connection-subtle'));header.append(mark,copy);item.append(header,node('p',status,'connection-state'));return item;}
- function render(){
-  element.replaceChildren();const heading=node('div','','connections-heading');heading.append(node('div'));heading.firstElementChild!.append(node('h2','Connections'),node('p','Bring your tools together.','connection-subtle'));
-  heading.append(button('Check status',()=>void activate(),'connection-icon-button',RefreshCw));element.append(heading);heading.lastElementChild!.setAttribute('aria-label','Check connection status');
-  const status=node('p','','connections-status');status.setAttribute('role','status');element.append(status);
-  const services=node('section','','connection-section');services.append(node('h3','Your accounts'));const grid=node('div','','connection-grid');services.append(grid);element.append(services);
-  if(!hooks.canManage())grid.append(node('p','Your business owner manages shared connections.','connection-subtle'));
-  else if(builtInError){const error=node('p',builtInError,'connection-error');error.setAttribute('role','alert');grid.append(error);}
-  else{const connected=(provider:Provider)=>grants.some(grant=>grant.provider===provider&&grant.tenantId===activeTenant&&grant.status==='authorized');
-   // Value order: connected providers first, then the canonical Google > Microsoft > Zoho order. Stable sort keeps the canonical order within each group.
-   const order=(['google','microsoft','zoho'] as Provider[]).slice().sort((a,b)=>Number(connected(b))-Number(connected(a)));
-   for(const provider of order)renderProvider(grid,provider);}
-  for(const pending of hooks.pendingProviders??[]){const pendingCard=card(pending.label,'Social channels',Globe,pending.status);pendingCard.classList.add('connection-pending');grid.append(pendingCard);}
-  if(hooks.canManage()){
-   const section=node('section','','connection-section'),title=node('div','','connection-section-heading');title.append(node('h3','Custom connections'),button('Add',addConnection,'secondary',Plus));section.append(title);const cards=node('div','','connection-grid');section.append(cards);
-   if(customError){const error=node('p',customError,'connection-error');error.setAttribute('role','alert');cards.append(error);}else if(!custom.length)cards.append(node('p','Connect an API, webhook, or HTTP MCP server.','connection-subtle'));else for(const connection of custom)renderCustom(cards,connection);
-   element.append(section);
-  }
-  renderMcp();
+
+ // React migration S5a: the hub's main render is React (connections-hub.tsx)
+ // driven by this view model; the dialog system below stays imperative.
+ let hubRendered=false;
+ const hubActions:ConnectionsHubActions={refresh:()=>void activate(),addConnection:()=>addConnection(),copyEndpoint:()=>void copy(endpoint,'Endpoint copied.'),createToken:()=>createToken()};
+ function pushHub(view:ConnectionsHubView){hubRendered=true;loadConnectionsHub(element,{view,actions:hubActions});}
+ function loadingHubView():ConnectionsHubView{return {loading:true,canManage:false,builtInError:'',providers:[],pending:[],customError:'',customEmpty:true,customs:[],mcpError:'',mcpEndpoint:'',tokens:[],activeTokenCount:0};}
+ function buildHubView():ConnectionsHubView{
+  const connected=(provider:Provider)=>grants.some(grant=>grant.provider===provider&&grant.tenantId===activeTenant&&grant.status==='authorized');
+  const order=(['google','microsoft','zoho'] as Provider[]).slice().sort((a,b)=>Number(connected(b))-Number(connected(a)));
+  return {
+   loading:false,
+   canManage:hooks.canManage(),
+   builtInError,
+   providers:hooks.canManage()&&!builtInError?order.map(provider=>providerView(provider)):[],
+   pending:(hooks.pendingProviders??[]).map(pending=>({key:pending.id,title:pending.label,detail:'Social channels',status:pending.status})),
+   customError,
+   customEmpty:!custom.length,
+   customs:custom.map(connection=>customView(connection)),
+   mcpError:tokenError,
+   mcpEndpoint:endpoint,
+   tokens:tokens.map(token=>({id:token.id,label:token.label,line:token.revokedAt?'Revoked':Date.parse(token.expiresAt)<=Date.now()?'Expired':`Read only \u00b7 expires ${dateText(token.expiresAt)}`,revoke:token.revokedAt?null:()=>revokeToken(token)})),
+   activeTokenCount:tokens.filter(token=>!token.revokedAt).length,
+  };
  }
- function renderProvider(grid:HTMLElement,provider:Provider){
+ function render(){pushHub(buildHubView());}
+ function providerView(provider:Provider):ProviderCardView{
   const config=providers[provider],own=grants.filter(grant=>grant.provider===provider&&grant.tenantId===activeTenant&&grant.status!=='revoked'),toolCapabilities=['calendar_read','calendar_manage','gmail_read'];
   const hasTool=(grant:Grant)=>grant.selectedCapabilities.some(id=>toolCapabilities.includes(id)&&grant.grantedCapabilities?.includes(id));
   const requested=own.filter(grant=>grant.selectedCapabilities.some(id=>toolCapabilities.includes(id))),authorized=requested.filter(grant=>grant.status==='authorized'&&hasTool(grant)),grant=authorized.find(item=>item.id===selection?.grantId)??authorized[0]??requested[0];
   const selected=selection?.provider===provider,available=selected&&selection?.available!==false;
   const title=providerLabels[provider],detail=provider==='google'?'Calendar & Gmail':'Calendar';
-  const item=card(title,detail,provider==='google'?Mail:CalendarDays,grant?.status==='authorized'&&hasTool(grant)?'Connected':grant?'Reconnect needed':'Not connected');
-  const cap=config?.capabilities??[],enabled=cap.filter(value=>value.enabled).map(value=>value.id),actions=node('div','','connection-actions');
-  const connect=button(grant?'Reconnect':'Connect',()=>{const allowed=[...new Set(['calendar_manage',...(grant?.selectedCapabilities??[])])].filter(id=>enabled.includes(id));void invoke(()=>hooks.onConnect(provider,allowed));},'secondary',Plug);connect.disabled=!enabled.includes('calendar_manage');
-  if(!grant||grant.status!=='authorized'||!hasTool(grant))actions.append(connect);
+  const stateText=grant?.status==='authorized'&&hasTool(grant)?'Connected':grant?'Reconnect needed':'Not connected';
+  const cap=config?.capabilities??[],enabled=cap.filter(value=>value.enabled).map(value=>value.id);
+  const actions:HubAction[]=[];
+  const connect:HubAction={label:grant?'Reconnect':'Connect',icon:'plug',className:'secondary',disabled:!enabled.includes('calendar_manage'),run:()=>{const allowed=[...new Set(['calendar_manage',...(grant?.selectedCapabilities??[])])].filter(id=>enabled.includes(id));void invoke(()=>hooks.onConnect(provider,allowed));}};
+  if(!grant||grant.status!=='authorized'||!hasTool(grant))actions.push(connect);
+  let gmailLine:string|undefined,selectionLine:string|undefined,setupLine:string|undefined;
   if(grant?.status==='authorized'&&hasTool(grant)){
    const calendarGrant=authorized.find(value=>value.selectedCapabilities.some(id=>(id==='calendar_read'||id==='calendar_manage')&&value.grantedCapabilities?.includes(id)));
-   if(calendarGrant)actions.append(button(selected?'Calendar settings':'Choose calendar',()=>void invoke(()=>hooks.onCalendar(provider)),'secondary',CalendarDays));
-   else if(enabled.includes('calendar_manage'))actions.append(button('Connect calendar',()=>void invoke(()=>hooks.onConnect(provider,[...new Set([...grant.selectedCapabilities.filter(id=>enabled.includes(id)),'calendar_manage'])])),'secondary',CalendarDays));
+   if(calendarGrant)actions.push({label:selected?'Calendar settings':'Choose calendar',icon:'calendar',className:'secondary',run:()=>void invoke(()=>hooks.onCalendar(provider))});
+   else if(enabled.includes('calendar_manage'))actions.push({label:'Connect calendar',icon:'calendar',className:'secondary',run:()=>void invoke(()=>hooks.onConnect(provider,[...new Set([...grant.selectedCapabilities.filter(id=>enabled.includes(id)),'calendar_manage'])]))});
    if(provider==='google'&&cap.some(value=>value.id==='gmail_read')){
     const gmailAllowed=enabled.includes('gmail_read'),gmailGrant=authorized.find(value=>value.selectedCapabilities.includes('gmail_read')&&value.grantedCapabilities?.includes('gmail_read'));
-    item.append(node('p',gmailGrant?'Gmail read access connected':gmailAllowed?'Gmail read access available':'Gmail connection unavailable','connection-subtle'));
-    if(!gmailGrant&&gmailAllowed)actions.append(button('Connect Gmail',()=>void invoke(()=>hooks.onConnect('google',[...new Set([...(grant.selectedCapabilities??[]).filter(id=>enabled.includes(id)),'gmail_read'])])),'secondary',Mail));
+    gmailLine=gmailGrant?'Gmail read access connected':gmailAllowed?'Gmail read access available':'Gmail connection unavailable';
+    if(!gmailGrant&&gmailAllowed)actions.push({label:'Connect Gmail',icon:'mail',className:'secondary',run:()=>void invoke(()=>hooks.onConnect('google',[...new Set([...(grant.selectedCapabilities??[]).filter(id=>enabled.includes(id)),'gmail_read'])]))});
    }
-   actions.append(button('Disconnect',()=>disconnectProvider(provider,grant),'quiet',Unplug));
+   actions.push({label:'Disconnect',icon:'unplug',className:'quiet',run:()=>disconnectProvider(provider,grant)});
   }
-  if(provider==='google'&&(!grant||grant.status!=='authorized'||!hasTool(grant)))item.append(node('p',enabled.includes('gmail_read')?'Gmail read access available':'Gmail connection unavailable','connection-subtle'));
-  if(selected)item.append(node('p',available?`Selected · ${selection.calendar?.name??'Calendar'}`:'Selected calendar needs attention','connection-selection'));
-  if(!enabled.includes('calendar_manage')&&!grant)item.append(node('p','Connection setup is unavailable.','connection-subtle'));
-  item.append(actions);grid.append(item);
+  if(provider==='google'&&(!grant||grant.status!=='authorized'||!hasTool(grant)))gmailLine=enabled.includes('gmail_read')?'Gmail read access available':'Gmail connection unavailable';
+  if(selected)selectionLine=available?`Selected \u00b7 ${selection.calendar?.name??'Calendar'}`:'Selected calendar needs attention';
+  if(!enabled.includes('calendar_manage')&&!grant)setupLine='Connection setup is unavailable.';
+  return {key:provider,title,detail,icon:provider==='google'?'mail':'calendar',stateText,gmailLine,selectionLine,setupLine,actions};
  }
  async function invoke(action:()=>void|Promise<void>){const saved=stamp();if(!managed(saved))return;try{await action();}catch(error){if(current(saved))announce(errorText(error),true);}}
  function disconnectProvider(provider:Provider,grant:Grant){if(!hooks.canManage())return;const modal=dialog(`Disconnect ${providerLabels[provider]}?`),saved=stamp();review(modal,'Review disconnect',[`Disconnect the saved ${providerLabels[provider]} access.`,provider==='google'?'Calendar and Gmail access on this grant will stop.':'Calendar access on this grant will stop.'],'Disconnect',async()=>{if(!managed(saved))throw new Error('Your connection access has ended.');return hooks.api('/api/auth/grants/revoke',{grantId:grant.id,tenantId:activeTenant});});}
- function renderCustom(grid:HTMLElement,connection:Connection){
-  const detail=connection.origin??connection.endpoint??connection.type.toUpperCase(),item=card(connection.label,detail,connection.type==='webhook'?Webhook:connection.type==='mcp'?Server:Braces,connection.status==='connected'?'Configured':connection.status==='disconnected'?'Disconnected':connection.status==='error'?'Needs attention':connection.status==='ready'?'Ready':connection.status.replace(/_/g,' '));
-  if(connection.lastCheckedAt)item.append(node('p',`${connection.lastCheckStatus==='reachable'?'Reachable':connection.lastCheckStatus==='configured'?'Configuration checked':'Last check'} · ${dateText(connection.lastCheckedAt)}`,'connection-subtle'));
-  if(connection.status==='disconnected'){grid.append(item);return;}
-  const actions=node('div','','connection-actions'),saved=stamp();
-  const check=button('Check',()=>{if(!managed(saved))return;check.disabled=true;void(async()=>{try{const result=await hooks.api(base()+`/connections/${encodeURIComponent(connection.id)}/check`,{});if(!managed(saved))return;await activate();if(current(saved)){announce(typeof result.message==='string'?result.message:result.status==='configured'?'Configuration checked. No external action was sent.':'Connection checked.');focusHeading();}}catch(error){if(current(saved))announce(errorText(error),true);}finally{if(check.isConnected)check.disabled=false;}})();},'secondary',RefreshCw);
-  actions.append(button('Tools',()=>void toolList(connection),'secondary',Play),check,button('Disconnect',()=>disconnectCustom(connection),'quiet',Unplug));item.append(actions);grid.append(item);
+ const checkingIds=new Set<string>();
+ function customView(connection:Connection):CustomCardView{
+  const detail=connection.origin??connection.endpoint??connection.type.toUpperCase();
+  const stateText=connection.status==='connected'?'Configured':connection.status==='disconnected'?'Disconnected':connection.status==='error'?'Needs attention':connection.status==='ready'?'Ready':connection.status.replace(/_/g,' ');
+  const lastCheckLine=connection.lastCheckedAt?`${connection.lastCheckStatus==='reachable'?'Reachable':connection.lastCheckStatus==='configured'?'Configuration checked':'Last check'} \u00b7 ${dateText(connection.lastCheckedAt)}`:undefined;
+  const icon=connection.type==='webhook'?'webhook':connection.type==='mcp'?'server':'braces';
+  if(connection.status==='disconnected')return {key:connection.id,title:connection.label,detail,icon,stateText,lastCheckLine,actions:null};
+  const saved=stamp();
+  const check:HubAction={label:'Check',icon:'refresh',className:'secondary',disabled:checkingIds.has(connection.id),run:()=>{if(!managed(saved))return;checkingIds.add(connection.id);pushHub(buildHubView());void(async()=>{try{const result=await hooks.api(base()+`/connections/${encodeURIComponent(connection.id)}/check`,{});if(!managed(saved))return;await activate();if(current(saved)){announce(typeof result.message==='string'?result.message:result.status==='configured'?'Configuration checked. No external action was sent.':'Connection checked.');focusHeading();}}catch(error){if(current(saved))announce(errorText(error),true);}finally{checkingIds.delete(connection.id);if(element.isConnected&&hubRendered)pushHub(buildHubView());}})();}};
+  return {key:connection.id,title:connection.label,detail,icon,stateText,lastCheckLine,actions:[{label:'Tools',icon:'play',className:'secondary',run:()=>void toolList(connection)},check,{label:'Disconnect',icon:'unplug',className:'quiet',run:()=>disconnectCustom(connection)}]};
  }
  function addConnection(){
   if(!hooks.canManage())return;const modal=dialog('Add a connection'),form=node('form','','connection-form'),label=field(form,'Name',input('',80)),type=field(form,'Connection type',select([{value:'api',label:'API'},{value:'webhook',label:'Webhook'},{value:'mcp',label:'MCP · HTTP'}])),endpoint=field(form,'HTTPS endpoint',input('',2048));
@@ -203,15 +216,7 @@ export function createConnections(hooks:ConnectionsHooks){
    })();
   };
  }
- function renderMcp(){
-  const section=node('section','','connection-section'),title=node('div','','connection-section-heading');title.append(node('h3','Use Mayor in another assistant'));section.append(title);
-  if(tokenError){const error=node('p',tokenError,'connection-error');error.setAttribute('role','alert');section.append(error);element.append(section);return;}
-  section.append(node('p','Read your saved business records through MCP.','connection-subtle'));
-  const actions=node('div','','connection-actions');if(endpoint)actions.append(button('Copy endpoint',()=>void copy(endpoint,'Endpoint copied.'),'secondary',Copy));actions.append(button('Create token',createToken,'secondary',KeyRound));section.append(actions);
-  const details=node('details','','connection-details');details.append(node('summary',`Your tokens (${tokens.filter(token=>!token.revokedAt).length})`));
-  if(!tokens.length)details.append(node('p','No tokens yet.','connection-subtle'));
-  for(const token of tokens){const row=node('div','','connection-token'),text=node('div');text.append(node('strong',token.label),node('p',token.revokedAt?'Revoked':Date.parse(token.expiresAt)<=Date.now()?'Expired':`Read only · expires ${dateText(token.expiresAt)}`,'connection-subtle'));row.append(text);if(!token.revokedAt)row.append(button('Revoke',()=>revokeToken(token),'quiet',Unplug));details.append(row);}section.append(details);element.append(section);
- }
+
  async function copy(text:string,success:string,status?:HTMLElement){const saved=stamp();try{await navigator.clipboard.writeText(text);if(current(saved)){if(status)status.textContent=success;else announce(success);}}catch{if(current(saved)){if(status)status.textContent='Copy is unavailable. Select the text and copy it.';else announce('Copy is unavailable in this browser.',true);}}}
  function createToken(){
   const modal=dialog('Create a Mayor token'),form=node('form','','connection-form'),label=field(form,'Token name',input('',80)),days=field(form,'Expires after',select([{value:'7',label:'7 days'},{value:'30',label:'30 days'},{value:'90',label:'90 days'}],'30'));label.required=true;label.placeholder='My assistant';form.append(node('p','Read only. No task, booking, or message changes.','connection-subtle'));const save=submit(form,'Review token');modal.append(form);label.focus();const saved=stamp();
