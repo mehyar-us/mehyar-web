@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { RefreshCw, FileText } from 'lucide-react';
+import { RefreshCw, FileText, Copy, Check } from 'lucide-react';
 
 /** Audit receipt panel (React migration S6): the /business-audit
  * status panel — heading, summary, detail list, and the refresh /
@@ -13,6 +14,34 @@ import { RefreshCw, FileText } from 'lucide-react';
 export interface ReceiptDetail {
   label: string;
   value: string;
+  /* Reference-data pattern: a detail whose value is an identifier the
+   * owner may need elsewhere (the audit request reference) carries a
+   * one-tap copy button with Copied feedback on its row. */
+  copy?: boolean;
+}
+
+function ReceiptCopyButton({ value }: { value: string }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  return (
+    <button
+      type="button"
+      className="receipt-copy"
+      onClick={() => {
+        void (async () => {
+          try {
+            await navigator.clipboard.writeText(value);
+            setState('copied');
+          } catch {
+            setState('failed');
+          }
+          window.setTimeout(() => setState('idle'), 2000);
+        })();
+      }}
+    >
+      {state === 'copied' ? <Check aria-hidden="true" focusable="false" /> : <Copy aria-hidden="true" focusable="false" />}
+      {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy unavailable' : 'Copy'}
+    </button>
+  );
 }
 
 export interface ReceiptView {
@@ -41,7 +70,10 @@ export function AuditReceiptPanel({ view, onRefresh }: AuditReceiptProps) {
         {view.details.map((detail) => (
           <div key={detail.label}>
             <dt>{detail.label}</dt>
-            <dd>{detail.value}</dd>
+            <dd>
+              {detail.value}
+              {detail.copy && <ReceiptCopyButton value={detail.value} />}
+            </dd>
           </div>
         ))}
       </dl>

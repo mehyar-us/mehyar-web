@@ -1,7 +1,7 @@
-import type { ComponentType } from 'react';
+import { useState, type ComponentType } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import {
-  Plug, CalendarDays, Mail, Globe, Webhook, Braces, Server, Plus, RefreshCw, Unplug, KeyRound, Play, Copy,
+  Plug, CalendarDays, Mail, Globe, Webhook, Braces, Server, Plus, RefreshCw, Unplug, KeyRound, Play, Copy, Check,
 } from 'lucide-react';
 
 /** Connections hub (React migration S5a): the Connectors view's main
@@ -48,6 +48,7 @@ export interface CustomCardView {
   icon: string;
   stateText: string;
   lastCheckLine?: string;
+  endpointRef?: string;
   actions: HubAction[] | null;
 }
 
@@ -76,7 +77,7 @@ export interface ConnectionsHubView {
 export interface ConnectionsHubActions {
   refresh: () => void;
   addConnection: () => void;
-  copyEndpoint: () => void;
+  copyText: (text: string) => Promise<boolean>;
   createToken: () => void;
 }
 
@@ -99,6 +100,7 @@ const ICONS: Record<string, ComponentType<{ 'aria-hidden'?: boolean | 'true' | '
   key: KeyRound,
   play: Play,
   copy: Copy,
+  check: Check,
 };
 
 function HubIcon({ name }: { name: string }) {
@@ -123,6 +125,40 @@ function ActionButtons({ actions }: { actions: HubAction[] }) {
           {action.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* Reference-data pattern (Mayor's Robinhood rule, standing design order):
+ * an identifier a user may need elsewhere renders as a small muted label
+ * above (qualifier in parentheses), the value large and legible, and a
+ * one-tap copy button with honest Copied feedback on the row itself. */
+export function ReferenceRow({ label, qualifier, value, copyText }: { label: string; qualifier?: string; value: string; copyText: (text: string) => Promise<boolean> }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="reference-row">
+      <div className="reference-main">
+        <p className="reference-label">
+          {label}
+          {qualifier ? <span>{` (${qualifier})`}</span> : null}
+        </p>
+        <p className="reference-value">{value}</p>
+      </div>
+      <button
+        type="button"
+        className="quiet reference-copy"
+        onClick={() => {
+          void (async () => {
+            if (await copyText(value)) {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 2000);
+            }
+          })();
+        }}
+      >
+        <HubIcon name={copied ? 'check' : 'copy'} />
+        {copied ? 'Copied' : 'Copy'}
+      </button>
     </div>
   );
 }
@@ -225,6 +261,7 @@ export function ConnectionsHub({ view, actions }: ConnectionsHubProps) {
             ) : (
               view.customs.map((connection) => (
                 <CardShell key={connection.key} title={connection.title} detail={connection.detail} icon={connection.icon} stateText={connection.stateText}>
+                  {connection.endpointRef && <ReferenceRow label="Endpoint" value={connection.endpointRef} copyText={actions.copyText} />}
                   {connection.lastCheckLine && <p className="connection-subtle">{connection.lastCheckLine}</p>}
                   {connection.actions && <ActionButtons actions={connection.actions} />}
                 </CardShell>
@@ -244,13 +281,12 @@ export function ConnectionsHub({ view, actions }: ConnectionsHubProps) {
         ) : (
           <>
             <p className="connection-subtle">Read your saved business records through MCP.</p>
+            {view.mcpEndpoint && (
+              <div className="reference-list">
+                <ReferenceRow label="MCP endpoint" value={view.mcpEndpoint} copyText={actions.copyText} />
+              </div>
+            )}
             <div className="connection-actions">
-              {view.mcpEndpoint && (
-                <button type="button" className="secondary" onClick={actions.copyEndpoint}>
-                  <HubIcon name="copy" />
-                  Copy endpoint
-                </button>
-              )}
               <button type="button" className="secondary" onClick={actions.createToken}>
                 <HubIcon name="key" />
                 Create token
@@ -260,11 +296,8 @@ export function ConnectionsHub({ view, actions }: ConnectionsHubProps) {
               <summary>{`Your tokens (${view.activeTokenCount})`}</summary>
               {!view.tokens.length && <p className="connection-subtle">No tokens yet.</p>}
               {view.tokens.map((token) => (
-                <div key={token.id} className="connection-token">
-                  <div>
-                    <strong>{token.label}</strong>
-                    <p className="connection-subtle">{token.line}</p>
-                  </div>
+                <div key={token.id} className="connection-token reference-token">
+                  <ReferenceRow label={token.label} qualifier={token.line} value={token.id} copyText={actions.copyText} />
                   {token.revoke && (
                     <button type="button" className="quiet" onClick={token.revoke}>
                       <HubIcon name="unplug" />
@@ -285,12 +318,13 @@ let root: Root | null = null;
 let rootElement: HTMLElement | null = null;
 
 export function mountConnectionsHub(element: HTMLElement, props: ConnectionsHubProps): void {
-  if (rootElement !== element) {
+  if (rootElement !== element || !root) {
     root?.unmount();
     root = createRoot(element);
     rootElement = element;
   }
-  root.render(<ConnectionsHub {...props} />);
+  const current: Root = root;
+  current.render(<ConnectionsHub {...props} />);
 }
 
 export function unmountConnectionsHub(element: HTMLElement): void {
