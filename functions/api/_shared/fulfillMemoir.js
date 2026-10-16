@@ -15,8 +15,11 @@
 //   1. Idempotent on payment.id: memoir_projects.payment_id records the
 //      fulfilling payment; a replay with the same payment already
 //      recorded returns {replay:true} and sends no second email.
-//   2. Token unification: billing_payments.access_token := the project
-//      token, so one token gates every Memoir buyer surface.
+//   2. billing_payments.access_token is deliberately NOT overwritten
+//      (fleet lesson from the Coach fix, 0e35b60: it is the buyer's
+//      checkout token for the Stripe success URL + /api/pay/status).
+//      Memoir surfaces are gated by the project token in the link
+//      itself; the worker reads memoir_projects directly.
 //   3. Emails the buyer their personal memoir link (transactional;
 //      sender is the proven team@mehyar.us identity). Never throws
 //      out of the hook.
@@ -71,12 +74,6 @@ export async function fulfillMemoir({ db, env, waitUntil, sendEmail }, payment) 
       "paid_at=COALESCE(paid_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE token = ?"
     )
     .bind(productId, payment.id, buyerEmail || null, projectToken)
-    .run();
-
-  // Token unification — one token gates every Memoir buyer surface.
-  await db
-    .prepare("UPDATE billing_payments SET access_token=? WHERE id=?")
-    .bind(projectToken, payment.id)
     .run();
 
   if (buyerEmail && typeof sendEmail === "function") {

@@ -513,8 +513,7 @@ const fulfillHooks = {
 
   // Memoir ($79 Digital / $149 Complete, one-time). Marks the
   // memoir_projects row paid + stamps the SKU (idempotent on
-  // payment_id), unifies the access token onto the project token,
-  // emails the buyer their personal memoir link.
+  // payment_id), emails the buyer their personal memoir link.
   async memoir({ db, env, waitUntil }, payment) {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillMemoir({ db, env, waitUntil, sendEmail }, payment);
