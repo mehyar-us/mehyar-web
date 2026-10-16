@@ -1146,22 +1146,6 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
   const deepLink:Record<string,WorkdayView>={'/today':'today','/feed':'feed','/billing':'billing','/connectors':'connections','/settings':'account','/account':'account'};
   const deepView=deepLink[location.pathname];
   if(deepView)show(deepView);
-  // One Connector phone handoff (P3 slice 2): /connect/<session id> renders
-  // that session's card in chat — the same attempt, continued on this device.
-  const handoff=location.pathname.match(/^\/connect\/([a-f0-9-]{36})$/);
-  if(handoff){
-    show('chat');
-    try{
-      const event=await api(`/api/businesses/${encodeURIComponent(tenantId)}/connector-engine/sessions/${handoff[1]}/card`);
-      const payload=(event as {card?:unknown})?.card;
-      if(isConnectorCardPayload(payload)){
-        const card=renderConnectorCard(payload,{api,tenant:()=>tenantId,signIn,onNotice:message=>notice(message)});
-        $('transcript').after(card);
-        card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});
-        notice(`Continuing your ${payload.name} connection — pick up right here.`);
-      }else notice('That connection link did not match an attempt on this account.');
-    }catch{notice('That connection link did not match an attempt on this account.');}
-  }
 }
 const retryStartup=document.createElement('button');retryStartup.type='button';retryStartup.className='secondary';retryStartup.textContent='Retry loading';retryStartup.hidden=true;composerStatus.after(retryStartup);
 async function start(){if(accessEnded)return;retryStartup.hidden=true;try{await init();}catch(error){if(accessEnded)return;notice((error as Error).message);retryStartup.hidden=false;$('status').textContent='Could not load your workspace';}}

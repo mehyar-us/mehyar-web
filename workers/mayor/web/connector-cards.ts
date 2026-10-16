@@ -18,7 +18,7 @@
 import './connector-cards.css';
 
 export interface ConnectorCardAction {
-  id: 'connect_oauth' | 'show_guide' | 'enter_key' | 'reconnect' | 'dismiss' | 'open_connections' | 'confirm_done' | 'phone_handoff';
+  id: 'connect_oauth' | 'show_guide' | 'enter_key' | 'reconnect' | 'dismiss' | 'open_connections' | 'confirm_done';
   label: string;
   provider?: 'google' | 'microsoft' | 'zoho';
   capabilities?: string[];
@@ -39,8 +39,6 @@ export interface ConnectorCardPayload {
   /** One Connector session backing (P3): actions drive this engine session. */
   sessionId?: string;
   sessionState?: string;
-  /** Phone-handoff deep link for this session (P3 slice 2). */
-  handoffUrl?: string;
 }
 export interface ConnectorCardHooks {
   api: (path: string, body?: unknown) => Promise<any>;
@@ -109,35 +107,6 @@ export function renderConnectorCard(card: ConnectorCardPayload, hooks: Connector
       hooks.onNotice(error instanceof Error ? error.message : 'The connection could not be verified yet.');
     }
     await refreshCard().catch(() => { /* the pre-action card stays if the re-read fails */ });
-  };
-
-  let handoffPanel: HTMLElement | null = null;
-  const toggleHandoff = () => {
-    if (handoffPanel) { handoffPanel.remove(); handoffPanel = null; return; }
-    const panel = node('div', '', 'connector-handoff');
-    panel.append(node('p', 'Scan with your phone to finish there — you will sign in as usual and pick up this exact step. The link only works for your business account.', 'connector-card-note'));
-    if (sessionBase) {
-      const img = node('img') as HTMLImageElement;
-      img.src = `${sessionBase}/qr.svg`;
-      img.alt = `QR code to continue connecting ${card.name} on your phone`;
-      img.width = 220;
-      img.height = 220;
-      img.loading = 'lazy';
-      panel.append(img);
-    }
-    if (card.handoffUrl) {
-      const link = node('a', card.handoffUrl, 'connector-handoff-link') as HTMLAnchorElement;
-      link.href = card.handoffUrl;
-      panel.append(link);
-      const copy = button('Copy link', () => {
-        void navigator.clipboard?.writeText(card.handoffUrl!).then(
-          () => { status.textContent = 'Link copied — open it on your phone.'; },
-          () => { status.textContent = 'Copy the link above and open it on your phone.'; });
-      }, 'secondary');
-      panel.append(copy);
-    }
-    handoffPanel = panel;
-    root.insertBefore(panel, actions);
   };
 
   const showGuide = () => {
@@ -287,9 +256,6 @@ export function renderConnectorCard(card: ConnectorCardPayload, hooks: Connector
           status.textContent = 'Checking…';
           void driveSession();
         }, 'primary'));
-        break;
-      case 'phone_handoff':
-        actions.append(button(action.label, toggleHandoff, 'secondary'));
         break;
       case 'open_connections':
         actions.append(button(action.label, () => document.getElementById('open-connections')?.click(), 'secondary'));

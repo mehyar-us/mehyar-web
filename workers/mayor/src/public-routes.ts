@@ -67,8 +67,5 @@ export const SPA_VIEW_PATHS:Record<string,string>={
 
 /** True when the path is a known SPA app view (deep link → app shell). */
 export function spaViewForPath(path:string):string|null{
-  // One Connector phone handoff (P3 slice 2): /connect/<session uuid> lands
-  // on the chat view, which renders that session's card after sign-in.
-  if(/^\/connect\/[a-f0-9-]{36}$/.test(path))return 'chat';
   return SPA_VIEW_PATHS[path]??null;
 }

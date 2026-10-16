@@ -21,7 +21,7 @@ import {type ConnectorGuide,genericConnectorGuide,guideForService,resolveConnect
 
 export type ConnectorCardKind='offer'|'guide'|'credential'|'reconnect'|'oauth'|'status';
 export interface ConnectorCardAction{
- id:'connect_oauth'|'show_guide'|'enter_key'|'reconnect'|'dismiss'|'open_connections'|'confirm_done'|'phone_handoff';
+ id:'connect_oauth'|'show_guide'|'enter_key'|'reconnect'|'dismiss'|'open_connections'|'confirm_done';
  label:string;
  provider?:'google'|'microsoft'|'zoho';
  /** OAuth capabilities requested on connect (default: base sign-in). */
@@ -37,10 +37,6 @@ export interface ConnectorCardPayload{
  /** One Connector session backing (P3 renderers): when present, the card is
   * a live view of an engine session and its actions drive that session. */
  sessionId?:string;sessionState?:string;
- /** Phone-handoff deep link (P3 slice 2): opens this very session's card on
-  * the owner's phone after their normal sign-in. An identifier, never a
-  * capability — the session stays membership-gated and tenant-scoped. */
- handoffUrl?:string;
 }
 export interface ConnectorCardEvent{type:'connector_card';card:ConnectorCardPayload}
 

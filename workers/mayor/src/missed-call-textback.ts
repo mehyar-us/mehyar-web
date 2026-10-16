@@ -74,7 +74,7 @@ export async function recordMissedCall(env:Env,actor:Actor,input:MissedCallInput
 const telnyxMessageResponse=z.object({data:z.object({id:z.string()})});
 
 /** Send the vertical-aware text-back via Telnyx. Updates the missed-call record and SMS log. */
-export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,transport:typeof fetch=fetch){
+export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,transport:typeof fetch=fetch,opts?:{exceptCardId?:string}){
  await requireMembership(env,actor,OPERATORS);
  const call=await env.AGENT_DB.prepare('SELECT * FROM mayor_missed_calls WHERE id=? AND tenant_id=?').bind(missedCallId,actor.tenantId).first<MissedCallRecord&{source:string}>();
  if(!call)throw new HttpError(404,'missed_call_not_found','Missed call not found.');
@@ -101,7 +101,7 @@ export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,trans
  ]);
  await notifyMissedCallTexted(env,actor,call,false);
  // A handled call leaves no stale suggestion behind (card Send path does this too).
- await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId);
+ await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId,opts?.exceptCardId);
  return {alreadySent:false,messageId};
 }
 
@@ -109,7 +109,7 @@ export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,trans
  * marks the call texted, and writes the owner notification — but never touches
  * Telnyx or any real provider. This function takes no transport: simulation has
  * no network capability. Only calls recorded by the test simulator may be simulated. */
-export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string){
+export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string,opts?:{exceptCardId?:string}){
  await requireMembership(env,actor,OPERATORS);
  const call=await env.AGENT_DB.prepare('SELECT * FROM mayor_missed_calls WHERE id=? AND tenant_id=?').bind(missedCallId,actor.tenantId).first<MissedCallRecord&{source:string}>();
  if(!call)throw new HttpError(404,'missed_call_not_found','Missed call not found.');
@@ -127,7 +127,7 @@ export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string){
  ]);
  await notifyMissedCallTexted(env,actor,call,true);
  // A handled call leaves no stale suggestion behind (card Send path does this too).
- await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId);
+ await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId,opts?.exceptCardId);
  return {alreadySent:false,messageId:null,simulated:true};
 }
 
