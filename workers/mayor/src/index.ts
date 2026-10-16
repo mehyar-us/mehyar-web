@@ -4,7 +4,6 @@ import {NOT_FOUND_HTML} from './not-found-page';
 import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
 import {handleConnectorEngineRequest} from './connector-engine';
-import {sessionCardFor} from './connector-session-card';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
 import {runTelnyxRecovery} from './telnyx-recovery';
@@ -225,8 +224,6 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     if(connections)return connections;
     const connectorEngine=await handleConnectorEngineRequest(request,env,actor);
     if(connectorEngine)return connectorEngine;
-    const sessionCardRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/card$/);
-    if(sessionCardRoute&&request.method==='GET'&&sessionCardRoute[1]===actor.tenantId)return json(await sessionCardFor(env,actor,sessionCardRoute[2]));
     const mcpTokens=await handleMcpTokens(request,env,actor);
     if(mcpTokens)return mcpTokens;
     const billing=await handleBillingRequest(request,env,actor);

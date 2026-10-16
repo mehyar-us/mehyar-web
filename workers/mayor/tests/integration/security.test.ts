@@ -89,6 +89,7 @@ describe('real D1 auth and business boundaries',()=>{
   });
   it('authenticates designated live Twilio calls and admits a media stream only once',async()=>{
     const actor={tenantId:tenantA,userId:userA},configured={...env,PHONE_TEST_ENABLED:'true'};
+    await env.AGENT_DB.prepare('INSERT INTO mayor_phone_recording_consent(tenant_id,consent_version,acknowledged_at,acknowledged_by) VALUES(?,1,?,?)').bind(tenantA,new Date().toISOString(),userA).run();
     const credential={accountSid:'AC'+'1'.repeat(32),apiKeySid:'SK'+'2'.repeat(32),apiKeySecret:'3'.repeat(32),authToken:'4'.repeat(32),testCaller:'+12025550123'};
     const number={sid:'PN'+'5'.repeat(32),account_sid:credential.accountSid,phone_number:'+12025550101',capabilities:{voice:true}};
     const callSid='CA'+'6'.repeat(32);let live=true,reads=0;

@@ -69,7 +69,7 @@ it('ends a quota-exhausted conversation before any model call or mutation',async
 it('stores agreed business strategy with provenance and keeps other businesses isolated',async()=>{
  const profile={businessGoals:['Reduce missed inquiries'],bottlenecks:['Manual follow-up'],currentTools:['Google Calendar'],growthPlan:'Measure response time before choosing a follow-up workflow.'};
  await confirmProfile(env,actor,profile,0);
- const remembered=await readMemory(env,actor);expect(remembered.profile).toEqual(profile);
+ const remembered=await readMemory(env,actor);expect(remembered.profile).toEqual({...profile,language:'en'});
  expect(remembered.sources.businessGoals.kind).toBe('owner_conversation');
  await expect(readMemory(env,{...actor,tenantId:crypto.randomUUID()})).rejects.toThrow();
  await expect(confirmProfile(env,actor,{growthPlan:'Replace with stale plan'},0)).rejects.toThrow('changed');

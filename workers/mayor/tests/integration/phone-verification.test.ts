@@ -13,6 +13,7 @@ beforeEach(async()=>{
  actor={tenantId:crypto.randomUUID().replaceAll('-',''),userId:crypto.randomUUID()};callSid='CA'+crypto.randomUUID().replaceAll('-','');sends=0;checks=0;checkStatus='approved';override={};failure=false;afterCheck=undefined;
  await env.AGENT_DB.prepare('INSERT INTO agent_tenants(id,name,created_at) VALUES(?,?,?)').bind(actor.tenantId,'Phone verification fixture',new Date().toISOString()).run();
  await env.AGENT_DB.prepare("INSERT INTO agent_memberships(tenant_id,user_id,role) VALUES(?,?,'owner')").bind(actor.tenantId,actor.userId).run();
+ await env.AGENT_DB.prepare('INSERT INTO mayor_phone_recording_consent(tenant_id,consent_version,acknowledged_at,acknowledged_by) VALUES(?,1,?,?)').bind(actor.tenantId,new Date().toISOString(),actor.userId).run();
  transport=(async(url,init)=>{
   const target=new URL(String(url));
   expect(init?.redirect).toBe('manual');expect(new Headers(init?.headers).get('authorization')).toBe('Basic '+btoa(`${credential.apiKeySid}:${credential.apiKeySecret}`));
