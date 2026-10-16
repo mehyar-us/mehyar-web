@@ -5,7 +5,7 @@ import {checkCustomConnection,listCustomConnections} from './custom-connectors';
 import {resolveConnectorService} from './connector-guides';
 import {OPERATORS,requireMembership} from './permissions';
 import {HttpError,json,readJson} from './http';
-import {getRecipe,genericRecipe,listRecipes,type ConnectorRecipe,type ConnectMethod,type FailureKind} from './connector-recipes';
+import {getRecipe,genericRecipe,listRecipes,isOneClick,type ConnectorRecipe,type ConnectMethod,type FailureKind} from './connector-recipes';
 
 /**
  * One Connector engine (design: one-connector-design.md, 2026-10-15).
@@ -67,16 +67,83 @@ async function promoteRecipeIfDraft(env:Env,row:SessionRow,recipe:ConnectorRecip
  }catch{/* promotion is bookkeeping; the connection itself already succeeded */}
 }
 
-function publicMethod(method:ConnectMethod){
- // Methods are declarative and secret-free by construction.
- return method;
+/** Fleet evidence per method kind for one service, across all businesses
+ * and versions: how often each way actually completed a connection. */
+type FleetStats=Map<string,{successes:number,failures:number}>;
+async function methodFleetStats(env:Env,service:string):Promise<FleetStats>{
+ const stats:FleetStats=new Map();
+ try{
+  const rows=await env.AGENT_DB.prepare("SELECT method_kind,outcome,COUNT(*) AS n FROM connector_recipe_events WHERE service=? AND method_kind IS NOT NULL AND outcome IN ('connected','method_failed') GROUP BY method_kind,outcome")
+   .bind(service).all<{method_kind:string;outcome:string;n:number}>();
+  for(const r of rows.results??[]){
+   const entry=stats.get(r.method_kind)??{successes:0,failures:0};
+   if(r.outcome==='connected')entry.successes=r.n;else entry.failures=r.n;
+   stats.set(r.method_kind,entry);
+  }
+ }catch{/* no telemetry yet */}
+ return stats;
 }
 
-function sessionView(row:SessionRow,recipe:ConnectorRecipe){
+/** The Mayor's ordering (2026-10-15): one-click ways first; among equals,
+ * the way the fleet has connected with most is the way that stays. */
+function orderCompare(env:Env,stats:FleetStats,a:ConnectMethod,b:ConnectMethod,ia:number,ib:number):number{
+ const oneClick=(isOneClick(env,a)?0:1)-(isOneClick(env,b)?0:1);
+ if(oneClick)return oneClick;
+ const sa=stats.get(a.kind)?.successes??0,sb=stats.get(b.kind)?.successes??0;
+ if(sa!==sb)return sb-sa;
+ return ia-ib;
+}
+
+/** The method a new session should start on: the best viable way by the
+ * ordering above (an unconfigured OAuth provider is not viable). */
+function preferredMethodIndex(env:Env,recipe:ConnectorRecipe,stats:FleetStats):number{
+ let best=-1;
+ for(let i=0;i<recipe.methods.length;i++){
+  const method=recipe.methods[i];
+  if(method.kind==='oauth'&&!providerConfigured(env,method.provider))continue;
+  if(best<0||orderCompare(env,stats,method,recipe.methods[best],i,best)<0)best=i;
+ }
+ return best;
+}
+
+/** Persist the fleet's winning order into the catalog so it STAYS: real
+ * methods reorder by the ordering above (assisted is the human fallback
+ * and stays last — it is not a platform method). A reorder persists only
+ * when the new top way is one-click, or beats the old top by real volume
+ * (5+ successes and a margin of 2) — no flapping on noise. */
+async function persistFleetOrder(env:Env,tenantId:string,recipe:ConnectorRecipe,stats:FleetStats):Promise<ConnectorRecipe|null>{
+ const real=recipe.methods.filter(m=>m.kind!=='assisted');
+ if(real.length<2)return null;
+ const sorted=[...real].sort((a,b)=>orderCompare(env,stats,a,b,recipe.methods.indexOf(a),recipe.methods.indexOf(b)));
+ const ordered=[...sorted,...recipe.methods.filter(m=>m.kind==='assisted')];
+ if(ordered.every((m,i)=>sameMethod(m,recipe.methods[i])))return null;
+ const newSuccesses=stats.get(sorted[0].kind)?.successes??0;
+ const oldSuccesses=stats.get(real[0].kind)?.successes??0;
+ if(!isOneClick(env,sorted[0])&&!(newSuccesses>=5&&newSuccesses>=oldSuccesses+2))return null;
+ let state=recipe.learnedState??'promoted';
+ try{
+  const row=await env.AGENT_DB.prepare('SELECT state FROM connector_recipes WHERE service=?').bind(recipe.service).first<{state:string}>();
+  if(row?.state==='draft'||row?.state==='promoted')state=row.state;
+  const stored:Record<string,unknown>={...recipe,methods:ordered,version:recipe.version+1};delete stored.learnedState;
+  await env.AGENT_DB.prepare(`INSERT INTO connector_recipes(service,recipe_json,source,version,updated_at,state) VALUES(?,?,?,?,?,?)
+   ON CONFLICT(service) DO UPDATE SET recipe_json=excluded.recipe_json,version=excluded.version,updated_at=excluded.updated_at,state=excluded.state`)
+   .bind(recipe.service,JSON.stringify(stored),recipe.source,recipe.version+1,Date.now(),state).run();
+ }catch{return null;}
+ const revised:ConnectorRecipe={...recipe,methods:ordered,version:recipe.version+1};
+ await recordEvent(env,tenantId,recipe.service,revised.version,'recipe_revised');
+ return revised;
+}
+
+function publicMethod(env:Env,method:ConnectMethod){
+ // Methods are declarative and secret-free by construction.
+ return {...method,oneClick:isOneClick(env,method)};
+}
+
+function sessionView(env:Env,row:SessionRow,recipe:ConnectorRecipe){
  const method=recipe.methods[row.method_index];
  return {
   id:row.id,service:row.service,name:recipe.name,source:recipe.source,
-  state:row.state,method:method?publicMethod(method):null,
+  state:row.state,method:method?publicMethod(env,method):null,
   methodIndex:row.method_index,methodsTotal:recipe.methods.length,
   failureKind:row.failure_kind,connectionId:row.connection_id,
   unlocks:recipe.unlocks,platformGate:recipe.platformGate??null,
@@ -180,7 +247,13 @@ export async function startConnectorSession(env:Env,actor:Actor,rawService:unkno
   recipe=all.find(r=>r.service===q||r.name.toLowerCase()===q||r.aliases.some(a=>a.toLowerCase()===q))??null;
  }
  if(!recipe)recipe=genericRecipe(canonical??input.service);
- const index=nextViableIndex(env,recipe,0);
+ // Fleet ordering (Mayor, 2026-10-15): start on the way that connects —
+ // one-click first, then the way the most businesses connected with —
+ // and persist a proven new order into the catalog so it stays.
+ const stats=await methodFleetStats(env,recipe.service);
+ const revised=await persistFleetOrder(env,actor.tenantId,recipe,stats);
+ if(revised)recipe=revised;
+ const index=preferredMethodIndex(env,recipe,stats);
  if(index<0)throw new HttpError(422,'no_method_available',`There is no way to connect ${recipe.name} right now.`);
  const now=Date.now();
  const row:SessionRow={id:crypto.randomUUID(),tenant_id:actor.tenantId,service:recipe.service,
@@ -193,7 +266,7 @@ export async function startConnectorSession(env:Env,actor:Actor,rawService:unkno
  // owner's generic flow proceeds meanwhile; the learned recipe replaces
  // it for the next business (design §6).
  if(recipe.source==='generic')await enqueueResearch(env,actor.tenantId,recipe.service,'unknown_platform');
- return sessionView(row,recipe);
+ return sessionView(env,row,recipe);
 }
 
 export async function listConnectorSessions(env:Env,actor:Actor){
@@ -202,17 +275,17 @@ export async function listConnectorSessions(env:Env,actor:Actor){
   .bind(actor.tenantId).all<SessionRow>();
  const recipes=await listRecipes(env);
  const byService=new Map(recipes.map(r=>[r.service,r]));
- return {sessions:(rows.results??[]).map(row=>sessionView(row,byService.get(row.service)??genericRecipe(row.service)))};
+ return {sessions:(rows.results??[]).map(row=>sessionView(env,row,byService.get(row.service)??genericRecipe(row.service)))};
 }
 
 export async function beginConnectorSession(env:Env,actor:Actor,id:string){
  await requireMembership(env,actor,OPERATORS);
  const row=await ownedSession(env,actor,id);
  const recipe=await recipeFor(env,row);
- if(row.state==='capturing')return sessionView(row,recipe);
+ if(row.state==='capturing')return sessionView(env,row,recipe);
  if(row.state!=='offered')throw new HttpError(409,'session_not_offered','This connection attempt is no longer waiting to start.');
  const next=await updateSession(env,row,{state:'capturing'});
- return sessionView(next,recipe);
+ return sessionView(env,next,recipe);
 }
 
 export async function attachConnectorConnection(env:Env,actor:Actor,id:string,raw:unknown){
@@ -228,7 +301,7 @@ export async function attachConnectorConnection(env:Env,actor:Actor,id:string,ra
  const {connections}=await listCustomConnections(env,actor);
  if(!connections.some(c=>c.id===input.connectionId))throw new HttpError(404,'connection_not_found','That saved connection could not be found.');
  const next=await updateSession(env,row,{connection_id:input.connectionId});
- return sessionView(next,recipe);
+ return sessionView(env,next,recipe);
 }
 
 /** Verify the current method against the real store. Only a pass connects. */
@@ -246,7 +319,7 @@ export async function verifyConnectorSession(env:Env,actor:Actor,id:string,trans
   // never promotes a draft recipe — see promoteRecipeIfDraft.)
   const next=await updateSession(env,row,{state:'connected'});
   await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected',undefined,method.kind);
-  return sessionView(next,recipe);
+  return sessionView(env,next,recipe);
  }
 
  if(method.kind==='oauth'){
@@ -261,12 +334,12 @@ export async function verifyConnectorSession(env:Env,actor:Actor,id:string,trans
   try{capabilities=grantedCapabilities(method.provider,JSON.parse(grant.granted_scopes),JSON.parse(grant.selected_capabilities));}catch{capabilities=[];}
   if(!capabilities.length){
    const next=await advanceAfterFailure(env,row,recipe,'insufficient_scope');
-   return sessionView(next,recipe);
+   return sessionView(env,next,recipe);
   }
   const next=await updateSession(env,row,{state:'connected'});
   await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected',undefined,method.kind);
   await promoteRecipeIfDraft(env,row,recipe);
-  return sessionView(next,recipe);
+  return sessionView(env,next,recipe);
  }
 
  // api_key / webhook / mcp: verify runs through the attached custom
@@ -279,12 +352,12 @@ export async function verifyConnectorSession(env:Env,actor:Actor,id:string,trans
   await checkCustomConnection(env,actor,row.connection_id,transport);
  }catch(err){
   const next=await advanceAfterFailure(env,row,recipe,failureKindFor(err));
-  return sessionView(next,recipe);
+  return sessionView(env,next,recipe);
  }
  const next=await updateSession(env,row,{state:'connected'});
  await recordEvent(env,row.tenant_id,row.service,recipe.version,'connected',undefined,method.kind);
  await promoteRecipeIfDraft(env,row,recipe);
- return sessionView(next,recipe);
+ return sessionView(env,next,recipe);
 }
 
 /** The UI/owner reports the current method failed; walk down the ladder. */
@@ -295,7 +368,7 @@ export async function failConnectorSession(env:Env,actor:Actor,id:string,raw:unk
  if(row.state==='connected'||row.state==='gave_up')throw new HttpError(409,'session_finished','This connection attempt is already finished.');
  const input=z.object({kind:z.enum(FAILURE_KINDS)}).strict().parse(raw);
  const next=await advanceAfterFailure(env,row,recipe,input.kind);
- return sessionView(next,recipe);
+ return sessionView(env,next,recipe);
 }
 
 export async function handleConnectorEngineRequest(request:Request,env:Env,actor:Actor):Promise<Response|null>{
@@ -304,8 +377,13 @@ export async function handleConnectorEngineRequest(request:Request,env:Env,actor
  if(url.pathname===`${base}/recipes`&&request.method==='GET'){
   await requireMembership(env,actor,OPERATORS);
   const recipes=await listRecipes(env);
-  return json({recipes:recipes.map(r=>({service:r.service,name:r.name,capabilities:r.capabilities,unlocks:r.unlocks,
-   methods:r.methods.map(m=>m.kind),platformGate:r.platformGate??null,source:r.source,version:r.version,learnedState:r.learnedState??null}))});
+  const detailed=await Promise.all(recipes.map(async r=>{
+   const stats=await methodFleetStats(env,r.service);
+   return {service:r.service,name:r.name,capabilities:r.capabilities,unlocks:r.unlocks,
+    methods:r.methods.map(m=>m.kind),platformGate:r.platformGate??null,source:r.source,version:r.version,learnedState:r.learnedState??null,
+    methodDetails:r.methods.map(m=>({kind:m.kind,oneClick:isOneClick(env,m),successes:stats.get(m.kind)?.successes??0,failures:stats.get(m.kind)?.failures??0}))};
+  }));
+  return json({recipes:detailed});
  }
  if(url.pathname===`${base}/sessions`&&request.method==='GET')return json(await listConnectorSessions(env,actor));
  if(url.pathname===`${base}/sessions`&&request.method==='POST')return json(await startConnectorSession(env,actor,await readJson(request,4096)),201);

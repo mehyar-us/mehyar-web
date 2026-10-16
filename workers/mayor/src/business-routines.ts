@@ -8,7 +8,7 @@ import {readMemory} from './memory';
 import {BUSINESS_ROUTINE_CATALOG} from './business-routine-catalog';
 export {BUSINESS_ROUTINE_CATALOG} from './business-routine-catalog';
 const ids=BUSINESS_ROUTINE_CATALOG.map(item=>item.id) as [string,...string[]];
-const templateIds=z.array(z.enum(ids)).min(1).max(8).refine(value=>new Set(value).size===value.length,'Choose each routine once.');
+const templateIds=z.array(z.enum(ids)).min(1).max(ids.length).refine(value=>new Set(value).size===value.length,'Choose each routine once.');
 export const businessRoutineConfigSchema=z.object({revision:z.number().int().min(0),enabled:z.boolean(),templateIds,schedule:checkScheduleSchema.optional()}).strict().refine(input=>!input.enabled||Boolean(input.schedule),'Choose a schedule before enabling routines.');
 type ConfigInput=z.infer<typeof businessRoutineConfigSchema>;
 export type RoutineProposal={input:ConfigInput;actor:Actor;expiresAt:number};
@@ -68,6 +68,7 @@ export async function buildBusinessRoutineBrief(env:Env,actor:Actor,selected:str
   'team-handoff':`Draft a handoff for the ${taskCounts!.open} open tasks, ${callbackCounts!.pending} callback requests and ${bookingCounts!.total} upcoming Mayor bookings. Staff availability and assignments need your review.`,
   'weekly-growth':goals.length?`Choose one small experiment supporting your confirmed goal: “${goals[0]}”. Decide a measure and baseline yourself; no revenue, conversion or benchmark data is available.`:'Confirm one business goal, then choose a small experiment and a measure. Revenue, conversion and industry benchmarks are unknown.',
   'service-offer-review':confirmedService?`Draft an offer description for the confirmed service “${confirmedService}”: audience, benefit and next step. Price, capacity and availability must be supplied and reviewed.`:'Supply an offer, service, menu item or product before drafting its audience, benefit and next step. No price or inventory has been inferred.',
+  'connect-your-tools':'Connections are started and confirmed by the owner in the app; this routine connects nothing and reads no platform data. Review which platforms the business runs on and ask Mayor to start each connection — one click where the platform offers it.',
  };
  const gaps=['No sales, revenue, conversion, review or inbox data is collected by these routines.','Saved contact details do not establish customer identity, purchase history or permission to send messages.'];
  if(!memory.confirmedAt)gaps.push('No business profile has been confirmed yet.');if(!confirmedService)gaps.push('No services or offers are confirmed.');if(!goals.length)gaps.push('No business goals are confirmed.');
