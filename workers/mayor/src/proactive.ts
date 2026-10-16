@@ -323,11 +323,11 @@ export async function sendSuggestionCard(env:Env,actor:Actor,cardId:string,trans
    .bind(missedCallId,actor.tenantId).first<{source:string;textback_sent_at:string|null}>();
   if(!call)throw new HttpError(404,'suggestion_unavailable','The missed call for this suggestion is gone.');
   if(call.source==='test'){
-   await simulateTextBack(env,actor,missedCallId);
+   await simulateTextBack(env,actor,missedCallId,{exceptCardId:cardId});
    return finish({simulated:true,audienceCount:1,sentCount:1,failed:0});
   }
   if(live){
-   const res=await sendTextBack(env,actor,missedCallId,transport);
+   const res=await sendTextBack(env,actor,missedCallId,transport,{exceptCardId:cardId});
    return finish({simulated:false,audienceCount:1,sentCount:res.alreadySent?0:1,failed:0});
   }
   await env.AGENT_DB.prepare(`INSERT INTO mayor_sms_log(id,tenant_id,direction,to_number,from_number,body,provider_message_id,status,related_missed_call_id)

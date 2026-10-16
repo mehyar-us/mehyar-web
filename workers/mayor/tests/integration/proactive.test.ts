@@ -1,7 +1,7 @@
 import {env as testEnv} from 'cloudflare:workers';
 import {describe,it,expect} from 'vitest';
 import type {Env} from '../../src/env';
-import {runDetectors,loadProactiveContext,localDayKey,shiftLocalDate,localParts} from '../../src/proactive-detectors';
+import {runDetectors,loadProactiveContext,localDayKey,shiftLocalDate,localParts,LAPSED_DAYS} from '../../src/proactive-detectors';
 import {confirmProfile} from '../../src/memory';
 import {
  createSuggestionCard,runProactiveCycle,surfaceGate,logNudge,buildBriefing,buildRoi,
@@ -218,7 +218,7 @@ describe('suggestion cards',()=>{
   const card=await createSuggestionCard(env,context,det);
   expect(card!.kind).toBe('winback');
   expect(card!.title).toMatch(/lapsed client/); // salon vocabulary
-  expect(card!.body).toMatch(/hasn't booked in 45\+ days/);
+  expect(card!.body).toMatch(new RegExp(`hasn't booked in ${LAPSED_DAYS.salon}\\+ days`));
   expect(card!.draft.message).not.toMatch(/%|discount|free/i);
   expect(card!.draft.message).toContain('STOP');
   expect(card!.draft.message.length).toBeLessThan(306);

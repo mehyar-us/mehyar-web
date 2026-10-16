@@ -362,17 +362,20 @@ export async function ensureMissedCallFollowupCard(
 
 /** Mark pending follow-up cards for a missed call as sent once a text-back
  * goes out through ANY path (card Send, manual text-back, instant engine),
- * so a handled call never leaves a stale suggestion behind. */
-export async function resolveMissedCallFollowupCards(env:Env,tenantId:string,missedCallId:string){
+ * so a handled call never leaves a stale suggestion behind. The card a send
+ * is in flight on (exceptCardId — the suggestion-card Send path) is NOT
+ * resolved here: that send's own finish() writes its full result, and
+ * pre-marking the card would clobber it (its UPDATE is state-guarded). */
+export async function resolveMissedCallFollowupCards(env:Env,tenantId:string,missedCallId:string,exceptCardId?:string){
  const now=new Date().toISOString(),dedupeKey=`mc:${missedCallId}`;
  await env.AGENT_DB.batch([
   env.AGENT_DB.prepare(
    `UPDATE mayor_suggestion_cards SET state='sent',decided_at=?,
     result_json=json_object('resolved_by','textback_sent')
-    WHERE tenant_id=? AND state IN ('pending','edited') AND detection_id IN
+    WHERE tenant_id=? AND state IN ('pending','edited')${exceptCardId?' AND id<>?':''} AND detection_id IN
     (SELECT id FROM mayor_proactive_detections
      WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=?)`)
-   .bind(now,tenantId,tenantId,dedupeKey),
+   .bind(...(exceptCardId?[now,tenantId,exceptCardId,tenantId,dedupeKey]:[now,tenantId,tenantId,dedupeKey])),
   env.AGENT_DB.prepare(
    `UPDATE mayor_proactive_detections SET state='resolved'
     WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=? AND state IN ('open','surfaced')`)
