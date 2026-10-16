@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Bot,
+  Check,
   CheckCircle2,
+  Copy,
   EyeOff,
   FileText,
   ListChecks,
@@ -200,6 +202,62 @@ const PRINT_CSS = `
 }
 `;
 
+/* ── REFERENCE-DATA pattern (Mayor, 2026-10-16 — Robinhood lesson) ─────────
+   Any identifier a buyer may need elsewhere lives in one grouped block:
+   plain header, small muted label above (qualifier in parentheses), value
+   large and legible, one-tap copy on every row with "Copied" feedback,
+   hairline separators, no cards/chrome. A $330 buyer grabs their audit
+   reference in one tap for any support exchange. */
+function CopyRow({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = value;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch { /* clipboard unavailable */ }
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="flex items-start justify-between gap-4 py-3">
+      <div className="min-w-0">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="mt-1 break-all font-mono text-base font-semibold leading-6 text-foreground">{value}</p>
+      </div>
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={`Copy ${label}`}
+        className="mt-4 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+      >
+        {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+        {copied ? "Copied" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
+function PurchaseReference({ auditId, reportUrl }: { auditId?: string; reportUrl?: string }) {
+  if (!auditId && !reportUrl) return null;
+  return (
+    <div className="no-print mt-8 text-left">
+      <p className="text-sm font-semibold text-foreground">Your purchase</p>
+      <div className="mt-1 divide-y divide-border border-y border-border">
+        {auditId && <CopyRow label="Audit reference (for support)" value={auditId} />}
+        {reportUrl && <CopyRow label="Report link (permanent — bookmark it)" value={reportUrl} />}
+      </div>
+    </div>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function BusinessReportView({ token, initial }: { token: string; initial?: BusinessReportPayload | null }) {
   const [payload, setPayload] = useState<BusinessReportPayload | null>(initial ?? null);
@@ -266,6 +324,7 @@ export default function BusinessReportView({ token, initial }: { token: string; 
           {payload?.buyer_message || "Building your audit hit a snag on our side — we're on it, and your report will be ready shortly. Nothing was lost; your purchase is safe."}
         </p>
         <p className="mt-3 text-sm text-muted-foreground">We'll email you the permanent link as soon as it's ready.</p>
+        <PurchaseReference auditId={payload?.audit_id} />
       </div>
     );
   }
@@ -286,6 +345,7 @@ export default function BusinessReportView({ token, initial }: { token: string; 
         {!timedOut && (
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
         )}
+        <PurchaseReference auditId={payload?.audit_id} />
       </div>
     );
   }
@@ -344,6 +404,8 @@ export default function BusinessReportView({ token, initial }: { token: string; 
           )}
         </div>
       </div>
+
+      <PurchaseReference auditId={payload?.audit_id} reportUrl={`https://mehyar.us/audit?token=${token}`} />
 
       {/* ── EXECUTIVE SUMMARY ── */}
       <div className="avoid-break mt-10">
