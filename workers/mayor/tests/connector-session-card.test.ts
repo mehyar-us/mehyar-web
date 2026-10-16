@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {sessionCard,ensureSessionCard,sessionCardFor,type SessionCardView} from '../src/connector-session-card';
 import {startConnectorSession,failConnectorSession} from '../src/connector-engine';
+import {spaViewForPath} from '../src/public-routes';
 
 /* One Connector P3 (2026-10-15): the conversation renderer. The view-model
  * mapping is pure and pinned here for every state × method; the ensure flow
@@ -66,6 +67,30 @@ describe('sessionCard view-model',()=>{
    expect(JSON.stringify(card)).not.toMatch(/sk_live|apiKeyValue|secretValue/);
    expect(Object.keys(card)).not.toContain('secret');
   }
+ });
+ it('carries the phone handoff only on actionable cards when an origin is given',()=>{
+  const origin='https://mayor.mehyar.us';
+  const live=sessionCard(view({}),origin);
+  expect(live.handoffUrl).toBe(`${origin}/connect/${live.sessionId}`);
+  expect(live.actions.map(a=>a.id)).toContain('phone_handoff');
+  const done=sessionCard(view({state:'connected'}),origin);
+  expect(done.handoffUrl).toBeUndefined();
+  expect(done.actions.map(a=>a.id)).not.toContain('phone_handoff');
+  const noOrigin=sessionCard(view({}));
+  expect(noOrigin.handoffUrl).toBeUndefined();
+ });
+});
+
+describe('phone handoff deep link',()=>{
+ const sid='11111111-1111-4111-8111-111111111111';
+ it('routes /connect/<uuid> to the chat view',()=>{
+  expect(spaViewForPath(`/connect/${sid}`)).toBe('chat');
+ });
+ it('does not treat malformed connect paths as app views',()=>{
+  expect(spaViewForPath('/connect/')).toBeNull();
+  expect(spaViewForPath('/connect/not-a-uuid')).toBeNull();
+  expect(spaViewForPath(`/connect/${sid}/extra`)).toBeNull();
+  expect(spaViewForPath('/connectors')).toBe('connections');
  });
 });
 

@@ -42,8 +42,10 @@ function providerName(provider:unknown):string{
  return typeof provider==='string'&&provider?provider[0].toUpperCase()+provider.slice(1):'the provider';
 }
 
-/** The conversation card for one session view. Pure: no I/O, fully testable. */
-export function sessionCard(view:SessionCardView):ConnectorCardPayload{
+/** The conversation card for one session view. Pure: no I/O, fully testable.
+ * With appOrigin, actionable cards also carry the phone-handoff face
+ * (P3 slice 2): the same session, continued on the owner's phone. */
+export function sessionCard(view:SessionCardView,appOrigin?:string):ConnectorCardPayload{
  const name=view.name;
  const card:ConnectorCardPayload={
   id:`session-${view.id}`,kind:'status',service:view.service,name,
@@ -95,12 +97,16 @@ export function sessionCard(view:SessionCardView):ConnectorCardPayload{
    card.body=`${lead}The Mayor can walk you through connecting ${name} in chat.${gateNote}`;
   }
  }
+ if(appOrigin&&(view.state==='offered'||view.state==='capturing')&&view.method){
+  card.handoffUrl=`${appOrigin}/connect/${view.id}`;
+  card.actions=[...card.actions,{id:'phone_handoff',label:'Finish on your phone'}];
+ }
  assertNoSecretLeak(card);
  return card;
 }
 
-export function sessionCardEvent(view:SessionCardView):ConnectorCardEvent{
- return {type:'connector_card',card:sessionCard(view)};
+export function sessionCardEvent(view:SessionCardView,appOrigin?:string):ConnectorCardEvent{
+ return {type:'connector_card',card:sessionCard(view,appOrigin)};
 }
 
 /**
@@ -113,14 +119,14 @@ export async function ensureSessionCard(env:Env,actor:Actor,service:string):Prom
  try{
   const {sessions}=await listConnectorSessions(env,actor) as {sessions:SessionCardView[]};
   const open=sessions.find(s=>s.service===service&&(s.state==='offered'||s.state==='capturing'||s.state==='verifying'));
-  if(open)return sessionCardEvent(open);
+  if(open)return sessionCardEvent(open,env.APP_ORIGIN);
   const view=await startConnectorSession(env,actor,{service}) as SessionCardView;
-  return sessionCardEvent(view);
+  return sessionCardEvent(view,env.APP_ORIGIN);
  }catch{return null;}
 }
 
 /** Fresh card for one session (the client's post-action re-read). */
 export async function sessionCardFor(env:Env,actor:Actor,sessionId:string):Promise<ConnectorCardEvent>{
  const view=await getConnectorSession(env,actor,sessionId) as SessionCardView;
- return sessionCardEvent(view);
+ return sessionCardEvent(view,env.APP_ORIGIN);
 }

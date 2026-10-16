@@ -3,8 +3,9 @@ import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} 
 import {NOT_FOUND_HTML} from './not-found-page';
 import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
 import {handleConnectionsRequest} from './connections';
-import {handleConnectorEngineRequest} from './connector-engine';
+import {handleConnectorEngineRequest,getConnectorSession} from './connector-engine';
 import {sessionCardFor} from './connector-session-card';
+import {toString as qrSvg} from 'qrcode';
 import {runMvpMaintenance} from './mvp-maintenance';
 import {syncPhoneReviewNotifications} from './phone-review-notifications';
 import {runTelnyxRecovery} from './telnyx-recovery';
@@ -227,6 +228,14 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     if(connectorEngine)return connectorEngine;
     const sessionCardRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/card$/);
     if(sessionCardRoute&&request.method==='GET'&&sessionCardRoute[1]===actor.tenantId)return json(await sessionCardFor(env,actor,sessionCardRoute[2]));
+    const sessionQrRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/qr\.svg$/);
+    if(sessionQrRoute&&request.method==='GET'&&sessionQrRoute[1]===actor.tenantId){
+      // Ownership is proven by the session read itself (tenant-scoped, 404
+      // otherwise) before any QR is drawn; the code encodes only the deep link.
+      await getConnectorSession(env,actor,sessionQrRoute[2]);
+      const svg=await qrSvg(`${env.APP_ORIGIN}/connect/${sessionQrRoute[2]}`,{type:'svg',margin:1,width:220});
+      return new Response(svg,{headers:{'content-type':'image/svg+xml;charset=utf-8','cache-control':'no-store'}});
+    }
     const mcpTokens=await handleMcpTokens(request,env,actor);
     if(mcpTokens)return mcpTokens;
     const billing=await handleBillingRequest(request,env,actor);
