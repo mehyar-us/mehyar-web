@@ -215,10 +215,16 @@ export async function materializeDetection(env:Env,ctx:ProactiveContext,detectio
  return 'surfaced';
 }
 
-/** The 08:05 briefing, shared by both runtimes (same dedupe + gate). */
+/** The 08:05 briefing, shared by both runtimes (same dedupe + gate).
+ * Due at 08:05 local; the first cycle at/after 08:05 builds it. */
 export async function maybeSendBriefing(env:Env,ctx:ProactiveContext):Promise<boolean>{
  const parts=localParts(ctx.nowMs,ctx.timeZone);
- if(!(parts.hour===8&&parts.minute>=5&&parts.minute<10))return false;
+ // Due-based, not window-based (soak finding 2026-10-17): the old
+ // [08:05,08:10) window matched the 5-minute cron's grid but NEVER
+ // intersects the agent runtime's 15-minute sweep grid, so the
+ // briefing could never fire there. First cycle/sweep at or after
+ // 08:05 local builds it; the per-day dedupe below bounds it to one.
+ if(!(parts.hour>8||(parts.hour===8&&parts.minute>=5)))return false;
  const dayKey=parts.date;
  const already=await env.AGENT_DB.prepare('SELECT 1 FROM mayor_notifications WHERE tenant_id=? AND dedupe_key=? LIMIT 1')
   .bind(ctx.tenantId,`proactive_briefing:${dayKey}`).first();
@@ -263,7 +269,7 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
     if(outcome!=='skipped')cards++;
     if(outcome==='surfaced')surfaced++;
    }
-   // Morning briefing: once per local day, in the 08:05–08:10 window, nudge-capped.
+   // Morning briefing: once per local day, due 08:05, nudge-capped.
    if(await maybeSendBriefing(env,context))briefings++;
   }catch(error){
    console.warn(JSON.stringify({event:'proactive_cycle_tenant_failed',tenant:t.id}));
