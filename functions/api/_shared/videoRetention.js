@@ -32,7 +32,12 @@ export async function runVideoRetention(db, bucket, limit = 25) {
       if (!key) continue;
       if (!String(key).startsWith("audit-videos/")) { allGone = false; continue; }
       try {
+        const before = await bucket.head(key).catch(() => null);
         await bucket.delete(key);
+        const after = await bucket.head(key).catch(() => null);
+        // TEMP DIAGNOSTIC (2026-10-17, remove after diagnosis): is the
+        // binding's delete actually removing the object in-runtime?
+        console.log("retention diag", JSON.stringify({ key, before: before ? before.size : null, after: after ? after.size : null }));
         out.objects_deleted++;
       } catch (e) {
         allGone = false;
