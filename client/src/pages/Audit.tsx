@@ -1257,6 +1257,11 @@ export default function Audit() {
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
                 </p>
+                {intake && !creditInfo?.eligible && (
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    Bought the Full Report with this email? Your $5 credit applies: $330 − $5 = $325 due at checkout.
+                  </p>
+                )}
               </div>
               {payError && (
                 <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
@@ -1320,9 +1325,9 @@ export default function Audit() {
                 </div>
               )}
               <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying || checkoutOpen === false}>
-                {checkoutOpen === false ? (<>Checkout is briefly unavailable</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
+                {checkoutOpen === false ? (<>Checkout is briefly unavailable</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : creditInfo?.eligible ? (<>Pay ${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")} — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
-              <p className="text-center text-xs text-muted-foreground">One-time payment · $330 · Report emailed with a permanent link</p>
+              <p className="text-center text-xs text-muted-foreground">One-time payment · {creditInfo?.eligible ? `$${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")}` : "$330"} · Report emailed with a permanent link</p>
               <p className="text-center text-xs text-muted-foreground">All sales are final — the audit is a one-time digital service and purchases are not refundable.</p>
             </form>
           </CardContent>
