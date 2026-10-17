@@ -1,5 +1,6 @@
 import {createElement,Target,Sparkles,Plus,Settings2,Play,Check,ArrowLeft,ListChecks,FlaskConical,Clock,NotebookPen,ClipboardCheck} from 'lucide';
 import './business-agent.css';
+import {formatMoney} from './proactive-stub';
 
 type Metric={baseline:number;current:number;target:number;unit:string};
 type Goal={id:string;revision:number;title:string;description:string;metric:Metric|null;deadline:string|null;archived:boolean};
@@ -98,7 +99,7 @@ export function createBusinessAgent(hooks:Hooks){
     else card.append(node('p','No measured progress entered yet.'));goals.append(card);
    }section.append(goals);
   }
-  const metrics=node('div','','agent-metrics');for(const metric of report.metrics){const row=node('div');row.append(node('strong',metric.value===null?'Unknown':metric.value.toLocaleString()),node('span',metric.label));metrics.append(row);}section.append(metrics);
+  const metrics=node('div','','agent-metrics');for(const metric of report.metrics){const row=node('div');row.append(node('strong',metric.value===null?'Unknown':metric.key==='revenue'?formatMoney(metric.value):metric.value.toLocaleString()),node('span',metric.label));metrics.append(row);}section.append(metrics);
   const nextSteps=node('details','','agent-next-steps');nextSteps.dataset.agentDisclosure='plan:'+report.id;nextSteps.open=!matchMedia('(max-width:760px)').matches;nextSteps.append(node('summary','Plan & next steps'));
   if(report.priorities.length){const priorities=node('section','','agent-priorities');priorities.append(node('h4','What needs attention'));for(const item of report.priorities){const card=node('article');card.append(node('h5',item.title),node('p',item.detail),sourceDetails(item.sourceIds,report));priorities.append(card);}nextSteps.append(priorities);}
   if(report.taskDrafts.length){const drafts=node('section','','agent-drafts');drafts.append(node('h4','Suggested tasks'));
