@@ -152,9 +152,11 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     }
     return assetRes;
   }
-  // Auth lives at / (the app's sign-in). /login and /signup redirect there;
+  // Auth lives at / (the app's sign-in). /login and /signup redirect there,
+  // as do the conventional aliases /register and /onboarding (no such routes
+  // exist in the app; sales-copy micro-pass 2026-10-17);
   // /privacy and /data-deletion redirect to the shared mehyar.us legal pages (scope rule).
-  if((url.pathname==='/login'||url.pathname==='/signup')&&request.method==='GET'){
+  if((url.pathname==='/login'||url.pathname==='/signup'||url.pathname==='/register'||url.pathname==='/onboarding')&&request.method==='GET'){
     return Response.redirect(new URL('/',request.url).toString(),301);
   }
   if(url.pathname==='/faq'&&request.method==='GET'){

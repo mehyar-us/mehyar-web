@@ -14,6 +14,7 @@
  */
 import {PLANS,CREDIT_PACKS,approxConversations,FOUNDING_PRICE_CENTS} from './billing/plans';
 import {AUDIT_OFFER} from './billing/audit';
+import {providerExampleSsrHtml} from './provider-example';
 
 function escapeHtml(value:string):string{
   return value.replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string));
@@ -64,6 +65,21 @@ export function offerBlockSsrHtml(auditAvailable=false,founding?:FoundingSsrBloc
     `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`+
     `<p class="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates \u2014 separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>`+
     (auditAvailable?homeAuditBandSsrHtml():'');
+}
+
+
+/* Sales-copy micro-pass (2026-10-17): the labeled Telnyx worked
+ * example rides directly after the provider note on /sales and
+ * /pricing. The anchor is the note's closing sentence; its first
+ * occurrence in each page is the plans-section note (the /sales FAQ
+ * repeats the sentence later). Missing anchor -> fail quiet. */
+const PROVIDER_NOTE_END='automatic text-backs are sent through Telnyx.</p>';
+export function injectProviderExample(html:string):string{
+  if(html.includes('Worked example — what that provider bill comes to'))return html; // idempotent (rot107 pin)
+  const at=html.indexOf(PROVIDER_NOTE_END);
+  if(at<0)return html;
+  const cut=at+PROVIDER_NOTE_END.length;
+  return html.slice(0,cut)+'\n      '+providerExampleSsrHtml()+html.slice(cut);
 }
 
 const OFFER_OPEN='<div id="offer-block"';
@@ -160,7 +176,7 @@ export function injectPricingCards(html:string,auditAvailable=false,founding?:Fo
   let out=injectIntoContainer(html,'plan-cards',rendered.plans);
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
   out=injectIntoContainer(out,'audit-card',auditCardSsrHtml());
-  return injectStructuredData(out,auditAvailable);
+  return injectProviderExample(injectStructuredData(out,auditAvailable));
 }
 /* ------------------------------------------------------------------ */
 /* /sales SSR — priced plan cards for the pitch page (rot107).          */
@@ -212,7 +228,7 @@ export function injectSalesPlans(html:string,auditAvailable=false,founding?:Foun
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
   const audit=auditCardSsrHtml();
   if(audit)out=injectIntoContainer(out,'sales-audit',audit);
-  return injectFaqPage(injectStructuredData(out,auditAvailable));
+  return injectProviderExample(injectFaqPage(injectStructuredData(out,auditAvailable)));
 }
 /* ------------------------------------------------------------------ */
 /* Structured data (rot130): a Product record for the selling pages,    */
