@@ -54,6 +54,22 @@ a{color:var(--brand)}
 .site-header nav a{text-decoration:none;color:var(--ink);font-weight:600;font-size:0.95rem}
 .site-header nav a:hover{text-decoration:underline}
 .header-ctas{display:flex;align-items:center;gap:1rem}
+
+/* WS1 build 1 (2026-10-16): the mobile header pattern for the whole
+ * family — one row for brand + actions, the nav as a single
+ * scrollable strip below it. Nothing wraps mid-element and nothing
+ * stacks into a third row at phone width (rot298 input 4). */
+@media (max-width:760px){
+  .site-header{gap:0.55rem 0.75rem;padding:0.6rem 1rem}
+  .brand{font-size:1rem;margin-right:0}
+  .brand img{width:32px;height:32px}
+  .brand small{display:none}
+  .site-header nav{order:3;flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;gap:1.1rem;padding-bottom:0.1rem;scrollbar-width:none}
+  .site-header nav::-webkit-scrollbar{display:none}
+  .site-header nav a{white-space:nowrap;font-size:0.92rem}
+  .header-ctas{gap:0.85rem;margin-left:auto}
+  .header-ctas .button-small{padding:0.45rem 0.85rem;font-size:0.9rem}
+}
 .text-link{font-weight:700;text-decoration:none}
 .text-link:hover{text-decoration:underline}
 
