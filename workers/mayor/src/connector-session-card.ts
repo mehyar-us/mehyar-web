@@ -69,7 +69,14 @@ export function sessionCard(view:SessionCardView,appOrigin?:string):ConnectorCar
  };
  const gateNote=view.platformGate?` Note: ${view.platformGate}`:'';
  const firstNote=view.firstAttempt?`First time connecting ${name} — I'll walk you through it. `:'';
- if(view.state==='connected'){
+ if(view.state==='connected'&&view.method?.kind==='assisted'){
+  // Door 4: an assisted connection is the owner's own confirmation —
+  // no credential was checked and no data flows from the platform.
+  // It must not wear the verified connections' label or unlocks copy.
+  card.title=`${name} is set up`;
+  card.body=`Set up by your confirmation: you completed the steps on ${name} itself. The Mayor cannot read data from ${name} — this is your confirmation, not a data feed.`;
+  card.actions=[{id:'open_connections',label:'View in Connections'},{id:'dismiss',label:'Done'}];
+ }else if(view.state==='connected'){
   card.title=`${name} is connected`;
   card.body=view.unlocks||`${name} is connected and verified.`;
   card.actions=[{id:'open_connections',label:'View in Connections'},{id:'dismiss',label:'Done'}];

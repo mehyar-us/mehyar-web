@@ -262,7 +262,8 @@ export function createConnections(hooks:ConnectionsHooks){
  function customView(connection:Connection):CustomCardView{
   const detail=connection.origin??connection.endpoint??connection.type.toUpperCase();
   const stateText=connection.status==='connected'?'Configured':connection.status==='disconnected'?'Disconnected':connection.status==='error'?'Needs attention':connection.status==='ready'?'Ready':connection.status.replace(/_/g,' ');
-  const lastCheckLine=connection.lastCheckedAt?`${connection.lastCheckStatus==='reachable'?'Reachable':connection.lastCheckStatus==='configured'?'Configuration checked':'Last check'} \u00b7 ${dateText(connection.lastCheckedAt)}`:undefined;
+  const checkWord=connection.lastCheckStatus==='verified'?'Verified':connection.lastCheckStatus==='reachable'?'Reachable':connection.lastCheckStatus==='configured'?(connection.type==='webhook'?"Configuration saved — health cannot be checked without sending a message":'Configuration checked'):'Last check';
+  const lastCheckLine=connection.lastCheckedAt?`${checkWord} \u00b7 ${dateText(connection.lastCheckedAt)}`:(connection.type==='webhook'?"Health cannot be checked without sending a message":undefined);
   const icon=connection.type==='webhook'?'webhook':connection.type==='mcp'?'server':'braces';
   const endpointRef=connection.endpoint??connection.origin;
   if(connection.status==='disconnected')return {key:connection.id,title:connection.label,detail,icon,stateText,lastCheckLine,endpointRef,actions:null};
