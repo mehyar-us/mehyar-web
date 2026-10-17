@@ -107,6 +107,50 @@ export async function deliverPendingLeadEmails(env:LeadsEnv,nowMs=Date.now()):Pr
  return {attempted,sent};
 }
 
+/* The \u00a74 monthly loop (Marketing order 2026-10-17, on the Email 1
+ * machinery): one practical email a month per lead, anchored to the
+ * Email 1 date \u2014 the cadence the capture page promises. The
+ * practical frame is the checklist's own monthly step (its section
+ * 5: count the missed calls, do the math); the ask is the pack's
+ * \u00a74 loop line VERBATIM. Unsubscribed leads never receive it;
+ * a lead whose Email 1 never landed gets no loop either. */
+export const LOOP_EMAIL_SUBJECT='Your monthly missed-call count';
+export const LOOP_INTERVAL_MS=30*24*3600*1000;
+export function loopEmailText(unsubscribeUrl:string):string{
+ return `Once a month, the checklist asks for one count: last month's missed calls \u00d7 your average job value = the money on the table. Five minutes with your call log \u2014 write the number down, and watch it fall as the leaks close.
+
+Run your own numbers first \u2014 the free Missed-Call Checklist shows exactly where the calls leak. Then claim a founding seat before the 25 are gone: $79.20/mo for life (list $99/mo), at mayor.mehyar.us/sales.
+
+The checklist, any time: https://mayor.mehyar.us/missed-call-checklist
+
+\u2014 The Mayor, by MehyarSoft LLC
+You asked for this checklist at mayor.mehyar.us. One practical email a month. Unsubscribe: ${unsubscribeUrl}`;
+}
+
+type LoopRow={id:string;email:string;loop_last_sent_at:number|null;loop_attempts:number};
+/** One monthly-loop pass. Due = Email 1 landed \u226530 days ago (or the
+ * last loop send did), not unsubscribed, under the failure cap. */
+export async function deliverLoopEmails(env:LeadsEnv,nowMs=Date.now()):Promise<{attempted:number;sent:number}>{
+ if(!env.MAYOR_EMAIL||!env.MAYOR_EMAIL_FROM)return {attempted:0,sent:0};
+ const cutoff=nowMs-LOOP_INTERVAL_MS;
+ const rows=await env.AGENT_DB.prepare(`SELECT id,email,loop_last_sent_at,loop_attempts FROM mayor_sales_leads
+  WHERE email1_sent_at IS NOT NULL AND email1_sent_at<=? AND unsubscribed_at IS NULL AND loop_attempts<3
+  AND (loop_last_sent_at IS NULL OR loop_last_sent_at<=?) ORDER BY COALESCE(loop_last_sent_at,email1_sent_at) ASC LIMIT 10`)
+  .bind(cutoff,cutoff).all<LoopRow>();
+ let attempted=0,sent=0;
+ for(const lead of rows.results){
+  attempted++;
+  try{
+   await env.MAYOR_EMAIL.send({from:{email:env.MAYOR_EMAIL_FROM,name:'The Mayor'},to:lead.email,subject:LOOP_EMAIL_SUBJECT,text:loopEmailText(unsubscribeUrlFor(lead.email))});
+   await env.AGENT_DB.prepare('UPDATE mayor_sales_leads SET loop_last_sent_at=?,loop_attempts=0 WHERE id=?').bind(nowMs,lead.id).run();
+   sent++;
+  }catch{
+   await env.AGENT_DB.prepare('UPDATE mayor_sales_leads SET loop_attempts=loop_attempts+1 WHERE id=?').bind(lead.id).run().catch(()=>undefined);
+  }
+ }
+ return {attempted,sent};
+}
+
 function unsubscribePage(done:boolean,email:string):Response{
  const inner=done
   ?`<h1>You\u2019re unsubscribed.</h1><p>${email} will not receive the monthly follow-up emails. The checklist you already received is yours to keep.</p>`

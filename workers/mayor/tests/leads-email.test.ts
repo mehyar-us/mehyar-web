@@ -1,11 +1,11 @@
 import {describe,it,expect} from 'vitest';
-import {handleLeadsPublic,deliverPendingLeadEmails,CHECKLIST_EMAIL_SUBJECT} from '../src/leads';
+import {handleLeadsPublic,deliverPendingLeadEmails,deliverLoopEmails,CHECKLIST_EMAIL_SUBJECT,LOOP_INTERVAL_MS} from '../src/leads';
 
 /* Checklist email leg (CoC ruling 2026-10-17): Email 1 fires on
  * capture. A stateful fake D1 + a recording SendEmail stand in for
  * the real binding, mirroring the leads.test.ts pattern. */
 
-type LeadRow={id:string;email:string;source:string;created_at:number;email1_sent_at:number|null;email1_attempts:number;unsubscribed_at:number|null};
+type LeadRow={id:string;email:string;source:string;created_at:number;email1_sent_at:number|null;email1_attempts:number;unsubscribed_at:number|null;loop_last_sent_at:number|null;loop_attempts:number};
 
 function fakeDb(){
  const leads:LeadRow[]=[];
@@ -15,14 +15,22 @@ function fakeDb(){
    if(sql.includes('FROM mayor_sales_leads WHERE email=?'))return leads.find(l=>l.email===args[0])??null;
    return null;
   },
-  all:async()=>({results:leads.filter(l=>l.email1_sent_at==null&&l.unsubscribed_at==null&&l.email1_attempts<3&&l.created_at>(args[0] as number))}),
+  all:async()=>{
+   if(sql.includes('loop_last_sent_at')&&sql.includes('email1_sent_at IS NOT NULL')){
+    const cutoff=args[0] as number;
+    return {results:leads.filter(l=>l.email1_sent_at!=null&&l.email1_sent_at<=cutoff&&l.unsubscribed_at==null&&l.loop_attempts<3&&(l.loop_last_sent_at==null||l.loop_last_sent_at<=cutoff))};
+   }
+   return {results:leads.filter(l=>l.email1_sent_at==null&&l.unsubscribed_at==null&&l.email1_attempts<3&&l.created_at>(args[0] as number))};
+  },
   run:async()=>{
    if(sql.startsWith('INSERT OR IGNORE INTO mayor_sales_leads')){
-    if(!leads.some(l=>l.email===args[1]))leads.push({id:String(args[0]),email:String(args[1]),source:String(args[2]),created_at:Number(args[3]),email1_sent_at:null,email1_attempts:0,unsubscribed_at:null});
+    if(!leads.some(l=>l.email===args[1]))leads.push({id:String(args[0]),email:String(args[1]),source:String(args[2]),created_at:Number(args[3]),email1_sent_at:null,email1_attempts:0,unsubscribed_at:null,loop_last_sent_at:null,loop_attempts:0});
     return {success:true,meta:{changes:1}};
    }
    if(sql.includes('SET email1_sent_at')){const l=leads.find(x=>x.id===args[1]);if(l)l.email1_sent_at=Number(args[0]);return {success:true};}
    if(sql.includes('SET email1_attempts')){const l=leads.find(x=>x.id===args[0]);if(l)l.email1_attempts++;return {success:true};}
+   if(sql.includes('SET loop_last_sent_at')){const l=leads.find(x=>x.id===args[1]);if(l){l.loop_last_sent_at=Number(args[0]);l.loop_attempts=0;}return {success:true};}
+   if(sql.includes('SET loop_attempts')){const l=leads.find(x=>x.id===args[0]);if(l)l.loop_attempts++;return {success:true};}
    if(sql.includes('SET unsubscribed_at')){const l=leads.find(x=>x.email===args[1]);if(l)l.unsubscribed_at=Number(args[0]);return {success:true};}
    return {success:true};
   },
@@ -68,6 +76,25 @@ describe('checklist Email 1 — on-capture delivery',()=>{
   const result=await deliverPendingLeadEmails({AGENT_DB:db,MAYOR_EMAIL:good.impl,MAYOR_EMAIL_FROM:'mayor@mehyar.us'});
   expect(result).toEqual({attempted:1,sent:1});
   expect(leads[0].email1_sent_at).not.toBeNull();
+ });
+
+ it('the monthly loop fires on schedule with the §4 ask, and only when due',async()=>{
+  const {db,leads}=fakeDb();
+  const good=mailer();
+  const env={AGENT_DB:db,MAYOR_EMAIL:good.impl,MAYOR_EMAIL_FROM:'mayor@mehyar.us'};
+  await handleLeadsPublic(post({email:'loop@example.com',source:'sales'}),env);
+  expect(good.sent).toHaveLength(1); // Email 1 only — the loop is not due
+  const t0=leads[0].email1_sent_at!;
+  expect(await deliverLoopEmails(env,t0+LOOP_INTERVAL_MS-1000)).toEqual({attempted:0,sent:0});
+  const due=await deliverLoopEmails(env,t0+LOOP_INTERVAL_MS+1000);
+  expect(due).toEqual({attempted:1,sent:1});
+  expect(good.sent).toHaveLength(2);
+  expect(good.sent[1].subject).toBe('Your monthly missed-call count');
+  expect(good.sent[1].text).toContain("claim a founding seat before the 25 are gone: $79.20/mo for life (list $99/mo), at mayor.mehyar.us/sales.");
+  expect(good.sent[1].text).toContain('/api/leads/unsubscribe?e=loop%40example.com');
+  expect(leads[0].loop_last_sent_at).toBe(t0+LOOP_INTERVAL_MS+1000);
+  // Not due again until the next month passes.
+  expect(await deliverLoopEmails(env,t0+LOOP_INTERVAL_MS+2000)).toEqual({attempted:0,sent:0});
  });
 
  it('unsubscribe marks the lead and the retry pass skips it',async()=>{
