@@ -95,3 +95,44 @@ describe('wiring pins',()=>{
     expect(workday).not.toContain("intent.id==='pro-founding'");
   });
 });
+
+describe('durable carrier (rot333 hardening)',()=>{
+  const T0=1_800_000_000_000;
+  // Two facades over ONE map = two tabs/windows of one browser profile
+  // on a shared localStorage. Two maps = two storage partitions.
+  function facade(map:Map<string,string>):IntentStore{
+    return {getItem:(k)=>map.get(k)??null,setItem:(k,v)=>{map.set(k,v);},removeItem:(k)=>{map.delete(k);}};
+  }
+  it('survives a new tab: stashed in tab A, taken in tab B (shared profile storage)',()=>{
+    const shared=new Map<string,string>();
+    expect(captureBillingIntent('?plan=pro',facade(shared),T0)).toEqual({kind:'plan',id:'pro'});
+    expect(takeBillingIntent('',facade(shared),T0+5*60*1000)).toEqual({kind:'plan',id:'pro'});
+  });
+  it('still dies across a storage PARTITION (webview -> system browser) — the documented boundary',()=>{
+    const tabA=new Map<string,string>(); const browserB=new Map<string,string>();
+    captureBillingIntent('?plan=pro',facade(tabA),T0);
+    expect(takeBillingIntent('',facade(browserB),T0+60*1000)).toBeNull();
+    // The URL param is the carrier there: the same link opened in the browser parses directly.
+    expect(takeBillingIntent('?plan=pro',facade(browserB),T0+60*1000)).toEqual({kind:'plan',id:'pro'});
+  });
+  it('expiry: inside 60 minutes it fires; past it, it is gone and cleaned',()=>{
+    const store=fakeStore();
+    captureBillingIntent('?pack=large',store,T0);
+    expect(takeBillingIntent('',store,T0+59*60*1000)).toEqual({kind:'pack',id:'large'});
+    captureBillingIntent('?pack=large',store,T0);
+    expect(hasBillingIntent('',store,T0+61*60*1000)).toBe(false);
+    expect(takeBillingIntent('',store,T0+61*60*1000)).toBeNull();
+    expect(store.map.size).toBe(0);
+  });
+  it('rejects corrupt, pre-hardening, and future-beyond-skew stamps',()=>{
+    const store=fakeStore();
+    store.setItem('mayor_billing_intent','plan:pro'); // old format, no stamp
+    expect(takeBillingIntent('',store,T0)).toBeNull();
+    store.setItem('mayor_billing_intent','plan:pro@abc');
+    expect(takeBillingIntent('',store,T0)).toBeNull();
+    store.setItem('mayor_billing_intent',`plan:pro@${T0+60*60*1000}`); // 1h in the future
+    expect(takeBillingIntent('',store,T0)).toBeNull();
+    store.setItem('mayor_billing_intent',`plan:pro@${T0+4*60*1000}`); // within skew
+    expect(takeBillingIntent('',store,T0)).toEqual({kind:'plan',id:'pro'});
+  });
+});
