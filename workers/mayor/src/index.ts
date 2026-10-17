@@ -97,7 +97,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const assetRes=await env.ASSETS.fetch(new Request(new URL('/',request.url),request));
     const contentType=assetRes.headers.get('content-type')??'';
     if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),injected=injectHeroPrice(injectOfferBlock(original));
+      const original=await assetRes.text(),injected=injectHeroPrice(injectOfferBlock(original,auditOffer(env).available));
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');
