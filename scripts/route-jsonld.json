@@ -356,7 +356,7 @@
           "name": "How fast do I get the audit results?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Most audits are delivered within a few business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs."
+            "text": "Most audits are delivered within 3 business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs."
           }
         },
         {
@@ -1725,7 +1725,7 @@
           "name": "Is this the same as the founder-led $330 tech audit?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No — same price, different product. The founder-led $330 tech audit is a human review, invoiced by email. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email within a few business days."
+            "text": "No — same price, different product. The founder-led $330 tech audit is a human review, invoiced by email. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email within 3–5 business days."
           }
         },
         {
