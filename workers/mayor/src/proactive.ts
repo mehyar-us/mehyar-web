@@ -245,7 +245,17 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
   try{
    // Harness slice 1: a tenant flagged 'do' runs in its
    // MayorBusiness agent instead — exactly one runtime per tenant.
-   if(await readHarnessRuntime(env,t.id)==='do')continue;
+   // The flag is the single switch (soak, 2026-10-17): the cycle
+   // keeps a 'do' tenant's agent armed (arm() is idempotent), so
+   // flipping the flag is the whole operation and flipping it back
+   // reverts cleanly. A failed arm retries on the next cycle.
+   if(await readHarnessRuntime(env,t.id)==='do'){
+    try{
+     const stub=env.MAYOR_BUSINESS.get(env.MAYOR_BUSINESS.idFromName(t.id));
+     await stub.arm(t.id);
+    }catch{/* next cycle retries */}
+    continue;
+   }
    const {context,created}=await runDetectors(env,t.id,nowMs);
    detections+=created.length;
    for(const d of created){
