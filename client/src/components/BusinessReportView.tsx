@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { trackAuditPurchase } from "./MarketingTags";
+import WalkthroughBooking from "./WalkthroughBooking";
 
 /* ── Payload contract (GET /api/audit/business/report?token=<64-hex>) ───────
    { ok, status: "generating"|"ready"|"failed",
@@ -346,6 +347,7 @@ export default function BusinessReportView({ token, initial }: { token: string; 
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
         )}
         <PurchaseReference auditId={payload?.audit_id} />
+        <WalkthroughBooking businessName={payload?.business_name} />
       </div>
     );
   }
@@ -406,6 +408,8 @@ export default function BusinessReportView({ token, initial }: { token: string; 
       </div>
 
       <PurchaseReference auditId={payload?.audit_id} reportUrl={`https://mehyar.us/audit?token=${token}`} />
+
+      <WalkthroughBooking businessName={businessName} />
 
       {/* ── EXECUTIVE SUMMARY ── */}
       <div className="avoid-break mt-10">
