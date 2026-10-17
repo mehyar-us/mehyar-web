@@ -1329,7 +1329,6 @@ export default function Audit() {
                 {checkoutOpen === false ? (<>Checkout is briefly unavailable</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : creditInfo?.eligible ? (<>Pay ${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")} — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
               <p className="text-center text-xs text-muted-foreground">One-time payment · {creditInfo?.eligible ? `$${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")}` : "$330"} · Report emailed with a permanent link</p>
-              <p className="text-center text-xs text-muted-foreground">All sales are final — the audit is a one-time digital service and purchases are not refundable.</p>
             </form>
           </CardContent>
         </Card>
@@ -1356,12 +1355,17 @@ export default function Audit() {
           </div>
 
           <div className="mt-8 space-y-3">
-            <FaqItem q="Is this the same as the founder-led $330 tech audit?">
-              No — same price, different product. The{" "}
+            <FaqItem q="Which offer is which — the free scan, the Full Report, or Audit My Business?">
+              Three different rungs, all on this page. The free scan (Step 1) scores your
+              public site and names your top money leaks — free, no card. The Full Report
+              ($5, one-time) is the complete written breakdown of that scan: every leak
+              found, priced and ranked. Audit My Business ($330, one-time) is the deep
+              audit — a separate, fuller report built from your site and your walkthrough
+              video, with prioritized fixes and an AI opportunity map, delivered by email
+              within 3–5 business days; if you bought the Full Report first, its $5 is
+              credited toward the $330. The{" "}
               <Link href="/micro-offer" className="underline underline-offset-2">founder-led $330 tech audit</Link>{" "}
-              is a human review, invoiced by email. Audit My Business is the
-              automated AI counterpart: instant checkout, AI-written visual report, delivered by email within 3–5 business days.
-              Pick the human eye or the AI engine — or run both and compare.
+              is a different product again: a human review, invoiced by email.
             </FaqItem>
             <FaqItem q="Do I need the walkthrough video?">
               No. The audit works on your public site alone. The video unlocks the deep-dive
