@@ -262,12 +262,19 @@ export async function onRequestPost({ request, env }) {
     const productId = sanitize(body.product_id, 100);
     const email = sanitize(body.email, 254).toLowerCase();
     if (!productId) return J({ ok: false, error: "invalid_product" }, 400);
-    if (!EMAIL_RE.test(email)) return J({ ok: false, error: "invalid_email" }, 400);
+    const emailValid = EMAIL_RE.test(email);
 
     const product = await db.prepare(
       "SELECT * FROM billing_products WHERE id = ? AND active = 1"
     ).bind(productId).first();
     if (!product) return J({ ok: false, error: "invalid_product" }, 400);
+    // Moonroom (2026-10-17): the email is OPTIONAL — its paywall lets the
+    // buyer skip straight to Stripe, which collects the address on its own
+    // page; the webhook backfills billing_payments.email from Stripe's
+    // customer_details. Every other product keeps the hard requirement.
+    // A non-empty but malformed address is still rejected for everyone.
+    if (!emailValid && !(email === "" && product.brand === "moonroom"))
+      return J({ ok: false, error: "invalid_email" }, 400);
 
     // Product-specific params: cap at ~2KB and sanitize strings.
     let params = {};
@@ -334,11 +341,16 @@ export async function onRequestPost({ request, env }) {
 
     // Idempotency: reuse a pending payment row for the same product+email
     // created within the last hour. A fresh Stripe session is attached to it.
-    let payment = await db.prepare(
-      "SELECT id, access_token FROM billing_payments " +
-      "WHERE product_id = ? AND email = ? AND status = 'pending' AND created_at > datetime('now','-1 hour') " +
-      "ORDER BY id DESC LIMIT 1"
-    ).bind(productId, email).first();
+    // Anonymous checkouts (empty email, Moonroom) never reuse a row — there
+    // is no identity to key on, and sharing one would mix buyers together.
+    let payment = null;
+    if (email) {
+      payment = await db.prepare(
+        "SELECT id, access_token FROM billing_payments " +
+        "WHERE product_id = ? AND email = ? AND status = 'pending' AND created_at > datetime('now','-1 hour') " +
+        "ORDER BY id DESC LIMIT 1"
+      ).bind(productId, email).first();
+    }
 
     let paymentId;
     if (payment) {
@@ -419,7 +431,9 @@ export async function onRequestPost({ request, env }) {
     sp.set("mode", billingMode);
     sp.set("success_url", successUrl);
     sp.set("cancel_url", cancelUrl);
-    sp.set("customer_email", email);
+    // Only pre-fill Stripe's email when the buyer actually gave one; with
+    // none, Stripe collects it on its hosted page.
+    if (email) sp.set("customer_email", email);
     sp.set("line_items[0][price_data][currency]", product.currency || "usd");
     sp.set("line_items[0][price_data][product_data][name]", product.name);
     if (product.description) sp.set("line_items[0][price_data][product_data][description]", product.description);

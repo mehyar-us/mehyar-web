@@ -129,6 +129,7 @@ async function recordCustomerDetails(db, paymentId, sess) {
     const addr = cd.address || {};
     await db.prepare(
       "UPDATE billing_payments SET " +
+      "email=COALESCE(NULLIF(email, ''), ?), " +
       "customer_name=COALESCE(?, customer_name), " +
       "billing_city=COALESCE(?, billing_city), " +
       "billing_state=COALESCE(?, billing_state), " +
@@ -136,6 +137,7 @@ async function recordCustomerDetails(db, paymentId, sess) {
       "stripe_customer_id=COALESCE(?, stripe_customer_id) " +
       "WHERE id=?"
     ).bind(
+      (cd.email || "").slice(0, 254) || null,
       (cd.name || "").slice(0, 160) || null,
       (addr.city || "").slice(0, 120) || null,
       (addr.state || "").slice(0, 120) || null,
@@ -660,14 +662,25 @@ export async function onRequestPost({ request, env, waitUntil }) {
             const payRow = await db.prepare(
               "SELECT email, brand, amount_cents, attribution_json FROM billing_payments WHERE id=?"
             ).bind(paymentId).first();
-            if (payRow && payRow.email) {
-              await recordCustomerDetails(db, paymentId, sess);
-              await recordBuyerCRM(db, {
-                email: payRow.email,
-                brand: payRow.brand,
-                amountCents: payRow.amount_cents,
-                attributionJson: payRow.attribution_json || (sess.metadata && sess.metadata.attribution) || null,
-              });
+            if (payRow) {
+              const stripeEmail = (sess.customer_details && sess.customer_details.email) || null;
+              // Anonymous checkouts (Moonroom's optional email) arrive with
+              // a NULL email: backfill from Stripe's customer_details FIRST,
+              // so the CRM record and the fulfillment dispatch below both
+              // see the payer's address.
+              if (payRow.email || stripeEmail) {
+                await recordCustomerDetails(db, paymentId, sess);
+                const effEmail = payRow.email || stripeEmail;
+                if (effEmail) {
+                  if (!payment.email) payment.email = effEmail;
+                  await recordBuyerCRM(db, {
+                    email: effEmail,
+                    brand: payRow.brand,
+                    amountCents: payRow.amount_cents,
+                    attributionJson: payRow.attribution_json || (sess.metadata && sess.metadata.attribution) || null,
+                  });
+                }
+              }
             }
           } catch (e) {
             console.error("pay/webhook buyer CRM hardening failed", e && e.message);
