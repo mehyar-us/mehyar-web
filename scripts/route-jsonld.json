@@ -464,6 +464,23 @@
           "name": "When to Build Custom Software (and When Not To)"
         }
       ]
+    },
+    {
+      "@type": "Service",
+      "@id": "https://mehyar.us/audit/#service",
+      "name": "Audit My Business",
+      "url": "https://mehyar.us/audit/",
+      "description": "One-time $330 AI audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
+      "provider": {
+        "@id": "https://mehyar.us/#professional-service"
+      },
+      "areaServed": "Worldwide",
+      "offers": {
+        "@type": "Offer",
+        "price": "330",
+        "priceCurrency": "USD",
+        "url": "https://mehyar.us/audit/"
+      }
     }
   ],
   "/blog/small-business-tech-audit-revenue-leaks": [

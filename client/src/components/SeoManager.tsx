@@ -272,6 +272,22 @@ const staticMeta: Record<string, SeoMeta> = {
         "Websites, customer apps, booking, AI follow-up, phone care, and automation for businesses worldwide.",
       ),
       offerCatalog,
+      {
+        "@type": "Service",
+        "@id": `${SITE_ORIGIN}/audit/#service`,
+        name: "Audit My Business",
+        url: absoluteUrl("/audit"),
+        description:
+          "One-time $330 AI audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
+        provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
+        areaServed: "Worldwide",
+        offers: {
+          "@type": "Offer",
+          price: "330",
+          priceCurrency: "USD",
+          url: absoluteUrl("/audit"),
+        },
+      },
       faq([
         {
           question: "What does MehyarSoft do?",
