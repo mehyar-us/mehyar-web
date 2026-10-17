@@ -1234,7 +1234,7 @@ export default function Audit() {
                   {payError}
                 </p>
               )}
-              {payBlocked && (
+              {(payBlocked || checkoutOpen === false) && (
                 <div className="rounded-2xl border border-border bg-card p-5">
                   <p className="text-sm font-semibold text-foreground">Don't lose your audit details</p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -1262,8 +1262,15 @@ export default function Audit() {
                   </p>
                 </div>
               )}
-              <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying}>
-                {paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
+              {checkoutOpen === false && (
+                <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                  Checkout is briefly unavailable right now — no charge can be taken. Rather talk to a human?{" "}
+                  <a href="mailto:info@mehyar.us" className="font-semibold underline underline-offset-2">Email info@mehyar.us</a>{" "}
+                  and we'll sort it out personally.
+                </p>
+              )}
+              <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying || checkoutOpen === false}>
+                {checkoutOpen === false ? (<>Checkout is briefly unavailable</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
               <p className="text-center text-xs text-muted-foreground">One-time payment · $330 · Report emailed with a permanent link</p>
               <p className="text-center text-xs text-muted-foreground">All sales are final — the audit is a one-time digital service and purchases are not refundable.</p>
