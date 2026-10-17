@@ -9,7 +9,7 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 .op-bar{height:6px;border-radius:3px;background:#e4eefc;overflow:hidden}
 .op-fill{height:100%;background:#102b47;border-radius:3px}
 .consent-blocked{border:2px solid #a62f25;background:#fdf0ee;color:#7a231b;border-radius:12px;padding:12px 16px;font-weight:700;font-size:14px;line-height:1.5;margin:12px 0}
-.hero-slogan{font-family:Manrope,sans-serif;font-size:20px;font-weight:800;color:#102b47;margin:0 0 6px}.hero-price{font-size:15px;font-weight:700;color:#315d86;margin:10px 0 0}.hero-price:empty{margin:0}
+.hero-slogan{font-family:Manrope,sans-serif;font-size:20px;font-weight:800;color:#102b47;margin:0 0 6px}.hero-price{font-size:15px;font-weight:700;color:#315d86;margin:10px 0 0}.hero-price a{color:inherit;text-underline-offset:3px}.hero-price:empty{margin:0}
 
 /* Home sample block (rot260): mirrors the /sales sample thread styling. */
 .home-sample{margin:1.25rem 0 0;text-align:left}

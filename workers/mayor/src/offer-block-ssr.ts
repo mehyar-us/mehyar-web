@@ -318,5 +318,14 @@ export function injectHeroPrice(html:string):string{
   if(!html.includes(HERO_PRICE_EMPTY))return html;
   const text=heroPriceSsrText();
   if(!text)return html;
-  return html.replace(HERO_PRICE_EMPTY,`<p class="hero-price" id="hero-price">${escapeHtml(text)}</p>`);
+  // The start segment is a working CTA (chief's micro-fix 2026-10-17:
+  // the signed-out hero carried the words but no link). The visible
+  // text is byte-identical to heroPriceSsrText(); only the first
+  // segment becomes the /?start=1 anchor every plan card uses.
+  const sep=' \u00b7 ';
+  const at=text.indexOf(sep);
+  const inner=at<0
+    ?`<a href="/?start=1">${escapeHtml(text)}</a>`
+    :`<a href="/?start=1">${escapeHtml(text.slice(0,at))}</a>${escapeHtml(text.slice(at))}`;
+  return html.replace(HERO_PRICE_EMPTY,`<p class="hero-price" id="hero-price">${inner}</p>`);
 }
