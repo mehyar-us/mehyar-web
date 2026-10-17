@@ -8,7 +8,7 @@ import {baseConfiguration,parseEvent,rawBody,verifySignature,type BillingEnv,typ
 import {handleAuditPublic,auditOrders} from './audit';
 import {createCreditCheckout} from './credits';
 export {billingUsageContext,usageBalance} from './state';
-import {PLANS,CREDIT_PACKS,BILLING_VERSION,PRO_PRICE_VERSION,CREDIT_PACK_VERSION} from './plans';
+import {PLANS,CREDIT_PACKS,BILLING_VERSION,PRO_PRICE_VERSION,CREDIT_PACK_VERSION,FOUNDING_PRICE_CENTS} from './plans';
 import {foundingSeats,FOUNDING_UNAVAILABLE} from './founding';
 export {PLANS,CREDIT_PACKS} from './plans';
 export {STRIPE_API_VERSION} from './stripe';
@@ -36,6 +36,10 @@ export async function catalogResponse(request:Request,env?:BillingEnv):Promise<R
   // from billing state; on any failure the block reports unavailable
   // with null counts and surfaces show no number.
   founding:env?await foundingSeats(env):FOUNDING_UNAVAILABLE,
+  // Parity with the authenticated billing payload (rot315 note,
+  // 2026-10-17): the cohort's amount rides the public catalog too,
+  // so the machine-readable surface never shows counts without it.
+  foundingPriceCents:FOUNDING_PRICE_CENTS,
   plans:PLANS.map(p=>({id:p.id,name:p.name,priceCents:p.priceCents,interval:p.interval,replyLimit:p.replyLimit,voiceMinuteLimit:p.voiceMinuteLimit})),
   creditPacks:CREDIT_PACKS.map(p=>({id:p.id,name:p.name,priceCents:p.priceCents,replyAttempts:p.replyAttempts,voiceMinutes:p.voiceMinutes})),
  },{headers});
