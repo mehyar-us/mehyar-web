@@ -22,6 +22,12 @@ export default function AuditSampleReport() {
         <h1 className="mt-5 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
           Sample report
         </h1>
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+            Sample
+          </span>
+          Fictional business ("Sample Plumbing Co") — illustration, not a real audit.
+        </p>
         <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
           What the $330 Audit My Business report looks like when it lands in your inbox —
           shown with a fictional business, in the real format: your score, your money
@@ -41,6 +47,9 @@ export default function AuditSampleReport() {
           <a href="/audit#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-2 min-h-12")}>
             Start Step 1 — it's free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
           </a>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Fictional business ("Sample Plumbing Co") — illustration, not a real audit.
+          </p>
         </div>
       </div>
     </section>
