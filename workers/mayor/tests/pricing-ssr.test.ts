@@ -318,7 +318,7 @@ it('rot156: slogan on all three heroes + homepage hero price anchor from the cat
  // (heading-scoped CSS in the chat layout can clip it there).
  expect(home).toContain('</div><p class="hero-price" id="hero-price"></p><div class="voice-stage">');
  const filled=injectHeroPrice(home);
- expect(filled).toContain(`<p class="hero-price" id="hero-price">Start free \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
+ expect(filled).toContain(`<p class="hero-price" id="hero-price"><a href="/?start=1">Start free</a> \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
  // Client fallback derives the identical string from a fetched catalog.
  const catalog={currency:'USD',plans:PLANS.map(p=>({id:p.id,name:p.name,priceCents:p.priceCents,interval:'month',replyLimit:p.replyLimit,voiceMinuteLimit:p.voiceMinuteLimit}))};
  expect(heroPriceText(catalog)).toBe(heroPriceSsrText());
@@ -331,7 +331,7 @@ it('rot157: /sales hero carries the same catalog-rendered price anchor',()=>{
  expect(sales).toContain('<p class="hero-price" id="hero-price"></p>');
  const served=injectHeroPrice(injectSalesPlans(sales));
  const heroAt=served.indexOf('class="hero page-width"'),priceAt=served.indexOf('id="hero-price"'),loopAt=served.indexOf('id="how"');
- expect(served).toContain(`<p class="hero-price" id="hero-price">Start free \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
+ expect(served).toContain(`<p class="hero-price" id="hero-price"><a href="/?start=1">Start free</a> \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
  expect(priceAt).toBeGreaterThan(heroAt);
  expect(loopAt).toBeGreaterThan(priceAt); // inside the hero block, above the fold sections
 });
@@ -350,7 +350,7 @@ it('rot165: /pricing hero carries the same catalog-rendered price anchor',()=>{
  const pricing=readWeb('pricing.html');
  expect(pricing).toContain('<p class="hero-price" id="hero-price"></p>');
  const served=injectHeroPrice(injectPricingCards(pricing));
- expect(served).toContain(`<p class="hero-price" id="hero-price">Start free \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
+ expect(served).toContain(`<p class="hero-price" id="hero-price"><a href="/?start=1">Start free</a> \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
  const heroAt=served.indexOf('id="pricing-heading"'),priceAt=served.indexOf('id="hero-price"'),plansAt=served.indexOf('id="plan-cards"');
  expect(priceAt).toBeGreaterThan(heroAt);
  expect(plansAt).toBeGreaterThan(priceAt); // inside the hero, before the plan cards
