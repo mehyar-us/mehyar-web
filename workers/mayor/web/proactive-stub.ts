@@ -41,7 +41,7 @@ export interface Briefing {
 
 export interface SuggestionDraft { message: string; audience: string; audienceCount: number }
 export interface SuggestionCard {
-  id: string; kind: string; detector?: string; title: string; body: string;
+  id: string; kind: string; detector?: string; confidence?: 1 | 2 | 3; title: string; body: string;
   draft: SuggestionDraft; state: string; createdAt: string;
 }
 export interface SendResult { sent: boolean; audienceCount: number; simulated: boolean }
