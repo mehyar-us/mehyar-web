@@ -12,6 +12,7 @@ import './workspace.css';
 import './workday.css';
 import './proactive.css';
 import {createWorkday,type WorkdayView} from './workday';
+import {captureBillingIntent,hasBillingIntent,takeBillingIntent} from './billing-intent';
 import {createConnections} from './connections';
 import {createVoiceDiagnostics} from './voice-diagnostics';
 import {createVoiceHealth} from './voice-health';
@@ -1018,6 +1019,9 @@ function show(tab:WorkdayView){
   if(tab==='connections'&&canManage()){void connectionHub.activate().catch(error=>notice(error.message));loadConnectorSessions({api,tenant:()=>tenantId,signIn,onNotice:message=>notice(message)});}
 }
 async function init(){
+  // Purchase intent (NEW-1): stash a valid /billing?plan|pack intent
+  // before anything else, so the sign-in round trip cannot lose it.
+  captureBillingIntent();
   // Public offer block: catalog-priced plans on the logged-out view. Non-blocking;
   // the price-free fallback stays if the catalog can't be reached.
   void loadOfferBlock();
@@ -1041,10 +1045,12 @@ async function init(){
     document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')!.hidden=true;
     $('business-identity').hidden=true;
     if(new URLSearchParams(location.search).has('auth_error'))notice('Sign-in could not finish. Please try again.');
-    if(new URLSearchParams(location.search).has('start')){
+    if(new URLSearchParams(location.search).has('start')||hasBillingIntent()){
       // Start path (rot159): the /sales hero's 'Start free' lands a new
       // visitor at the start — sign-in panel in view, primary button
       // focused. Signed-in users never reach this logged-out branch.
+      // A purchase intent (NEW-1) gets the same guided landing; the
+      // intent itself rides the stash through sign-in (below).
       $('chat-sign-in').scrollIntoView({block:'center'});
       $<HTMLButtonElement>('chat-google-sign-in').focus({preventScroll:true});
     }
@@ -1131,6 +1137,11 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
   const deepLink:Record<string,WorkdayView>={'/today':'today','/feed':'feed','/billing':'billing','/connectors':'connections','/settings':'account','/account':'account'};
   const deepView=deepLink[location.pathname];
   if(deepView)show(deepView);
+  // Purchase intent (NEW-1): a /sales or /pricing buy click lands
+  // here after sign-in (URL param, or the stash from the pre-sign-in
+  // boot). Land on billing with the plan/pack preselected.
+  const purchaseIntent=takeBillingIntent();
+  if(purchaseIntent)workday.billingIntent(purchaseIntent);
   // One Connector phone handoff (P3 slice 2): /connect/<session id> renders
   // that session's card in chat — the same attempt, continued on this device.
   const handoff=location.pathname.match(/^\/connect\/([a-f0-9-]{36})$/);
