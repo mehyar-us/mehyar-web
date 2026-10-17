@@ -7,6 +7,7 @@ import {esTemplates,esFillGapCard,esWinbackCard,esLeadReplyCard,esNoShowCard,esF
 import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
 import {readHarnessRuntime} from './harness-runtime';
+import {captureStyleSample,readStyleProfile,applyGreetingStyle} from './style-profile';
 import {
  inQuietHours,localDayKey,localParts,localDayBoundsUtc,monthBoundsUtc,shiftLocalDate,dayGaps,
  lapsedCustomers,loadProactiveContext,runDetectors,agoText,buildFollowupCardCopy,LAPSED_DAYS,
@@ -191,6 +192,9 @@ export async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:Detec
 export async function createSuggestionCard(env:Env,ctx:ProactiveContext,detection:DetectionRow){
  const copy=await buildCardCopy(env,ctx,detection);
  if(!copy)return null;
+ // Twin (slice 2a): adopt the owner's dominant greeting once their
+ // corpus supports it; otherwise the template stands unchanged.
+ copy.draft.message=applyGreetingStyle(copy.draft.message,await readStyleProfile(env,ctx.tenantId));
  const id=crypto.randomUUID(),now=new Date(ctx.nowMs).toISOString();
  await env.AGENT_DB.prepare(`INSERT INTO mayor_suggestion_cards(id,tenant_id,detection_id,kind,title,body,draft_json,state,created_at)
   VALUES(?,?,?,?,?,?,?,'pending',?)`)
@@ -412,6 +416,9 @@ export async function editSuggestionCard(env:Env,actor:Actor,cardId:string,messa
  const draft={...JSON.parse(card.draft_json),message} as Draft;
  await env.AGENT_DB.prepare("UPDATE mayor_suggestion_cards SET draft_json=?,state='edited' WHERE id=? AND state IN ('pending','edited')")
   .bind(JSON.stringify(draft),cardId).run();
+ // Twin (slice 2a): the owner's own wording is a style sample —
+ // captured as a side effect of the edit they already made.
+ await captureStyleSample(env,actor.tenantId,'card_edit',message);
  return {id:cardId,message,audience:draft.audience,audienceCount:draft.audienceCount,state:'edited' as const};
 }
 
