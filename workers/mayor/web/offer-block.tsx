@@ -42,7 +42,7 @@ export function OfferBlock({free,pro,currency}:{free:OfferPlan,pro:OfferPlan,cur
  return (
   <>
    <div className="offer-plans">{row(free,'A good place to start.')}{row(pro,'For a busier business.')}</div>
-   <p className="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>
+   <p className="offer-note">Cancel Pro renewal in Manage billing.</p>
    <p className="offer-note">Usage counts reply attempts — every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens — startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>
    <p className="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates — separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>
   </>

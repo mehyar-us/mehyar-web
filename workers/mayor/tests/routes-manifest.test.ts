@@ -52,9 +52,9 @@ it('pricing page carries the clearly-marked offer slot (empty until priced)',()=
   expect(page).toContain('OFFER SLOT');
 });
 
-it('pricing page states no refunds and links the shared legal pages',()=>{
+it('pricing page carries no final-sale line (scope ruling 2026-10-17) and links the shared legal pages',()=>{
   const page=pricing();
-  expect(page).toMatch(/Purchases are final.{1,3}no refunds/i);
+  expect(page).not.toMatch(/Purchases are final.{1,3}no refunds/i);
   expect(page).toContain('https://mehyar.us/privacy-policy/');
   expect(page).toContain('https://mehyar.us/terms/');
   expect(page).toContain('https://mehyar.us/data-deletion/');
