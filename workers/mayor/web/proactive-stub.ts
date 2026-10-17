@@ -98,6 +98,27 @@ export async function dismissSuggestion(api: Api, tenantId: string, id: string):
   await api(`${base(tenantId)}/suggestions/${encodeURIComponent(id)}/dismiss`, {});
 }
 
+/* Twin (slice 2b): the owner's writing-style onboarding state. */
+export interface StyleState {
+  totalSamples: number;
+  onboardingSamples: number;
+  dismissed: boolean;
+  greetingAdopted: boolean;
+}
+
+export async function fetchStyleState(api: Api, tenantId: string): Promise<StyleState | null> {
+  try { return await api(`${base(tenantId)}/style`) as StyleState; }
+  catch (error) { if (isNotLive(error)) return null; throw error; }
+}
+
+export async function saveStyleSamples(api: Api, tenantId: string, texts: string[]): Promise<StyleState> {
+  return await api(`${base(tenantId)}/style/samples`, { texts }) as StyleState;
+}
+
+export async function dismissStyleOnboarding(api: Api, tenantId: string): Promise<StyleState> {
+  return await api(`${base(tenantId)}/style/dismiss`, {}) as StyleState;
+}
+
 export async function fetchRoi(api: Api, tenantId: string): Promise<ProactiveRoi | null> {
   try { return await api(`${base(tenantId)}/roi`) as ProactiveRoi; }
   catch (error) { if (isNotLive(error)) return null; throw error; }

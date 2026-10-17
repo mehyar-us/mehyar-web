@@ -11,7 +11,8 @@
  */
 import {
   fetchBriefing, fetchSuggestions, sendSuggestion, editSuggestion, dismissSuggestion, fetchRoi, setRoiConfig,
-  type Briefing, type SuggestionCard, type ProactiveRoi,
+  fetchStyleState, saveStyleSamples, dismissStyleOnboarding,
+  type Briefing, type SuggestionCard, type ProactiveRoi, type StyleState,
 } from './proactive-stub';
 import { loadProactivePanels } from './proactive-panels-loader';
 import type { DerivedState, PanelActions, SectionResult, SharedCards } from './proactive-panels';
@@ -73,6 +74,7 @@ export function createProactive(hooks: ProactiveHooks) {
     chatTopCard: null,
     cardsById: {},
     tz: hooks.timeZone(),
+    style: null,
   });
   let derived: DerivedState = blankDerived();
 
@@ -88,6 +90,8 @@ export function createProactive(hooks: ProactiveHooks) {
     chatHome.hidden = derived.chatBriefing == null;
     loadProactivePanels(hosts, { derived, shared: sharedSnapshot(), actions });
   }
+
+  let styleState: StyleState | null = null;
 
   function derive(
     briefingResult: SectionResult<Briefing>,
@@ -123,6 +127,7 @@ export function createProactive(hooks: ProactiveHooks) {
       chatTopCard: filtered[0] ?? null,
       cardsById,
       tz: hooks.timeZone(),
+      style: styleState,
     };
   }
 
@@ -152,6 +157,16 @@ export function createProactive(hooks: ProactiveHooks) {
     },
     dismissUndo: (id) => {
       cardStates.delete(id);
+    },
+    saveStyle: async (texts) => {
+      styleState = await saveStyleSamples(hooks.api, hooks.tenant(), texts);
+      pushAll();
+      hooks.onNotice('Your voice is saved — The Mayor will write like you.');
+    },
+    dismissStyle: () => {
+      if (styleState) styleState = { ...styleState, dismissed: true };
+      pushAll();
+      void dismissStyleOnboarding(hooks.api, hooks.tenant()).then((state) => { styleState = state; pushAll(); }).catch(() => undefined);
     },
     saveTicket: async (cents) => {
       await setRoiConfig(hooks.api, hooks.tenant(), cents);
@@ -191,6 +206,8 @@ export function createProactive(hooks: ProactiveHooks) {
       settled(fetchSuggestions(hooks.api, tenantId)),
       settled(fetchRoi(hooks.api, tenantId)),
     ]);
+    // Twin state rides its own quiet fetch — a failure just hides the panel.
+    styleState = await fetchStyleState(hooks.api, tenantId).catch(() => styleState);
     if (current !== version) return;
     const suggestions = suggestionsResult.kind === 'data' ? suggestionsResult.value : null;
     latestCards.clear();

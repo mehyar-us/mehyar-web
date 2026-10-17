@@ -4,7 +4,7 @@ import type {Env} from '../../src/env';
 import {confirmProfile} from '../../src/memory';
 import {runDetectors} from '../../src/proactive-detectors';
 import {createSuggestionCard,editSuggestionCard} from '../../src/proactive';
-import {readStyleProfile} from '../../src/style-profile';
+import {readStyleProfile,getStyleState,saveOnboardingSamples,dismissStyleOnboarding} from '../../src/style-profile';
 
 const env=testEnv as unknown as Env;
 const TZ='America/New_York';
@@ -61,6 +61,29 @@ describe('twin corpus + profile (slice 2a)',()=>{
   await editSuggestionCard(env,actor,card.id,'Hey! Same words here.');
   await editSuggestionCard(env,actor,card.id,'Hey! Same words here.');
   expect(await sampleCount(actor.tenantId)).toBe(1);
+ });
+
+ it('onboarding capture (2b): samples land, the greeting is adopted, dismissal persists',async()=>{
+  const actor=await fixture();
+  expect(await getStyleState(env,actor)).toEqual({totalSamples:0,onboardingSamples:0,dismissed:false,greetingAdopted:false});
+  const saved=await saveOnboardingSamples(env,actor,[
+   'Hey! Sorry we missed your call — want me to book you in?',
+   'Hey there! Just a reminder about tomorrow.',
+   'Hey! Thanks so much for coming in.',
+  ]);
+  expect(saved.onboardingSamples).toBe(3);
+  expect(saved.totalSamples).toBe(3);
+  expect(saved.greetingAdopted).toBe(true);
+  const dismissed=await dismissStyleOnboarding(env,actor);
+  expect(dismissed.dismissed).toBe(true);
+  expect((await getStyleState(env,actor)).dismissed).toBe(true);
+ });
+
+ it('onboarding endpoints reject non-members',async()=>{
+  const actor=await fixture();
+  const stranger={tenantId:actor.tenantId,userId:crypto.randomUUID()};
+  await expect(getStyleState(env,stranger)).rejects.toThrow();
+  await expect(saveOnboardingSamples(env,stranger,['Hey! A perfectly fine sample.'])).rejects.toThrow();
  });
 
  it("isolation: another tenant's corpus never leaks into this tenant's drafts",async()=>{

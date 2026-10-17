@@ -36,6 +36,7 @@ export interface DerivedState {
   chatTopCard: SuggestionCard | null;
   cardsById: Record<string, SuggestionCard>;
   tz: string;
+  style: import('./proactive-stub').StyleState | null;
 }
 
 export interface SharedCards {
@@ -49,6 +50,8 @@ export interface PanelActions {
   dismissCommit: (card: SuggestionCard) => void;
   dismissUndo: (id: string) => void;
   saveTicket: (cents: number) => Promise<void>;
+  saveStyle: (texts: string[]) => Promise<void>;
+  dismissStyle: () => void;
   navigateToday: () => void;
   highlightSuggestion: (id: string) => void;
   paint: () => void;
@@ -599,6 +602,67 @@ function RevenueTile({ data, actions }: { data: ProactiveRoi; actions: PanelActi
   );
 }
 
+/* ------------------------- twin: say it your way ------------------------- */
+
+/**
+ * Slice 2b (2026-10-17): one optional onboarding step — the owner
+ * writes a few customer messages in their own words, and The Mayor
+ * learns their voice from them. Skippable in one tap; hidden once
+ * onboarding samples exist or after dismissal. Inputs are
+ * uncontrolled (read on save), matching the panels' discipline.
+ */
+export function StyleCaptureSection({ derived, actions }: PanelProps) {
+  const ref0 = useRef<HTMLTextAreaElement>(null);
+  const ref1 = useRef<HTMLTextAreaElement>(null);
+  const ref2 = useRef<HTMLTextAreaElement>(null);
+  const refs = [ref0, ref1, ref2];
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const style = derived.style;
+  if (!style || style.dismissed || style.onboardingSamples > 0) return null;
+  const prompts = [
+    { label: 'A customer called and you missed it. Text them back — your way:', placeholder: 'Hi, this is…' },
+    { label: 'Remind a customer about tomorrow’s appointment:', placeholder: 'Just a reminder…' },
+    { label: 'Thank a happy customer:', placeholder: 'Thanks for…' },
+  ];
+  const save = async () => {
+    const texts = refs.map((ref) => ref.current?.value.trim() ?? '').filter((text) => text.length >= 2);
+    if (!texts.length || saving) return;
+    setSaving(true);
+    try { await actions.saveStyle(texts); setSaved(true); }
+    finally { setSaving(false); }
+  };
+  if (saved) {
+    return (
+      <section className="style-capture" aria-label="Your voice">
+        <p className="style-capture-done">Got it — The Mayor will write in your voice. You can keep teaching it by editing any suggestion card.</p>
+      </section>
+    );
+  }
+  return (
+    <section className="style-capture" aria-label="Say it your way">
+      <SectionHeading title="Say it your way" icon="mic" />
+      <p className="style-capture-intro">
+        The Mayor writes to your customers like you do. Give it a few of your own words — any of these, or all three.
+      </p>
+      {prompts.map((prompt, index) => (
+        <label key={prompt.label} className="style-capture-field">
+          <span>{prompt.label}</span>
+          <textarea ref={refs[index]} rows={2} maxLength={2000} placeholder={prompt.placeholder} />
+        </label>
+      ))}
+      <div className="style-capture-actions">
+        <button type="button" className="style-capture-save" onClick={() => void save()} disabled={saving}>
+          {saving ? 'Saving…' : 'Teach The Mayor my voice'}
+        </button>
+        <button type="button" className="style-capture-skip" onClick={() => actions.dismissStyle()}>
+          Skip for now
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function RoiSection({ derived, shared, actions }: PanelProps) {
   usePaint(actions);
   const result = derived.roi;
@@ -706,6 +770,7 @@ export function mountProactivePanels(hosts: ProactiveHosts, props: PanelProps): 
     hosts.stack,
     <>
       <BriefingSection {...props} />
+      <StyleCaptureSection {...props} />
       <SuggestionsSection {...props} />
     </>,
   );
