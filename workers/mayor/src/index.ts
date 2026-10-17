@@ -53,7 +53,7 @@ import {finishTelnyxConsent} from './auth/telnyx-callback';
 import {telnyxOAuthConfig} from './auth/telnyx-vault';
 import {handleOperationsRequest} from './operations';
 import {handleBillingPublic,handleBillingRequest} from './billing';
-import {handleLeadsPublic} from './leads';
+import {handleLeadsPublic,deliverPendingLeadEmails} from './leads';
 import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
@@ -678,5 +678,6 @@ export default {async fetch(request:Request,env:Env,context?:ExecutionContext) {
     if(result.ok)console.log(JSON.stringify(event));else console.error(JSON.stringify(event));
   }));
   context.waitUntil(runAppointmentRecovery(env).then(summary=>{console.log(JSON.stringify({event:'appointment_recovery',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'appointment_recovery_failed'}));throw new Error('Appointment recovery failed.');}));
+  context.waitUntil(deliverPendingLeadEmails(env).catch(()=>undefined));
   context.waitUntil(runProactiveCycle(env).then(summary=>{console.log(JSON.stringify({event:'proactive_cycle',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'proactive_cycle_failed'}));}));
 }} satisfies ExportedHandler<Env>;
