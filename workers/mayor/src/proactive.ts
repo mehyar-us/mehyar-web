@@ -6,6 +6,7 @@ import {verticalProfile,isProfessionalTone,professionalFillGapTemplate,professio
 import {esTemplates,esFillGapCard,esWinbackCard,esLeadReplyCard,esNoShowCard,esFillGapDraft,esWinbackDraft,esLeadReplyDraft,esAgoText,esBriefingCopy,esFormatWhen,renderReminder} from './i18n';
 import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
+import {readHarnessRuntime} from './harness-runtime';
 import {
  inQuietHours,localDayKey,localParts,localDayBoundsUtc,monthBoundsUtc,shiftLocalDate,dayGaps,
  lapsedCustomers,loadProactiveContext,runDetectors,agoText,buildFollowupCardCopy,LAPSED_DAYS,
@@ -197,6 +198,32 @@ export async function createSuggestionCard(env:Env,ctx:ProactiveContext,detectio
  return {id,...copy};
 }
 
+/** Harness slice 1: the per-detection materialization both runtimes
+ * share — create the card, respect the surface gate (quiet hours +
+ * the 3/day nudge cap), surface it. The cron cycle and the
+ * MayorBusiness agent's ranked drain call this one path, so a
+ * detection behaves identically in either runtime. */
+export async function materializeDetection(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<'surfaced'|'carded'|'skipped'>{
+ const card=await createSuggestionCard(env,ctx,detection);
+ if(!card)return 'skipped';
+ if(!(await surfaceGate(env,ctx)).ok)return 'carded';
+ await surfaceDetection(env,ctx,detection,card);
+ return 'surfaced';
+}
+
+/** The 08:05 briefing, shared by both runtimes (same dedupe + gate). */
+export async function maybeSendBriefing(env:Env,ctx:ProactiveContext):Promise<boolean>{
+ const parts=localParts(ctx.nowMs,ctx.timeZone);
+ if(!(parts.hour===8&&parts.minute>=5&&parts.minute<10))return false;
+ const dayKey=parts.date;
+ const already=await env.AGENT_DB.prepare('SELECT 1 FROM mayor_notifications WHERE tenant_id=? AND dedupe_key=? LIMIT 1')
+  .bind(ctx.tenantId,`proactive_briefing:${dayKey}`).first();
+ if(already||!(await surfaceGate(env,ctx)).ok)return false;
+ await notifyOwners(env,ctx.tenantId,'proactive_briefing',`proactive_briefing:${dayKey}`);
+ await logNudge(env,ctx.tenantId,'briefing',dayKey);
+ return true;
+}
+
 /* ---------------- scheduler ---------------- */
 
 async function surfaceDetection(env:Env,ctx:ProactiveContext,detection:DetectionRow,card:{id:string;title:string;body:string}){
@@ -212,28 +239,18 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
  let detections=0,cards=0,surfaced=0,briefings=0;
  for(const t of tenants.results){
   try{
+   // Harness slice 1: a tenant flagged 'do' runs in its
+   // MayorBusiness agent instead — exactly one runtime per tenant.
+   if(await readHarnessRuntime(env,t.id)==='do')continue;
    const {context,created}=await runDetectors(env,t.id,nowMs);
    detections+=created.length;
    for(const d of created){
-    const card=await createSuggestionCard(env,context,d);
-    if(!card)continue;
-    cards++;
-    if(!(await surfaceGate(env,context)).ok)continue;
-    await surfaceDetection(env,context,d,card);
-    surfaced++;
+    const outcome=await materializeDetection(env,context,d);
+    if(outcome!=='skipped')cards++;
+    if(outcome==='surfaced')surfaced++;
    }
    // Morning briefing: once per local day, in the 08:05–08:10 window, nudge-capped.
-   const parts=localParts(nowMs,context.timeZone);
-   if(parts.hour===8&&parts.minute>=5&&parts.minute<10){
-    const dayKey=parts.date;
-    const already=await env.AGENT_DB.prepare('SELECT 1 FROM mayor_notifications WHERE tenant_id=? AND dedupe_key=? LIMIT 1')
-     .bind(t.id,`proactive_briefing:${dayKey}`).first();
-    if(!already&&(await surfaceGate(env,context)).ok){
-     await notifyOwners(env,t.id,'proactive_briefing',`proactive_briefing:${dayKey}`);
-     await logNudge(env,t.id,'briefing',dayKey);
-     briefings++;
-    }
-   }
+   if(await maybeSendBriefing(env,context))briefings++;
   }catch(error){
    console.warn(JSON.stringify({event:'proactive_cycle_tenant_failed',tenant:t.id}));
   }

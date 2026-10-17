@@ -6,6 +6,7 @@ import {auditOffer} from './billing/audit';
 import {foundingSeats} from './billing/founding';
 import {handleConnectionsRequest} from './connections';
 import {handleConnectorEngineRequest,getConnectorSession} from './connector-engine';
+import {readHarnessRuntime} from './harness-runtime';
 import {sessionCardFor,ensureSessionCard} from './connector-session-card';
 import {toString as qrSvg} from 'qrcode';
 import {runMvpMaintenance} from './mvp-maintenance';
@@ -16,7 +17,7 @@ import { routeAgentRequest } from 'agents';
 import { z } from 'zod';
 import { getSession, handleAuthRequest } from './auth';
 import { HttpError,json,readJson,requireOrigin,digest } from './http';
-import { requireMembership,CHAT_ROLES } from './permissions';
+import { requireMembership,CHAT_ROLES,OPERATORS } from './permissions';
 import { readMemory,confirmProfile,type Profile,type ProfilePatch } from './memory';
 import {verticalSchema,type Vertical} from './verticals';
 import {languageSchema} from './i18n';
@@ -61,6 +62,7 @@ import {generateTrendpostPlan,getTrendpostPlan,decideTrendpostPost,editTrendpost
 import {handleInstagramWebhook} from './instagram-dm';
 import {voiceReadinessResponse} from './voice-readiness';
 export {MayorPhone} from './phone-voice';
+export {MayorBusiness} from './business-agent';
 export { MayorVoice } from './voice';
 
 async function rateLimit(env:Env,subject:string,max:number) {
@@ -239,6 +241,17 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       const event=await ensureSessionCard(env,actor,input.service);
       if(!event)throw new HttpError(422,'connector_unavailable','That connection could not be started. Please try again.');
       return json(event);
+    }
+    const harnessArmRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/harness\/arm$/);
+    if(harnessArmRoute&&request.method==='POST'&&harnessArmRoute[1]===actor.tenantId){
+      // Harness slice 1 arming (the soak path): only for a tenant whose
+      // runtime flag already reads 'do' — flipping the flag is the
+      // operator's first step; this starts the agent's cadence.
+      await requireMembership(env,actor,OPERATORS);
+      if(await readHarnessRuntime(env,actor.tenantId)!=='do')throw new HttpError(409,'harness_runtime_off','This business is not on the agent runtime yet.');
+      const stub=env.MAYOR_BUSINESS.get(env.MAYOR_BUSINESS.idFromName(actor.tenantId));
+      const armed=await stub.arm(actor.tenantId);
+      return json({armed:armed.armed,runtime:'do'});
     }
     const sessionQrRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/qr\.svg$/);
     if(sessionQrRoute&&request.method==='GET'&&sessionQrRoute[1]===actor.tenantId){
