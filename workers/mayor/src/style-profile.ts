@@ -1,4 +1,6 @@
-import type {Env} from './env';
+import {z} from 'zod';
+import type {Actor,Env} from './env';
+import {OPERATORS,requireMembership} from './permissions';
 
 /* Harness slice 2a — the TWIN (2026-10-17): per-tenant owner-language
  * learning, per the Mayor's reinvention amendments.
@@ -168,4 +170,52 @@ export function styleSourceDetail(profile:StyleProfile):string{
  ].filter(Boolean).join(' ');
  const exemplars=profile.exemplars.length?` In their own words: ${profile.exemplars.map(e=>`"${e}"`).join(' · ')}`:'';
  return (facts+exemplars).slice(0,1200);
+}
+
+/* ---------------- Slice 2b: onboarding capture service ---------------- */
+
+export interface StyleState{
+ totalSamples:number;
+ onboardingSamples:number;
+ dismissed:boolean;
+ greetingAdopted:boolean;
+}
+
+export const onboardingSamplesSchema=z.object({
+ texts:z.array(z.string().trim().min(2).max(2000)).min(1).max(3),
+}).strict();
+
+export async function getStyleState(env:Env,actor:Actor):Promise<StyleState>{
+ await requireMembership(env,actor,OPERATORS);
+ const counts=await env.AGENT_DB.prepare(`SELECT
+  COUNT(*) AS total,
+  COALESCE(SUM(source='onboarding'),0) AS onboarding
+  FROM mayor_style_samples WHERE tenant_id=?`).bind(actor.tenantId).first<{total:number;onboarding:number}>();
+ const dismissedRow=await env.AGENT_DB.prepare("SELECT value_json FROM mayor_memory WHERE tenant_id=? AND field='style_onboarding'")
+  .bind(actor.tenantId).first<{value_json:string}>();
+ let dismissed=false;
+ try{dismissed=(JSON.parse(dismissedRow?.value_json??'{}') as {dismissed?:boolean}).dismissed===true;}catch{/* unreadable = not dismissed */}
+ const profile=await readStyleProfile(env,actor.tenantId);
+ return {
+  totalSamples:counts?.total??0,
+  onboardingSamples:counts?.onboarding??0,
+  dismissed,
+  greetingAdopted:Boolean(profile&&profile.samples>=3&&profile.greeting&&profile.greetingShare>=0.5),
+ };
+}
+
+export async function saveOnboardingSamples(env:Env,actor:Actor,texts:string[]):Promise<StyleState>{
+ await requireMembership(env,actor,OPERATORS);
+ for(const text of texts)await captureStyleSample(env,actor.tenantId,'onboarding',text);
+ return getStyleState(env,actor);
+}
+
+export async function dismissStyleOnboarding(env:Env,actor:Actor):Promise<StyleState>{
+ await requireMembership(env,actor,OPERATORS);
+ const now=new Date().toISOString();
+ await env.AGENT_DB.prepare(`INSERT INTO mayor_memory(tenant_id,field,value_json,source_kind,confirmed_by,confirmed_at,revision,updated_at)
+  VALUES(?,'style_onboarding',?,'owner_confirmed',?,?,1,?)
+  ON CONFLICT(tenant_id,field) DO UPDATE SET value_json=excluded.value_json,revision=mayor_memory.revision+1,updated_at=excluded.updated_at`)
+  .bind(actor.tenantId,JSON.stringify({dismissed:true}),actor.userId,now,now).run();
+ return getStyleState(env,actor);
 }

@@ -58,6 +58,7 @@ import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
 import {handleBusinessHarnessRequest,runBusinessHarnesses,harnessNotifications,markHarnessReportRead} from './business-harness';
 import {runProactiveCycle,buildBriefing,buildRoi,setRoiConfig,roiConfigSchema,recordNoShow,noShowSchema,listSuggestionCards,sendSuggestionCard,editSuggestionCard,dismissSuggestionCard,setProactiveSettings,proactiveSettingsSchema} from './proactive';
+import {getStyleState,saveOnboardingSamples,dismissStyleOnboarding,onboardingSamplesSchema} from './style-profile';
 import {generateTrendpostPlan,getTrendpostPlan,decideTrendpostPost,editTrendpostPost,editTrendpostPostSchema,trendpostAccessView} from './trendpost';
 import {handleInstagramWebhook} from './instagram-dm';
 import {voiceReadinessResponse} from './voice-readiness';
@@ -439,6 +440,14 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
    if(cardId&&action==='send'&&request.method==='POST')return json(await sendSuggestionCard(env,actor,cardId));
    if(cardId&&action==='edit'&&request.method==='POST')return json(await editSuggestionCard(env,actor,cardId,z.object({message:z.string().trim().min(1).max(320)}).strict().parse(await readJson(request,2048)).message));
    if(cardId&&action==='dismiss'&&request.method==='POST')return json(await dismissSuggestionCard(env,actor,cardId));
+  }
+  // Twin (slice 2b): the owner's "Say it your way" onboarding capture.
+  const style=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/style(?:\/(samples|dismiss))?$/);
+  if(style){
+   const actor={tenantId:style[1],userId:session.user.id},action=style[2];
+   if(!action&&request.method==='GET')return json(await getStyleState(env,actor));
+   if(action==='samples'&&request.method==='POST')return json(await saveOnboardingSamples(env,actor,onboardingSamplesSchema.parse(await readJson(request,8192)).texts));
+   if(action==='dismiss'&&request.method==='POST')return json(await dismissStyleOnboarding(env,actor));
   }
   const proactiveSettings=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/proactive\/settings$/);
   if(proactiveSettings&&request.method==='POST')return json(await setProactiveSettings(env,{tenantId:proactiveSettings[1],userId:session.user.id},proactiveSettingsSchema.parse(await readJson(request,512))));
