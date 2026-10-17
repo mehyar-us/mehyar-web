@@ -22,6 +22,17 @@ const DETECTOR_CARD:Record<DetectorName,CardKind>={
  slow_day:'fill_gap',lapsed_regular:'winback',missed_call_followup:'followup',
  unanswered_lead:'lead_reply',no_show_risk:'reminder_nudge',
 };
+/** WS1 build 2 (2026-10-16): visual confidence, presentation law —
+ * owners see a 3-level mark, never a number. Interim mapping from
+ * detector evidence, server-side only, until the harness rebuild's
+ * decide() ranker supplies the level: a specific recorded event
+ * (one missed call, one waiting lead) is strongest; a pattern over
+ * real history (a booking at risk, a lapsed regular) is next; a
+ * pace inference (slow day) is the softest signal. */
+export const DETECTOR_CONFIDENCE:Record<DetectorName,1|2|3>={
+ missed_call_followup:3,unanswered_lead:3,no_show_risk:2,lapsed_regular:2,slow_day:1,
+};
+export function confidenceFor(detector:DetectorName):1|2|3{return DETECTOR_CONFIDENCE[detector]??1;}
 const MAX_NUDGES_PER_DAY=3;
 const STOP='Reply STOP to opt out.';
 
@@ -234,7 +245,7 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
 
 function publicCard(row:CardRow&{detector:DetectorName}){
  const draft=JSON.parse(row.draft_json) as Draft;
- return {id:row.id,kind:row.kind,detector:row.detector,title:row.title,body:row.body,
+ return {id:row.id,kind:row.kind,detector:row.detector,confidence:confidenceFor(row.detector),title:row.title,body:row.body,
   draft:{message:draft.message,audience:draft.audience,audienceCount:draft.audienceCount},
   state:row.state,createdAt:row.created_at};
 }

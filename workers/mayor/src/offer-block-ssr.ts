@@ -42,18 +42,24 @@ function validPlan(p:unknown):p is SsrPlan{
  * under the plan summary on the signed-out home — only while the audit
  * offer is available (the same gate the checkout enforces). */
 export function homeAuditBandSsrHtml():string{
-  return `<aside class="home-audit-band"><p><strong>${escapeHtml(AUDIT_OFFER.name)}</strong> — ${escapeHtml(formatPrice(AUDIT_OFFER.priceCents))} one-time. A reviewed report on how people find your business, become customers, and come back — plus a practical plan for a better workday.</p><a href="/business-audit">See the business audit</a></aside>`;
+  // WS1 build 2 (2026-10-16): promoted from a footnote line to a card
+ // at the plan rows' weight (rot298 input 1) — same name, price,
+ // sentence, and link; the price still comes only from AUDIT_OFFER.
+ return `<aside class="home-audit-band"><div class="home-audit-head"><strong>${escapeHtml(AUDIT_OFFER.name)}</strong><span class="home-audit-price">${escapeHtml(formatPrice(AUDIT_OFFER.priceCents))} one-time</span></div><p>A reviewed report on how people find your business, become customers, and come back — plus a practical plan for a better workday.</p><a class="home-audit-cta" href="/business-audit">See the business audit</a></aside>`;
 }
 
-export function offerBlockSsrHtml(auditAvailable=false):string|null{
+export function offerBlockSsrHtml(auditAvailable=false,founding?:FoundingSsrBlock|null):string|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
   if(!validPlan(free)||!validPlan(pro))return null;
-  const row=(p:SsrPlan,blurb:string)=>
+  const row=(p:SsrPlan,blurb:string,extra='')=>
     `<div class="offer-plan"><div class="offer-plan-head"><strong>${escapeHtml(p.name)}</strong>`+
     `<span class="offer-price">${escapeHtml(formatPrice(p.priceCents))}${p.priceCents>0?'<span class="offer-per"> / month</span>':''}</span></div>`+
     `<p>${p.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyLimit)} real conversations a month) · ${p.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p class="offer-blurb">${blurb}</p></div>`;
-  return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.')}</div>`+
+    `<p class="offer-blurb">${blurb}</p>${extra}</div>`;
+  // WS1 build 2 (rot298 input 2): the founding line joins the home
+ // offer block under the Pro row — the SAME helper and the SAME
+ // fail-quiet seam as /sales and /pricing (no state, no line).
+ return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.',foundingLineSsrHtml(founding))}</div>`+
     `<p class="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>`+
     `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`+
     `<p class="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates \u2014 separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>`+
@@ -282,7 +288,7 @@ export function auditCardSsrHtml():string{
  * missing, already server-rendered, structurally unexpected, or the catalog
  * can't be trusted — the price-free client fallback then stays in place.
  */
-export function injectOfferBlock(html:string,auditAvailable=false):string{
+export function injectOfferBlock(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null):string{
   const openAt=html.indexOf(OFFER_OPEN);
   if(openAt<0)return html;
   const tagEnd=html.indexOf('>',openAt);
@@ -292,7 +298,7 @@ export function injectOfferBlock(html:string,auditAvailable=false):string{
   const closeAt=html.indexOf('</div>',tagEnd);
   if(closeAt<0)return html;
   if(html.slice(tagEnd+1,closeAt).includes('<div'))return html; // unexpected nesting — don't guess
-  const rendered=offerBlockSsrHtml(auditAvailable);
+  const rendered=offerBlockSsrHtml(auditAvailable,founding);
   if(!rendered)return html;
   const tagged=openingTag.replace(OFFER_OPEN,`${OFFER_OPEN} data-ssr="catalog"`);
   return html.slice(0,openAt)+tagged+rendered+html.slice(closeAt);

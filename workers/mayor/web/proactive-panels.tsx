@@ -103,6 +103,25 @@ function usePaint(actions: PanelActions) {
 
 type CardMode = 'view' | 'edit' | 'undo' | 'gone';
 
+const CONFIDENCE_PHRASE: Record<number, string> = { 3: "I'm sure", 2: 'Looks likely', 1: 'Worth a look' };
+
+/** WS1 build 2: visual confidence — three ink segments + the fixed
+ * phrase. No numbers are ever rendered (presentation law); the
+ * screen reader gets the phrase. */
+export function ConfidenceMark({ level }: { level: 1 | 2 | 3 }) {
+  const phrase = CONFIDENCE_PHRASE[level] ?? CONFIDENCE_PHRASE[1];
+  return (
+    <p className="confidence-mark" role="img" aria-label={phrase}>
+      <span className="confidence-bars" aria-hidden="true">
+        {[1, 2, 3].map((i) => (
+          <span key={i} className={i <= level ? 'confidence-bar filled' : 'confidence-bar'} />
+        ))}
+      </span>
+      <span className="confidence-phrase">{phrase}</span>
+    </p>
+  );
+}
+
 function SuggestionCardView({
   card,
   inChat,
@@ -192,6 +211,7 @@ function SuggestionCardView({
       <div className="row-copy">
         <h3>{card.title}</h3>
         <p>{card.body}</p>
+        {card.confidence ? <ConfidenceMark level={card.confidence} /> : null}
         {mode === 'edit' ? (
           <textarea
             ref={areaRef}
