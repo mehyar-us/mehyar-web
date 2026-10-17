@@ -38,8 +38,8 @@ export default function AuditSampleReport() {
             Your report is built from your site's real measurements — every finding cites
             its evidence, exactly like the sample.
           </p>
-          <a href="/audit#step-3" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-2 min-h-12")}>
-            Start your audit — $330 <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+          <a href="/audit#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-2 min-h-12")}>
+            Start Step 1 — it's free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
           </a>
         </div>
       </div>
