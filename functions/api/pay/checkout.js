@@ -17,6 +17,7 @@
 // /api/audit/full-report/checkout behavior.
 
 import { sha256hex } from "../_shared/auditBusinessShared.js";
+import { fullReportCreditCents } from "./_shared/credit.js";
 
 // Attribution threading (tracking-crm-fix, 2026-10-05). Product pages
 // forward MSRC.get() as params.attribution; we store it on
@@ -225,25 +226,13 @@ const orderHooks = {
     if (row.status !== "intake" && row.status !== "failed") {
       return { error: "audit_not_payable" };
     }
-    // $5 Full Report credit (rot294 ladder, 2026-10-16): a buyer who already
-    // PAID for the $5 Full Report (product audit-full-report) with this same
-    // email gets its $5 credited toward the $330 — once per buyer (a prior
-    // PAID $330 row carrying the credit marker blocks a second dip). The
-    // main flow converts creditCents into a visible Stripe discount, so the
+    // $5 Full Report credit (rot294 ladder, 2026-10-16): the eligibility
+    // rule lives in _shared/credit.js (single source — the Step-3 pay
+    // point's credit-status display reads the same function). The main
+    // flow converts creditCents into a visible Stripe discount, so the
     // buyer sees the credit on the checkout page before paying. A lookup
     // failure never blocks checkout — it just skips the credit.
-    let creditCents = 0;
-    try {
-      const five = await db.prepare(
-        "SELECT id FROM billing_payments WHERE product_id = 'audit-full-report' AND email = ? AND status = 'paid' LIMIT 1"
-      ).bind(email).first();
-      if (five) {
-        const used = await db.prepare(
-          "SELECT id FROM billing_payments WHERE product_id = 'audit-my-business' AND email = ? AND status = 'paid' AND json_extract(metadata_json, '$.credit_applied') IS NOT NULL LIMIT 1"
-        ).bind(email).first();
-        if (!used) creditCents = 500;
-      }
-    } catch (e) { /* credit is best-effort; checkout proceeds without it */ }
+    const creditCents = await fullReportCreditCents(db, email);
     if (creditCents > 0) params.credit_applied = creditCents;
     const accessToken = randomHex(32);
     await db.prepare(

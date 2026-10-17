@@ -386,6 +386,35 @@ export default function Audit() {
     return () => { cancelled = true; };
   }, []);
 
+  /* $5 Full Report credit at the pay point: ask the server whether THIS
+     buyer (Step 3 email == Step 1 email — the only population the credit
+     can apply to) is eligible under the exact rule checkout enforces, and
+     show the arithmetic only when they are. Figures come from the server
+     (billing_products + credit), never computed here. Any failure leaves
+     the standard pay display untouched. */
+  const [creditInfo, setCreditInfo] = useState<{ eligible: boolean; credit_cents: number; list_cents: number; due_cents: number } | null>(null);
+  useEffect(() => {
+    const pay = payEmail.trim().toLowerCase();
+    const step1 = email.trim().toLowerCase();
+    if (!intake || !pay || pay !== step1 || !EMAIL_RE.test(pay)) {
+      setCreditInfo(null);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      fetch("/api/pay/credit-status", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: pay }),
+      })
+        .then((r) => r.json())
+        .then((d) => { if (!cancelled && d && d.ok) setCreditInfo(d); })
+        .catch(() => { /* display is informational; stay standard */ });
+    }, 350);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intake, payEmail, email]);
+
   /* Blocked-checkout notify-me: the buyer already gave us their email in this
      step; clicking the button IS the explicit consent to one notification email
      when checkout reopens (compliance item 6). POSTs to /api/audit/pay-blocked. */
@@ -1268,6 +1297,27 @@ export default function Audit() {
                   <a href="mailto:info@mehyar.us" className="font-semibold underline underline-offset-2">Email info@mehyar.us</a>{" "}
                   and we'll sort it out personally.
                 </p>
+              )}
+              {creditInfo?.eligible && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
+                  <div className="space-y-1 text-sm">
+                    <p className="flex items-baseline justify-between gap-3">
+                      <span className="text-muted-foreground">Audit My Business</span>
+                      <span className="font-semibold text-foreground">${(creditInfo.list_cents / 100).toFixed(2).replace(/\.00$/, "")}</span>
+                    </p>
+                    <p className="flex items-baseline justify-between gap-3">
+                      <span className="text-muted-foreground">Your Full Report credit</span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">−${(creditInfo.credit_cents / 100).toFixed(2).replace(/\.00$/, "")}</span>
+                    </p>
+                    <p className="flex items-baseline justify-between gap-3 border-t border-emerald-200 pt-1.5 dark:border-emerald-900">
+                      <span className="font-semibold text-foreground">Due at checkout</span>
+                      <span className="font-bold text-foreground">${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")}</span>
+                    </p>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    Your $5 Full Report purchase with this email is credited toward your audit — the discount shows on the checkout page before you pay.
+                  </p>
+                </div>
               )}
               <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying || checkoutOpen === false}>
                 {checkoutOpen === false ? (<>Checkout is briefly unavailable</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
