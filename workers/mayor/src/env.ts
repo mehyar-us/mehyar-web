@@ -1,6 +1,7 @@
 import type { AuthEnv } from './auth/capabilities';
 import type { MayorVoice } from './voice';
 import type {MayorPhone} from './phone-voice';
+import type {MayorBusiness} from './business-agent';
 export interface Env extends AuthEnv {
   AI: Ai;
   AI_GATEWAY_ACCOUNT_ID?: string;
@@ -8,6 +9,7 @@ export interface Env extends AuthEnv {
   AI_GATEWAY_TOKEN?: string;
   MAYOR_VOICE: DurableObjectNamespace<MayorVoice>;
   MAYOR_PHONE: DurableObjectNamespace<MayorPhone>;
+  MAYOR_BUSINESS: DurableObjectNamespace<MayorBusiness>;
   PHONE_TEST_ENABLED?:string;
   TELNYX_OAUTH_ENABLED?:string;
   TELNYX_CLIENT_ID?:string;
