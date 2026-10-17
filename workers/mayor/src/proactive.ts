@@ -273,7 +273,16 @@ export async function listSuggestionCards(env:Env,actor:Actor){
   ORDER BY CASE c.state WHEN 'pending' THEN 0 WHEN 'edited' THEN 1 WHEN 'sent' THEN 2 ELSE 3 END, c.created_at DESC LIMIT 50`)
   .bind(actor.tenantId).all<CardRow&{detector:DetectorName}>();
  await requireMembership(env,actor,OPERATORS);
- return {cards:rows.results.map(publicCard)};
+ // WS1 build 3 (2026-10-17): the list IS the ranked queue — inside
+ // each state group, strongest evidence first (the same server-side
+ // confidence the card renders), newest first inside a level. The
+ // SQL order remains the stable base; this sort only refines it.
+ const stateRank=(state:string)=>state==='pending'?0:state==='edited'?1:state==='sent'?2:3;
+ const cards=rows.results.map(publicCard);
+ cards.sort((a,b)=>stateRank(a.state)-stateRank(b.state)
+  ||(b.confidence??1)-(a.confidence??1)
+  ||(a.createdAt<b.createdAt?1:a.createdAt>b.createdAt?-1:0));
+ return {cards};
 }
 
 export const proactiveSettingsSchema=z.object({liveSms:z.boolean()}).strict();
