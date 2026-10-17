@@ -1009,9 +1009,10 @@ export default function Audit() {
               <strong className="text-foreground">Video terms:</strong> your walkthrough and its
               audio track upload to our secure Cloudflare storage with your audit. The audio
               is transcribed by Cloudflare AI, and the transcript is used only to write your
-              report's deep-dive section. Your video and transcript stay with your audit record
-              so we can re-send your report — never sold, never used for marketing, and never
-              used to train AI models.
+              report's deep-dive section. Your video and its audio are deleted 90 days after
+              your report is delivered; the transcript and your report stay with your audit
+              record so we can re-send your report — never sold, never used for marketing, and
+              never used to train AI models.
             </p>
 
             {!intake ? (
