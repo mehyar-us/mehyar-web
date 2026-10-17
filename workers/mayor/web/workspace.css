@@ -76,4 +76,8 @@ textarea:focus-visible{outline:3px solid #397cdd;outline-offset:3px}
 .offer-plan p{font-size:12px;margin:0 0 4px;overflow-wrap:anywhere}
 .offer-plan .offer-blurb{color:#5d7285;font-size:11px;margin:0}
 .offer-note{font-size:11px;color:#5d7285}
+.home-audit-band{margin-top:14px;padding-top:12px;border-top:1px solid #e2eaf3}
+.home-audit-band p{font-size:12px;color:#41586e;margin:0 0 6px}
+.home-audit-band p strong{color:#102b47}
+.home-audit-band a{font-size:12px;font-weight:600;color:#102b47}
 @media(max-width:520px){.offer-plans{grid-template-columns:1fr}}
