@@ -26,14 +26,16 @@
 - Portfolio: https://mehyar.us/portfolio
 - Blog: https://mehyar.us/blog
 - Apps directory: https://mehyar.us/apps
+- Audit My Business: https://mehyar.us/audit
 - Contact: https://mehyar.us/contact
 - Privacy: https://mehyar.us/privacy-policy
 - Terms: https://mehyar.us/terms
 
 ## Pricing (from the site's own FAQ)
 
-- Tech Audit: from $150
-- Website Diagnosis Report: $250
+- Free AI website scan: $0
+- Full Report: $5 one-time
+- Audit My Business: $330 one-time
 - Custom builds: $1,000–$25,000
 - Retainers: $500–$3,500/month
 - Hourly advisory: $150/hour
