@@ -53,3 +53,13 @@ describe('connector guides',()=>{
     expect(services).toContain('stripe');
   });
 });
+
+describe('door 3: the Google Business Profile guide does not promise reads that do not exist',()=>{
+ it('unlocks states plainly that Business Profile data is not read yet',()=>{
+  const guide=guideForService('google_business')!;
+  expect(guide.unlocks).toContain('Not readable yet');
+  expect(guide.unlocks).not.toContain('can see how your business shows up');
+  expect(guide.steps.join(' ')).not.toContain('becomes visible to The Mayor');
+  expect(guide.steps.join(' ')).toContain('not read yet');
+ });
+});

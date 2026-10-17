@@ -163,3 +163,18 @@ describe('door 1: the oauth card carries the capabilities verify will check',()=
   expect(card.actions[0]).toMatchObject({id:'connect_oauth',capabilities:[]});
  });
 });
+
+describe('door 4: an assisted connection does not wear the verified label',()=>{
+ it('assisted-connected renders as set up by confirmation, with no data-feed claim',()=>{
+  const card=sessionCard(view({state:'connected',method:{kind:'assisted',oneClick:false}}));
+  expect(card.title).toContain('is set up');
+  expect(card.body).toContain('your confirmation');
+  expect(card.body).toContain('cannot read data');
+  expect(card.body).not.toContain('Reads your');
+ });
+ it('a verified connection keeps the connected label and its unlocks',()=>{
+  const card=sessionCard(view({state:'connected'}));
+  expect(card.title).toContain('is connected');
+  expect(card.body).toContain('See your Square sales');
+ });
+});
