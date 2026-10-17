@@ -414,6 +414,37 @@ export async function setRoiConfig(env:Env,actor:Actor,input:z.infer<typeof roiC
  return {avgTicketCents:parsed.avgTicketCents};
 }
 
+export type RevenueSource='configured_avg_ticket'|'recorded_amounts'|'not_configured';
+export interface RevenueSignals{recoveredCents:number|null;source:RevenueSource;recoveries:number;windowDays:number}
+
+/** Real per-tenant revenue signals for the harness and routine contexts
+ * (rebuild prerequisite: revenue instrumentation). Reads the same
+ * recorded ledger buildRoi reports on — mayor_roi_events recoveries in
+ * a trailing 30-day window — with buildRoi's exact fallback semantics:
+ * a configured average ticket prices recoveries whose recorded amount
+ * is missing; with no ticket, only recorded amounts count; with
+ * neither, the value stays null (unknown), never an invented zero.
+ * Read-only: seeding stays with the flows that record the events. */
+export async function readRevenueSignals(env:Env,tenantId:string,nowMs=Date.now()):Promise<RevenueSignals>{
+ const windowDays=30,end=new Date(nowMs).toISOString(),start=new Date(nowMs-windowDays*86400000).toISOString();
+ const recoveries=await env.AGENT_DB.prepare(`SELECT amount_cents FROM mayor_roi_events
+  WHERE tenant_id=? AND kind='recovery' AND occurred_at>=? AND occurred_at<?`).bind(tenantId,start,end).all<{amount_cents:number|null}>();
+ const avgTicket=await readAvgTicket(env,tenantId);
+ if(avgTicket!=null){
+  return {recoveredCents:recoveries.results.reduce((s,r)=>s+(r.amount_cents??avgTicket),0),source:'configured_avg_ticket',recoveries:recoveries.results.length,windowDays};
+ }
+ const recorded=recoveries.results.map(r=>r.amount_cents).filter((v):v is number=>v!=null);
+ if(recorded.length)return {recoveredCents:recorded.reduce((s,v)=>s+v,0),source:'recorded_amounts',recoveries:recoveries.results.length,windowDays};
+ return {recoveredCents:null,source:'not_configured',recoveries:recoveries.results.length,windowDays};
+}
+
+/** The one revenue metric shape the harness and routine contexts share,
+ * so the label always names the source of the number. */
+export function revenueMetric(signals:RevenueSignals,unmeasuredLabel:string):{key:'revenue';label:string;value:number|null}{
+ if(signals.recoveredCents==null)return {key:'revenue',label:unmeasuredLabel,value:null};
+ return {key:'revenue',label:signals.source==='recorded_amounts'?`Recovered revenue · last ${signals.windowDays} days (recorded amounts)`:`Recovered revenue · last ${signals.windowDays} days (at your average ticket)`,value:signals.recoveredCents};
+}
+
 /** Record a no-show. Called by whichever flow marks one (phone confirmation,
  * owner action); the no_show_risk detector reads these. */
 export async function recordNoShow(env:Env,actor:Actor,input:z.infer<typeof noShowSchema>){
