@@ -148,7 +148,6 @@ export function verticalPage(vertical, profile) {
       <button type="button" class="mayor-consent-link" data-mayor-consent-reopen>Cookie settings</button>
       <a href="mailto:info@mehyar.us">info@mehyar.us</a>
     </nav>
-    <p class="footer-note">Purchases are final — no refunds.</p>
     <p class="footer-note">© 2026 MehyarSoft LLC. All rights reserved.</p>
   </footer>
 

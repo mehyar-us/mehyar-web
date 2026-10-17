@@ -61,7 +61,7 @@ export function offerBlockSsrHtml(auditAvailable=false,founding?:FoundingSsrBloc
  // offer block under the Pro row — the SAME helper and the SAME
  // fail-quiet seam as /sales and /pricing (no state, no line).
  return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.',foundingLineSsrHtml(founding))}</div>`+
-    `<p class="offer-note">Purchases are final — no refunds. Cancel Pro renewal in Manage billing.</p>`+
+    `<p class="offer-note">Cancel Pro renewal in Manage billing.</p>`+
     `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`+
     `<p class="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates \u2014 separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>`+
     (auditAvailable?homeAuditBandSsrHtml():'');
@@ -285,7 +285,9 @@ export function injectFaqPage(html:string):string{
 /* The extensive business audit — a named offer card rendered from       */
 /* AUDIT_OFFER (src/billing/audit), the same source the checkout        */
 /* verifies against Stripe. One-time price, deliverable scope, the      */
-/* queue-not-instant delivery truth, and the no-refunds line.           */
+/* queue-not-instant delivery truth. Final-sale language lives only  */
+/* in Terms/Privacy, post-purchase surfaces, and the /business-audit  */
+/* checkout itself (Mayor scope ruling, 2026-10-17).                   */
 /* ------------------------------------------------------------------ */
 export function auditCardSsrHtml():string{
   const scope=AUDIT_OFFER.scope.slice(0,-1).join(', ').toLowerCase();
@@ -294,7 +296,6 @@ export function auditCardSsrHtml():string{
     priceLine(AUDIT_OFFER.priceCents,' one-time')+
     `<p class="plan-tier">One business · one focused plan</p>`+
     `<p>A reviewed report covering ${escapeHtml(scope)} — plus ${escapeHtml(plan)}. Payment queues your audit: the report is generated after intake and put through a separate AI review, not delivered instantly.</p>`+
-    `<p>Purchases are final — no refunds.</p>`+
     `<a class="button button-small" href="/business-audit">Start your audit</a></article>`;
 }
 /**

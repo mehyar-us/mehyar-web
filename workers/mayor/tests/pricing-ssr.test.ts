@@ -134,7 +134,9 @@ it('audit offer card renders from AUDIT_OFFER and injects on /sales and /pricing
   // rot127: review wording matches the Terms phrase ("separate AI review").
   expect(card).toContain('separate AI review');
   expect(card).not.toContain('independently reviewed');
-  expect(card).toContain('Purchases are final — no refunds.');
+  // Scope ruling (2026-10-17): the cross-sell card carries no final-sale
+  // line; the line lives on the /business-audit checkout itself.
+  expect(card).not.toContain('Purchases are final');
   expect(card).toContain('href="/business-audit"');
   const sales=injectSalesPlans(readWeb('sales.html'));
   expect(sales).toContain(`$${AUDIT_OFFER.priceCents/100}`);
@@ -272,7 +274,7 @@ it('footers share one canonical brand set',()=>{
     const html=readWeb(f);
     expect(html,`${f} brand`).toContain('The Mayor');
     expect(html,`${f} company`).toMatch(/MEHYARSOFT LLC|MehyarSoft LLC/);
-    expect(html,`${f} no-refunds`).toContain('Purchases are final');
+    expect(html,`${f} no-refunds`).not.toContain('Purchases are final'); // scope ruling 2026-10-17
   }
   const index=readWeb('index.html');
   expect(index).toContain('The Mayor · MehyarSoft LLC');
