@@ -3,6 +3,7 @@
 // POST /api/social/webhook — message + comment events
 import { route, accountIgId, accountForIgId } from "./_shared/router.js";
 import { sendInstagramReply } from "./send.js";
+import { processWhatsAppBody } from "./_shared/whatsapp-inbound.js";
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -69,9 +70,24 @@ export async function processInbound(env, evt) {
 
 export async function onRequestPost({ request, env }) {
   const raw = await request.text();
-  const okSig = await verifySignature(env, raw, request.headers.get("x-hub-signature-256"));
+  const sig = request.headers.get("x-hub-signature-256");
+  const okSig = await verifySignature(env, raw, sig);
   if (!okSig) return new Response("bad signature", { status: 403 });
   const body = JSON.parse(raw || "{}");
+
+  // WhatsApp Business Platform events share this endpoint + subscription
+  // verification (GET above, same META_VERIFY_TOKEN). Signature: the same
+  // Meta app secret by default; env.WHATSAPP_APP_SECRET, when set, is the
+  // required secret for WhatsApp payloads (checked in addition).
+  if (body.object === "whatsapp_business_account") {
+    if (env.WHATSAPP_APP_SECRET) {
+      const waOk = await verifySignature({ ...env, META_APP_SECRET: env.WHATSAPP_APP_SECRET }, raw, sig);
+      if (!waOk) return new Response("bad signature", { status: 403 });
+    }
+    const results = await processWhatsAppBody(env, body);
+    return json({ ok: true, processed: results.length });
+  }
+
   const results = [];
   for (const entry of body.entry || []) {
     const account = accountForIgId(entry.id);
