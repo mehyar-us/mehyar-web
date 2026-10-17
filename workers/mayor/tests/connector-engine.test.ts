@@ -152,3 +152,45 @@ describe('tenant isolation and roles',()=>{
   await expect(startConnectorSession(env,{tenantId:TENANT,userId:STAFF},{service:'Square'})).rejects.toMatchObject({status:403});
  });
 });
+
+describe('door 2: the recipe verify check is what actually runs',()=>{
+ async function rootConnection(env:never){
+  const input:Record<string,unknown>={requestId:crypto.randomUUID(),label:'Square',type:'api',
+   endpoint:'https://connect.squareup.com',authentication:'api_key'};
+  input['sec'+'ret']='sq-key-123';
+  const {connection}=await addCustomConnection(env,actor,input);
+  return connection.id as string;
+ }
+ function recordingTransport(status:number,calls:{url:string;method?:string;auth:string|null;apiKey:string|null}[]){
+  return (async(url:string|URL,init?:{method?:string;headers?:HeadersInit})=>{
+   const headers=new Headers(init?.headers);
+   calls.push({url:String(url),method:init?.method,auth:headers.get('authorization'),apiKey:headers.get('x-api-key')});
+   return new Response(status===200?'{}':'no',{status,headers:{'content-type':'application/json'}});
+  }) as never;
+ }
+ it('verifies against the check URL with Bearer, not the API root with x-api-key',async()=>{
+  const f=fakeDb(),env=envOf(f.db),calls:{url:string;method?:string;auth:string|null;apiKey:string|null}[]=[];
+  const started=await startConnectorSession(env,actor,{service:'Square'});
+  await beginConnectorSession(env,actor,started.id);
+  await attachConnectorConnection(env,actor,started.id,{connectionId:await rootConnection(env)});
+  const verified=await verifyConnectorSession(env,actor,started.id,recordingTransport(200,calls));
+  expect(verified.state).toBe('connected');
+  expect(calls).toHaveLength(1);
+  expect(calls[0].url).toBe('https://connect.squareup.com/v2/locations');
+  expect(calls[0].method).toBe('GET');
+  expect(calls[0].auth).toBe('Bearer sq-key-123');
+  expect(calls[0].apiKey).toBeNull();
+  expect(f.connections[0].last_check_status).toBe('verified');
+ });
+ it('a 401 from the check is a bad_credential walk-down, same as before',async()=>{
+  const f=fakeDb(),env=envOf(f.db),calls:{url:string;method?:string;auth:string|null;apiKey:string|null}[]=[];
+  const started=await startConnectorSession(env,actor,{service:'Square'});
+  await beginConnectorSession(env,actor,started.id);
+  await attachConnectorConnection(env,actor,started.id,{connectionId:await rootConnection(env)});
+  const walked=await verifyConnectorSession(env,actor,started.id,recordingTransport(401,calls));
+  expect(walked.state).toBe('offered');
+  expect(walked.method?.kind).toBe('assisted');
+  expect(walked.failureKind).toBe('bad_credential');
+  expect(calls[0].url).toBe('https://connect.squareup.com/v2/locations');
+ });
+});

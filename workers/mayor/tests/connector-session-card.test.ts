@@ -144,3 +144,22 @@ describe('ensureSessionCard',()=>{
   await expect(sessionCardFor(env,{tenantId:TENANT2,userId:USER},started.id)).rejects.toThrow();
  });
 });
+
+describe('door 1: the oauth card carries the capabilities verify will check',()=>{
+ it('google calendar+email recipe requests calendar_manage and gmail_read',()=>{
+  const card=sessionCard(view({capabilities:['calendar','email'],method:{kind:'oauth',provider:'google',oneClick:true}}));
+  expect(card.actions[0]).toMatchObject({id:'connect_oauth',provider:'google',capabilities:['calendar_manage','gmail_read']});
+ });
+ it('microsoft gets calendar_manage only — gmail_read is not in its catalog',()=>{
+  const card=sessionCard(view({capabilities:['calendar','email'],method:{kind:'oauth',provider:'microsoft',oneClick:true}}));
+  expect(card.actions[0]).toMatchObject({id:'connect_oauth',provider:'microsoft',capabilities:['calendar_manage']});
+ });
+ it('zoho calendar recipe requests calendar_manage',()=>{
+  const card=sessionCard(view({capabilities:['calendar'],method:{kind:'oauth',provider:'zoho',oneClick:true}}));
+  expect(card.actions[0]).toMatchObject({id:'connect_oauth',provider:'zoho',capabilities:['calendar_manage']});
+ });
+ it('unknown semantic tags are dropped, never invented into scopes',()=>{
+  const card=sessionCard(view({capabilities:['payments','social'],method:{kind:'oauth',provider:'google',oneClick:true}}));
+  expect(card.actions[0]).toMatchObject({id:'connect_oauth',capabilities:[]});
+ });
+});

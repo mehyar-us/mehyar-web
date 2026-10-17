@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {Actor,Env} from './env';
 import {providerConfigured,grantedCapabilities} from './auth/capabilities';
-import {checkCustomConnection,listCustomConnections} from './custom-connectors';
+import {checkCustomConnection,verifyConnectionWithCheck,listCustomConnections} from './custom-connectors';
 import {resolveConnectorService} from './connector-guides';
 import {OPERATORS,requireMembership} from './permissions';
 import {HttpError,json,readJson} from './http';
@@ -146,7 +146,7 @@ function sessionView(env:Env,row:SessionRow,recipe:ConnectorRecipe){
   state:row.state,method:method?publicMethod(env,method):null,
   methodIndex:row.method_index,methodsTotal:recipe.methods.length,
   failureKind:row.failure_kind,connectionId:row.connection_id,
-  unlocks:recipe.unlocks,platformGate:recipe.platformGate??null,
+  unlocks:recipe.unlocks,capabilities:recipe.capabilities,platformGate:recipe.platformGate??null,
   firstAttempt:recipe.learnedState==='draft',
   createdAt:row.created_at,updatedAt:row.updated_at,
  };
@@ -355,7 +355,12 @@ export async function verifyConnectorSession(env:Env,actor:Actor,id:string,trans
   throw new HttpError(409,'connection_required','Save the connection first, then verify.');
  }
  try{
-  await checkCustomConnection(env,actor,row.connection_id,transport);
+  // A recipe with a documented verify check runs THAT check (door 2):
+  // the platform's real endpoint with its own auth style, executed
+  // inside the custom-connector module. Recipes without one keep the
+  // generic reachability check.
+  if(method.kind==='api_key'&&method.verify)await verifyConnectionWithCheck(env,actor,row.connection_id,method.verify,transport);
+  else await checkCustomConnection(env,actor,row.connection_id,transport);
  }catch(err){
   const next=await advanceAfterFailure(env,row,recipe,failureKindFor(err));
   return sessionView(env,next,recipe);
