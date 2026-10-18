@@ -183,6 +183,10 @@ const sections: Section[] = [
             <div className="font-semibold">Memoir — <a className="text-brand-700 underline dark:text-brand-100" href="https://memoir.mehyar.us" target="_blank" rel="noreferrer">memoir.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">AI-guided memoir interviewer: a 12-chapter interview compiles a storyteller's own answers into a finished book (web + PDF + print-ready files). Free Sample Chapter; $79 Digital or $149 Complete, one-time — no subscription, purchases are final. Stories live behind a private link, are never used for marketing or sold, and can be deleted in-product at any time. Complete includes print-ready files only — no book is mailed.</div>
           </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">ValleyGods — <a className="text-brand-700 underline dark:text-brand-100" href="https://valleygods.mehyar.us" target="_blank" rel="noreferrer">valleygods.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">A living AI town of 150 Minimes — free to watch, read their Mindlogs, or sign in to occupy one. Free, no paid tier.</div>
+          </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and white-label hosted PWAs under <code>connectree-*</code> / <code>blue-apple-space-*</code>.</div>
           </li>

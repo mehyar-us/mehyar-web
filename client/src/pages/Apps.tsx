@@ -583,6 +583,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/memoir-logo.png",
     accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
+  {
+    id: "valleygods",
+    name: "ValleyGods",
+    url: "https://valleygods.mehyar.us",
+    tagline: "Watch them live. Read their minds. Play their god.",
+    description:
+      "ValleyGods is a living AI town of 150 Minimes — simulated people with homes, jobs, relationships, and minds you can actually read. Watch the town live for free with no sign-in, open any Minime to see what they're doing, where they're headed, and what they're thinking (their Mindlog). Sign in with Google to occupy exactly one Minime and god-nudge their life.",
+    audience: "Anyone curious about emergent AI life — simulation and worldbuilding fans who want to watch a town think, and quietly steer one life inside it.",
+    highlights: [
+      "Free to watch live — no sign-in, the town is the homepage",
+      "150 Minimes with homes, jobs, schedules, and readable minds (Mindlog)",
+      "Open any Minime: what they're doing, where they're headed, what they're thinking",
+      "Sign in with Google to occupy one Minime and god-nudge their life",
+    ],
+    logo: "/assets/valleygods-logo.png",
+    accentClass: "from-purple-100 to-white dark:from-purple-900 dark:to-purple-950",
+  },
 ];
 
 const buildPillars = [
@@ -824,7 +841,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise, Memoir), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise, Memoir, ValleyGods), and the request form.
           </p>
         </div>
       </section>

@@ -163,7 +163,7 @@ const apps: AppInfo[] = [
       "Email address, submitted business assets, generated deliverables, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
-id: "hustlekit",
+    id: "hustlekit",
     name: "HustleKit",
     url: "https://hustlekit.mehyar.us",
     tagline: "AI side-hustle starter kit: personalized playbook PDFs.",
@@ -390,18 +390,6 @@ id: "hustlekit",
       "Your session content (resume text, job-post text, tailored output, cover letter) is wiped immediately by the in-product Delete my session data button; your subscriber email is removed on unsubscribe or via the email fallback within 14 days.",
   },
   {
-    id: "hustlekit",
-    name: "HustleKit",
-    url: "https://hustlekit.mehyar.us",
-    tagline: "AI side-hustle starter kits: personalized playbook PDFs.",
-    icon: Rocket,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
-    whatWeCollect:
-      "Email address (to deliver your purchase), your intake answers (skills, interests, available time), the generated starter-kit PDF, and checkout records.",
-    whatWeDelete:
-      "Email address, intake answers, generated kit, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
-  },
-  {
     id: "legit",
     name: "Legit",
     url: "https://legit.mehyar.us",
@@ -472,6 +460,18 @@ id: "hustlekit",
       "The storyteller's name and relationship to the buyer, the buyer's email (for the purchase and book link), and the interview answers the storyteller gives — nothing else. No accounts or passwords, no health, financial, or government data. Stories stay behind a private token link and are never used for marketing.",
     whatWeDelete:
       "Every interview answer and the project record are wiped immediately by the Delete my memoir button on the project page; the payer email is cleared with the project. Email fallback (info@mehyar.us) actions within 14 days.",
+  },
+  {
+    id: "valleygods",
+    name: "ValleyGods",
+    url: "https://valleygods.mehyar.us",
+    tagline: "Watch them live. Read their minds. Play their god.",
+    icon: Sparkles,
+    inAppPath: "Email fallback (info@mehyar.us) — account deletion on request",
+    whatWeCollect:
+      "If you only watch, nothing — watching needs no account. If you sign in with Google to occupy a Minime: your Google account identity (name/email), which Minime you occupy, and the nudges/direction you give it. No payment data — ValleyGods is free.",
+    whatWeDelete:
+      "Sign-in identity, your occupation link, and your nudge/direction history tied to your account.",
   },
 ];
 
