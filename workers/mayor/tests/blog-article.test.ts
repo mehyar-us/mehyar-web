@@ -1,7 +1,7 @@
 /**
  * blog-article.test.ts — SEO blog publish contract (daily SEO engine,
  * Marketing Chief's order 2026-10-20). Article #1:
- * /blog/agentic-front-desk-missed-calls.
+ * /blog/front-desk-missed-calls.
  *
  * Pins: the route is a public asset path (page + images), the sitemap
  * carries the URL, robots allows it, and the served HTML carries the
@@ -18,7 +18,7 @@ const here=dirname(fileURLToPath(import.meta.url));
 const publicDir=join(here,'..','web','public');
 const readPublic=(...parts:string[])=>readFileSync(join(publicDir,...parts),'utf8');
 
-const SLUG='agentic-front-desk-missed-calls';
+const SLUG='front-desk-missed-calls';
 const html=readPublic('blog',`${SLUG}.html`);
 
 describe('blog article #1 publish contract',()=>{
@@ -40,7 +40,7 @@ describe('blog article #1 publish contract',()=>{
   });
 
   it('frontmatter metadata is the served head',()=>{
-    expect(html).toContain('<title>Missed Calls Cost More Than You Think — The Agentic Front Desk Fix</title>');
+    expect(html).toContain('<title>Missed Calls Cost More Than You Think — The Front Desk That Answers Every Call</title>');
     expect(html).toContain('name="description" content="Every unanswered ring is a customer calling your competitor next.');
     expect(html).toContain(`<link rel="canonical" href="https://mayor.mehyar.us/blog/${SLUG}">`);
     expect(html).toContain('<meta property="og:image" content="https://mayor.mehyar.us/blog/mayor-missed-call-barbershop.webp">');
@@ -55,7 +55,7 @@ describe('blog article #1 publish contract',()=>{
 
   it('readable article text is in the HTML (not script-only)',()=>{
     expect(html).toContain("Your Phone Is Ringing Right Now. Nobody's Answering It.");
-    expect(html).toContain('What an Agentic Front Desk Does Differently');
+    expect(html).toContain('What The Mayor Does Differently');
     expect(html).toContain('The One-Minute Test');
     expect(html).toContain('<strong>$99/month</strong>');
     expect(html).toContain('<strong>$79.20/month for life</strong>');
