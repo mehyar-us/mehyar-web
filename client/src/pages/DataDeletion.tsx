@@ -50,7 +50,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt, Scale, Sprout, ListVideo, Video, BookOpen} from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt, Scale, Sprout, ListVideo, Video, BookOpen, Stamp } from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -472,6 +472,18 @@ const apps: AppInfo[] = [
       "If you only watch, nothing — watching needs no account. If you sign in with Google to occupy a Minime: your Google account identity (name/email), which Minime you occupy, and the nudges/direction you give it. No payment data — ValleyGods is free.",
     whatWeDelete:
       "Sign-in identity, your occupation link, and your nudge/direction history tied to your account.",
+  },
+  {
+    id: "visakit",
+    name: "Visakit",
+    url: "https://visakit.mehyar.us",
+    tagline: "Your Schengen visa application, prepared for you.",
+    icon: Stamp,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product at launch",
+    whatWeCollect:
+      "Your intake answers (travel plans, employment/financial evidence summaries), the documents you upload for your pack (stored encrypted), your email address, and checkout records. Upload only what your checklist asks for.",
+    whatWeDelete:
+      "Uploaded documents, intake answers, your generated pack, and purchase records tied to your email.",
   },
 ];
 

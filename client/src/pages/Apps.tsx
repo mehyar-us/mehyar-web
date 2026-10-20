@@ -600,6 +600,23 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/valleygods-logo.png",
     accentClass: "from-purple-100 to-white dark:from-purple-900 dark:to-purple-950",
   },
+  {
+    id: "visakit",
+    name: "Visakit",
+    url: "https://visakit.mehyar.us",
+    tagline: "Your Schengen visa application, prepared for you.",
+    description:
+      "Visakit is an AI tourist-visa agent for travelers with weak passports, starting with one corridor: Egypt → Schengen. Start with an eligibility pre-check, get a document checklist built for your case, and receive a prepared form-data pack as a PDF — human-reviewed before it reaches you. $39 per prepared pack, $29 early-bird. Preparation help only: Visakit does not book appointments in v1 and no one can guarantee a visa — the decision is always the consulate's.",
+    audience: "Egyptian travelers applying for a Schengen tourist visa who fear a rejection — or paying an agency 3–5× this price — more than the form itself.",
+    highlights: [
+      "Eligibility pre-check first — know where you stand before you pay",
+      "A document checklist built for your case, not a generic template",
+      "Prepared form-data pack as a PDF, human-reviewed before delivery",
+      "$39 per prepared pack ($29 early-bird) — per trip, no subscription",
+    ],
+    logo: "/assets/visakit-logo.png",
+    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
+  },
 ];
 
 const buildPillars = [
@@ -841,7 +858,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise, Memoir, ValleyGods), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise, Memoir, ValleyGods, Visakit), and the request form.
           </p>
         </div>
       </section>
