@@ -171,3 +171,25 @@ body[data-view=chat]:not([data-voice-active=true]) #chat-view>.voice-stage{displ
 @media(max-width:760px){
  .workday-dialog:not(.mobile-navigation){inset-block:env(safe-area-inset-top) env(safe-area-inset-bottom);inset-inline:env(safe-area-inset-left) env(safe-area-inset-right);margin:auto;max-width:calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 24px);max-height:min(90dvh,calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))}
 }
+/* Chat reenvision Slice 1: the ChatApp tree. The presence bar replaces
+   the .voice-stage row at the same metrics (the .voice-stage and
+   .page-heading rules above are now dead — both elements are gone —
+   and are removed by Slice 6's grep-proof sweep). #chat-app is the
+   chat column's flex owner: presence bar, progress row, conversation. */
+body[data-view=chat] #chat-app{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;text-align:left}
+.presence-bar{display:flex;align-items:center;gap:10px;min-height:44px;margin:0 0 12px;text-align:left}
+.presence-bar .portrait{width:32px;height:32px;padding:2px;margin:0;flex-shrink:0}
+.presence-bar .voice-ring{display:block;inset:-2px}
+.presence-meta{display:flex;flex-direction:column;gap:1px;min-width:0}
+.presence-name{font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0;line-height:1.35;margin:0;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.presence-meta #status{font-size:12px;line-height:1.45;color:var(--muted);overflow-wrap:anywhere}
+#chat-app>.calendar-chat{flex:0 1 auto;min-height:0;overflow:auto}
+.timeline-day{display:flex;align-items:center;gap:12px;margin:20px 0 4px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;list-style:none}
+.timeline-day::before,.timeline-day::after{content:"";flex:1;border-top:1px solid var(--line)}
+@media(max-width:760px){
+ .presence-bar{margin:0 0 8px}
+ #chat-app>.calendar-chat{max-height:35dvh;margin:8px 0}
+}
+@media(min-width:761px){
+ #chat-app>.calendar-chat{max-height:min(40dvh,360px);margin:12px 0}
+}

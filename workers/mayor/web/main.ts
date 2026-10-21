@@ -30,15 +30,32 @@ import {loadOfferBlock} from './offer-loader';
 import {loadTrendpost} from './trendpost-loader';
 import {loadConnectorSessions} from './connector-sessions-loader';
 import {loadAccountCards} from './account-cards-loader';
-import {loadComposerCluster} from './composer-cluster-loader';
+import {mountChatApp,pushChatApp,type ChatAppSnapshot} from './chat-app';
 import {loadNotificationsInbox} from './notifications-inbox-loader';
-import {loadTranscriptList} from './transcript-list-loader';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
 $('message').addEventListener('input',resizeComposer);window.addEventListener('resize',resizeComposer);
 const chatKeyboard=bindChatKeyboardViewport($<HTMLTextAreaElement>('message'),resizeComposer);
-$<HTMLDetailsElement>('conversation').open=true;
+// Chat reenvision Slice 1: ONE React root (ChatApp) owns the chat view —
+// presence bar, onboarding progress host, and the conversation section
+// with the timeline. It mounts before anything looks up the elements it
+// renders (#conversation, #transcript, #status, #onboarding-progress).
+// The composer cluster renders from the same tree through a portal into
+// the dock host below; the dock form itself is ported in Slice 3.
+const composerHost=document.createElement('div');composerHost.style.display='contents';$('text-form').after(composerHost);
+let chatSnapshot:ChatAppSnapshot={businessName:'',statusText:'Ready when you are',rows:[],assistantLabel:'The Mayor',composer:{statusText:'',stopWaitingVisible:false,actionsHidden:false,newChatHidden:false,retryVisible:false}};
+const chatCallbacks={onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.'),onStopWaiting:()=>textChat.cancel(),onNewChat:()=>void startNewChat(),onRetry:()=>void start()};
+mountChatApp($('chat-app'),chatSnapshot,chatCallbacks,{composerHost});
+function pushChatView(){pushChatApp(chatSnapshot);}
+// The signed-out home block is a static, server-injected subtree (the
+// worker SSR-fills #offer-block in the served HTML). It joins the
+// conversation section as the SAME live node — adopted, never
+// re-rendered — so the signed-out home stays byte-identical.
+const signInDonor=$('chat-sign-in-donor');$('conversation').prepend($('chat-sign-in'));signInDonor.remove();
+/** The presence bar's status line is the #status source now: every former
+ * $('status').textContent write routes through here. */
+function setStatusText(text:string){chatSnapshot={...chatSnapshot,statusText:text};pushChatView();}
 // Alerts must stay visible when the Account tab is open too.
 let voice:VoiceClient|undefined, tenantId='', loggedIn=false, membershipRole='',sessionUserId='';
 let voiceCall:ReturnType<typeof createVoiceCall>|undefined;
@@ -46,11 +63,11 @@ let accessEnded=false;
 const workspaceAccess=createWorkspaceAccessGuard();
 const accessRecovery=createAccessRecoveryView(()=>location.reload());
 document.querySelector('header')!.after(accessRecovery.element);
-const workspace=createBusinessWorkspace(text=>{if(historyReady&&!accessEnded){void sendTextMessage(text);$('conversation').setAttribute('open','');}},()=>show('connections'),{onRefreshProfile:()=>void refreshBusinessProfile()});
+const workspace=createBusinessWorkspace(text=>{if(historyReady&&!accessEnded){void sendTextMessage(text);}},()=>show('connections'),{onRefreshProfile:()=>void refreshBusinessProfile()});
 const calendarChat=createCalendarChat({api,tenant:()=>tenantId,signIn,followup:text=>void sendTextMessage(text)});
 $('conversation').after(calendarChat.element);
 const calendarLauncher=document.createElement('button');calendarLauncher.type='button';calendarLauncher.className='quiet calendar-launcher';calendarLauncher.textContent='Calendar settings';calendarLauncher.hidden=true;
-calendarLauncher.onclick=()=>{show('chat');$('conversation').setAttribute('open','');void calendarChat.open();};calendarChat.element.after(calendarLauncher);
+calendarLauncher.onclick=()=>{show('chat');void calendarChat.open();};calendarChat.element.after(calendarLauncher);
 $('account-view').append(workspace.element);
 const usageStatus=document.createElement('p');usageStatus.id='usage-status';usageStatus.className='privacy-note';usageStatus.textContent='';
 $('text-form').after(usageStatus);
@@ -231,8 +248,8 @@ function renderOnboardingProgress(progress?:{missing:string[];basicsComplete:boo
 function useBusinessProfile(profile:Record<string,unknown>,progress?:{missing:string[];basicsComplete:boolean}){
  confirmedProfile=profile;workspace.profile(profile);renderOnboardingProgress(progress);
  const name=assistantName(profile);$<HTMLTextAreaElement>('message').placeholder=composerPlaceholder();resizeComposer();
- $('chat-view').querySelector('.page-heading > p')!.textContent=`Tell ${name} what you need. Review details before changing your calendar or saving a customer.`;
  $('chat-view').querySelector<HTMLImageElement>('.portrait img')!.alt=name;
+ if(typeof profile.name==='string'&&profile.name&&profile.name!==chatSnapshot.businessName){chatSnapshot={...chatSnapshot,businessName:profile.name};pushChatView();}
  if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(profile,canManage())});
  if(historyReady)transcripts();
 }
@@ -257,9 +274,8 @@ async function refreshBusinessProfile(){
 // Stop waiting / New chat actions) renders via React from this snapshot;
 // the text-chat engine and flows stay here. display:contents keeps the
 // cluster in the composer column exactly where the elements sat.
-const composerHost=document.createElement('div');composerHost.style.display='contents';$('text-form').after(composerHost);
 let composerSnapshot={statusText:'',stopWaitingVisible:false,actionsHidden:false,newChatHidden:false,retryVisible:false};
-function pushComposer(){loadComposerCluster(composerHost,{...composerSnapshot,onStopWaiting:()=>textChat.cancel(),onNewChat:()=>void startNewChat(),onRetry:()=>void start()});}
+function pushComposer(){chatSnapshot={...chatSnapshot,composer:{...composerSnapshot}};pushChatView();}
 function setComposerStatus(text:string){composerSnapshot={...composerSnapshot,statusText:text};pushComposer();}
 function setRetryVisible(visible:boolean){composerSnapshot={...composerSnapshot,retryVisible:visible};pushComposer();}
 const textChat=createTextChat(async(text,requestId,signal,imageIds)=>{
@@ -500,7 +516,7 @@ placesOnboarding=createPlacesOnboarding({
  api:(path,body)=>api(path,body),
  tenant:()=>tenantId,
  canManage,
- openCalendarConnect:()=>{show('chat');$('conversation').setAttribute('open','');void calendarChat.open();},
+ openCalendarConnect:()=>{show('chat');void calendarChat.open();},
  openPhoneCard:()=>{show('account');phoneCard.open=true;phoneCard.scrollIntoView({block:'start',behavior:'smooth'});},
  runMissedCallTest:()=>runPlacesMissedCallTest(),
  onProgress:progress=>renderOnboardingProgress(progress),
@@ -710,19 +726,22 @@ new ResizeObserver(()=>{
  if(!conversationPositioned||conversationAtEnd)conversationScroll.scrollTop=conversationScroll.scrollHeight;
  conversationHeight=conversationScroll.clientHeight;conversationWidth=conversationScroll.clientWidth;
 }).observe(conversationScroll);
-function clearTranscriptRender(){loadTranscriptList($('transcript'),{rows:[],assistantLabel:assistantName(confirmedProfile),onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.')});}
+function clearTranscriptRender(){chatSnapshot={...chatSnapshot,rows:[]};pushChatView();}
 function transcripts(){
  if(accessEnded)return;
  const list=$('transcript'),follow=list.scrollHeight-list.scrollTop-list.clientHeight<80;
  const live=voice?.transcript??[];
  for(let i=voiceSeen;i<live.length;i++){let row=voiceRows.get(i);if(!row){row={role:live[i].role,text:live[i].text};voiceRows.set(i,row);savedTranscript.push(row);}else row.text=live[i].text;}
  $('chat-empty').hidden=!loggedIn||savedTranscript.length>0;
+ // Chat reenvision Slice 1: the 200-row window is KEPT exactly as-is in
+ // this slice — the silent cap is marked here on purpose; removing it
+ // rides Slice 2's history work (spec §2.3). Do not widen or "fix" it here.
  const messages=savedTranscript.slice(-200);
- // React migration S2d: the rows render via React from this model; the
- // list element, its scroll bookkeeping, and the ResizeObserver follow
- // logic stay here. Cards and guides mount before/after the list, never
- // inside it, so the React root owns the rows alone.
- loadTranscriptList(list,{rows:messages.map(m=>({role:m.role,text:m.text})),assistantLabel:assistantName(confirmedProfile),onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.')});
+ // The rows render inside the ChatApp tree from this model; the list
+ // element, its scroll bookkeeping, and the ResizeObserver follow logic
+ // stay here. Cards and guides mount before/after the list, never
+ // inside it, so the tree owns the rows alone.
+ chatSnapshot={...chatSnapshot,rows:messages.map(m=>({role:m.role,text:m.text})),assistantLabel:assistantName(confirmedProfile)};pushChatView();
  // History can load while Today is visible, when the chat has no scrollable
  // height. Position it once after it becomes visible; preserve earlier-reading
  // positions on later tab switches and incremental transcript updates.
@@ -793,7 +812,7 @@ function handleMessage(data:unknown){
         guide.replaceChildren();const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Open Connections';open.onclick=()=>show('connections');guide.append(open);
       }
       const message=data as any;
-      if(message.type==='calendar_connection_guide'&&message.guide&&Array.isArray(message.guide.providers)){calendarChat.render(message.guide);$('conversation').setAttribute('open','');}
+      if(message.type==='calendar_connection_guide'&&message.guide&&Array.isArray(message.guide.providers)){calendarChat.render(message.guide);}
       // Crew 6h — in-conversation connector cards: offer / guide / credential
       // capture / reconnect. The card never carries a secret; the capture form
       // posts straight to the encrypted credential store.
@@ -802,7 +821,7 @@ function handleMessage(data:unknown){
         $('transcript').after(card);
         card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});
       }
-      if(message.type==='calendar_inventory'&&Array.isArray(message.connections)&&message.setup){calendarChat.inventory(message);$('conversation').setAttribute('open','');}
+      if(message.type==='calendar_inventory'&&Array.isArray(message.connections)&&message.setup){calendarChat.inventory(message);}
       if(message.type==='business_context'&&message.profile&&typeof message.profile==='object')useBusinessProfile(message.profile);
       if(message.type==='mehyar_expertise'&&Array.isArray(message.services)&&message.services.every((s:any)=>s&&typeof s.name==='string'&&typeof s.scope==='string'))workspace.expertise(message.services);
       if(message.type==='usage_notice'){
@@ -841,7 +860,7 @@ function renderVoiceState(){
  const status=voice?.status??'idle',starting=voiceCall?.starting??false;
  document.body.className=!navigator.onLine?'offline':loggedIn&&!voiceConnected?'reconnecting':starting?'starting':textChat.busy?'thinking':status;
  document.body.dataset.voiceActive=String(starting||Boolean(voiceCall?.active));
- $('status').textContent=textChat.busy?'Working on your message…':!historyReady&&loggedIn?'Loading your conversation…':microphoneProblem&&!starting?'Voice needs attention':starting?'Starting microphone…':({idle:'Ready when you are',listening:'I’m listening',thinking:'Thinking it through',speaking:assistantName(confirmedProfile)+' is speaking'})[status];
+ setStatusText(textChat.busy?'Working on your message…':!historyReady&&loggedIn?'Loading your conversation…':microphoneProblem&&!starting?'Voice needs attention':starting?'Starting microphone…':({idle:'Ready when you are',listening:'I’m listening',thinking:'Thinking it through',speaking:assistantName(confirmedProfile)+' is speaking'})[status]);
  $('talk').querySelector('span')!.textContent=starting?'Cancel voice startup':voiceCall?.active?'End conversation':microphoneProblem?'Try microphone again':'Talk to '+assistantName(confirmedProfile);
  $('talk').setAttribute('aria-label',$('talk').querySelector('span')!.textContent!);
  $('dock-voice-label').textContent=$('talk').querySelector('span')!.textContent;
@@ -893,7 +912,7 @@ $('sign-in').onclick=()=>signIn();
 $('sign-in-microsoft').onclick=()=>signIn('microsoft');
 $('chat-google-sign-in').onclick=()=>signIn();
 $('chat-microsoft-sign-in').onclick=()=>signIn('microsoft');
-$('logout').onclick=async()=>{endWorkspaceAccess();try{await api('/api/auth/sign-out',{});location.reload();}catch{$('status').textContent='Sign-out could not finish. Reload to check your account.';}};
+$('logout').onclick=async()=>{endWorkspaceAccess();try{await api('/api/auth/sign-out',{});location.reload();}catch{setStatusText('Sign-out could not finish. Reload to check your account.');}};
 async function account(){
   if(!loggedIn||accessEnded)return;
   if(membershipRole==='billing'){show('billing');return;}
@@ -1081,7 +1100,7 @@ function enterNamingMode(){
   // The composer is the naming input; there is no conversation history yet.
   historyReady=true;transcripts();updateNetwork();
   $<HTMLTextAreaElement>('message').placeholder='Your business name…';
-  $('status').textContent='Welcome to The Mayor';
+  setStatusText('Welcome to The Mayor');
   $('voice-hint').textContent='Name your business first — then we can talk.';
 }
 
@@ -1103,7 +1122,7 @@ async function claimBusinessName(name:string){
 }
 
 async function enterBusiness(businesses:Array<{id:string;name:string;role:string}>,business:{id:string;name:string;role:string}){
-  tenantId=business.id;membershipRole=business.role;composerSnapshot={...composerSnapshot,newChatHidden:false};pushComposer();
+  tenantId=business.id;membershipRole=business.role;composerSnapshot={...composerSnapshot,newChatHidden:false};chatSnapshot={...chatSnapshot,businessName:business.name};pushComposer();
   $('business-identity').hidden=false;
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();composerSnapshot={...composerSnapshot,actionsHidden:false};pushComposer();
@@ -1114,12 +1133,12 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
   const connectionError=new URLSearchParams(location.search).get('auth_error');
   const connectedProvider=new URLSearchParams(location.search).get('connected');
   if(canManage()&&(connectedProvider==='telnyx'||connectionError==='telnyx_connection')){
-    show('chat');$('conversation').setAttribute('open','');
+    show('chat');
     void api('/api/phone-guide?mode=existing&provider=telnyx').then(guide=>handleMessage({type:'phone_setup_guide',guide})).catch(()=>notice('Phone options could not load. Ask me to connect Telnyx to try again.'));
     notice(connectedProvider==='telnyx'?'Telnyx is connected. Choose your business number below. Calling still needs setup.':'The Telnyx connection did not finish. Try connecting again below.');
   }
-  else if(canManage()&&connectedProvider&&['google','microsoft','zoho'].includes(connectedProvider)){void calendarChat.open(undefined,connectedProvider);$('conversation').setAttribute('open','');}
-  else if(canManage()&&connectionError){notice('The calendar connection did not finish. Your existing business details are safe. Try connecting again below.');void calendarChat.open(undefined,connectionError.startsWith('zoho_')?'zoho':undefined);$('conversation').setAttribute('open','');}
+  else if(canManage()&&connectedProvider&&['google','microsoft','zoho'].includes(connectedProvider)){void calendarChat.open(undefined,connectedProvider);}
+  else if(canManage()&&connectionError){notice('The calendar connection did not finish. Your existing business details are safe. Try connecting again below.');void calendarChat.open(undefined,connectionError.startsWith('zoho_')?'zoho':undefined);}
   inboxSnapshot={...inboxSnapshot,hidden:true};pushInbox();$('notifications-button').hidden=!canManage();if(canManage())void refreshInbox();
   if(canManage()&&new URLSearchParams(location.search).get('notifications')==='1'){inboxSnapshot={...inboxSnapshot,hidden:false,open:true};pushInbox();void refreshInbox();}
   timezoneSuggestion.element.hidden=!canChat();timezoneSuggestion.ready(canChat());
@@ -1127,7 +1146,7 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
   phoneCard.hidden=!canManage();
   if(canChat()){if(!canManage())show('chat');const memory=await api(`/api/businesses/${tenantId}/profile`);confirmedProfile=memory.profile;await loadConversation();useBusinessProfile(memory.profile,memory.progress);void connect().catch(error=>{microphoneProblem=`Voice could not connect. Text chat is available. ${error.message}`;renderVoiceState();});}
   else{
-    $('status').textContent='Account access';
+    setStatusText('Account access');
     $('voice-hint').textContent=membershipRole==='billing'?'Your role manages the subscription and shared usage in Plan & usage.':'Your role does not include voice or text chat. Business details are available in Account.';
     show(membershipRole==='billing'?'billing':'account');
   }
@@ -1159,6 +1178,6 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
     }catch{notice('That connection link did not match an attempt on this account.');}
   }
 }
-async function start(){if(accessEnded)return;setRetryVisible(false);try{await init();}catch(error){if(accessEnded)return;notice((error as Error).message);setRetryVisible(true);$('status').textContent='Could not load your workspace';}}
+async function start(){if(accessEnded)return;setRetryVisible(false);try{await init();}catch(error){if(accessEnded)return;notice((error as Error).message);setRetryVisible(true);setStatusText('Could not load your workspace');}}
 pushComposer();show('chat');void start();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(()=>{});

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
-/** Conversation transcript (React migration S2d): the message rows of
- * the chat list. Rendered by React 19 from the row model main.ts
- * maintains (saved history merged with the live voice transcript); the
- * list element itself, its scroll positioning, the ResizeObserver
- * follow logic, and the interim line stay in main.ts — this component
- * owns only the <li> rows, matching the imperative structure exactly:
+/** Conversation transcript (React migration S2d; chat reenvision
+ * Slice 1): the message rows of the chat list. Rendered by React 19
+ * from the row model main.ts maintains (saved history merged with the
+ * live voice transcript) inside the ChatApp tree (web/chat-app.tsx);
+ * scroll positioning, the ResizeObserver follow logic, and the interim
+ * line stay in main.ts — this component owns only the <li> rows,
+ * matching the imperative structure exactly:
  * <li><b>label</b><span>text</span>[Copy reply]</li>. Copy feedback
  * resets when the row's text changes (the imperative version kept a
  * sticky "Copied" on positionally reused rows, including across the
@@ -46,15 +47,29 @@ function CopyReply({ text, onFailed }: { text: string; onFailed: () => void }) {
   );
 }
 
+export function TranscriptRowItem({
+  row,
+  assistantLabel,
+  onCopyFailed,
+}: {
+  row: TranscriptRow;
+  assistantLabel: string;
+  onCopyFailed: () => void;
+}) {
+  return (
+    <li className={row.role === 'user' ? 'message-user' : 'message-mayor'}>
+      <b>{row.role === 'user' ? 'You' : assistantLabel}</b>
+      <span>{row.text}</span>
+      {row.role !== 'user' && <CopyReply text={row.text} onFailed={onCopyFailed} />}
+    </li>
+  );
+}
+
 export function TranscriptList({ rows, assistantLabel, onCopyFailed }: TranscriptListProps) {
   return (
     <>
       {rows.map((message, i) => (
-        <li key={i} className={message.role === 'user' ? 'message-user' : 'message-mayor'}>
-          <b>{message.role === 'user' ? 'You' : assistantLabel}</b>
-          <span>{message.text}</span>
-          {message.role !== 'user' && <CopyReply text={message.text} onFailed={onCopyFailed} />}
-        </li>
+        <TranscriptRowItem key={i} row={message} assistantLabel={assistantLabel} onCopyFailed={onCopyFailed} />
       ))}
     </>
   );
