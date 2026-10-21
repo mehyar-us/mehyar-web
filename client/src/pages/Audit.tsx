@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import BusinessReportView from "@/components/BusinessReportView";
 import MayorBait from "@/components/MayorBait";
+import { trackBeginCheckout } from "@/components/MarketingTags";
 
 /* ── API contract (matches functions/api/audit/business/*, commit 8cbc372) ──
    POST /api/audit/business/intake   { business_name, url, email }
@@ -648,6 +649,10 @@ export default function Audit() {
     if (!intake) return setPayError("Complete step 1 first so we know which business to audit.");
     if (!EMAIL_RE.test(payEmail.trim())) return setPayError("Please enter a valid email for delivery.");
     setPaying(true);
+    /* Money-path event (rot509): fire before the POST/redirect, carrying
+       the amount this buyer will actually be charged (325 when the $5
+       Full Report credit applies, per the server's own credit-status). */
+    trackBeginCheckout("audit-my-business", creditInfo?.eligible ? creditInfo.due_cents / 100 : 330);
     try {
       const r = await fetch("/api/pay/checkout", {
         method: "POST",

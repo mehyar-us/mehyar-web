@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import ReportPreview from "@/components/ReportPreview";
 import BusinessReportView, { type BusinessReportPayload } from "@/components/BusinessReportView";
+import { trackBeginCheckout, trackFullReportPurchase } from "@/components/MarketingTags";
 
 type FullReport = {
   score: number;
@@ -200,10 +201,18 @@ export default function AuditReport() {
     return () => { document.title = "MehyarSoft — AI Website Evaluation"; };
   }, [report, siteUrl]);
 
+  /* Purchase conversion (AU-509-2): a rendered report exists only for a
+     paid token — fire the $5 purchase event once per token when it lands. */
+  useEffect(() => {
+    if (report && token) trackFullReportPurchase(token);
+  }, [report, token]);
+
   const buy = async (e: React.FormEvent) => {
     e.preventDefault();
     setBuyError("");
     setBuying(true);
+    /* Money-path event (rot509): fire before the POST/redirect. */
+    trackBeginCheckout("audit-full-report", 5);
     try {
       const r = await fetch("/api/pay/checkout", {
         method: "POST",

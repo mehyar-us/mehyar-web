@@ -68,6 +68,20 @@ export async function onRequestGet({ request, env }) {
     let report = null;
     try { report = row.report_json ? JSON.parse(row.report_json) : null; } catch { report = null; }
 
+    /* Amount actually charged (AU-509-2): the purchase event must report
+       what Stripe charged — 33000, or 32500 when the $5 Full Report credit
+       applied — never a hard-coded list price. The checkout minted ONE
+       access token and put it on both this report row and its
+       billing_payments row, so the token is the join key. Analytics-only:
+       a lookup failure leaves the field null and never fails the report. */
+    let amountCents = null;
+    try {
+      const pay = await env.LEADS_DB.prepare(
+        "SELECT amount_cents FROM billing_payments WHERE access_token = ? AND product_id = 'audit-my-business' AND status = 'paid' ORDER BY id DESC LIMIT 1"
+      ).bind(token).first();
+      if (pay && Number.isFinite(Number(pay.amount_cents))) amountCents = Number(pay.amount_cents);
+    } catch { amountCents = null; }
+
     return json({
       ok: true,
       status,
@@ -76,6 +90,7 @@ export async function onRequestGet({ request, env }) {
       business_name: row.business_name,
       created_at: row.created_at,
       paid_at: row.paid_at,
+      amount_cents: amountCents,
       failure_reason: row.failure_reason,
       buyer_message: buyerMessage,
       report,

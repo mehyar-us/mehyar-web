@@ -23,7 +23,7 @@ import WalkthroughBooking from "./WalkthroughBooking";
 
 /* ── Payload contract (GET /api/audit/business/report?token=<64-hex>) ───────
    { ok, status: "generating"|"ready"|"failed",
-     audit_id, url, business_name, created_at, paid_at,
+     audit_id, url, business_name, created_at, paid_at, amount_cents,
      failure_reason, buyer_message,
      report?: {
        score (0-100), grade, deterministic_score, ai_score, score_rationale,
@@ -82,6 +82,9 @@ export type BusinessReportPayload = {
   business_name?: string;
   created_at?: string;
   paid_at?: string;
+  /* Amount actually charged, in cents, from the payment record — the
+     purchase event reports this, never a hard-coded list price (AU-509-2). */
+  amount_cents?: number | null;
   failure_reason?: string;
   buyer_message?: string;
   report?: BusinessReport | null;
@@ -266,9 +269,15 @@ export default function BusinessReportView({ token, initial }: { token: string; 
   const [timedOut, setTimedOut] = useState(false);
 
   /* Purchase conversion for the marketing stack: fires once per report token
-     when the paid report lands (the success_url Stripe returns to). */
+     when the paid report lands (the success_url Stripe returns to). The
+     value is the amount actually charged — the payload's amount_cents comes
+     from the payment record (32500 when the $5 credit applied). The 330
+     fallback covers only legacy rows with no payment record to read. */
   useEffect(() => {
-    if (payload?.status === "ready") trackAuditPurchase(token, 330);
+    if (payload?.status === "ready") {
+      const cents = typeof payload.amount_cents === "number" && payload.amount_cents > 0 ? payload.amount_cents : null;
+      trackAuditPurchase(token, cents !== null ? cents / 100 : 330);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payload?.status]);
 
