@@ -728,11 +728,10 @@ export default function Audit() {
             </a>
           </div>
           <p className="mx-auto mt-4 max-w-xl text-xs leading-5 text-muted-foreground">
-            One-time $330 · No subscription ·
-            the automated counterpart to our{" "}
-            <Link href="/micro-offer" className="underline underline-offset-2 hover:text-foreground">
-              founder-led $330 tech audit
-            </Link>
+            One-time $330 · No subscription · This page sells Audit My Business — the
+            automated audit: our AI reads your site and your walkthrough and emails
+            your report within 3–5 business days. It is not the founder-led $330 tech
+            audit (a human review, invoiced by email) — the side-by-side is below.
           </p>
         </div>
       </section>
@@ -809,7 +808,36 @@ export default function Audit() {
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already bought the $5 Full Report? Its $5 is credited toward Audit My Business when you
             check out with the same email — the discount shows on the checkout page before you pay.
+            You pay $325 at checkout ($330 − your $5 credit).
           </p>
+        </div>
+      </section>
+
+      {/* ── TWO $330 AUDITS ── */}
+      <section className="px-4 pb-2" aria-label="Audit My Business compared with the founder-led tech audit">
+        <div className="site-shell max-w-4xl">
+          <h2 className="text-center text-2xl font-semibold tracking-tight text-foreground">Two $330 audits — this page sells the automated one</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border-2 border-brand-600 bg-card p-5 shadow-sm dark:border-brand-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">Audit My Business — this page</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                <li><span className="font-semibold text-foreground">$330 one-time</span>, paid by card through Stripe checkout</li>
+                <li>Automated: our AI audits your public site and your CEO walkthrough video</li>
+                <li>Visual report emailed within 3–5 business days — score, money leaks ranked, prioritized fixes, AI opportunity map</li>
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Founder-led tech audit — different product</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                <li><span className="font-semibold text-foreground">$330 one-time</span>, invoiced by email</li>
+                <li>A human reviews your website, booking path, and follow-up end to end</li>
+                <li>Delivered about 3 business days after the intake call, with an audit + setup plan</li>
+              </ul>
+              <Link href="/micro-offer" className="mt-4 inline-block text-sm font-semibold underline underline-offset-2 hover:text-foreground">
+                See the founder-led audit
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1368,7 +1396,7 @@ export default function Audit() {
               audit — a separate, fuller report built from your site and your walkthrough
               video, with prioritized fixes and an AI opportunity map, delivered by email
               within 3–5 business days; if you bought the Full Report first, its $5 is
-              credited toward the $330. The{" "}
+              credited toward the $330 — you pay $325 at checkout ($330 − $5). The{" "}
               <Link href="/micro-offer" className="underline underline-offset-2">founder-led $330 tech audit</Link>{" "}
               is a different product again: a human review, invoiced by email.
             </FaqItem>
