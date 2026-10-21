@@ -608,8 +608,8 @@ const managedApps: ManagedApp[] = [
     url: "https://visakit.mehyar.us",
     tagline: "Your visa application pack, prepared for you — five routes live, any route on request.",
     description:
-      "Visakit is an AI tourist-visa agent for travelers with weak passports, starting with one corridor: Egypt → Schengen. Start with an eligibility pre-check, get a document checklist built for your case, and receive a prepared form-data pack as a PDF — human-reviewed before it reaches you. $39 per prepared pack, $29 early-bird. Preparation help only: Visakit does not book appointments in v1 and no one can guarantee a visa — the decision is always the consulate's.",
-    audience: "Egyptian travelers applying for a Schengen tourist visa who fear a rejection — or paying an agency 3–5× this price — more than the form itself.",
+      "A tourist-visa application pack, prepared for you: a free eligibility pre-check, a document checklist built for your exact route, your forms filled from your documents, and a human review before you submit. Live routes today: Egypt, Pakistan, Nigeria, and Morocco to Schengen, plus Egypt to the UK — any other route can be requested in the pre-check. $39 per pack ($29 early-bird for the first 25 packs). We prepare applications; visa decisions are made by consulates.",
+    audience: "Travelers whose passports make tourist visas hard — any nationality, any destination: five routes live today, every other route on request.",
     highlights: [
       "Eligibility pre-check first — know where you stand before you pay",
       "A document checklist built for your case, not a generic template",

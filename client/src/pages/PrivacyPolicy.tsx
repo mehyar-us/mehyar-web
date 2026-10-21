@@ -334,7 +334,7 @@ const sections: Section[] = [
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Visakit — <a className="text-brand-700 underline dark:text-brand-100" href="https://visakit.mehyar.us" target="_blank" rel="noreferrer">visakit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI tourist-visa application preparation — Egypt→Schengen corridor, $39 per prepared pack ($29 early-bird). Preparation help only; visa decisions belong to the consulate.</div>
+            <div className="text-sm text-muted-foreground">AI tourist-visa application preparation — five routes live, any route on request, $39 per pack ($29 early-bird for the first 25 packs). Preparation help only; visa decisions belong to the consulate.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>

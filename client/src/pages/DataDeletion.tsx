@@ -321,7 +321,7 @@ const apps: AppInfo[] = [
     id: "mayor",
     name: "The Mayor",
     url: "https://mayor.mehyar.us",
-    tagline: "The AI built for each business.",
+    tagline: "Mayor. Talk to your business.",
     icon: Store,
     inAppPath: "Email fallback (info@mehyar.us) — contact us to request deletion",
     whatWeCollect:
@@ -477,7 +477,7 @@ const apps: AppInfo[] = [
     id: "visakit",
     name: "Visakit",
     url: "https://visakit.mehyar.us",
-    tagline: "Your Schengen visa application, prepared for you.",
+    tagline: "Your visa application pack, prepared for you — five routes live, any route on request.",
     icon: Stamp,
     inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product at launch",
     whatWeCollect:
