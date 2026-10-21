@@ -381,7 +381,7 @@ const managedApps: ManagedApp[] = [
     id: "mayor",
     name: "The Mayor",
     url: "https://mayor.mehyar.us",
-    tagline: "The AI built for each business.",
+    tagline: "Mayor. Talk to your business.",
     facebook: "https://www.facebook.com/profile.php?id=61595399794348",
     description:
       // PRICING: mirrors the live Mayor catalog (Pro $99/mo since 2026-10-16).
@@ -606,7 +606,7 @@ const managedApps: ManagedApp[] = [
     id: "visakit",
     name: "Visakit",
     url: "https://visakit.mehyar.us",
-    tagline: "Your Schengen visa application, prepared for you.",
+    tagline: "Your visa application pack, prepared for you — five routes live, any route on request.",
     description:
       "Visakit is an AI tourist-visa agent for travelers with weak passports, starting with one corridor: Egypt → Schengen. Start with an eligibility pre-check, get a document checklist built for your case, and receive a prepared form-data pack as a PDF — human-reviewed before it reaches you. $39 per prepared pack, $29 early-bird. Preparation help only: Visakit does not book appointments in v1 and no one can guarantee a visa — the decision is always the consulate's.",
     audience: "Egyptian travelers applying for a Schengen tourist visa who fear a rejection — or paying an agency 3–5× this price — more than the form itself.",
