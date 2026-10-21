@@ -83,7 +83,18 @@ export async function onRequestPost({ request, env }) {
       "Didn't ask for this? Someone typed your email into the cancel page; you can ignore this message and nothing changes.</p>" +
       "<p>— TicketBeat (Mehyar Soft LLC)</p>";
 
-    const sent = await sendCloudflareEmail(env, {
+    // Prefer the purpose-built email credential set: the project's
+    // CLOUDFLARE_API_KEY is a scoped token and fails x-auth-key auth against
+    // the Email Sending API, while CF_EMAIL_GLOBAL_KEY is the global key
+    // that endpoint requires (diagnosed rot520: raw global-key send queued,
+    // helper-default send silently failed). Shim only this call's env; the
+    // shared helper and every other caller keep their behavior.
+    const mailEnv = {
+      ...env,
+      CLOUDFLARE_API_KEY: env.CF_EMAIL_GLOBAL_KEY || env.CLOUDFLARE_API_KEY,
+      CLOUDFLARE_EMAIL: env.CF_EMAIL || env.CLOUDFLARE_EMAIL,
+    };
+    const sent = await sendCloudflareEmail(mailEnv, {
       to: payment.email,
       from: "info@mehyar.us",
       fromName: "TicketBeat",
