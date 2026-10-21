@@ -284,12 +284,37 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(conversation){
     const tenantId=conversation[1],identity={tenantId,userId:session.user.id,sessionId:session.session.id};
     await requireMembership(env,identity,CHAT_ROLES);
-    if(request.method==='GET')return json(await readConversationRecovery(env,identity));
+    if(request.method==='GET'){
+      const full=await readConversationRecovery(env,identity);
+      // Chat reenvision Slice 2 — history paging. No params: the exact
+      // pre-Slice-2 response (old clients and the voice hydration are
+      // untouched). With ?limit (page size) and ?before (how many of
+      // the LATEST messages the caller already holds), the response
+      // carries the next older page plus total/hasMore, so the client
+      // can offer an honest "Earlier" affordance instead of a silent cap.
+      const limitRaw=url.searchParams.get('limit'),beforeRaw=url.searchParams.get('before');
+      if(limitRaw===null&&beforeRaw===null)return json(full);
+      const total=full.messages.length;
+      const parsedLimit=Number.parseInt(limitRaw??'',10);
+      const limit=Number.isFinite(parsedLimit)?Math.min(Math.max(parsedLimit,1),50):50;
+      const parsedBefore=beforeRaw===null?0:Number.parseInt(beforeRaw,10);
+      const held=Number.isFinite(parsedBefore)?Math.min(Math.max(parsedBefore,0),total):0;
+      const end=total-held;
+      const start=Math.max(0,end-limit);
+      return json({revision:full.revision,messages:full.messages.slice(start,end),total,hasMore:start>0});
+    }
     if(request.method==='POST'){
       const input=z.object({requestId:z.uuid(),text:z.string().trim().min(1).max(4000),imageIds:z.array(z.string().uuid()).max(2).optional()}).strict().parse(await readJson(request,20000));
       const name=await digest(`${tenantId}:${session.user.id}`),headers=new Headers({'content-type':'application/json'});
       headers.set('x-mayor-tenant',tenantId);headers.set('x-mayor-user',session.user.id);headers.set('x-mayor-session',session.session.id);
-      return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/chat`,{method:'POST',headers,body:JSON.stringify(input)}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Conversation is temporarily unavailable.'},503);
+      // Streaming opt-in rides a header, never the body: the zod schema
+      // stays strict and the fallback contract stays byte-identical.
+      // The client's abort signal is forwarded on streaming requests so
+      // Stop reaches the turn; the fallback path keeps today's
+      // disconnect semantics exactly.
+      const streaming=request.headers.get('x-mayor-stream')==='ndjson';
+      if(streaming)headers.set('x-mayor-stream','ndjson');
+      return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/chat`,{method:'POST',headers,body:JSON.stringify(input),...(streaming?{signal:request.signal}:{})}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Conversation is temporarily unavailable.'},503);
     }
   }
   // Crew 6j — chat photo upload (multipart, field "image") and delete.

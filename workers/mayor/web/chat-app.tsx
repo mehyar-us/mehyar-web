@@ -36,6 +36,9 @@ export interface ChatAppSnapshot {
   statusText: string;
   rows: TranscriptRow[];
   assistantLabel: string;
+  /** Slice 2: the server holds earlier history than what's loaded —
+   * the timeline offers "Earlier ↑" instead of silently capping. */
+  earlierVisible: boolean;
   composer: ChatAppComposer;
 }
 
@@ -44,6 +47,10 @@ export interface ChatAppCallbacks {
   onStopWaiting: () => void;
   onNewChat: () => void;
   onRetry: () => void;
+  onEarlier: () => void;
+  onCancelQueued: (turnId: string) => void;
+  onRetryTurn: () => void;
+  onDismissError: () => void;
 }
 
 export interface ChatAppHosts {
@@ -99,6 +106,11 @@ export function ChatApp(props: {
         <p id="chat-empty" className="chat-empty" hidden>
           Share your website or tell me about your business. We’ll build your profile together.
         </p>
+        {snapshot.earlierVisible ? (
+          <button type="button" className="earlier-button" onClick={callbacks.onEarlier}>
+            Earlier ↑
+          </button>
+        ) : null}
         <ol id="transcript" tabIndex={0} aria-live="off" role="log" aria-label="Conversation">
           {items.map((item) =>
             item.kind === 'day' ? (
@@ -107,10 +119,13 @@ export function ChatApp(props: {
               </li>
             ) : (
               <TranscriptRowItem
-                key={item.index}
+                key={item.row.turnId ? `${item.row.role}:${item.row.turnId}` : item.index}
                 row={item.row}
                 assistantLabel={snapshot.assistantLabel}
                 onCopyFailed={callbacks.onCopyFailed}
+                onCancelQueued={callbacks.onCancelQueued}
+                onRetryTurn={callbacks.onRetryTurn}
+                onDismissError={callbacks.onDismissError}
               />
             ),
           )}

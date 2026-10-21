@@ -1,6 +1,6 @@
 import {createElement,X,Camera} from 'lucide';
 import {createTimeZoneSuggestion} from './time-zone';
-import {createTextChat} from './text-chat';
+import {createTextChat,readNdjsonTurn,type TextTurnOutcome} from './text-chat';
 import {createCalendarChat} from './calendar-chat';
 import {renderConnectorCard,isConnectorCardPayload} from './connector-cards';
 import {createPullRefresh} from './pull-refresh';
@@ -31,6 +31,7 @@ import {loadTrendpost} from './trendpost-loader';
 import {loadConnectorSessions} from './connector-sessions-loader';
 import {loadAccountCards} from './account-cards-loader';
 import {mountChatApp,pushChatApp,type ChatAppSnapshot} from './chat-app';
+import type {TranscriptRow} from './transcript-list';
 import {loadNotificationsInbox} from './notifications-inbox-loader';
 import './mobile-compact.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -44,8 +45,10 @@ const chatKeyboard=bindChatKeyboardViewport($<HTMLTextAreaElement>('message'),re
 // The composer cluster renders from the same tree through a portal into
 // the dock host below; the dock form itself is ported in Slice 3.
 const composerHost=document.createElement('div');composerHost.style.display='contents';$('text-form').after(composerHost);
-let chatSnapshot:ChatAppSnapshot={businessName:'',statusText:'Ready when you are',rows:[],assistantLabel:'The Mayor',composer:{statusText:'',stopWaitingVisible:false,actionsHidden:false,newChatHidden:false,retryVisible:false}};
-const chatCallbacks={onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.'),onStopWaiting:()=>textChat.cancel(),onNewChat:()=>void startNewChat(),onRetry:()=>void start()};
+let chatSnapshot:ChatAppSnapshot={businessName:'',statusText:'Ready when you are',rows:[],assistantLabel:'The Mayor',earlierVisible:false,composer:{statusText:'',stopWaitingVisible:false,actionsHidden:false,newChatHidden:false,retryVisible:false}};
+const chatCallbacks={onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.'),onStopWaiting:()=>textChat.cancel(),onNewChat:()=>void startNewChat(),onRetry:()=>void start(),
+ // Chat reenvision Slice 2: history paging + in-flow turn actions.
+ onEarlier:()=>void loadEarlier(),onCancelQueued:(turnId:string)=>textChat.cancelQueued(turnId),onRetryTurn:()=>{const outcome=textChat.retryFailed();if(outcome)void settleTextOutcome(outcome);},onDismissError:()=>textChat.dismissFailed()};
 mountChatApp($('chat-app'),chatSnapshot,chatCallbacks,{composerHost});
 function pushChatView(){pushChatApp(chatSnapshot);}
 // The signed-out home block is a static, server-injected subtree (the
@@ -221,6 +224,14 @@ let historyReady=false;
 // so the owner's answer to "What's your business called?" becomes the name.
 let namingMode=false;
 let savedTranscript:Array<{role:string;text:string}>=[];
+// Chat reenvision Slice 2 — history paging state. serverPrefix counts
+// the leading savedTranscript rows that came from the server history
+// (session/voice rows append after them); historyEarlier mirrors the
+// server's hasMore for the loaded pages. The page size is a client
+// choice within the server's persisted list — paging is real even
+// though the persisted history itself is bounded (see the report).
+const HISTORY_PAGE=20;
+let serverPrefix=0,historyEarlier=false,earlierLoading=false;
 let confirmedProfile:Record<string,unknown>={};
 function composerPlaceholder(){const name=assistantName(confirmedProfile);return `Ask ${name.length<=14?name:'Mayor'}…`;}
 const ONBOARDING_STEP_LABELS:Record<string,string>={name:'Business name',industry:'Industry',services:'Services',locations:'Locations',hours:'Hours',timeZone:'Time zone',staff:'Team',appointmentTypes:'Appointment length'};
@@ -278,10 +289,16 @@ let composerSnapshot={statusText:'',stopWaitingVisible:false,actionsHidden:false
 function pushComposer(){chatSnapshot={...chatSnapshot,composer:{...composerSnapshot}};pushChatView();}
 function setComposerStatus(text:string){composerSnapshot={...composerSnapshot,statusText:text};pushComposer();}
 function setRetryVisible(visible:boolean){composerSnapshot={...composerSnapshot,retryVisible:visible};pushComposer();}
-const textChat=createTextChat(async(text,requestId,signal,imageIds)=>{
+const textChat=createTextChat(async(text,requestId,signal,imageIds,stream)=>{
  const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/conversation`;
- const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId,imageIds}),signal});
- const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){
+ // Chat reenvision Slice 2: the client asks for the NDJSON stream. A
+ // server (or intermediary) that cannot stream answers with the whole
+ // reply as JSON exactly as before — detected by content type, never
+ // assumed — so either deploy order is safe.
+ const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json','x-mayor-stream':'ndjson'},body:JSON.stringify({text,requestId,imageIds}),signal});
+ workspaceAccess.assert(captured);
+ if(!response.ok){
+  const result=await response.json().catch(()=>({})) as {message?:string;error?:string};
   if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();
   // The Plan & usage notice reflects genuine quota failures ONLY (402 /
   // allowance exhausted). A model or gateway failure (502) must never imply
@@ -289,11 +306,19 @@ const textChat=createTextChat(async(text,requestId,signal,imageIds)=>{
   if(response.status===402&&typeof result.message==='string'&&result.message)usageStatus.textContent=result.message;
   const err=new Error(result.message??'Could not send. Your draft is still here.') as Error&{status?:number};
   err.status=response.status;throw err;
- }return result;
+ }
+ if((response.headers.get('content-type')??'').includes('application/x-ndjson')&&response.body)return await readNdjsonTurn(response.body,stream);
+ return await response.json();
 },(busy,message)=>{if(accessEnded)return;composerSnapshot={...composerSnapshot,statusText:message,stopWaitingVisible:busy};pushComposer();updateNetwork();renderVoiceState();},{
  serviceDownCopy:(status)=>status===502
   ?'The assistant couldn\u2019t reach the AI service — try again in a moment.'
   :undefined,
+ // Streaming event frames render the moment they arrive, in their
+ // turn's position; the whole-reply fallback's events arrive with the
+ // result and are delivered by the engine on completion. Both paths
+ // land in the same handler the voice socket uses.
+ onEvent:event=>{if(!accessEnded)handleMessage(event);},
+ onView:()=>{if(!accessEnded){transcripts();updateNetwork();}},
 });
 // Crew 6j — chat photo attach (mobile-first: camera + photo library).
 // Photos upload first to tenant-scoped storage; the turn references the ids.
@@ -363,8 +388,25 @@ const onPhotoPicked=(input:HTMLInputElement)=>async()=>{const file=input.files?.
 cameraInput.onchange=onPhotoPicked(cameraInput);
 libraryInput.onchange=onPhotoPicked(libraryInput);
 async function loadConversation(){
- const result=await api(`/api/businesses/${tenantId}/conversation`);
- savedTranscript=result.messages.map((m:any)=>({role:m.role,text:m.content}));if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceRows.clear();voiceSeen=voice?.transcript.length??0;historyReady=true;transcripts();updateNetwork();
+ const result=await api(`/api/businesses/${tenantId}/conversation?limit=${HISTORY_PAGE}`);
+ savedTranscript=result.messages.map((m:any)=>({role:m.role,text:m.content}));serverPrefix=savedTranscript.length;historyEarlier=result.hasMore===true;
+ if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceRows.clear();voiceSeen=voice?.transcript.length??0;historyReady=true;transcripts();updateNetwork();
+}
+/** Load the next older page of history and prepend it, keeping the
+ * reading position anchored where it was. */
+async function loadEarlier(){
+ if(!historyReady||accessEnded||earlierLoading||!historyEarlier)return;
+ earlierLoading=true;
+ const list=$('transcript'),beforeHeight=list.scrollHeight,beforeTop=list.scrollTop;
+ try{
+  const result=await api(`/api/businesses/${tenantId}/conversation?limit=${HISTORY_PAGE}&before=${serverPrefix}`);
+  const older=(result.messages as Array<{role:string;content:string}>).map(m=>({role:m.role,text:m.content}));
+  if(older.length){savedTranscript=[...older,...savedTranscript];serverPrefix+=older.length;}
+  historyEarlier=result.hasMore===true;
+  transcripts();
+  requestAnimationFrame(()=>{list.scrollTop=beforeTop+(list.scrollHeight-beforeHeight);});
+ }catch{notice('Earlier messages could not load. Try again.');}
+ finally{earlierLoading=false;}
 }
 /** Start a new chat: the server archives the current thread (past history is
  * preserved in the archive table, never deleted) and resets the live agent
@@ -373,10 +415,12 @@ async function loadConversation(){
 async function startNewChat(){
  if(!loggedIn||accessEnded)return;
  if(textChat.busy){notice('Your reply is still sending. Start a new chat once it finishes.');return;}
+ if(textChat.pending){notice('You have a message waiting in this chat. Let it send, or cancel it, before starting a new chat.');return;}
  if(voiceCall?.active||voiceCall?.starting){notice('End the voice conversation before starting a new chat.');return;}
  notice('');
  try{
   await api(`/api/businesses/${tenantId}/conversation/reset`,{});
+  textChat.reset();serverPrefix=0;historyEarlier=false;
   savedTranscript=[];
   if(canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});
   voiceRows.clear();voiceSeen=voice?.transcript.length??0;
@@ -395,8 +439,14 @@ window.addEventListener('touchstart',event=>{resetPull();const touch=event.touch
 window.addEventListener('touchmove',event=>{const touch=event.touches[0];if(!touch){resetPull();return;}const state=pullGesture.move({x:touch.clientX,y:touch.clientY,id:touch.identifier,touches:event.touches.length},pullGuard());if(state.preventDefault){event.preventDefault();pullStatus.hidden=false;pullStatus.textContent=state.phase==='armed'?'Release to refresh':'Pull to refresh';}else if(!pullBusy)pullStatus.hidden=true;},{passive:false});
 window.addEventListener('touchcancel',resetPull,{passive:true});
 window.addEventListener('touchend',event=>{if(!pullGesture.end(pullGuard(),event.touches.length)){if(!pullBusy)pullStatus.hidden=true;return;}pullBusy=true;updateNetwork();pullStatus.hidden=false;pullStatus.textContent='Refreshing…';void(async()=>{try{const view=document.body.dataset.view;if(view==='chat')await loadConversation();else if(view==='account')await account();else if(view==='connections')await connectionHub.activate();else await workday.refreshCurrent();}catch(error){if(!accessEnded)notice(error instanceof Error?error.message:'Could not refresh. Try again.');}finally{pullBusy=false;pullGesture.finish();pullStatus.hidden=true;updateNetwork();}})();},{passive:true});
+async function settleTextOutcome(outcomePromise:Promise<TextTurnOutcome>){
+ const outcome=await outcomePromise;
+ if(outcome.status!=='done'||accessEnded)return;
+ savedTranscript.push({role:'user',text:outcome.text+(outcome.imageIds?.length?' [photo attached]':'')},{role:'assistant',text:outcome.result.reply});
+ transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;
+}
 async function sendTextMessage(text:string){
- if(!loggedIn||!canChat()||!historyReady||accessEnded||textChat.busy||pullBusy||!navigator.onLine)return;
+ if(!loggedIn||!canChat()||!historyReady||accessEnded||pullBusy||!navigator.onLine)return;
  if(voiceCall?.active||voiceCall?.starting){notice('End the voice conversation before sending a typed message. Your draft is saved here.');return;}
  const input=$<HTMLTextAreaElement>('message');if(!text.trim())return;notice('');
  show('chat');
@@ -404,8 +454,18 @@ async function sendTextMessage(text:string){
  // business name — it creates the business, with that real name, once.
  if(namingMode){await claimBusinessName(text.trim());return;}
  const imageIds=attachedPhotos.map(p=>p.id);
- const result=await textChat.submit(text.trim(),imageIds);
- if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()+(imageIds.length?' [photo attached]':'')},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(input.value.trim()===text.trim())input.value='';clearAttachedPhotos();resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
+ // Slice 2: submitting during a turn QUEUES the message (pending
+ // bubble with cancel) instead of dropping it on the busy check that
+ // used to sit in this guard.
+ const outcome=textChat.submit(text.trim(),imageIds);
+ if(!outcome)return;
+ // The message is accepted the moment it is sent: the optimistic (or
+ // queued) bubble IS the message, so the composer and the photo chips
+ // clear at accept, not at completion. The turn carries the photo ids;
+ // Try again reuses them.
+ if(input.value.trim()===text.trim())input.value='';
+ clearAttachedPhotos();resizeComposer();
+ void settleTextOutcome(outcome);
 }
 function updateNetwork(){
   if(accessEnded)return;
@@ -726,22 +786,30 @@ new ResizeObserver(()=>{
  if(!conversationPositioned||conversationAtEnd)conversationScroll.scrollTop=conversationScroll.scrollHeight;
  conversationHeight=conversationScroll.clientHeight;conversationWidth=conversationScroll.clientWidth;
 }).observe(conversationScroll);
-function clearTranscriptRender(){chatSnapshot={...chatSnapshot,rows:[]};pushChatView();}
+function clearTranscriptRender(){chatSnapshot={...chatSnapshot,rows:[],earlierVisible:false};pushChatView();}
 function transcripts(){
  if(accessEnded)return;
  const list=$('transcript'),follow=list.scrollHeight-list.scrollTop-list.clientHeight<80;
  const live=voice?.transcript??[];
  for(let i=voiceSeen;i<live.length;i++){let row=voiceRows.get(i);if(!row){row={role:live[i].role,text:live[i].text};voiceRows.set(i,row);savedTranscript.push(row);}else row.text=live[i].text;}
  $('chat-empty').hidden=!loggedIn||savedTranscript.length>0;
- // Chat reenvision Slice 1: the 200-row window is KEPT exactly as-is in
- // this slice — the silent cap is marked here on purpose; removing it
- // rides Slice 2's history work (spec §2.3). Do not widen or "fix" it here.
- const messages=savedTranscript.slice(-200);
+ // Chat reenvision Slice 2: the silent 200-row cap is GONE. The full
+ // loaded history renders; anything older still held by the server is
+ // one tap away via "Earlier ↑" (historyEarlier). The engine's
+ // live-turn overlay — the optimistic owner row, the acting/streaming
+ // assistant row, stopped/failed items, queued owner rows — renders
+ // after the saved rows, in turn order.
  // The rows render inside the ChatApp tree from this model; the list
  // element, its scroll bookkeeping, and the ResizeObserver follow logic
  // stay here. Cards and guides mount before/after the list, never
  // inside it, so the tree owns the rows alone.
- chatSnapshot={...chatSnapshot,rows:messages.map(m=>({role:m.role,text:m.text})),assistantLabel:assistantName(confirmedProfile)};pushChatView();
+ const rows:TranscriptRow[]=savedTranscript.map(m=>({role:m.role,text:m.text}));
+ const tv=textChat.snapshot();
+ if(tv.stopped){rows.push({role:'user',text:tv.stopped.text,turnId:tv.stopped.requestId},{role:'assistant',text:tv.stopped.partial,state:'stopped',turnId:tv.stopped.requestId});}
+ if(tv.failed){rows.push({role:'user',text:tv.failed.text,turnId:tv.failed.requestId},{role:'assistant',text:tv.failed.partial,state:'error',error:tv.failed.message,turnId:tv.failed.requestId});}
+ if(tv.active){rows.push({role:'user',text:tv.active.text,state:'sending',turnId:tv.active.requestId},{role:'assistant',text:tv.active.partial,state:tv.active.phase,turnId:tv.active.requestId});}
+ for(const queued of tv.queue)rows.push({role:'user',text:queued.text,state:'queued',turnId:queued.requestId});
+ chatSnapshot={...chatSnapshot,rows,assistantLabel:assistantName(confirmedProfile),earlierVisible:historyEarlier&&historyReady};pushChatView();
  // History can load while Today is visible, when the chat has no scrollable
  // height. Position it once after it becomes visible; preserve earlier-reading
  // positions on later tab switches and incremental transcript updates.
@@ -787,7 +855,7 @@ function endWorkspaceAccess(){
  if(accessEnded)return;
  chatKeyboard.dispose();
  closeConsentSheet();
- accessEnded=true;namingMode=false;workspaceAccess.end();textChat.cancel();voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
+ accessEnded=true;namingMode=false;workspaceAccess.end();textChat.reset();serverPrefix=0;historyEarlier=false;voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
  savedTranscript=[];confirmedProfile={};voiceRows.clear();clearTranscriptRender();$('interim').textContent='';
  workspace.clear();workday.clear();connectionHub.reset();voiceHealth.clear();calendarChat.clear();calendarLauncher.hidden=true;$('calendar-status').hidden=true;voiceHelp.open=false;voiceHelp.hidden=true;micLevel.hidden=true;micLevel.value=0;
  $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
@@ -836,7 +904,7 @@ function handleMessage(data:unknown){
     if(data&&typeof data==='object'&&(data as any).type==='conversation_history'&&!historyReady){
       const messages=(data as any).messages;
       if(Array.isArray(messages)&&messages.length<=50&&messages.every(m=>m&&['user','assistant'].includes(m.role)&&typeof m.text==='string')){
-        savedTranscript=messages;historyReady=true;transcripts();updateNetwork();
+        savedTranscript=messages;serverPrefix=0;historyEarlier=false;historyReady=true;transcripts();updateNetwork();
       }
     }
     if(data&&typeof data==='object'&&(data as any).type==='website_source'){
