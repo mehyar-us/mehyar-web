@@ -1,6 +1,8 @@
 import {createElement,X,Camera} from 'lucide';
 import {createTimeZoneSuggestion} from './time-zone';
-import {createTextChat,readNdjsonTurn,type TextTurnOutcome} from './text-chat';
+import {createTextChat,readNdjsonTurn,applyTextOutcome,type TextTurnOutcome} from './text-chat';
+import {createVoiceTranscriptMerge} from './voice-merge';
+import {createConversationCardRegistry} from './conversation-cards';
 import {createCalendarChat} from './calendar-chat';
 import {renderConnectorCard,isConnectorCardPayload} from './connector-cards';
 import {createPullRefresh} from './pull-refresh';
@@ -390,7 +392,7 @@ libraryInput.onchange=onPhotoPicked(libraryInput);
 async function loadConversation(){
  const result=await api(`/api/businesses/${tenantId}/conversation?limit=${HISTORY_PAGE}`);
  savedTranscript=result.messages.map((m:any)=>({role:m.role,text:m.content}));serverPrefix=savedTranscript.length;historyEarlier=result.hasMore===true;
- if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceRows.clear();voiceSeen=voice?.transcript.length??0;historyReady=true;transcripts();updateNetwork();
+ if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceMerge.replacedByServer(voice?.transcript.length??0);clearConversationCards();historyReady=true;transcripts();updateNetwork();
 }
 /** Load the next older page of history and prepend it, keeping the
  * reading position anchored where it was. */
@@ -423,7 +425,8 @@ async function startNewChat(){
   textChat.reset();serverPrefix=0;historyEarlier=false;
   savedTranscript=[];
   if(canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});
-  voiceRows.clear();voiceSeen=voice?.transcript.length??0;
+  voiceMerge.replacedByServer(voice?.transcript.length??0);
+  clearConversationCards();
   clearTranscriptRender();$('interim').textContent='';
   historyReady=true;transcripts();updateNetwork();
   show('chat');$('transcript').scrollTop=0;
@@ -441,9 +444,17 @@ window.addEventListener('touchcancel',resetPull,{passive:true});
 window.addEventListener('touchend',event=>{if(!pullGesture.end(pullGuard(),event.touches.length)){if(!pullBusy)pullStatus.hidden=true;return;}pullBusy=true;updateNetwork();pullStatus.hidden=false;pullStatus.textContent='Refreshing…';void(async()=>{try{const view=document.body.dataset.view;if(view==='chat')await loadConversation();else if(view==='account')await account();else if(view==='connections')await connectionHub.activate();else await workday.refreshCurrent();}catch(error){if(!accessEnded)notice(error instanceof Error?error.message:'Could not refresh. Try again.');}finally{pullBusy=false;pullGesture.finish();pullStatus.hidden=true;updateNetwork();}})();},{passive:true});
 async function settleTextOutcome(outcomePromise:Promise<TextTurnOutcome>){
  const outcome=await outcomePromise;
- if(outcome.status!=='done'||accessEnded)return;
- savedTranscript.push({role:'user',text:outcome.text+(outcome.imageIds?.length?' [photo attached]':'')},{role:'assistant',text:outcome.result.reply});
- transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;
+ if(accessEnded)return;
+ // DEF-014: done AND stopped outcomes commit to the saved transcript
+ // (applyTextOutcome owns the row shapes). A stopped turn's partial
+ // is conversation history, not overlay vapor: once committed, the
+ // engine's stopped overlay retires and the pair renders from the
+ // saved model — surviving every later submit.
+ const applied=applyTextOutcome(savedTranscript,outcome);
+ if(outcome.status==='stopped')textChat.commitStopped();
+ if(!applied)return;
+ transcripts();
+ if(outcome.status==='done')$('transcript').scrollTop=$('transcript').scrollHeight;
 }
 async function sendTextMessage(text:string){
  if(!loggedIn||!canChat()||!historyReady||accessEnded||pullBusy||!navigator.onLine)return;
@@ -775,7 +786,17 @@ async function api(path:string,body?:unknown,headers:Record<string,string>={}){
   const result=await response.json();if(captured!==null)workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(path,tenantId,loggedIn,result.error))endWorkspaceAccess();throw Object.assign(new Error(result.message??'This service could not finish. Please try again.'),{code:result.error});}return result;
  }catch(error){if(controller.signal.aborted)throw new Error(customConnection?'The connection took too long. Check the connected service before repeating an action.':'This service took too long. Please try again.');throw error;}finally{clearTimeout(timer);}
 }
-let voiceSeen=0,conversationPositioned=false,conversationAtEnd=true,conversationHeight=0,conversationWidth=0;const voiceRows=new Map<number,{role:string;text:string}>();
+let conversationPositioned=false,conversationAtEnd=true,conversationHeight=0,conversationWidth=0;
+/** DEF-021/022: the voice merge lives in voice-merge.ts (index map +
+ * seen cursor with an explicit contract for replacement/reconnect). */
+const voiceMerge=createVoiceTranscriptMerge();
+/** DEF-006: cards mounted around #transcript by harness events are
+ * registered here so a conversation reset removes them all. */
+const conversationCards=createConversationCardRegistry();
+function clearConversationCards(){
+ conversationCards.clear();
+ for(const id of ['chat-connections-guide','chat-phone-guide'])document.getElementById(id)?.remove();
+}
 const conversationScroll=$('transcript');
 conversationScroll.addEventListener('scroll',()=>{
  // A viewport reflow is not a request to stop following the latest message.
@@ -791,7 +812,7 @@ function transcripts(){
  if(accessEnded)return;
  const list=$('transcript'),follow=list.scrollHeight-list.scrollTop-list.clientHeight<80;
  const live=voice?.transcript??[];
- for(let i=voiceSeen;i<live.length;i++){let row=voiceRows.get(i);if(!row){row={role:live[i].role,text:live[i].text};voiceRows.set(i,row);savedTranscript.push(row);}else row.text=live[i].text;}
+ voiceMerge.merge(savedTranscript,live);
  $('chat-empty').hidden=!loggedIn||savedTranscript.length>0;
  // Chat reenvision Slice 2: the silent 200-row cap is GONE. The full
  // loaded history renders; anything older still held by the server is
@@ -818,7 +839,10 @@ function transcripts(){
 async function connect(){
   const session=await api('/api/voice/session',{tenantId});
   voiceCall?.stop();voice?.disconnect();
-  voiceRows.clear();voiceSeen=0;updateNetwork();
+  // DEF-022: the saved rows stay, so the merge map stays too — the new
+  // client's indices restart at 0 and must reconcile against the rows
+  // already in the transcript, never duplicate them.
+  voiceMerge.reconnected();updateNetwork();
   const microphone=new MayorMicrophone();
   const client=voice=new VoiceClient({agent:session.agent,name:session.name,query:{business:tenantId},audioInput:microphone});
   const active=()=>voice===client&&!accessEnded;
@@ -856,7 +880,7 @@ function endWorkspaceAccess(){
  chatKeyboard.dispose();
  closeConsentSheet();
  accessEnded=true;namingMode=false;workspaceAccess.end();textChat.reset();serverPrefix=0;historyEarlier=false;voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
- savedTranscript=[];confirmedProfile={};voiceRows.clear();clearTranscriptRender();$('interim').textContent='';
+ savedTranscript=[];confirmedProfile={};voiceMerge.clear();conversationCards.clear();clearTranscriptRender();$('interim').textContent='';
  workspace.clear();workday.clear();connectionHub.reset();voiceHealth.clear();calendarChat.clear();calendarLauncher.hidden=true;$('calendar-status').hidden=true;voiceHelp.open=false;voiceHelp.hidden=true;micLevel.hidden=true;micLevel.value=0;
  $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
  for(const node of [$('profile'),phoneGuide,phoneControls])node.replaceChildren();inboxSnapshot={...inboxSnapshot,items:[],hasMore:false,showReconnect:false};pushInbox();
@@ -887,6 +911,9 @@ function handleMessage(data:unknown){
       if(message.type==='connector_card'&&isConnectorCardPayload(message.card)){
         const card=renderConnectorCard(message.card,{api,tenant:()=>tenantId,signIn,onNotice:message=>notice(message)});
         $('transcript').after(card);
+        // DEF-006: registered so New chat / history reload removes it —
+        // a live credential form must not outlive its conversation.
+        conversationCards.register(card);
         card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});
       }
       if(message.type==='calendar_inventory'&&Array.isArray(message.connections)&&message.setup){calendarChat.inventory(message);}
@@ -904,7 +931,11 @@ function handleMessage(data:unknown){
     if(data&&typeof data==='object'&&(data as any).type==='conversation_history'&&!historyReady){
       const messages=(data as any).messages;
       if(Array.isArray(messages)&&messages.length<=50&&messages.every(m=>m&&['user','assistant'].includes(m.role)&&typeof m.text==='string')){
-        savedTranscript=messages;serverPrefix=0;historyEarlier=false;historyReady=true;transcripts();updateNetwork();
+        // DEF-021: the saved array was just replaced — the voice merge
+        // must drop its row references and treat the server snapshot as
+        // the record, or merged voice rows orphan (mutations land on
+        // objects no longer rendered) and re-push as duplicates.
+        savedTranscript=messages;serverPrefix=0;historyEarlier=false;voiceMerge.replacedByServer(voice?.transcript.length??0);historyReady=true;transcripts();updateNetwork();
       }
     }
     if(data&&typeof data==='object'&&(data as any).type==='website_source'){
@@ -933,6 +964,12 @@ function renderVoiceState(){
  $('talk').setAttribute('aria-label',$('talk').querySelector('span')!.textContent!);
  $('dock-voice-label').textContent=$('talk').querySelector('span')!.textContent;
  $('mute').hidden=starting||!voiceCall?.active;
+ // DEF-024: the mute label is current state, not history. It used to
+ // be written only by the mutechange event, so after a reconnect the
+ // fresh (unmuted) client inherited the previous client's "Unmute" —
+ // an owner could believe they were muted while live. Write it from
+ // the actual state on every render.
+ $('mute').textContent=voice?.isMuted?'Unmute':'Mute';
  micLevel.hidden=!voiceCall?.active;if(micLevel.hidden)micLevel.value=0;
  $('voice-hint').textContent=starting?'Allow microphone access in your browser to begin. You can cancel and type instead.':voiceCall?.active?'Speak naturally. You can interrupt me anytime.':microphoneProblem|| (voiceConnected?'Press Talk to begin. I’ll greet you when your microphone is ready.':'Voice is reconnecting. You can still type below.');
 }

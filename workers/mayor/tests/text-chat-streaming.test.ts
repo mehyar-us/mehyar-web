@@ -1,6 +1,6 @@
 import {it,expect,vi,afterEach} from 'vitest';
 import {readFileSync} from 'node:fs';
-import {createTextChat,readNdjsonTurn,textChatLimits,AMBIGUOUS_TURN_COPY} from '../web/text-chat';
+import {createTextChat,readNdjsonTurn,applyTextOutcome,textChatLimits,AMBIGUOUS_TURN_COPY,type TextTurnOutcome} from '../web/text-chat';
 import {streamTextTurn,textStreamLimits,StreamIdleTimeout} from '../src/text-turn';
 
 /** Chat reenvision Slice 2 — streaming transport pins. */
@@ -96,5 +96,95 @@ it('the retired sentence exists ONLY as AMBIGUOUS_TURN_COPY in the web bundle so
  }
  expect(total).toBe(1);
  expect(AMBIGUOUS_TURN_COPY).toBe(sentence);
+});
+it('DEF-010: a malformed frame mid-stream is skipped — the turn completes, never ambiguous, queue never jams',async()=>{
+ const deltas:string[]=[];
+ const body=frames([{type:'delta',text:'Hello '}])+'{this is not json\n'+'12345\n'+frames([{type:'delta',text:'there'},{type:'done',reply:'Hello there',requestId:'r9'}]);
+ const result=await readNdjsonTurn(streamOf([body]),{onDelta:t=>deltas.push(t),onEvent:()=>{}});
+ expect(deltas).toEqual(['Hello ','there']);
+ expect(result.reply).toBe('Hello there');
+ // Engine level: the same stream through a full turn settles done,
+ // and the NEXT turn flows — a poisoned frame cannot jam the queue.
+ const chat=createTextChat(async()=>readNdjsonTurn(streamOf([body]),{onDelta:()=>{},onEvent:()=>{}}),()=>{});
+ expect(await chat.submit('One')).toMatchObject({status:'done'});
+ expect(await chat.submit('Two')).toMatchObject({status:'done'});
+ expect(chat.snapshot().failed).toBeUndefined();
+});
+
+it('DEF-011: the reader is cancelled and released however the read ends',async()=>{
+ let cancelled=false;
+ const errorBody=new ReadableStream<Uint8Array>({start(controller){controller.enqueue(new TextEncoder().encode(frames([{type:'delta',text:'par'},{type:'error',status:502,message:'I could not finish this reply.'}])));},cancel(){cancelled=true;}});
+ await expect(readNdjsonTurn(errorBody,{onDelta:()=>{},onEvent:()=>{}})).rejects.toMatchObject({status:502});
+ expect(cancelled).toBe(true);
+ const okBody=streamOf([frames([{type:'done',reply:'All good',requestId:'r2'}])]);
+ await expect(readNdjsonTurn(okBody,{onDelta:()=>{},onEvent:()=>{}})).resolves.toEqual({reply:'All good'});
+ // The lock is released: a fresh reader can be taken on the stream.
+ expect(()=>okBody.getReader()).not.toThrow();
+});
+
+it('DEF-014: Stop → send another message — the stopped partial persists in the saved transcript',async()=>{
+ const saved:{role:string;text:string}[]=[];
+ const send=vi.fn(async(text:string,_id:string,signal:AbortSignal,_images:unknown,stream:{onDelta:(t:string)=>void})=>{
+  if(text==='First question'){
+   stream.onDelta('Partial ans');
+   await new Promise<never>((_resolve,reject)=>{signal.addEventListener('abort',()=>{const err=new Error('aborted');err.name='AbortError';reject(err);},{once:true});});
+  }
+  return {reply:'Second answer'};
+ });
+ const chat=createTextChat(send,()=>{});
+ // Mirror main.ts settleTextOutcome: commit the outcome into the
+ // saved model, then retire the engine's stopped overlay.
+ const settle=async(outcome:Promise<TextTurnOutcome>)=>{
+  const resolved=await outcome;
+  const applied=applyTextOutcome(saved,resolved);
+  if(resolved.status==='stopped')chat.commitStopped();
+  return {resolved,applied};
+ };
+ const first=chat.submit('First question');
+ expect(first).not.toBeNull();
+ await vi.waitFor(()=>expect(chat.snapshot().active?.partial).toBe('Partial ans'));
+ chat.cancel();
+ const stoppedOutcome=await first!;
+ expect(stoppedOutcome).toMatchObject({status:'stopped',text:'First question',partial:'Partial ans'});
+ // Before the settle commit, the overlay still renders the stopped item.
+ expect(chat.snapshot().stopped).toMatchObject({text:'First question',partial:'Partial ans'});
+ const firstSettle=await settle(Promise.resolve(stoppedOutcome));
+ expect(firstSettle.applied).toBe(true);
+ expect(chat.snapshot().stopped).toBeUndefined();
+ const secondSettle=await settle(chat.submit('Second question')!);
+ expect(secondSettle.resolved).toMatchObject({status:'done'});
+ // The stopped pair survived the second submit, in order, with its marker.
+ expect(saved).toEqual([
+  {role:'user',text:'First question'},
+  {role:'assistant',text:'Partial ans\n\nStopped — here’s what I had'},
+  {role:'user',text:'Second question'},
+  {role:'assistant',text:'Second answer'},
+ ]);
+});
+
+it('DEF-014: submit alone never clears an uncommitted stopped overlay',async()=>{
+ const send=vi.fn(async(text:string,_id:string,signal:AbortSignal,_images:unknown,stream:{onDelta:(t:string)=>void})=>{
+  if(text==='Hold on'){
+   stream.onDelta('Half an answer');
+   await new Promise<never>((_resolve,reject)=>{signal.addEventListener('abort',()=>{const err=new Error('aborted');err.name='AbortError';reject(err);},{once:true});});
+  }
+  return {reply:'Later answer'};
+ });
+ const chat=createTextChat(send,()=>{});
+ const first=chat.submit('Hold on');
+ await vi.waitFor(()=>expect(chat.snapshot().active?.partial).toBe('Half an answer'));
+ chat.cancel();
+ await expect(first!).resolves.toMatchObject({status:'stopped',partial:'Half an answer'});
+ const second=chat.submit('Another message');
+ expect(chat.snapshot().stopped).toMatchObject({partial:'Half an answer'});
+ await expect(second!).resolves.toMatchObject({status:'done'});
+});
+
+it('applyTextOutcome keeps the done-row shape (photo suffix) it was moved with',()=>{
+ const saved:{role:string;text:string}[]=[];
+ expect(applyTextOutcome(saved,{status:'done',text:'Look',imageIds:['p1'],result:{reply:'Seen'}})).toBe(true);
+ expect(saved).toEqual([{role:'user',text:'Look [photo attached]'},{role:'assistant',text:'Seen'}]);
+ expect(applyTextOutcome(saved,{status:'failed',text:'x',failure:{message:'no'}})).toBe(false);
+ expect(saved).toHaveLength(2);
 });
 afterEach(()=>vi.restoreAllMocks());

@@ -20,3 +20,9 @@
 .receipt-actions>.button,.receipt-actions>.text-link{min-height:44px}.receipt-actions>.text-link{display:inline-flex;align-items:center}
 .receipt-copy{display:inline-flex;align-items:center;gap:5px;margin-left:10px;font-size:12px;min-height:32px;vertical-align:middle}
 .receipt-copy svg{width:14px;height:14px}
+/* CHG-093: the availability check can take a while (app-wide latency);
+ * while it runs the checkout button carries a live spinner so the wait
+ * never reads as a dead button. Reduced-motion users get a static ring. */
+.checkout-button.is-checking::after{content:'';width:14px;height:14px;flex-shrink:0;border-radius:50%;border:2px solid #ffffff59;border-top-color:#fff;animation:audit-spin .8s linear infinite}
+@keyframes audit-spin{to{transform:rotate(360deg)}}
+.offer-retry{margin-left:10px;vertical-align:middle}

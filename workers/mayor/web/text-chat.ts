@@ -48,9 +48,27 @@ export interface FailedTurn{requestId:string;text:string;imageIds?:string[];part
 export interface TextChatView{busy:boolean;active?:ActiveTurn;stopped?:StoppedTurn;failed?:FailedTurn;queue:QueuedTurn[]}
 export type TextTurnOutcome=
  |{status:'done';text:string;imageIds?:string[];result:SendResult}
- |{status:'stopped';text:string}
+ |{status:'stopped';text:string;partial:string}
  |{status:'failed';text:string;failure:FailedTurn}
  |{status:'cancelled';text:string};
+
+/** Settle an outcome into the saved transcript model (main.ts's
+ * settleTextOutcome delegates here so the contract is testable).
+ * DEF-014: a stopped turn is part of the conversation — its user row
+ * and the preserved partial (with its Stopped marker) are committed
+ * to the saved rows, not left in a transient overlay the next submit
+ * erases. Returns true when rows were appended. */
+export function applyTextOutcome(saved:{role:string;text:string}[],outcome:TextTurnOutcome):boolean{
+ if(outcome.status==='done'){
+  saved.push({role:'user',text:outcome.text+(outcome.imageIds?.length?' [photo attached]':'')},{role:'assistant',text:outcome.result.reply});
+  return true;
+ }
+ if(outcome.status==='stopped'){
+  saved.push({role:'user',text:outcome.text},{role:'assistant',text:outcome.partial?`${outcome.partial}\n\nStopped — here’s what I had`:'Stopped.'});
+  return true;
+ }
+ return false;
+}
 
 interface PendingEntry extends QueuedTurn{settle:(outcome:TextTurnOutcome)=>void}
 
@@ -131,7 +149,7 @@ export function createTextChat(send:SendFn,changed:(busy:boolean,message:string)
     if(stopping){
      stopped={requestId:entry.requestId,text:entry.text,partial};
      changed(false,'Stopped.');emit();
-     entry.settle({status:'stopped',text:entry.text});
+     entry.settle({status:'stopped',text:entry.text,partial});
      drain();
      return;
     }
@@ -152,7 +170,10 @@ export function createTextChat(send:SendFn,changed:(busy:boolean,message:string)
   snapshot:view,
   submit(text:string,imageIds?:string[]):Promise<TextTurnOutcome>|null{
    if(!text.trim())return null;
-   stopped=undefined;
+   // DEF-014: submit must NOT clear the stopped overlay. The stopped
+   // pair is committed to the saved transcript by the settle consumer
+   // (applyTextOutcome) and the overlay retires via commitStopped() —
+   // until then it keeps rendering, even behind a queued/active turn.
    let settle!:(outcome:TextTurnOutcome)=>void;
    const outcome=new Promise<TextTurnOutcome>(resolve=>{settle=resolve;});
    const entry:PendingEntry={requestId:crypto.randomUUID(),text,imageIds,settle};
@@ -189,6 +210,13 @@ export function createTextChat(send:SendFn,changed:(busy:boolean,message:string)
    failed=undefined;emit();
    drain();
   },
+  /** DEF-014: the settle consumer has committed the stopped pair to
+   * the saved transcript (applyTextOutcome); retire the overlay so
+   * the pair renders exactly once, from the saved model. */
+  commitStopped(){
+   if(!stopped)return;
+   stopped=undefined;emit();
+  },
   /** Access ended / session torn down: drop every overlay and settle
    * every waiter as cancelled. Late completions are generation-guarded. */
   reset(){
@@ -220,25 +248,40 @@ export async function readNdjsonTurn(body:ReadableStream<Uint8Array>,hooks:Strea
  const handleLine=(line:string)=>{
   const trimmed=line.trim();
   if(!trimmed)return;
-  const frame=JSON.parse(trimmed) as {type?:string;text?:string;event?:unknown;reply?:string;status?:number;message?:string};
+  // DEF-010: one malformed frame (an intermediary's injected bytes, a
+  // truncated line, a proxy keep-alive artifact) must never kill the
+  // turn. Unparseable lines are skipped and logged; the turn continues
+  // with the frames around them.
+  let frame:{type?:string;text?:string;event?:unknown;reply?:string;status?:number;message?:string};
+  try{frame=JSON.parse(trimmed) as typeof frame;}
+  catch{console.warn('Mayor chat: skipped a malformed stream frame.');return;}
+  if(!frame||typeof frame!=='object')return;
   if(frame.type==='delta'){const text=frame.text??'';reply+=text;hooks.onDelta(text);}
   else if(frame.type==='event')hooks.onEvent(frame.event);
   else if(frame.type==='done'){sawDone=true;if(typeof frame.reply==='string')reply=frame.reply;}
   else if(frame.type==='error'){const err=new Error(frame.message??'Could not send. Your draft is still here.') as Error&{status?:number};err.status=frame.status;throw err;}
  };
- for(;;){
-  const {done,value}=await reader.read();
-  if(done)break;
-  buffer+=decoder.decode(value,{stream:true});
-  let index=buffer.indexOf('\n');
-  while(index>=0){
-   const line=buffer.slice(0,index);buffer=buffer.slice(index+1);
-   handleLine(line);
-   index=buffer.indexOf('\n');
+ try{
+  for(;;){
+   const {done,value}=await reader.read();
+   if(done)break;
+   buffer+=decoder.decode(value,{stream:true});
+   let index=buffer.indexOf('\n');
+   while(index>=0){
+    const line=buffer.slice(0,index);buffer=buffer.slice(index+1);
+    handleLine(line);
+    index=buffer.indexOf('\n');
+   }
   }
+  buffer+=decoder.decode();
+  if(buffer.trim())handleLine(buffer);
+ }finally{
+  // DEF-011: however the read ends — done frame, server error frame,
+  // transport failure — the reader is cancelled and released so the
+  // connection never hangs open behind a settled turn.
+  try{await reader.cancel();}catch{/* the stream already ended */}
+  try{reader.releaseLock();}catch{/* the lock was already released */}
  }
- buffer+=decoder.decode();
- if(buffer.trim())handleLine(buffer);
  if(!sawDone)throw Object.assign(new Error('The reply stream ended early.'),{ambiguous:true});
  return {reply};
 }

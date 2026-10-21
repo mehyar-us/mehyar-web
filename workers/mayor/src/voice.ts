@@ -20,7 +20,7 @@ import {IMAGE_UPLOAD,saveChatImage,getChatImages,deleteChatImage,describeAttache
 import {asksCurrentCapabilities,currentCapabilities} from './current-capabilities';
 import {HttpError,json,readJson} from './http';
 import type { Env } from './env';
-import { profileSchema, readMemory, confirmProfile, isSpokenConfirmation, profileSourceSchema,verifyProfileSource,type Profile,type ProfilePatch,type ProfileSource } from './memory';
+import { profileSchema, readMemory, confirmProfile, isSpokenConfirmation, profileSourceSchema,verifyProfileSource,profileChanges,type Profile,type ProfilePatch,type ProfileSource } from './memory';
 import {researchWebsite,publicWebsiteUrl,websiteWasSupplied,websiteEvidenceReadback} from './website';
 import {profileReadback,policyReadback,bookingReadback,changeReadback,confirmationStream,guardedSpeech} from './confirmation';
 import {suggestVertical,verticalSuggestionFraming,MODE_LABELS} from './vertical-mapping';
@@ -605,12 +605,20 @@ export class MayorVoice extends Base<Env> {
             await requireMembership(this.env,actor,OPERATORS);
             if(!assistantNameWasChosen(transcript,patch.assistantName,previousAssistant||(!memory.profile.assistantName?businessVoiceGreeting(memory.profile):'')))throw new Error('Use only an assistant name chosen by the owner in this turn.');
           }
-          if(Object.entries(patch).every(([key,value])=>JSON.stringify(memory.profile[key as keyof Profile])===JSON.stringify(value))){
+          // CHG-094: verification covers ONLY the fields that change
+          // the confirmed profile. A patch restating the whole record
+          // (the LIVE-01 dump: a normal request answered with "Please
+          // verify: name… vertical… language…") collapses here to the
+          // already-saved outcome; a patch with one new field reads
+          // back that field alone, and only it is proposed.
+          const changes=profileChanges(memory.profile,patch);
+          if(!Object.keys(changes).length){
             claimProposal();
             setReadback(`Already saved: ${Object.entries(patch).map(([key,value])=>`${key.replace(/([A-Z])/g,' $1').toLowerCase()}: ${Array.isArray(value)?value.join('; '):value}`).join('. ')}. No changes made.`);
             readOnlyReadback=true;
             return {status:'already_saved'};
           }
+          patch=changes;
           claimProposal();
           this.pendingCalendar.delete(context.connection.id);
           this.pendingPolicy.delete(context.connection.id);
@@ -753,12 +761,24 @@ export class MayorVoice extends Base<Env> {
       }}),proposeWebsiteProfile:tool({description:'When asked to suggest, prepare or propose website-derived profile facts, call this after researchWebsite even if the user says do not save yet. Only a subsequent separate confirmation saves. Propose website-derived business facts, never save automatically. Include an exact supporting excerpt for each field, read back the facts and source domain, and ask yes to confirm. Missing details remain unknown. This does not configure scheduling rules.',inputSchema:z.object({patch:profileSchema,source:profileSourceSchema}).strict(),execute:async({patch,source})=>{
           claimProposal();
         await this.authorize(context.connection);
-        const verified=await verifyProfileSource(this.env,actor,patch,source);
-        setReadback(profileReadback(patch,verified.url));
+        // CHG-094: the same gate as proposeProfileChange — only fields
+        // that change the confirmed profile may be read back for
+        // verification. The source quotes narrow with the patch
+        // (verifyProfileSource requires quotes ⇔ patch keys, here and
+        // again when the stored proposal is confirmed).
+        const changes=profileChanges(memory.profile,patch);
+        if(!Object.keys(changes).length){
+          setReadback(`Already saved: ${Object.entries(patch).map(([key,value])=>`${key.replace(/([A-Z])/g,' $1').toLowerCase()}: ${Array.isArray(value)?value.join('; '):value}`).join('. ')}. No changes made.`);
+          readOnlyReadback=true;
+          return {status:'already_saved'};
+        }
+        const narrowedSource:ProfileSource={sourceId:source.sourceId,quotes:Object.fromEntries(Object.entries(source.quotes).filter(([field])=>field in changes))};
+        const verified=await verifyProfileSource(this.env,actor,changes,narrowedSource);
+        setReadback(profileReadback(changes,verified.url));
         this.pendingCalendar.delete(context.connection.id);this.pendingPolicy.delete(context.connection.id);this.pendingChange.delete(context.connection.id);this.pendingBooking.delete(context.connection.id);
-        this.pending.set(context.connection.id,{patch,source,revision:memory.revision,expiresAt:Date.now()+120000});
-        context.connection.send(JSON.stringify({type:'profile_proposal',patch,source:verified}));
-        return {status:'awaiting_confirmation',patch,sourceUrl:verified.url};
+        this.pending.set(context.connection.id,{patch:changes,source:narrowedSource,revision:memory.revision,expiresAt:Date.now()+120000});
+        context.connection.send(JSON.stringify({type:'profile_proposal',patch:changes,source:verified}));
+        return {status:'awaiting_confirmation',patch:changes,sourceUrl:verified.url};
       }}),phoneConnectionStatus:tool({description:'Read phone connection status. If disconnected, guide the user to the secure phone provider API key form in Account, never ask for secrets in conversation. callsReady=false means phone calls are not enabled.',inputSchema:z.object({}).strict(),execute:async()=>{await this.authorize(context.connection);return phoneConnections(this.env,actor);}}),
       listPhoneNumbers:tool({description:'Read numbers owned by the selected connected phone provider. Ask which provider if unclear. Does not buy numbers or change routing.',inputSchema:z.object({provider:z.enum(['twilio','telnyx'])}).strict(),execute:async({provider})=>{await this.authorize(context.connection);return (provider==='telnyx'?telnyxNumbers:twilioNumbers)(this.env,actor);}}),
       selectPhoneNumber:tool({description:'Save the number explicitly chosen by the user from listPhoneNumbers. This is only a preference: it never changes routing or enables calls. Explain that calls still need setup and verification.',inputSchema:z.object({provider:z.enum(['twilio','telnyx']),id:z.string().max(64)}).strict(),execute:async({provider,id})=>{await this.authorize(context.connection);return (provider==='telnyx'?selectTelnyxNumber:selectTwilioNumber)(this.env,actor,id);}}),

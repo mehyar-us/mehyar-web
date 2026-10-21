@@ -49,6 +49,16 @@ export type Profile = z.infer<typeof profileSchema>;
 /** Input-side type for partial profile patches: every field optional (no
  * defaults applied yet). Use this wherever a patch is constructed or passed. */
 export type ProfilePatch = z.input<typeof profileSchema>;
+/** CHG-094: the fields of a patch that actually CHANGE the confirmed
+ * profile. A verification readback may only ever cover these. A patch
+ * that restates the owner's own confirmed facts — the model answering
+ * an unrelated request by proposing the whole record — must never
+ * become a "Please verify" dump of data the owner already confirmed;
+ * it collapses to the already-saved outcome, and a patch with one
+ * genuinely new field reads back that field alone. */
+export function profileChanges(profile:Partial<Profile>,patch:ProfilePatch):ProfilePatch{
+ return Object.fromEntries(Object.entries(patch).filter(([key,value])=>JSON.stringify(profile[key as keyof Profile])!==JSON.stringify(value))) as ProfilePatch;
+}
 export const profileSourceSchema=z.object({sourceId:z.uuid(),quotes:z.record(z.string(),z.string().min(5).max(1000))}).strict();
 export type ProfileSource=z.infer<typeof profileSourceSchema>;
 type Provenance=Record<string,{kind:string;url?:string;sourceId?:string;quote?:string;confirmedAt:string}>;
