@@ -10,6 +10,7 @@ interface ManagedApp {
   id: string;
   name: string;
   url: string;
+  facebook?: string;
   tagline: string;
   description: string;
   audience: string;
@@ -381,6 +382,7 @@ const managedApps: ManagedApp[] = [
     name: "The Mayor",
     url: "https://mayor.mehyar.us",
     tagline: "The AI built for each business.",
+    facebook: "https://www.facebook.com/profile.php?id=61595399794348",
     description:
       // PRICING: mirrors the live Mayor catalog (Pro $99/mo since 2026-10-16).
       "AI business workspace for Main Street: customers, appointments, playbooks, and voice — with a $99/mo Pro plan (founding cohort $79.20/mo for life) and one-time credit packs.",
@@ -765,6 +767,16 @@ const Apps = () => {
                     >
                       Read the launch note
                     </Link>
+                    {app.facebook ? (
+                      <a
+                        href={app.facebook}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Facebook Page
+                      </a>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>
