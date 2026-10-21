@@ -18,7 +18,8 @@
     "test:prospects": "node tests/test_prospect_pipeline.mjs",
     "test:gov-opportunities": "node scripts/test-gov-opportunities.mjs",
     "test:gov-drafts": "tsx scripts/test-gov-drafting-assist.mjs",
-    "test:avatar": "npx tsx client/src/lib/assessment-call/__tests__/lip-sync.test.ts && npx tsx client/src/lib/assessment-call/__tests__/avatar-head.test.ts && npx tsx client/src/lib/assessment-call/__tests__/avatar-controller.test.ts && npx tsx client/src/lib/assessment-call/__tests__/real-audio.test.ts && npx tsx client/src/lib/assessment-call/__tests__/call-window-contrast.test.ts && npx tsx client/src/lib/assessment-call/__tests__/analytics.test.ts"
+    "test:avatar": "npx tsx client/src/lib/assessment-call/__tests__/lip-sync.test.ts && npx tsx client/src/lib/assessment-call/__tests__/avatar-head.test.ts && npx tsx client/src/lib/assessment-call/__tests__/avatar-controller.test.ts && npx tsx client/src/lib/assessment-call/__tests__/real-audio.test.ts && npx tsx client/src/lib/assessment-call/__tests__/call-window-contrast.test.ts && npx tsx client/src/lib/assessment-call/__tests__/analytics.test.ts",
+    "test:switch": "node scripts/test-switch-children.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
