@@ -1,4 +1,4 @@
-import {telnyxInboundSchema} from './telnyx-inbound-config';
+import {telnyxInboundSchema,type TelnyxInbound} from './telnyx-inbound-config';
 import {z} from 'zod';
 import {phoneWriteAccess} from './phone-write-access';
 import type {Actor,Env} from './env';
@@ -160,10 +160,11 @@ export async function telnyxCallCredential(env:Env,tenantId:string,revision:numb
  return value;
 }
 
-export const telnyxCallSetupSchema=telnyxInboundSchema.omit({verifyProfileId:true}).extend({confirm:z.literal('save_test_setup')}).strict();
-/** Store reviewed designated-call settings; never purchases, routes, calls or activates. */
-export async function saveTelnyxCallSetup(env:Env,actor:Actor,input:z.infer<typeof telnyxCallSetupSchema>,transport:typeof fetch=fetch){
- const parsed=telnyxCallSetupSchema.parse(input),{confirm,...inbound}=parsed;
+export const telnyxCallSetupSchema=telnyxInboundSchema.omit({verifyProfileId:true,mode:true}).extend({testCaller:z.string().regex(/^\+[1-9]\d{6,14}$/),confirm:z.literal('save_test_setup')}).strict();
+export const telnyxLiveSetupSchema=telnyxInboundSchema.omit({verifyProfileId:true,testCaller:true}).extend({mode:z.literal('live'),confirm:z.literal('save_live_setup')}).strict();
+type InboundSetupOptions={auditEvent:string,requireNumber:boolean,next:string};
+/** Shared sealing path for reviewed inbound settings; never purchases, routes, calls or activates. */
+async function saveTelnyxInboundSetup(env:Env,actor:Actor,inbound:TelnyxInbound,options:InboundSetupOptions,transport:typeof fetch=fetch){
  let row=await saved(env,actor);
  const original=row;
  const value=await credential(env,row,actor,transport);
@@ -174,7 +175,8 @@ export async function saveTelnyxCallSetup(env:Env,actor:Actor,input:z.infer<type
  if('tokens' in envelope&&!envelope.tokens.scopes.includes('voice.write'))throw fail(403,'phone_scope_required','Reconnect Telnyx with voice-management permission.');
  const app=z.object({data:applicationSchema}).safeParse(await providerGet(value,'/call_control_applications/'+inbound.applicationId,transport));
  if(!app.success||app.data.data.id!==inbound.applicationId||app.data.data.webhook_event_url!==callbackFor(env,actor.tenantId))throw fail(409,'voice_application_not_ready','Choose the active Mayor voice app for this business.');
- // Validate an existing selected number without changing its provider routing.
+ if(options.requireNumber&&!row.selected_number_id)throw fail(409,'phone_unavailable','Choose the number The Mayor should answer before saving live settings.');
+ // Validate the selected number without changing its provider routing.
  if(row.selected_number_id){
   const number=z.object({data:numberSchema}).parse(await providerGet(value,'/phone_numbers/'+row.selected_number_id,transport)).data;
   if(number.id!==row.selected_number_id||number.phone_number!==row.selected_number||number.status!=='active'||number.connection_id!==inbound.applicationId)throw fail(409,'number_application_mismatch','Your selected number is not assigned to this voice app. Review routing before saving.');
@@ -185,8 +187,19 @@ export async function saveTelnyxCallSetup(env:Env,actor:Actor,input:z.infer<type
   env.AGENT_DB.prepare(`UPDATE mayor_phone_connections SET ciphertext=?,revision=revision+1,updated_at=? WHERE id=? AND revision=? AND ciphertext=? AND status='authorized' AND ${phoneWriteAccess} AND ${phoneWriteAccess}
    AND NOT EXISTS(SELECT 1 FROM mayor_phone_oauth_refresh WHERE connection_id=? AND account_id=? AND state='pending')`)
   .bind(ciphertext,now,row.id,row.revision,row.ciphertext,actor.tenantId,actor.userId,row.tenant_id,row.owner_user_id,row.id,row.account_id),
-  env.AGENT_DB.prepare("INSERT INTO mayor_audit(id,tenant_id,actor_id,event,resource_id,created_at) SELECT ?,?,?,'phone.test_setup_saved',?,? WHERE changes()=1").bind(crypto.randomUUID(),actor.tenantId,actor.userId,row.id,now),
+  env.AGENT_DB.prepare(`INSERT INTO mayor_audit(id,tenant_id,actor_id,event,resource_id,created_at) SELECT ?,?,?,'${options.auditEvent}',?,? WHERE changes()=1`).bind(crypto.randomUUID(),actor.tenantId,actor.userId,row.id,now),
  ]);
  if(result[0].meta.changes!==1)throw fail(409,'connection_changed','Your phone connection changed. Refresh before saving.');
- return {saved:true,callsReady:false,routingChanged:false,next:'Test settings saved. Calling is not active. Verify number routing and complete a supervised test before activation.'};
+ return {saved:true,callsReady:false,routingChanged:false,next:options.next};
+}
+/** Store reviewed designated-call settings; never purchases, routes, calls or activates. */
+export async function saveTelnyxCallSetup(env:Env,actor:Actor,input:z.infer<typeof telnyxCallSetupSchema>,transport:typeof fetch=fetch){
+ const parsed=telnyxCallSetupSchema.parse(input),{confirm,...inbound}=parsed;
+ return saveTelnyxInboundSetup(env,actor,inbound,{auditEvent:'phone.test_setup_saved',requireNumber:false,next:'Test settings saved. Calling is not active. Verify number routing and complete a supervised test before activation.'},transport);
+}
+/** Store reviewed live-call settings; never purchases, routes, calls or activates.
+ * Saving live settings does not switch calling on — the phone service flag still gates every call. */
+export async function saveTelnyxLiveSetup(env:Env,actor:Actor,input:z.infer<typeof telnyxLiveSetupSchema>,transport:typeof fetch=fetch){
+ const parsed=telnyxLiveSetupSchema.parse(input),{confirm,...inbound}=parsed;
+ return saveTelnyxInboundSetup(env,actor,inbound,{auditEvent:'phone.live_setup_saved',requireNumber:true,next:'Live settings saved. Calling is not active until phone service is switched on for this business.'},transport);
 }

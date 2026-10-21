@@ -1,6 +1,7 @@
 import type {Env} from './env';
 import {HttpError} from './http';
 import {telnyxWebhookConnection} from './telnyx-connections';
+import {telnyxCallerAllowed} from './telnyx-inbound-config';
 import {readTelnyxHangup} from './telnyx-webhook';
 import {phoneWriteAccess} from './phone-write-access';
 
@@ -18,7 +19,7 @@ export async function recordTelnyxHangupEvent(env:Env,tenantId:string,event:Awai
  if(env.PHONE_TEST_ENABLED!=='true')throw new HttpError(503,'phone_tests_disabled','Phone tests are disabled.');
  const {row,inbound}=await telnyxWebhookConnection(env,tenantId),call=event.payload;
  if(row.revision!==revision)throw new HttpError(409,'connection_changed','Phone connection changed.');
- if(call.connection_id!==inbound.applicationId||call.from!==inbound.testCaller||call.to!==row.selected_number)throw new HttpError(403,'call_not_designated','This call is not designated for testing.');
+ if(call.connection_id!==inbound.applicationId||!telnyxCallerAllowed(inbound,call.from)||call.to!==row.selected_number)throw new HttpError(403,'call_not_designated','This call is not designated for testing.');
  await env.AGENT_DB.prepare(`INSERT INTO mayor_telnyx_ended_calls(connection_id,call_control_id,event_id,ended_at)
  SELECT ?,?,?,? WHERE ${phoneWriteAccess} AND EXISTS(SELECT 1 FROM mayor_phone_connections WHERE id=? AND revision=? AND status='authorized') ON CONFLICT(connection_id,call_control_id) DO UPDATE SET provider_confirmed=1,event_id=excluded.event_id,ended_at=excluded.ended_at`)
  .bind(row.id,call.call_control_id,event.id,event.occurred_at,tenantId,row.owner_user_id,row.id,row.revision).run();

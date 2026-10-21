@@ -1,6 +1,7 @@
 import type {Env} from './env';
 import {HttpError,digest} from './http';
 import {telnyxWebhookConnection,verifyTelnyxInboundBinding} from './telnyx-connections';
+import {telnyxCallerAllowed} from './telnyx-inbound-config';
 import {readTelnyxInitiated} from './telnyx-webhook';
 import {phoneWriteAccess} from './phone-write-access';
 import {requireRecordingConsent} from './phone-recording-consent';
@@ -20,7 +21,7 @@ export async function admitTelnyxEvent(env:Env,tenantId:string,event:Awaited<Ret
  await requireRecordingConsent(env,tenantId);
  const {row,inbound}=await telnyxWebhookConnection(env,tenantId),call=event.payload;
  if(row.revision!==revision)throw new HttpError(409,'connection_changed','Phone connection changed.');
- if(call.connection_id!==inbound.applicationId||call.from!==inbound.testCaller||call.to!==row.selected_number)throw new HttpError(403,'call_not_designated','This call is not designated for testing.');
+ if(call.connection_id!==inbound.applicationId||!telnyxCallerAllowed(inbound,call.from)||call.to!==row.selected_number)throw new HttpError(403,'call_not_designated','This call is not designated for testing.');
  await verifyTelnyxInboundBinding(env,tenantId,row.revision,transport);
  const payloadHash=await digest(JSON.stringify(event)),id=crypto.randomUUID(),now=new Date().toISOString();
  await env.AGENT_DB.prepare(`INSERT OR IGNORE INTO mayor_telnyx_admissions(id,event_id,tenant_id,connection_id,connection_revision,call_control_id,payload_hash,created_at,call_session_id,calling_number,called_number)

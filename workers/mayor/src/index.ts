@@ -44,7 +44,7 @@ import {listNotifications,refreshAttentionNotifications,markNotificationRead} fr
 import {readRecurringCheck,pauseRecurringCheck,runRecurringChecks} from './recurring-checks';
 import {readEmailPreference,saveEmailPreference,emailPreferenceSchema,queueNotificationEmails,deliverNotificationEmails} from './notification-email';
 import {runAttentionCycle} from './attention-cycle';
-import {saveTelnyxCallSetup,telnyxCallSetupSchema,connectTelnyx,telnyxNumbers,selectTelnyxNumber,disconnectTelnyx,telnyxConnectionSchema} from './telnyx-connections';
+import {saveTelnyxCallSetup,telnyxCallSetupSchema,saveTelnyxLiveSetup,telnyxLiveSetupSchema,connectTelnyx,telnyxNumbers,selectTelnyxNumber,disconnectTelnyx,telnyxConnectionSchema} from './telnyx-connections';
 import {gmailConnections,gmailReadSchema,readUnreadGmail} from './gmail';
 import {readConversationRecovery,resetConversationRecovery} from './conversation-recovery';
 import {recordMissedCall,sendTextBack,simulateTextBack,missedCallCard,listRecentMissedCalls,missedCallInputSchema} from './missed-call-textback';
@@ -405,6 +405,8 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   }
   const telnyxSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-connections\/telnyx\/test-setup$/);
   if(telnyxSetup&&request.method==='POST')return json(await saveTelnyxCallSetup(env,{tenantId:telnyxSetup[1],userId:session.user.id},telnyxCallSetupSchema.parse(await readJson(request,2048))));
+  const telnyxLiveSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-connections\/telnyx\/live-setup$/);
+  if(telnyxLiveSetup&&request.method==='POST')return json(await saveTelnyxLiveSetup(env,{tenantId:telnyxLiveSetup[1],userId:session.user.id},telnyxLiveSetupSchema.parse(await readJson(request,2048))));
   const phoneManagement=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-connections\/(twilio|telnyx)\/application$/);
   if(phoneManagement&&(request.method==='GET'||request.method==='POST')){
     if(request.method==='POST')z.object({confirm:z.literal('prepare_application')}).strict().parse(await readJson(request,256));
