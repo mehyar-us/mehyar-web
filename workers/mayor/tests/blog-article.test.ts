@@ -102,6 +102,10 @@ describe('SEO article #2: small business cybersecurity checklist',()=>{
     expect(html2).not.toContain('href="/sales.css"');
     expect(html2).toContain('Small Business Cybersecurity Checklist: Five Checks You Can Finish This Week');
   });
+  it('uses the real blog shell classes blog.css actually styles (article #1 contract)',()=>{
+    for(const cls of ['class="blog-hero"','class="hero-inner"','class="hero"','class="col"','class="blog-img"','class="guide-faq"','class="site-header"','class="site-footer"'])expect(html2).toContain(cls);
+    expect(html2.match(/class="guide-faq"/g)).toHaveLength(4);
+  });
   it('head contract: meta title within 60 chars, description within 155, Article + FAQPage JSON-LD',()=>{
     const title=html2.match(/<title>([^<]*)<\/title>/)![1],desc=html2.match(/<meta name="description" content="([^"]*)">/)![1];
     expect(title.length).toBeLessThanOrEqual(60);
