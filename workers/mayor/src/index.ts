@@ -162,6 +162,11 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(url.pathname==='/faq'&&request.method==='GET'){
     return Response.redirect(new URL('/sales#faq',request.url).toString(),301);
   }
+  // SEO article #1 was renamed by the de-buzzword sweep (2026-10-20): keep the
+  // original slug working forever.
+  if(url.pathname==='/blog/agentic-front-desk-missed-calls'&&request.method==='GET'){
+    return Response.redirect(new URL('/blog/front-desk-missed-calls',request.url).toString(),301);
+  }
   if((url.pathname==='/privacy'||url.pathname==='/privacy-policy')&&request.method==='GET'){
     return Response.redirect('https://mehyar.us/privacy-policy/',301);
   }
