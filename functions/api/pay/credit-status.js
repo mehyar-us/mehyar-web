@@ -6,21 +6,58 @@
 // taken from billing_products + the credit — never from the client.
 // Informational only: checkout remains the enforcer. A non-eligible or
 // failed lookup simply leaves the standard pay display unchanged.
+//
+// Rate limit (2026-10-21, Clef ruling audit-credit-status-enumeration-
+// 20261021): the endpoint stays unauthenticated and numbers-only — the
+// pay-point display contract requires a pre-checkout lookup by email —
+// but per-IP volume is capped (30 requests/minute) so the eligibility
+// boolean cannot be harvested in bulk. The limiter lives in D1 (shared
+// across isolates), counts every POST before any lookup, and FAILS
+// OPEN: a limiter error never breaks the pay-point display, and a
+// rate-limited buyer still checks out normally — checkout applies the
+// credit server-side regardless of what the display showed.
 
 import { fullReportCreditCents } from "./_shared/credit.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RATE_LIMIT = 30;
+const RATE_WINDOW_SEC = 60;
+
+async function overRateLimit(db, request) {
+  try {
+    const ip = String(request.headers.get("CF-Connecting-IP") || "unknown").slice(0, 64);
+    const win = Math.floor(Date.now() / 1000 / RATE_WINDOW_SEC);
+    await db.prepare(
+      "INSERT INTO credit_status_rate (ip, window_start, hits) VALUES (?, ?, 1) " +
+      "ON CONFLICT(ip, window_start) DO UPDATE SET hits = hits + 1"
+    ).bind(ip, win).run();
+    const row = await db.prepare(
+      "SELECT hits FROM credit_status_rate WHERE ip = ? AND window_start = ?"
+    ).bind(ip, win).first();
+    if (row && row.hits === 1) {
+      // First hit of a new window: sweep stale windows, best-effort.
+      await db.prepare("DELETE FROM credit_status_rate WHERE window_start < ?")
+        .bind(win - 2).run().catch(() => {});
+    }
+    return !!(row && row.hits > RATE_LIMIT);
+  } catch (e) {
+    return false;
+  }
+}
 
 export async function onRequestPost({ request, env }) {
   if (!env?.LEADS_DB) {
     return Response.json({ ok: false, error: "service_unavailable" }, { status: 503 });
+  }
+  const db = env.LEADS_DB;
+  if (await overRateLimit(db, request)) {
+    return Response.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
   const body = await request.json().catch(() => ({}));
   const email = String(body.email || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().toLowerCase().slice(0, 254);
   if (!EMAIL_RE.test(email)) {
     return Response.json({ ok: false, error: "invalid_email" }, { status: 400 });
   }
-  const db = env.LEADS_DB;
   const product = await db.prepare(
     "SELECT price_cents FROM billing_products WHERE id = 'audit-my-business' AND active = 1"
   ).first();
