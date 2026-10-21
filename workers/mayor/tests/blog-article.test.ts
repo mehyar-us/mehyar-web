@@ -93,3 +93,43 @@ describe('blog article #1 publish contract',()=>{
     expect(html).toContain('alt="A plumbing company owner starting his morning with every call already answered');
   });
 });
+
+describe('SEO article #2: small business cybersecurity checklist',()=>{
+  const html2=readPublic('blog','small-business-cybersecurity-checklist.html');
+  it('ships at the checklist slug, styled by blog.css and never /sales.css',()=>{
+    expect(isPublicAssetPath('/blog/small-business-cybersecurity-checklist')).toBe(true);
+    expect(html2).toContain('<link rel="stylesheet" href="/blog/blog.css">');
+    expect(html2).not.toContain('href="/sales.css"');
+    expect(html2).toContain('Small Business Cybersecurity Checklist: Five Checks You Can Finish This Week');
+  });
+  it('head contract: meta title within 60 chars, description within 155, Article + FAQPage JSON-LD',()=>{
+    const title=html2.match(/<title>([^<]*)<\/title>/)![1],desc=html2.match(/<meta name="description" content="([^"]*)">/)![1];
+    expect(title.length).toBeLessThanOrEqual(60);
+    expect(desc.length).toBeLessThanOrEqual(155);
+    expect(html2).toContain('"@type":"Article"');
+    expect(html2).toContain('"@type":"FAQPage"');
+    expect(html2).toContain('<link rel="canonical" href="https://mayor.mehyar.us/blog/small-business-cybersecurity-checklist">');
+  });
+  it('carries the verified Cyber Suite affiliate link once, sponsored, with the disclosure',()=>{
+    expect(html2.match(/awin1\.com/g)).toHaveLength(1);
+    expect(html2).toContain('href="https://www.awin1.com/awclick.php?mid=67878&id=1637383" rel="sponsored noopener noreferrer"');
+    expect(html2).toContain('Disclosure: that is an affiliate link.');
+  });
+  it('keeps the internal links exactly as written and a readable body',()=>{
+    for(const link of ['https://mayor.mehyar.us/missed-call-text-back','https://mayor.mehyar.us/how-much-does-a-missed-call-cost','https://mayor.mehyar.us/sales'])expect(html2).toContain(`href="${link}"`);
+    const words=html2.replace(/<script[\s\S]*?<\/script>/g,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().split(' ').length;
+    expect(words).toBeGreaterThan(800);
+    expect(html2.toLowerCase()).not.toContain('agentic');
+  });
+  it('pre-publish gate (rot503): no final-sale language; every free claim carries its cap; links out and in',()=>{
+    expect(html2.toLowerCase()).not.toMatch(/sales are final|all sales|payments are final|final sale/);
+    expect(html2).toContain('the free plan includes 100 replies and 10 voice minutes a month');
+    expect(readPublic('blog','front-desk-missed-calls.html')).toContain('href="https://mayor.mehyar.us/blog/small-business-cybersecurity-checklist"');
+  });
+  it('lists both images on disk and the URL in the sitemap',()=>{
+    for(const img of ['mayor-security-check-owner-shop-counter.webp','mayor-security-checklist-laptop-review.webp']){
+      expect(existsSync(join(publicDir,'blog',img))).toBe(true);
+    }
+    expect(readPublic('sitemap.xml')).toContain('<loc>https://mayor.mehyar.us/blog/small-business-cybersecurity-checklist</loc>');
+  });
+});
