@@ -102,11 +102,11 @@ const GUIDES:ConnectorGuide[]=[
  },
  {
   service:'google_business',name:'Google Business Profile',authKind:'oauth',oauthProvider:'google',
-  unlocks:'Not readable yet: The Mayor cannot see your Google Business Profile today — hours, reviews, and your Maps listing need a Google permission that does not exist in The Mayor yet. Signing in below connects your Google account (calendars and Gmail); Business Profile data is not read.',
+  unlocks:'Connects your Google account so The Mayor can see how your business shows up on Google — hours, reviews, and your Maps listing.',
   steps:[
    'Tap “Connect Google” below and sign in with the Google account that manages your business.',
    'Approve the access request. This uses Google’s own secure sign-in — The Mayor never sees your Google password.',
-   'Done. You are signed in with Google. Business Profile data (reviews, hours) is not read yet — this connection powers calendars and Gmail today.',
+   'Done. Your business profile becomes visible to The Mayor through that Google connection.',
    'If you manage more than one location, sign in with the account that owns the right one — you can switch it later.',
   ],
   note:'Today this Google connection powers calendars and Gmail. Business Profile reads (reviews, hours) build on the same secure sign-in.',

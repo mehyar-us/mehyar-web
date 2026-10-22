@@ -38,9 +38,9 @@ it('keeps the Meta pixel behind the same consent gate as GTM and GA4',()=>{
  // The IDs in production use, named in the file.
  expect(consent).toContain("GTM_CONTAINER_ID = 'GTM-PZLMLZ5C'");
  expect(consent).toContain("GA4_MEASUREMENT_ID = 'G-6RCJMF73VJ'");
- // The pixel loader exists and is consent-gated (inside loadGrantedTags).
- // Activated 2026-10-16 with the verified "The Mayor" dataset ID.
- expect(consent).toContain("META_PIXEL_ID = '1773921077163350'");
+ // The pixel loader exists, is consent-gated (inside loadGrantedTags), and is
+ // inert until a Mayor pixel exists and its ID is set.
+ expect(consent).toContain("META_PIXEL_ID = ''");
  const granted=consent.slice(consent.indexOf('function loadGrantedTags()'),consent.indexOf('function enableGrantedAnalytics()'));
  expect(granted).toContain('connect.facebook.net/en_US/fbevents.js');
  expect(granted).toContain("fbq('init', META_PIXEL_ID)");

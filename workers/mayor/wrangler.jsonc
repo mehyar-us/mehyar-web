@@ -10,7 +10,7 @@
   "vars": {"APP_ORIGIN": "http://127.0.0.1:5175", "ENVIRONMENT": "local"},
   "ai": {"binding": "AI"},
   "d1_databases": [{"binding": "AGENT_DB", "database_name": "mehyar-mayor", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations"}],
-  "durable_objects": {"bindings": [{"name": "MAYOR_VOICE", "class_name": "MayorVoice"},{"name":"MAYOR_PHONE","class_name":"MayorPhone"},{"name":"MAYOR_BUSINESS","class_name":"MayorBusiness"}]},
-  "migrations": [{"tag": "mayor-v1", "new_sqlite_classes": ["MayorVoice"]},{"tag":"mayor-v2","new_sqlite_classes":["MayorPhone"]},{"tag":"mayor-v3","new_sqlite_classes":["MayorBusiness"]}],
+  "durable_objects": {"bindings": [{"name": "MAYOR_VOICE", "class_name": "MayorVoice"},{"name":"MAYOR_PHONE","class_name":"MayorPhone"}]},
+  "migrations": [{"tag": "mayor-v1", "new_sqlite_classes": ["MayorVoice"]},{"tag":"mayor-v2","new_sqlite_classes":["MayorPhone"]}],
   "observability": {"enabled": true, "head_sampling_rate": 0.1}
 }

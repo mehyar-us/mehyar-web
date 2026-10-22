@@ -9,10 +9,8 @@
  *    (G-6RCJMF73VJ) are injected ONLY after the visitor accepts. GA4 is
  *    loaded as direct gtag.js ONLY — never configured inside GTM, so
  *    pageviews can never double-count.
- *  - Google ad features are unused: ad_storage / ad_user_data /
- *    ad_personalization stay denied even after acceptance. The Meta
- *    pixel is separate ad tech: it loads only on the granted path, under
- *    a banner that discloses Meta advertising measurement by name.
+ *  - This site runs no ads: ad_storage / ad_user_data / ad_personalization
+ *    stay denied even after acceptance.
  *  - No external request leaves the browser before consent: this file is
  *    same-origin, and the measurement-library URLs appear only inside
  *    loadGrantedTags(), which is reachable only from the consent-granted
@@ -26,13 +24,13 @@
 
   var GA4_MEASUREMENT_ID = 'G-6RCJMF73VJ';
   var GTM_CONTAINER_ID = 'GTM-PZLMLZ5C';
-  /* Meta pixel: dataset "The Mayor" in the MehyarSoft LLC Meta business,
-   * created 2026-10-16 and verified through the Meta connector. It loads
-   * on the same granted path as GTM/GA4 — only after an explicit accept.
-   * The consent-copy review ran before activation (2026-10-16): the
-   * banner names Meta advertising measurement alongside Google
-   * Analytics, because a pixel is advertising tech, not analytics. */
-  var META_PIXEL_ID = '1773921077163350';
+  /* Meta pixel: none exists for The Mayor yet (checked against the
+   * MehyarSoft LLC Meta business 2026-10-15 — ten product pixels, none for
+   * this product). The loader below stays inert while this is empty; set
+   * the ID once a pixel is created and it loads on the same granted path
+   * as GTM/GA4. Enabling it also needs a consent-copy review first,
+   * because a pixel is advertising tech, not analytics. */
+  var META_PIXEL_ID = '';
   var STORAGE_KEY = 'mayor.analytics-consent.v1';
   var BANNER_ID = 'mayor-consent-banner';
 
@@ -79,7 +77,7 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* 2. Granted path: update Consent Mode (Google ad categories stay    */
+  /* 2. Granted path: update Consent Mode (ads stay denied — no ads on   */
   /*    this site), then load the measurement tags exactly once.          */
   /* ------------------------------------------------------------------ */
   function applyGrantedConsent() {
@@ -91,8 +89,7 @@
   }
 
   /**
-   * The ONLY place googletagmanager.com or connect.facebook.net is ever
-   * touched. Called solely from
+   * The ONLY place googletagmanager.com is ever touched. Called solely from
    * enableGrantedAnalytics(), which runs only after an explicit accept (or a
    * stored 'granted' choice).
    */
@@ -119,7 +116,7 @@
     document.head.appendChild(g);
     gtag('js', new Date());
     gtag('config', GA4_MEASUREMENT_ID);
-    /* Meta pixel (standard snippet) — granted path only. */
+    /* Meta pixel (standard snippet) — inert until META_PIXEL_ID is set. */
     if (META_PIXEL_ID) {
       (function (f, b, e, v, n, t, s) {
         if (f.fbq) return;
@@ -170,13 +167,13 @@
     bar.id = BANNER_ID;
     bar.className = 'mayor-consent-bar';
     bar.setAttribute('role', 'dialog');
-    bar.setAttribute('aria-label', 'Analytics and advertising consent');
+    bar.setAttribute('aria-label', 'Analytics consent');
     bar.setAttribute('aria-live', 'polite');
 
     var copy = document.createElement('p');
     copy.className = 'mayor-consent-copy';
     copy.textContent =
-      'We use Google Analytics and Meta (Facebook) tools to understand site traffic and measure our ads. They only load if you accept.';
+      'We use Google Analytics to understand aggregate site traffic. It only loads if you accept.';
     bar.appendChild(copy);
 
     var actions = document.createElement('div');
@@ -212,90 +209,11 @@
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 3b. Engine events (Slice 0, blueprint §1.7). The engine emits       */
-  /* money-path events server-side and returns their analytics copies  */
-  /* as directives on API responses — but ONLY when the request        */
-  /* asserted a current granted consent record. This function is the   */
-  /* second gate: it re-reads the stored record at fire time and       */
-  /* dispatches nothing unless it is 'granted'. Dispatch happens ONLY  */
-  /* here, through the tags this file loaded on the granted path —     */
-  /* no other script may fire GA4/Meta events. Delivery is deduped     */
-  /* per event id so a purchase offered on repeat page loads fires     */
-  /* exactly once per browser.                                         */
-  /* ------------------------------------------------------------------ */
-  var DELIVERED_KEY = 'mayor.analytics-delivered.v1';
-  var META_EVENT_NAMES = {
-    sign_up: 'CompleteRegistration',
-    begin_checkout: 'InitiateCheckout',
-    purchase: 'Purchase'
-  };
-  function readDelivered() {
-    try {
-      var raw = window.localStorage.getItem(DELIVERED_KEY);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (err) {
-      return [];
-    }
-  }
-  function writeDelivered(list) {
-    try {
-      window.localStorage.setItem(DELIVERED_KEY, JSON.stringify(list.slice(-100)));
-    } catch (err) {
-      /* private mode: dedupe simply does not persist */
-    }
-  }
-  function fireEngineEvent(directive) {
-    var params = directive.params || {};
-    gtag('event', directive.name, params);
-    var metaName = META_EVENT_NAMES[directive.name];
-    if (metaName && window.fbq) {
-      var metaParams = {};
-      if (typeof params.value === 'number') metaParams.value = params.value;
-      metaParams.currency = typeof params.currency === 'string' ? params.currency : 'USD';
-      window.fbq('track', metaName, metaParams);
-    }
-  }
-
   window.MayorConsent = {
     /** Clear the stored choice and re-show the banner (footer link). */
     reopen: function () {
       clearChoice();
       showConsentBanner();
-    },
-    /** The current stored consent record ('granted' | 'denied' | null). */
-    choice: function () {
-      return readChoice();
-    },
-    /**
-     * Fire engine-issued analytics directives (sign_up / begin_checkout /
-     * purchase). Returns how many fired. Fires NOTHING unless the stored
-     * record is 'granted' at call time, whatever the caller believes.
-     */
-    emitEngineEvents: function (directives) {
-      if (readChoice() !== 'granted' || !Array.isArray(directives)) {
-        return 0;
-      }
-      enableGrantedAnalytics();
-      var delivered = readDelivered();
-      var fired = 0;
-      for (var i = 0; i < directives.length; i++) {
-        var directive = directives[i];
-        if (!directive || typeof directive.name !== 'string' || typeof directive.eventId !== 'string') {
-          continue;
-        }
-        if (delivered.indexOf(directive.eventId) >= 0) {
-          continue;
-        }
-        fireEngineEvent(directive);
-        delivered.push(directive.eventId);
-        fired++;
-      }
-      if (fired > 0) {
-        writeDelivered(delivered);
-      }
-      return fired;
     }
   };
 

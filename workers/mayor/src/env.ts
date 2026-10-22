@@ -1,7 +1,6 @@
 import type { AuthEnv } from './auth/capabilities';
 import type { MayorVoice } from './voice';
 import type {MayorPhone} from './phone-voice';
-import type {MayorBusiness} from './business-agent';
 export interface Env extends AuthEnv {
   AI: Ai;
   AI_GATEWAY_ACCOUNT_ID?: string;
@@ -9,7 +8,6 @@ export interface Env extends AuthEnv {
   AI_GATEWAY_TOKEN?: string;
   MAYOR_VOICE: DurableObjectNamespace<MayorVoice>;
   MAYOR_PHONE: DurableObjectNamespace<MayorPhone>;
-  MAYOR_BUSINESS: DurableObjectNamespace<MayorBusiness>;
   PHONE_TEST_ENABLED?:string;
   TELNYX_OAUTH_ENABLED?:string;
   TELNYX_CLIENT_ID?:string;
@@ -21,7 +19,6 @@ export interface Env extends AuthEnv {
   MAYOR_STRIPE_SECRET_KEY?: string;
   MAYOR_STRIPE_WEBHOOK_SECRET?: string;
   MAYOR_STRIPE_PRICE_ID?: string;
-  MAYOR_STRIPE_FOUNDING_PRICE_ID?: string;
   MAYOR_STRIPE_CREDIT_PRICE_SMALL?: string;
   MAYOR_STRIPE_CREDIT_PRICE_MEDIUM?: string;
   MAYOR_STRIPE_CREDIT_PRICE_LARGE?: string;
@@ -44,9 +41,6 @@ export interface Env extends AuthEnv {
   MAYOR_AUDIT_INFERENCE_MODE?: string;
   ENVIRONMENT: string;
   ASSETS?: Fetcher;
-  /** Stage 5 decide() endpoint (Slice 2). Unset ⇒ decide() is
-   * unavailable and the engine falls back to prepare-and-ask. */
-  ENGINE_DECIDE_URL?: string;
 }
 export type Role = 'owner' | 'manager' | 'staff' | 'viewer' | 'billing';
 export interface Actor { userId: string; tenantId: string; }

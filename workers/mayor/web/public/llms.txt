@@ -16,8 +16,7 @@ Local service businesses — salons, restaurants, plumbing and HVAC, dental prac
 ## Pricing (as of October 2026 — the live catalog is at https://mayor.mehyar.us/pricing)
 
 - Free: $0. 100 reply attempts a month, 10 microphone minutes.
-- Pro: $99/month. 1,000 reply attempts a month, 120 microphone minutes.
-- Founding cohort: the first 25 businesses get Pro at $79.20/month, locked for life while the subscription stays active. Join from the Pricing page (https://mayor.mehyar.us/pricing) — it leads to https://mayor.mehyar.us/billing?plan=founding. (Existing subscribers keep the rate they signed up at.)
+- Pro: $14/month. 1,000 reply attempts a month, 120 microphone minutes.
 - Top-up packs: $4, $8, and $12.
 - Extensive business audit: one-time $330.
 - Conversation estimates figure roughly 10 replies per conversation (Free is about 10 conversations a month; Pro is about 100).

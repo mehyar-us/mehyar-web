@@ -34,7 +34,7 @@ export default function Home() {
               Scan your website free
             </a>
           </div>
-          <p className="mt-5 text-center text-sm text-muted-foreground">Free $0 · Pro $99/month — founding cohort $79.20/month for life (first 25) · No credit card to start</p>
+          <p className="mt-5 text-center text-sm text-muted-foreground">Free $0 · Pro $14/month · No credit card to start</p>
           <ul className="mx-auto mt-8 grid max-w-3xl gap-3 text-left text-sm sm:grid-cols-2">
             {[
               "Business memory — it knows your services, hours, and customers",
@@ -90,40 +90,6 @@ export default function Home() {
           </div>
           <div className="mx-auto mt-6 flex max-w-xl items-center justify-center gap-2 text-xs text-muted-foreground">
             <span>Free 60-second scan · No signup · No credit card</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ── BILLCUT CROSS-PROMO ── */}
-      <section className="px-4 py-12 md:py-16">
-        <div className="site-shell">
-          <div className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-8 md:p-12">
-            <p className="site-eyebrow">Billcut · Subscription &amp; bill audit</p>
-            <h2 className="mt-3 max-w-2xl text-3xl font-bold tracking-tight text-balance md:text-4xl">
-              Find money you&apos;re missing.
-            </h2>
-            <p className="site-lede mt-4 max-w-2xl">
-              Your website isn&apos;t the only place money leaks. Billcut audits your subscriptions and bills from your own bank statement — upload a statement, no bank login required, and see the recurring charges you forgot you&apos;re paying for.
-            </p>
-            <ul className="mt-6 grid max-w-3xl gap-3 text-sm sm:grid-cols-2">
-              {[
-                "Runs from your own statement upload",
-                "No bank login required",
-                "Reviews subscriptions and bills line by line",
-                "Optional read-only bank connect through Stripe after your audit",
-              ].map((f) => (
-                <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" /><span>{f}</span></li>
-              ))}
-            </ul>
-            <p className="mt-6 text-sm text-muted-foreground">One-time $9 audit.</p>
-            <a
-              href="https://billcut.mehyar.us"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={buttonVariants({ variant: "cta", size: "lg", className: "mt-6 min-h-12 w-full sm:w-auto" })}
-            >
-              Visit Billcut <ArrowRight className="ml-2 h-4 w-4" />
-            </a>
           </div>
         </div>
       </section>
