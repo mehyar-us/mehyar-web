@@ -22,34 +22,10 @@ import { maybeSendCarerankEmail } from "../_shared/carerankNoSend.js";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BASE_URL = "https://carerank.mehyar.us";
 
-function json(data, status = 200, extraHeaders = {}) {
+function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store", ...extraHeaders },
-  });
-}
-
-// CORS for cross-origin brand calls (carerank.mehyar.us -> mehyar.us).
-// Only *.mehyar.us origins are reflected; everything else gets no CORS headers.
-// (Same pattern as functions/api/pay/checkout.js.)
-function corsHeaders(request) {
-  const origin = (request.headers.get("Origin") || "").trim();
-  if (/^https:\/\/([a-z0-9-]+\.)?mehyar\.us$/i.test(origin)) {
-    return { "access-control-allow-origin": origin, vary: "Origin" };
-  }
-  return {};
-}
-
-export async function onRequestOptions({ request }) {
-  const cors = corsHeaders(request);
-  return new Response(null, {
-    status: 204,
-    headers: {
-      ...cors,
-      "access-control-allow-methods": "POST, OPTIONS",
-      "access-control-allow-headers": "content-type",
-      "access-control-max-age": "86400",
-    },
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 }
 
@@ -93,18 +69,16 @@ async function ensureSchema(db) {
 
 export async function onRequestPost({ request, env }) {
   try {
-    const cors = corsHeaders(request);
-    const J = (data, status = 200) => json(data, status, cors);
     const db = env && env.LEADS_DB;
     if (!db || typeof db.prepare !== "function") {
-      return J({ ok: false, error: "db_unavailable" }, 500);
+      return json({ ok: false, error: "db_unavailable" }, 500);
     }
     await ensureSchema(db);
 
     const body = await request.json().catch(() => ({}));
     const email = sanitize(body.email, 254).toLowerCase();
     if (!EMAIL_RE.test(email)) {
-      return J({ ok: false, error: "invalid_email" }, 400);
+      return json({ ok: false, error: "invalid_email" }, 400);
     }
 
     // 1. Suppression check.
@@ -113,7 +87,7 @@ export async function onRequestPost({ request, env }) {
       .bind(email)
       .first();
     if (suppressed) {
-      return J({ ok: false, error: "unsubscribed" }, 200);
+      return json({ ok: false, error: "unsubscribed" }, 200);
     }
 
     // 2. Rate limit: max 5 subscribes per IP per UTC day.
@@ -131,7 +105,7 @@ export async function onRequestPost({ request, env }) {
       .bind(ip.slice(0, 64), day)
       .first();
     if (rl && Number(rl.count) > 5) {
-      return J({ ok: false, error: "rate_limited" }, 429);
+      return json({ ok: false, error: "rate_limited" }, 429);
     }
 
     // 3. Upsert the lead (keep the existing access token so the free blurred
@@ -200,11 +174,11 @@ export async function onRequestPost({ request, env }) {
     );
     if (!result.ok) {
       console.error("carerank subscribe email failed", result.error);
-      return J({ ok: true, email_ok: false, lead_token: leadToken });
+      return json({ ok: true, email_ok: false, lead_token: leadToken });
     }
-    return J({ ok: true, lead_token: leadToken, email_staged: !!result.staged });
+    return json({ ok: true, lead_token: leadToken, email_staged: !!result.staged });
   } catch (e) {
     console.error("carerank subscribe failed", e && e.message);
-    return J({ ok: false, error: "server_error" }, 500);
+    return json({ ok: false, error: "server_error" }, 500);
   }
 }

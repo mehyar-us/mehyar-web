@@ -5,11 +5,7 @@
 // Body: {
 //   product_id:  "audit-full-report"            (required — looked up in billing_products)
 //   email:       "buyer@example.com"            (required)
-//   (header)    x-crew-test-mint: <secret>     (crew-only — mints a TEST session via
-//                                               STRIPE_TEST_SECRET_KEY when the header
-//                                               matches the CREW_TEST_MINT_SECRET project
-//                                               secret; there is NO body flag for test
-//                                               mode — client test flags are ignored)
+//   test:       true                           (optional — use STRIPE_TEST_SECRET_KEY)
 //   success_url: "https://other.mehyar.us/ty"  (optional — host must be in allowed_return_hosts)
 //   cancel_url:  "https://other.mehyar.us/"     (optional — host must be in allowed_return_hosts)
 //   params:      { ... }                        (optional — product-specific fields, <=2KB)
@@ -19,38 +15,6 @@
 // billing_products row. Fulfillment-specific order setup lives in the
 // initOrder hook below; the audit_report hook mirrors the legacy
 // /api/audit/full-report/checkout behavior.
-
-import { sha256hex, normalizeUrl } from "../_shared/auditBusinessShared.js";
-import { fullReportCreditCents } from "./_shared/credit.js";
-
-// Attribution threading (tracking-crm-fix, 2026-10-05). Product pages
-// forward MSRC.get() as params.attribution; we store it on
-// billing_payments.attribution_json and mirror marketing fields into
-// Stripe session metadata so the channel is visible in the Dashboard too.
-
-// Allowlisted attribution keys only; everything else is dropped.
-const ATTR_KEYS = [
-  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-  "gclid", "fbclid", "msclkid", "ttclid", "wbraid", "gbraid",
-  "referrer", "landing_page", "landing_ts", "click_ids",
-];
-
-function sanitizeAttribution(raw) {
-  // raw comes from the already-sanitized `params` object in onRequestPost.
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const out = {};
-  for (const k of ATTR_KEYS) {
-    const v = String(raw[k] || "").slice(0, 300);
-    if (v) out[k] = v;
-  }
-  const keys = Object.keys(out);
-  if (!keys.length) return null;
-  try {
-    const json = JSON.stringify(out);
-    if (json.length > 1500) return null; // hard cap
-    return out;
-  } catch { return null; }
-}
 
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
@@ -165,115 +129,12 @@ const orderHooks = {
     };
   },
 
-  // FloodLens flood-zone reports. params: { lookup_token } for the single
-  // SKU, { lookup_tokens: [t1,t2,t3] } (or a comma-joined string) for the
-  // 3-pack. Validates the lookup token(s) BEFORE the Stripe session is
-  // created, so a buyer can never pay for a report that fulfillment would
-  // fail loudly on (missing/invalid lookup → no invented content, ever).
-  async floodlens(db, product, { params }) {
-    const is3Pack = product.id === "floodlens-3pack";
-    let tokens = [];
-    if (is3Pack) {
-      const raw = params.lookup_tokens;
-      tokens = Array.isArray(raw) ? raw : String(raw || "").split(",");
-    } else if (params.lookup_token) {
-      tokens = [params.lookup_token];
-    }
-    tokens = [...new Set(tokens.map((t) => String(t || "").trim()).filter(Boolean))];
-    const need = is3Pack ? 3 : 1;
-    if (tokens.length !== need) {
-      return { error: is3Pack ? "need_three_lookups" : "missing_lookup_token" };
-    }
-    // Every token must resolve to a real stored lookup.
-    for (const t of tokens) {
-      const row = await db
-        .prepare("SELECT token FROM floodlens_lookups WHERE token = ?")
-        .bind(t)
-        .first();
-      if (!row) return { error: "invalid_lookup_token" };
-    }
-    return { orderExtra: { accessToken: randomHex(32) }, metadataExtra: {} };
-  },
-
   // Default: no order hook — payment is just recorded. Access token minted
   // anyway so future per-product delivery can gate on it.
   async none() {
     return { orderExtra: { accessToken: randomHex(32) }, metadataExtra: {} };
   },
-
-  // AI Mechanic subscriptions (aimech-diy-*, aimech-mechanic-*).
-  // params: { user_id } — the aimech.app user id starting checkout.
-  // Links the subscription to the user two ways: flat in metadata_json
-  // (the aimech worker reads it from the shared DB) and in the Stripe
-  // session metadata for dashboard visibility.
-  async aimech(db, product, { params }) {
-    const userId = sanitize(params.user_id, 128);
-    if (!userId) return { error: "missing_user_id" };
-    return { orderExtra: {}, metadataExtra: { aimech_user_id: userId } };
-  },
-
-  // Audit My Business ($330 one-time audit). params: { audit_id } — the
-  // intake row created by /api/audit/business/intake.
-  // The buyer must own the intake: SHA-256 of the checkout email has to
-  // match the row's email_hash (the row never holds the raw email).
-  // Mints the 64-hex access token here so the Stripe success_url (?token=)
-  // and the audit row share ONE token from the start.
-  async audit_business(db, product, { email, params }) {
-    let auditId = sanitize(params.audit_id, 64);
-    if (!/^[0-9a-f-]{36}$/i.test(auditId)) {
-      // Direct-buy lane (rot542, 2026-10-22): no Step 1 intake in front of
-      // payment — the buyer pays from the landing and the intake data
-      // (business name + URL) is collected in the pay action itself, so the
-      // row is created here in the same 'intake' state the intake endpoint
-      // leaves, keyed to the checkout email (mismatch impossible by
-      // construction). The build re-fetches the site itself
-      // (auditBusinessBuild step 1), so no preview signals are needed; the
-      // gate's quality purpose — a named business, a valid URL, an
-      // email-linked row — is preserved inside the payment.
-      if (params.direct !== true && params.direct !== "true") return { error: "invalid_audit_id" };
-      const businessName = sanitize(params.business_name, 160);
-      const directUrl = normalizeUrl(sanitize(params.url, 300));
-      if (!businessName) return { error: "missing_business_name" };
-      if (!directUrl) return { error: "invalid_url" };
-      auditId = crypto.randomUUID();
-      const directEmailHash = await sha256hex("audit-business|" + email);
-      await db.prepare(
-        "INSERT INTO audit_business_reports (id, email_hash, url, business_name, status, signals_json) VALUES (?, ?, ?, ?, 'intake', NULL)"
-      ).bind(auditId, directEmailHash, directUrl, businessName).run();
-    }
-    const row = await db.prepare(
-      "SELECT id, status, email_hash FROM audit_business_reports WHERE id = ?"
-    ).bind(auditId).first();
-    if (!row) return { error: "unknown_audit" };
-    const emailHash = await sha256hex("audit-business|" + email);
-    if (row.email_hash !== emailHash) return { error: "audit_email_mismatch" };
-    if (row.status !== "intake" && row.status !== "failed") {
-      return { error: "audit_not_payable" };
-    }
-    // $5 Full Report credit (rot294 ladder, 2026-10-16): the eligibility
-    // rule lives in _shared/credit.js (single source — the Step-3 pay
-    // point's credit-status display reads the same function). The main
-    // flow converts creditCents into a visible Stripe discount, so the
-    // buyer sees the credit on the checkout page before paying. A lookup
-    // failure never blocks checkout — it just skips the credit.
-    const creditCents = await fullReportCreditCents(db, email);
-    if (creditCents > 0) params.credit_applied = creditCents;
-    const accessToken = randomHex(32);
-    await db.prepare(
-      "UPDATE audit_business_reports SET access_token=?, status_changed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?"
-    ).bind(accessToken, auditId).run();
-    return {
-      orderExtra: { audit_id: auditId, accessToken, creditCents },
-      metadataExtra: creditCents > 0
-        ? { audit_id: auditId, credit_applied: String(creditCents) }
-        : { audit_id: auditId },
-    };
-  },
 };
-
-// Exported for local tests (test-floodlens.js). Pages Functions only honors
-// onRequest* exports; this is inert in production.
-export { orderHooks };
 
 export async function onRequestPost({ request, env }) {
   const cors = corsHeaders(request);
@@ -286,19 +147,12 @@ export async function onRequestPost({ request, env }) {
     const productId = sanitize(body.product_id, 100);
     const email = sanitize(body.email, 254).toLowerCase();
     if (!productId) return J({ ok: false, error: "invalid_product" }, 400);
-    const emailValid = EMAIL_RE.test(email);
+    if (!EMAIL_RE.test(email)) return J({ ok: false, error: "invalid_email" }, 400);
 
     const product = await db.prepare(
       "SELECT * FROM billing_products WHERE id = ? AND active = 1"
     ).bind(productId).first();
     if (!product) return J({ ok: false, error: "invalid_product" }, 400);
-    // Moonroom (2026-10-17): the email is OPTIONAL — its paywall lets the
-    // buyer skip straight to Stripe, which collects the address on its own
-    // page; the webhook backfills billing_payments.email from Stripe's
-    // customer_details. Every other product keeps the hard requirement.
-    // A non-empty but malformed address is still rejected for everyone.
-    if (!emailValid && !(email === "" && product.brand === "moonroom"))
-      return J({ ok: false, error: "invalid_email" }, 400);
 
     // Product-specific params: cap at ~2KB and sanitize strings.
     let params = {};
@@ -312,31 +166,7 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
-    // Attribution threading: product pages forward MSRC.get() as
-    // params.attribution. Store on the payment row; mirror marketing keys
-    // into Stripe session metadata for Dashboard visibility.
-    const attribution = sanitizeAttribution(params.attribution);
-    const attributionJson = attribution ? JSON.stringify(attribution) : null;
-
-    // Payment integrity (rot541, 2026-10-22): Stripe mode is a server-side
-    // property and is NEVER selected by the client. This endpoint previously
-    // honored a client-supplied `test: true` and minted cs_test_ sessions on
-    // the production account; test payments fulfilled into production tables.
-    // Client test flags are ignored.
-    //
-    // Crew-gated test mint (rot545, 2026-10-22): the ONE exception is a
-    // server-side gate — a request carrying the crew-held secret in the
-    // x-crew-test-mint header, checked here against the CREW_TEST_MINT_SECRET
-    // project secret, mints in test mode for internal E2E proofs. No body or
-    // flag shape can open it: without the header the public surface is
-    // live-only, exactly as hardened. Test-minted orders fulfill in test
-    // scope only (the webhook admits a test event solely for an order whose
-    // stored session is cs_test_).
-    const crewMintSecret = env.CREW_TEST_MINT_SECRET;
-    const testMode = !!(
-      crewMintSecret &&
-      request.headers.get("x-crew-test-mint") === crewMintSecret
-    );
+    const testMode = body.test === true;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return J(
@@ -353,92 +183,31 @@ export async function onRequestPost({ request, env }) {
 
     const orderExtra = hookResult.orderExtra || {};
     const metadataExtra = hookResult.metadataExtra || {};
-    // Server-granted credit (today only the $5 Full Report credit on
-    // Audit My Business). Capped at the product price; 0 for every other
-    // product, leaving their checkout behavior unchanged.
-    const creditCents = Math.max(0, Math.min(Number(orderExtra.creditCents) || 0, Number(product.price_cents) || 0));
     const accessToken = orderExtra.accessToken || randomHex(32);
     const reportId = orderExtra.report_id || null;
 
-    // Order bump (BabyPeek funnel, 2026-10-06): params.bump === true is set
-    // SERVER-SIDE by the product worker (never forwarded from the browser —
-    // BabyPeek's /api/checkout only maps its own checkbox). The bump SKU is
-    // the trusted "<product_id>-bump" billing_products row: it must be
-    // active and on the same brand. Price always comes from the DB row.
-    let bumpProduct = null;
-    if (params.bump === true) {
-      try {
-        const cand = await db.prepare(
-          "SELECT * FROM billing_products WHERE id = ? AND active = 1"
-        ).bind(productId + "-bump").first();
-        if (cand && cand.brand === product.brand) bumpProduct = cand;
-      } catch (e) {
-        console.error("pay/checkout bump lookup failed", e && e.message);
-      }
-    }
-    const totalCents =
-      Number(product.price_cents) +
-      (bumpProduct ? Number(bumpProduct.price_cents) : 0) -
-      creditCents;
-
     // Idempotency: reuse a pending payment row for the same product+email
     // created within the last hour. A fresh Stripe session is attached to it.
-    // Anonymous checkouts (empty email, Moonroom) never reuse a row — there
-    // is no identity to key on, and sharing one would mix buyers together.
-    let payment = null;
-    if (email) {
-      payment = await db.prepare(
-        "SELECT id, access_token FROM billing_payments " +
-        "WHERE product_id = ? AND email = ? AND status = 'pending' AND created_at > datetime('now','-1 hour') " +
-        "ORDER BY id DESC LIMIT 1"
-      ).bind(productId, email).first();
-    }
+    let payment = await db.prepare(
+      "SELECT id, access_token FROM billing_payments " +
+      "WHERE product_id = ? AND email = ? AND status = 'pending' AND created_at > datetime('now','-1 hour') " +
+      "ORDER BY id DESC LIMIT 1"
+    ).bind(productId, email).first();
 
     let paymentId;
     if (payment) {
       paymentId = payment.id;
       await db.prepare(
-        "UPDATE billing_payments SET access_token = ?, metadata_json = ?, amount_cents = ?, attribution_json = COALESCE(attribution_json, ?) WHERE id = ?"
-      ).bind(accessToken, JSON.stringify(params), totalCents, attributionJson, paymentId).run();
+        "UPDATE billing_payments SET access_token = ?, metadata_json = ? WHERE id = ?"
+      ).bind(accessToken, JSON.stringify(params), paymentId).run();
     } else {
       const ins = await db.prepare(
-        "INSERT INTO billing_payments (product_id, brand, email, amount_cents, currency, access_token, metadata_json, attribution_json) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-      ).bind(productId, product.brand, email, totalCents, product.currency || "usd", accessToken, JSON.stringify(params), attributionJson).run();
+        "INSERT INTO billing_payments (product_id, brand, email, amount_cents, currency, access_token, metadata_json) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?)"
+      ).bind(productId, product.brand, email, product.price_cents, product.currency || "usd", accessToken, JSON.stringify(params)).run();
       paymentId = (ins && ins.meta && ins.meta.last_row_id) || null;
       if (!paymentId) return J({ ok: false, error: "checkout_failed" }, 500);
     }
-
-    // Checkout-lead capture (2026-10-05): the buyer gave us their email at
-    // checkout-open, paid or not. Save it to the brand CRM immediately so
-    // abandoned checkouts are recoverable. Suppression-safe: never touches
-    // an opted_out row, never sends anything, converted stays 0 until the
-    // webhook upgrades it on paid.
-    try {
-      const leadEm = String(email || "").toLowerCase().trim();
-      const leadBr = String(product.brand || "mehyar.us").toLowerCase().trim() || "mehyar.us";
-      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEm)) {
-        await db.prepare(
-          "INSERT INTO subscribers_global (email, brand, status, converted, first_order_at, last_order_at, total_spent_cents, attribution_json, updated_at) " +
-          "VALUES (?, ?, 'active', 0, " + "strftime('%Y-%m-%dT%H:%M:%fZ','now')" + ", " + "strftime('%Y-%m-%dT%H:%M:%fZ','now')" + ", 0, ?, " + "strftime('%Y-%m-%dT%H:%M:%fZ','now')" + ") " +
-          "ON CONFLICT(email, brand) DO UPDATE SET " +
-          "status=CASE WHEN subscribers_global.status='opted_out' THEN 'opted_out' ELSE subscribers_global.status END, " +
-          "attribution_json=COALESCE(subscribers_global.attribution_json, excluded.attribution_json), " +
-          "updated_at=" + "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
-        ).bind(leadEm, leadBr, attributionJson || null).run();
-        const dripTables = { floodlens: "floodlens_subscribers", puretap: "puretap_subscribers", sproutscore: "sproutscore_subscribers", beachcall: "beachcall_subscribers", hustlekit: "hustlekit_subscribers", prepguide: "prepguide_subscribers", babypeek: "babypeek_subscribers" };
-        const dripTable = dripTables[leadBr];
-        if (dripTable) {
-          try {
-            await db.prepare(
-              "INSERT INTO " + dripTable + " (email, status, brand, source, converted) " +
-              "VALUES (?, 'checkout_open', ?, 'checkout', 0) " +
-              "ON CONFLICT(email) DO NOTHING"
-            ).bind(leadEm, leadBr).run();
-          } catch (e) { /* table shape differs — global store already has it */ }
-        }
-      }
-    } catch (e) { /* lead capture never blocks checkout */ }
 
     // Return URLs: template defaults, caller overrides only for allowlisted hosts.
     const vars = { access_token: accessToken, payment_id: paymentId };
@@ -473,9 +242,7 @@ export async function onRequestPost({ request, env }) {
     sp.set("mode", billingMode);
     sp.set("success_url", successUrl);
     sp.set("cancel_url", cancelUrl);
-    // Only pre-fill Stripe's email when the buyer actually gave one; with
-    // none, Stripe collects it on its hosted page.
-    if (email) sp.set("customer_email", email);
+    sp.set("customer_email", email);
     sp.set("line_items[0][price_data][currency]", product.currency || "usd");
     sp.set("line_items[0][price_data][product_data][name]", product.name);
     if (product.description) sp.set("line_items[0][price_data][product_data][description]", product.description);
@@ -483,74 +250,12 @@ export async function onRequestPost({ request, env }) {
     if (billingMode === "subscription") {
       // Trusted interval only: month (default) or year.
       sp.set("line_items[0][price_data][recurring][interval]", product.billing_interval === "year" ? "year" : "month");
-      // Trusted trial only (days, from the product row — never the client).
-      // Used by AI Mechanic SKUs (7-day trial, matches the historic offer).
-      const trialDays = Math.min(Math.max(Number(product.trial_days) || 0, 0), 365);
-      if (trialDays > 0) sp.set("subscription_data[trial_period_days]", String(trialDays));
     }
     sp.set("line_items[0][quantity]", "1");
-    if (creditCents > 0) {
-      // Show the credit as its own discount line on the Stripe page via a
-      // durable coupon (created once per Stripe account/mode, then reused).
-      // If the coupon cannot be ensured, fall back to reducing the line
-      // price so the promised credit ALWAYS holds.
-      const couponId = "CREDIT" + creditCents;
-      let couponOk = false;
-      try {
-        const auth = { authorization: "Bearer " + stripeKey };
-        const got = await fetch("https://api.stripe.com/v1/coupons/" + couponId, { headers: auth, signal: AbortSignal.timeout(10000) });
-        if (got.ok) {
-          couponOk = true;
-        } else {
-          const cs = new URLSearchParams();
-          cs.set("id", couponId);
-          cs.set("amount_off", String(creditCents));
-          cs.set("currency", product.currency || "usd");
-          cs.set("duration", "once");
-          cs.set("name", "$5 Full Report credit");
-          const made = await fetch("https://api.stripe.com/v1/coupons", {
-            method: "POST",
-            headers: { ...auth, "content-type": "application/x-www-form-urlencoded" },
-            body: cs.toString(),
-            signal: AbortSignal.timeout(10000),
-          });
-          couponOk = made.ok;
-        }
-      } catch (e) { couponOk = false; }
-      if (couponOk) {
-        sp.set("discounts[0][coupon]", couponId);
-      } else {
-        sp.set("line_items[0][price_data][unit_amount]", String(Number(product.price_cents) - creditCents));
-      }
-      sp.set("metadata[credit_applied]", String(creditCents));
-    }
-    if (bumpProduct) {
-      // Order-bump second line item (BabyPeek $9 Couple Pack). The buyer
-      // opted in on the product page (unchecked by default); the Stripe
-      // receipt shows both lines so the total matches the page copy.
-      sp.set("line_items[1][price_data][currency]", bumpProduct.currency || "usd");
-      sp.set("line_items[1][price_data][product_data][name]", bumpProduct.name);
-      if (bumpProduct.description) sp.set("line_items[1][price_data][product_data][description]", bumpProduct.description);
-      sp.set("line_items[1][price_data][unit_amount]", String(bumpProduct.price_cents));
-      sp.set("line_items[1][quantity]", "1");
-      sp.set("metadata[bump]", "1");
-    }
-    // One-click upsell support (BabyPeek, 2026-10-06): params.save_card is
-    // set server-side by the product worker when the base purchase should
-    // keep the card on file, so the post-purchase upsell can charge
-    // off-session in one tap (see /api/pay/upsell-charge).
-    if (params.save_card === true) {
-      sp.set("payment_intent_data[setup_future_usage]", "off_session");
-    }
     sp.set("metadata[payment_id]", String(paymentId));
     sp.set("metadata[product_id]", productId);
     sp.set("metadata[brand]", product.brand || "");
     sp.set("metadata[email]", email);
-    if (attribution) {
-      for (const k of ["utm_source", "utm_medium", "utm_campaign", "landing_page", "referrer"]) {
-        if (attribution[k]) sp.set("metadata[" + k + "]", String(attribution[k]).slice(0, 200));
-      }
-    }
     for (const [k, v] of Object.entries(metadataExtra)) sp.set("metadata[" + k + "]", String(v));
 
     const sess = await fetch("https://api.stripe.com/v1/checkout/sessions", {
@@ -578,4 +283,3 @@ export async function onRequestPost({ request, env }) {
     return J({ ok: false, error: "checkout_failed" }, 500);
   }
 }
-
