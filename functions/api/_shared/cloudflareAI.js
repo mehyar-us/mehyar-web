@@ -82,7 +82,7 @@ export async function fitScoreOne(env, item, signal) {
     `MehyarSoft LLC — Brooklyn, NY — founder-led software/systems/AI automation consulting firm.\n` +
     `NAICS: 541511 Custom Computer Programming, 541512 Computer Systems Design, 541519 Other Computer Related Services.\n` +
     `Set-asides: Total Small Business; HUBZone.\n` +
-    `Service offerings: 6-tier offer ladder — Free scan $0 → Full Report $5 → Audit My Business $330 → ` +
+    `Service offerings: 6-tier offer ladder — $150 Tech Audit → $250 Website Diagnosis Report → ` +
     `$1k-$25k Custom Build → $500-$3.5k/mo Quarterly Retainer → $150/hr Hourly Advisory.\n` +
     `Past performance: 2 live managed apps (Rizza, AiMech); pharma systems-engineering discipline; ` +
     `founder-led, no agency theater; remote-first delivery continental US; small team of 1-3.\n` +
@@ -205,7 +205,7 @@ export async function draftOne(env, ctx, { kind = "cold" } = {}) {
   const sysPrompt = `You are Mehyar Swelim, founder of MehyarSoft. Write revenue-focused outreach that is truthful, specific, and easy to reply to.
 Plain text only. No emojis, no fake familiarity, no unverifiable case studies, no exaggerated metrics, no "I hope this finds you well".
 First sentence must cite one observed business signal or solicitation fact. Pick exactly one paid next step and name the price range:
-- Local business: the free scan ($0), the Full Report ($5), Audit My Business ($330), $1,500-$7,500 fixed-scope quick fix, $7,500-$25,000 automation sprint, or $500-$3,500/mo retainer.
+- Local business: $150 leak audit, $250 written diagnosis, $1,500-$7,500 fixed-scope quick fix, $7,500-$25,000 automation sprint, or $500-$3,500/mo retainer.
 - Government/contract: capability teaser, fit rationale, one clear next step, no unsupported certifications, no invented pricing beyond owner-approved offer ranges.
 No online payment links. If payment is mentioned, say scope is confirmed first and invoiced manually by email for ACH, wire, check, or cash.
 Do not offer free audits, free Looms, discounts, guarantees, or speculative ROI. Do not ask for sensitive data.
