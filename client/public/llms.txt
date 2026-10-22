@@ -34,8 +34,8 @@
 ## Pricing (from the site's own FAQ)
 
 - Free AI website scan: $0
-- Full Report: $5 one-time
-- Audit My Business: $330 one-time
+- Full Report: $5 one-time — the complete written breakdown of the free Audit My Business scan: every money leak found, priced and ranked. The $5 credits in full toward the full audit below.
+- Audit My Business: $330 one-time — the deep AI audit: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and an AI opportunity map, delivered by email. Full Report buyers pay $325 at checkout ($330 − the $5 credit).
 - Custom builds: $1,000–$25,000
 - Retainers: $500–$3,500/month
 - Hourly advisory: $150/hour
@@ -76,7 +76,7 @@ MehyarSoft LLC owns and operates 33 products:
 - **The Mayor** (https://mayor.mehyar.us) — The AI built for each business.
 - **Legit** (https://legit.mehyar.us) — An AI advisor for forming your LLC.
 - **Moonroom** (https://moonroom.mehyar.us) — Studio portraits from one selfie.
-- **Audit My Business** (https://mehyar.us/audit/) — A $330 AI audit that finds where your business is leaking money.
+- **Audit My Business** (https://mehyar.us/audit/) — A $330 AI audit that finds where your business is leaking money. Starts with a free scan; the $5 Full Report credits in full toward the audit ($325 at checkout).
 - **DUST** (https://dust.mehyar.us) — Your dust is a lottery ticket.
 - **Billcut** (https://billcut.mehyar.us) — Find money you're missing.
 - **Coach** (https://coach.mehyar.us) — Your resume, aimed at this job. Your interview, rehearsed.
