@@ -13,11 +13,11 @@ export default function ReportPreview({ className = "" }: { className?: string }
       {/* navy cover band */}
       <div className="relative bg-[#0B1B33] px-5 pb-8 pt-6 text-white">
         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-300">MehyarSoft</p>
-        <p className="mt-1 text-lg font-bold leading-tight">Full Report</p>
+        <p className="mt-1 text-lg font-bold leading-tight">AI Website Evaluation</p>
         <p className="mt-1 text-[10px] text-slate-300">yourbusiness.com</p>
         {/* mini gauge (decorative — no real score) */}
         <div className="absolute -bottom-7 right-5 h-16 w-16 rounded-full bg-white p-1 shadow-lg">
-          <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90" aria-hidden="true" focusable="false">
+          <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90">
             <circle cx="32" cy="32" r="26" fill="none" stroke="#E2E8F0" strokeWidth="8" />
             <circle
               cx="32" cy="32" r="26" fill="none" stroke="#F59E0B" strokeWidth="8"

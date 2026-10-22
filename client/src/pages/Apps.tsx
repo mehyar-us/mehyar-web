@@ -4,13 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import CTASection from "@/components/cta-section";
 import QuickAnswer from "@/components/QuickAnswer";
-import MayorBait from "@/components/MayorBait";
 
 interface ManagedApp {
   id: string;
   name: string;
   url: string;
-  facebook?: string;
   tagline: string;
   description: string;
   audience: string;
@@ -107,14 +105,14 @@ const managedApps: ManagedApp[] = [
   },
   {
     id: "mehyarjobs",
-    name: "jobs.mehyar",
+    name: "mehyar.jobs",
     url: "https://jobs.mehyar.us",
-    tagline: "Tell it the job you want.",
+    tagline: "7,000+ careers, fit-scored.",
     description:
-      "Tell it the job you want — AI scores every new posting against your resume. Free.",
+      "Daily scan of Fortune 500, Forbes Global 2000, Inc 5000, and S&P 500 career pages — ranked by fit to your profile, not by who paid to promote.",
     audience: "Job seekers who are tired of scrolling the same 50 listings on every board.",
     highlights: [
-      "Every new posting scored against your resume",
+      "7,000+ careers scanned daily from top employer career pages",
       "Fit-scored against your profile, not keyword-matched",
       "Covers Fortune 500, Forbes Global 2000, Inc 5000, and S&P 500",
       "Fresh every morning — no stale reposts",
@@ -150,7 +148,7 @@ const managedApps: ManagedApp[] = [
     highlights: [
       "Five fixed-price products at $49 each — teardown, logo, ad creative, social kit, hero rewrite",
       "Free preview before you pay anything — a watermarked sample of your real output",
-      "Delivered in about 15 minutes with a 7-day redo guarantee",
+      "Delivered in about 15 minutes with a 7-day redo-or-refund guarantee",
       "Token-gated download links — no account needed",
     ],
     logo: "/assets/designful-logo.png",
@@ -168,7 +166,7 @@ const managedApps: ManagedApp[] = [
       "Three tracks: AI freelance writing, AI video editing, AI social-media management",
       "Personalized 15-page PDF playbook — niche, offer, pricing, outreach scripts, 30-day plan",
       "Free sample playbook page before you pay anything",
-      "One-time $27 with a 7-day redo guarantee — no account needed",
+      "One-time $27 with a 7-day redo-or-refund guarantee — no account needed",
     ],
     logo: "/assets/hustlekit-logo.png",
     accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
@@ -213,7 +211,7 @@ const managedApps: ManagedApp[] = [
     url: "https://creditfixkit.mehyar.us",
     tagline: "Fix your credit yourself — the letters, the plan, the knowledge.",
     description:
-      "A DIY credit repair kit: personalized dispute letter templates, a 12-month rebuild plan, and a plain-English score-factor explainer — delivered as a PDF for a one-time $47. General information only — a step-by-step plan you run yourself.",
+      "A DIY credit repair kit: personalized dispute letter templates, a 12-month rebuild plan, and a plain-English score-factor explainer — delivered as a PDF for a one-time $47. General information only, never legal advice, no guaranteed outcomes.",
     audience: "Anyone with collections, late payments, or a thin file who wants to do credit repair themselves instead of paying a monthly service.",
     highlights: [
       "Personalized dispute letters with your details merged in",
@@ -257,6 +255,23 @@ const managedApps: ManagedApp[] = [
     ],
     logo: "/assets/truesketch-logo.png",
     accentClass: "from-violet-100 to-white dark:from-violet-900 dark:to-violet-950",
+  },
+  {
+    id: "tiktokgrowth",
+    name: "TikTok Growth System",
+    url: "https://tiktokgrowth.mehyar.us",
+    tagline: "A 30-day organic TikTok playbook, generated for your niche.",
+    description:
+      "An AI playbook builder for organic short-form growth: tell it your niche, camera comfort, and hours per week, and it generates a 30-day posting plan, 30 first-3-second hook scripts, a bio + CTA pack, and a trend-jacking playbook — one-time $27 with 5 free hook scripts before you pay.",
+    audience: "Creators, founders, and small businesses starting or restarting organic TikTok growth.",
+    highlights: [
+      "30-day posting plan built around your niche, schedule, and on-camera comfort",
+      "30 hook scripts for the first 3 seconds, each with why-it-works and delivery tips",
+      "Bio + CTA pack and a trend-jacking playbook — original-content methods only",
+      "5 free hook scripts before you pay — $27 one-time, 7-day redo-or-refund",
+    ],
+    logo: "/assets/tiktokgrowth-logo.png",
+    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
   },
   {
     id: "plrvault",
@@ -310,6 +325,23 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
   {
+    id: "openseason",
+    name: "OpenSeason",
+    url: "https://openseason.mehyar.us",
+    tagline: "Every hunting-season date for your state, in plain English.",
+    description:
+      "Pick your state and get the next three verified season openers free — every date traced to the official state wildlife agency and stamped with its verification. The $12 state pack unlocks every season, deadline, bag limit, and license/tag date plus printable pack and reminders all season.",
+    audience: "Weekend deer hunters asking “is muzzleloader open this weekend?” or “did I miss the deadline?”",
+    highlights: [
+      "Next 3 verified season openers free — no signup, no payment",
+      "Every date carries its official state-agency source and verification stamp",
+      "$12 state pack: all seasons, deadlines, bag limits, license/tag dates",
+      "Printable pack + email reminders all season; one-click unsubscribe everywhere",
+    ],
+    logo: "/assets/openseason-logo.png",
+    accentClass: "from-lime-100 to-white dark:from-lime-900 dark:to-lime-950",
+  },
+  {
     id: "beachcall",
     name: "BeachCall",
     url: "https://beachcall.mehyar.us",
@@ -324,6 +356,23 @@ const managedApps: ManagedApp[] = [
       "Morning go/no-go emails before the kids wake up, plus a Friday weekend outlook",
     ],
     logo: "/assets/beachcall-logo.png",
+    accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",
+  },
+  {
+    id: "carerank",
+    name: "CareRank",
+    url: "https://carerank.mehyar.us",
+    tagline: "Nursing-home shortlist that works for your family, not the facilities.",
+    description:
+      "A 4-minute quiz about your parent's needs, scored deterministically against real CMS nursing-home data. Free: your match count and blurred top 3. $29 one-time unlocks the full ranked shortlist — per-facility strengths, red flags, decoded CMS ratings, tour questions, and a printable 12-page PDF to share with siblings.",
+    audience: "Adult children who need to pick a nursing home this week under discharge-planner pressure.",
+    highlights: [
+      "Free 4-minute quiz — see how many homes fit, top 3 names blurred",
+      "Deterministic scoring over real CMS data — no invented ratings, ever",
+      "$29 one-time: full ranked shortlist + printable 12-page PDF",
+      "Per-facility strengths, red flags, and what to ask on the tour",
+    ],
+    logo: "/assets/carerank-logo.png",
     accentClass: "from-teal-100 to-white dark:from-teal-900 dark:to-teal-950",
   },
   {
@@ -381,11 +430,10 @@ const managedApps: ManagedApp[] = [
     id: "mayor",
     name: "The Mayor",
     url: "https://mayor.mehyar.us",
-    tagline: "Mayor. Talk to your business.",
-    facebook: "https://www.facebook.com/profile.php?id=61595399794348",
+    tagline: "The AI built for each business.",
     description:
-      // PRICING: mirrors the live Mayor catalog (Pro $99/mo since 2026-10-16).
-      "AI business workspace for Main Street: customers, appointments, playbooks, and voice — with a $99/mo Pro plan (founding cohort $79.20/mo for life) and one-time credit packs.",
+      // PRICING: update when the $39 catalog ships (see ~/workspace/mayor-pilot/pricing-39.diff)
+      "AI business workspace for Main Street: customers, appointments, playbooks, and voice — with a $14/mo Pro plan and one-time credit packs.",
     audience: "Local service businesses (salons, restaurants, trades, retail) that want an AI assistant with real memory of their business.",
     highlights: [
       "AI assistant with business memory — it knows your services, hours, and customers",
@@ -397,29 +445,12 @@ const managedApps: ManagedApp[] = [
     accentClass: "from-neutral-100 to-white dark:from-neutral-900 dark:to-neutral-950",
   },
   {
-    id: "legit",
-    name: "Legit",
-    url: "https://legit.mehyar.us",
-    tagline: "An AI advisor for forming your LLC.",
-    description:
-      "Chat with Legit to check your LLC name free, then get step-by-step filing guidance for your state. A 60-minute advisor session ($29) generates your documents — operating agreement, articles of organization, EIN checklist — as PDFs. Self-help software, not a law firm.",
-    audience: "First-time founders forming an LLC who want guidance and documents without a law-firm bill.",
-    highlights: [
-      "Free LLC name check in chat — no sign-in needed",
-      "Step-by-step filing guidance for your state",
-      "60-minute advisor session with documents generated for $29",
-      "Operating agreement, articles & EIN checklist as ready PDFs",
-    ],
-    logo: "/assets/legit-logo.png",
-    accentClass: "from-yellow-100 to-white dark:from-yellow-900 dark:to-yellow-950",
-  },
-  {
     id: "moonroom",
     name: "Moonroom",
     url: "https://moonroom.mehyar.us",
     tagline: "Studio portraits from one selfie.",
     description:
-      "AI photo studio that turns one selfie into studio portraits: $49 headshot packs, $39 product-photo backgrounds for sellers, $29 seasonal theme packs. One-time payments — no subscription.",
+      "AI photo studio that turns one selfie into studio portraits: $24 headshot packs, $15 product-photo backgrounds for sellers, $9 seasonal theme packs. One-time payments — no subscription.",
     audience: "Job seekers and professionals who need a great headshot, and online sellers who need clean product photos without a photo shoot.",
     highlights: [
       "AI headshot packs, product photos, and themed portraits from a single selfie",
@@ -436,7 +467,7 @@ const managedApps: ManagedApp[] = [
     url: "https://mehyar.us/audit/",
     tagline: "A $330 AI audit that finds where your business is leaking money.",
     description:
-      "Enter your business URL — optionally upload a walkthrough video — and get a professional AI audit: overall score, money leaks, flaws, prioritized fixes, and where AI fits in your business. One-time $330.",
+      "Enter your business URL — optionally upload a walkthrough video — and get a professional AI audit: overall score, money leaks, flaws, prioritized fixes, and where AI fits in your business. One-time $330, purchases final.",
     audience:
       "Local business owners who suspect leads or revenue are leaking through their website, booking path, or follow-up.",
     highlights: [
@@ -465,159 +496,6 @@ const managedApps: ManagedApp[] = [
     ],
     logo: "/assets/dust-logo.png",
     accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
-  },
-  {
-    id: "billcut",
-    name: "Billcut",
-    url: "https://billcut.mehyar.us",
-    tagline: "Find money you're missing.",
-    description:
-      "Upload a bank or card statement (PDF or CSV) and Billcut finds every recurring charge, ranks it by yearly cost, and gives you a cancel or negotiation script for each one. $9 one-time full audit, $7/month monitoring. No bank login — your file is deleted right after it's read.",
-    audience: "Anyone with subscriptions and autopay bills who wants to see what actually repeats — and what to cut — from their own statement.",
-    highlights: [
-      "Recurring charges extracted from your own statement — no bank login, no Plaid",
-      "Ranked by yearly cost, with price-increase and duplicate-service flags",
-      "A cancel script or negotiation script for every charge",
-      "Your file is deleted immediately after it's read; delete the report anytime",
-    ],
-    logo: "/assets/billcut-logo.png",
-    accentClass: "from-emerald-100 to-white dark:from-emerald-900 dark:to-emerald-950",
-  },
-  {
-    id: "coach",
-    name: "Coach",
-    url: "https://coach.mehyar.us",
-    tagline: "Your resume, aimed at this job. Your interview, rehearsed.",
-    description:
-      "Paste your resume and the job post. Coach tailors your resume to that exact job — rewritten summary, re-aimed bullets, an honest keyword-gap list — then rehearses you for the interview with STAR practice scored element by element. Free preview; Coach Pro is $19/month with unlimited tailoring, cover letters, and model answers. No job guarantees — just better-targeted applications and structured practice.",
-    audience: "Job seekers applying with one generic resume and walking into interviews unrehearsed.",
-    highlights: [
-      "Resume tailored to the exact job post — summary and bullets re-aimed, never fabricated",
-      "An honest keyword-gap list: what the post asks for that your resume doesn't cover",
-      "STAR interview practice — answer out loud or typed, scored on Situation, Task, Action, Result",
-      "Pro adds the full bullet set, cover letter drafts, and a stronger model answer for every practice run",
-    ],
-    logo: "/assets/coach-logo.png",
-    accentClass: "from-indigo-100 to-white dark:from-indigo-900 dark:to-indigo-950",
-  },
-  {
-    id: "sproutscore",
-    name: "SproutScore",
-    url: "https://sproutscore.mehyar.us",
-    tagline: "NYC daycare inspection records, decoded for parents.",
-    description:
-      "Every NYC daycare violation the city published, decoded in plain English. Search any of 3,014 licensed centers free; the full decoded report — every violation, severity ratings, correction status, nearby-center comparison and tour questions — is $19 one-time.",
-    audience: "NYC parents choosing a daycare who refuse to sign a $30k/year contract blind.",
-    highlights: [
-      "Free search across 3,014 licensed NYC daycare centers",
-      "Every published violation decoded in plain English",
-      "Severity ratings, correction status, and exact questions for your tour",
-      "Full decoded report $19 one-time — inspection history 2020–2023, the latest the city publishes",
-    ],
-    logo: "/assets/sproutscore-logo.png",
-    accentClass: "from-green-100 to-white dark:from-green-900 dark:to-green-950",
-  },
-  {
-    id: "playbook",
-    name: "Playbook",
-    url: "https://playbook.mehyar.us",
-    tagline: "30 days of content, planned for your niche.",
-    description:
-      "Tell Playbook your niche and get 5 free hook scripts right away. The full 30-Day Content Playbook ($27 one-time) adds a 30-day posting plan, 30 hook scripts, a bio pack and a trend-jacking guide — delivered as a private playbook page you can download as a PDF.",
-    audience: "Creators and small brands who want a month of short-form content planned around their niche, camera comfort, and hours.",
-    highlights: [
-      "5 free hook scripts for your niche — no card required",
-      "30-day posting plan built around the hours you actually have",
-      "30 hooks, a bio pack, and the trend-jacking playbook",
-      "$27 one-time — private playbook page plus PDF download",
-    ],
-    logo: "/assets/playbook-logo.png",
-    accentClass: "from-pink-100 to-white dark:from-pink-900 dark:to-pink-950",
-  },
-  {
-    id: "clipnote",
-    name: "Clipnote",
-    url: "https://clipnote.mehyar.us",
-    tagline: "Paste your release notes. Get a launch video.",
-    description:
-      "SaaS teams ship features weekly and announce them with a wall of text nobody reads. Clipnote turns your changelog into a polished 60-second narrated launch video — AI script drafted from your notes (free preview before you pay), narrated and animated scene by scene, with your own screenshots composited in. $29 per video, or $19/mo for 4 videos a month; delivered on a shareable watch page with an MP4 download, most within a few hours and always within 24.",
-    audience: "SaaS founders and indie hackers who ship weekly and need launch announcements people actually watch.",
-    highlights: [
-      "Free AI script preview from your release notes — see it before you pay",
-      "60-second narrated launch video, animated scene by scene",
-      "Your own product screenshots composited into the video",
-      "$29 per video or $19/mo for 4 — watch page + MP4, no watermark",
-    ],
-    logo: "/assets/clipnote-logo.png",
-    accentClass: "from-red-100 to-white dark:from-red-900 dark:to-red-950",
-  },
-  {
-    id: "wattwise",
-    name: "WattWise",
-    url: "https://wattwise.mehyar.us",
-    tagline: "Is your electric bill ripping you off?",
-    description:
-      "Photo your electric bill and WattWise gives you a free 30-second verdict — overpaying, fair, or good — measured against real rate data for your area (OpenEI utility rates / EIA state averages), plus the one thing costing you most. The full audit ($14.99 one-time) decodes every line, recommends a cheaper plan, and gives you a call script to switch; monitoring ($7.99/mo) checks every new bill automatically.",
-    audience: "Anyone paying a residential electric bill who suspects they're overpaying and wants proof before switching suppliers.",
-    highlights: [
-      "Free gauge from a photo of your bill — verdict in ~30 seconds, no account needed",
-      "Your effective ¢/kWh benchmarked against real area rate data (OpenEI / EIA)",
-      "$14.99 full audit: every line decoded, cheaper plan + call script to switch",
-      "$7.99/mo monitoring — every new bill checked, alerts when you're overpaying",
-    ],
-    logo: "/assets/wattwise-logo.png",
-    accentClass: "from-gray-100 to-white dark:from-gray-900 dark:to-gray-950",
-  },
-  {
-    id: "memoir",
-    name: "Memoir",
-    url: "https://memoir.mehyar.us",
-    tagline: "Their stories, in their own words — a book in days, not a year.",
-    description:
-      "Memoir interviews a storyteller chapter by chapter — a parent, a grandparent, or yourself — with follow-up questions that react to what they actually said, then compiles their own words into a finished memoir book to read, share, download, and print. The first chapter is a free sample; the full book is $79 one-time (Digital) or $149 (Complete: up to three storytellers plus a hardcover print-ready edition). No subscription. The storyteller never creates an account and never pays — one private link and they talk.",
-    audience: "Adult children preserving a parent's stories, and anyone 55+ who wants their own life story in a book without writing it.",
-    highlights: [
-      "A guided 12-chapter interview — done in days, not a year of weekly prompts",
-      "Follow-ups react to the names, places, and years in their answers",
-      "The book is compiled from the storyteller's own words — never invented, editable anytime",
-      "Free Sample Chapter first; the storyteller never sees a paywall and never pays",
-    ],
-    logo: "/assets/memoir-logo.png",
-    accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
-  },
-  {
-    id: "valleygods",
-    name: "ValleyGods",
-    url: "https://valleygods.mehyar.us",
-    tagline: "Watch them live. Read their minds. Play their god.",
-    description:
-      "ValleyGods is a living AI town of 150 Minimes — simulated people with homes, jobs, relationships, and minds you can actually read. Watch the town live for free with no sign-in, open any Minime to see what they're doing, where they're headed, and what they're thinking (their Mindlog). Sign in with Google to occupy exactly one Minime and god-nudge their life.",
-    audience: "Anyone curious about emergent AI life — simulation and worldbuilding fans who want to watch a town think, and quietly steer one life inside it.",
-    highlights: [
-      "Free to watch live — no sign-in, the town is the homepage",
-      "150 Minimes with homes, jobs, schedules, and readable minds (Mindlog)",
-      "Open any Minime: what they're doing, where they're headed, what they're thinking",
-      "Sign in with Google to occupy one Minime and god-nudge their life",
-    ],
-    logo: "/assets/valleygods-logo.png",
-    accentClass: "from-purple-100 to-white dark:from-purple-900 dark:to-purple-950",
-  },
-  {
-    id: "visakit",
-    name: "Visakit",
-    url: "https://visakit.mehyar.us",
-    tagline: "Your visa application pack, prepared for you — five routes live, any route on request.",
-    description:
-      "A tourist-visa application pack, prepared for you: a free eligibility pre-check, a document checklist built for your exact route, your forms filled from your documents, and a human review before you submit. Live routes today: Egypt, Pakistan, Nigeria, and Morocco to Schengen, plus Egypt to the UK — any other route can be requested in the pre-check. $39 per pack ($29 early-bird for the first 25 packs). We prepare applications; visa decisions are made by consulates.",
-    audience: "Travelers whose passports make tourist visas hard — any nationality, any destination: five routes live today, every other route on request.",
-    highlights: [
-      "Eligibility pre-check first — know where you stand before you pay",
-      "A document checklist built for your case, not a generic template",
-      "Prepared form-data pack as a PDF, human-reviewed before delivery",
-      "$39 per prepared pack ($29 early-bird) — per trip, no subscription",
-    ],
-    logo: "/assets/visakit-logo.png",
-    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
   },
 ];
 
@@ -767,16 +645,6 @@ const Apps = () => {
                     >
                       Read the launch note
                     </Link>
-                    {app.facebook ? (
-                      <a
-                        href={app.facebook}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={buttonVariants({ variant: "outline", size: "sm" })}
-                      >
-                        Facebook Page
-                      </a>
-                    ) : null}
                   </div>
                 </CardContent>
               </Card>
@@ -870,11 +738,10 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise, Memoir, ValleyGods, Visakit), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, TikTok Growth System, PLR Vault, PromptPack Pro, OpenSeason, BeachCall, CareRank, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST), and the request form.
           </p>
         </div>
       </section>
-      <MayorBait campaign="apps" />
     </>
   );
 };

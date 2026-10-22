@@ -18,7 +18,7 @@ export default function Pricing() {
             <p className="site-lede mt-6 max-w-3xl">
               Choose your business to compare a branded customer app, AI
               texting, phone support, social content, maintenance, and exact
-              prices.
+              starting prices.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a

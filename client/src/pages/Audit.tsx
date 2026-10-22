@@ -21,8 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import BusinessReportView from "@/components/BusinessReportView";
-import MayorBait from "@/components/MayorBait";
-import { trackBeginCheckout } from "@/components/MarketingTags";
 
 /* ── API contract (matches functions/api/audit/business/*, commit 8cbc372) ──
    POST /api/audit/business/intake   { business_name, url, email }
@@ -62,31 +60,6 @@ type IntakeResult = {
   contentUnmeasured: boolean;
 };
 
-/** URL-first intake: what /api/audit/business/peek reads off the site itself. */
-type PeekResult = {
-  identity: {
-    name: string;
-    name_source: string | null;
-    title: string;
-    tagline: string;
-    favicon: string | null;
-    og_image: string | null;
-    theme_color: string | null;
-    emails: string[];
-    phones: string[];
-    url: string;
-  };
-  found: {
-    https: boolean;
-    load_ms: number;
-    has_phone: boolean;
-    has_contact_path: boolean;
-    has_schema: boolean;
-    socials: string[];
-    content_unmeasured: boolean;
-  };
-};
-
 function joinList(v: unknown): string {
   if (!Array.isArray(v) || v.length === 0) return "None found";
   return v.map(String).filter(Boolean).join(", ") || "None found";
@@ -100,7 +73,7 @@ function mapIntakeSignals(s: Record<string, any>): PreviewSignal[] {
   /* When the site is a JS app shell, content-dependent signals couldn't be
      measured from the initial HTML — disclose honestly instead of the 0s. */
   const unmeasured = !!s.content_unmeasured;
-  const na = "In your $330 audit";
+  const na = "Couldn't be assessed";
   push("Page title", s.title ? String(s.title) : "No title found", s.title ? true : false);
   push("HTTPS", s.https ? "On" : "Off", !!s.https);
   push("Load time", typeof s.load_ms === "number" ? `${s.load_ms} ms` : "—", null);
@@ -316,6 +289,14 @@ function FaqItem({ q, children }: { q: string; children: React.ReactNode }) {
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function Audit() {
   const token = new URLSearchParams(window.location.search).get("token");
+  /* Assessment-call prefill (?prefill=<token>): the post-call email links here
+     with a tokenized payload (business name, URL, call findings). Redeem it and
+     fill the intake form — the token, name, URL and findings must never be
+     silently discarded (full-QA fix F2). Invalid/expired tokens degrade to an
+     empty form with a gentle note, never an error wall. */
+  const prefillToken = new URLSearchParams(window.location.search).get("prefill");
+  const [prefillNote, setPrefillNote] = useState("");
+  const [prefillLoading, setPrefillLoading] = useState(false);
 
   /* ── Report view: same page when ?token= is present ── */
   if (token) {
@@ -335,18 +316,6 @@ export default function Audit() {
   const [intaking, setIntaking] = useState(false);
   const [intakeError, setIntakeError] = useState("");
   const [intake, setIntake] = useState<IntakeResult | null>(null);
-  /* Direct-buy lane (rot542): ?buy=1 (or the hero skip link) lets a ready
-     buyer pay from the landing — the Step 3 card collects business name +
-     URL inline and checkout creates the intake row inside the payment. */
-  const [directBuy, setDirectBuy] = useState<boolean>(() => {
-    try { return new URLSearchParams(window.location.search).get("buy") === "1"; } catch { return false; }
-  });
-  /* URL-first Step 1: "url" → peek → "confirm" card; "manual" = classic form. */
-  const [step1Phase, setStep1Phase] = useState<"url" | "confirm" | "manual">("url");
-  const [peeking, setPeeking] = useState(false);
-  const [peek, setPeek] = useState<PeekResult | null>(null);
-  const [peekNote, setPeekNote] = useState("");
-
 
   /* ── Step 2: video upload (optional) ── */
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -372,140 +341,50 @@ export default function Audit() {
 
   /* ── Step 3: pay ── */
   const [payEmail, setPayEmail] = useState("");
-  const [payEmailEditing, setPayEmailEditing] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
-  /* True while live checkout is unavailable: show notify-me instead of letting
-     the visitor bounce with nothing captured. */
-  const [payBlocked, setPayBlocked] = useState(false);
-  const [notifyState, setNotifyState] = useState<"idle" | "saving" | "saved">("idle");
-  const [notifyMsg, setNotifyMsg] = useState("");
-  /* Up-front availability probe: warn visitors at the top of step 3 and under
-     the hero BEFORE they invest time in steps 1–2. Null = unknown (probe failed
-     — stay quiet; the post-click blocked panel still catches it). */
-  const [checkoutOpen, setCheckoutOpen] = useState<boolean | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/pay/availability", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled) setCheckoutOpen(d && d.ok ? !!d.checkout_open : null); })
-      .catch(() => { if (!cancelled) setCheckoutOpen(null); });
-    return () => { cancelled = true; };
-  }, []);
-
-  /* $5 Full Report credit at the pay point: ask the server whether THIS
-     buyer (Step 3 email == Step 1 email — the only population the credit
-     can apply to) is eligible under the exact rule checkout enforces, and
-     show the arithmetic only when they are. Figures come from the server
-     (billing_products + credit), never computed here. Any failure leaves
-     the standard pay display untouched. */
-  const [creditInfo, setCreditInfo] = useState<{ eligible: boolean; credit_cents: number; list_cents: number; due_cents: number } | null>(null);
-  useEffect(() => {
-    const pay = payEmail.trim().toLowerCase();
-    const step1 = email.trim().toLowerCase();
-    /* Direct-buy (rot542): no Step 1 — the pay email IS the linked email,
-       so the credit display keys off it alone. */
-    const linked = intake ? pay === step1 : directBuy;
-    if (!linked || !pay || !EMAIL_RE.test(pay)) {
-      setCreditInfo(null);
-      return;
-    }
-    let cancelled = false;
-    const t = setTimeout(() => {
-      fetch("/api/pay/credit-status", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: pay }),
-      })
-        .then((r) => r.json())
-        .then((d) => { if (!cancelled && d && d.ok) setCreditInfo(d); })
-        .catch(() => { /* display is informational; stay standard */ });
-    }, 350);
-    return () => { cancelled = true; clearTimeout(t); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intake, payEmail, email, directBuy]);
-
-  /* Blocked-checkout notify-me: the buyer already gave us their email in this
-     step; clicking the button IS the explicit consent to one notification email
-     when checkout reopens (compliance item 6). POSTs to /api/audit/pay-blocked. */
-  const notifyWhenBack = async () => {
-    if (notifyState !== "idle") return;
-    if (!intake && !directBuy) return;
-    setNotifyState("saving");
-    setNotifyMsg("");
-    try {
-      const r = await fetch("/api/audit/pay-blocked", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(intake
-          ? { email: payEmail.trim(), audit_id: intake.auditId }
-          : { email: payEmail.trim(), direct: true, business_name: businessName.trim(), url: normalizeUrl(siteUrl) }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (r.ok && data.ok) {
-        if (!intake && data.audit_id) {
-          /* Adopt the row the direct capture created: the buyer is now on
-             the standard rails. Set the Step 1 email state to the same
-             address so the pay-email linkage effect stays consistent. */
-          setEmail(payEmail.trim());
-          setIntake({ auditId: String(data.audit_id), signals: [], contentUnmeasured: true });
-        }
-        setNotifyState("saved");
-      } else {
-        setNotifyState("idle");
-        setNotifyMsg(data.error === "rate_limited" ? "Too many tries — wait a bit and try again." : "Couldn't save that — try again in a bit.");
-      }
-    } catch {
-      setNotifyState("idle");
-      setNotifyMsg("Couldn't save that — check your connection and try again.");
-    }
-  };
 
   useEffect(() => {
-    if (intake) {
-      setPayEmail(email);
-      setPayEmailEditing(false);
-    }
+    if (intake && !payEmail) setPayEmail(email);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intake]);
 
-  /* Step zero of the URL-first flow: read the business off its own site.
-     On any failure we fall back to the classic form — never a dead end. */
-  const submitPeek = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIntakeError("");
-    setPeekNote("");
-    const url = normalizeUrl(siteUrl);
-    if (!url || !/^https?:\/\/[^/\s]+\.[^/\s]+/.test(url)) {
-      return setIntakeError("That URL doesn't look right — try yourbusiness.com.");
-    }
-    setPeeking(true);
-    try {
-      const r = await fetch("/api/audit/business/peek", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url }),
+  /* ── F2: redeem the assessment-call prefill token once on mount ── */
+  useEffect(() => {
+    if (!prefillToken) return;
+    let cancelled = false;
+    setPrefillLoading(true);
+    fetch(`/api/assessment/prefill?token=${encodeURIComponent(prefillToken)}`)
+      .then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }))
+      .then(({ status, data }) => {
+        if (cancelled) return;
+        if (status === 200 && data && data.ok && data.payload) {
+          const p = data.payload as { business_name?: string; url?: string; findings_summary?: string };
+          if (p.business_name) setBusinessName(p.business_name);
+          if (p.url) setSiteUrl(p.url);
+          setPrefillNote(
+            "Pre-filled from your assessment call" +
+              (p.findings_summary ? ` — we covered: ${p.findings_summary}.` : ".") +
+              " Check it over and continue below."
+          );
+        } else {
+          setPrefillNote("That personal link has expired — no problem, just fill in the form below.");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPrefillNote("Couldn't load your saved details — just fill in the form below.");
+      })
+      .finally(() => {
+        if (!cancelled) setPrefillLoading(false);
       });
-      const data = await r.json().catch(() => ({}));
-      if (!data.ok || !data.identity) throw new Error(data.message || "fetch_failed");
-      setPeek(data as PeekResult);
-      if (data.identity.name && !businessName.trim()) setBusinessName(String(data.identity.name));
-      if (data.identity.url) setSiteUrl(String(data.identity.url));
-      setStep1Phase("confirm");
-    } catch {
-      setPeekNote("We couldn't read that site automatically — no problem. Type your details here and we'll take it from there.");
-      setStep1Phase("manual");
-    } finally {
-      setPeeking(false);
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillToken]);
 
   const submitIntake = async (e: React.FormEvent) => {
     e.preventDefault();
-    await doIntake();
-  };
-
-  const doIntake = async () => {
     setIntakeError("");
     const url = normalizeUrl(siteUrl);
     if (!businessName.trim()) return setIntakeError("Please tell us your business name.");
@@ -662,21 +541,9 @@ export default function Audit() {
   const pay = async (e: React.FormEvent) => {
     e.preventDefault();
     setPayError("");
-    setPayBlocked(false);
-    setNotifyState("idle");
-    setNotifyMsg("");
-    if (!intake && !directBuy) return setPayError("Complete step 1 first so we know which business to audit.");
-    if (!intake && directBuy) {
-      if (!businessName.trim()) return setPayError("Please tell us your business name.");
-      const directUrl = normalizeUrl(siteUrl);
-      if (!directUrl || !/^https?:\/\/[^/\s]+\.[^/\s]+/.test(directUrl)) return setPayError("That URL doesn't look right — try yourbusiness.com.");
-    }
+    if (!intake) return setPayError("Complete step 1 first so we know which business to audit.");
     if (!EMAIL_RE.test(payEmail.trim())) return setPayError("Please enter a valid email for delivery.");
     setPaying(true);
-    /* Money-path event (rot509): fire before the POST/redirect, carrying
-       the amount this buyer will actually be charged (325 when the $5
-       Full Report credit applies, per the server's own credit-status). */
-    trackBeginCheckout("audit-my-business", creditInfo?.eligible ? creditInfo.due_cents / 100 : 330);
     try {
       const r = await fetch("/api/pay/checkout", {
         method: "POST",
@@ -686,20 +553,15 @@ export default function Audit() {
           email: payEmail.trim(),
           /* The server mints the 64-hex report token at checkout and APPENDS
              ?token= to this URL. Never put a token here ourselves — a
-             pre-existing ?token= would NOT be overwritten. Lands on THIS
-             page (/audit/?token= renders BusinessReportView under the
-             Audit My Business title) — never /audit/report, which is the
-             $5 Full Report's page and title. */
-          success_url: "https://mehyar.us/audit",
+             pre-existing ?token= would NOT be overwritten. */
+          success_url: "https://mehyar.us/audit/report",
           cancel_url: "https://mehyar.us/audit/",
-          params: intake
-            ? { audit_id: intake.auditId }
-            : { direct: true, business_name: businessName.trim(), url: normalizeUrl(siteUrl) },
+          params: { audit_id: intake.auditId },
         }),
       });
       const data = await r.json();
       if (data.already_ready && data.token) {
-        window.location.href = `/audit?token=${encodeURIComponent(data.token)}`;
+        window.location.href = `/audit/report?token=${encodeURIComponent(data.token)}`;
         return;
       }
       if (!data.ok) {
@@ -713,15 +575,8 @@ export default function Audit() {
         if (code === "unknown_audit") {
           throw new Error("We couldn't find your intake — go back to Step 1 and re-enter your URL.");
         }
-        if (code === "invalid_url") {
-          throw new Error("That URL doesn't look right — try yourbusiness.com.");
-        }
-        if (code === "missing_business_name") {
-          throw new Error("Please tell us your business name.");
-        }
         if (code === "stripe_not_configured") {
-          setPayBlocked(true);
-          throw new Error("Checkout is temporarily unavailable — no charge was made.");
+          throw new Error("Checkout opens very soon — your audit details are saved. Check back in a bit!");
         }
         if (/product/i.test(code + String(data.message || ""))) {
           throw new Error("Checkout is still being wired up for this product — your audit details are saved. Check back shortly.");
@@ -748,8 +603,8 @@ export default function Audit() {
           <p className="site-lede mx-auto mt-4 max-w-2xl text-balance">
             Enter your business URL and our AI audits your public site — then writes you a
             professional visual report: an overall score, your money leaks ranked, your flaws,
-            prioritized fixes, and where AI fits in your business. Add an optional
-            CEO walkthrough video (2–30 min) for a deeper assessment.
+            prioritized fixes, and where AI fits in your business. Add an optional 30-minute
+            CEO walkthrough video for a deeper assessment.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a href="#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "w-full sm:w-auto")}>
@@ -760,27 +615,11 @@ export default function Audit() {
             </a>
           </div>
           <p className="mx-auto mt-4 max-w-xl text-xs leading-5 text-muted-foreground">
-            One-time $330 · No subscription · This page sells Audit My Business — the
-            automated audit: our AI reads your site and your walkthrough and emails
-            your report within 3–5 business days. It is not the founder-led $330 tech
-            audit (a human review, invoiced by email) — the side-by-side is below.
-          </p>
-          <p className="mt-3 text-sm">
-            <button
-              type="button"
-              className="font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-100"
-              onClick={() => {
-                setDirectBuy(true);
-                document.getElementById("step-3")?.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              Already know you want it? Skip the free scan — buy the audit now
-            </button>
-          </p>
-          <p className="mt-2 text-sm">
-            <a href="/blog/what-does-a-business-audit-check" className="font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-100">
-              Prefer to read first? What a business audit checks, area by area
-            </a>
+            One-time $330 · No subscription · Purchases are final (no refunds) ·
+            the automated counterpart to our{" "}
+            <Link href="/micro-offer" className="underline underline-offset-2 hover:text-foreground">
+              founder-led $330 tech audit
+            </Link>
           </p>
         </div>
       </section>
@@ -789,8 +628,8 @@ export default function Audit() {
       <section className="px-4 pb-4 pt-2">
         <div className="site-shell grid max-w-4xl gap-4 sm:grid-cols-3">
           {[
-            { n: "1", t: "Share your URL", d: "Just your URL — we fetch your site, find your business details ourselves, and show you the honest signals we found. Free.", icon: FileSearch },
-            { n: "2", t: "Add your walkthrough (optional)", d: "Even 2 minutes works (up to 30 min MP4): talk us through your business like you're showing a friend. The AI uses it for a deeper read.", icon: Video },
+            { n: "1", t: "Share your URL", d: "Business name, URL, and email. We fetch your site and show you the honest signals we found — free.", icon: FileSearch },
+            { n: "2", t: "Add your walkthrough (optional)", d: "Upload up to 30 minutes of MP4: talk us through your business like you're showing a friend. The AI uses it for a deeper read.", icon: Video },
             { n: "3", t: "Pay $330, get the report", d: "One-time payment. The AI writes your visual report and emails you a permanent link.", icon: BadgeCheck },
           ].map(({ n, t, d, icon: Icon }) => (
             <div key={n} className="rounded-2xl border border-border bg-card p-5">
@@ -799,241 +638,51 @@ export default function Audit() {
                 <Icon className="h-5 w-5 text-brand-700 dark:text-brand-100" aria-hidden="true" />
               </div>
               <p className="mt-3 text-sm font-semibold text-foreground">{t}</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {d}
-              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{d}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── THE LADDER: free scan / $5 Full Report / $330 Audit My Business ── */}
-      <section className="px-4 pb-2" aria-label="Compare the free scan, the $5 Full Report, and Audit My Business">
-        <div className="site-shell max-w-4xl">
-          <h2 className="text-center text-2xl font-semibold tracking-tight text-foreground">Three depths — pick yours</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <div className="flex flex-col rounded-2xl border border-border bg-card p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Free scan</p>
-              <p className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">$0</p>
-              <p className="mt-1 text-xs text-muted-foreground">60 seconds · no card</p>
-              <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li>Overall site score snapshot</li>
-                <li>3 money leaks, priced in dollars</li>
-                <li>3 quick wins you can do today</li>
-              </ul>
-              <a href="#step-1" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "mt-5 w-full")}>
-                Start the free scan
-              </a>
-            </div>
-            <div className="flex flex-col rounded-2xl border border-border bg-card p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Full Report</p>
-              <p className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">$5</p>
-              <p className="mt-1 text-xs text-muted-foreground">one-time · your website only</p>
-              <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li>Every page graded, not just the homepage</li>
-                <li>Every leak priced, with the math shown</li>
-                <li>AI capacity blueprint + 90-day plan</li>
-                <li>Delivered in about a minute</li>
-              </ul>
-              <Link href="/audit/report" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5 w-full bg-emerald-500 text-emerald-950 hover:bg-emerald-400")}>
-                Get the $5 report <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-              </Link>
-            </div>
-            <div className="flex flex-col rounded-2xl border-2 border-brand-600 bg-card p-5 shadow-sm dark:border-brand-400">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">Audit My Business</p>
-              <p className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">$330</p>
-              <p className="mt-1 text-xs text-muted-foreground">one-time · your whole business</p>
-              <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li>The full site read — plus your CEO walkthrough video, transcribed and assessed</li>
-                <li>Findings on how you sell, book, and follow up — not just the site</li>
-                <li>Money leaks ranked by dollar impact, fixes in priority order</li>
-                <li>Delivered by email within 3–5 business days</li>
-              </ul>
-              <a href="#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5 w-full")}>
-                Start Step 1 — it's free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-              </a>
-            </div>
-          </div>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Already bought the $5 Full Report? Its $5 is credited toward Audit My Business when you
-            check out with the same email — the discount shows on the checkout page before you pay.
-            You pay $325 at checkout ($330 − your $5 credit).
-          </p>
-        </div>
-      </section>
-
-      {/* ── TWO $330 AUDITS ── */}
-      <section className="px-4 pb-2" aria-label="Audit My Business compared with the founder-led tech audit">
-        <div className="site-shell max-w-4xl">
-          <h2 className="text-center text-2xl font-semibold tracking-tight text-foreground">Two $330 audits — this page sells the automated one</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border-2 border-brand-600 bg-card p-5 shadow-sm dark:border-brand-400">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">Audit My Business — this page</p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li><span className="font-semibold text-foreground">$330 one-time</span>, paid by card through Stripe checkout</li>
-                <li>Automated: our AI audits your public site and your CEO walkthrough video</li>
-                <li>Visual report emailed within 3–5 business days — score, money leaks ranked, prioritized fixes, AI opportunity map</li>
-              </ul>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Founder-led tech audit — different product</p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li><span className="font-semibold text-foreground">$330 one-time</span>, invoiced by email</li>
-                <li>A human reviews your website, booking path, and follow-up end to end</li>
-                <li>Delivered about 3 business days after the intake call, with an audit + setup plan</li>
-              </ul>
-              <Link href="/micro-offer" className="mt-4 inline-block text-sm font-semibold underline underline-offset-2 hover:text-foreground">
-                See the founder-led audit
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── STEP 1: INTAKE ── */}
-      <StepShell step="Step 1 · free" title="Start with your website" id="step-1">
+      <StepShell step="Step 1 · free" title="Tell us about your business" id="step-1">
         <Card>
           <CardContent className="p-5 md:p-7">
-            {step1Phase === "url" && (
-              <form onSubmit={submitPeek} className="space-y-4">
-                <div>
-                  <Label htmlFor="ab-url">Your business website</Label>
-                  <Input id="ab-url" type="text" inputMode="url" autoComplete="url" required placeholder="acmeplumbing.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-14 text-lg" />
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    Just the URL. We read your site and fill in your business details ourselves — free, about 10 seconds.
-                  </p>
-                </div>
-                {intakeError && (
-                  <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    {intakeError}
-                  </p>
-                )}
-                <Button type="submit" variant="cta" size="lg" className="w-full" disabled={peeking}>
-                  {peeking ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Reading your site…</>) : (<><Sparkles className="mr-2 h-4 w-4" aria-hidden="true" /> Find my business <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
-                </Button>
-                <p className="text-center text-xs text-muted-foreground">
-                  <button type="button" className="underline underline-offset-2" onClick={() => { setPeekNote(""); setIntakeError(""); setStep1Phase("manual"); }}>
-                    Rather type it? Enter details manually
-                  </button>
-                </p>
-              </form>
+            {prefillLoading && (
+              <p className="mb-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground" aria-live="polite">
+                Loading your saved details…
+              </p>
             )}
-
-            {step1Phase === "confirm" && peek && (
-              <form onSubmit={submitIntake} className="space-y-4">
-                <div className="overflow-hidden rounded-2xl border border-border">
-                  {peek.identity.og_image ? (
-                    <img src={peek.identity.og_image} alt="" className="h-36 w-full object-cover" />
-                  ) : (
-                    <div className="h-14 w-full" style={peek.identity.theme_color ? { backgroundColor: peek.identity.theme_color } : undefined} aria-hidden="true" />
-                  )}
-                  <div className="space-y-4 p-5">
-                    <div className="flex items-start gap-3">
-                      {peek.identity.favicon && (
-                        <img src={peek.identity.favicon} alt="" className="mt-1 h-10 w-10 shrink-0 rounded-lg border border-border bg-white object-contain p-1" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <Label htmlFor="ab-name-confirm">We found this business — is it yours?</Label>
-                        <Input id="ab-name-confirm" type="text" autoComplete="organization" required value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-2 h-12 text-base font-semibold" />
-                        {peek.identity.tagline && <p className="mt-2 truncate text-sm text-muted-foreground">{peek.identity.tagline}</p>}
-                        <p className="mt-1 truncate text-xs text-muted-foreground">{peek.identity.url}</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        peek.found.https ? "HTTPS on" : null,
-                        peek.found.has_phone ? "Phone number found" : null,
-                        peek.found.has_contact_path ? "Contact path found" : null,
-                        peek.found.has_schema ? "Structured data found" : null,
-                        ...peek.found.socials.map((s) => `${s} linked`),
-                        typeof peek.found.load_ms === "number" ? `Loaded in ${peek.found.load_ms} ms` : null,
-                      ].filter(Boolean).map((chip) => (
-                        <span key={chip as string} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                          <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> {chip}
-                        </span>
-                      ))}
-                    </div>
-                    {peek.found.content_unmeasured && (
-                      <p className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                        Your site builds its pages with JavaScript — your full audit reads all of it.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {peek.identity.emails.length > 0 && !email && (
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    We found <strong className="text-foreground">{peek.identity.emails[0]}</strong> on your site —{" "}
-                    <button type="button" className="font-medium text-foreground underline underline-offset-2" onClick={() => setEmail(peek.identity.emails[0])}>
-                      use it for my report
-                    </button>
-                  </p>
-                )}
-                <div>
-                  <Label htmlFor="ab-email">Email for your report</Label>
-                  <Input id="ab-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    We use your email only to deliver your report and updates about this audit.
-                  </p>
-                </div>
-                {intakeError && (
-                  <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    {intakeError}
-                  </p>
-                )}
-                <Button type="submit" variant="cta" size="lg" className="w-full" disabled={intaking}>
-                  {intaking ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Fetching your site…</>) : (<>Yes, that&rsquo;s us — start my free preview <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
-                </Button>
-                <p className="text-center text-xs text-muted-foreground">
-                  <button type="button" className="underline underline-offset-2" onClick={() => { setStep1Phase("url"); setPeek(null); setIntakeError(""); }}>
-                    Not your site? Start over
-                  </button>
-                  {" · "}
-                  <button type="button" className="underline underline-offset-2" onClick={() => { setPeekNote(""); setIntakeError(""); setStep1Phase("manual"); }}>
-                    Enter details manually
-                  </button>
-                </p>
-              </form>
+            {prefillNote && (
+              <p className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm leading-6 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" aria-live="polite">
+                {prefillNote}
+              </p>
             )}
-
-            {step1Phase === "manual" && (
-              <>
-                {peekNote && (
-                  <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    {peekNote}
-                  </p>
-                )}
-                <form onSubmit={submitIntake} className="space-y-4">
-                  <div>
-                    <Label htmlFor="ab-name">Business name</Label>
-                    <Input id="ab-name" type="text" autoComplete="organization" required placeholder="Acme Plumbing Co." value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-2 h-12 text-base" />
-                  </div>
-                  <div>
-                    <Label htmlFor="ab-url-manual">Business website URL</Label>
-                    <Input id="ab-url-manual" type="text" inputMode="url" autoComplete="url" required placeholder="acmeplumbing.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-12 text-base" />
-                  </div>
-                  <div>
-                    <Label htmlFor="ab-email-manual">Email</Label>
-                    <Input id="ab-email-manual" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                      We use your email only to deliver your report and updates about this audit.
-                    </p>
-                  </div>
-                  {intakeError && (
-                    <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                      {intakeError}
-                    </p>
-                  )}
-                  <Button type="submit" variant="cta" size="lg" className="w-full" disabled={intaking}>
-                    {intaking ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Fetching your site…</>) : (<>Fetch my site — free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
-                  </Button>
-                </form>
-                <p className="mt-4 text-center text-xs text-muted-foreground">
-                  <button type="button" className="underline underline-offset-2" onClick={() => { setPeekNote(""); setIntakeError(""); setStep1Phase("url"); }}>
-                    ← Use the smart start instead
-                  </button>
+            <form onSubmit={submitIntake} className="space-y-4">
+              <div>
+                <Label htmlFor="ab-name">Business name</Label>
+                <Input id="ab-name" type="text" autoComplete="organization" required placeholder="Acme Plumbing Co." value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-2 h-12 text-base" />
+              </div>
+              <div>
+                <Label htmlFor="ab-url">Business website URL</Label>
+                <Input id="ab-url" type="text" inputMode="url" autoComplete="url" required placeholder="acmeplumbing.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-12 text-base" />
+              </div>
+              <div>
+                <Label htmlFor="ab-email">Email</Label>
+                <Input id="ab-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  We use your email only to deliver your report and updates about this audit.
                 </p>
-              </>
-            )}
+              </div>
+              {intakeError && (
+                <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                  {intakeError}
+                </p>
+              )}
+              <Button type="submit" variant="cta" size="lg" className="w-full" disabled={intaking}>
+                {intaking ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Fetching your site…</>) : (<>Fetch my site — free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
+              </Button>
+            </form>
 
             {/* ── Free honest-signals preview: only what the fetch measured ── */}
             {intake && (
@@ -1043,8 +692,10 @@ export default function Audit() {
                 </p>
                 {intake.contentUnmeasured && (
                   <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    Your site loads its content with JavaScript — your full $330 audit covers
-                    headings, word count, forms, CTAs, and phone in depth via your walkthrough video.
+                    This site loads its content with JavaScript, so headings, word count, forms, CTAs,
+                    and phone couldn't be assessed from the initial page load — they're marked
+                    "couldn't be assessed" below, not counted as missing. The paid audit covers
+                    them via your walkthrough video.
                   </p>
                 )}
                 {signals.length > 0 ? (
@@ -1060,7 +711,8 @@ export default function Audit() {
                   </dl>
                 ) : (
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Your site renders mostly in JavaScript — the full $330 audit digs into all of it.
+                    The fetch returned your page but no measurable signals this time — this happens
+                    with sites that render mostly in JavaScript. The paid audit digs deeper either way.
                   </p>
                 )}
                 <p className="mt-4 text-xs leading-5 text-muted-foreground">
@@ -1081,20 +733,11 @@ export default function Audit() {
         <Card>
           <CardContent className="p-5 md:p-7">
             <p className="text-sm leading-6 text-muted-foreground">
-              Record a quick walkthrough — <strong className="text-foreground">even 2 minutes works</strong> (up to 30 minutes of MP4) — walk us
+              Record up to <strong className="text-foreground">30 minutes</strong> of MP4 — walk us
               through your business like you're showing a friend: your site, your offer, your
               customers, what's working and what isn't. The AI uses it for a deeper assessment,
               including transcript-based findings in your report. Skip it and the audit covers
               your public site alone.
-            </p>
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              <strong className="text-foreground">Video terms:</strong> your walkthrough and its
-              audio track upload to our secure Cloudflare storage with your audit. The audio
-              is transcribed by Cloudflare AI, and the transcript is used only to write your
-              report's deep-dive section. Your video and its audio are deleted 90 days after
-              your report is delivered; the transcript and your report stay with your audit
-              record so we can re-send your report — never sold, never used for marketing, and
-              never used to train AI models.
             </p>
 
             {!intake ? (
@@ -1109,7 +752,7 @@ export default function Audit() {
                   ? audioWasTruncated
                     ? " — audio extracted (trimmed to the first 30 minutes for transcription), so your report gets the transcript deep-dive."
                     : " — audio extracted, so your report gets the full transcript deep-dive."
-                  : " — without audio, so your report's deep-dive is built from your site and video."}
+                  : " — without audio, so the transcript section of your report will note it couldn't be assessed."}
               </p>
             ) : (
               <div className="mt-4">
@@ -1186,13 +829,14 @@ export default function Audit() {
                         </p>
                       ) : audioSkipped ? (
                         <p className="text-sm text-muted-foreground">
-                          Audio skipped — uploading video only. Your report covers your site and video in full.
+                          Audio skipped — uploading video only. The transcript section of your report will note it couldn't be assessed.
                         </p>
                       ) : audioError ? (
                         <p className="flex items-start gap-2 text-sm text-amber-800 dark:text-amber-300">
                           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                           <span>
-                            {audioError} You can still upload the video — your report covers your site and video in full.
+                            {audioError} You can still upload the video — the transcript section of your report will
+                            note it couldn't be assessed.
                           </span>
                         </p>
                       ) : null}
@@ -1238,12 +882,12 @@ export default function Audit() {
             <ul className="mt-3 space-y-2.5">
               {[
                 "Overall score (0–100) with what it measures",
-                "Money leaks, ranked by estimated dollar impact — every leak priced in dollars",
+                "Money leaks, ranked by estimated impact",
                 "Flaws in your site, messaging, and conversion path",
                 "Prioritized fixes — what to do first, second, third",
                 "Where AI fits in your business — concrete opportunities",
                 "Transcript-based findings, if you upload the walkthrough video",
-                "Every finding tied to the page evidence behind it",
+                "\u201CNeeds review\u201D flags wherever the AI isn't confident, and an honest \u201Ccouldn't be assessed\u201D wherever it can't see enough",
               ].map((item) => (
                 <li key={item} className="flex gap-2.5 text-sm leading-6 text-muted-foreground">
                   <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
@@ -1252,191 +896,35 @@ export default function Audit() {
               ))}
             </ul>
 
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Curious what lands in your inbox?{" "}
-              <Link href="/audit/sample-report" className="font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-100">
-                See a sample report
-              </Link>{" "}
-              — a labelled illustration in the real format, with a fictional business.
-            </p>
-
             <div className="mt-6 rounded-2xl border border-border bg-secondary/50 p-4">
               <p className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
-                <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
+                <AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
                 <span>
-                  Your audit reads your public site plus your walkthrough video and tells you
-                  exactly where the leaks are and what to fix first.
+                  <strong className="text-foreground">Honest scope:</strong> the audit assesses what's
+                  publicly visible on your site plus your walkthrough video. It doesn't see your
+                  private numbers, and it doesn't promise revenue results — it tells you where the
+                  leaks are and what to fix first. Purchases are final — no refunds.
                 </span>
               </p>
             </div>
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Delivered by email within 3–5 business days. Results vary by business — this
-              audit shows what's true for your business today, and no audit can guarantee
-              specific revenue results.
-            </p>
 
             <form onSubmit={pay} className="mt-6 space-y-4">
-              {directBuy && !intake && (
-                <>
-                  <div className="rounded-2xl border border-border bg-secondary/50 p-4">
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      <strong className="text-foreground">Buying directly — no free scan first.</strong>{" "}
-                      Name your business and its website below; we audit that site and email your
-                      report within 3–5 business days. Prefer the free preview first? Use Step 1
-                      above instead — the audit is the same.
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor="ab-direct-business">Business name</Label>
-                    <Input id="ab-direct-business" type="text" autoComplete="organization" required placeholder="Your Business LLC" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-2 h-12 text-base" />
-                  </div>
-                  <div>
-                    <Label htmlFor="ab-direct-url">Website URL</Label>
-                    <Input id="ab-direct-url" type="text" inputMode="url" autoComplete="url" required placeholder="yourbusiness.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-12 text-base" />
-                  </div>
-                </>
-              )}
               <div>
                 <Label htmlFor="ab-pay-email">Email for delivery</Label>
-                {intake && !payEmailEditing ? (
-                  <>
-                    <div className="mt-2 flex h-12 items-center justify-between gap-3 rounded-md border border-input bg-secondary/40 px-3">
-                      <span className="min-w-0 truncate text-base text-foreground">{payEmail}</span>
-                      <button
-                        type="button"
-                        onClick={() => setPayEmailEditing(true)}
-                        className="shrink-0 text-sm font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-100"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Carried from Step 1 — your audit is linked to this email, and your report is delivered here.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <Input id="ab-pay-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={payEmail} onChange={(e) => setPayEmail(e.target.value)} className="mt-2 h-12 text-base" />
-                    {intake && payEmail.trim() && !EMAIL_RE.test(payEmail.trim()) && (
-                      <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">Enter a valid email address.</p>
-                    )}
-                    {intake && payEmail.trim() && EMAIL_RE.test(payEmail.trim()) && payEmail.trim().toLowerCase() !== email.trim().toLowerCase() && (
-                      <div className="mt-2 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" role="alert">
-                        <p>
-                          This doesn't match your Step 1 email ({email.trim()}). Checkout needs the same
-                          email so your audit stays linked — the mismatch is flagged now, before you pay.
-                        </p>
-                        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                          <button
-                            type="button"
-                            className="font-semibold underline underline-offset-2"
-                            onClick={() => {
-                              setEmail(payEmail.trim());
-                              setIntake(null);
-                              setPayEmailEditing(false);
-                              document.getElementById("step-1")?.scrollIntoView({ behavior: "smooth" });
-                            }}
-                          >
-                            Use this email instead — restart Step 1 with it
-                          </button>
-                          <button
-                            type="button"
-                            className="font-semibold underline underline-offset-2"
-                            onClick={() => { setPayEmail(email); setPayEmailEditing(false); }}
-                          >
-                            Back to my Step 1 email
-                          </button>
-                        </p>
-                      </div>
-                    )}
-                    {intake && payEmailEditing && payEmail.trim().toLowerCase() === email.trim().toLowerCase() && EMAIL_RE.test(payEmail.trim()) && (
-                      <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">Matches your Step 1 email — you're good to pay.</p>
-                    )}
-                    {!intake && (
-                      <p className="mt-2 text-xs text-muted-foreground">{directBuy ? "Your audit is linked to this email — your report is delivered here." : "Use the same email as Step 1 — your audit is linked to it."}</p>
-                    )}
-                  </>
-                )}
+                <Input id="ab-pay-email" type="email" autoComplete="email" required placeholder="you@yourbusiness.com" value={payEmail} onChange={(e) => setPayEmail(e.target.value)} className="mt-2 h-12 text-base" />
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
                 </p>
-                {(intake || directBuy) && !creditInfo?.eligible && (
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    Bought the Full Report with this email? Your $5 credit applies: $330 − $5 = $325 due at checkout.
-                  </p>
-                )}
               </div>
               {payError && (
                 <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                   {payError}
                 </p>
               )}
-              {(payBlocked || checkoutOpen === false) && (
-                <div className="rounded-2xl border border-border bg-card p-5">
-                  <p className="text-sm font-semibold text-foreground">Don't lose your audit details</p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Your audit is saved. Leave your email and we'll send you one message the moment
-                    checkout reopens — nothing else, ever. No charge is made until you pay.
-                  </p>
-                  {notifyState === "saved" ? (
-                    <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                      You're on the list — we'll email you at {payEmail.trim()} the moment checkout is back.
-                    </p>
-                  ) : (
-                    <>
-                      <Button type="button" variant="outline" size="lg" className="mt-3 w-full" onClick={notifyWhenBack} disabled={notifyState === "saving"}>
-                        {notifyState === "saving" ? "Saving…" : "Notify me when checkout opens"}
-                      </Button>
-                      {notifyMsg && (
-                        <p role="alert" className="mt-2 text-sm text-amber-700 dark:text-amber-300">{notifyMsg}</p>
-                      )}
-                    </>
-                  )}
-                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                    Rather talk to a human?{" "}
-                    <a href="mailto:info@mehyar.us" className="font-semibold text-foreground underline underline-offset-2">Email info@mehyar.us</a>{" "}
-                    — we'll sort it out personally.
-                  </p>
-                </div>
-              )}
-              {checkoutOpen === false && (
-                <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                  Checkout is briefly unavailable right now — no charge can be taken. Rather talk to a human?{" "}
-                  <a href="mailto:info@mehyar.us" className="font-semibold underline underline-offset-2">Email info@mehyar.us</a>{" "}
-                  and we'll sort it out personally.
-                </p>
-              )}
-              {creditInfo?.eligible && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
-                  <div className="space-y-1 text-sm">
-                    <p className="flex items-baseline justify-between gap-3">
-                      <span className="text-muted-foreground">Audit My Business</span>
-                      <span className="font-semibold text-foreground">${(creditInfo.list_cents / 100).toFixed(2).replace(/\.00$/, "")}</span>
-                    </p>
-                    <p className="flex items-baseline justify-between gap-3">
-                      <span className="text-muted-foreground">Your Full Report credit</span>
-                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">−${(creditInfo.credit_cents / 100).toFixed(2).replace(/\.00$/, "")}</span>
-                    </p>
-                    <p className="flex items-baseline justify-between gap-3 border-t border-emerald-200 pt-1.5 dark:border-emerald-900">
-                      <span className="font-semibold text-foreground">Due at checkout</span>
-                      <span className="font-bold text-foreground">${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")}</span>
-                    </p>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    Your $5 Full Report purchase with this email is credited toward your audit — the discount shows on the checkout page before you pay.
-                  </p>
-                </div>
-              )}
-              <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying || checkoutOpen === false}>
-                {checkoutOpen === false ? (<>Checkout is briefly unavailable</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : creditInfo?.eligible ? (<>Pay ${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")} — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
+              <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying}>
+                {paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
-              <p className="text-center text-xs text-muted-foreground">One-time payment · {creditInfo?.eligible ? `$${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")}` : "$330"} · Report emailed with a permanent link</p>
-              <p className="text-center text-xs text-muted-foreground">
-                All sales are final — Audit My Business is a one-time digital service, and purchases are not
-                refundable. If your report hasn&rsquo;t arrived within 3–5 business days, email{" "}
-                <a href="mailto:info@mehyar.us" className="underline underline-offset-2 hover:text-foreground">info@mehyar.us</a>{" "}
-                and we&rsquo;ll re-send it right away.
-              </p>
+              <p className="text-center text-xs text-muted-foreground">One-time payment · Report emailed with a permanent link</p>
             </form>
           </CardContent>
         </Card>
@@ -1446,8 +934,8 @@ export default function Audit() {
       <section id="whats-inside" className="scroll-mt-24 bg-secondary px-4 py-12 md:py-16">
         <div className="site-shell max-w-3xl">
           <p className="site-eyebrow">Straight answers</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">What this audit does for you</h2>
-          <div className="mt-6 grid gap-4">
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">What this audit can and can't do</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-border bg-card p-5">
               <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> It can
@@ -1460,29 +948,40 @@ export default function Audit() {
                 <li>Use your walkthrough video for a deeper, transcript-based read</li>
               </ul>
             </div>
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <p className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" /> It can't
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                <li>See your private numbers, ad accounts, or CRM</li>
+                <li>Crawl pages hidden behind logins</li>
+                <li>Promise revenue results — no audit can</li>
+                <li>Replace a founder's judgment on your specific market</li>
+              </ul>
+            </div>
           </div>
 
           <div className="mt-8 space-y-3">
-            <FaqItem q="Which offer is which — the free scan, the Full Report, or Audit My Business?">
-              Three different rungs, all on this page. The free scan (Step 1) scores your
-              public site and names your top money leaks — free, no card. The Full Report
-              ($5, one-time) is the complete written breakdown of that scan: every leak
-              found, priced and ranked. Audit My Business ($330, one-time) is the deep
-              audit — a separate, fuller report built from your site and your walkthrough
-              video, with prioritized fixes and an AI opportunity map, delivered by email
-              within 3–5 business days; if you bought the Full Report first, its $5 is
-              credited toward the $330 — you pay $325 at checkout ($330 − $5). The{" "}
+            <FaqItem q="Is this the same as the founder-led $330 tech audit?">
+              No — same price, different product. The{" "}
               <Link href="/micro-offer" className="underline underline-offset-2">founder-led $330 tech audit</Link>{" "}
-              is a different product again: a human review, invoiced by email.
+              is a human review, manually invoiced after a scope check. Audit My Business is the
+              automated AI counterpart: instant checkout, AI-written visual report, delivered by email.
+              Pick the human eye or the AI engine — or run both and compare.
             </FaqItem>
             <FaqItem q="Do I need the walkthrough video?">
               No. The audit works on your public site alone. The video unlocks the deep-dive
               section: the AI watches you explain your business and adds transcript-based findings
               it can't get from the site — like whether your offer matches how you describe it.
             </FaqItem>
-            <FaqItem q="How thorough is the audit?">
-              Every finding in your report is tied to something the audit actually saw on your
-              site or in your walkthrough — specific, evidenced, and ranked by impact.
+            <FaqItem q="What if the AI isn't sure about something?">
+              It says so. Low-confidence findings carry a "Needs review" flag, and anything the
+              audit couldn't see enough of is marked "couldn't be assessed" instead of guessed at.
+            </FaqItem>
+            <FaqItem q="Can I get a refund?">
+              Purchases are final — there are no refunds on the $330 audit. Read the honest scope
+              above before you pay; if you'd rather talk to a human first,{" "}
+              <Link href="/booking" className="underline underline-offset-2">book a free call</Link>.
             </FaqItem>
           </div>
 
@@ -1499,7 +998,6 @@ export default function Audit() {
           </div>
         </div>
       </section>
-      <MayorBait campaign="audit" />
     </>
   );
 }

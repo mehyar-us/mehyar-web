@@ -437,7 +437,7 @@ export async function buildAuditBusinessReport(env, auditId) {
 
     const htmlDoc = renderReportHtml(report);
     await env.LEADS_DB.prepare(
-      "UPDATE audit_business_reports SET status='ready', failure_reason=NULL, signals_json=?, findings_json=?, report_json=?, report_html=?, status_changed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'), delivered_at=COALESCE(delivered_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE id=?"
+      "UPDATE audit_business_reports SET status='ready', failure_reason=NULL, signals_json=?, findings_json=?, report_json=?, report_html=?, status_changed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?"
     ).bind(
       JSON.stringify(signals).slice(0, 60000),
       JSON.stringify(gated).slice(0, 120000),
