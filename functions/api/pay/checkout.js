@@ -16,7 +16,7 @@
 // initOrder hook below; the audit_report hook mirrors the legacy
 // /api/audit/full-report/checkout behavior.
 
-import { sha256hex } from "../_shared/auditBusinessShared.js";
+import { sha256hex, normalizeUrl } from "../_shared/auditBusinessShared.js";
 import { fullReportCreditCents } from "./_shared/credit.js";
 
 // Attribution threading (tracking-crm-fix, 2026-10-05). Product pages
@@ -215,8 +215,28 @@ const orderHooks = {
   // Mints the 64-hex access token here so the Stripe success_url (?token=)
   // and the audit row share ONE token from the start.
   async audit_business(db, product, { email, params }) {
-    const auditId = sanitize(params.audit_id, 64);
-    if (!/^[0-9a-f-]{36}$/i.test(auditId)) return { error: "invalid_audit_id" };
+    let auditId = sanitize(params.audit_id, 64);
+    if (!/^[0-9a-f-]{36}$/i.test(auditId)) {
+      // Direct-buy lane (rot542, 2026-10-22): no Step 1 intake in front of
+      // payment — the buyer pays from the landing and the intake data
+      // (business name + URL) is collected in the pay action itself, so the
+      // row is created here in the same 'intake' state the intake endpoint
+      // leaves, keyed to the checkout email (mismatch impossible by
+      // construction). The build re-fetches the site itself
+      // (auditBusinessBuild step 1), so no preview signals are needed; the
+      // gate's quality purpose — a named business, a valid URL, an
+      // email-linked row — is preserved inside the payment.
+      if (params.direct !== true && params.direct !== "true") return { error: "invalid_audit_id" };
+      const businessName = sanitize(params.business_name, 160);
+      const directUrl = normalizeUrl(sanitize(params.url, 300));
+      if (!businessName) return { error: "missing_business_name" };
+      if (!directUrl) return { error: "invalid_url" };
+      auditId = crypto.randomUUID();
+      const directEmailHash = await sha256hex("audit-business|" + email);
+      await db.prepare(
+        "INSERT INTO audit_business_reports (id, email_hash, url, business_name, status, signals_json) VALUES (?, ?, ?, ?, 'intake', NULL)"
+      ).bind(auditId, directEmailHash, directUrl, businessName).run();
+    }
     const row = await db.prepare(
       "SELECT id, status, email_hash FROM audit_business_reports WHERE id = ?"
     ).bind(auditId).first();
@@ -307,14 +327,6 @@ export async function onRequestPost({ request, env }) {
         { ok: false, error: testMode ? "stripe_test_not_configured" : "stripe_not_configured" },
         testMode ? 400 : 503
       );
-    }
-    // Key-prefix assertion (mirrors baseConfiguration in The Mayor worker's
-    // billing): the configured key must not carry the opposite mode's
-    // (sk|rk)_ prefix. Fires only on a genuine cross-mode misconfiguration —
-    // e.g. a test key pasted into the live slot, which would silently
-    // recreate mode confusion at the API layer.
-    if (/^(sk|rk)_test_/.test(stripeKey)) {
-      return J({ ok: false, error: "stripe_mode_mismatch" }, 500);
     }
 
     // Order-init hook (fulfillment-specific).

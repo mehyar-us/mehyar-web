@@ -335,6 +335,12 @@ export default function Audit() {
   const [intaking, setIntaking] = useState(false);
   const [intakeError, setIntakeError] = useState("");
   const [intake, setIntake] = useState<IntakeResult | null>(null);
+  /* Direct-buy lane (rot542): ?buy=1 (or the hero skip link) lets a ready
+     buyer pay from the landing — the Step 3 card collects business name +
+     URL inline and checkout creates the intake row inside the payment. */
+  const [directBuy, setDirectBuy] = useState<boolean>(() => {
+    try { return new URLSearchParams(window.location.search).get("buy") === "1"; } catch { return false; }
+  });
   /* URL-first Step 1: "url" → peek → "confirm" card; "manual" = classic form. */
   const [step1Phase, setStep1Phase] = useState<"url" | "confirm" | "manual">("url");
   const [peeking, setPeeking] = useState(false);
@@ -397,7 +403,10 @@ export default function Audit() {
   useEffect(() => {
     const pay = payEmail.trim().toLowerCase();
     const step1 = email.trim().toLowerCase();
-    if (!intake || !pay || pay !== step1 || !EMAIL_RE.test(pay)) {
+    /* Direct-buy (rot542): no Step 1 — the pay email IS the linked email,
+       so the credit display keys off it alone. */
+    const linked = intake ? pay === step1 : directBuy;
+    if (!linked || !pay || !EMAIL_RE.test(pay)) {
       setCreditInfo(null);
       return;
     }
@@ -414,23 +423,33 @@ export default function Audit() {
     }, 350);
     return () => { cancelled = true; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intake, payEmail, email]);
+  }, [intake, payEmail, email, directBuy]);
 
   /* Blocked-checkout notify-me: the buyer already gave us their email in this
      step; clicking the button IS the explicit consent to one notification email
      when checkout reopens (compliance item 6). POSTs to /api/audit/pay-blocked. */
   const notifyWhenBack = async () => {
-    if (notifyState !== "idle" || !intake) return;
+    if (notifyState !== "idle") return;
+    if (!intake && !directBuy) return;
     setNotifyState("saving");
     setNotifyMsg("");
     try {
       const r = await fetch("/api/audit/pay-blocked", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: payEmail.trim(), audit_id: intake.auditId }),
+        body: JSON.stringify(intake
+          ? { email: payEmail.trim(), audit_id: intake.auditId }
+          : { email: payEmail.trim(), direct: true, business_name: businessName.trim(), url: normalizeUrl(siteUrl) }),
       });
       const data = await r.json().catch(() => ({}));
       if (r.ok && data.ok) {
+        if (!intake && data.audit_id) {
+          /* Adopt the row the direct capture created: the buyer is now on
+             the standard rails. Set the Step 1 email state to the same
+             address so the pay-email linkage effect stays consistent. */
+          setEmail(payEmail.trim());
+          setIntake({ auditId: String(data.audit_id), signals: [], contentUnmeasured: true });
+        }
         setNotifyState("saved");
       } else {
         setNotifyState("idle");
@@ -646,7 +665,12 @@ export default function Audit() {
     setPayBlocked(false);
     setNotifyState("idle");
     setNotifyMsg("");
-    if (!intake) return setPayError("Complete step 1 first so we know which business to audit.");
+    if (!intake && !directBuy) return setPayError("Complete step 1 first so we know which business to audit.");
+    if (!intake && directBuy) {
+      if (!businessName.trim()) return setPayError("Please tell us your business name.");
+      const directUrl = normalizeUrl(siteUrl);
+      if (!directUrl || !/^https?:\/\/[^/\s]+\.[^/\s]+/.test(directUrl)) return setPayError("That URL doesn't look right — try yourbusiness.com.");
+    }
     if (!EMAIL_RE.test(payEmail.trim())) return setPayError("Please enter a valid email for delivery.");
     setPaying(true);
     /* Money-path event (rot509): fire before the POST/redirect, carrying
@@ -668,7 +692,9 @@ export default function Audit() {
              $5 Full Report's page and title. */
           success_url: "https://mehyar.us/audit",
           cancel_url: "https://mehyar.us/audit/",
-          params: { audit_id: intake.auditId },
+          params: intake
+            ? { audit_id: intake.auditId }
+            : { direct: true, business_name: businessName.trim(), url: normalizeUrl(siteUrl) },
         }),
       });
       const data = await r.json();
@@ -686,6 +712,12 @@ export default function Audit() {
         }
         if (code === "unknown_audit") {
           throw new Error("We couldn't find your intake — go back to Step 1 and re-enter your URL.");
+        }
+        if (code === "invalid_url") {
+          throw new Error("That URL doesn't look right — try yourbusiness.com.");
+        }
+        if (code === "missing_business_name") {
+          throw new Error("Please tell us your business name.");
         }
         if (code === "stripe_not_configured") {
           setPayBlocked(true);
@@ -732,6 +764,18 @@ export default function Audit() {
             automated audit: our AI reads your site and your walkthrough and emails
             your report within 3–5 business days. It is not the founder-led $330 tech
             audit (a human review, invoiced by email) — the side-by-side is below.
+          </p>
+          <p className="mt-3 text-sm">
+            <button
+              type="button"
+              className="font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-100"
+              onClick={() => {
+                setDirectBuy(true);
+                document.getElementById("step-3")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Already know you want it? Skip the free scan — buy the audit now
+            </button>
           </p>
         </div>
       </section>
@@ -1227,6 +1271,26 @@ export default function Audit() {
             </p>
 
             <form onSubmit={pay} className="mt-6 space-y-4">
+              {directBuy && !intake && (
+                <>
+                  <div className="rounded-2xl border border-border bg-secondary/50 p-4">
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      <strong className="text-foreground">Buying directly — no free scan first.</strong>{" "}
+                      Name your business and its website below; we audit that site and email your
+                      report within 3–5 business days. Prefer the free preview first? Use Step 1
+                      above instead — the audit is the same.
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="ab-direct-business">Business name</Label>
+                    <Input id="ab-direct-business" type="text" autoComplete="organization" required placeholder="Your Business LLC" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-2 h-12 text-base" />
+                  </div>
+                  <div>
+                    <Label htmlFor="ab-direct-url">Website URL</Label>
+                    <Input id="ab-direct-url" type="text" inputMode="url" autoComplete="url" required placeholder="yourbusiness.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-12 text-base" />
+                  </div>
+                </>
+              )}
               <div>
                 <Label htmlFor="ab-pay-email">Email for delivery</Label>
                 {intake && !payEmailEditing ? (
@@ -1284,14 +1348,14 @@ export default function Audit() {
                       <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">Matches your Step 1 email — you're good to pay.</p>
                     )}
                     {!intake && (
-                      <p className="mt-2 text-xs text-muted-foreground">Use the same email as Step 1 — your audit is linked to it.</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{directBuy ? "Your audit is linked to this email — your report is delivered here." : "Use the same email as Step 1 — your audit is linked to it."}</p>
                     )}
                   </>
                 )}
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
                 </p>
-                {intake && !creditInfo?.eligible && (
+                {(intake || directBuy) && !creditInfo?.eligible && (
                   <p className="mt-2 text-xs leading-5 text-muted-foreground">
                     Bought the Full Report with this email? Your $5 credit applies: $330 − $5 = $325 due at checkout.
                   </p>
