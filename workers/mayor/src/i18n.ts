@@ -210,6 +210,10 @@ export const NOTIFICATION_COPY_ES:Record<string,EsNotificationCopy>={
   message:'The Mayor encontró una forma de llenar horas lentas o recuperar negocio. Revise la sugerencia.'},
  proactive_briefing:{title:'Su resumen de la mañana está listo',
   message:'Ayer, hoy y oportunidades abiertas de un vistazo.'},
+ phone_connect_reask:{title:'Conecte su teléfono para que pueda atender las llamadas perdidas',
+  message:'Recientemente se registró aquí una llamada perdida y se atendió a mano. Podría haberla atendido yo mismo — y respondido con un mensaje a quien llamó — si su teléfono estuviera conectado. Conéctelo y yo me encargo de la próxima.'},
+ profile_hours_missing:{title:'Agregue su horario de atención',
+  message:'Su horario de atención no está definido, así que no puedo saber cuándo está abierto: las reservas y mis controles de horario de silencio pueden no coincidir con su día real. Agregue su horario y trabajaré según él.'},
 };
 
 /** Spanish notification copy for a kind, or null when the kind has no twin. */

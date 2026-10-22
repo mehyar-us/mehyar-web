@@ -102,7 +102,7 @@ export default function IndustrySalesDeck({ industry }: { industry: IndustryOffe
         </div>
 
         <div className="mt-6 rounded-2xl border border-border bg-card p-4 text-sm leading-6 text-muted-foreground">
-          <strong className="text-foreground">What the prices mean:</strong> setup is the one-time build price. The monthly price covers the listed ongoing service. Text messages, call minutes, and AI generation for your scope are itemized with you in writing before work starts.
+          <strong className="text-foreground">What the prices mean:</strong> setup is the one-time build price. The monthly price covers the listed ongoing service. Text messages, call minutes, AI generation, ad spend, third-party subscriptions, large data moves, and custom connections are confirmed in writing before work starts. Instagram and TikTok publishing depends on account access and platform approval.
         </div>
 
         <div id="how-it-works" className="mt-12 scroll-mt-24 overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-sm">

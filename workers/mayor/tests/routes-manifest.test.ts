@@ -28,7 +28,7 @@ const manifest=()=>JSON.parse(readPublic('manifest.json'));
 
 it('pricing page exists with zero price amounts',()=>{
   const page=pricing();
-  expect(page).toContain('Start free. Go Pro when you');
+  expect(page).toContain('Start free. Grow when you');
   // No dollar amounts anywhere: no $14, no $39, no $NNN.
   expect(page).not.toMatch(/\$\d/);
   // No "per month" attached to an amount.
@@ -40,10 +40,8 @@ it('pricing page reads plan names/structure from the catalog at render time',()=
   expect(page).toContain('/api/billing/catalog');
   expect(page).toContain('id="plan-cards"');
   expect(page).toContain('id="topup-cards"');
-  // Amounts are never hardcoded: the client builds the Pro CTA label from
-  // the catalog response at render time (rot105), so no priced label literal.
-  expect(page).not.toMatch(/Go Pro — \$\d/);
-  expect(page).not.toMatch(/<article class="plan-card"><h3>Pro<\/h3>[\s\S]{0,200}\$\d/);
+  // priceCents is deliberately never rendered.
+  expect(page).not.toContain('priceCents');
 });
 
 it('pricing page carries the clearly-marked offer slot (empty until priced)',()=>{
@@ -52,9 +50,9 @@ it('pricing page carries the clearly-marked offer slot (empty until priced)',()=
   expect(page).toContain('OFFER SLOT');
 });
 
-it('pricing page carries no final-sale line (scope ruling 2026-10-17) and links the shared legal pages',()=>{
+it('pricing page states no refunds and links the shared legal pages',()=>{
   const page=pricing();
-  expect(page).not.toMatch(/Purchases are final.{1,3}no refunds/i);
+  expect(page).toMatch(/Purchases are final.{1,3}no refunds/i);
   expect(page).toContain('https://mehyar.us/privacy-policy/');
   expect(page).toContain('https://mehyar.us/terms/');
   expect(page).toContain('https://mehyar.us/data-deletion/');

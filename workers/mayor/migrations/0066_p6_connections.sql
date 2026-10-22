@@ -1,9 +1,26 @@
--- RECOVERED-RECORD — documentation-grade reconstruction, Slice 0 (2026-10-21).
--- Applied to production (recorded in production's d1_migrations) but its
--- file existed in NO repo. The DDL below was recovered verbatim from
--- production's live schema (sqlite_master) on 2026-10-21 and is committed
--- as the record of what production ran.
-CREATE TABLE mayor_payment_connections (
+-- 0066: P6 connections — GBP reviews snapshot cache + payments OAuth.
+-- Additive only. A GBP snapshot row exists ONLY after a real, successful
+-- Business Profile read (src/gbp-reviews.ts); absence of a row means no
+-- read has ever succeeded for the tenant, never a zero-review business.
+-- Payment OAuth states are single-use, digest-only, tenant+user+session
+-- bound (src/payments-oauth.ts). Payment connection tokens live only in
+-- the AES-GCM ciphertext column, AAD-bound to tenant/user/provider/account.
+CREATE TABLE IF NOT EXISTS mayor_gbp_snapshot (
+ tenant_id TEXT PRIMARY KEY REFERENCES agent_tenants(id),
+ grant_id TEXT NOT NULL,
+ snapshot_json TEXT NOT NULL,
+ fetched_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS mayor_payment_oauth_states (
+ state_hash TEXT PRIMARY KEY,
+ provider TEXT NOT NULL CHECK(provider IN ('stripe','square')),
+ tenant_id TEXT NOT NULL REFERENCES agent_tenants(id),
+ user_id TEXT NOT NULL,
+ session_hash TEXT NOT NULL,
+ expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_payment_oauth_states_user ON mayor_payment_oauth_states(user_id,expires_at);
+CREATE TABLE IF NOT EXISTS mayor_payment_connections (
  id TEXT PRIMARY KEY,
  tenant_id TEXT NOT NULL REFERENCES agent_tenants(id),
  user_id TEXT NOT NULL,
@@ -17,13 +34,4 @@ CREATE TABLE mayor_payment_connections (
  updated_at TEXT NOT NULL,
  UNIQUE(tenant_id,user_id,provider)
 );
-CREATE INDEX idx_payment_connections_tenant ON mayor_payment_connections(tenant_id,user_id,status);
-CREATE TABLE mayor_payment_oauth_states (
- state_hash TEXT PRIMARY KEY,
- provider TEXT NOT NULL CHECK(provider IN ('stripe','square')),
- tenant_id TEXT NOT NULL REFERENCES agent_tenants(id),
- user_id TEXT NOT NULL,
- session_hash TEXT NOT NULL,
- expires_at INTEGER NOT NULL
-);
-CREATE INDEX idx_payment_oauth_states_user ON mayor_payment_oauth_states(user_id,expires_at);
+CREATE INDEX IF NOT EXISTS idx_payment_connections_tenant ON mayor_payment_connections(tenant_id,user_id,status);

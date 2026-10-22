@@ -1,0 +1,15 @@
+/* P1 authority tiers — "How The Mayor acts". Mobile-first, thumb-friendly. */
+.authority-tiers{display:flex;flex-direction:column;gap:18px;margin-top:16px}
+.authority-row{border:1px solid var(--line,#dce5ee);border-radius:12px;padding:16px;margin:0;min-width:0}
+.authority-row legend{font-weight:700;font-size:15px;padding:0 8px}
+.authority-option{display:flex;gap:14px;align-items:flex-start;padding:14px 12px;border-radius:10px;cursor:pointer;min-height:56px}
+.authority-option:hover{background:#f4f7fa}
+.authority-option input{width:22px;height:22px;margin:2px 0 0;flex-shrink:0;accent-color:#315d86;cursor:pointer}
+.authority-option-copy{display:flex;flex-direction:column;gap:4px}
+.authority-option-copy strong{font-size:14px}
+.authority-option-desc{font-size:12.5px;line-height:1.6;color:var(--muted,#5c7185)}
+.authority-option:has(input:checked){background:#eaf1f8}
+.authority-option:has(input:focus-visible){outline:3px solid #3986ca;outline-offset:2px}
+.authority-note{font-size:12px;line-height:1.7;color:var(--muted,#5c7185);margin:4px 0 0}
+.authority-status{font-size:13px;color:#4f7294;min-height:1.4em;margin:0}
+@media (prefers-reduced-motion:reduce){.authority-option{transition:none}}

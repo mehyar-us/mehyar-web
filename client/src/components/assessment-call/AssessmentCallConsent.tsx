@@ -26,7 +26,7 @@ export function AssessmentCallConsent({ onJoin }: AssessmentCallConsentProps) {
         <p className="mt-2 text-sm leading-relaxed text-zinc-300">
           A 40–45 minute working session with the Mayor. He will walk through
           where your business is leaking money and where AI fits — and lay out
-          the $330 full audit at the end.
+          the $330 full audit at the end if it makes sense for you.
         </p>
 
         <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-2xl bg-white/[0.05] p-4 ring-1 ring-white/10 transition hover:bg-white/[0.08]">

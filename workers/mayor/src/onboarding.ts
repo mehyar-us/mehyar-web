@@ -1,6 +1,8 @@
 import type {Profile} from './memory';
 import {confirmProfile} from './memory';
 import type {Actor,Env} from './env';
+import {OPERATORS,requireMembership} from './permissions';
+import {setAuthorityTier,getExplicitAuthorityTier,type AuthorityAction,type AuthorityTier} from './authority-tiers';
 import {detectVerticalFromCategory} from './verticals';
 import * as verticals from './verticals';
 import type {Vertical} from './verticals';
@@ -11,11 +13,7 @@ import {assessFit,fitAnswersFromProfile,honestFitMessage,type FitAssessment} fro
 export function asksToResumeOnboarding(text:string){
  const normalized=text.trim().toLowerCase().replace(/[.!?]+$/,'');
  return /^(?:please )?(?:start|continue|resume)(?: my| business)? onboarding$/.test(normalized)
-  || normalized==='resume onboarding from my confirmed details. ask one missing question'
-  // CHG-094: the same command with its clarifying tail ("…at a time,
-  // and do not repeat details I already confirmed.") is the resume
-  // command, not a new question for the model to improvise on.
-  || /^resume onboarding from my confirmed details\. ask one missing question\b/.test(normalized);
+  || normalized==='resume onboarding from my confirmed details. ask one missing question';
 }
 
 const questions = [
@@ -31,11 +29,7 @@ const questions = [
 /** Resume from confirmed facts only; website and provider connections are optional. */
 export function onboardingProgress(profile:Partial<Profile>,deferred:readonly string[]=[]){
  const missing=questions.filter(([field])=>{
-  // CHG-094 (LIVE-34): the trade is one fact with two homes — a
-  // confirmed vertical (salon, plumbing…) IS the answer to "What kind
-  // of business do you run?". An owner whose trade was classified
-  // must never be re-asked it because the industry wording is unset.
-  const value=field==='industry'&&!(typeof profile.industry==='string'&&profile.industry.trim())&&typeof profile.vertical==='string'&&profile.vertical?profile.vertical:profile[field];
+  const value=profile[field];
   if(Array.isArray(value))return field==='staff'?value.some(v=>!v.trim()):!value.some(v=>v.trim());
   return typeof value!=='string'||!value.trim();
  }).map(([field])=>field);
@@ -276,4 +270,65 @@ export async function runHonestFitCheck(env:Env,actor:Actor,profile:Profile,revi
  if(!step)return {profile,revision,message:null};
  const saved=await confirmProfile(env,actor,{fitAssessment:step.assessment},revision);
  return {profile:saved.profile,revision:saved.revision,message:step.message};
+}
+
+/* ------------------------------------------------------------------ */
+/* P1 authority tiers — onboarding "Set the rules" phase. Asked after  */
+/* the core business questions are answered. Each answer is stored via */
+/* setAuthorityTier (owner/manager only); unset actions keep the        */
+/* 'draft' default. Pure helpers stay testable without a database.      */
+/* ------------------------------------------------------------------ */
+
+export const AUTHORITY_QUESTIONS:ReadonlyArray<{action:AuthorityAction;question:string}>=[
+ {action:'booking',question:'When someone wants to book — should I book it straight away, or check with you first?'},
+ {action:'suggestion_send',question:'If I spot a slow day and draft a text to win customers back — should I send it myself, or run it by you first?'},
+ {action:'textback',question:'When you miss a call — should I text the caller back right away, or wait for your go-ahead?'},
+];
+
+/** Map a free-text answer onto a tier. Returns null when the answer is not a
+ * clear choice — the question is re-asked rather than guessed. */
+export function parseAuthorityAnswer(text:string):AuthorityTier|null{
+ const t=text.trim().toLowerCase();
+ if(!t)return null;
+ if(/\b(don't|do not|never|no)\b.{0,40}\b(book|send|text|call)\b|\bno (bookings?|texts?|calls?|sending)\b/.test(t))return 'readonly';
+ if(/\b(straight away|just (do|send|book) it|go ahead|automatically|on your own|handle it|yes[,!]? (do|send|book)|i trust you)\b/.test(t))return 'auto';
+ if(/\b(check|ask|run it by|wait|draft|approv|review|confirm with|let me|first)\b/.test(t))return 'draft';
+ return null;
+}
+
+export function authorityQuestionFor(action:AuthorityAction):string{
+ return AUTHORITY_QUESTIONS.find(q=>q.action===action)?.question??'How much authority should I have here — act on my own, draft for your approval, or ask you first?';
+}
+
+/** Next "Set the rules" question for actions the owner has not set yet, or
+ * null when every question is answered. Takes the explicitly-set actions so
+ * the flow never re-asks. */
+export function authorityOnboardingStep(setActions:readonly AuthorityAction[]):{action:AuthorityAction;question:string}|null{
+ const next=AUTHORITY_QUESTIONS.find(q=>!setActions.includes(q.action));
+ return next?{action:next.action,question:next.question}:null;
+}
+
+/** Server-side: first unanswered "Set the rules" question for this tenant. */
+export async function authorityRulesStep(env:Env,actor:Actor):Promise<{action:AuthorityAction;question:string}|null>{
+ await requireMembership(env,actor,OPERATORS);
+ const set:(AuthorityAction)[]=[];
+ for(const q of AUTHORITY_QUESTIONS)
+  if(await getExplicitAuthorityTier(env.AGENT_DB,actor.tenantId,q.action))set.push(q.action);
+ return authorityOnboardingStep(set);
+}
+
+/** Server-side: persist answered tiers. Owner/manager only — staff answers are
+ * rejected, never silently stored. */
+export async function saveAuthorityAnswers(env:Env,actor:Actor,answers:Array<{action:AuthorityAction;tier:AuthorityTier}>){
+ const membership=await requireMembership(env,actor,OPERATORS);
+ for(const answer of answers)
+  await setAuthorityTier(env.AGENT_DB,actor.tenantId,answer.action,answer.tier,membership.role);
+ return {saved:answers.length};
+}
+
+/** Honest confirmation copy after an answer is stored. */
+export function authoritySavedCopy(action:AuthorityAction,tier:AuthorityTier):string{
+ const what=action==='booking'?'booking appointments':action==='suggestion_send'?'sending suggestion texts':action==='textback'?'texting back missed calls':'placing calls';
+ const how=tier==='auto'?'I will handle it on my own and log everything':tier==='readonly'?'I will leave that entirely to you':'I will draft it and wait for your approval each time';
+ return `Got it — for ${what}, ${how}.`;
 }
