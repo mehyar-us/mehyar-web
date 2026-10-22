@@ -153,7 +153,7 @@ const sections: Section[] = [
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Clipnote — <a className="text-brand-700 underline dark:text-brand-100" href="https://clipnote.mehyar.us" target="_blank" rel="noreferrer">clipnote.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Release notes in, a polished 60-second narrated launch video out — free script preview, $29 per video or $19/mo for 4 videos.</div>
+            <div className="text-sm text-muted-foreground">Release notes in, a polished 60-second narrated launch video out — free script preview, $29 per video or $19/mo for 4 videos. Payments are final and non-refundable.</div>
           </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
