@@ -299,7 +299,7 @@ function stripeEnvStatus(env, mode) {
     secret_key_configured: !!stripeSecretKey(env, mode),
     publishable_key_configured: !!stripePublishableKey(env, mode),
     webhook_secret_configured: !!stripeWebhookSecret(env, mode),
-    live_charge_gate: mode === "live" ? env.STRIPE_MEHYARSOFT_LIVE_CHARGES_ENABLED === "1" || env.STRIPE_MEHYARSOFT_LIVE_CHARGES_ENABLED === "true" ? "env_enabled_owner_code_required" : "blocked_env_disabled" : "sandbox_only"
+    live_charge_gate: mode === "live" ? env.STRIPE_MEHYARSOFT_LIVE_CHARGES_ENABLED === "1" || env.STRIPE_MEHYARSOFT_LIVE_CHARGES_ENABLED === "true" ? "env_enabled_owner_code_required" : "blocked_env_disabled" : "blocked_charges_disabled"
   };
 }
 __name(stripeEnvStatus, "stripeEnvStatus");
