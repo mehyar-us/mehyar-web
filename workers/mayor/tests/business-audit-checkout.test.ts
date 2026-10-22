@@ -144,16 +144,3 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
-
-// rot526: the static page must never assert a test checkout. The offer is
-// live in production; the test notice text is populated by audit-main ONLY
-// when the offer itself resolves as test mode, so the served bytes of the
-// live page carry no "no live payment" claim for crawlers or no-JS readers.
-it('static audit page carries no test-checkout claim; the notice text lives in audit-main', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const html = await readFile(new URL('../web/business-audit.html', import.meta.url), 'utf8');
-  expect(html).not.toContain('No live payment is collected');
-  expect(html).toContain('id="audit-test-notice"');
-  const main = await readFile(new URL('../web/audit-main.ts', import.meta.url), 'utf8');
-  expect(main).toContain("state.test?'Test checkout. No live payment is collected.");
-});

@@ -6,7 +6,7 @@ header{height:88px}main{max-width:none;min-height:calc(100dvh - 208px)}
 .intro{grid-column:1/-1;max-width:850px}.intro h1{font-size:clamp(30px,3vw,44px);margin:12px 0;letter-spacing:-1.4px}.intro p{line-height:1.6}
 #transcript{scrollbar-gutter:stable}
 #text-form{padding-top:12px;border-top:1px solid #edf1f6}#message{background:#f8fafd;padding:16px}
-.chat-welcome{padding:36px 12px 18px;max-width:580px}.chat-welcome h2{font-family:Manrope,sans-serif;font-size:26px;line-height:1.25;letter-spacing:-.6px;margin:16px 0}.chat-welcome p,.chat-empty{color:#617589;line-height:1.7}.chat-welcome .primary{margin:10px 0}.chat-welcome .privacy-note{font-size:12px}.chat-empty{padding:24px 8px;margin:0}
+.chat-welcome{padding:36px 12px 18px;max-width:580px}.chat-welcome h2{font-family:Manrope,sans-serif;font-size:26px;line-height:1.25;letter-spacing:-.6px;margin:16px 0}.chat-welcome p,.chat-empty{color:#617589;line-height:1.7}.chat-welcome .primary{margin:10px 0}.chat-welcome .privacy-note{font-size:12px}.chat-welcome .intent-note{font-size:13px;line-height:1.65;color:var(--ink);background:#eef4f9;border:1px solid var(--line);border-radius:9px;padding:12px 15px;margin:14px 0}.chat-empty{padding:24px 8px;margin:0}
 #chat-website-source,#chat-phone-guide{margin:16px 0;overflow-wrap:anywhere}#account-view{max-width:1000px;margin:auto;padding-top:32px}
 nav{width:280px;margin-top:24px}.portrait img{transform-origin:50% 80%;will-change:transform}
 .portrait img{animation:mayor-breathe 6s ease-in-out infinite}
@@ -67,7 +67,6 @@ textarea:focus-visible{outline:3px solid #397cdd;outline-offset:3px}
 .offer-per{font-size:11px;font-weight:400;color:#8291a1}
 .offer-plan p{font-size:12px;margin:0 0 4px;overflow-wrap:anywhere}
 .offer-plan .offer-blurb{color:#5d7285;font-size:11px;margin:0}
-.offer-plan .plan-final-sale{color:#5d7285;font-size:11px;margin:6px 0 0}.offer-plan .plan-final-sale a{color:inherit;text-underline-offset:3px}
 .offer-note{font-size:11px;color:#5d7285}
 .home-audit-band{margin-top:14px;background:#fff;border:1px solid #e2eaf3;border-radius:10px;padding:14px 16px}
 .home-audit-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}

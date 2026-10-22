@@ -44,9 +44,6 @@ export interface Env extends AuthEnv {
   MAYOR_AUDIT_INFERENCE_MODE?: string;
   ENVIRONMENT: string;
   ASSETS?: Fetcher;
-  /** Stage 5 decide() endpoint (Slice 2). Unset ⇒ decide() is
-   * unavailable and the engine falls back to prepare-and-ask. */
-  ENGINE_DECIDE_URL?: string;
 }
 export type Role = 'owner' | 'manager' | 'staff' | 'viewer' | 'billing';
 export interface Actor { userId: string; tenantId: string; }

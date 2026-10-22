@@ -94,11 +94,11 @@ describe('foundingLineSsrHtml — display seam',()=>{
   expect(html).toContain('first 25 businesses');
   expect(html).not.toContain('seats left');
  });
- it('Slice 1: the line is a real anchor to the founding door on both render paths',()=>{
-  const live=foundingLineSsrHtml({available:true,seats_total:25,seats_taken:3,seats_remaining:22});
-  expect(live).toContain('<a href="/billing?plan=founding">');
-  const quiet=foundingLineSsrHtml(FOUNDING_UNAVAILABLE);
-  expect(quiet).toContain('<a href="/billing?plan=founding">');
+ it('the price proposition is a real anchor to the founding door (rot523)',()=>{
+  // Both rendered variants carry the door; the full-cohort case
+  // renders nothing at all, so no door can promise a missing seat.
+  expect(foundingLineSsrHtml({available:true,seats_total:25,seats_taken:3,seats_remaining:22})).toContain('<a href="/billing?plan=founding">');
+  expect(foundingLineSsrHtml(FOUNDING_UNAVAILABLE)).toContain('<a href="/billing?plan=founding">');
  });
  it('renders nothing once the cohort is full — the $99 list stands alone',()=>{
   expect(foundingLineSsrHtml({available:true,seats_total:25,seats_taken:25,seats_remaining:0})).toBe('');

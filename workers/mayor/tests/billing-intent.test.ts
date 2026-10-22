@@ -2,19 +2,22 @@
  * billing-intent.test.ts — purchase intent consumption (NEW-1, 2026-10-17).
  *
  * The allowlist is the contract: exactly the values /sales and
- * /pricing emit. plan=pro-founding must parse to null — that is a
- * checkout planId, not an intent. plan=founding joined the allowlist
- * with the reinvention's founding door (Slice 1, blueprint §2.1 E-0):
- * it is INTENT only — the seat gate still decides at claim time in
- * the dialog and on the server, and preselection is never a seat.
- * The stash exists so the intent survives the sign-in round trip;
- * take() consumes it exactly once.
+ * /pricing emit. plan=pro-founding must parse to null — it is the
+ * internal Stripe-facing planId, never an emitted URL value.
+ * plan=founding IS accepted (rot523, 2026-10-21 — this replaces the
+ * original founding pin in the open): the founding intent is a DOOR,
+ * not a seat. It opens the standard upgrade dialog, whose live
+ * founding block renders only while the server reports seats
+ * remaining, and foundingGateOpen is re-read at checkout creation —
+ * a URL still cannot buy, reserve, or preselect a seat. The stash
+ * exists so the intent survives the sign-in round trip; take()
+ * consumes it exactly once.
  */
 import {describe,expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import {captureBillingIntent,dismissBillingIntent,hasBillingIntent,parseBillingIntent,peekBillingIntent,takeBillingIntent,type IntentStore} from '../web/billing-intent';
+import {captureBillingIntent,hasBillingIntent,parseBillingIntent,takeBillingIntent,type IntentStore} from '../web/billing-intent';
 
 function fakeStore():IntentStore & {map:Map<string,string>}{
   const map=new Map<string,string>();
@@ -28,13 +31,12 @@ describe('parseBillingIntent allowlist',()=>{
   it('accepts exactly the emitted values',()=>{
     expect(parseBillingIntent('?plan=pro')).toEqual({kind:'plan',id:'pro'});
     expect(parseBillingIntent('?plan=founding')).toEqual({kind:'plan',id:'founding'});
-    expect(parseBillingIntent('?start=1&plan=founding')).toEqual({kind:'plan',id:'founding'});
     expect(parseBillingIntent('?pack=small')).toEqual({kind:'pack',id:'small'});
     expect(parseBillingIntent('?pack=medium')).toEqual({kind:'pack',id:'medium'});
     expect(parseBillingIntent('?pack=large')).toEqual({kind:'pack',id:'large'});
     expect(parseBillingIntent('plan=pro')).toEqual({kind:'plan',id:'pro'}); // no leading ?
   });
-  it('rejects everything else — the founding planId can never be smuggled in as intent',()=>{
+  it('rejects everything else — the internal planId can never be smuggled in',()=>{
     expect(parseBillingIntent('?plan=pro-founding')).toBeNull();
     expect(parseBillingIntent('?plan=free')).toBeNull();
     expect(parseBillingIntent('?plan=PRO')).toBeNull();
@@ -62,6 +64,14 @@ describe('stash: intent survives sign-in',()=>{
     const store=fakeStore();
     expect(captureBillingIntent('?plan=pro-founding',store)).toBeNull();
     expect(store.map.size).toBe(0);
+  });
+  it('the founding door survives the sign-in round trip on the stash',()=>{
+    const store=fakeStore();
+    expect(captureBillingIntent('?plan=founding',store)).toEqual({kind:'plan',id:'founding'});
+    expect(store.map.get('mayor_billing_intent')).toMatch(/^plan:founding@\d+$/);
+    expect(hasBillingIntent('',store)).toBe(true);
+    expect(takeBillingIntent('',store)).toEqual({kind:'plan',id:'founding'});
+    expect(takeBillingIntent('',store)).toBeNull(); // consumed exactly once
   });
   it('a URL intent wins over the stash, and clears it',()=>{
     const store=fakeStore();
@@ -94,61 +104,13 @@ describe('wiring pins',()=>{
   it('workday consumes the pending intent inside loadBilling via the button paths',()=>{
     const workday=web('workday.ts');
     expect(workday).toContain('pendingBillingIntent');
-    expect(workday).toContain("if(intent.kind==='plan'){if(data.plan.id!=='pro')void checkout(intent.id==='founding');}");
+    expect(workday).toContain("if(intent.kind==='plan'){if(data.plan.id!=='pro')void checkout();}");
     expect(workday).toContain('creditCheckout(pack)');
-    // Slice 1: a founding intent opens the dialog PRESELECTED on
-    // founding; the checkout planId itself is never an intent value:
-    expect(workday).toContain('preselectFounding');
-    expect(workday).not.toContain("intent.id==='pro-founding'");
-  });
-  it('main.ts renders the carrier through the Desk Ribbon (peek, never consume) and clears spent params',()=>{
-    const main=web('main.ts');
-    expect(main).toContain('peekBillingIntent()');
-    expect(main).toContain('mountDeskStrip');
-    expect(main).toContain('dismissBillingIntent()');
-    expect(main).toContain('stripIntentParams()');
-  });
-});
-
-describe('founding intent through the carrier (Slice 1)',()=>{
-  const T0=1_800_000_000_000;
-  function facade(map:Map<string,string>):IntentStore{
-    return {getItem:(k)=>map.get(k)??null,setItem:(k,v)=>{map.set(k,v);},removeItem:(k)=>{map.delete(k);}};
-  }
-  it('a founding intent survives a second-tab sign-in and is consumed exactly once',()=>{
-    const shared=new Map<string,string>();
-    // Tab A: the pricing click. Tab B: sign-in completes there; the
-    // boot on tab B has no URL params — the shared stash carries it.
-    expect(captureBillingIntent('?plan=founding',facade(shared),T0)).toEqual({kind:'plan',id:'founding'});
-    expect(takeBillingIntent('',facade(shared),T0+3*60*1000)).toEqual({kind:'plan',id:'founding'});
-    expect(takeBillingIntent('',facade(shared),T0+3*60*1000)).toBeNull(); // consumed once
-  });
-  it('peek renders the carrier without consuming it (the Ribbon contract)',()=>{
-    const store=fakeStore();
-    captureBillingIntent('?plan=founding',store,T0);
-    expect(peekBillingIntent('',store,T0+60*1000)).toEqual({kind:'plan',id:'founding'});
-    expect(peekBillingIntent('',store,T0+60*1000)).toEqual({kind:'plan',id:'founding'}); // still there
-    expect(takeBillingIntent('',store,T0+60*1000)).toEqual({kind:'plan',id:'founding'}); // take still works
-  });
-  it('a second visit shows no stale intent; an intent older than 60 minutes is ignored',()=>{
-    const store=fakeStore();
-    captureBillingIntent('?plan=founding',store,T0);
-    expect(peekBillingIntent('',store,T0+61*60*1000)).toBeNull();
-    expect(hasBillingIntent('',store,T0+61*60*1000)).toBe(false);
-  });
-  it('dismiss clears the carrier without consuming toward billing',()=>{
-    const store=fakeStore();
-    captureBillingIntent('?plan=founding',store,T0);
-    dismissBillingIntent(store);
-    expect(store.map.size).toBe(0);
-    expect(takeBillingIntent('',store,T0)).toBeNull();
-  });
-  it('a stored plan:founding from before the allowlist change is re-validated, never trusted raw',()=>{
-    const store=fakeStore();
-    store.setItem('mayor_billing_intent',`plan:founding@${T0}`);
-    expect(takeBillingIntent('',store,T0+1000)).toEqual({kind:'plan',id:'founding'});
-    store.setItem('mayor_billing_intent','plan:founding'); // no stamp — pre-hardening shape
-    expect(takeBillingIntent('',store,T0+1000)).toBeNull();
+    // Rot523 supersedes the old pin ("the founding checkout path is
+    // not reachable from the intent"): a founding intent now opens
+    // the same upgrade dialog, and the cohort is still decided by
+    // the dialog's live founding block + the server seat gate.
+    expect(workday).toContain('the intent is a door, never a seat');
   });
 });
 

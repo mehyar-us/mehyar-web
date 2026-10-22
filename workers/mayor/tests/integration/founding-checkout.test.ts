@@ -92,6 +92,9 @@ it('a paid founding subscription is recorded at the founding Price and holds its
  provider.objects.set(`/v1/subscriptions/${subscriptionId}`,subscription);provider.objects.set(`/v1/invoices/${invoiceId}`,invoice);provider.objects.set(`/v1/payment_intents/${intentId}`,{id:intentId,livemode:false,status:'succeeded',currency:'usd',amount_received:7920,customer:session.customer});
  await processBillingEvent(env,event('invoice.paid',invoice),provider);
  const status=await billingStatus(env,actor);expect(status.plan.id).toBe('pro');
+ // The locked-for-life read path: a founding subscriber's billing
+ // state still reads the founding amount — 7920¢, never the list 9900¢.
+ expect(status.foundingPriceCents).toBe(7920);
  const row=await env.AGENT_DB.prepare('SELECT price_id FROM mayor_billing_subscriptions WHERE tenant_id=?').bind(actor.tenantId).first<{price_id:string}>();expect(row?.price_id).toBe('price_MayorFounding');
  expect(status.founding.seats_taken).toBe(1);expect(status.founding.seats_remaining).toBe(24);
 });

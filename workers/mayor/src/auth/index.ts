@@ -187,7 +187,11 @@ export async function getSession(request: Request, env: AuthEnv) {
   if (!env.BETTER_AUTH_SECRET) return null;
   const result = await createAuth(env).api.getSession({ headers: request.headers });
   if (!result) return null;
-  return { user: { id: result.user.id, email: result.user.email, name: result.user.name, emailVerified: result.user.emailVerified }, session: { id: result.session.id, expiresAt: result.session.expiresAt } };
+  // createdAt rides along (rot523) so the client can recognize the
+  // account's FIRST session — user row and first session are created
+  // in the same OAuth flow — for the consent-gated sign_up event.
+  const iso = (value: unknown) => (value instanceof Date ? value.toISOString() : typeof value === "string" ? value : undefined);
+  return { user: { id: result.user.id, email: result.user.email, name: result.user.name, emailVerified: result.user.emailVerified, createdAt: iso(result.user.createdAt) }, session: { id: result.session.id, expiresAt: result.session.expiresAt, createdAt: iso(result.session.createdAt) } };
 }
 
 /** Mount this wrapper, never auth.handler directly: only these browser routes exist. */

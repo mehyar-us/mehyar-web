@@ -3,19 +3,23 @@
 /* the rot333 verify-and-harden).                                     */
 /*                                                                    */
 /* /sales and /pricing emit plan-carrying purchase links              */
-/* (/billing?plan=pro, /billing?pack=small|medium|large) — the buy    */
+/* (/billing?plan=pro, /billing?plan=founding,                        */
+/* /billing?pack=small|medium|large) — the buy                        */
 /* click's intent. Nothing consumed the params: a signed-out visitor  */
 /* lost them at the sign-in wall, a signed-in one landed on billing   */
 /* with nothing preselected. This module is the consumer, following   */
 /* the pattern Rizza's 1a proved:                                     */
 /*   1. The allowlist is EXACTLY the emitted values — plan=pro,       */
-/*      plan=founding, pack=small|medium|large. Anything else          */
-/*      (including plan=pro-founding: that is a checkout planId, not   */
-/*      an intent) parses to null. plan=founding joined the allowlist  */
-/*      with the reinvention's founding door (blueprint §2.1 E-0,      */
-/*      §4.8a as amended): it is INTENT only — the seat gate still     */
-/*      decides at claim time in the dialog and on the server, and    */
-/*      preselection is never a seat.                                 */
+/*      plan=founding, pack=small|medium|large. Anything else parses  */
+/*      to null, including plan=pro-founding: that is the internal    */
+/*      Stripe-facing planId, never an emitted URL value.             */
+/*      plan=founding (rot523, 2026-10-21) is the cohort DOOR, not a  */
+/*      seat: it opens the standard upgrade dialog, whose live        */
+/*      founding block renders only while the server reports seats    */
+/*      remaining, and the seat gate (foundingGateOpen) is re-read    */
+/*      at checkout creation — a full cohort degrades to the list-    */
+/*      Price checkout with plain fallback copy. A URL therefore      */
+/*      still cannot buy, reserve, or preselect a seat.               */
 /*   2. A valid intent found at shell boot is stashed so it can       */
 /*      survive the sign-in round trip. The carrier is localStorage   */
 /*      — shared across the tabs and windows of one browser          */
@@ -121,34 +125,6 @@ export function hasBillingIntent(
   if (parseBillingIntent(search)) return true;
   if (!store) return false;
   try { return deserialize(store.getItem(STORAGE_KEY), nowMs) !== null; } catch { return false; }
-}
-
-/** Read the carried intent WITHOUT consuming it (URL wins, same
- * precedence as take). The Intent Ribbon and the founding pill are
- * renders of this carrier (blueprint §3.2/§4.8a): they read it, they
- * never write it — consumption happens only through takeBillingIntent
- * (the billing hand-off) or dismissBillingIntent (the owner's own
- * dismissal). */
-export function peekBillingIntent(
-  search: string = currentSearch(),
-  store: IntentStore | null = defaultStore(),
-  nowMs: number = Date.now(),
-): BillingIntent | null {
-  const fromUrl = parseBillingIntent(search);
-  if (fromUrl) return fromUrl;
-  if (!store) return null;
-  try { return deserialize(store.getItem(STORAGE_KEY), nowMs); } catch { return null; }
-}
-
-/** The owner dismisses the carried intent (the Ribbon's ✕): the stash
- * is cleared and nothing is consumed toward billing. A URL param on
- * the current page is the caller's to strip (history.replaceState) —
- * the next boot's capture would otherwise re-stash it. */
-export function dismissBillingIntent(
-  store: IntentStore | null = defaultStore(),
-): void {
-  if (!store) return;
-  try { store.removeItem(STORAGE_KEY); } catch { /* storage unavailable */ }
 }
 
 /** Consume the intent exactly once: URL wins; the stash is cleared

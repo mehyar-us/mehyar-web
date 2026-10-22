@@ -1,6 +1,7 @@
 import {createIcons,ArrowUpRight,ArrowRight,NotebookTabs,MonitorSmartphone,CalendarCheck,UsersRound,MapPin,ListTodo,Route,Check,LockKeyhole,RefreshCw,FileText} from 'lucide';
 import {mountAuditReport} from './audit-report';
 import {loadAuditReceipt} from './audit-receipt-loader';
+import {trackBeginCheckout} from './analytics-events';
 import type {ReceiptView} from './audit-receipt';
 
 export type AuditIntake={contactName:string;email:string;businessName:string;website:string;goals:string;notes?:string;links?:string[];acceptedTerms:true};
@@ -99,7 +100,7 @@ function mountAuditPage(){
    let timer:ReturnType<typeof setTimeout>|undefined;
    const wedged=new Promise<never>((_resolve,reject)=>{timer=setTimeout(()=>reject(new Error('The checkout availability check timed out.')),OFFER_UI_TIMEOUT_MS);});
    offer=await Promise.race([api('/api/business-audit/offer') as Promise<AuditOfferResponse>,wedged]).finally(()=>{if(timer!==undefined)clearTimeout(timer);});
-   const state=checkoutAvailability(offer);availability.textContent=state.message;testNotice.textContent=state.test?'Test checkout. No live payment is collected. Any completed test payment stays labeled as a test.':'';testNotice.hidden=!state.test;checkout.disabled=!state.available;setButton(state.label);
+   const state=checkoutAvailability(offer);availability.textContent=state.message;testNotice.hidden=!state.test;checkout.disabled=!state.available;setButton(state.label);
   }catch{
    availability.textContent='Checkout availability could not be verified. ';
    availability.append(ensureOfferRetryButton());
@@ -130,6 +131,7 @@ function mountAuditPage(){
   const payload=JSON.stringify(intake);if(previousSubmission?.payload!==payload)previousSubmission={payload,key:crypto.randomUUID()};
   submitting=true;checkout.disabled=true;setButton(offer.mode==='test'?'Preparing test checkout…':'Preparing secure checkout…');
   try{
+   trackBeginCheckout({plan:'business-audit'});
    const result=await api('/api/business-audit/checkout',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':previousSubmission!.key},body:payload});
    const checkoutUrl=safeCheckoutUrl(result.url);if(!validAuditToken(result.statusToken))throw new Error('The private receipt could not be verified. Please try again.');
    try{sessionStorage.setItem(statusTokenKey,result.statusToken);}catch{/* The secure return URL also carries the receipt token. */}
