@@ -9,13 +9,9 @@
 /* with nothing preselected. This module is the consumer, following   */
 /* the pattern Rizza's 1a proved:                                     */
 /*   1. The allowlist is EXACTLY the emitted values — plan=pro,       */
-/*      plan=founding, pack=small|medium|large. Anything else          */
-/*      (including plan=pro-founding: that is a checkout planId, not   */
-/*      an intent) parses to null. plan=founding joined the allowlist  */
-/*      with the reinvention's founding door (blueprint §2.1 E-0,      */
-/*      §4.8a as amended): it is INTENT only — the seat gate still     */
-/*      decides at claim time in the dialog and on the server, and    */
-/*      preselection is never a seat.                                 */
+/*      pack=small|medium|large. Anything else (including             */
+/*      plan=pro-founding: founding stays seat-gated in the dialog,   */
+/*      preselection is never a seat) parses to null.                 */
 /*   2. A valid intent found at shell boot is stashed so it can       */
 /*      survive the sign-in round trip. The carrier is localStorage   */
 /*      — shared across the tabs and windows of one browser          */
@@ -37,7 +33,7 @@
 /* ------------------------------------------------------------------ */
 
 export type BillingIntent =
-  | { kind: 'plan'; id: 'pro' | 'founding' }
+  | { kind: 'plan'; id: 'pro' }
   | { kind: 'pack'; id: 'small' | 'medium' | 'large' };
 
 const PACK_IDS = ['small', 'medium', 'large'] as const;
@@ -48,7 +44,6 @@ const CLOCK_SKEW_MS = 5 * 60 * 1000;
 export function parseBillingIntent(search: string): BillingIntent | null {
   const query = new URLSearchParams(search);
   if (query.get('plan') === 'pro') return { kind: 'plan', id: 'pro' };
-  if (query.get('plan') === 'founding') return { kind: 'plan', id: 'founding' };
   const pack = query.get('pack');
   if (pack === 'small' || pack === 'medium' || pack === 'large') return { kind: 'pack', id: pack };
   return null;
@@ -70,7 +65,6 @@ function deserialize(raw: string | null, nowMs: number): BillingIntent | null {
   if (nowMs - stamp > INTENT_TTL_MS) return null; // expired
   const body = raw.slice(0, at);
   if (body === 'plan:pro') return { kind: 'plan', id: 'pro' };
-  if (body === 'plan:founding') return { kind: 'plan', id: 'founding' };
   const pack = body.startsWith('pack:') ? body.slice(5) : '';
   if (pack === 'small' || pack === 'medium' || pack === 'large') return { kind: 'pack', id: pack };
   return null;
@@ -121,34 +115,6 @@ export function hasBillingIntent(
   if (parseBillingIntent(search)) return true;
   if (!store) return false;
   try { return deserialize(store.getItem(STORAGE_KEY), nowMs) !== null; } catch { return false; }
-}
-
-/** Read the carried intent WITHOUT consuming it (URL wins, same
- * precedence as take). The Intent Ribbon and the founding pill are
- * renders of this carrier (blueprint §3.2/§4.8a): they read it, they
- * never write it — consumption happens only through takeBillingIntent
- * (the billing hand-off) or dismissBillingIntent (the owner's own
- * dismissal). */
-export function peekBillingIntent(
-  search: string = currentSearch(),
-  store: IntentStore | null = defaultStore(),
-  nowMs: number = Date.now(),
-): BillingIntent | null {
-  const fromUrl = parseBillingIntent(search);
-  if (fromUrl) return fromUrl;
-  if (!store) return null;
-  try { return deserialize(store.getItem(STORAGE_KEY), nowMs); } catch { return null; }
-}
-
-/** The owner dismisses the carried intent (the Ribbon's ✕): the stash
- * is cleared and nothing is consumed toward billing. A URL param on
- * the current page is the caller's to strip (history.replaceState) —
- * the next boot's capture would otherwise re-stash it. */
-export function dismissBillingIntent(
-  store: IntentStore | null = defaultStore(),
-): void {
-  if (!store) return;
-  try { store.removeItem(STORAGE_KEY); } catch { /* storage unavailable */ }
 }
 
 /** Consume the intent exactly once: URL wins; the stash is cleared

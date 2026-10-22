@@ -2,7 +2,7 @@ import {cloudflareTest,readD1Migrations} from '@cloudflare/vitest-plugin';
 import {defineConfig} from 'vitest/config';
 export default defineConfig(async()=>({plugins:[cloudflareTest({main:"./src/index.ts",
   miniflare:{compatibilityDate:'2026-09-22',compatibilityFlags:['nodejs_compat','global_fetch_strictly_public'],
-    durableObjects:{MAYOR_VOICE:{className:'MayorVoice',useSQLite:true},MAYOR_BUSINESS:{className:'MayorBusiness',useSQLite:true}},d1Databases:['AGENT_DB','MIGRATION_TEST_DB','AUDIENCE_DB'],bindings:{
+    durableObjects:{MAYOR_VOICE:{className:'MayorVoice',useSQLite:true},MAYOR_BUSINESS:{className:'MayorBusiness',useSQLite:true}},d1Databases:['AGENT_DB','MIGRATION_TEST_DB'],bindings:{
       TEST_MIGRATIONS:await readD1Migrations('./migrations'),
       APP_ORIGIN:'https://mayor.example.test',ENVIRONMENT:'test',
       BETTER_AUTH_SECRET:'test-only-mayor-secret-not-for-production-000000',

@@ -37,7 +37,6 @@ export function OfferBlock({free,pro,currency}:{free:OfferPlan,pro:OfferPlan,cur
    <div className="offer-plan-head"><strong>{p.name}</strong><span className="offer-price">{formatPrice(p.priceCents,currency)}{p.priceCents>0?<span className="offer-per"> / month</span>:null}</span></div>
    <p>{p.replyLimit.toLocaleString()} reply attempts (≈{Math.max(1,Math.round(p.replyLimit/10))} real conversations a month) · {p.voiceMinuteLimit} microphone minutes a month</p>
    <p className="offer-blurb">{blurb}</p>
-   {p.id==='pro'?<p className="plan-final-sale">Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>:null}
   </div>
  );
  return (

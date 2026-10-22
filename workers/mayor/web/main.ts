@@ -1,8 +1,6 @@
 import {createElement,X,Camera} from 'lucide';
 import {createTimeZoneSuggestion} from './time-zone';
-import {createTextChat,readNdjsonTurn,applyTextOutcome,type TextTurnOutcome} from './text-chat';
-import {createVoiceTranscriptMerge} from './voice-merge';
-import {createConversationCardRegistry} from './conversation-cards';
+import {createTextChat} from './text-chat';
 import {createCalendarChat} from './calendar-chat';
 import {renderConnectorCard,isConnectorCardPayload} from './connector-cards';
 import {createPullRefresh} from './pull-refresh';
@@ -14,7 +12,7 @@ import './workspace.css';
 import './workday.css';
 import './proactive.css';
 import {createWorkday,type WorkdayView} from './workday';
-import {captureBillingIntent,dismissBillingIntent,hasBillingIntent,peekBillingIntent,takeBillingIntent} from './billing-intent';
+import {captureBillingIntent,hasBillingIntent,takeBillingIntent} from './billing-intent';
 import {createConnections} from './connections';
 import {createVoiceDiagnostics} from './voice-diagnostics';
 import {createVoiceHealth} from './voice-health';
@@ -32,205 +30,15 @@ import {loadOfferBlock} from './offer-loader';
 import {loadTrendpost} from './trendpost-loader';
 import {loadConnectorSessions} from './connector-sessions-loader';
 import {loadAccountCards} from './account-cards-loader';
-import {mountChatApp,pushChatApp,type ChatAppSnapshot} from './chat-app';
-import type {TranscriptRow} from './transcript-list';
+import {loadComposerCluster} from './composer-cluster-loader';
 import {loadNotificationsInbox} from './notifications-inbox-loader';
-import {mountDeskStrip,pushDeskStrip,type DeskSnapshot} from './desk-loader';
-import type {DeskIntent} from './desk/intents';
+import {loadTranscriptList} from './transcript-list-loader';
 import './mobile-compact.css';
-import './desk.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
 $('message').addEventListener('input',resizeComposer);window.addEventListener('resize',resizeComposer);
 const chatKeyboard=bindChatKeyboardViewport($<HTMLTextAreaElement>('message'),resizeComposer);
-// Chat reenvision Slice 1: ONE React root (ChatApp) owns the chat view —
-// presence bar, onboarding progress host, and the conversation section
-// with the timeline. It mounts before anything looks up the elements it
-// renders (#conversation, #transcript, #status, #onboarding-progress).
-// The composer cluster renders from the same tree through a portal into
-// the dock host below; the dock form itself is ported in Slice 3.
-const composerHost=document.createElement('div');composerHost.style.display='contents';$('text-form').after(composerHost);
-let chatSnapshot:ChatAppSnapshot={businessName:'',statusText:'Ready when you are',rows:[],assistantLabel:'The Mayor',earlierVisible:false,composer:{statusText:'',stopWaitingVisible:false,actionsHidden:false,newChatHidden:false,retryVisible:false}};
-const chatCallbacks={onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.'),onStopWaiting:()=>textChat.cancel(),onNewChat:()=>void startNewChat(),onRetry:()=>void start(),
- // Chat reenvision Slice 2: history paging + in-flow turn actions.
- onEarlier:()=>void loadEarlier(),onCancelQueued:(turnId:string)=>textChat.cancelQueued(turnId),onRetryTurn:()=>{const outcome=textChat.retryFailed();if(outcome)void settleTextOutcome(outcome);},onDismissError:()=>textChat.dismissFailed()};
-mountChatApp($('chat-app'),chatSnapshot,chatCallbacks,{composerHost});
-function pushChatView(){pushChatApp(chatSnapshot);}
-// ── The Desk strip (Reinvention Slice 1, blueprint §3.1) ────────────
-// A React strip at the head of the home (chat) view: Morning Line +
-// the intent stream (carried-intent Ribbon, completion Receipt,
-// attention Lines, today's people), rendered from the primitive
-// catalog in web/desk/. The strip is fed snapshots built here from
-// state the shell already owns — the intent carrier (peeked, never
-// consumed by rendering), the public catalog (price/seats, fail-quiet),
-// the operations overview, and billing status (commitments). It
-// fetches nothing on its own and writes nothing to the carrier.
-interface DeskCatalog {foundingPriceLabel?:string;proPriceLabel?:string;seats?:{remaining:number;total:number}|null;soldOut?:boolean;packLabels?:Partial<Record<'small'|'medium'|'large',{name:string;priceLabel:string}>>;}
-let deskCatalog:DeskCatalog={};
-let deskOverview:any=null;
-let deskBilling:any=null;
-let deskEngineIntents:DeskIntent[]=[];
-let deskIntentDismissed=false;
-let deskMounted=false;
-let deskDataAt=0;
-let deskDataFlight:Promise<void>|null=null;
-const deskMoneyExact=(cents:number)=>new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100);
-const deskMoney=(cents:number)=>new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(cents/100);
-function deskRibbonIntent():DeskIntent|null{
- if(deskIntentDismissed)return null;
- const intent=peekBillingIntent();
- if(!intent)return null;
- if(intent.kind==='plan'&&intent.id==='founding'){
-  if(deskCatalog.soldOut)return {id:'ribbon-founding',version:1,type:'intent-ribbon',planRef:'founding',state:'unhonorable',headline:'Founding just filled',detail:'Every founding seat is claimed. The standard plan is the way in now — same Mayor, standard price.',alternativeLabel:deskCatalog.proPriceLabel?`Pro — ${deskCatalog.proPriceLabel}/mo`:'Pro — the standard plan',summary:'Founding just filled. The standard plan is the way in now.'};
-  return {id:'ribbon-founding',version:1,type:'intent-ribbon',planRef:'founding',state:'carried',headline:"Founding — you're headed here.",detail:loggedIn?'Continue and the billing dialog opens on this exact plan. Nothing to pay yet.':"We'll set up your shop first, then open this exact plan. Nothing to pay yet.",...(deskCatalog.foundingPriceLabel?{priceLabel:deskCatalog.foundingPriceLabel}:{}),seats:deskCatalog.seats??null,summary:"Founding — you're headed here. We'll set up your shop first, then open this exact plan."};
- }
- // rot551 fold C5: the summary-before-the-wall covers every carried
- // intent, not only founding — a Pro or pack buyer sees what they're
- // buying before authenticating to buy it. Same builder discipline:
- // catalog-fed labels only (fail-quiet — no label, no price), seats
- // never ride a non-founding Ribbon, and the carrier is only peeked.
- if(intent.kind==='plan'&&intent.id==='pro'){
-  return {id:'ribbon-pro',version:1,type:'intent-ribbon',planRef:'pro',state:'carried',headline:"Pro — you're headed here.",detail:loggedIn?'Continue and the billing dialog opens on this exact plan. Nothing to pay yet.':"We'll set up your shop first, then open this exact plan. Nothing to pay yet.",...(deskCatalog.proPriceLabel?{priceLabel:`${deskCatalog.proPriceLabel}/mo`}:{}),summary:"Pro — you're headed here. We'll set up your shop first, then open this exact plan."};
- }
- if(intent.kind==='pack'){
-  const pack=deskCatalog.packLabels?.[intent.id];
-  const name=pack?`${pack.name} top-up`:'Top-up';
-  return {id:`ribbon-pack-${intent.id}`,version:1,type:'intent-ribbon',planRef:'pack',packId:intent.id,state:'carried',headline:`${name} — you're headed here.`,detail:loggedIn?'Continue and the billing dialog opens on this exact top-up. Nothing to pay yet.':"We'll set up your shop first, then open this exact top-up. Nothing to pay yet.",...(pack?{priceLabel:pack.priceLabel}:{}),summary:`${name} — you're headed here. We'll set up your shop first, then open this exact top-up.`};
- }
- return null;
-}
-function deskIntents():DeskIntent[]{
- const intents:DeskIntent[]=[];
- const ribbon=deskRibbonIntent();if(ribbon)intents.push(ribbon);
- if(!loggedIn)return intents;
- const commitment=Array.isArray(deskBilling?.commitments)?deskBilling.commitments.find((row:any)=>row?.kind==='purchase_intent'&&row?.status==='fulfilled'):null;
- if(commitment)intents.push({id:`receipt-${commitment.id}`,version:1,type:'receipt',text:commitment.plan_ref==='founding'?"Founding — you're in.":'Your plan is active.',detail:`${deskMoneyExact(Number(commitment.amount_cents??0))}/mo · locked for life while this subscription stays active.`,summary:"Founding — you're in. Your founding price is locked for life while this subscription stays active."});
- if(deskOverview){
-  for(const item of (deskOverview.attention??[]).slice(0,3))intents.push({id:`attention-${item.id}`,version:1,type:'line',text:`${item.title} — ${item.detail}`,summary:`${item.title} — ${item.detail}`});
-  for(const appt of (deskOverview.appointments??[]).slice(0,3)){
-   const title=appt?.input?.title??appt?.title??'Appointment';
-   const name=appt?.customer?.name??appt?.customerName??'';
-   intents.push({id:`appt-${appt?.id??title}`,version:1,type:'person',name:name||title,context:name?title:undefined,state:'known',summary:name?`${name} — ${title}`:title});
-  }
- }
- // Slice 2: the engine's cards merge AFTER the snapshot's own
- // intents. An engine fetch failure leaves this empty — the Desk
- // keeps working without engine intents (see loadDeskData).
- intents.push(...deskEngineIntents);
- if(!intents.length)intents.push({id:'desk-empty',version:1,type:'empty',text:'Nothing needs you right now.',summary:'Nothing needs you right now.'});
- return intents;
-}
-function deskSnapshotNow():DeskSnapshot{
- const counts=deskOverview?.counts;
- return {signedIn:loggedIn,businessName:chatSnapshot.businessName||'The Mayor',statusLine:chatSnapshot.statusText,stats:loggedIn&&counts?[{label:'Bookings today',value:String(counts.appointmentsToday??0)},{label:'Waiting on you',value:String(counts.attention??0)},{label:'Open tasks',value:String(counts.tasksOpen??0)}]:undefined,intents:deskIntents()};
-}
-function refreshDesk(){
- const snapshot=deskSnapshotNow();
- if(!deskMounted){deskMounted=true;mountDeskStrip($('desk-root'),snapshot,{onDismissIntent:()=>{deskIntentDismissed=true;dismissBillingIntent();stripIntentParams();refreshDesk();},onActionVerb:(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string)=>{void deskActionVerb(actionId,verb,text);},onRuleScenario:(scenarioId:string,allowed:boolean)=>{void deskRuleScenario(scenarioId,allowed);},onRevokeGrant:(grantId:string)=>{void deskRevokeGrant(grantId);}});}
- else pushDeskStrip(snapshot);
- // Name the intent inside the auth surface too (blueprint §2.1 E-0):
- // the sign-in block carries the plan line while signed out — founding
- // since Slice 1; rot551 fold C5 extends the same line to the Pro and
- // pack intents, same fail-quiet discipline (no catalog label, no price).
- const line=$('signin-intent-line');
- if(line){
-  const intent=peekBillingIntent();
-  if(!loggedIn&&intent&&!deskIntentDismissed&&intent.kind==='plan'&&intent.id==='founding'){
-   line.textContent=deskCatalog.foundingPriceLabel?`Founding — you're headed here. Sign in and we'll open the Founding plan you chose — ${deskCatalog.foundingPriceLabel}.`:"Founding — you're headed here. Sign in and we'll open the Founding plan you chose.";
-   line.hidden=false;
-  }else if(!loggedIn&&intent&&!deskIntentDismissed&&intent.kind==='plan'&&intent.id==='pro'){
-   line.textContent=deskCatalog.proPriceLabel?`Pro — you're headed here. Sign in and we'll open the Pro plan you chose — ${deskCatalog.proPriceLabel}/mo.`:"Pro — you're headed here. Sign in and we'll open the Pro plan you chose.";
-   line.hidden=false;
-  }else if(!loggedIn&&intent&&!deskIntentDismissed&&intent.kind==='pack'){
-   const pack=deskCatalog.packLabels?.[intent.id];
-   const name=pack?`${pack.name} top-up`:'Top-up';
-   line.textContent=pack?`${name} — you're headed here. Sign in and we'll open the top-up you chose — ${pack.priceLabel}.`:`${name} — you're headed here. Sign in and we'll open the top-up you chose.`;
-   line.hidden=false;
-  }else line.hidden=true;
- }
-}
-function stripIntentParams(){
- try{
-  const url=new URL(location.href);
-  if(!url.searchParams.has('plan')&&!url.searchParams.has('pack'))return;
-  url.searchParams.delete('plan');url.searchParams.delete('pack');
-  history.replaceState(history.state,'',url.toString());
- }catch{/* the carrier is already consumed; the param is inert */}
-}
-async function loadDeskCatalog(){
- try{
-  const response=await fetch('/api/billing/catalog');
-  if(!response.ok)return;
-  const catalog=await response.json() as any;
-  const founding=catalog?.founding;
-  const pro=(catalog?.plans??[]).find((plan:any)=>plan.id==='pro');
-  // rot551 fold C5: pack labels ride the same catalog read, so the
-  // pre-auth summary can name a carried top-up and its one-time price.
-  // Fail-quiet per pack: a malformed entry is dropped, never guessed.
-  const packLabels:DeskCatalog['packLabels']={};
-  for(const pack of (catalog?.creditPacks??[])){
-   if(!pack||(pack.id!=='small'&&pack.id!=='medium'&&pack.id!=='large')||typeof pack.priceCents!=='number')continue;
-   packLabels[pack.id]={name:typeof pack.name==='string'&&pack.name?pack.name:pack.id,priceLabel:`${deskMoney(pack.priceCents)} one-time`};
-  }
-  deskCatalog={
-   ...(typeof catalog?.foundingPriceCents==='number'?{foundingPriceLabel:`${deskMoneyExact(catalog.foundingPriceCents)}/mo · locked for life`}:{}),
-   ...(pro?{proPriceLabel:deskMoney(pro.priceCents)}:{}),
-   seats:founding?.available&&typeof founding.seats_remaining==='number'?{remaining:founding.seats_remaining,total:founding.seats_total}:null,
-   soldOut:Boolean(founding?.available&&founding.seats_remaining===0),
-   ...(Object.keys(packLabels).length?{packLabels}:{}),
-  };
- }catch{/* fail-quiet: the Ribbon renders with no price and no count */}
- refreshDesk();
-}
-async function loadDeskData(force=false){
- if(!tenantId)return;
- if(!force&&Date.now()-deskDataAt<15000)return;
- if(deskDataFlight)return deskDataFlight;
- deskDataFlight=(async()=>{
-  try{
-   const [overview,billing,engine]=await Promise.all([api(`/api/businesses/${tenantId}/overview`).catch(()=>null),api(`/api/businesses/${tenantId}/billing`).catch(()=>null),api(`/api/businesses/${tenantId}/engine/desk`).catch(()=>null)]);
-   if(overview)deskOverview=overview;
-   if(billing)deskBilling=billing;
-   // Fail-quiet: a failed engine fetch keeps the last known engine
-   // intents (initially none) and never surfaces an error — the
-   // Desk works without the engine.
-   if(engine&&Array.isArray(engine.intents))deskEngineIntents=engine.intents as DeskIntent[];
-   deskDataAt=Date.now();
-   refreshDesk();
-  }finally{deskDataFlight=null;}
- })();
- return deskDataFlight;
-}
-/** Re-read the engine's Desk intents after a card verb resolves and
- * re-push the snapshot. Degrades quietly on failure, like the load. */
-async function refreshEngineDeskIntents(){
- if(!tenantId)return;
- try{
-  const engine=await api(`/api/businesses/${tenantId}/engine/desk`);
-  if(engine&&Array.isArray(engine.intents))deskEngineIntents=engine.intents as DeskIntent[];
- }catch{/* fail-quiet: the Desk keeps its current intents */}
- refreshDesk();
-}
-async function deskActionVerb(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string){
- try{await api(`/api/businesses/${tenantId}/engine/actions/${actionId}/${verb}`,verb==='edit'?{text:text??''}:{});}catch{/* the refetch below shows the card's true state */}
- await refreshEngineDeskIntents();
-}
-async function deskRuleScenario(scenarioId:string,allowed:boolean){
- try{await api(`/api/businesses/${tenantId}/engine/scenarios/${scenarioId}/rule`,{allowed});}catch{/* the refetch below shows the card's true state */}
- await refreshEngineDeskIntents();
-}
-async function deskRevokeGrant(grantId:string){
- try{await api(`/api/businesses/${tenantId}/engine/grants/${grantId}/revoke`,{});}catch{/* the refetch below shows the card's true state */}
- await refreshEngineDeskIntents();
-}
-// The signed-out home block is a static, server-injected subtree (the
-// worker SSR-fills #offer-block in the served HTML). It joins the
-// conversation section as the SAME live node — adopted, never
-// re-rendered — so the signed-out home stays byte-identical.
-const signInDonor=$('chat-sign-in-donor');$('conversation').prepend($('chat-sign-in'));signInDonor.remove();
-/** The presence bar's status line is the #status source now: every former
- * $('status').textContent write routes through here. */
-function setStatusText(text:string){chatSnapshot={...chatSnapshot,statusText:text};pushChatView();}
+$<HTMLDetailsElement>('conversation').open=true;
 // Alerts must stay visible when the Account tab is open too.
 let voice:VoiceClient|undefined, tenantId='', loggedIn=false, membershipRole='',sessionUserId='';
 let voiceCall:ReturnType<typeof createVoiceCall>|undefined;
@@ -238,11 +46,11 @@ let accessEnded=false;
 const workspaceAccess=createWorkspaceAccessGuard();
 const accessRecovery=createAccessRecoveryView(()=>location.reload());
 document.querySelector('header')!.after(accessRecovery.element);
-const workspace=createBusinessWorkspace(text=>{if(historyReady&&!accessEnded){void sendTextMessage(text);}},()=>show('connections'),{onRefreshProfile:()=>void refreshBusinessProfile()});
+const workspace=createBusinessWorkspace(text=>{if(historyReady&&!accessEnded){void sendTextMessage(text);$('conversation').setAttribute('open','');}},()=>show('connections'),{onRefreshProfile:()=>void refreshBusinessProfile()});
 const calendarChat=createCalendarChat({api,tenant:()=>tenantId,signIn,followup:text=>void sendTextMessage(text)});
 $('conversation').after(calendarChat.element);
 const calendarLauncher=document.createElement('button');calendarLauncher.type='button';calendarLauncher.className='quiet calendar-launcher';calendarLauncher.textContent='Calendar settings';calendarLauncher.hidden=true;
-calendarLauncher.onclick=()=>{show('chat');void calendarChat.open();};calendarChat.element.after(calendarLauncher);
+calendarLauncher.onclick=()=>{show('chat');$('conversation').setAttribute('open','');void calendarChat.open();};calendarChat.element.after(calendarLauncher);
 $('account-view').append(workspace.element);
 const usageStatus=document.createElement('p');usageStatus.id='usage-status';usageStatus.className='privacy-note';usageStatus.textContent='';
 $('text-form').after(usageStatus);
@@ -396,14 +204,6 @@ let historyReady=false;
 // so the owner's answer to "What's your business called?" becomes the name.
 let namingMode=false;
 let savedTranscript:Array<{role:string;text:string}>=[];
-// Chat reenvision Slice 2 — history paging state. serverPrefix counts
-// the leading savedTranscript rows that came from the server history
-// (session/voice rows append after them); historyEarlier mirrors the
-// server's hasMore for the loaded pages. The page size is a client
-// choice within the server's persisted list — paging is real even
-// though the persisted history itself is bounded (see the report).
-const HISTORY_PAGE=20;
-let serverPrefix=0,historyEarlier=false,earlierLoading=false;
 let confirmedProfile:Record<string,unknown>={};
 function composerPlaceholder(){const name=assistantName(confirmedProfile);return `Ask ${name.length<=14?name:'Mayor'}…`;}
 const ONBOARDING_STEP_LABELS:Record<string,string>={name:'Business name',industry:'Industry',services:'Services',locations:'Locations',hours:'Hours',timeZone:'Time zone',staff:'Team',appointmentTypes:'Appointment length'};
@@ -431,8 +231,8 @@ function renderOnboardingProgress(progress?:{missing:string[];basicsComplete:boo
 function useBusinessProfile(profile:Record<string,unknown>,progress?:{missing:string[];basicsComplete:boolean}){
  confirmedProfile=profile;workspace.profile(profile);renderOnboardingProgress(progress);
  const name=assistantName(profile);$<HTMLTextAreaElement>('message').placeholder=composerPlaceholder();resizeComposer();
+ $('chat-view').querySelector('.page-heading > p')!.textContent=`Tell ${name} what you need. Review details before changing your calendar or saving a customer.`;
  $('chat-view').querySelector<HTMLImageElement>('.portrait img')!.alt=name;
- if(typeof profile.name==='string'&&profile.name&&profile.name!==chatSnapshot.businessName){chatSnapshot={...chatSnapshot,businessName:profile.name};pushChatView();}
  if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(profile,canManage())});
  if(historyReady)transcripts();
 }
@@ -457,20 +257,15 @@ async function refreshBusinessProfile(){
 // Stop waiting / New chat actions) renders via React from this snapshot;
 // the text-chat engine and flows stay here. display:contents keeps the
 // cluster in the composer column exactly where the elements sat.
+const composerHost=document.createElement('div');composerHost.style.display='contents';$('text-form').after(composerHost);
 let composerSnapshot={statusText:'',stopWaitingVisible:false,actionsHidden:false,newChatHidden:false,retryVisible:false};
-function pushComposer(){chatSnapshot={...chatSnapshot,composer:{...composerSnapshot}};pushChatView();}
+function pushComposer(){loadComposerCluster(composerHost,{...composerSnapshot,onStopWaiting:()=>textChat.cancel(),onNewChat:()=>void startNewChat(),onRetry:()=>void start()});}
 function setComposerStatus(text:string){composerSnapshot={...composerSnapshot,statusText:text};pushComposer();}
 function setRetryVisible(visible:boolean){composerSnapshot={...composerSnapshot,retryVisible:visible};pushComposer();}
-const textChat=createTextChat(async(text,requestId,signal,imageIds,stream)=>{
+const textChat=createTextChat(async(text,requestId,signal,imageIds)=>{
  const captured=workspaceAccess.capture();const endpoint=`/api/businesses/${tenantId}/conversation`;
- // Chat reenvision Slice 2: the client asks for the NDJSON stream. A
- // server (or intermediary) that cannot stream answers with the whole
- // reply as JSON exactly as before — detected by content type, never
- // assumed — so either deploy order is safe.
- const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json','x-mayor-stream':'ndjson'},body:JSON.stringify({text,requestId,imageIds}),signal});
- workspaceAccess.assert(captured);
- if(!response.ok){
-  const result=await response.json().catch(()=>({})) as {message?:string;error?:string};
+ const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,requestId,imageIds}),signal});
+ const result=await response.json();workspaceAccess.assert(captured);if(!response.ok){
   if(workspaceAccessWasRejected(endpoint,tenantId,loggedIn,result.error))endWorkspaceAccess();
   // The Plan & usage notice reflects genuine quota failures ONLY (402 /
   // allowance exhausted). A model or gateway failure (502) must never imply
@@ -478,19 +273,11 @@ const textChat=createTextChat(async(text,requestId,signal,imageIds,stream)=>{
   if(response.status===402&&typeof result.message==='string'&&result.message)usageStatus.textContent=result.message;
   const err=new Error(result.message??'Could not send. Your draft is still here.') as Error&{status?:number};
   err.status=response.status;throw err;
- }
- if((response.headers.get('content-type')??'').includes('application/x-ndjson')&&response.body)return await readNdjsonTurn(response.body,stream);
- return await response.json();
+ }return result;
 },(busy,message)=>{if(accessEnded)return;composerSnapshot={...composerSnapshot,statusText:message,stopWaitingVisible:busy};pushComposer();updateNetwork();renderVoiceState();},{
  serviceDownCopy:(status)=>status===502
   ?'The assistant couldn\u2019t reach the AI service — try again in a moment.'
   :undefined,
- // Streaming event frames render the moment they arrive, in their
- // turn's position; the whole-reply fallback's events arrive with the
- // result and are delivered by the engine on completion. Both paths
- // land in the same handler the voice socket uses.
- onEvent:event=>{if(!accessEnded)handleMessage(event);},
- onView:()=>{if(!accessEnded){transcripts();updateNetwork();}},
 });
 // Crew 6j — chat photo attach (mobile-first: camera + photo library).
 // Photos upload first to tenant-scoped storage; the turn references the ids.
@@ -560,25 +347,8 @@ const onPhotoPicked=(input:HTMLInputElement)=>async()=>{const file=input.files?.
 cameraInput.onchange=onPhotoPicked(cameraInput);
 libraryInput.onchange=onPhotoPicked(libraryInput);
 async function loadConversation(){
- const result=await api(`/api/businesses/${tenantId}/conversation?limit=${HISTORY_PAGE}`);
- savedTranscript=result.messages.map((m:any)=>({role:m.role,text:m.content}));serverPrefix=savedTranscript.length;historyEarlier=result.hasMore===true;
- if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceMerge.replacedByServer(voice?.transcript.length??0);clearConversationCards();historyReady=true;transcripts();updateNetwork();
-}
-/** Load the next older page of history and prepend it, keeping the
- * reading position anchored where it was. */
-async function loadEarlier(){
- if(!historyReady||accessEnded||earlierLoading||!historyEarlier)return;
- earlierLoading=true;
- const list=$('transcript'),beforeHeight=list.scrollHeight,beforeTop=list.scrollTop;
- try{
-  const result=await api(`/api/businesses/${tenantId}/conversation?limit=${HISTORY_PAGE}&before=${serverPrefix}`);
-  const older=(result.messages as Array<{role:string;content:string}>).map(m=>({role:m.role,text:m.content}));
-  if(older.length){savedTranscript=[...older,...savedTranscript];serverPrefix+=older.length;}
-  historyEarlier=result.hasMore===true;
-  transcripts();
-  requestAnimationFrame(()=>{list.scrollTop=beforeTop+(list.scrollHeight-beforeHeight);});
- }catch{notice('Earlier messages could not load. Try again.');}
- finally{earlierLoading=false;}
+ const result=await api(`/api/businesses/${tenantId}/conversation`);
+ savedTranscript=result.messages.map((m:any)=>({role:m.role,text:m.content}));if(!savedTranscript.length&&canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});voiceRows.clear();voiceSeen=voice?.transcript.length??0;historyReady=true;transcripts();updateNetwork();
 }
 /** Start a new chat: the server archives the current thread (past history is
  * preserved in the archive table, never deleted) and resets the live agent
@@ -587,16 +357,13 @@ async function loadEarlier(){
 async function startNewChat(){
  if(!loggedIn||accessEnded)return;
  if(textChat.busy){notice('Your reply is still sending. Start a new chat once it finishes.');return;}
- if(textChat.pending){notice('You have a message waiting in this chat. Let it send, or cancel it, before starting a new chat.');return;}
  if(voiceCall?.active||voiceCall?.starting){notice('End the voice conversation before starting a new chat.');return;}
  notice('');
  try{
   await api(`/api/businesses/${tenantId}/conversation/reset`,{});
-  textChat.reset();serverPrefix=0;historyEarlier=false;
   savedTranscript=[];
   if(canChat())savedTranscript.push({role:'assistant',text:assistantGreeting(confirmedProfile,canManage())});
-  voiceMerge.replacedByServer(voice?.transcript.length??0);
-  clearConversationCards();
+  voiceRows.clear();voiceSeen=voice?.transcript.length??0;
   clearTranscriptRender();$('interim').textContent='';
   historyReady=true;transcripts();updateNetwork();
   show('chat');$('transcript').scrollTop=0;
@@ -612,22 +379,8 @@ window.addEventListener('touchstart',event=>{resetPull();const touch=event.touch
 window.addEventListener('touchmove',event=>{const touch=event.touches[0];if(!touch){resetPull();return;}const state=pullGesture.move({x:touch.clientX,y:touch.clientY,id:touch.identifier,touches:event.touches.length},pullGuard());if(state.preventDefault){event.preventDefault();pullStatus.hidden=false;pullStatus.textContent=state.phase==='armed'?'Release to refresh':'Pull to refresh';}else if(!pullBusy)pullStatus.hidden=true;},{passive:false});
 window.addEventListener('touchcancel',resetPull,{passive:true});
 window.addEventListener('touchend',event=>{if(!pullGesture.end(pullGuard(),event.touches.length)){if(!pullBusy)pullStatus.hidden=true;return;}pullBusy=true;updateNetwork();pullStatus.hidden=false;pullStatus.textContent='Refreshing…';void(async()=>{try{const view=document.body.dataset.view;if(view==='chat')await loadConversation();else if(view==='account')await account();else if(view==='connections')await connectionHub.activate();else await workday.refreshCurrent();}catch(error){if(!accessEnded)notice(error instanceof Error?error.message:'Could not refresh. Try again.');}finally{pullBusy=false;pullGesture.finish();pullStatus.hidden=true;updateNetwork();}})();},{passive:true});
-async function settleTextOutcome(outcomePromise:Promise<TextTurnOutcome>){
- const outcome=await outcomePromise;
- if(accessEnded)return;
- // DEF-014: done AND stopped outcomes commit to the saved transcript
- // (applyTextOutcome owns the row shapes). A stopped turn's partial
- // is conversation history, not overlay vapor: once committed, the
- // engine's stopped overlay retires and the pair renders from the
- // saved model — surviving every later submit.
- const applied=applyTextOutcome(savedTranscript,outcome);
- if(outcome.status==='stopped')textChat.commitStopped();
- if(!applied)return;
- transcripts();
- if(outcome.status==='done')$('transcript').scrollTop=$('transcript').scrollHeight;
-}
 async function sendTextMessage(text:string){
- if(!loggedIn||!canChat()||!historyReady||accessEnded||pullBusy||!navigator.onLine)return;
+ if(!loggedIn||!canChat()||!historyReady||accessEnded||textChat.busy||pullBusy||!navigator.onLine)return;
  if(voiceCall?.active||voiceCall?.starting){notice('End the voice conversation before sending a typed message. Your draft is saved here.');return;}
  const input=$<HTMLTextAreaElement>('message');if(!text.trim())return;notice('');
  show('chat');
@@ -635,18 +388,8 @@ async function sendTextMessage(text:string){
  // business name — it creates the business, with that real name, once.
  if(namingMode){await claimBusinessName(text.trim());return;}
  const imageIds=attachedPhotos.map(p=>p.id);
- // Slice 2: submitting during a turn QUEUES the message (pending
- // bubble with cancel) instead of dropping it on the busy check that
- // used to sit in this guard.
- const outcome=textChat.submit(text.trim(),imageIds);
- if(!outcome)return;
- // The message is accepted the moment it is sent: the optimistic (or
- // queued) bubble IS the message, so the composer and the photo chips
- // clear at accept, not at completion. The turn carries the photo ids;
- // Try again reuses them.
- if(input.value.trim()===text.trim())input.value='';
- clearAttachedPhotos();resizeComposer();
- void settleTextOutcome(outcome);
+ const result=await textChat.submit(text.trim(),imageIds);
+ if(result&&!accessEnded){savedTranscript.push({role:'user',text:text.trim()+(imageIds.length?' [photo attached]':'')},{role:'assistant',text:result.reply});for(const event of result.events??[])handleMessage(event);if(input.value.trim()===text.trim())input.value='';clearAttachedPhotos();resizeComposer();transcripts();$('transcript').scrollTop=$('transcript').scrollHeight;}
 }
 function updateNetwork(){
   if(accessEnded)return;
@@ -757,7 +500,7 @@ placesOnboarding=createPlacesOnboarding({
  api:(path,body)=>api(path,body),
  tenant:()=>tenantId,
  canManage,
- openCalendarConnect:()=>{show('chat');void calendarChat.open();},
+ openCalendarConnect:()=>{show('chat');$('conversation').setAttribute('open','');void calendarChat.open();},
  openPhoneCard:()=>{show('account');phoneCard.open=true;phoneCard.scrollIntoView({block:'start',behavior:'smooth'});},
  runMissedCallTest:()=>runPlacesMissedCallTest(),
  onProgress:progress=>renderOnboardingProgress(progress),
@@ -951,31 +694,12 @@ async function api(path:string,body?:unknown,headers:Record<string,string>={}){
  const captured=path==='/api/auth/sign-out'?null:workspaceAccess.capture();
  const customConnection=/^\/api\/businesses\/[a-f0-9]{32}\/connections(?:\/|$)/.test(path);
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),customConnection?20000:15000);
- // Engine events (Slice 0, §1.7): when this browser holds a current
- // GRANTED analytics consent record, assert it on the request — the
- // server then includes analytics copies of money-path events in the
- // response, and the consent-gated loader (the only dispatcher) fires
- // them after re-verifying the record itself. No assertion, no copies.
- const consentApi=(globalThis as any).MayorConsent as {choice?:()=>string|null;emitEngineEvents?:(directives:unknown)=>number}|undefined;
- const consentHeaders:Record<string,string>=consentApi?.choice?.()==='granted'?{'x-mayor-analytics-consent':'granted'}:{};
  try{
-  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'content-type':'application/json'}),...consentHeaders,...headers},body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal});
-  const result=await response.json();if(captured!==null)workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(path,tenantId,loggedIn,result.error))endWorkspaceAccess();throw Object.assign(new Error(result.message??'This service could not finish. Please try again.'),{code:result.error});}
-  if(Array.isArray(result?.analyticsEvents)&&result.analyticsEvents.length){try{consentApi?.emitEngineEvents?.(result.analyticsEvents);}catch{/* measurement never breaks the money path */}}
-  return result;
+  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'content-type':'application/json'}),...headers},body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal});
+  const result=await response.json();if(captured!==null)workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(path,tenantId,loggedIn,result.error))endWorkspaceAccess();throw Object.assign(new Error(result.message??'This service could not finish. Please try again.'),{code:result.error});}return result;
  }catch(error){if(controller.signal.aborted)throw new Error(customConnection?'The connection took too long. Check the connected service before repeating an action.':'This service took too long. Please try again.');throw error;}finally{clearTimeout(timer);}
 }
-let conversationPositioned=false,conversationAtEnd=true,conversationHeight=0,conversationWidth=0;
-/** DEF-021/022: the voice merge lives in voice-merge.ts (index map +
- * seen cursor with an explicit contract for replacement/reconnect). */
-const voiceMerge=createVoiceTranscriptMerge();
-/** DEF-006: cards mounted around #transcript by harness events are
- * registered here so a conversation reset removes them all. */
-const conversationCards=createConversationCardRegistry();
-function clearConversationCards(){
- conversationCards.clear();
- for(const id of ['chat-connections-guide','chat-phone-guide'])document.getElementById(id)?.remove();
-}
+let voiceSeen=0,conversationPositioned=false,conversationAtEnd=true,conversationHeight=0,conversationWidth=0;const voiceRows=new Map<number,{role:string;text:string}>();
 const conversationScroll=$('transcript');
 conversationScroll.addEventListener('scroll',()=>{
  // A viewport reflow is not a request to stop following the latest message.
@@ -986,30 +710,19 @@ new ResizeObserver(()=>{
  if(!conversationPositioned||conversationAtEnd)conversationScroll.scrollTop=conversationScroll.scrollHeight;
  conversationHeight=conversationScroll.clientHeight;conversationWidth=conversationScroll.clientWidth;
 }).observe(conversationScroll);
-function clearTranscriptRender(){chatSnapshot={...chatSnapshot,rows:[],earlierVisible:false};pushChatView();}
+function clearTranscriptRender(){loadTranscriptList($('transcript'),{rows:[],assistantLabel:assistantName(confirmedProfile),onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.')});}
 function transcripts(){
  if(accessEnded)return;
  const list=$('transcript'),follow=list.scrollHeight-list.scrollTop-list.clientHeight<80;
  const live=voice?.transcript??[];
- voiceMerge.merge(savedTranscript,live);
+ for(let i=voiceSeen;i<live.length;i++){let row=voiceRows.get(i);if(!row){row={role:live[i].role,text:live[i].text};voiceRows.set(i,row);savedTranscript.push(row);}else row.text=live[i].text;}
  $('chat-empty').hidden=!loggedIn||savedTranscript.length>0;
- // Chat reenvision Slice 2: the silent 200-row cap is GONE. The full
- // loaded history renders; anything older still held by the server is
- // one tap away via "Earlier ↑" (historyEarlier). The engine's
- // live-turn overlay — the optimistic owner row, the acting/streaming
- // assistant row, stopped/failed items, queued owner rows — renders
- // after the saved rows, in turn order.
- // The rows render inside the ChatApp tree from this model; the list
- // element, its scroll bookkeeping, and the ResizeObserver follow logic
- // stay here. Cards and guides mount before/after the list, never
- // inside it, so the tree owns the rows alone.
- const rows:TranscriptRow[]=savedTranscript.map(m=>({role:m.role,text:m.text}));
- const tv=textChat.snapshot();
- if(tv.stopped){rows.push({role:'user',text:tv.stopped.text,turnId:tv.stopped.requestId},{role:'assistant',text:tv.stopped.partial,state:'stopped',turnId:tv.stopped.requestId});}
- if(tv.failed){rows.push({role:'user',text:tv.failed.text,turnId:tv.failed.requestId},{role:'assistant',text:tv.failed.partial,state:'error',error:tv.failed.message,turnId:tv.failed.requestId});}
- if(tv.active){rows.push({role:'user',text:tv.active.text,state:'sending',turnId:tv.active.requestId},{role:'assistant',text:tv.active.partial,state:tv.active.phase,turnId:tv.active.requestId});}
- for(const queued of tv.queue)rows.push({role:'user',text:queued.text,state:'queued',turnId:queued.requestId});
- chatSnapshot={...chatSnapshot,rows,assistantLabel:assistantName(confirmedProfile),earlierVisible:historyEarlier&&historyReady};pushChatView();
+ const messages=savedTranscript.slice(-200);
+ // React migration S2d: the rows render via React from this model; the
+ // list element, its scroll bookkeeping, and the ResizeObserver follow
+ // logic stay here. Cards and guides mount before/after the list, never
+ // inside it, so the React root owns the rows alone.
+ loadTranscriptList(list,{rows:messages.map(m=>({role:m.role,text:m.text})),assistantLabel:assistantName(confirmedProfile),onCopyFailed:()=>notice('Copy could not finish. Select the reply text to copy it.')});
  // History can load while Today is visible, when the chat has no scrollable
  // height. Position it once after it becomes visible; preserve earlier-reading
  // positions on later tab switches and incremental transcript updates.
@@ -1018,10 +731,7 @@ function transcripts(){
 async function connect(){
   const session=await api('/api/voice/session',{tenantId});
   voiceCall?.stop();voice?.disconnect();
-  // DEF-022: the saved rows stay, so the merge map stays too — the new
-  // client's indices restart at 0 and must reconcile against the rows
-  // already in the transcript, never duplicate them.
-  voiceMerge.reconnected();updateNetwork();
+  voiceRows.clear();voiceSeen=0;updateNetwork();
   const microphone=new MayorMicrophone();
   const client=voice=new VoiceClient({agent:session.agent,name:session.name,query:{business:tenantId},audioInput:microphone});
   const active=()=>voice===client&&!accessEnded;
@@ -1058,8 +768,8 @@ function endWorkspaceAccess(){
  if(accessEnded)return;
  chatKeyboard.dispose();
  closeConsentSheet();
- accessEnded=true;namingMode=false;workspaceAccess.end();textChat.reset();serverPrefix=0;historyEarlier=false;voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
- savedTranscript=[];confirmedProfile={};voiceMerge.clear();conversationCards.clear();clearTranscriptRender();$('interim').textContent='';
+ accessEnded=true;namingMode=false;workspaceAccess.end();textChat.cancel();voiceCall?.stop();voice?.disconnect();voiceConnected=false;historyReady=false;loggedIn=false;membershipRole='';sessionUserId='';
+ savedTranscript=[];confirmedProfile={};voiceRows.clear();clearTranscriptRender();$('interim').textContent='';
  workspace.clear();workday.clear();connectionHub.reset();voiceHealth.clear();calendarChat.clear();calendarLauncher.hidden=true;$('calendar-status').hidden=true;voiceHelp.open=false;voiceHelp.hidden=true;micLevel.hidden=true;micLevel.value=0;
  $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
  for(const node of [$('profile'),phoneGuide,phoneControls])node.replaceChildren();inboxSnapshot={...inboxSnapshot,items:[],hasMore:false,showReconnect:false};pushInbox();
@@ -1083,19 +793,16 @@ function handleMessage(data:unknown){
         guide.replaceChildren();const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Open Connections';open.onclick=()=>show('connections');guide.append(open);
       }
       const message=data as any;
-      if(message.type==='calendar_connection_guide'&&message.guide&&Array.isArray(message.guide.providers)){calendarChat.render(message.guide);}
+      if(message.type==='calendar_connection_guide'&&message.guide&&Array.isArray(message.guide.providers)){calendarChat.render(message.guide);$('conversation').setAttribute('open','');}
       // Crew 6h — in-conversation connector cards: offer / guide / credential
       // capture / reconnect. The card never carries a secret; the capture form
       // posts straight to the encrypted credential store.
       if(message.type==='connector_card'&&isConnectorCardPayload(message.card)){
         const card=renderConnectorCard(message.card,{api,tenant:()=>tenantId,signIn,onNotice:message=>notice(message)});
         $('transcript').after(card);
-        // DEF-006: registered so New chat / history reload removes it —
-        // a live credential form must not outlive its conversation.
-        conversationCards.register(card);
         card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});
       }
-      if(message.type==='calendar_inventory'&&Array.isArray(message.connections)&&message.setup){calendarChat.inventory(message);}
+      if(message.type==='calendar_inventory'&&Array.isArray(message.connections)&&message.setup){calendarChat.inventory(message);$('conversation').setAttribute('open','');}
       if(message.type==='business_context'&&message.profile&&typeof message.profile==='object')useBusinessProfile(message.profile);
       if(message.type==='mehyar_expertise'&&Array.isArray(message.services)&&message.services.every((s:any)=>s&&typeof s.name==='string'&&typeof s.scope==='string'))workspace.expertise(message.services);
       if(message.type==='usage_notice'){
@@ -1110,11 +817,7 @@ function handleMessage(data:unknown){
     if(data&&typeof data==='object'&&(data as any).type==='conversation_history'&&!historyReady){
       const messages=(data as any).messages;
       if(Array.isArray(messages)&&messages.length<=50&&messages.every(m=>m&&['user','assistant'].includes(m.role)&&typeof m.text==='string')){
-        // DEF-021: the saved array was just replaced — the voice merge
-        // must drop its row references and treat the server snapshot as
-        // the record, or merged voice rows orphan (mutations land on
-        // objects no longer rendered) and re-push as duplicates.
-        savedTranscript=messages;serverPrefix=0;historyEarlier=false;voiceMerge.replacedByServer(voice?.transcript.length??0);historyReady=true;transcripts();updateNetwork();
+        savedTranscript=messages;historyReady=true;transcripts();updateNetwork();
       }
     }
     if(data&&typeof data==='object'&&(data as any).type==='website_source'){
@@ -1138,17 +841,11 @@ function renderVoiceState(){
  const status=voice?.status??'idle',starting=voiceCall?.starting??false;
  document.body.className=!navigator.onLine?'offline':loggedIn&&!voiceConnected?'reconnecting':starting?'starting':textChat.busy?'thinking':status;
  document.body.dataset.voiceActive=String(starting||Boolean(voiceCall?.active));
- setStatusText(textChat.busy?'Working on your message…':!historyReady&&loggedIn?'Loading your conversation…':microphoneProblem&&!starting?'Voice needs attention':starting?'Starting microphone…':({idle:'Ready when you are',listening:'I’m listening',thinking:'Thinking it through',speaking:assistantName(confirmedProfile)+' is speaking'})[status]);
+ $('status').textContent=textChat.busy?'Working on your message…':!historyReady&&loggedIn?'Loading your conversation…':microphoneProblem&&!starting?'Voice needs attention':starting?'Starting microphone…':({idle:'Ready when you are',listening:'I’m listening',thinking:'Thinking it through',speaking:assistantName(confirmedProfile)+' is speaking'})[status];
  $('talk').querySelector('span')!.textContent=starting?'Cancel voice startup':voiceCall?.active?'End conversation':microphoneProblem?'Try microphone again':'Talk to '+assistantName(confirmedProfile);
  $('talk').setAttribute('aria-label',$('talk').querySelector('span')!.textContent!);
  $('dock-voice-label').textContent=$('talk').querySelector('span')!.textContent;
  $('mute').hidden=starting||!voiceCall?.active;
- // DEF-024: the mute label is current state, not history. It used to
- // be written only by the mutechange event, so after a reconnect the
- // fresh (unmuted) client inherited the previous client's "Unmute" —
- // an owner could believe they were muted while live. Write it from
- // the actual state on every render.
- $('mute').textContent=voice?.isMuted?'Unmute':'Mute';
  micLevel.hidden=!voiceCall?.active;if(micLevel.hidden)micLevel.value=0;
  $('voice-hint').textContent=starting?'Allow microphone access in your browser to begin. You can cancel and type instead.':voiceCall?.active?'Speak naturally. You can interrupt me anytime.':microphoneProblem|| (voiceConnected?'Press Talk to begin. I’ll greet you when your microphone is ready.':'Voice is reconnecting. You can still type below.');
 }
@@ -1196,7 +893,7 @@ $('sign-in').onclick=()=>signIn();
 $('sign-in-microsoft').onclick=()=>signIn('microsoft');
 $('chat-google-sign-in').onclick=()=>signIn();
 $('chat-microsoft-sign-in').onclick=()=>signIn('microsoft');
-$('logout').onclick=async()=>{endWorkspaceAccess();try{await api('/api/auth/sign-out',{});location.reload();}catch{setStatusText('Sign-out could not finish. Reload to check your account.');}};
+$('logout').onclick=async()=>{endWorkspaceAccess();try{await api('/api/auth/sign-out',{});location.reload();}catch{$('status').textContent='Sign-out could not finish. Reload to check your account.';}};
 async function account(){
   if(!loggedIn||accessEnded)return;
   if(membershipRole==='billing'){show('billing');return;}
@@ -1318,7 +1015,6 @@ function show(tab:WorkdayView){
   workday.show(tab);
   chatKeyboard.sync();
   if(tab==='chat'&&!conversationPositioned)requestAnimationFrame(()=>{if(document.body.dataset.view==='chat')transcripts();});
-  if(tab==='chat')void loadDeskData();
   if(tab==='account')account().catch(error=>notice(error.message));
   if(tab==='connections'&&canManage()){void connectionHub.activate().catch(error=>notice(error.message));loadConnectorSessions({api,tenant:()=>tenantId,signIn,onNotice:message=>notice(message)});}
 }
@@ -1329,10 +1025,6 @@ async function init(){
   // Public offer block: catalog-priced plans on the logged-out view. Non-blocking;
   // the price-free fallback stays if the catalog can't be reached.
   void loadOfferBlock();
-  // The Desk strip (Slice 1): the catalog feeds the founding Ribbon's
-  // price/seats (fail-quiet); the strip itself mounts on arrival.
-  void loadDeskCatalog();
-  refreshDesk();
   $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
   const capabilities=await api('/api/auth/capabilities');
   if(!capabilities.providers.google.configured){
@@ -1381,7 +1073,6 @@ async function init(){
  * owner's answer becomes the business name. No business exists yet here. */
 function enterNamingMode(){
   namingMode=true;
-  refreshDesk();
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=false;
   composerSnapshot={...composerSnapshot,actionsHidden:false,newChatHidden:true};pushComposer();
   // No conversation exists yet — a reset would hit a tenant-less endpoint.
@@ -1390,7 +1081,7 @@ function enterNamingMode(){
   // The composer is the naming input; there is no conversation history yet.
   historyReady=true;transcripts();updateNetwork();
   $<HTMLTextAreaElement>('message').placeholder='Your business name…';
-  setStatusText('Welcome to The Mayor');
+  $('status').textContent='Welcome to The Mayor';
   $('voice-hint').textContent='Name your business first — then we can talk.';
 }
 
@@ -1412,7 +1103,7 @@ async function claimBusinessName(name:string){
 }
 
 async function enterBusiness(businesses:Array<{id:string;name:string;role:string}>,business:{id:string;name:string;role:string}){
-  tenantId=business.id;membershipRole=business.role;composerSnapshot={...composerSnapshot,newChatHidden:false};chatSnapshot={...chatSnapshot,businessName:business.name};pushComposer();
+  tenantId=business.id;membershipRole=business.role;composerSnapshot={...composerSnapshot,newChatHidden:false};pushComposer();
   $('business-identity').hidden=false;
   $('open-connections').hidden=!canManage();$('open-connections').closest<HTMLElement>('.account-card')!.hidden=!canManage();
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=!canChat();newChatHeader.hidden=!canChat();composerSnapshot={...composerSnapshot,actionsHidden:false};pushComposer();
@@ -1423,12 +1114,12 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
   const connectionError=new URLSearchParams(location.search).get('auth_error');
   const connectedProvider=new URLSearchParams(location.search).get('connected');
   if(canManage()&&(connectedProvider==='telnyx'||connectionError==='telnyx_connection')){
-    show('chat');
+    show('chat');$('conversation').setAttribute('open','');
     void api('/api/phone-guide?mode=existing&provider=telnyx').then(guide=>handleMessage({type:'phone_setup_guide',guide})).catch(()=>notice('Phone options could not load. Ask me to connect Telnyx to try again.'));
     notice(connectedProvider==='telnyx'?'Telnyx is connected. Choose your business number below. Calling still needs setup.':'The Telnyx connection did not finish. Try connecting again below.');
   }
-  else if(canManage()&&connectedProvider&&['google','microsoft','zoho'].includes(connectedProvider)){void calendarChat.open(undefined,connectedProvider);}
-  else if(canManage()&&connectionError){notice('The calendar connection did not finish. Your existing business details are safe. Try connecting again below.');void calendarChat.open(undefined,connectionError.startsWith('zoho_')?'zoho':undefined);}
+  else if(canManage()&&connectedProvider&&['google','microsoft','zoho'].includes(connectedProvider)){void calendarChat.open(undefined,connectedProvider);$('conversation').setAttribute('open','');}
+  else if(canManage()&&connectionError){notice('The calendar connection did not finish. Your existing business details are safe. Try connecting again below.');void calendarChat.open(undefined,connectionError.startsWith('zoho_')?'zoho':undefined);$('conversation').setAttribute('open','');}
   inboxSnapshot={...inboxSnapshot,hidden:true};pushInbox();$('notifications-button').hidden=!canManage();if(canManage())void refreshInbox();
   if(canManage()&&new URLSearchParams(location.search).get('notifications')==='1'){inboxSnapshot={...inboxSnapshot,hidden:false,open:true};pushInbox();void refreshInbox();}
   timezoneSuggestion.element.hidden=!canChat();timezoneSuggestion.ready(canChat());
@@ -1436,40 +1127,21 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
   phoneCard.hidden=!canManage();
   if(canChat()){if(!canManage())show('chat');const memory=await api(`/api/businesses/${tenantId}/profile`);confirmedProfile=memory.profile;await loadConversation();useBusinessProfile(memory.profile,memory.progress);void connect().catch(error=>{microphoneProblem=`Voice could not connect. Text chat is available. ${error.message}`;renderVoiceState();});}
   else{
-    setStatusText('Account access');
+    $('status').textContent='Account access';
     $('voice-hint').textContent=membershipRole==='billing'?'Your role manages the subscription and shared usage in Plan & usage.':'Your role does not include voice or text chat. Business details are available in Account.';
     show(membershipRole==='billing'?'billing':'account');
   }
   // SPA deep links: /today, /feed, /billing, /connectors, /settings, /account
   // serve the app shell (see spaViewForPath in src/public-routes.ts).
   // Activate the matching view; workday.show() already guards by role.
-  // Slice 1: /today lands on the Desk — the home view (chat view head)
-  // where the Morning Line + intent stream live; the legacy workday
-  // overview remains on its Today tab until the view-merge slice.
-  const deepLink:Record<string,WorkdayView>={'/today':'chat','/feed':'feed','/billing':'billing','/connectors':'connections','/settings':'account','/account':'account'};
+  const deepLink:Record<string,WorkdayView>={'/today':'today','/feed':'feed','/billing':'billing','/connectors':'connections','/settings':'account','/account':'account'};
   const deepView=deepLink[location.pathname];
   if(deepView)show(deepView);
   // Purchase intent (NEW-1): a /sales or /pricing buy click lands
   // here after sign-in (URL param, or the stash from the pre-sign-in
   // boot). Land on billing with the plan/pack preselected.
   const purchaseIntent=takeBillingIntent();
-  if(purchaseIntent){
-    workday.billingIntent(purchaseIntent);
-    // The carrier is consumed: clear the URL params so a peek (the
-    // Ribbon) or a later boot can never resurrect a spent intent.
-    stripIntentParams();
-  }
-  refreshDesk();
-  void loadDeskData();
-  // Stripe return (Slice 1): the owner lands in the Desk — the home
-  // view — with the fulfilled intent visible as a completion Receipt
-  // once the billing sync writes it. The sync itself runs through
-  // workday.ready()'s billing load; the Desk re-reads on a beat so
-  // the Receipt lands without a manual refresh.
-  if(new URLSearchParams(location.search).get('billing')==='success'){
-    show('chat');
-    window.setTimeout(()=>{void loadDeskData(true);},3000);
-  }
+  if(purchaseIntent)workday.billingIntent(purchaseIntent);
   // One Connector phone handoff (P3 slice 2): /connect/<session id> renders
   // that session's card in chat — the same attempt, continued on this device.
   const handoff=location.pathname.match(/^\/connect\/([a-f0-9-]{36})$/);
@@ -1487,6 +1159,6 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
     }catch{notice('That connection link did not match an attempt on this account.');}
   }
 }
-async function start(){if(accessEnded)return;setRetryVisible(false);try{await init();}catch(error){if(accessEnded)return;notice((error as Error).message);setRetryVisible(true);setStatusText('Could not load your workspace');}}
+async function start(){if(accessEnded)return;setRetryVisible(false);try{await init();}catch(error){if(accessEnded)return;notice((error as Error).message);setRetryVisible(true);$('status').textContent='Could not load your workspace';}}
 pushComposer();show('chat');void start();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(()=>{});

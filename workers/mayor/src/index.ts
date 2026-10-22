@@ -1,11 +1,10 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
-import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans} from './offer-block-ssr';
+import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
 import {auditOffer} from './billing/audit';
 import {foundingSeats} from './billing/founding';
 import {handleConnectionsRequest} from './connections';
-import {handleEngineRequest} from './engine/routes';
 import {handleConnectorEngineRequest,getConnectorSession} from './connector-engine';
 import {readHarnessRuntime} from './harness-runtime';
 import {sessionCardFor,ensureSessionCard} from './connector-session-card';
@@ -45,7 +44,7 @@ import {listNotifications,refreshAttentionNotifications,markNotificationRead} fr
 import {readRecurringCheck,pauseRecurringCheck,runRecurringChecks} from './recurring-checks';
 import {readEmailPreference,saveEmailPreference,emailPreferenceSchema,queueNotificationEmails,deliverNotificationEmails} from './notification-email';
 import {runAttentionCycle} from './attention-cycle';
-import {saveTelnyxCallSetup,telnyxCallSetupSchema,saveTelnyxLiveSetup,telnyxLiveSetupSchema,connectTelnyx,telnyxNumbers,selectTelnyxNumber,disconnectTelnyx,telnyxConnectionSchema} from './telnyx-connections';
+import {saveTelnyxCallSetup,telnyxCallSetupSchema,connectTelnyx,telnyxNumbers,selectTelnyxNumber,disconnectTelnyx,telnyxConnectionSchema} from './telnyx-connections';
 import {gmailConnections,gmailReadSchema,readUnreadGmail} from './gmail';
 import {readConversationRecovery,resetConversationRecovery} from './conversation-recovery';
 import {recordMissedCall,sendTextBack,simulateTextBack,missedCallCard,listRecentMissedCalls,missedCallInputSchema} from './missed-call-textback';
@@ -54,8 +53,6 @@ import {finishTelnyxConsent} from './auth/telnyx-callback';
 import {telnyxOAuthConfig} from './auth/telnyx-vault';
 import {handleOperationsRequest} from './operations';
 import {handleBillingPublic,handleBillingRequest} from './billing';
-import {productDescriptorResponse,currentDescriptor,stampDescriptorHash} from './product-descriptor';
-import {analyticsConsentAsserted,emitEngineEvent} from './engine-events';
 import {handleLeadsPublic,deliverPendingLeadEmails,deliverLoopEmails} from './leads';
 import {runBusinessAudits} from './business-audit';
 import {handleBusinessRoutinesRequest,runBusinessRoutines,routineNotifications,markRoutineBriefRead} from './business-routines';
@@ -86,27 +83,13 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(mcp)return mcp;
   const publicBilling=await handleBillingPublic(request,env);
   if(publicBilling)return publicBilling;
-  // ProductDescriptor (§1.7): the API's self-description. Its hash is
-  // stamped on the landing/OG surfaces below; a mismatch fails tests.
-  const productDescriptor=await productDescriptorResponse(request,env);
-  if(productDescriptor)return productDescriptor;
   const publicLead=await handleLeadsPublic(request,env);
   if(publicLead)return publicLead;
   if((url.pathname==='/business-audit'||url.pathname==='/business-audit/report')&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The audit page is not built yet.',{status:503});
     // Fetch the clean asset path: ASSETS redirects .html back to this route.
     const target=new URL('/business-audit',request.url);
-    const assetRes=await env.ASSETS.fetch(new Request(target,request));
-    const contentType=assetRes.headers.get('content-type')??'';
-    if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),stamped=stampDescriptorHash(original,(await currentDescriptor(env)).hash);
-      if(stamped!==original){
-        const headers=new Headers(assetRes.headers);
-        headers.set('content-type','text/html; charset=utf-8');
-        return new Response(stamped,{status:assetRes.status,headers});
-      }
-    }
-    return assetRes;
+    return env.ASSETS.fetch(new Request(target,request));
   }
   // Unauthenticated home: server-render the pricing summary into #offer-block
   // from the live billing catalog (amounts never hardcoded). If injection
@@ -117,7 +100,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const assetRes=await env.ASSETS.fetch(new Request(new URL('/',request.url),request));
     const contentType=assetRes.headers.get('content-type')??'';
     if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),injected=stampDescriptorHash(injectHeroPrice(injectOfferBlock(original,auditOffer(env).available,await foundingSeats(env))),(await currentDescriptor(env)).hash);
+      const original=await assetRes.text(),injected=injectHeroPrice(injectOfferBlock(original,auditOffer(env).available,await foundingSeats(env)));
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');
@@ -138,7 +121,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       // Server-render the plan-card prices from the live billing catalog
       // (rot107) — the page source stays price-free, amounts are never
       // hardcoded. If injection changes nothing, serve the asset as-is.
-      const original=await assetRes.text(),injected=stampDescriptorHash(injectHeroPrice(injectSalesPlans(original,auditOffer(env).available,await foundingSeats(env))),(await currentDescriptor(env)).hash);
+      const original=await assetRes.text(),injected=injectHeroPrice(injectSalesPlans(original,auditOffer(env).available,await foundingSeats(env)));
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');
@@ -158,7 +141,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const assetRes=await env.ASSETS.fetch(new Request(target,request));
     const contentType=assetRes.headers.get('content-type')??'';
     if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),injected=stampDescriptorHash(injectHeroPrice(injectPricingCards(original,auditOffer(env).available,await foundingSeats(env))),(await currentDescriptor(env)).hash);
+      const original=await assetRes.text(),injected=injectHeroPrice(injectPricingCards(original,auditOffer(env).available,await foundingSeats(env)));
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');
@@ -179,9 +162,9 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(url.pathname==='/faq'&&request.method==='GET'){
     return Response.redirect(new URL('/sales#faq',request.url).toString(),301);
   }
-  // SEO article #1 was renamed by the de-buzzword sweep (2026-10-20): keep the
-  // original slug working forever.
-  if(url.pathname==='/blog/agentic-front-desk-missed-calls'&&request.method==='GET'){
+  // De-buzzword sweep 2026-10-20 (Mayor's ruling: outcome language everywhere):
+  // article #1's slug dropped "agentic"; keep the published URL working forever.
+  if((url.pathname==='/blog/agentic-front-desk-missed-calls'||url.pathname==='/blog/agentic-front-desk-missed-calls.html')&&request.method==='GET'){
     return Response.redirect(new URL('/blog/front-desk-missed-calls',request.url).toString(),301);
   }
   if((url.pathname==='/privacy'||url.pathname==='/privacy-policy')&&request.method==='GET'){
@@ -193,22 +176,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(isSalesVerticalPath(url.pathname)&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
     const target=new URL(url.pathname,request.url);
-    const assetRes=await env.ASSETS.fetch(new Request(target,request));
-    const contentType=assetRes.headers.get('content-type')??'';
-    if(assetRes.ok&&contentType.includes('text/html')){
-      // rot551 fold C4: server-render the plan cards from the live
-      // billing catalog into the page's plans section — the same
-      // renderers and the same founding seam as /sales (amounts never
-      // hardcoded; the page source stays price-free). If injection
-      // changes nothing, serve the asset as-is.
-      const original=await assetRes.text(),injected=injectVerticalPlans(original,await foundingSeats(env));
-      if(injected!==original){
-        const headers=new Headers(assetRes.headers);
-        headers.set('content-type','text/html; charset=utf-8');
-        return new Response(injected,{status:assetRes.status,headers});
-      }
-    }
-    return assetRes;
+    return env.ASSETS.fetch(new Request(target,request));
   }
   const telnyxIncoming=url.pathname.match(/^\/api\/phone\/telnyx\/incoming\/([a-f0-9-]{32,36})$/);
   const telnyxStream=url.pathname.match(/^\/api\/phone\/telnyx\/stream\/([a-f0-9-]{36})\/([a-f0-9]{64})$/);
@@ -271,8 +239,6 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const actor={tenantId:businessRoute[1],userId:session.user.id};
     const connections=await handleConnectionsRequest(request,env,actor);
     if(connections)return connections;
-    const engine=await handleEngineRequest(request,env,actor);
-    if(engine)return engine;
     const connectorEngine=await handleConnectorEngineRequest(request,env,actor);
     if(connectorEngine)return connectorEngine;
     const sessionCardRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/card$/);
@@ -318,37 +284,12 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(conversation){
     const tenantId=conversation[1],identity={tenantId,userId:session.user.id,sessionId:session.session.id};
     await requireMembership(env,identity,CHAT_ROLES);
-    if(request.method==='GET'){
-      const full=await readConversationRecovery(env,identity);
-      // Chat reenvision Slice 2 — history paging. No params: the exact
-      // pre-Slice-2 response (old clients and the voice hydration are
-      // untouched). With ?limit (page size) and ?before (how many of
-      // the LATEST messages the caller already holds), the response
-      // carries the next older page plus total/hasMore, so the client
-      // can offer an honest "Earlier" affordance instead of a silent cap.
-      const limitRaw=url.searchParams.get('limit'),beforeRaw=url.searchParams.get('before');
-      if(limitRaw===null&&beforeRaw===null)return json(full);
-      const total=full.messages.length;
-      const parsedLimit=Number.parseInt(limitRaw??'',10);
-      const limit=Number.isFinite(parsedLimit)?Math.min(Math.max(parsedLimit,1),50):50;
-      const parsedBefore=beforeRaw===null?0:Number.parseInt(beforeRaw,10);
-      const held=Number.isFinite(parsedBefore)?Math.min(Math.max(parsedBefore,0),total):0;
-      const end=total-held;
-      const start=Math.max(0,end-limit);
-      return json({revision:full.revision,messages:full.messages.slice(start,end),total,hasMore:start>0});
-    }
+    if(request.method==='GET')return json(await readConversationRecovery(env,identity));
     if(request.method==='POST'){
       const input=z.object({requestId:z.uuid(),text:z.string().trim().min(1).max(4000),imageIds:z.array(z.string().uuid()).max(2).optional()}).strict().parse(await readJson(request,20000));
       const name=await digest(`${tenantId}:${session.user.id}`),headers=new Headers({'content-type':'application/json'});
       headers.set('x-mayor-tenant',tenantId);headers.set('x-mayor-user',session.user.id);headers.set('x-mayor-session',session.session.id);
-      // Streaming opt-in rides a header, never the body: the zod schema
-      // stays strict and the fallback contract stays byte-identical.
-      // The client's abort signal is forwarded on streaming requests so
-      // Stop reaches the turn; the fallback path keeps today's
-      // disconnect semantics exactly.
-      const streaming=request.headers.get('x-mayor-stream')==='ndjson';
-      if(streaming)headers.set('x-mayor-stream','ndjson');
-      return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/chat`,{method:'POST',headers,body:JSON.stringify(input),...(streaming?{signal:request.signal}:{})}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Conversation is temporarily unavailable.'},503);
+      return await routeAgentRequest(new Request(`${env.APP_ORIGIN}/agents/mayor-voice/${name}/chat`,{method:'POST',headers,body:JSON.stringify(input)}),{...env,MayorVoice:env.MAYOR_VOICE},{routingRetry:false})??json({message:'Conversation is temporarily unavailable.'},503);
     }
   }
   // Crew 6j — chat photo upload (multipart, field "image") and delete.
@@ -402,20 +343,10 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     // A stable initial workspace prevents repeated start clicks creating duplicates.
     const id=(await digest(`mayor-first-business:${session.user.id}`)).slice(0,32);
     const now=new Date().toISOString();
-    const prior=await env.AGENT_DB.prepare('SELECT id FROM agent_tenants WHERE id=?').bind(id).first<{id:string}>();
     await env.AGENT_DB.batch([
       env.AGENT_DB.prepare("INSERT OR IGNORE INTO agent_tenants(id,name,status,created_at) VALUES(?,?,'active',?)").bind(id,input.name,now),
       env.AGENT_DB.prepare("INSERT OR IGNORE INTO agent_memberships(tenant_id,user_id,role,status) VALUES(?,?,'owner','active')").bind(id,session.user.id),
     ]);
-    // Engine events (§1.7): signup completes engine-side when the first
-    // business is provisioned — the operational event writes to the new
-    // tenant's ledger; its analytics copy rides this response only when
-    // the request asserts a current granted consent record. Repeat
-    // start clicks (the tenant already exists) emit nothing.
-    if(!prior){
-      const directives=await emitEngineEvent(env,{tenantId:id,actorId:session.user.id,type:'sign_up',resourceId:id,consentGranted:analyticsConsentAsserted(request)});
-      if(directives.length)return json({id,analyticsEvents:directives},201);
-    }
     return json({id},201);
   }
   const gmail=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/gmail(?:\/(unread))?$/);
@@ -474,8 +405,6 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   }
   const telnyxSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-connections\/telnyx\/test-setup$/);
   if(telnyxSetup&&request.method==='POST')return json(await saveTelnyxCallSetup(env,{tenantId:telnyxSetup[1],userId:session.user.id},telnyxCallSetupSchema.parse(await readJson(request,2048))));
-  const telnyxLiveSetup=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-connections\/telnyx\/live-setup$/);
-  if(telnyxLiveSetup&&request.method==='POST')return json(await saveTelnyxLiveSetup(env,{tenantId:telnyxLiveSetup[1],userId:session.user.id},telnyxLiveSetupSchema.parse(await readJson(request,2048))));
   const phoneManagement=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/phone-connections\/(twilio|telnyx)\/application$/);
   if(phoneManagement&&(request.method==='GET'||request.method==='POST')){
     if(request.method==='POST')z.object({confirm:z.literal('prepare_application')}).strict().parse(await readJson(request,256));

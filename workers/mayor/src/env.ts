@@ -44,18 +44,6 @@ export interface Env extends AuthEnv {
   MAYOR_AUDIT_INFERENCE_MODE?: string;
   ENVIRONMENT: string;
   ASSETS?: Fetcher;
-  /** Stage 5 decide() endpoint (Slice 2). Unset ⇒ decide() is
-   * unavailable and the engine falls back to prepare-and-ask. */
-  ENGINE_DECIDE_URL?: string;
-  /** Audience → Mayor integration, Phase B: the read-only second
-   * D1 binding over campaign_intel (the fleet audience store —
-   * web_events / web_visitors). Written by the mayor-beacon route
-   * worker; this worker only ever SELECTs from it (engine/audience.ts).
-   * Optional in the type because a binding can lag a deploy; the
-   * OPERATORS-gated /engine/audience route fails closed (503) when
-   * it is absent. Never a tenant surface: portfolio intel, not
-   * tenant data. */
-  AUDIENCE_DB?: D1Database;
 }
 export type Role = 'owner' | 'manager' | 'staff' | 'viewer' | 'billing';
 export interface Actor { userId: string; tenantId: string; }
