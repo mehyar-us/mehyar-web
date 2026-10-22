@@ -356,7 +356,7 @@
           "name": "How fast do I get the audit results?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Most audits are delivered within 3 business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs."
+            "text": "Most audits are delivered within a few business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs."
           }
         },
         {
@@ -464,23 +464,6 @@
           "name": "When to Build Custom Software (and When Not To)"
         }
       ]
-    },
-    {
-      "@type": "Service",
-      "@id": "https://mehyar.us/audit/#service",
-      "name": "Audit My Business",
-      "url": "https://mehyar.us/audit/",
-      "description": "One-time $330 AI audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
-      "provider": {
-        "@id": "https://mehyar.us/#professional-service"
-      },
-      "areaServed": "Worldwide",
-      "offers": {
-        "@type": "Offer",
-        "price": "330",
-        "priceCurrency": "USD",
-        "url": "https://mehyar.us/audit/"
-      }
     }
   ],
   "/blog/small-business-tech-audit-revenue-leaks": [
@@ -1739,10 +1722,10 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "Which offer is which — the free scan, the Full Report, or Audit My Business?",
+          "name": "Is this the same as the founder-led $330 tech audit?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Three different rungs. The free scan scores your public site and names your top money leaks — free, no card. The Full Report ($5, one-time) is the complete written breakdown of that scan: every leak found, priced and ranked. Audit My Business ($330, one-time) is the deep audit — a separate, fuller report built from your site and your walkthrough video, with prioritized fixes and an AI opportunity map, delivered by email within 3–5 business days; if you bought the Full Report first, its $5 is credited toward the $330. The founder-led $330 tech audit is a different product again: a human review, invoiced by email."
+            "text": "No — same price, different product. The founder-led $330 tech audit is a human review, invoiced by email. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email within a few business days."
           }
         },
         {

@@ -3,95 +3,46 @@ import {createTextChat} from '../web/text-chat';
 import {collectTextTurn} from '../src/text-turn';
 import {asksCurrentCapabilities,currentCapabilities} from '../src/current-capabilities';
 import {createVoiceCall} from '../web/voice-call';
-// Chat reenvision Slice 2: the engine contract changed on purpose —
-// sends QUEUE instead of dropping, failures land in the view (in flow),
-// and the ambiguity copy exists only for genuinely unknowable outcomes.
-// These tests pin the new contract; the preservation pins from the old
-// engine (402 verbatim, 502 never implies quota, "Reply received." only
-// on success) are carried over to the failure/outcome surfaces.
-it('queues a second send instead of dropping it, then runs it in order',async()=>{
- const calls:string[]=[];let release!:(value:{reply:string})=>void;
- const send=vi.fn((text:string)=>{calls.push(text);if(calls.length===1)return new Promise<{reply:string}>(r=>release=r);return Promise.resolve({reply:'Second done'});});
- const chat=createTextChat(send,()=>{});
- const first=chat.submit('First');const second=chat.submit('Second');
- expect(send).toHaveBeenCalledOnce();expect(chat.snapshot().queue.map(q=>q.text)).toEqual(['Second']);
- release({reply:'First done'});
- expect(await first).toMatchObject({status:'done',result:{reply:'First done'}});
- expect(await second).toMatchObject({status:'done',result:{reply:'Second done'}});
- expect(calls).toEqual(['First','Second']);expect(chat.busy).toBe(false);expect(chat.snapshot().queue).toEqual([]);
+it('serializes sends without clearing or replacing the first request',async()=>{
+ let resolve!:(value:{reply:string})=>void;const send=vi.fn(()=>new Promise<{reply:string}>(r=>resolve=r));
+ const states:boolean[]=[];const chat=createTextChat(send,(busy)=>states.push(busy));const first=chat.submit('First');
+ expect(await chat.submit('Second')).toBeNull();expect(send).toHaveBeenCalledOnce();resolve({reply:'Done'});
+ expect(await first).toEqual({reply:'Done'});expect(chat.busy).toBe(false);expect(states).toEqual([true,false]);
 });
-it('cancelling a queued message settles it without ever sending it',async()=>{
- let release!:(value:{reply:string})=>void;const send=vi.fn(()=>new Promise<{reply:string}>(r=>release=r));
- const chat=createTextChat(send,()=>{});
- const first=chat.submit('First');const second=chat.submit('Second');
- chat.cancelQueued(chat.snapshot().queue[0].requestId);
- expect(await second).toMatchObject({status:'cancelled',text:'Second'});
- release({reply:'Done'});expect(await first).toMatchObject({status:'done'});expect(send).toHaveBeenCalledOnce();
+it('preserves uncertain outcome on cancellation and allows recovery',async()=>{
+ let resolve!:(value:{reply:string})=>void;const changed=vi.fn();const chat=createTextChat(()=>new Promise(r=>resolve=r),changed);
+ const pending=chat.submit('Confirm');chat.cancel();resolve({reply:'Done'});expect(await pending).toBeNull();expect(chat.busy).toBe(false);
+ expect(changed).toHaveBeenLastCalledWith(false,expect.stringContaining('may have been processed'));
 });
-it('stop preserves the partial reply as a stopped item, with no ambiguity copy anywhere',async()=>{
- const changed=vi.fn();let view:any;
- const send=vi.fn(async(_t:string,_id:string,signal:AbortSignal,_i:unknown,stream:{onDelta:(t:string)=>void})=>{
-  stream.onDelta('Partial ans');
-  await new Promise<void>(resolve=>signal.addEventListener('abort',()=>resolve(),{once:true}));
-  const err=new Error('The operation was aborted');err.name='AbortError';throw err;
- });
- const chat=createTextChat(send,changed,{onView:v=>{view=v;}});
- const pending=chat.submit('Confirm the booking');
- await vi.waitFor(()=>expect(view?.active?.partial).toBe('Partial ans'));
- chat.cancel();
- expect(await pending).toMatchObject({status:'stopped',text:'Confirm the booking'});
- expect(chat.snapshot().stopped).toMatchObject({text:'Confirm the booking',partial:'Partial ans'});
- expect(changed).toHaveBeenLastCalledWith(false,'Stopped.');
- for(const [,message] of changed.mock.calls)expect(String(message)).not.toContain('may have been processed');
-});
-it('rejects empty replies into the failed item and releases the composer',async()=>{
- const chat=createTextChat(async()=>({reply:''}),()=>{});
- const outcome=await chat.submit('Hi');
- expect(outcome).toMatchObject({status:'failed',failure:{message:'No reply was returned. Your draft is still here.'}});
- expect(chat.busy).toBe(false);expect(chat.snapshot().failed?.text).toBe('Hi');
-});
+it('rejects empty replies and releases the composer',async()=>{const chat=createTextChat(async()=>({reply:''}),()=>{});expect(await chat.submit('Hi')).toBeNull();expect(chat.busy).toBe(false);});
 function httpFailure(status:number,message:string){
  return async()=>{const err=new Error(message) as Error&{status:number};err.status=status;throw err;};
 }
-it('never claims "Reply received" on a failed turn — 502 gets the honest service copy in the failed item',async()=>{
+it('never claims "Reply received" on a failed turn — 502 gets the honest service copy',async()=>{
  const changed=vi.fn();
  const chat=createTextChat(httpFailure(502,'model_failed'),changed,{serviceDownCopy:(status)=>status===502?"The assistant couldn't reach the AI service — try again in a moment.":undefined});
- const outcome=await chat.submit('Hi');
- expect(outcome).toMatchObject({status:'failed',failure:{message:"The assistant couldn't reach the AI service — try again in a moment.",status:502}});
- for(const [,message] of changed.mock.calls)expect(String(message)).not.toContain('Reply received');
- expect(chat.snapshot().failed?.message).not.toContain('allowance');
+ expect(await chat.submit('Hi')).toBeNull();
+ expect(changed).toHaveBeenLastCalledWith(false,expect.stringContaining("couldn't reach the AI service"));
+ const last=changed.mock.calls[changed.mock.calls.length-1][1] as string;
+ expect(last).not.toContain('Reply received');expect(last).not.toContain('allowance');
 });
 it('falls back to the error message on 502 when no copy override is provided',async()=>{
- const chat=createTextChat(httpFailure(502,'The assistant could not reach the AI service. Try again in a moment.'),()=>{});
- expect(await chat.submit('Hi')).toMatchObject({status:'failed',failure:{message:'The assistant could not reach the AI service. Try again in a moment.'}});
+ const changed=vi.fn();
+ const chat=createTextChat(httpFailure(502,'The assistant could not reach the AI service. Try again in a moment.'),changed);
+ expect(await chat.submit('Hi')).toBeNull();
+ expect(changed).toHaveBeenLastCalledWith(false,'The assistant could not reach the AI service. Try again in a moment.');
 });
 it('shows the server allowance copy verbatim on 402 and never on other failures',async()=>{
- const chat=createTextChat(httpFailure(402,'Your business has used its Free reply allowance for this period.'),()=>{});
- expect(await chat.submit('Hi')).toMatchObject({status:'failed',failure:{message:'Your business has used its Free reply allowance for this period.',status:402,ambiguous:false}});
+ const changed=vi.fn();
+ const chat=createTextChat(httpFailure(402,'Your business has used its Free reply allowance for this period.'),changed);
+ expect(await chat.submit('Hi')).toBeNull();
+ expect(changed).toHaveBeenLastCalledWith(false,'Your business has used its Free reply allowance for this period.');
 });
 it('keeps "Reply received." for genuinely successful turns',async()=>{
  const changed=vi.fn();
  const chat=createTextChat(async()=>({reply:'Understood — booking confirmed.'}),changed);
- expect(await chat.submit('Hi')).toMatchObject({status:'done',result:{reply:'Understood — booking confirmed.'}});
+ expect(await chat.submit('Hi')).toEqual({reply:'Understood — booking confirmed.'});
  expect(changed).toHaveBeenLastCalledWith(false,'Reply received.');
-});
-it('pauses the queue behind a failure; dismissing the failure releases it',async()=>{
- let attempts=0;const send=vi.fn(async()=>{attempts++;if(attempts===1){const err=new Error('down') as Error&{status:number};err.status=503;throw err;}return {reply:'Recovered'};});
- const chat=createTextChat(send,()=>{});
- const first=chat.submit('First');const second=chat.submit('Second');
- expect(await first).toMatchObject({status:'failed'});
- expect(send).toHaveBeenCalledOnce();expect(chat.snapshot().queue.map(q=>q.text)).toEqual(['Second']);
- chat.dismissFailed();
- expect(await second).toMatchObject({status:'done',result:{reply:'Recovered'}});
-});
-it('Try again re-sends the failed turn with the SAME requestId',async()=>{
- const ids:string[]=[];let attempts=0;
- const send=vi.fn(async(_t:string,id:string)=>{ids.push(id);attempts++;if(attempts===1){const err=new Error('down') as Error&{status:number};err.status=503;throw err;}return {reply:'Now it worked'};});
- const chat=createTextChat(send,()=>{});
- expect(await chat.submit('Book it')).toMatchObject({status:'failed'});
- const retry=chat.retryFailed();expect(retry).not.toBeNull();
- expect(await retry!).toMatchObject({status:'done',result:{reply:'Now it worked'}});
- expect(ids).toHaveLength(2);expect(ids[1]).toBe(ids[0]);
 });
 it('never starts a paid voice session when microphone preflight fails',async()=>{
  const client={startCall:vi.fn(),endCall:vi.fn(),error:null},failed=vi.fn();const call=createVoiceCall(client,()=>{},failed,async()=>{throw new Error('Microphone is blocked');});

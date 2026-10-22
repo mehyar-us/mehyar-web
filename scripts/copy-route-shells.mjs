@@ -37,12 +37,6 @@ const routeMeta = {
       'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.',
     path: '/audit/report',
   },
-  '/audit/sample-report': {
-    title: 'Sample Report — Audit My Business | MehyarSoft',
-    description:
-      'See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.',
-    path: '/audit/sample-report',
-  },
   '/': {
     title: 'MehyarSoft LLC | Software, Systems & AI Automation',
     description:
@@ -119,12 +113,6 @@ const routeMeta = {
     description:
       'A practical MehyarSoft framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.',
     path: '/blog/small-business-tech-audit-revenue-leaks',
-  },
-  '/blog/what-does-a-business-audit-check': {
-    title: 'What Does a Business Audit Check? | Audit My Business',
-    description:
-      'What does a business audit check? Your site, booking path, and follow-up — leaks priced in dollars, fixes ranked. Free scan first, $330 full audit.',
-    path: '/blog/what-does-a-business-audit-check',
   },
   '/blog/missed-calls-crm-follow-up': {
     title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
@@ -397,7 +385,6 @@ const directRoutes = [
   'audit',
   'audit/free',
   'audit/report',
-  'audit/sample-report',
   'services',
   'pricing',
   'proposals',
@@ -471,82 +458,9 @@ const adminTitles = {
   'admin/today': 'Today | MehyarSoft',
 };
 
-// --- Audit noscript funnel block (rot558, option B) ------------------------
-// The /audit SPA shell ships ~55 visible characters to no-JS readers
-// (crawlers, LLM fetchers, unfurlers). This renders the funnel's own
-// machine-readable copy — client/public/audit/llms.txt, the single source —
-// as semantic HTML inside a <noscript> element in the /audit shell only.
-// With JS on, the block never renders and React's mount is untouched; the
-// JS bundle is not involved. If the source copy ever loses the ladder or
-// the $5 credit, the assertions below fail the build loudly rather than
-// shipping an empty or stale block.
-function escapeHtmlText(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function linkifyUrls(escaped) {
-  return escaped.replace(
-    /https:\/\/[^\s<]+/g,
-    (url) => `<a href="${url}">${url}</a>`,
-  );
-}
-
-function auditNoscriptBlock() {
-  const src = readFileSync('client/public/audit/llms.txt', 'utf8');
-  const out = [];
-  let inList = false;
-  const closeList = () => {
-    if (inList) {
-      out.push('</ul>');
-      inList = false;
-    }
-  };
-  for (const rawLine of src.split('\n')) {
-    const line = rawLine.trim();
-    if (!line) {
-      closeList();
-      continue;
-    }
-    if (line.startsWith('## ')) {
-      closeList();
-      out.push(`<h2>${linkifyUrls(escapeHtmlText(line.slice(3)))}</h2>`);
-    } else if (line.startsWith('# ')) {
-      closeList();
-      out.push(`<h1>${linkifyUrls(escapeHtmlText(line.slice(2)))}</h1>`);
-    } else if (line.startsWith('> ')) {
-      closeList();
-      out.push(`<p>${linkifyUrls(escapeHtmlText(line.slice(2)))}</p>`);
-    } else if (line.startsWith('- ')) {
-      if (!inList) {
-        out.push('<ul>');
-        inList = true;
-      }
-      out.push(`<li>${linkifyUrls(escapeHtmlText(line.slice(2)))}</li>`);
-    } else {
-      closeList();
-      out.push(`<p>${linkifyUrls(escapeHtmlText(line))}</p>`);
-    }
-  }
-  closeList();
-  const html = `<noscript><section data-noscript-funnel="audit">\n${out.join('\n')}\n</section></noscript>`;
-  for (const needle of ['$330', '$5', '$325', 'credit', 'Free scan']) {
-    if (!html.includes(needle)) {
-      throw new Error(`Audit noscript block lost required copy: ${needle}`);
-    }
-  }
-  return html;
-}
-
 function routeShell(route) {
   if (!route.startsWith('admin')) {
-    const shell = applyRouteMeta(appShell, `/${route}`);
-    if (route === 'audit' && !shell.includes('data-noscript-funnel')) {
-      return shell.replace(/<\/body>/, `${auditNoscriptBlock()}\n</body>`);
-    }
-    return shell;
+    return applyRouteMeta(appShell, `/${route}`);
   }
   return adminShell(route);
 }
