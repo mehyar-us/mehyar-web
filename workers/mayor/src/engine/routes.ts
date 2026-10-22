@@ -8,10 +8,15 @@
  *   GET  /engine/grants          the Grant Book
  *   GET  /engine/audit           "what did you do" data
  *   POST /engine/belief          a Belief Card row edit (= a correction)
+ *   GET  /engine/audience        the audience read (Phase B)
  * Every handler is tenant-bound by the route's actor; the store can
  * only read the actor's tenant. Membership: conversation roles may
  * talk and rule; revoking a rule and editing beliefs are operator
  * acts (owner/manager), the same bar as the calendar selection.
+ * The audience route is the one deliberate exception to tenant
+ * scoping: its data is the owner's portfolio intel across products
+ * (campaign_intel.web_events), not any tenant's rows — so it sits
+ * behind OPERATORS like belief, and never enters the Desk flow.
  */
 import {z} from 'zod';
 import type {Actor,Env} from '../env';
@@ -20,7 +25,8 @@ import {CHAT_ROLES,OPERATORS,requireMembership} from '../permissions';
 import {selectedCalendar} from '../calendars';
 import {applyActionVerb,applyScenarioRulingSurface,revokeGrantById,runOwnerTurn,type CalendarProbeResult,type EngineDeps} from './loop';
 import {decideProviderFromEnv} from './decide';
-import {buildEngineDeskIntents} from './surface';
+import {audienceBaselineSeries,audienceSeries,clampAudienceWeeks} from './audience';
+import {audienceStatIntent,buildEngineDeskIntents} from './surface';
 import {getEngineState,listActionLog,listGrants} from './store';
 import {applyOwnerCorrection} from './memory';
 import {DEFAULT_COST_CEILING_MICROCENTS} from './cost';
@@ -98,6 +104,18 @@ export async function handleEngineRequest(request: Request, env: Env, actor: Act
   await requireMembership(env, actor, CHAT_ROLES);
   const person = url.searchParams.get('person') ?? undefined;
   return json({ rows: await listActionLog(env.AGENT_DB, actor.tenantId, { person, limit: 50 }) });
+ }
+
+ if (rest === 'audience' && request.method === 'GET') {
+  await requireMembership(env, actor, OPERATORS);
+  if (!env.AUDIENCE_DB) throw new HttpError(503, 'audience_unavailable', 'The audience store is not connected in this build.');
+  const product = url.searchParams.get('product') ?? '*';
+  const type = url.searchParams.get('type') ?? '*';
+  const weeks = clampAudienceWeeks(url.searchParams.get('weeks'));
+  const series = await audienceSeries(env.AUDIENCE_DB, { product, type, weeks });
+  const body: Record<string, unknown> = { ...series, intents: [audienceStatIntent(series)] };
+  if (url.searchParams.get('baseline') === '1') body.baseline = await audienceBaselineSeries(env.AUDIENCE_DB, { weeks });
+  return json(body);
  }
 
  if (rest === 'belief' && request.method === 'POST') {

@@ -177,7 +177,7 @@ export function verticalPage(vertical, profile) {
     <p class="footer-note">© 2026 MehyarSoft LLC. All rights reserved.</p>
   </footer>
 
-<script async src="https://audience.mehyar.us/b.js" data-product="mayor"></script></body>
+<script async src="https://mayor.mehyar.us/b.js" data-product="mayor"></script></body>
 </html>
 `;
 }

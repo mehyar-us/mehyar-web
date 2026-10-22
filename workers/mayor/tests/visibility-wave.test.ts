@@ -55,7 +55,10 @@ it('publishes the three guides with honest structure: canonical, article schema,
   expect(html,slug).toContain('"@type":"FAQPage"');
   expect(html,slug).toContain('href="/sales"');
   expect(html,slug).toContain('href="/?start=1"');
-  expect(html,slug).toContain('https://audience.mehyar.us/b.js');
+  // Beacon host superseded 2026-10-22 (audience → Mayor integration):
+  // the tag loads from mayor.mehyar.us now — the collector moved to
+  // the Mayor-served endpoint ahead of the old host's removal.
+  expect(html,slug).toContain('https://mayor.mehyar.us/b.js');
   expect(html,slug).toContain('src="/analytics-consent.js"');
   expect(html,slug).not.toMatch(/guarantee|guaranteed/i);
   expect(isPublicAssetPath(`/${slug}`)).toBe(true);
