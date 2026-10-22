@@ -7,7 +7,6 @@ import { blogPosts, type BlogPost as BlogPostType } from "@/data/blog-posts";
 import NotFound from "./not-found";
 import QuickAnswer from "@/components/QuickAnswer";
 import NewsletterSignup from "@/components/NewsletterSignup";
-import MayorBait from "@/components/MayorBait";
 
 const quickAnswers: Record<string, { question: string; answer: string }> = {
   "small-business-tech-audit-revenue-leaks": {
@@ -221,7 +220,6 @@ const BlogPost = () => {
           </div>
         </section>
       )}
-      <MayorBait campaign="blog-post" />
     </>
   );
 };

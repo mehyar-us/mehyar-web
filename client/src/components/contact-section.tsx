@@ -24,7 +24,8 @@ const includeItems = [
 
 const nextSteps = [
   "Mehyar reviews the request personally.",
-  "You get one practical next step: audit, booking call, or larger sprint.",
+  "You get one practical next step: audit, booking call, larger sprint, or no-fit answer.",
+  "If there is no fit, you get a direct no-fit answer.",
 ];
 
 const trustPoints = [

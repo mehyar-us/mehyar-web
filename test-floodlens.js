@@ -1,9 +1,8 @@
 // Local smoke test for the FloodLens backend (run with: node test-floodlens.js)
 import {
   zoneInfo, geohash, effDateToIso, FEMA_BASES, BROWSER_UA, randomToken,
-  PREMIUM_BANDS, DISCLAIMER_SHORT, nullIfFemaNoData,
+  PREMIUM_BANDS, DISCLAIMER_SHORT,
 } from "./functions/api/_shared/floodlensCore.js";
-import { orderHooks } from "./functions/api/pay/checkout.js";
 import { buildFloodReport } from "./functions/api/_shared/floodlensPdf.js";
 
 let pass = 0, fail = 0;
@@ -107,49 +106,5 @@ check("3-pack starts %PDF-1.4", new TextDecoder().decode(r3.bytes.slice(0, 8)) =
 check("3-pack has 30 pages (Count)", /\/Count 30\b/.test(new TextDecoder("latin1").decode(r3.bytes)));
 check("3-pack returns pages=30", r3.pages === 30, "got " + r3.pages);
 
-console.log("== FEMA sentinel normalization (-9999) ==");
-check("numeric -9999 → null", nullIfFemaNoData(-9999) === null);
-check('string "-9999" → null', nullIfFemaNoData("-9999") === null);
-check("real bfe passes through", nullIfFemaNoData(10) === 10);
-check("undefined → null", nullIfFemaNoData(undefined) === null);
-check("0 stays 0", nullIfFemaNoData(0) === 0);
-check("null stays null", nullIfFemaNoData(null) === null);
-
-console.log("== checkout floodlens order hook ==");
-// Minimal D1 stub: prepare().bind().first()
-function stubDb(validTokens) {
-  const set = new Set(validTokens);
-  return {
-    prepare() {
-      return { bind(t) { return { first: async () => (set.has(t) ? { token: t } : null) }; } };
-    },
-  };
-}
-const single = { id: "floodlens-report" };
-const pack = { id: "floodlens-3pack" };
-{
-  const db = stubDb(["tok1"]);
-  const r = await orderHooks.floodlens(db, single, { params: { lookup_token: "tok1" } });
-  check("single: valid token accepted", !r.error && !!r.orderExtra, JSON.stringify(r));
-  const r2 = await orderHooks.floodlens(db, single, { params: {} });
-  check("single: missing token → missing_lookup_token", r2.error === "missing_lookup_token", JSON.stringify(r2));
-  const r3x = await orderHooks.floodlens(db, single, { params: { lookup_token: "bogus" } });
-  check("single: bogus token → invalid_lookup_token", r3x.error === "invalid_lookup_token", JSON.stringify(r3x));
-}
-{
-  const db = stubDb(["t1", "t2", "t3"]);
-  const r = await orderHooks.floodlens(db, pack, { params: { lookup_tokens: ["t1", "t2", "t3"] } });
-  check("3-pack: 3 valid tokens accepted", !r.error && !!r.orderExtra, JSON.stringify(r));
-  const rc = await orderHooks.floodlens(db, pack, { params: { lookup_tokens: "t1,t2,t3" } });
-  check("3-pack: comma string accepted", !rc.error && !!rc.orderExtra, JSON.stringify(rc));
-  const r2 = await orderHooks.floodlens(db, pack, { params: { lookup_token: "t1" } });
-  check("3-pack: single lookup_token → need_three_lookups", r2.error === "need_three_lookups", JSON.stringify(r2));
-  const r3x = await orderHooks.floodlens(db, pack, { params: { lookup_tokens: ["t1", "t2", "t2"] } });
-  check("3-pack: duplicate tokens rejected", r3x.error === "need_three_lookups", JSON.stringify(r3x));
-  const r4 = await orderHooks.floodlens(db, pack, { params: { lookup_tokens: ["t1", "t2", "nope"] } });
-  check("3-pack: unknown token → invalid_lookup_token", r4.error === "invalid_lookup_token", JSON.stringify(r4));
-}
-
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
-

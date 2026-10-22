@@ -10,34 +10,10 @@
 // Bogus token → 404. Non-ready orders return their status so the success
 // page can poll (paid/pending/generating) or show retry info (failed).
 
-function json(data, status = 200, extraHeaders = {}) {
+function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store", ...extraHeaders },
-  });
-}
-
-// CORS for cross-origin brand calls (carerank.mehyar.us -> mehyar.us).
-// Only *.mehyar.us origins are reflected; everything else gets no CORS headers.
-// (Same pattern as functions/api/pay/checkout.js.)
-function corsHeaders(request) {
-  const origin = (request.headers.get("Origin") || "").trim();
-  if (/^https:\/\/([a-z0-9-]+\.)?mehyar\.us$/i.test(origin)) {
-    return { "access-control-allow-origin": origin, vary: "Origin" };
-  }
-  return {};
-}
-
-export async function onRequestOptions({ request }) {
-  const cors = corsHeaders(request);
-  return new Response(null, {
-    status: 204,
-    headers: {
-      ...cors,
-      "access-control-allow-methods": "GET, OPTIONS",
-      "access-control-allow-headers": "content-type",
-      "access-control-max-age": "86400",
-    },
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 }
 
@@ -51,11 +27,9 @@ function safeParse(s) {
 
 export async function onRequestGet({ request, env }) {
   try {
-    const cors = corsHeaders(request);
-    const J = (data, status = 200) => json(data, status, cors);
     const db = env && env.LEADS_DB;
     if (!db || typeof db.prepare !== "function") {
-      return J({ ok: false, error: "db_unavailable" }, 500);
+      return json({ ok: false, error: "db_unavailable" }, 500);
     }
     // Ensure the orders table exists (created lazily by the webhook on first
     // paid order; the report endpoint must not 500 before that happens).
@@ -68,7 +42,7 @@ export async function onRequestGet({ request, env }) {
     const url = new URL(request.url);
     const token = (url.searchParams.get("token") || "").trim();
     if (!token || token.length < 16) {
-      return J({ ok: false, error: "invalid_token" }, 403);
+      return json({ ok: false, error: "invalid_token" }, 403);
     }
 
     // Order path first (carerank_orders rows only exist for paid webhooks).
@@ -132,7 +106,7 @@ export async function onRequestGet({ request, env }) {
           };
         }),
       };
-      return J({
+      return json({
         ok: true,
         status: order.status || "pending",
         email: order.email,
@@ -165,7 +139,7 @@ export async function onRequestGet({ request, env }) {
       const meta = safeParse(pay.metadata_json);
       const quiz = (meta.quiz && typeof meta.quiz === "object") ? meta.quiz
         : (meta.quiz_answers && typeof meta.quiz_answers === "object") ? meta.quiz_answers : {};
-      return J({
+      return json({
         ok: true,
         status: "paid",
         email: pay.email,
@@ -177,9 +151,9 @@ export async function onRequestGet({ request, env }) {
       });
     }
 
-    return J({ ok: false, error: "not_found" }, 404);
+    return json({ ok: false, error: "not_found" }, 404);
   } catch (e) {
     console.error("carerank report failed", e && e.message);
-    return J({ ok: false, error: "server_error" }, 500);
+    return json({ ok: false, error: "server_error" }, 500);
   }
 }

@@ -20,28 +20,10 @@ const appShell = readFileSync(indexHtml, 'utf8');
 // its own meta.
 const routeMeta = {
   '/audit': {
-    title: 'Audit My Business — $330 AI Business Audit | MehyarSoft',
-    description:
-      'A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.',
-    path: '/audit',
-  },
-  '/audit/free': {
     title: 'Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft',
     description:
       'Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.',
-    path: '/audit/free',
-  },
-  '/audit/report': {
-    title: '$5 Full Report | MehyarSoft',
-    description:
-      'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.',
-    path: '/audit/report',
-  },
-  '/audit/sample-report': {
-    title: 'Sample Report — Audit My Business | MehyarSoft',
-    description:
-      'See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.',
-    path: '/audit/sample-report',
+    path: '/audit',
   },
   '/': {
     title: 'MehyarSoft LLC | Software, Systems & AI Automation',
@@ -120,12 +102,6 @@ const routeMeta = {
       'A practical MehyarSoft framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.',
     path: '/blog/small-business-tech-audit-revenue-leaks',
   },
-  '/blog/what-does-a-business-audit-check': {
-    title: 'What Does a Business Audit Check? | Audit My Business',
-    description:
-      'What does a business audit check? Your site, booking path, and follow-up — leaks priced in dollars, fixes ranked. Free scan first, $330 full audit.',
-    path: '/blog/what-does-a-business-audit-check',
-  },
   '/blog/missed-calls-crm-follow-up': {
     title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
     description:
@@ -193,9 +169,9 @@ const routeMeta = {
       path: '/about',
     },
     '/apps': {
-      title: 'Products We Own | MehyarSoft LLC',
+      title: 'Apps MehyarSoft Builds and Operates | MehyarSoft',
       description:
-        'Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy.',
+        'Live apps shipped by MehyarSoft: Rizza (AI dating-app wingman) and AiMech (AI mechanic for everyday car owners). See the apps, the launch notes, and the app-launch playbook behind them.',
       path: '/apps',
     },
     '/330': {
@@ -324,8 +300,7 @@ function applyRouteMeta(html, route) {
   if (!meta) return html;
 
   const canonicalPath = meta.path || route;
-  const normalizedPath = canonicalPath === "/" ? "/" : `${canonicalPath.replace(/\/$/, "")}/`;
-  const canonicalUrl = `${SITE_ORIGIN}${normalizedPath}`;
+  const canonicalUrl = `${SITE_ORIGIN}${canonicalPath}`;
   const title = meta.title;
   const description = meta.description;
   const robots = meta.robots || 'index,follow';
@@ -395,9 +370,6 @@ if (missingBlogShells.length > 0) {
 
 const directRoutes = [
   'audit',
-  'audit/free',
-  'audit/report',
-  'audit/sample-report',
   'services',
   'pricing',
   'proposals',
@@ -471,82 +443,9 @@ const adminTitles = {
   'admin/today': 'Today | MehyarSoft',
 };
 
-// --- Audit noscript funnel block (rot558, option B) ------------------------
-// The /audit SPA shell ships ~55 visible characters to no-JS readers
-// (crawlers, LLM fetchers, unfurlers). This renders the funnel's own
-// machine-readable copy — client/public/audit/llms.txt, the single source —
-// as semantic HTML inside a <noscript> element in the /audit shell only.
-// With JS on, the block never renders and React's mount is untouched; the
-// JS bundle is not involved. If the source copy ever loses the ladder or
-// the $5 credit, the assertions below fail the build loudly rather than
-// shipping an empty or stale block.
-function escapeHtmlText(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function linkifyUrls(escaped) {
-  return escaped.replace(
-    /https:\/\/[^\s<]+/g,
-    (url) => `<a href="${url}">${url}</a>`,
-  );
-}
-
-function auditNoscriptBlock() {
-  const src = readFileSync('client/public/audit/llms.txt', 'utf8');
-  const out = [];
-  let inList = false;
-  const closeList = () => {
-    if (inList) {
-      out.push('</ul>');
-      inList = false;
-    }
-  };
-  for (const rawLine of src.split('\n')) {
-    const line = rawLine.trim();
-    if (!line) {
-      closeList();
-      continue;
-    }
-    if (line.startsWith('## ')) {
-      closeList();
-      out.push(`<h2>${linkifyUrls(escapeHtmlText(line.slice(3)))}</h2>`);
-    } else if (line.startsWith('# ')) {
-      closeList();
-      out.push(`<h1>${linkifyUrls(escapeHtmlText(line.slice(2)))}</h1>`);
-    } else if (line.startsWith('> ')) {
-      closeList();
-      out.push(`<p>${linkifyUrls(escapeHtmlText(line.slice(2)))}</p>`);
-    } else if (line.startsWith('- ')) {
-      if (!inList) {
-        out.push('<ul>');
-        inList = true;
-      }
-      out.push(`<li>${linkifyUrls(escapeHtmlText(line.slice(2)))}</li>`);
-    } else {
-      closeList();
-      out.push(`<p>${linkifyUrls(escapeHtmlText(line))}</p>`);
-    }
-  }
-  closeList();
-  const html = `<noscript><section data-noscript-funnel="audit">\n${out.join('\n')}\n</section></noscript>`;
-  for (const needle of ['$330', '$5', '$325', 'credit', 'Free scan']) {
-    if (!html.includes(needle)) {
-      throw new Error(`Audit noscript block lost required copy: ${needle}`);
-    }
-  }
-  return html;
-}
-
 function routeShell(route) {
   if (!route.startsWith('admin')) {
-    const shell = applyRouteMeta(appShell, `/${route}`);
-    if (route === 'audit' && !shell.includes('data-noscript-funnel')) {
-      return shell.replace(/<\/body>/, `${auditNoscriptBlock()}\n</body>`);
-    }
-    return shell;
+    return applyRouteMeta(appShell, `/${route}`);
   }
   return adminShell(route);
 }
@@ -567,10 +466,10 @@ function adminShell(route) {
     .replace(/<meta name="description" content="[^"]*" \/>/, '<meta name="description" content="Owner-only MehyarSoft admin area." />')
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
     .replace(/<meta property="og:description" content="[^"]*" \/>/, '<meta property="og:description" content="Owner-only MehyarSoft admin area." />')
-    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${SITE_ORIGIN}/${route.replace(/\/$/, "")}/" />`)
+    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${SITE_ORIGIN}/${route}" />`)
     .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${title}" />`)
     .replace(/<meta name="twitter:description" content="[^"]*" \/>/, '<meta name="twitter:description" content="Owner-only MehyarSoft admin area." />')
-    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${SITE_ORIGIN}/${route.replace(/\/$/, "")}/" />`);
+    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${SITE_ORIGIN}/${route}" />`);
 }
 
 // Build a 404-themed noindex app shell so static hosts (Cloudflare Pages) that
