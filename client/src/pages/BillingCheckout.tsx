@@ -21,16 +21,6 @@ type ManualInvoiceService = {
 
 const MANUAL_INVOICE_SERVICES: ManualInvoiceService[] = [
   {
-    id: "deep-audit-199",
-    name: "$199 Deep AI Audit",
-    category: "audit",
-    description: "Full AI crawl of your homepage + key pages: every money leak priced in dollars, competitor benchmark, and a 30-day fix plan ordered by revenue impact.",
-    unit_amount_cents: 19900,
-    delivery_window: "3-5 business days",
-    features: ["Multi-page AI crawl", "Leaks priced in $/month with math", "Competitor benchmark", "30-day ROI-ordered fix plan"],
-    requires_scope_review: false,
-  },
-  {
     id: "tech-audit-330",
     name: "$330 Website + Booking Leak Audit",
     category: "audit",
@@ -45,7 +35,7 @@ const MANUAL_INVOICE_SERVICES: ManualInvoiceService[] = [
     name: "Senior consulting hour",
     category: "consulting",
     description: "Focused systems, software, or AI automation advisory session for a defined operational decision or blocker.",
-    unit_amount_cents: 25000,
+    unit_amount_cents: 15000,
     delivery_window: "Scheduled after intake",
     features: ["One focused advisory session", "Systems/automation triage", "Recommended next step", "No long agency retainer required"],
     requires_scope_review: true,
@@ -81,7 +71,6 @@ export default function BillingCheckout() {
 
   // Audit tiers are fulfilled by the server (recorded + owner notified).
   const AUDIT_TIER_MAP: Record<string, string> = {
-    "deep-audit-199": "deep-199",
     "tech-audit-330": "tech-330",
   };
 

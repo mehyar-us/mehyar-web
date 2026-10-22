@@ -1,14 +1,15 @@
 // functions/api/audit/deep-request.js
 // POST /api/audit/deep-request — paid tier intake (manual invoice flow).
 // Body: { email, name?, business?, url?, tier }
-// Tiers: deep-199 ($199 Deep AI Audit), tech-330 ($330 Tech Audit), monitor-99 ($99/mo monitoring).
+// Tiers: tech-330 ($330 Tech Audit), monitor-99 ($99/mo monitoring).
+// (deep-199 retired rot542, 2026-10-22: an unadvertised SKU no surface sold
+// and no buyer ever requested — removed from the page catalog and here.)
 // Records the request, notifies the owner, confirms to the buyer.
 // Payment is by manual invoice (ACH/wire/check) — no card form on this site.
 
 import { sendCfEmail } from "../_shared/cfEmail.js";
 
 const TIERS = {
-  "deep-199": { name: "$199 Deep AI Audit", price: "$199 one-time", delivery: "3–5 business days" },
   "tech-330": { name: "$330 Tech Audit", price: "$330 one-time", delivery: "3–5 business days" },
   "monitor-99": { name: "$99/mo Site Monitoring", price: "$99/month", delivery: "First scan within 48 hours" },
 };

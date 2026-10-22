@@ -638,6 +638,11 @@ export default function AuditReport() {
                     <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
                   </p>
                   <p className="text-center text-xs text-muted-foreground">One-time · Delivered in about a minute · Less than a coffee</p>
+                  <p className="text-center text-xs leading-5 text-muted-foreground">
+                    All sales are final — the Full Report is a one-time digital report, and purchases are not
+                    refundable. If your report hasn't arrived within a few minutes, email info@mehyar.us and
+                    we'll re-send it right away.
+                  </p>
                 </form>
               </CardContent>
             </Card>
