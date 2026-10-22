@@ -20,7 +20,7 @@ interface SeoMeta {
 }
 
 const absoluteUrl = (path: string) =>
-  path === "/" ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}${path.replace(/\/$/, "")}/`;
+  `${SITE_ORIGIN}${path === "/" ? "/" : path}`;
 
 const organization = {
   "@type": "Organization",
@@ -42,7 +42,7 @@ const professionalService = {
   email: "info@mehyar.us",
   founder: { "@type": "Person", name: "Mehyar Swelim" },
   areaServed: "Worldwide",
-  priceRange: "$5-$25,000+",
+  priceRange: "$150-$25,000+",
   knowsAbout: [
     "software consulting",
     "systems engineering",
@@ -154,108 +154,10 @@ const industryOfferCatalog = {
 
 const staticMeta: Record<string, SeoMeta> = {
   "/audit": {
-    title: "Audit My Business — $330 AI Business Audit | MehyarSoft",
-    description:
-      "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.",
-    path: "/audit",
-    jsonLd: [
-      webPage(
-        "/audit",
-        "Audit My Business — $330 AI Business Audit | MehyarSoft",
-        "Professional AI business audit: score, ranked money leaks, flaws, prioritized fixes, and where AI fits in your business.",
-      ),
-      breadcrumbs([
-        { name: "Home", path: "/" },
-        { name: "Audit My Business", path: "/audit" },
-      ]),
-      {
-        "@type": "Service",
-        name: "Audit My Business — $330 AI Business Audit",
-        description:
-          "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment.",
-        provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
-        areaServed: "Worldwide",
-        offers: {
-          "@type": "Offer",
-          price: "330",
-          priceCurrency: "USD",
-          url: absoluteUrl("/audit"),
-        },
-      },
-      faq([
-        {
-          question: "Which offer is which — the free scan, the Full Report, or Audit My Business?",
-          answer:
-            "Three different rungs. The free scan scores your public site and names your top money leaks — free, no card. The Full Report ($5, one-time) is the complete written breakdown of that scan: every leak found, priced and ranked. Audit My Business ($330, one-time) is the deep audit — a separate, fuller report built from your site and your walkthrough video, with prioritized fixes and an AI opportunity map, delivered by email within 3–5 business days; if you bought the Full Report first, its $5 is credited toward the $330. The founder-led $330 tech audit is a different product again: a human review, invoiced by email.",
-        },
-        {
-          question: "Do I need the walkthrough video?",
-          answer:
-            "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings drawn from your own words.",
-        },
-        {
-          question: "How thorough is the audit?",
-          answer:
-            "Every finding is tied to something the audit actually saw on your site or in your walkthrough — specific, evidenced, and ranked by impact.",
-        },
-      ]),
-    ],
-  },
-  "/audit/free": {
     title: "Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft",
     description:
       "Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.",
-    path: "/audit/free",
-  },
-  "/audit/report": {
-    title: "$5 Full Report | MehyarSoft",
-    description:
-      "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.",
-    path: "/audit/report",
-    jsonLd: [
-      webPage(
-        "/audit/report",
-        "$5 Full Report | MehyarSoft",
-        "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, and your 90-day plan.",
-      ),
-      breadcrumbs([
-        { name: "Home", path: "/" },
-        { name: "Audit My Business", path: "/audit" },
-        { name: "$5 Full Report", path: "/audit/report" },
-      ]),
-      {
-        "@type": "Service",
-        name: "$5 Full Report",
-        description:
-          "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.",
-        provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
-        areaServed: "Worldwide",
-        offers: {
-          "@type": "Offer",
-          price: "5",
-          priceCurrency: "USD",
-          url: absoluteUrl("/audit/report"),
-        },
-      },
-    ],
-  },
-  "/audit/sample-report": {
-    title: "Sample Report — Audit My Business | MehyarSoft",
-    description:
-      "See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.",
-    path: "/audit/sample-report",
-    jsonLd: [
-      webPage(
-        "/audit/sample-report",
-        "Sample Report — Audit My Business | MehyarSoft",
-        "A labelled sample of the $330 Audit My Business report with a fictional business: score, money leaks priced in dollars, and prioritized fixes.",
-      ),
-      breadcrumbs([
-        { name: "Home", path: "/" },
-        { name: "Audit My Business", path: "/audit" },
-        { name: "Sample Report", path: "/audit/sample-report" },
-      ]),
-    ],
+    path: "/audit",
   },
   "/": {
     title: "MehyarSoft LLC | Software, Systems & AI Automation",
@@ -272,49 +174,6 @@ const staticMeta: Record<string, SeoMeta> = {
         "Websites, customer apps, booking, AI follow-up, phone care, and automation for businesses worldwide.",
       ),
       offerCatalog,
-      {
-        "@type": "Service",
-        "@id": `${SITE_ORIGIN}/audit/#service`,
-        name: "Audit My Business",
-        url: absoluteUrl("/audit"),
-        description:
-          "One-time $330 AI audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
-        provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
-        areaServed: "Worldwide",
-        offers: {
-          "@type": "Offer",
-          price: "330",
-          priceCurrency: "USD",
-          url: absoluteUrl("/audit"),
-        },
-      },
-      faq([
-        {
-          question: "What does MehyarSoft do?",
-          answer:
-            "MehyarSoft LLC is a founder-led software, systems, and AI automation firm helping businesses worldwide fix lead leaks, manual workflows, CRM gaps, and disconnected tools.",
-        },
-        {
-          question: "Who is MehyarSoft for?",
-          answer:
-            "Owners and operators who need a practical technical owner to clean up the path from prospect to paid customer and from manual work to reliable system - especially local service businesses, agencies, clinics, and regulated teams losing leads to missed calls, weak websites, manual follow-up, or disconnected tools.",
-        },
-        {
-          question: "How is MehyarSoft different from an agency?",
-          answer:
-            "MehyarSoft is founder-led. There is no agency theater. One senior technical owner scopes around the business leak, ships the smallest useful fix, and hands off clear documentation. Habits come from current pharma systems-engineering work: reliability, access boundaries, auditability, and controlled change.",
-        },
-        {
-          question: "What does a first engagement cost?",
-          answer:
-            "Start free: the 60-second AI website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email within 3–5 business days — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
-        },
-        {
-          question: "Where is MehyarSoft based?",
-          answer:
-            "MehyarSoft is headquartered in Brooklyn, New York and serves businesses worldwide through remote-first delivery.",
-        },
-      ]),
     ],
   },
   "/services": {
@@ -457,7 +316,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/newsletter": {
     title: "Free AI Automation Checklist | MehyarSoft",
     description:
-      "Get the free MehyarSoft AI automation checklist for finding missed calls, website leaks, poor follow-up, disconnected systems, and manual work worth automating first.",
+      "Get the free MehyarSoft AI automation checklist for finding missed calls, website leaks, poor follow-up, disconnected systems, and manual work before buying more tools.",
     path: "/newsletter",
     jsonLd: [
       webPage(
@@ -487,49 +346,8 @@ const staticMeta: Record<string, SeoMeta> = {
   "/free-checklist": {
     title: "Free AI Automation Checklist | MehyarSoft",
     description:
-      "Get the free MehyarSoft checklist for finding missed-call, website, follow-up, systems, and manual-work leaks worth fixing first.",
+      "Get the free MehyarSoft checklist for finding missed-call, website, follow-up, systems, and manual-work leaks before buying more tools.",
     path: "/newsletter",
-  },
-  "/apps": {
-    title: "Products We Own | MehyarSoft LLC",
-    description:
-      "Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy.",
-    path: "/apps",
-    jsonLd: [
-      webPage(
-        "/apps",
-        "Products We Own | MehyarSoft LLC",
-        "Every product MehyarSoft builds and operates, with what each one does, live pricing, and links to buy.",
-      ),
-      breadcrumbs([
-        { name: "Home", path: "/" },
-        { name: "Products We Own", path: "/apps" },
-      ]),
-      {
-        "@type": "CollectionPage",
-        name: "Products We Own",
-        description:
-          "Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy.",
-        url: absoluteUrl("/apps"),
-      },
-    ],
-  },
-  "/data-deletion": {
-    title: "Data Deletion | MehyarSoft LLC",
-    description:
-      "Request deletion of your data from any MehyarSoft app (Rizza, AiMech). In-app controls plus a plain-English email fallback.",
-    path: "/data-deletion",
-    jsonLd: [
-      webPage(
-        "/data-deletion",
-        "Data Deletion | MehyarSoft LLC",
-        "Request deletion of your data from any MehyarSoft app (Rizza, AiMech). In-app controls plus a plain-English email fallback.",
-      ),
-      breadcrumbs([
-        { name: "Home", path: "/" },
-        { name: "Data Deletion", path: "/data-deletion" },
-      ]),
-    ],
   },
   "/about": {
     title: "Founder Story | MehyarSoft LLC NYC Software Consultant",
@@ -626,12 +444,12 @@ const staticMeta: Record<string, SeoMeta> = {
           {
             question: "Do I have to commit to a build after the audit?",
             answer:
-              "No — the audit is a standalone deliverable: a written plan you own outright. Most owners use it to green-light the first fix: cleanup, booking setup, AI follow-up, or an automation sprint.",
+              "No. The audit is a standalone deliverable. You can stop after the written plan, request a follow-up call, or only move forward with cleanup, booking setup, AI follow-up, or an automation sprint if it makes sense for your business.",
           },
           {
             question: "How fast do I get the audit results?",
             answer:
-              "The founder-led audit is delivered within 3 business days of your intake call.",
+              "Most audits are delivered within a few business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs.",
           },
           {
             question: "Is the $330 audit safe for regulated or PHI-adjacent businesses?",
@@ -694,7 +512,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "Can I book a call directly?",
           answer:
-            "Choose a service and preferred time window in the booking request, and MehyarSoft confirms your calendar event or sends available times.",
+            "Use the booking request path to choose a service and preferred time window. MehyarSoft only confirms a calendar event after explicit confirmation; otherwise you will receive available times manually.",
         },
       ]),
     ],
@@ -702,13 +520,13 @@ const staticMeta: Record<string, SeoMeta> = {
   "/book": {
     title: "Book a Consulting Call | MehyarSoft",
     description:
-      "Request a MehyarSoft consulting call with service-specific routing and personal scheduling.",
+      "Request a MehyarSoft consulting call with service-specific routing and manual scheduling fallback when calendar auth is unavailable.",
     path: "/booking",
   },
   "/billing/checkout": {
     title: "Manual Invoice Request | MehyarSoft",
     description:
-      "Request a MehyarSoft invoice and confirm payment by email for ACH, wire, check, or cash.",
+      "Request a manually reviewed MehyarSoft invoice. Online checkout is disabled; payment details are confirmed by email for ACH, wire, check, or cash.",
     path: "/billing/checkout",
     robots: "noindex,follow",
     jsonLd: [webPage("/billing/checkout", "Manual Invoice Request | MehyarSoft", "Manual invoice request path for approved service deposits and consulting offers.")],

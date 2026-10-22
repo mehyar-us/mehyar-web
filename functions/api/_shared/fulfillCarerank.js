@@ -22,13 +22,9 @@
 //      index idx_carerank_orders_payment). Replays of a READY order return
 //      {replay:true} with no second order and no second email. A replay of a
 //      FAILED order retries generation instead.
-//   2. Token unification (TicketBeat pattern): the carerank_orders row reuses
-//      the payment's access_token — minted at checkout and already sitting in
-//      the buyer's success_url — so ONE stable token gates every buyer surface
-//      (success page poll, /api/carerank/report). We never mint a new token
-//      here and never rotate billing_payments.access_token: the buyer is
-//      already on success.html?token=<checkout token> when the webhook fires,
-//      and a rotated token would orphan their page forever.
+//   2. Token unification: UPDATE billing_payments SET access_token=<order
+//      token> so the token in success_url_template gates every buyer surface
+//      (success page, /api/carerank/report).
 //   3. Bullets: per-facility fit/watch-out bullets generated from the SUPPLIED
 //      CMS facts only. Workers AI (env.AI) is used ONLY when bound, with a
 //      strictly-grounded prompt ("write only from these facts, never invent
@@ -37,18 +33,16 @@
 //      ratings, ever.
 //   4. On generation failure: order marked 'failed', NO email is sent; the
 //      buyer's success page polls /api/carerank/report and shows retry info.
-//   5. On success: the deliverable email is STAGED (not sent) into
-//      carerank_outbox — the no-send guard in ./carerankNoSend.js — with the
-//      token-gated report link + receipt, one-click unsubscribe link and
-//      RFC 8058 headers. The buyer gets their report in-browser via the
-//      success page, which polls /api/carerank/report.
+//   5. On success: the buyer is emailed (from team@mehyar.us until
+//      carerank.mehyar.us is onboarded on both ESPs — standing rule) the
+//      token-gated report link + receipt, with a one-click unsubscribe link
+//      in the footer and RFC 8058 List-Unsubscribe headers.
 
 import {
   carerankUnsubSecret,
   carerankUnsubUrl,
   carerankListUnsubscribeHeaders,
 } from "./carerankUnsub.js";
-import { maybeSendCarerankEmail } from "./carerankNoSend.js";
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
@@ -326,12 +320,7 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
   let orderId;
   let accessToken;
   if (!order) {
-    // ONE token everywhere: reuse the payment's checkout token. The buyer is
-    // already on success.html?token=<checkout token> when the webhook fires;
-    // minting a new token and rotating billing_payments.access_token orphaned
-    // their success page (it polled the old token forever). Defensive fallback
-    // keeps a mint only if the payment row somehow lacks a token.
-    accessToken = payment.access_token || randomToken(32);
+    accessToken = randomToken(32);
     const { quizRaw } = readIntake(payment);
     const quizForRow = typeof quizRaw === "string" ? safeParse(quizRaw) : (quizRaw || {});
     try {
@@ -360,10 +349,12 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
     accessToken = order.access_token;
   }
 
-  // NOTE: billing_payments.access_token is intentionally NEVER touched here.
-  // checkout.js minted it and the buyer already holds it in their success_url;
-  // the order row reuses it (see above), so every surface gates on one token.
-  // Rotating it here (the old behavior) orphaned the buyer's success page.
+  // Token unification: success_url_template receives billing_payments.access_token,
+  // and every CareRank surface gates on the order token. ONE token everywhere.
+  await db
+    .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
+    .bind(accessToken, payment.id)
+    .run();
 
   const { from, fromName } = fromAddress();
 
@@ -411,7 +402,7 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
       const reportUrl = `${BASE_URL}/success.html?token=${accessToken}`;
       const apiUrl = `https://mehyar.us/api/carerank/report?token=${accessToken}`;
       const unsubUrl = await carerankUnsubUrl(env, payment.email);
-      if (!unsubUrl) console.error("fulfillCarerank: CARERANK_UNSUB_SECRET missing — email staged without one-click link");
+      if (!unsubUrl) console.error("fulfillCarerank: CARERANK_UNSUB_SECRET missing — email sent without one-click link");
       const receipt = `$${((payment.amount_cents || 2900) / 100).toFixed(2)}`;
       const subject = `Your ${productName} is ready`;
       const text =
@@ -431,9 +422,7 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
         `<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0">` +
         `<p style="color:#9ca3af;font-size:12px;">Don't want CareRank emails? ` +
         (unsubUrl ? `<a href="${unsubUrl}">Unsubscribe in one click</a>.` : `Reply STOP and we'll remove you.`) + `</p>`;
-      // STAGING GUARD (Mayor's no-send rule): stored in carerank_outbox for
-      // audit; nothing is sent until he explicitly approves.
-      const emailArgs = {
+      const result = await sendEmail(env, {
         from,
         fromName,
         to: payment.email,
@@ -442,14 +431,9 @@ export async function fulfillCarerank({ db, env, waitUntil, sendEmail }, payment
         text,
         html,
         headers: carerankListUnsubscribeHeaders(unsubUrl),
-      };
-      const result = await maybeSendCarerankEmail(
-        db,
-        () => sendEmail(env, emailArgs),
-        { kind: "deliverable", unsubUrl, args: emailArgs }
-      );
+      });
       if (!result.ok) console.error("fulfillCarerank deliverable email failed", productId, result.error);
-      return { emailed: !!result.ok, email_staged: !!result.staged };
+      return { emailed: !!result.ok };
     } catch (e) {
       // Generation failure: mark failed, do NOT email. The buyer's success
       // page polls /api/carerank/report, sees status=failed, and shows retry

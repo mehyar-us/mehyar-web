@@ -8,48 +8,23 @@
 //   2. If the email is in carerank_suppressions → {ok:false, error:"unsubscribed"}.
 //   3. Rate-limit by IP: max 5/day (D1 table carerank_rate_limits).
 //   4. Upsert carerank_leads (email UNIQUE, brand='carerank', status='active').
-//   5. STAGE (do NOT send) the free blurred-result link email into
-//      carerank_outbox with an unsubscribe footer. Sending is blocked by the
-//      Mayor's no-send rule — see ../_shared/carerankNoSend.js.
+//   5. Email the buyer the free blurred-result link with an unsubscribe footer
+//      (from team@mehyar.us until carerank.mehyar.us is onboarded on both
+//      ESPs — standing rule).
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
 import {
   carerankUnsubUrl,
   carerankListUnsubscribeHeaders,
 } from "../_shared/carerankUnsub.js";
-import { maybeSendCarerankEmail } from "../_shared/carerankNoSend.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BASE_URL = "https://carerank.mehyar.us";
 
-function json(data, status = 200, extraHeaders = {}) {
+function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store", ...extraHeaders },
-  });
-}
-
-// CORS for cross-origin brand calls (carerank.mehyar.us -> mehyar.us).
-// Only *.mehyar.us origins are reflected; everything else gets no CORS headers.
-// (Same pattern as functions/api/pay/checkout.js.)
-function corsHeaders(request) {
-  const origin = (request.headers.get("Origin") || "").trim();
-  if (/^https:\/\/([a-z0-9-]+\.)?mehyar\.us$/i.test(origin)) {
-    return { "access-control-allow-origin": origin, vary: "Origin" };
-  }
-  return {};
-}
-
-export async function onRequestOptions({ request }) {
-  const cors = corsHeaders(request);
-  return new Response(null, {
-    status: 204,
-    headers: {
-      ...cors,
-      "access-control-allow-methods": "POST, OPTIONS",
-      "access-control-allow-headers": "content-type",
-      "access-control-max-age": "86400",
-    },
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 }
 
@@ -93,18 +68,16 @@ async function ensureSchema(db) {
 
 export async function onRequestPost({ request, env }) {
   try {
-    const cors = corsHeaders(request);
-    const J = (data, status = 200) => json(data, status, cors);
     const db = env && env.LEADS_DB;
     if (!db || typeof db.prepare !== "function") {
-      return J({ ok: false, error: "db_unavailable" }, 500);
+      return json({ ok: false, error: "db_unavailable" }, 500);
     }
     await ensureSchema(db);
 
     const body = await request.json().catch(() => ({}));
     const email = sanitize(body.email, 254).toLowerCase();
     if (!EMAIL_RE.test(email)) {
-      return J({ ok: false, error: "invalid_email" }, 400);
+      return json({ ok: false, error: "invalid_email" }, 400);
     }
 
     // 1. Suppression check.
@@ -113,7 +86,7 @@ export async function onRequestPost({ request, env }) {
       .bind(email)
       .first();
     if (suppressed) {
-      return J({ ok: false, error: "unsubscribed" }, 200);
+      return json({ ok: false, error: "unsubscribed" }, 200);
     }
 
     // 2. Rate limit: max 5 subscribes per IP per UTC day.
@@ -131,7 +104,7 @@ export async function onRequestPost({ request, env }) {
       .bind(ip.slice(0, 64), day)
       .first();
     if (rl && Number(rl.count) > 5) {
-      return J({ ok: false, error: "rate_limited" }, 429);
+      return json({ ok: false, error: "rate_limited" }, 429);
     }
 
     // 3. Upsert the lead (keep the existing access token so the free blurred
@@ -159,10 +132,10 @@ export async function onRequestPost({ request, env }) {
         .run();
     }
 
-    // 4. Stage (do NOT send) the free blurred-result link email.
+    // 4. Email the free blurred-result link.
     const resultsUrl = `${BASE_URL}/results.html?lead=${leadToken}`;
     const unsubUrl = await carerankUnsubUrl(env, email);
-    if (!unsubUrl) console.error("carerank subscribe: CARERANK_UNSUB_SECRET missing — email staged without one-click link");
+    if (!unsubUrl) console.error("carerank subscribe: CARERANK_UNSUB_SECRET missing — email sent without one-click link");
     const subject = "Your free CareRank shortlist preview";
     const text =
       `Thanks for taking the CareRank quiz!\n\n` +
@@ -181,9 +154,7 @@ export async function onRequestPost({ request, env }) {
       `<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0">` +
       `<p style="color:#9ca3af;font-size:12px;">Don't want CareRank emails? ` +
       (unsubUrl ? `<a href="${unsubUrl}">Unsubscribe in one click</a>.` : `Reply STOP and we'll remove you.`) + `</p>`;
-    // STAGING GUARD (Mayor's no-send rule): the payload is stored in
-    // carerank_outbox for audit; nothing is sent until he explicitly approves.
-    const emailArgs = {
+    const result = await sendCloudflareEmail(env, {
       from: "team@mehyar.us",
       fromName: "CareRank",
       to: email,
@@ -192,19 +163,14 @@ export async function onRequestPost({ request, env }) {
       text,
       html,
       headers: carerankListUnsubscribeHeaders(unsubUrl),
-    };
-    const result = await maybeSendCarerankEmail(
-      db,
-      () => sendCloudflareEmail(env, emailArgs),
-      { kind: "subscribe", unsubUrl, args: emailArgs }
-    );
+    });
     if (!result.ok) {
       console.error("carerank subscribe email failed", result.error);
-      return J({ ok: true, email_ok: false, lead_token: leadToken });
+      return json({ ok: true, email_ok: false, lead_token: leadToken });
     }
-    return J({ ok: true, lead_token: leadToken, email_staged: !!result.staged });
+    return json({ ok: true, lead_token: leadToken });
   } catch (e) {
     console.error("carerank subscribe failed", e && e.message);
-    return J({ ok: false, error: "server_error" }, 500);
+    return json({ ok: false, error: "server_error" }, 500);
   }
 }

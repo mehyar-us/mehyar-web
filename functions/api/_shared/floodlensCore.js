@@ -66,11 +66,8 @@ function pointQueryUrl(base, layer, lon, lat, outFields) {
   return q.toString();
 }
 
-// NOTE: VERSION_ID is NOT in this list — verified live 2026-09-20 that
-// requesting it makes the layer-28 query fail ("Failed to execute query").
-// It was informational only; nothing downstream reads it.
 const ZONE_FIELDS =
-  "FLD_ZONE,ZONE_SUBTY,SFHA_TF,DFIRM_ID,STATIC_BFE,DEPTH,VELOCITY,SOURCE_CIT";
+  "FLD_ZONE,ZONE_SUBTY,SFHA_TF,DFIRM_ID,STATIC_BFE,DEPTH,VELOCITY,SOURCE_CIT,VERSION_ID";
 const PANEL_FIELDS = "FIRM_PAN,DFIRM_ID,EFF_DATE,ST_FIPS,PANEL,SUFFIX";
 
 // Liveness probe against one base. Returns {ok, ms, mapName?, error?}.
@@ -86,15 +83,6 @@ export async function femaLiveness(base, timeoutMs = 8000) {
   } catch (e) {
     return { ok: false, ms: Date.now() - t0, error: String((e && e.message) || e).slice(0, 120) };
   }
-}
-
-// FEMA writes -9999 as the "no data" sentinel on numeric NFHL fields
-// (observed live 2026-09-20: STATIC_BFE=-9999 on a Zone X polygon in
-// Manhattan). A sentinel is not a measurement — normalize to null before
-// we store, display, or print it, so no user ever sees "-9999 ft".
-export function nullIfFemaNoData(v) {
-  if (v === -9999 || v === "-9999") return null;
-  return v === undefined ? null : v;
 }
 
 // Full zone lookup for one point. Returns
@@ -131,10 +119,11 @@ export async function femaZoneLookup(lat, lon) {
           zone_subty: attrs.ZONE_SUBTY ?? null,
           sfha_tf: attrs.SFHA_TF ?? null,
           dfirm_id: attrs.DFIRM_ID ?? null,
-          static_bfe: nullIfFemaNoData(attrs.STATIC_BFE),
-          depth: nullIfFemaNoData(attrs.DEPTH),
-          velocity: nullIfFemaNoData(attrs.VELOCITY),
+          static_bfe: attrs.STATIC_BFE ?? null,
+          depth: attrs.DEPTH ?? null,
+          velocity: attrs.VELOCITY ?? null,
           source_cit: attrs.SOURCE_CIT ?? null,
+          version_id: attrs.VERSION_ID ?? null,
         },
         panel,
       };
@@ -266,19 +255,9 @@ export async function geocodeAddress(address) {
     throw err;
   }
   const m = matches[0];
-  // The Census geocoder can return a match record without usable coordinates
-  // (observed live 2026-09-20: matches[0] present, coordinates missing).
-  // Treat that as not-found rather than querying FEMA with undefined.
-  const cy = m.coordinates && m.coordinates.y;
-  const cx = m.coordinates && m.coordinates.x;
-  if (!Number.isFinite(cy) || !Number.isFinite(cx)) {
-    const err = new Error("address_not_found");
-    err.code = "address_not_found";
-    throw err;
-  }
   return {
-    lat: cy,
-    lon: cx,
+    lat: m.coordinates.y,
+    lon: m.coordinates.x,
     matched: m.matchedAddress || address,
     tigerLineId: m.tigerLine ? m.tigerLine.tigerLineId : null,
   };
@@ -331,4 +310,3 @@ export async function isFloodlensSuppressed(db, email) {
   } catch { /* on DB error, treat as not suppressed; the send is the last step anyway */ }
   return false;
 }
-
