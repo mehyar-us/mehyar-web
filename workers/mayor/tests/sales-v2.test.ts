@@ -78,11 +78,9 @@ it('generates one page per vertical from verticals.ts (single source of truth)',
     expect(page).not.toMatch(/\$\d/);
     // The only scripts allowed are the consent-gated analytics snippet and
     // the audience beacon tag (merged 2026-10-15) — no product JavaScript
-    // on the generated sales pages. Beacon host superseded 2026-10-22
-    // (audience → Mayor integration): same tag, now served from
-    // mayor.mehyar.us ahead of the old host's removal.
+    // on the generated sales pages.
     const scripts=[...page.matchAll(/<script\b[^>]*>/g)].map(m=>m[0]);
-    expect(scripts).toEqual(['<script src="/analytics-consent.js">','<script async src="https://mayor.mehyar.us/b.js" data-product="mayor">']);
+    expect(scripts).toEqual(['<script src="/analytics-consent.js">','<script async src="https://audience.mehyar.us/b.js" data-product="mayor">']);
     // SEO + CTA plumbing.
     expect(page).toContain(`<link rel="canonical" href="https://mayor.mehyar.us/sales/${slug}">`);
     expect(page).toContain('href="/sales#plans"');

@@ -99,17 +99,10 @@ export interface SeatsData {
  * intent and the catalog, writes nothing, and disappears on
  * consume/expiry. `state:'unhonorable'` is the sold-out truth: the
  * Ribbon says so in words and names the honest alternative — never a
- * silent substitution. Slice 1 carried the founding intent only;
- * rot551 fold C5 carries EVERY purchase intent the carrier accepts
- * (founding, pro, and the top-up packs), so the plan summary stands
- * before the OAuth wall for every buy path. Seats and the lock
- * wording are founding-only semantics; a pro/pack Ribbon carries
- * name + catalog price and nothing else. */
+ * silent substitution. */
 export interface IntentRibbonIntent extends IntentBase {
   type: 'intent-ribbon';
-  planRef: 'founding' | 'pro' | 'pack';
-  /** Set when planRef is 'pack': which top-up the buyer chose. */
-  packId?: 'small' | 'medium' | 'large';
+  planRef: 'founding';
   state: 'carried' | 'preselected' | 'unhonorable';
   headline: string;
   detail?: string;

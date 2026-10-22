@@ -88,7 +88,7 @@ export async function onRequestPost({ request, env }) {
     const text =
       status === "ready"
         ? `Thanks for your purchase!\n\nYour Moonroom ${packName} is ready — open your gallery to download your portraits:\n${galleryUrl}\n\n` +
-          `This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.\n\nOne small favour: if your pack made you smile, reply to this email with one line about it — and if we may quote you beside our pricing, say so in the reply (add your first name if you’d like it shown). We only ever publish a quote with your permission, exactly as you wrote it.\n\n-- Moonroom`
+          `This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.\n\n-- Moonroom`
         : `Thanks for your purchase!\n\nWe hit a snag generating your Moonroom ${packName}. Nothing was lost — just reply to this email and we'll get it sorted right away.\n\nYou can also check your order status here:\n${galleryUrl}\n\n-- Moonroom`;
     const html =
       `<p>Thanks for your purchase!</p>` +
@@ -96,8 +96,7 @@ export async function onRequestPost({ request, env }) {
         ? `<p>Your <strong>Moonroom ${packName}</strong> is ready — open your gallery to download your portraits:</p>` +
           `<p><a href="${galleryUrl}" style="display:inline-block;background:#e6c98a;color:#141021;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;">Open your gallery</a></p>` +
           `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${galleryUrl}">${galleryUrl}</a></p>` +
-          `<p style="color:#6b7280;font-size:13px;">This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.</p>` +
-          `<p style="color:#6b7280;font-size:13px;">One small favour: if your pack made you smile, reply to this email with one line about it — and if we may quote you beside our pricing, say so in the reply (add your first name if you’d like it shown). We only ever publish a quote with your permission, exactly as you wrote it.</p>`
+          `<p style="color:#6b7280;font-size:13px;">This link is personal to you — keep it somewhere safe. If it ever stops working, just reply to this email and we'll sort it out.</p>`
         : `<p>We hit a snag generating your <strong>Moonroom ${packName}</strong>. Nothing was lost — just reply to this email and we'll get it sorted right away.</p>` +
           `<p style="color:#6b7280;font-size:13px;">Order status:<br><a href="${galleryUrl}">${galleryUrl}</a></p>`) +
       `<p>-- Moonroom</p>`;

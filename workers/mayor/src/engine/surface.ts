@@ -9,7 +9,6 @@
  */
 import type {Grant,PreparedAction,ProbeScenario} from './types';
 import {listActionLog,listGrants,listPreparedActions,listScenarios} from './store';
-import {audienceSeries,type AudienceSeries} from './audience';
 
 type DB = D1Database;
 type Intent = Record<string, unknown>;
@@ -63,34 +62,6 @@ export function shadowCardIntent(a: PreparedAction, grant: Grant): Intent {
   provenance: { ruleText: grant.sourceUtterance, predicate: a.predicateFired ?? grant.plainSummary },
   nearBoundary: a.nearBoundary,
  };
-}
-
-/* ---------------- audience (Phase B — OPERATOR path only) ----------------
- * The audience read is the owner's portfolio intel, not tenant
- * data (plan §2 M3 scoping). Its intent constructor therefore has
- * exactly one caller family: the OPERATORS-gated /engine/audience
- * route. It is deliberately NOT called from buildEngineDeskIntents
- * below — the tenant Desk flow can never emit it, and a unit pin
- * holds that line. */
-
-export function audienceStatIntent(series: AudienceSeries): Intent {
- const productLabel = series.product === '*' ? 'all products' : series.product;
- const typeLabel = series.type === '*' ? 'events' : `${series.type} events`;
- const label = `${productLabel} · ${typeLabel}`;
- return {
-  type: 'stat', id: `audience-${series.product}-${series.type}`, version: V,
-  summary: `${label}: ${series.total} in the last ${series.weeks.length} weeks`,
-  label, value: String(series.total),
-  context: `last ${series.weeks.length} weeks`,
- };
-}
-
-/** Read + construct for the operator path: the series' stat intent,
- * built from AUDIENCE_DB. Kept beside the constructor so the route
- * stays a gate + a call. */
-export async function buildAudienceDeskIntents(audienceDb: DB, input: { product?: string; type?: string; weeks: number }): Promise<Intent[]> {
- const series = await audienceSeries(audienceDb, input);
- return [audienceStatIntent(series)];
 }
 
 /** The engine's contribution to the Desk stream: the current probe
