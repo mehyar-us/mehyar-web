@@ -53,16 +53,6 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
-    if (body.action === "list") {
-      if (!audit.fc_customer_id) return J({ ok: true, accounts: [] });
-      const owned = await stripeFC(env, testMode, "GET",
-        `/v1/financial_connections/accounts?account_holder[customer]=${encodeURIComponent(audit.fc_customer_id)}&limit=50`);
-      return J({ ok: true, accounts: (owned.data || []).map((a) => ({
-        id: a.id, institution: a.institution_name, status: a.status,
-        permissions: a.permissions, features: a.features ? Object.keys(a.features) : [],
-      })) });
-    }
-
     if (body.action === "disconnect") {
       let n = 0;
       for (const id of linkedIds) { if (await disconnectAccount(env, testMode, id)) n++; }
@@ -84,20 +74,15 @@ export async function onRequestPost({ request, env }) {
 
       const accounts = [];
       const transactions = [];
-      const errors = [];
       for (const id of ids.slice(0, 6)) {
-        try {
-          accounts.push(await getAccountSummary(env, testMode, id));
-          transactions.push(...await syncAccountTransactions(env, testMode, id));
-        } catch (e) {
-          errors.push({ account: id, message: String((e && e.message) || e).slice(0, 160) });
-        }
+        accounts.push(await getAccountSummary(env, testMode, id));
+        transactions.push(...await syncAccountTransactions(env, testMode, id));
       }
       transactions.sort((a, b) => (a.date < b.date ? -1 : 1));
       const range = transactions.length
         ? { from: transactions[0].date, to: transactions[transactions.length - 1].date, count: transactions.length }
         : { from: null, to: null, count: 0 };
-      return J({ ok: true, accounts, transactions, range, errors });
+      return J({ ok: true, accounts, transactions, range });
     }
 
     return J({ ok: false, error: "unknown_action" }, 400);

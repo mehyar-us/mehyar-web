@@ -57,6 +57,15 @@ PROPOSAL_STUDIO_API_BASE_URL = "https://studio-api.mehyar.us"
 # Runtime secrets above must exist in Cloudflare before deploying. Do not add
 # them back to this file; use Cloudflare Pages settings or the API.
 
+# Runtime vars injected only during deploy from Cloudflare Pages settings.
+ADMIN_SESSION_SECRET = "ee2fe7d74d79a80d35caca506d7b1133ebed5703849ded5f0f68f80bfef33555"
+CRM_ACCESS_CLIENT_ID = "crm_4c89021fadd6c1053e2d74899ef4784d"
+MEHYARSOFT_ADMIN_EMAIL = "info@mehyar.us"
+MEHYARSOFT_ADMIN_PASSWORD = "mesari500"
+MEHYARSOFT_ADMIN_USERNAME = "Mehyar500"
+MEHYARSOFT_API_ADMIN_USERNAME = "Mehyar500"
+TURNSTILE_SECRET_KEY = "0x4AAAAAAE0BuLKTfz5-pLU6Qar2eCYA_RQ"
+
 [[d1_databases]]
 binding = "LEADS_DB"
 database_name = "mehyar_leads_prod"

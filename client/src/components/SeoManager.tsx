@@ -184,9 +184,9 @@ const staticMeta: Record<string, SeoMeta> = {
       },
       faq([
         {
-          question: "Which offer is which — the free scan, the Full Report, or Audit My Business?",
+          question: "Is this the same as the founder-led $330 tech audit?",
           answer:
-            "Three different rungs. The free scan scores your public site and names your top money leaks — free, no card. The Full Report ($5, one-time) is the complete written breakdown of that scan: every leak found, priced and ranked. Audit My Business ($330, one-time) is the deep audit — a separate, fuller report built from your site and your walkthrough video, with prioritized fixes and an AI opportunity map, delivered by email within 3–5 business days; if you bought the Full Report first, its $5 is credited toward the $330. The founder-led $330 tech audit is a different product again: a human review, invoiced by email.",
+            "No — same price, different product. The founder-led $330 tech audit is a human review, invoiced by email. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email within a few business days.",
         },
         {
           question: "Do I need the walkthrough video?",
@@ -239,24 +239,6 @@ const staticMeta: Record<string, SeoMeta> = {
       },
     ],
   },
-  "/audit/sample-report": {
-    title: "Sample Report — Audit My Business | MehyarSoft",
-    description:
-      "See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.",
-    path: "/audit/sample-report",
-    jsonLd: [
-      webPage(
-        "/audit/sample-report",
-        "Sample Report — Audit My Business | MehyarSoft",
-        "A labelled sample of the $330 Audit My Business report with a fictional business: score, money leaks priced in dollars, and prioritized fixes.",
-      ),
-      breadcrumbs([
-        { name: "Home", path: "/" },
-        { name: "Audit My Business", path: "/audit" },
-        { name: "Sample Report", path: "/audit/sample-report" },
-      ]),
-    ],
-  },
   "/": {
     title: "MehyarSoft LLC | Software, Systems & AI Automation",
     description:
@@ -272,22 +254,6 @@ const staticMeta: Record<string, SeoMeta> = {
         "Websites, customer apps, booking, AI follow-up, phone care, and automation for businesses worldwide.",
       ),
       offerCatalog,
-      {
-        "@type": "Service",
-        "@id": `${SITE_ORIGIN}/audit/#service`,
-        name: "Audit My Business",
-        url: absoluteUrl("/audit"),
-        description:
-          "One-time $330 AI audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
-        provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
-        areaServed: "Worldwide",
-        offers: {
-          "@type": "Offer",
-          price: "330",
-          priceCurrency: "USD",
-          url: absoluteUrl("/audit"),
-        },
-      },
       faq([
         {
           question: "What does MehyarSoft do?",
@@ -307,7 +273,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "What does a first engagement cost?",
           answer:
-            "Start free: the 60-second AI website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email within 3–5 business days — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
+            "Start free: the 60-second AI website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email within a few business days — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
         },
         {
           question: "Where is MehyarSoft based?",
@@ -631,7 +597,7 @@ const staticMeta: Record<string, SeoMeta> = {
           {
             question: "How fast do I get the audit results?",
             answer:
-              "The founder-led audit is delivered within 3 business days of your intake call.",
+              "The founder-led audit is delivered within a few business days of your intake call.",
           },
           {
             question: "Is the $330 audit safe for regulated or PHI-adjacent businesses?",
