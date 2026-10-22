@@ -12,12 +12,12 @@ export type SeoMeta = {
   jsonLd?: Record<string, unknown>[];
 };
 const pages: Record<string, [string, string]> = {
-  "/mayor": ["The Mayor: AI for Your Local Business", "Meet The Mayor: business knowledge, customers, tasks, appointments and voice assistance. Free $0 and Pro $99 USD/month. Sign in to your private business workspace."],
+  "/mayor": ["The Mayor: AI for Your Local Business", "Meet The Mayor: business knowledge, customers, tasks, appointments and voice assistance. Free $0 and Pro $14 USD/month. Sign in to your private business workspace."],
   "/explore": ["Ask The Mayor: Visual AI Conversation", "Talk to The Mayor about business, AI and software. Explore visual answers and save conversations on your device by choice. No signup to begin."],
   "/enterprise": ["Custom AI for Enterprise & Regulated Teams", "Explore scoped AI and software pilots for technology, healthcare, pharma, finance and enterprise operations, with approved knowledge, access boundaries and human review."],
   "/": [
     "Custom AI Built Around Your Business",
-    "Custom AI systems tailored to your business workflows, approved knowledge and existing tools. Founder-led engineering and support.",
+    "Custom AI systems tailored to your business workflows, approved knowledge and existing tools. Senior engineering and support.",
   ],
   "/services": [
     "Solutions: Custom Business AI",
@@ -33,7 +33,7 @@ const pages: Record<string, [string, string]> = {
   ],
   "/portfolio": [
     "Work & Illustrative Workflow Patterns",
-    "Explore illustrative engagement patterns and expected deliverables.",
+    "Explore illustrative engagement patterns and expected deliverables. These are not client case studies or measured results.",
   ],
   "/apps": [
     "Products & Labs",
@@ -41,7 +41,7 @@ const pages: Record<string, [string, string]> = {
   ],
   "/about": [
     "About MehyarSoft & Mehyar Swelim",
-    "Founder-led engineering: meet Mehyar Swelim and learn how custom AI work is planned, built and supported.",
+    "Meet Mehyar Swelim and learn how custom AI work is planned, built and supported.",
   ],
   "/contact": [
     "Discuss Your Business",
@@ -52,16 +52,16 @@ const pages: Record<string, [string, string]> = {
     "Choose an available call time or request scheduling by inquiry or email.",
   ],
   "/micro-offer": [
-    "$330 Founder-Led Audit",
-    "A focused review of your website, inquiry path and current tools with a written action plan.",
+    "$330 Expert Audit",
+    "A focused review of your website, inquiry path and current tools with a written action plan. Implementation is separate.",
   ],
   "/audit": [
-    "Free Automated Website Diagnostic",
-    "An automated website diagnostic with suggested improvements, delivered in about 60 seconds.",
+    "Audit My Business — $330 AI Business Audit",
+    "A complete AI business audit: money leaks priced in dollars, prioritized fixes, and AI opportunities. Free preview, one-time $330, report by email.",
   ],
   "/audit/report": [
     "$5 Automated Website Report",
-    "A fuller automated website evaluation with suggested workflows and the capacity math shown step by step.",
+    "A fuller automated website evaluation. Suggested workflows and estimates are illustrative, not implementation guarantees.",
   ],
   "/blog": [
     "Insights & Practical AI Notes",
@@ -124,7 +124,7 @@ export function resolveMeta(raw: string): SeoMeta {
     if (item)
       entry = [
         `${item.title}: Illustrative Pattern`,
-        `${item.description} An illustrative scope with expected deliverables.`,
+        `${item.description} An illustrative scope, not a measured client result.`,
       ];
   }
   if (path.startsWith("/blog/")) {

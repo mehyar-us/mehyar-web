@@ -129,7 +129,7 @@ const modeCopy: Record<
   }
 > = {
   contact_general: {
-    eyebrow: "Founder-led intake",
+    eyebrow: "Direct intake",
     title: "Request a practical next step.",
     description:
       "Tell us what is leaking: website clarity, missed calls, booking friction, manual work, or disconnected systems.",

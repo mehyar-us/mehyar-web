@@ -4,7 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 
 const proofItems = [
   {
-    title: "Founder-led specialist",
+    title: "Senior specialist",
     body: "Mehyar Swelim is a Syrian founder in New York City with 10+ years of professional software engineering experience and current systems-engineering work through MehyarSoft LLC.",
   },
   {

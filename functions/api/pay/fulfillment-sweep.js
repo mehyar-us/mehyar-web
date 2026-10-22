@@ -13,9 +13,6 @@
 //            endpoint, or the in-worker generator where one is exported.
 //   PASS 2 — ready rows with email_sent_at NULL: exactly-once buyer email
 //            (atomic claim; claim released if the send fails).
-//   PASS 3 — walkthrough-video retention (2026-10-17): audit-videos/
-//            media deleted 90 days after report delivery (transcript
-//            and report kept). See _shared/videoRetention.js.
 //
 // Why it exists (2026-09-16): the webhook's optimistic fast path drives
 // generation inside waitUntil(). If that isolate is evicted mid-run, the order
@@ -26,7 +23,6 @@
 // stable-caller drive depends on its `drive` response shape).
 
 import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
-import { runVideoRetention } from "../_shared/videoRetention.js";
 import {
   SWEEP_PRODUCTS,
   BROWSER_UA,
@@ -356,16 +352,5 @@ export async function onRequestPost({ request, env, waitUntil }) {
     }
   }
 
-  // ── PASS 3: walkthrough-video retention (Mayor's ruling, 2026-10-17) ──
-  // Video + extracted audio under audit-videos/ are deleted 90 days
-  // after report delivery; transcript + report are kept. See
-  // ../_shared/videoRetention.js for the safety shape.
-  let retention = { records: 0, objects_deleted: 0 };
-  try {
-    retention = await runVideoRetention(db, env.PROPOSAL_ASSETS);
-  } catch (e) {
-    console.error("sweep retention pass failed", e && e.message);
-  }
-
-  return json({ ok: true, stuck_minutes: STUCK_MINUTES, orphans, dispatched, drive, emailed, retention });
+  return json({ ok: true, stuck_minutes: STUCK_MINUTES, orphans, dispatched, drive, emailed });
 }

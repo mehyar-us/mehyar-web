@@ -69,7 +69,7 @@ const MicroOffer = () => {
               customers.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl sm:leading-9">
-              A focused founder-led audit for small businesses that know
+              A focused expert audit for small businesses that know
               something is leaking — bad website clarity, missed calls, manual
               booking, weak follow-up, or disconnected systems — but need the
               next move before committing to a larger build.
@@ -95,7 +95,7 @@ const MicroOffer = () => {
               </a>
             </div>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              One fixed scope: your website, booking path, and follow-up, reviewed end to end. Audits are invoiced by email.
+              The audit has a fixed scope and does not promise a specific revenue result. Approved audits are invoiced manually by email.
             </p>
           </div>
 
@@ -113,7 +113,7 @@ const MicroOffer = () => {
                 </span>
               </div>
               <p className="mt-4 text-sm leading-6 text-white/78">
-              Best when the problem is visible but the fix is not: website trust, booking friction, missed calls, slow response, or messy handoffs. Payment is by email invoice — simple and direct.
+              Best when the problem is visible but the fix is not: website trust, booking friction, missed calls, slow response, or messy handoffs. Payment is by manual invoice after review.
               </p>
             </div>
             <div className="mt-5 space-y-3">
@@ -234,7 +234,7 @@ const MicroOffer = () => {
           </div>
           <div className="space-y-4 text-base leading-8 text-white/78">
             <p>
-              MehyarSoft is founder-led by Mehyar Swelim, a senior
+              MehyarSoft was founded by Mehyar Swelim, a senior
               software/systems consultant with 10+ years of professional
               engineering experience and current pharma systems-engineering
               work.
@@ -250,12 +250,6 @@ const MicroOffer = () => {
       </section>
 
       <div id="intake" className="scroll-mt-24">
-        <p className="mx-auto max-w-3xl px-4 pb-2 text-center text-xs leading-5 text-muted-foreground">
-          All sales are final — the founder-led audit is a one-time digital service, and purchases are not
-          refundable. If your audit hasn&rsquo;t been delivered within 3 business days of your intake call, email{" "}
-          <a href="mailto:info@mehyar.us" className="underline underline-offset-2 hover:text-foreground">info@mehyar.us</a>{" "}
-          and we&rsquo;ll re-deliver or re-schedule it.
-        </p>
         <ContactSection
           mode="offer_330_missed_lead_rescue"
           serviceCategory="ai_missed_lead_rescue_330"

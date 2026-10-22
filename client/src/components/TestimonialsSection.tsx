@@ -13,11 +13,11 @@ const ILLUSTRATIVE_EXAMPLES = [
   },
   {
     role: "Example: clinic operator",
-    quote: "The $5 report was brutal — and exactly right. The AI scheduling blueprint alone would be worth 100x the price.",
+    quote: "The $330 audit was brutal — and exactly right. The AI scheduling blueprint alone would be worth 100x the price.",
   },
   {
     role: "Example: ecommerce founder",
-    quote: "The $5 report was brutal — and exactly right. Every page graded, every leak priced, with the math shown.",
+    quote: "The $330 audit was brutal — and exactly right. Every page graded, every leak priced, with the math shown.",
   },
 ];
 
@@ -35,9 +35,9 @@ export default function TestimonialsSection() {
   return (
     <section className="px-4 py-16 md:py-24">
       <div className="site-shell">
-        <p className="site-eyebrow mb-4 text-center">Early access</p>
+        <p className="site-eyebrow mb-4 text-center">What the audit delivers</p>
         <h2 className="mx-auto max-w-3xl text-center text-3xl font-bold tracking-tight text-foreground md:text-4xl text-balance">
-          Be one of the first to run it
+          See what it finds on your site
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-muted-foreground">
           This audit engine is new. Run the free scan on your site, and if the

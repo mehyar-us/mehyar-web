@@ -20,7 +20,7 @@ const Footer = () => {
               </span>
             </Link>
             <p className="text-neutral-300 mb-6">
-              Founder-led software, systems, and AI automation for businesses, agencies, and regulated teams worldwide.
+              Software, systems, and AI automation for businesses, agencies, and regulated teams worldwide.
             </p>
             <a href="mailto:info@mehyar.us" className="text-neutral-300 hover:text-white transition-colors">
               info@mehyar.us
@@ -33,12 +33,17 @@ const Footer = () => {
               {[
                 ["Find my business", "/pricing"],
                 ["Services and pricing", "/services"],
+                ["Audit My Business", "/audit"],
+                ["Book your free assessment call", "/assessment-call/"],
+                ["Log in to The Mayor", "https://mayor.mehyar.us"],
                 ["Start a project", "/contact"],
-                ["Book a Tech Audit", "/micro-offer#intake"],
-                ["OpenClaw and Hermes", "/pricing#industry-pricing"],
               ].map(([item, href]) => (
                 <li key={item}>
-                  <Link href={href} className="text-neutral-300 hover:text-white transition-colors">{item}</Link>
+                  {href.startsWith("http") ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-neutral-300 hover:text-white transition-colors">{item}</a>
+                  ) : (
+                    <Link href={href} className="text-neutral-300 hover:text-white transition-colors">{item}</Link>
+                  )}
                 </li>
               ))}
             </ul>

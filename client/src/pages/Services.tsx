@@ -9,7 +9,6 @@ import MaintenanceSupportSection from "@/components/maintenance-support-section"
 import { managedAgentOffers } from "@/data/agent-services";
 import { Bot, BrainCircuit } from "lucide-react";
 import ServiceDecisionGuide from "@/components/ServiceDecisionGuide";
-import MayorBait from "@/components/MayorBait";
 
 const steps = ["Find the leak", "Ship the smallest useful fix", "Measure and document the handoff"];
 
@@ -24,11 +23,11 @@ const Services = () => {
               Choose the result you need. See what it takes.
             </h1>
             <p className="site-lede mt-4 max-w-2xl">
-              From a clearer website to a custom cloud platform, each path explains the problem, the build, the outcome, and what it takes to get it done.
+              From a clearer website to a custom cloud platform, each path explains the problem, the build, the outcome, and a realistic starting point.
             </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <Link href="/micro-offer#intake" className={buttonVariants({ variant: "cta", size: "lg" })}>
-                Book a Tech Audit <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              <Link href="/assessment-call/" className={buttonVariants({ variant: "cta", size: "lg" })}>
+                Book your free assessment call <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               <Link href="/pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>
                 View industry pricing
@@ -113,8 +112,6 @@ const Services = () => {
           <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-muted-foreground">Tools are selected for the workflow, not trend value: React/TypeScript frontends, Node/Python backends, CRM/email/scheduling integrations, Cloudflare-native hosting, SQL databases, dashboards, and AI-assisted workflow automation.</p>
         </div>
       </section>
-
-      <MayorBait campaign="services" />
 
       <CTASection />
     </>

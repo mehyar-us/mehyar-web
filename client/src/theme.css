@@ -180,6 +180,22 @@
     text-wrap: balance;
   }
 
+  /* Editorial serif display — Claude-style calm premium headlines. */
+  .site-display-serif {
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    color: hsl(var(--ink));
+    font-size: var(--site-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+
+  .site-serif {
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    letter-spacing: -0.01em;
+  }
+
   .site-heading {
     color: hsl(var(--ink));
     font-size: var(--site-heading);

@@ -24,11 +24,12 @@ const includeItems = [
 
 const nextSteps = [
   "Mehyar reviews the request personally.",
-  "You get one practical next step: audit, booking call, or larger sprint.",
+  "You get one practical next step: audit, booking call, larger sprint, or no-fit answer.",
+  "If there is no fit, you get a direct no-fit answer.",
 ];
 
 const trustPoints = [
-  "Founder-led review by a senior software, systems, and AI automation consultant.",
+  "Senior review by a software, systems, and AI automation consultant.",
   "Built for local businesses and regulated teams that need clear scope, clean handoffs, and accountable support.",
   "No spam: service follow-up requires consent, and marketing updates stay optional.",
 ];
@@ -59,7 +60,7 @@ const ContactSection = ({
                 ? "Manual-safe booking"
                 : isOffer
                   ? "$330 rescue intake"
-                  : "Founder-led intake"}
+                  : "Direct intake"}
             </p>
             <h2 className="mb-4 text-3xl font-semibold tracking-[-0.035em] text-ink dark:text-white md:text-5xl">
               {isBooking

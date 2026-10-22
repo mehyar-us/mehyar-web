@@ -40,7 +40,7 @@ const Newsletter = () => {
           <div className="rounded-[2rem] border border-border bg-card p-6 shadow-[0_24px_80px_rgba(8,63,84,0.08)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-800 dark:bg-white/10 dark:text-brand-100">
               <ShieldCheck size={14} aria-hidden="true" />
-              Founder-led, consent-aware
+              Independent, consent-aware
             </div>
             <h2 className="text-3xl font-semibold tracking-[-0.04em] text-ink dark:text-white">Built for owners who need a next step, not a software lecture.</h2>
             <p className="mt-4 leading-7 text-muted-foreground">

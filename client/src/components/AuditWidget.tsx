@@ -279,7 +279,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
         {report.ai_pipelines && report.ai_pipelines.length > 0 && (
           <>
             <h2 className="mt-10 flex items-center gap-2 text-xl font-semibold text-foreground">
-              <Bot className="h-5 w-5 text-brand-700" /> Your AI upside — the capacity math
+              <Bot className="h-5 w-5 text-brand-700" /> Your AI upside — up to 5x capacity
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               AI doesn't just fix your site — it multiplies what your business can handle without hiring.
@@ -306,10 +306,10 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               <span className="text-xs text-sky-300">The free audit is the trailer — this is the movie</span>
               <h2 className="mt-3 text-2xl font-semibold md:text-3xl">Get the complete professional evaluation — just $5</h2>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-                Every page graded. How you compare. The AI automation blueprint with the capacity math shown step by step. Your 90-day plan. Written for YOUR site, delivered as a beautiful PDF.
+                Every page graded. How you compare. The 500% AI automation blueprint with the math shown step by step. Your 90-day plan. Written for YOUR site, delivered as a beautiful PDF.
               </p>
               <ul className="mt-4 space-y-2 text-sm text-slate-200">
-                {["The complete evaluation, written for YOUR site", "Upside math — capacity before vs after AI", "AI automation blueprint tailored to your business type", "90-day action plan ordered by revenue impact"].map((f) => (
+                {["The complete evaluation, written for YOUR site", "The 500% upside math — capacity before vs after AI", "AI automation blueprint tailored to your business type", "90-day action plan ordered by revenue impact"].map((f) => (
                   <li key={f} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{f}</li>
                 ))}
               </ul>
@@ -317,7 +317,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
                 <Link href={`/audit/report?email=${encodeURIComponent(email)}&url=${encodeURIComponent(url)}`} className={buttonVariants({ variant: "cta", size: "lg", className: "bg-[#F59E0B] text-[#0B1B33] hover:bg-amber-400" })}>
                   Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
-                <span className="text-xs text-slate-400">One-time · Delivered in about a minute · Less than a coffee</span>
+                <span className="text-xs text-slate-400">One-time · Instant delivery · Less than a coffee</span>
               </div>
             </div>
           </div>
@@ -389,7 +389,7 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
               Run my free audit <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-              <Lock className="h-3 w-3" /> Free forever. No card. Your report + the AI blueprint preview.
+              <Lock className="h-3 w-3" /> Free forever. No card. Your report + the 500% AI blueprint preview.
             </p>
           </form>
         )}

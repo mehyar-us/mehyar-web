@@ -1,7 +1,7 @@
 import {env as testEnv} from 'cloudflare:workers';
 import {describe,it,expect} from 'vitest';
 import type {Env} from '../../src/env';
-import {runDetectors,loadProactiveContext,localDayKey,shiftLocalDate,localParts,LAPSED_DAYS} from '../../src/proactive-detectors';
+import {runDetectors,loadProactiveContext,localDayKey,shiftLocalDate,localParts} from '../../src/proactive-detectors';
 import {confirmProfile} from '../../src/memory';
 import {
  createSuggestionCard,runProactiveCycle,surfaceGate,logNudge,buildBriefing,buildRoi,
@@ -134,7 +134,7 @@ describe('slow-day detector',()=>{
 });
 
 describe('lapsed-regular detector',()=>{
- it('finds customers past the salon lapsed window only',async()=>{
+ it('finds customers past the salon 45-day window only',async()=>{
   const actor=await fixture();
   const lapsed=await addCustomer(actor,'Lapsed Laura','+17185550001');
   const fresh=await addCustomer(actor,'Fresh Fred','+17185550002');
@@ -218,7 +218,7 @@ describe('suggestion cards',()=>{
   const card=await createSuggestionCard(env,context,det);
   expect(card!.kind).toBe('winback');
   expect(card!.title).toMatch(/lapsed client/); // salon vocabulary
-  expect(card!.body).toMatch(new RegExp(`hasn't booked in ${LAPSED_DAYS.salon}\\+ days`));
+  expect(card!.body).toMatch(/hasn't booked in 45\+ days/);
   expect(card!.draft.message).not.toMatch(/%|discount|free/i);
   expect(card!.draft.message).toContain('STOP');
   expect(card!.draft.message.length).toBeLessThan(306);
@@ -385,7 +385,7 @@ describe('proactive cycle',()=>{
   const again=await runProactiveCycle(env,NOW);
   expect(again).toMatchObject({detections:0,cards:0,surfaced:0});
  });
- it('surfaces the morning briefing once, due-based (first cycle at/after 08:05)',async()=>{
+ it('surfaces the morning briefing once in the 08:05 window',async()=>{
   const actor=await fixture();
   const at807=Date.parse('2026-10-08T12:07:00Z');
   // The cycle fans out to every tenant; assert on this tenant's own rows.
@@ -401,23 +401,6 @@ describe('proactive cycle',()=>{
   const again=await env.AGENT_DB.prepare("SELECT COUNT(*) AS n FROM mayor_notifications WHERE tenant_id=? AND kind='proactive_briefing'")
    .bind(actor.tenantId).first<{n:number}>();
   expect(again!.n).toBe(1); // no duplicate briefing
- });
- it('briefing is due-based: silent at 08:04, fires on the 08:15 agent-grid sweep and on a late first cycle',async()=>{
-  const early=await fixture();
-  await runProactiveCycle(env,Date.parse('2026-10-08T12:04:00Z')); // 08:04 EDT — not yet due
-  const earlyNotes=await env.AGENT_DB.prepare("SELECT COUNT(*) AS n FROM mayor_notifications WHERE tenant_id=? AND kind='proactive_briefing'")
-   .bind(early.tenantId).first<{n:number}>();
-  expect(earlyNotes!.n).toBe(0);
-  const grid=await fixture();
-  await runProactiveCycle(env,Date.parse('2026-10-08T12:15:00Z')); // 08:15 EDT — the agent sweep grid
-  const gridNotes=await env.AGENT_DB.prepare("SELECT COUNT(*) AS n FROM mayor_notifications WHERE tenant_id=? AND kind='proactive_briefing'")
-   .bind(grid.tenantId).first<{n:number}>();
-  expect(gridNotes!.n).toBe(1);
-  const late=await fixture();
-  await runProactiveCycle(env,Date.parse('2026-10-08T17:20:00Z')); // 13:20 EDT — a late first cycle still delivers the day's briefing
-  const lateNotes=await env.AGENT_DB.prepare("SELECT COUNT(*) AS n FROM mayor_notifications WHERE tenant_id=? AND kind='proactive_briefing'")
-   .bind(late.tenantId).first<{n:number}>();
-  expect(lateNotes!.n).toBe(1);
  });
  it('does not surface during quiet hours',async()=>{
   const actor=await fixture();

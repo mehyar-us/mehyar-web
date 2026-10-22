@@ -3,7 +3,6 @@ import { ArrowRight, Award, CheckCircle, Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import QuickAnswer from "@/components/QuickAnswer";
-import MayorBait from "@/components/MayorBait";
 
 const values = [
   { title: "Practicality", description: "Find the leak that costs the most, fix it first, and stop adding tools before the case is clear.", icon: Award },
@@ -18,7 +17,7 @@ const timeline = [
   { year: "Now", title: "MehyarSoft LLC", description: "A consulting brand focused on software, systems engineering, AI automation, and practical tech support for local and regulated businesses." },
 ];
 
-const credentials = ["Syrian founder in NYC", "10+ years professional software engineering", "Current regulated systems-engineering work", "Founder-led LLC with direct technical accountability"];
+const credentials = ["Syrian founder in NYC", "10+ years professional software engineering", "Current regulated systems-engineering work", "Independent LLC with direct technical accountability"];
 
 const About = () => {
   return (
@@ -26,7 +25,7 @@ const About = () => {
       <section className="site-hero">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center">
           <div>
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Founder-led consulting</p>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-100">Independent consulting</p>
             <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.045em] text-ink dark:text-white md:text-6xl md:leading-[0.98]">
               Built by an engineer who understands both survival and systems.
             </h1>
@@ -139,7 +138,6 @@ const About = () => {
           </Link>
         </div>
       </section>
-      <MayorBait campaign="about" />
     </>
   );
 };

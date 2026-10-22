@@ -38,7 +38,7 @@ const primaryLinks = [
 const actionLinks = [
   { href: "/contact", label: "Start a project", icon: Mail },
   { href: "/booking", label: "Book a call", icon: CalendarDays },
-  { href: "/micro-offer#intake", label: "Book a tech audit", icon: ClipboardCheck },
+  { href: "/assessment-call/", label: "Book your free assessment call", icon: ClipboardCheck },
   { href: "/audit", label: "Audit my business", icon: ClipboardCheck },
 ];
 
