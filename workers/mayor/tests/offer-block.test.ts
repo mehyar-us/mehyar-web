@@ -12,9 +12,7 @@ it('renders catalog prices and plan terms (no hardcoded amounts)',()=>{
  expect(html).toContain('120 microphone minutes');
  expect(html).toContain('100 reply attempts');
  expect(html).toContain('10 microphone minutes');
- // Final-sale scope ruling (2026-10-17): no final-sale language on sales surfaces.
- expect(html).not.toContain('Purchases are final');
- expect(html).toContain('Cancel Pro renewal in Manage billing.');
+ expect(html).toContain('Purchases are final');
 });
 it('follows the catalog when prices change (never a stale or invented amount)',()=>{
  const changed=catalog();changed.plans[1].priceCents=3900;

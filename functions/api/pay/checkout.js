@@ -5,11 +5,7 @@
 // Body: {
 //   product_id:  "audit-full-report"            (required — looked up in billing_products)
 //   email:       "buyer@example.com"            (required)
-//   (header)    x-crew-test-mint: <secret>     (crew-only — mints a TEST session via
-//                                               STRIPE_TEST_SECRET_KEY when the header
-//                                               matches the CREW_TEST_MINT_SECRET project
-//                                               secret; there is NO body flag for test
-//                                               mode — client test flags are ignored)
+//   test:       true                           (optional — use STRIPE_TEST_SECRET_KEY)
 //   success_url: "https://other.mehyar.us/ty"  (optional — host must be in allowed_return_hosts)
 //   cancel_url:  "https://other.mehyar.us/"     (optional — host must be in allowed_return_hosts)
 //   params:      { ... }                        (optional — product-specific fields, <=2KB)
@@ -20,8 +16,7 @@
 // initOrder hook below; the audit_report hook mirrors the legacy
 // /api/audit/full-report/checkout behavior.
 
-import { sha256hex, normalizeUrl } from "../_shared/auditBusinessShared.js";
-import { fullReportCreditCents } from "./_shared/credit.js";
+import { sha256hex } from "../_shared/auditBusinessShared.js";
 
 // Attribution threading (tracking-crm-fix, 2026-10-05). Product pages
 // forward MSRC.get() as params.attribution; we store it on
@@ -219,28 +214,8 @@ const orderHooks = {
   // Mints the 64-hex access token here so the Stripe success_url (?token=)
   // and the audit row share ONE token from the start.
   async audit_business(db, product, { email, params }) {
-    let auditId = sanitize(params.audit_id, 64);
-    if (!/^[0-9a-f-]{36}$/i.test(auditId)) {
-      // Direct-buy lane (rot542, 2026-10-22): no Step 1 intake in front of
-      // payment — the buyer pays from the landing and the intake data
-      // (business name + URL) is collected in the pay action itself, so the
-      // row is created here in the same 'intake' state the intake endpoint
-      // leaves, keyed to the checkout email (mismatch impossible by
-      // construction). The build re-fetches the site itself
-      // (auditBusinessBuild step 1), so no preview signals are needed; the
-      // gate's quality purpose — a named business, a valid URL, an
-      // email-linked row — is preserved inside the payment.
-      if (params.direct !== true && params.direct !== "true") return { error: "invalid_audit_id" };
-      const businessName = sanitize(params.business_name, 160);
-      const directUrl = normalizeUrl(sanitize(params.url, 300));
-      if (!businessName) return { error: "missing_business_name" };
-      if (!directUrl) return { error: "invalid_url" };
-      auditId = crypto.randomUUID();
-      const directEmailHash = await sha256hex("audit-business|" + email);
-      await db.prepare(
-        "INSERT INTO audit_business_reports (id, email_hash, url, business_name, status, signals_json) VALUES (?, ?, ?, ?, 'intake', NULL)"
-      ).bind(auditId, directEmailHash, directUrl, businessName).run();
-    }
+    const auditId = sanitize(params.audit_id, 64);
+    if (!/^[0-9a-f-]{36}$/i.test(auditId)) return { error: "invalid_audit_id" };
     const row = await db.prepare(
       "SELECT id, status, email_hash FROM audit_business_reports WHERE id = ?"
     ).bind(auditId).first();
@@ -250,23 +225,13 @@ const orderHooks = {
     if (row.status !== "intake" && row.status !== "failed") {
       return { error: "audit_not_payable" };
     }
-    // $5 Full Report credit (rot294 ladder, 2026-10-16): the eligibility
-    // rule lives in _shared/credit.js (single source — the Step-3 pay
-    // point's credit-status display reads the same function). The main
-    // flow converts creditCents into a visible Stripe discount, so the
-    // buyer sees the credit on the checkout page before paying. A lookup
-    // failure never blocks checkout — it just skips the credit.
-    const creditCents = await fullReportCreditCents(db, email);
-    if (creditCents > 0) params.credit_applied = creditCents;
     const accessToken = randomHex(32);
     await db.prepare(
       "UPDATE audit_business_reports SET access_token=?, status_changed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?"
     ).bind(accessToken, auditId).run();
     return {
-      orderExtra: { audit_id: auditId, accessToken, creditCents },
-      metadataExtra: creditCents > 0
-        ? { audit_id: auditId, credit_applied: String(creditCents) }
-        : { audit_id: auditId },
+      orderExtra: { audit_id: auditId, accessToken },
+      metadataExtra: { audit_id: auditId },
     };
   },
 };
@@ -286,19 +251,12 @@ export async function onRequestPost({ request, env }) {
     const productId = sanitize(body.product_id, 100);
     const email = sanitize(body.email, 254).toLowerCase();
     if (!productId) return J({ ok: false, error: "invalid_product" }, 400);
-    const emailValid = EMAIL_RE.test(email);
+    if (!EMAIL_RE.test(email)) return J({ ok: false, error: "invalid_email" }, 400);
 
     const product = await db.prepare(
       "SELECT * FROM billing_products WHERE id = ? AND active = 1"
     ).bind(productId).first();
     if (!product) return J({ ok: false, error: "invalid_product" }, 400);
-    // Moonroom (2026-10-17): the email is OPTIONAL — its paywall lets the
-    // buyer skip straight to Stripe, which collects the address on its own
-    // page; the webhook backfills billing_payments.email from Stripe's
-    // customer_details. Every other product keeps the hard requirement.
-    // A non-empty but malformed address is still rejected for everyone.
-    if (!emailValid && !(email === "" && product.brand === "moonroom"))
-      return J({ ok: false, error: "invalid_email" }, 400);
 
     // Product-specific params: cap at ~2KB and sanitize strings.
     let params = {};
@@ -318,25 +276,7 @@ export async function onRequestPost({ request, env }) {
     const attribution = sanitizeAttribution(params.attribution);
     const attributionJson = attribution ? JSON.stringify(attribution) : null;
 
-    // Payment integrity (rot541, 2026-10-22): Stripe mode is a server-side
-    // property and is NEVER selected by the client. This endpoint previously
-    // honored a client-supplied `test: true` and minted cs_test_ sessions on
-    // the production account; test payments fulfilled into production tables.
-    // Client test flags are ignored.
-    //
-    // Crew-gated test mint (rot545, 2026-10-22): the ONE exception is a
-    // server-side gate — a request carrying the crew-held secret in the
-    // x-crew-test-mint header, checked here against the CREW_TEST_MINT_SECRET
-    // project secret, mints in test mode for internal E2E proofs. No body or
-    // flag shape can open it: without the header the public surface is
-    // live-only, exactly as hardened. Test-minted orders fulfill in test
-    // scope only (the webhook admits a test event solely for an order whose
-    // stored session is cs_test_).
-    const crewMintSecret = env.CREW_TEST_MINT_SECRET;
-    const testMode = !!(
-      crewMintSecret &&
-      request.headers.get("x-crew-test-mint") === crewMintSecret
-    );
+    const testMode = body.test === true;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return J(
@@ -353,10 +293,6 @@ export async function onRequestPost({ request, env }) {
 
     const orderExtra = hookResult.orderExtra || {};
     const metadataExtra = hookResult.metadataExtra || {};
-    // Server-granted credit (today only the $5 Full Report credit on
-    // Audit My Business). Capped at the product price; 0 for every other
-    // product, leaving their checkout behavior unchanged.
-    const creditCents = Math.max(0, Math.min(Number(orderExtra.creditCents) || 0, Number(product.price_cents) || 0));
     const accessToken = orderExtra.accessToken || randomHex(32);
     const reportId = orderExtra.report_id || null;
 
@@ -378,21 +314,15 @@ export async function onRequestPost({ request, env }) {
     }
     const totalCents =
       Number(product.price_cents) +
-      (bumpProduct ? Number(bumpProduct.price_cents) : 0) -
-      creditCents;
+      (bumpProduct ? Number(bumpProduct.price_cents) : 0);
 
     // Idempotency: reuse a pending payment row for the same product+email
     // created within the last hour. A fresh Stripe session is attached to it.
-    // Anonymous checkouts (empty email, Moonroom) never reuse a row — there
-    // is no identity to key on, and sharing one would mix buyers together.
-    let payment = null;
-    if (email) {
-      payment = await db.prepare(
-        "SELECT id, access_token FROM billing_payments " +
-        "WHERE product_id = ? AND email = ? AND status = 'pending' AND created_at > datetime('now','-1 hour') " +
-        "ORDER BY id DESC LIMIT 1"
-      ).bind(productId, email).first();
-    }
+    let payment = await db.prepare(
+      "SELECT id, access_token FROM billing_payments " +
+      "WHERE product_id = ? AND email = ? AND status = 'pending' AND created_at > datetime('now','-1 hour') " +
+      "ORDER BY id DESC LIMIT 1"
+    ).bind(productId, email).first();
 
     let paymentId;
     if (payment) {
@@ -473,9 +403,7 @@ export async function onRequestPost({ request, env }) {
     sp.set("mode", billingMode);
     sp.set("success_url", successUrl);
     sp.set("cancel_url", cancelUrl);
-    // Only pre-fill Stripe's email when the buyer actually gave one; with
-    // none, Stripe collects it on its hosted page.
-    if (email) sp.set("customer_email", email);
+    sp.set("customer_email", email);
     sp.set("line_items[0][price_data][currency]", product.currency || "usd");
     sp.set("line_items[0][price_data][product_data][name]", product.name);
     if (product.description) sp.set("line_items[0][price_data][product_data][description]", product.description);
@@ -489,41 +417,6 @@ export async function onRequestPost({ request, env }) {
       if (trialDays > 0) sp.set("subscription_data[trial_period_days]", String(trialDays));
     }
     sp.set("line_items[0][quantity]", "1");
-    if (creditCents > 0) {
-      // Show the credit as its own discount line on the Stripe page via a
-      // durable coupon (created once per Stripe account/mode, then reused).
-      // If the coupon cannot be ensured, fall back to reducing the line
-      // price so the promised credit ALWAYS holds.
-      const couponId = "CREDIT" + creditCents;
-      let couponOk = false;
-      try {
-        const auth = { authorization: "Bearer " + stripeKey };
-        const got = await fetch("https://api.stripe.com/v1/coupons/" + couponId, { headers: auth, signal: AbortSignal.timeout(10000) });
-        if (got.ok) {
-          couponOk = true;
-        } else {
-          const cs = new URLSearchParams();
-          cs.set("id", couponId);
-          cs.set("amount_off", String(creditCents));
-          cs.set("currency", product.currency || "usd");
-          cs.set("duration", "once");
-          cs.set("name", "$5 Full Report credit");
-          const made = await fetch("https://api.stripe.com/v1/coupons", {
-            method: "POST",
-            headers: { ...auth, "content-type": "application/x-www-form-urlencoded" },
-            body: cs.toString(),
-            signal: AbortSignal.timeout(10000),
-          });
-          couponOk = made.ok;
-        }
-      } catch (e) { couponOk = false; }
-      if (couponOk) {
-        sp.set("discounts[0][coupon]", couponId);
-      } else {
-        sp.set("line_items[0][price_data][unit_amount]", String(Number(product.price_cents) - creditCents));
-      }
-      sp.set("metadata[credit_applied]", String(creditCents));
-    }
     if (bumpProduct) {
       // Order-bump second line item (BabyPeek $9 Couple Pack). The buyer
       // opted in on the product page (unchecked by default); the Stripe

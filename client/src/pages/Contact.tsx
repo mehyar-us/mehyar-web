@@ -3,7 +3,6 @@ import QuickAnswer from "@/components/QuickAnswer";
 import type { ConversionFlowMode } from "@/components/conversion/ConversionFlow";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
-import MayorBait from "@/components/MayorBait";
 
 const getContactQueryDefaults = (): {
   mode: ConversionFlowMode;
@@ -109,7 +108,6 @@ const Contact = () => {
         answer="Choose a named package when the result is clear, start with the $330 tech audit when the leak is clear but the fix is not, or use this intake when your business needs a custom combination."
       />
       <ContactSection {...conversionDefaults} showIntro={false} />
-      <MayorBait campaign="contact" />
     </>
   );
 };
