@@ -32,6 +32,7 @@ export class VoiceAdapter {
     this.speaking = false;
     this.events = []; // test hook
     this.marks = {}; // latency-proof hook: { toFetchMs, toSpeakMs, tttMs, ttsMs }
+    this._lastVoiceUsage = null; // cumulative voice-usage baseline for per-turn deltas
   }
 
   emit(type, data = {}) {
@@ -92,6 +93,37 @@ export class VoiceAdapter {
     });
   }
 
+  // Voice-transport usage is cumulative per connection (the DO accumulates
+  // sttSec/ttsChars/turnSec), while our /turn-complete rollup accumulates per
+  // posted turn. Posting cumulative values each turn would double-count, so we
+  // post per-turn DELTAS here. Real DO-measured actuals always win over any
+  // estimates for the stt/tts/turn legs. Frozen shape: {stt,tts,turn} x
+  // {model,audioMinutes,chars,neurons} (docs/voice-adapter-answers.md §11).
+  voiceUsageDelta() {
+    let cur = null;
+    try { cur = this.transport.getUsage ? this.transport.getUsage() : null; } catch { cur = null; }
+    if (!cur || typeof cur !== "object") return null;
+    const delta = {};
+    const prev = (this._lastVoiceUsage && typeof this._lastVoiceUsage === "object") ? this._lastVoiceUsage : {};
+    for (const leg of ["stt", "tts", "turn"]) {
+      const c = cur[leg], q = prev[leg];
+      if (!c || typeof c !== "object") continue;
+      const d = {};
+      let moved = false;
+      for (const f of ["audioMinutes", "chars", "neurons"]) {
+        const cv = Number(c[f]), qv = Number(q && q[f]);
+        const diff = (Number.isFinite(cv) ? cv : 0) - (Number.isFinite(qv) ? qv : 0);
+        if (diff > 0) { d[f] = Math.round(diff * 10000) / 10000; moved = true; }
+      }
+      if (!moved) continue; // zeros-shape / unchanged frame: nothing to post
+      if (typeof c.model === "string" && c.model) d.model = c.model;
+      delta[leg] = d;
+    }
+    // Baseline advances even on empty deltas (e.g. zeros-shape before first frame).
+    try { this._lastVoiceUsage = JSON.parse(JSON.stringify(cur)); } catch { /* keep old baseline */ }
+    return Object.keys(delta).length ? delta : null;
+  }
+
   async speak(text, { userText, sttMs, tttMs, brainMs, usage, endCall } = {}) {
     if (!this.active) return;
     this.speaking = true;
@@ -118,6 +150,11 @@ export class VoiceAdapter {
       this.avatar.setSpeaking(false);
     }
     this.marks.ttsMs = ttsMs;
+    // Merge voice-transport actuals (per-turn deltas, frozen shape) into the
+    // usage passthrough. DO-measured actuals win over estimates for stt/tts/turn.
+    const voiceDelta = this.voiceUsageDelta();
+    const mergedUsage = { ...(usage && typeof usage === "object" ? usage : {}) };
+    if (voiceDelta) for (const leg of Object.keys(voiceDelta)) mergedUsage[leg] = voiceDelta[leg];
     // Persist the turn + latency log on OUR session record (text only).
     try {
       await this.fetchFn(`${this.apiBase}/api/assessment-call/turn-complete`, {
@@ -128,7 +165,7 @@ export class VoiceAdapter {
           userText,
           replyText: text,
           timings: { sttMs, tttMs, brainMs, ttsMs },
-          ...(usage ? { usage } : {}),
+          ...(Object.keys(mergedUsage).length ? { usage: mergedUsage } : {}),
         }),
       });
     } catch {

@@ -9,8 +9,51 @@ const subjects:Record<HarnessChange,RegExp>={
  task:/\b(?:task|next step)\b/i,
 };
 /** A read or a general planning request cannot silently arm a write confirmation. */
+export function asksHarnessRule(text:string,previous=''){
+ const request=text.trim();
+ // A trailing question mark makes it advice-seeking, not a standing rule.
+ if(/[?]\s*$/.test(request))return false;
+ if(/^(?:yes|no|okay|ok|confirm|sure)[.! ]*$/i.test(request))return false;
+ if(/\b(?:do not|don't|never|stop)\s+(?:always\s+do|make it a rule|set (?:a|this) rule|from now on)\b/i.test(request))return false;
+ if(/\b(?:should (?:i|we)|do you|would help|maybe|could we|what if)\b/i.test(request))return false;
+ const action='(?:do|confirm|check|ask|send|call|remind|offer|mention|include|add|use|start|end|review|log|record|schedule|book|text|email|follow\\s+up|apply|treat|greet|close|open|flag|note|double\\s+check)';
+ const patterns=[
+  new RegExp(`\\balways\\s+${action}\\b`,'i'),
+  new RegExp(`\\bfrom now on\\b[\\s\\S]{0,160}?\\b${action}\\b`,'i'),
+  /\bmake it a rule\b/i,
+  /\bset (?:this|a) rule\b/i,
+  new RegExp(`\\bwhenever\\b[\\s\\S]{0,120}?\\b${action}\\b`,'i'),
+  new RegExp(`\\bevery time\\b[\\s\\S]{0,120}?\\b${action}\\b`,'i'),
+  new RegExp(`\\bnever forget to\\s+${action}\\b`,'i'),
+  new RegExp(`\\bremember to always\\s+${action}\\b`,'i'),
+ ];
+ // Rule patterns are checked before any lookup guard: a taught rule often
+ // opens with "When …", which a question guard would misread.
+ if(!patterns.some(pattern=>pattern.test(request)))return false;
+ return request.replace(/[^\p{L}\p{N}]+/gu,' ').trim().split(' ').length>=4;
+}
+/** Deterministic allowed-tools pick for a taught rule: keyword evidence only,
+ * defaulting to the safest read pair when the rule needs no connector reads. */
+export function inferHarnessSkillTools(text:string):string[]{
+ const request=text.toLocaleLowerCase(),tools:string[]=[];
+ const has=(words:string[])=>words.some(word=>new RegExp(`\\b${word}\\w*\\b`).test(request));
+ if(has(['task','todo','next step','follow up','follow-up','reminder']))tools.push('tasks');
+ if(has(['customer','client','guest','patient','caller']))tools.push('customers');
+ if(has(['appointment','booking','calendar','schedul','slot','opening','availability']))tools.push('bookings','calendar_openings');
+ if(has(['goal','target','kpi','metric']))tools.push('goals');
+ if(has(['gmail','email','inbox','unread']))tools.push('gmail_unread');
+ if(has(['profile','business info','hour','service']))tools.push('profile');
+ if(has(['connector','connection','integration']))tools.push('connector_status');
+ return tools.length?[...new Set(tools)].slice(0,8):['profile','tasks'];
+}
 export function asksHarnessChange(kind:HarnessChange,text:string,previous=''){
  const request=text.replace(/\b(?:do not|don't)\s+save(?:\s+(?:it|this|anything))?\s+yet\b/gi,'');
+ // A standing rule taught in plain language ("when X happens, always do Y")
+ // is a skill request even when the word "skill" is never said. It is checked
+ // first: taught rules often open with "When …", which the lookup guard below
+ // would otherwise misread. asksHarnessRule carries its own negation and
+ // question guards.
+ if(kind==='skill'&&asksHarnessRule(text,previous))return true;
  if(/\b(?:do not|don't|never)\s+(?:create|add|save|change|update|edit|archive|restore|unarchive|enable|disable|pause|stop|resume|schedule|automate|set|use|choose|select)\b/i.test(request))return false;
  if(/^(?:please\s+)?(?:show|read|list|explain|what|which|how|when|where)\b/i.test(text.trim()))return false;
  const verb=kind==='identity'?/\b(?:create|add|save|change|update|edit|set|make|use)\b/i:/\b(?:create|add|save|change|update|edit|archive|set|make)\b/i;
@@ -76,4 +119,4 @@ export function harnessActionTools(text:string,previous=''){
  const actions=harnessVoiceTools.filter(name=>name!=='readBusinessAgent'&&harnessToolAvailable(name,text,previous));
  return actions.length?['reply','readBusinessAgent',...actions]:null;
 }
-export const harnessVoiceGuidance='Each business has its own durable goals, declarative skills, identity and agent reports. For lookup use readBusinessAgent. Only an explicit agent/AI/growth report run or direct request to review the business uses runAgentReview; it saves a new AI report from selected read tools using this turn’s reply attempt. A request for advice alone does not authorize a run or schedule. An informational report question does not prepare a run confirmation. Point to Review my business in Today or ask the operator to say Review my business; do not invite a standalone yes when no proposal exists. For explicitly requested goal, skill, identity or agent schedule changes use the matching proposal tool, preserving saved fields not being changed. Read current goals/skills/config before editing and never invent goal metrics, deadlines, connectors, IDs or instructions. Goal figures are manually entered. Custom skills use only listed read tools; they cannot run arbitrary code or authorize writes. Missing schedule fields require one question. Agent scheduling is separate from older saved-record playbook briefs. Optional Gmail/calendar reads require explicit saved connector options. The complete server readback requires the next separate yes before any save. Read-only answers never arm confirmation. Reports and experiments remain drafts; only proposeAgentTask can prepare a chosen report task for review, and only the confirmation handler saves it. Never claim outreach, posts, bookings, payments or task changes from a report.';
+export const harnessVoiceGuidance='Each business has its own durable goals, declarative skills, identity and agent reports. For lookup use readBusinessAgent. Only an explicit agent/AI/growth report run or direct request to review the business uses runAgentReview; it saves a new AI report from selected read tools using this turn’s reply attempt. A request for advice alone does not authorize a run or schedule. An informational report question does not prepare a run confirmation. Point to Review my business in Today or ask the operator to say Review my business; do not invite a standalone yes when no proposal exists. For explicitly requested goal, skill, identity or agent schedule changes use the matching proposal tool, preserving saved fields not being changed. Read current goals/skills/config before editing and never invent goal metrics, deadlines, connectors, IDs or instructions. Goal figures are manually entered. Custom skills use only listed read tools; they cannot run arbitrary code or authorize writes. Missing schedule fields require one question. Agent scheduling is separate from older saved-record playbook briefs. Optional Gmail/calendar reads require explicit saved connector options. The complete server readback requires the next separate yes before any save. Read-only answers never arm confirmation. Reports and experiments remain drafts; only proposeAgentTask can prepare a chosen report task for review, and only the confirmation handler saves it. Never claim outreach, posts, bookings, payments or task changes from a report. When the owner teaches a standing rule in plain language — “when X happens, always do Y”, “always do Z”, “from now on”, “make it a rule” — call proposeAgentSkill with a short title, instructions written as “When <trigger>: <action>”, and the smallest explicit allowed-tools list of read tools only (default [“profile”,“tasks”] when the rule needs no connector reads; calendar- or inbox-flavored rules may add “calendar_openings”, “bookings” or “gmail_unread”). A taught rule is a proposal through the normal confirmation flow: the server reads it back and only the next separate yes saves it. Never save a rule silently, and never present it as already saved.';

@@ -78,3 +78,24 @@ export function mayorModel(env:Pick<Env,'AI'|'AI_GATEWAY_ACCOUNT_ID'|'AI_GATEWAY
  }) as Env['AI']['run']};
  return createWorkersAI({binding:binding as Env['AI']})('@cf/qwen/qwen3-30b-a3b-fp8',{chat_template_kwargs:{enable_thinking:false}});
 }
+
+/** Vision model for photo Q&A. The text model (@cf/qwen/qwen3-30b-a3b-fp8)
+ * is text-only and cannot take images, so image turns go to Workers AI's
+ * chat vision model instead: @cf/meta/llama-3.2-11b-vision-instruct accepts
+ * OpenAI-style image_url content parts, handles English and Spanish, and
+ * runs through the same gateway with the same direct-binding fallback.
+ * The text model still owns the final answer (tools, persona, policy) —
+ * vision only produces the photo observation, which is appended to the
+ * user message deterministically (see image-qa.ts). */
+export const MAYOR_VISION_MODEL='@cf/meta/llama-3.2-11b-vision-instruct';
+
+/** Raw run() for the vision model through the same gatewayRun + fallback
+ * path as mayorModel. Callers build the Workers AI REST input themselves
+ * (messages with image_url parts). Non-streaming only. */
+export function mayorVisionRun(env:Pick<Env,'AI'|'AI_GATEWAY_ACCOUNT_ID'|'AI_GATEWAY_ID'|'AI_GATEWAY_TOKEN'>){
+ const run=gatewayRun(env as Env);
+ return async(model:string,input:unknown,options?:{signal?:AbortSignal}):Promise<unknown>=>{
+  const output=await run(model,input,{...options,stream:false});
+  return remapReasoningContent(output);
+ };
+}

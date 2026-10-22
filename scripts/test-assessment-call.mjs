@@ -440,6 +440,52 @@ function freshEnv() {
   ok(av3.log[av3.log.length - 1].state === "listening", "avatar back to listening");
 }
 
+// ── 7b. voiceUsageDelta: cumulative DO usage -> per-turn deltas ─────────────
+
+{
+  const mkT = (frames) => {
+    let i = 0;
+    return { getUsage: () => JSON.parse(JSON.stringify(frames[Math.min(i++, frames.length - 1)])) };
+  };
+  const zero = { stt: { model: "flux", audioMinutes: 0, neurons: 0 },
+                 tts: { model: "aura-1", chars: 0, neurons: 0 },
+                 turn: { model: "st", audioMinutes: 0, neurons: 0 } };
+  const f1 = { stt: { model: "flux", audioMinutes: 2, neurons: 1400 },
+               tts: { model: "aura-1", chars: 500, neurons: 682 },
+               turn: { model: "st", audioMinutes: 2.5, neurons: 3 } };
+  const f2 = { stt: { model: "flux", audioMinutes: 5, neurons: 3500 },
+               tts: { model: "aura-1", chars: 900, neurons: 1228 },
+               turn: { model: "st", audioMinutes: 6, neurons: 7 } };
+  const mk = (frames) => new VoiceAdapter({ transport: mkT(frames), avatar: createStubAvatar(), fetchFn: async () => new Response("{}") });
+  const a = mk([zero, f1, f2]);
+  ok(a.voiceUsageDelta() === null, "delta: zeros-shape first frame -> nothing posted");
+  const d1 = a.voiceUsageDelta();
+  ok(d1 && d1.stt.neurons === 1400 && d1.tts.chars === 500 && d1.turn.audioMinutes === 2.5,
+    "delta: first real frame -> full values as the delta");
+  const d2 = a.voiceUsageDelta();
+  ok(d2 && d2.stt.neurons === 2100 && d2.tts.chars === 400 && d2.turn.neurons === 4 && d2.stt.model === "flux",
+    "delta: second frame -> per-turn diff only (no double-count on the server)");
+  // unchanged frame -> null (no empty posts)
+  const d3 = a.voiceUsageDelta();
+  ok(d3 === null, "delta: repeated frame -> null");
+  // transport without getUsage -> null, no crash
+  const a2 = new VoiceAdapter({ transport: {}, avatar: createStubAvatar(), fetchFn: async () => new Response("{}") });
+  ok(a2.voiceUsageDelta() === null, "delta: legacy transport without getUsage -> null");
+  // voice actuals win over estimates in the /turn-complete post
+  const posted = [];
+  const fetchFn = async (url, init) => { posted.push(JSON.parse(init.body)); return new Response("{}"); };
+  const t3 = mkT([f1]);
+  const a3 = new VoiceAdapter({
+    transport: { getUsage: t3.getUsage, speak: async () => {}, cancelSpeech() {} },
+    avatar: createStubAvatar(), fetchFn,
+  });
+  a3.active = true; a3.callSessionId = "s1";
+  await a3.speak("hello", { userText: "hi", usage: { stt: { neurons: 1 }, llmInputTokens: 10 } });
+  const lastPost = posted[posted.length - 1];
+  ok(lastPost.usage.stt.neurons === 1400 && lastPost.usage.llmInputTokens === 10,
+    "speak: DO-measured voice actuals override estimates, brain usage preserved");
+}
+
 // ── 8. stub contracts ─────────────────────────────────────────────────────
 
 {

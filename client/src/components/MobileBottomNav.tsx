@@ -1,10 +1,11 @@
-import { Building2, Home, Layers3, MessageCircle, PanelsTopLeft } from "lucide-react";
+import { Building2, ClipboardCheck, Home, Layers3, MessageCircle, PanelsTopLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/", label: "Home", icon: Home, active: (path: string) => path === "/" },
   { href: "/services", label: "Services", icon: Layers3, active: (path: string) => path === "/services" },
+  { href: "/audit", label: "Audit", icon: ClipboardCheck, active: (path: string) => path === "/audit" || path.startsWith("/audit/") },
   { href: "/pricing", label: "Industries", icon: Building2, active: (path: string) => path === "/pricing" || path.startsWith("/industries/") },
   { href: "/portfolio", label: "Work", icon: PanelsTopLeft, active: (path: string) => path === "/portfolio" || path.startsWith("/portfolio/") },
   { href: "/contact", label: "Contact", icon: MessageCircle, active: (path: string) => path === "/contact" || path === "/booking" },
@@ -19,7 +20,7 @@ export default function MobileBottomNav() {
       className="site-mobile-tabs min-[1180px]:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="mx-auto grid h-16 max-w-xl grid-cols-5">
+      <div className="mx-auto grid h-16 max-w-xl grid-cols-6">
         {links.map((link) => {
           const Icon = link.icon;
           const active = link.active(location);

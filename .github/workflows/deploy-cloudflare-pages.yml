@@ -83,6 +83,32 @@ jobs:
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Restore Stripe LIVE secrets as project secrets (survive deploys)
+        run: |
+          # 2026-10-09: the audit $330 checkout returned stripe_not_configured on
+          # live because STRIPE_SECRET_KEY was never provisioned on the project.
+          # These no-op with a loud warning until the repo secrets exist -- add
+          # STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET in GitHub repo secrets to
+          # enable live purchases (plus register the live webhook endpoint in
+          # Stripe pointing at https://mehyar.us/api/pay/webhook).
+          if [ -z "$SECRET_STRIPE_LIVE" ]; then
+            echo "WARNING: STRIPE_SECRET_KEY repo secret not set -- live checkout stays disabled (stripe_not_configured). Test mode is unaffected."
+          else
+            printf '%s' "$SECRET_STRIPE_LIVE" | npx wrangler pages secret put STRIPE_SECRET_KEY --project-name=mehyar-web
+            echo "STRIPE_SECRET_KEY restored."
+          fi
+          if [ -z "$SECRET_WH_LIVE" ]; then
+            echo "WARNING: STRIPE_WEBHOOK_SECRET repo secret not set -- live webhook verification will fail once live checkout is enabled."
+          else
+            printf '%s' "$SECRET_WH_LIVE" | npx wrangler pages secret put STRIPE_WEBHOOK_SECRET --project-name=mehyar-web
+            echo "STRIPE_WEBHOOK_SECRET restored."
+          fi
+        env:
+          SECRET_STRIPE_LIVE: ${{ secrets.STRIPE_SECRET_KEY }}
+          SECRET_WH_LIVE: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
       - name: Deploy Pages site and Functions
         run: |
           echo "Injecting secrets into wrangler.toml [vars] (not committed)..."

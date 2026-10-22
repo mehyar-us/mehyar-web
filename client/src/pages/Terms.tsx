@@ -154,6 +154,14 @@ const sections: Section[] = [
             <div className="font-semibold">Moonroom — <a className="text-brand-700 underline dark:text-brand-100" href="https://moonroom.mehyar.us" target="_blank" rel="noreferrer">moonroom.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">AI photo studio: studio portraits from one selfie — $24 headshot packs, $15 product-photo studio, $9 theme packs. One-time payments, no subscription.</div>
           </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Audit My Business — <a className="text-brand-700 underline dark:text-brand-100" href="https://mehyar.us/audit/" target="_blank" rel="noreferrer">mehyar.us/audit <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">$330 AI business audit: overall score, money leaks ranked by severity, prioritized fixes, and an AI opportunity map. One-time payment, purchases final.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">DUST — <a className="text-brand-700 underline dark:text-brand-100" href="https://dust.mehyar.us" target="_blank" rel="noreferrer">dust.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Meme-coin experiment: the 7-day Great Sweep distributes 100% of the $DUST supply pro-rata to sweepers — no presale, no insiders. Currently testnet only; nothing for sale. 18+.</div>
+          </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and white-label hosted PWAs under <code>connectree-*</code> / <code>blue-apple-space-*</code>.</div>
@@ -330,7 +338,8 @@ const sections: Section[] = [
           <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}`}>{contactEmail}</a>.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Operated by <strong>{company}</strong>. Effective July 18, 2026.
+          Operated by <strong>{company}</strong>. Mail: 244 96th St APT 1B, Brooklyn, NY 11209.
+          Effective July 18, 2026.
         </p>
       </>
     ),

@@ -8,17 +8,17 @@ export interface TextChatErrors{
  serviceDownCopy?:(status:number)=>string|undefined;
 }
 
-export function createTextChat(send:(text:string,requestId:string,signal:AbortSignal)=>Promise<{reply:string;stopped?:boolean;events?:unknown[]}>,changed:(busy:boolean,message:string)=>void,errors?:TextChatErrors){
+export function createTextChat(send:(text:string,requestId:string,signal:AbortSignal,imageIds?:string[])=>Promise<{reply:string;stopped?:boolean;events?:unknown[]}>,changed:(busy:boolean,message:string)=>void,errors?:TextChatErrors){
  let controller:AbortController|undefined;
  return {
   get busy(){return !!controller;},
   cancel(){controller?.abort();},
-  async submit(text:string){
+  async submit(text:string,imageIds?:string[]){
    if(controller||!text.trim())return null;
    const active=new AbortController();controller=active;changed(true,'The Mayor is working on your message…');
    const timer=setTimeout(()=>active.abort(),30000);
    try{
-    const result=await send(text,crypto.randomUUID(),active.signal);
+    const result=await send(text,crypto.randomUUID(),active.signal,imageIds);
     if(active.signal.aborted)throw new Error('Stopped waiting');
     if(!result.reply?.trim())throw new Error('No reply was returned. Your draft is still here.');
     controller=undefined;changed(false,'Reply received.');return result;

@@ -1,0 +1,72 @@
+/* Crew 6h — in-conversation connector cards. Keeps the chat card compact and
+ * readable; piggybacks the global .account-card surface used by other chat cards. */
+.connector-card {
+  margin: 0.75rem 0;
+  padding: 1rem;
+  border-left: 3px solid var(--accent, #6c5ce7);
+}
+.connector-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.connector-card-head h2 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+.connector-card-body {
+  margin: 0.5rem 0;
+}
+.connector-card-unlocks {
+  margin: 0.25rem 0 0.5rem;
+  opacity: 0.9;
+}
+.connector-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.connector-guide {
+  margin: 0.5rem 0;
+}
+.connector-guide summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.connector-guide ol {
+  margin: 0.5rem 0 0.5rem 1.25rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.connector-card-note {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0.5rem 0;
+}
+.connector-capture-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.connector-field {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+.connector-field input {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+}
+.connector-card-status {
+  min-height: 1.25em;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0;
+}

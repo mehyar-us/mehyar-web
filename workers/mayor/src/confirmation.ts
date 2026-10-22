@@ -1,4 +1,4 @@
-import type {Profile} from './memory';
+import type {ProfilePatch} from './memory';
 import type {SchedulingPolicy} from './scheduling-policy';
 
 export function guardedSpeech(provider:{synthesize(text:string,signal?:AbortSignal):Promise<ArrayBuffer|null>},invalidate:()=>void){
@@ -13,7 +13,7 @@ const list=(values:string[])=>values.length?values.join('; '):'none';
 const clock=(minute:number)=>`${String(Math.floor(minute/60)).padStart(2,'0')}:${String(minute%60).padStart(2,'0')}`;
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const hours=(periods:SchedulingPolicy['weeklyHours'])=>list(periods.map(p=>`${days[p.day]} ${clock(p.startMinute)} to ${clock(p.endMinute)}`));
-export function profileReadback(patch:Profile,sourceUrl?:string){
+export function profileReadback(patch:ProfilePatch,sourceUrl?:string){
  return `${sourceUrl?`From ${new URL(sourceUrl).hostname}, please verify: `:'Please verify: '}${Object.entries(patch).map(([key,value])=>`${label(key)}: ${Array.isArray(value)?list(value):value}`).join('. ')}. Say “yes, that is correct” to save these business details, or tell me what to correct.`;
 }
 export function policyReadback(policy:SchedulingPolicy,previous:SchedulingPolicy|null){

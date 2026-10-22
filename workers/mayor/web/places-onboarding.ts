@@ -8,6 +8,7 @@
  * Google directly. One-thumb completable: big buttons, short copy.
  */
 import './places-onboarding.css';
+import {VERTICAL_PROFILES} from '../src/verticals';
 
 export interface PlacesOnboardingDeps{
  api:(path:string,body?:unknown)=>Promise<any>;
@@ -33,8 +34,14 @@ interface ConfirmCardData{
 interface ConfirmResult{
  profile:Record<string,unknown>;revision:number;
  vertical:string|null;followUpQuestion:string|null;
+ /** Crew 6b — honest adjacent-vertical suggestion. Present only when the
+  * trade didn't match a real vertical; the owner must explicitly accept it —
+  * nothing is auto-saved. */
+ verticalSuggestion:{trade:string;vertical:string;reason:string;modeLabel:string;framing:string;followUpQuestion:string}|null;
  placePhone:string;placeAddress:string;
  progress:{missing:string[];basicsComplete:boolean};
+ /** Crew 6e - honest fit check. Present only on a clear 'poor' fit. */
+ fitCheck:{message:string;reasons:string[]}|null;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag:K,className=''):HTMLElementTagNameMap[K]{
@@ -150,6 +157,11 @@ export function createPlacesOnboarding(deps:PlacesOnboardingDeps){
    try{
     const result=await deps.api('/api/onboarding/confirm-place',{placeId:cardData.placeId,businessId:deps.tenant()}) as ConfirmResult;
     deps.onProgress(result.progress);
+    // Crew 6e - honest fit check. A clear poor fit gets the plain-spoken
+    // message first, with a genuinely frictionless [Continue anyway] (one
+    // tap, no guilt copy) and a clean [Not now]. Shown at most once: the
+    // assessment is stored server-side.
+    if(result.fitCheck){renderFitCheck(result,cardData.name);return;}
     renderNextSteps(result,cardData.name);
    }catch(error){
     say(card,error instanceof Error?error.message:'Could not save. Try again.');
@@ -159,12 +171,88 @@ export function createPlacesOnboarding(deps:PlacesOnboardingDeps){
   actions.append(yes,notUs);card.append(actions);root.append(card);
  }
 
+ /** Crew 6b — honest adjacent-vertical choice. The suggestion is never
+  * auto-saved: the owner picks [Use X mode], [Choose different], or
+  * [Continue without a vertical]. Accepting records the original trade so
+  * every surface can say "using X mode" — never a silent mismatch. */
+ function renderVerticalChoice(card:HTMLElement,result:ConfirmResult){
+  const suggestion=result.verticalSuggestion!;
+  const wrap=el('div','places-vertical-choice');
+  const framing=el('p','places-question');framing.textContent=suggestion.framing;
+  const actions=el('div','places-actions');
+  const use=el('button','primary');use.type='button';use.textContent=`Use ${suggestion.modeLabel} mode`;
+  const different=el('button','secondary');different.type='button';different.textContent='Choose different';
+  const skip=el('button','quiet');skip.type='button';skip.textContent='Continue without a vertical';
+  actions.append(use,different,skip);wrap.append(framing,actions);card.append(wrap);
+  const fail=(error:unknown)=>{
+   say(card,error instanceof Error?error.message:'Could not save. Try again.');
+   use.disabled=false;different.disabled=false;skip.disabled=false;
+  };
+  use.onclick=async()=>{
+   use.disabled=true;different.disabled=true;skip.disabled=true;say(card,'Saving your business type…');
+   try{
+    const updated=await deps.api(`/api/businesses/${deps.tenant()}/profile`,
+     {vertical:suggestion.vertical,verticalMappedFrom:suggestion.trade,revision:result.revision});
+    result.revision=updated.revision;
+    wrap.replaceChildren();
+    const done=el('p','places-question');
+    done.textContent=`Using ${suggestion.modeLabel} mode for your ${suggestion.trade} business.`;
+    const question=el('p');question.textContent=suggestion.followUpQuestion;
+    const hint=el('p','places-hint');hint.textContent='Reply in chat — I’ll remember your answer.';
+    wrap.append(done,question,hint);
+   }catch(error){fail(error);}
+  };
+  different.onclick=()=>{
+   actions.replaceChildren();
+   const picker=document.createElement('select');
+   picker.setAttribute('aria-label','Choose a business type');
+   const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Pick a business type…';
+   picker.append(placeholder);
+   for(const [key,vertical] of Object.entries(VERTICAL_PROFILES)){
+    if(key==='other')continue;
+    const option=document.createElement('option');option.value=key;option.textContent=vertical.label;picker.append(option);
+   }
+   actions.append(picker);
+   picker.onchange=async()=>{
+    if(!picker.value)return;
+    picker.disabled=true;say(card,'Saving your business type…');
+    try{
+     const updated=await deps.api(`/api/businesses/${deps.tenant()}/profile`,
+      {vertical:picker.value,clearVerticalMapping:true,revision:result.revision});
+     result.revision=updated.revision;
+     wrap.replaceChildren();
+     const done=el('p','places-question');
+     done.textContent=`Saved — using ${VERTICAL_PROFILES[picker.value as keyof typeof VERTICAL_PROFILES].label}.`;
+     wrap.append(done);
+    }catch(error){fail(error);picker.disabled=false;}
+   };
+  };
+  skip.onclick=()=>{wrap.remove();};
+ }
+ function renderFitCheck(result:ConfirmResult,businessName:string){
+  root.replaceChildren();
+  const card=el('div','places-card places-fit-check');
+  const heading=el('h3');heading.textContent='A straight answer first';
+  const message=el('p','places-fit-message');message.textContent=result.fitCheck?.message??'';
+  const actions=el('div','places-actions');
+  // Anti-dark-pattern: [Continue anyway] is the primary one-tap path with no
+  // guilt copy; [Not now] dismisses cleanly. Either way the check never
+  // repeats - the assessment is already stored.
+  const cont=el('button','primary');cont.type='button';cont.textContent='Continue anyway';
+  const notNow=el('button','secondary');notNow.type='button';notNow.textContent='Not now';
+  cont.onclick=()=>renderNextSteps(result,businessName);
+  notNow.onclick=()=>{finish();deps.onProgress(result.progress);};
+  actions.append(cont,notNow);card.append(heading,message,actions);root.append(card);
+ }
+
  function renderNextSteps(result:ConfirmResult,businessName:string){
   root.replaceChildren();
   const card=el('div','places-card');
   const heading=el('h3');heading.textContent=`Got it — ${businessName} is saved.`;
   card.append(heading);
-  if(result.followUpQuestion){
+  if(result.verticalSuggestion){
+   renderVerticalChoice(card,result);
+  }else if(result.followUpQuestion){
    const question=el('p','places-question');question.textContent=result.followUpQuestion;
    const hint=el('p','places-hint');hint.textContent='Reply in chat — I’ll remember your answer.';
    card.append(question,hint);

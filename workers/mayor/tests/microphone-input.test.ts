@@ -26,6 +26,6 @@ it('stops a stream granted after the user cancelled without initializing audio',
 });
 it('does not swallow browser denial or initialize server audio after denial',async()=>{
  const f=fixture();f.getUserMedia.mockRejectedValue(new DOMException('denied','NotAllowedError'));
- const mic=new MayorMicrophone();await expect(mic.prepare()).rejects.toThrow('blocked microphone');
+ const mic=new MayorMicrophone();await expect(mic.prepare()).rejects.toThrow('microphone is blocked');
  expect(f.source.connect).not.toHaveBeenCalled();
 });

@@ -131,11 +131,38 @@ export async function onRequestPost({ request, env }) {
     });
     if (!sent.ok) console.error("[book-followup] mayor approval email failed", sent.error);
 
-    await notifyWebhook(env, {
+    const wh = await notifyWebhook(env, {
       event: "booking.requested", booking_id: bookingId, audit_id: auditId,
       email_hash: row.email_hash, business_name: row.business_name,
       slot_start: new Date(startMs).toISOString(), slot_end: endIso, timezone: BOOKING_TZ,
     });
+
+    // BOOKING_NOTIFY_URL fallback (never silently drop a buyer's booking):
+    // persist every notification outcome on the row. A booking with
+    // status='requested' AND buyer_notified_at IS NULL AND
+    // webhook_notified_at IS NULL is surfaced for manual follow-up by
+    // GET /api/admin/center/bookings. buyer_notified_at is set only when the
+    // webhook path (the audit crew's buyer send) actually accepted the event.
+    const stamp = new Date().toISOString();
+    try {
+      await env.LEADS_DB.prepare(
+        `UPDATE assessment_bookings
+            SET mayor_notified_at = ?, webhook_notified_at = ?, buyer_notified_at = ?,
+                updated_at = ?
+          WHERE id = ?`
+      ).bind(
+        sent.ok ? stamp : null,
+        wh.ok ? stamp : null,
+        wh.ok ? stamp : null, // buyer notifications ride the webhook path
+        stamp, bookingId
+      ).run();
+    } catch (e) {
+      console.error("[book-followup] notify-outcome persist failed", e?.message);
+    }
+    if (!wh.ok && !wh.skipped) {
+      console.error("[book-followup] BOOKING_NOTIFY_URL delivery failed for", bookingId,
+        "- booking persisted, flagged for manual follow-up");
+    }
 
     return json({
       ok: true, booking_id: bookingId, status: "requested",

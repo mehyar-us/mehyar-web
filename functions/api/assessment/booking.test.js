@@ -78,6 +78,11 @@ function fakeDb() {
             const b = bookings.get(a[1]); if (b) b.calendar_event_id = a[0];
             return { success: true };
           }
+          if (q.includes("SET mayor_notified_at")) {
+            const b = bookings.get(a[4]);
+            if (b) { b.mayor_notified_at = a[0]; b.webhook_notified_at = a[1]; b.buyer_notified_at = a[2]; b.updated_at = a[3]; }
+            return { success: true };
+          }
           if (q.includes("UPDATE assessment_bookings SET status='expired'")) {
             const b = bookings.get(a[1]); if (b) { b.status = "expired"; b.updated_at = a[0]; }
             return { success: true };
@@ -194,6 +199,45 @@ let BOOKING_ID = "";
   const b2b = await r2.json();
   ok(b2b.reused === true && b2b.booking_id === BOOKING_ID, "book: duplicate request is idempotent");
   ok(db.bookings.size === 1, "book: no duplicate rows");
+}
+
+// ── book-followup: BOOKING_NOTIFY_URL fallback (never silently drop) ─────────
+{
+  // No webhook URL configured: booking persists, notify timestamps stay NULL
+  // (surfaced for manual follow-up by GET /api/admin/center/bookings).
+  const db = fakeDb();
+  db.audits.set("aud1", PAID);
+  const slot = realSlot();
+  const r = await bookFollowup({
+    ...postReq({ audit_id: "aud1", access_token: "tok123", slot_start: slot }),
+    env: { LEADS_DB: db }, // no BOOKING_NOTIFY_URL
+  });
+  const b = await r.json();
+  ok(r.status === 200 && b.ok, "book: no webhook URL → still 200, booking created");
+  const stored = db.bookings.get(b.booking_id);
+  ok(stored && stored.status === "requested", "book: no webhook URL → booking persisted, not dropped");
+  ok(stored.mayor_notified_at == null && stored.webhook_notified_at == null && stored.buyer_notified_at == null,
+    "book: no webhook URL → notify timestamps NULL (flagged for manual follow-up)");
+}
+{
+  // Webhook URL configured + delivery ok: timestamps stamped.
+  const db = fakeDb();
+  db.audits.set("aud1", PAID);
+  const slot = realSlot();
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true });
+  let b;
+  try {
+    const r = await bookFollowup({
+      ...postReq({ audit_id: "aud1", access_token: "tok123", slot_start: slot }),
+      env: { LEADS_DB: db, BOOKING_NOTIFY_URL: "https://example.test/hook" },
+    });
+    b = await r.json();
+  } finally { globalThis.fetch = realFetch; }
+  ok(b.ok, "book: webhook ok → 200");
+  const stored = db.bookings.get(b.booking_id);
+  ok(stored.webhook_notified_at != null && stored.buyer_notified_at != null,
+    "book: webhook ok → webhook/buyer notified_at stamped");
 }
 
 // ── confirm / decline / expiry ──────────────────────────────────────────────

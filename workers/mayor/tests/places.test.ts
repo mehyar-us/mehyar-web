@@ -103,9 +103,10 @@ it('buildPlaceConfirmCard maps the card the UI renders',()=>{
 it('confirmPlace maps categories to verticals with conversational follow-ups',()=>{
  const cases:Array<[string,string|null,string|null]>=[
   ['hair_salon','salon',"So you're a hair salon — cuts, color, or both?"],
-  ['barber_shop','salon',"So you're a hair salon — cuts, color, or both?"],
+  // Adjacent trades route through the honest suggestion (never direct) — loop-1 fix
+  ['barber_shop',null,null],
   ['restaurant','restaurant',"So you're a restaurant — dine-in, takeout, or both?"],
-  ['pizzeria','restaurant',"So you're a restaurant — dine-in, takeout, or both?"],
+  ['pizzeria',null,null],
   ['plumber','plumbing_hvac',"So you're a plumbing/HVAC shop — residential, commercial, or both?"],
   ['hvac_contractor','plumbing_hvac',"So you're a plumbing/HVAC shop — residential, commercial, or both?"],
   ['dentist','dental',"So you're a dental office — general, cosmetic, or both?"],

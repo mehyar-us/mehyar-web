@@ -2,7 +2,8 @@ import {z} from 'zod';
 import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
-import {verticalProfile,type Vertical} from './verticals';
+import {verticalProfile,isProfessionalTone,professionalFillGapTemplate,professionalWinbackTemplate,PROFESSIONAL_LEAD_REPLY_TEMPLATE,reminderTemplateFor,type Vertical} from './verticals';
+import {esTemplates,esFillGapCard,esWinbackCard,esLeadReplyCard,esNoShowCard,esFillGapDraft,esWinbackDraft,esLeadReplyDraft,esAgoText,esBriefingCopy,esFormatWhen,renderReminder} from './i18n';
 import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
 import {
@@ -79,19 +80,36 @@ function personalize(message:string,businessName:string,recipient:{name:string})
  return message.replace('{business}',businessName).replace('{name}',recipient.name||'there');
 }
 
-async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<{kind:CardKind;title:string;body:string;draft:Draft}|null>{
+export async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<{kind:CardKind;title:string;body:string;draft:Draft}|null>{
  const kind=DETECTOR_CARD[detection.detector];
  const v=verticalProfile(ctx.vertical);
  const cust=v.vocabulary.customer,booking=v.vocabulary.booking;
+ const professional=isProfessionalTone(ctx.tone);
  const payload=JSON.parse(detection.payload_json) as Record<string,any>;
+ const es=ctx.language==='es';
+ const esNouns=es?esTemplates(ctx.vertical).nouns:null;
  if(kind==='fill_gap'){
   const audience=await lapsedCustomers(env,ctx.tenantId,ctx.vertical,ctx.nowMs,25);
   const hours=Math.max(2,Math.round((payload.maxGapMinutes??120)/60));
   const n=audience.length;
+  if(es){
+   const copy=esFillGapCard(hours,n,esNouns!.customers);
+   return {kind,
+    title:copy.title,
+    body:copy.body,
+    draft:{message:esFillGapDraft(),
+     audience:'clientes que no vuelven',audienceCount:n,
+     recipients:audience.map(a=>({name:a.name,phone:a.phone})),meta:{}}};
+  }
+  const mappedFillBody=ctx.verticalMappedFrom
+   ?`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-schedule text to ${n} lapsed ${cust}${n===1?'':'s'}?`
+   :`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-chairs text to ${n} lapsed ${cust}${n===1?'':'s'}?`;
+  const mappedFillDraft=ctx.verticalMappedFrom&&!professional
+   ?`Hi {name}, it's {business}! We have a few open spots tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`:null;
   return {kind,
    title:`Fill ${hours} slow hour${hours===1?'':'s'} tomorrow`,
-   body:`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-chairs text to ${n} lapsed ${cust}${n===1?'':'s'}?`,
-   draft:{message:`Hi {name}, it's {business}! We have a few open ${booking}s tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`,
+   body:mappedFillBody,
+   draft:{message:professional?professionalFillGapTemplate(booking):(mappedFillDraft??`Hi {name}, it's {business}! We have a few open ${booking}s tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`),
     audience:'lapsed regulars',audienceCount:n,
     recipients:audience.map(a=>({name:a.name,phone:a.phone})),meta:{}}};
  }
@@ -99,10 +117,21 @@ async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow
   const customers=(payload.customers??[]) as LapsedCustomer[];
   const days=payload.cutoffDays??LAPSED_DAYS[ctx.vertical];
   const n=customers.length;
+  if(es){
+   const copy=esWinbackCard(n,esNouns!.customers,days);
+   return {kind,
+    title:copy.title,
+    body:copy.body,
+    draft:{message:esWinbackDraft(esNouns!.booking),
+     audience:'clientes que no vuelven',audienceCount:n,
+     recipients:customers.map(c=>({name:c.name,phone:c.phone})),meta:{}}};
+  }
+  const mappedWinbackDraft=ctx.verticalMappedFrom&&!professional
+   ?`Hi {name}, it's {business} — it's been a while! Thinking about your next visit? Reply YES and we'll find you a time. ${STOP}`:null;
   return {kind,
    title:`Win back ${n} lapsed ${cust}${n===1?'':'s'}`,
    body:`${n} ${cust}${n===1?'':'s'} ${n===1?'has':'have'}n't booked in ${days}+ days — send this win-back text?`,
-   draft:{message:`Hi {name}, it's {business} — it's been a while! Ready to book your next ${booking}? Reply YES and we'll find you a time. ${STOP}`,
+   draft:{message:professional?professionalWinbackTemplate(booking):(mappedWinbackDraft??`Hi {name}, it's {business} — it's been a while! Ready to book your next ${booking}? Reply YES and we'll find you a time. ${STOP}`),
     audience:'lapsed regulars',audienceCount:n,
     recipients:customers.map(c=>({name:c.name,phone:c.phone})),meta:{}}};
  }
@@ -111,19 +140,38 @@ async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow
   return {kind,...buildFollowupCardCopy(ctx,payload as {missedCallId:string;callerNumber:string;occurredAt:string})};
  }
  if(kind==='lead_reply'){
+  if(es){
+   const copy=esLeadReplyCard(payload.fromNumber,esAgoText(Date.parse(payload.receivedAt),ctx.nowMs));
+   return {kind,
+    title:copy.title,
+    body:copy.body,
+    draft:{message:esLeadReplyDraft(),
+     audience:'contacto',audienceCount:1,
+     recipients:[{name:'',phone:payload.fromNumber}],meta:{smsId:payload.smsId}}};
+  }
   return {kind,
    title:'Unanswered lead',
    body:`A text from ${payload.fromNumber} ${agoText(Date.parse(payload.receivedAt),ctx.nowMs)} has no reply — send this follow-up?`,
-   draft:{message:`Hi, this is {business} — thanks for reaching out! Sorry for the delay — how can we help? ${STOP}`,
+   draft:{message:professional?PROFESSIONAL_LEAD_REPLY_TEMPLATE:`Hi, this is {business} — thanks for reaching out! Sorry for the delay — how can we help? ${STOP}`,
     audience:'lead',audienceCount:1,
     recipients:[{name:'',phone:payload.fromNumber}],meta:{smsId:payload.smsId}}};
  }
  // reminder_nudge
  const when=formatWhen(Date.parse(payload.startsAt),ctx.timeZone,ctx.nowMs);
+ const whenEs=es?esFormatWhen(Date.parse(payload.startsAt),ctx.timeZone,ctx.nowMs):when;
+ if(es){
+  const copy=esNoShowCard(payload.customerName,whenEs);
+  return {kind,
+   title:copy.title,
+   body:copy.body,
+   draft:{message:renderReminder(ctx.vertical,'es',ctx.businessName,whenEs,ctx.tone),
+    audience:'cliente en riesgo',audienceCount:1,
+    recipients:[{name:payload.customerName,phone:payload.customerPhone,when,bookingId:payload.bookingId}],meta:{bookingId:payload.bookingId,customerId:payload.customerId}}};
+ }
  return {kind,
   title:`No-show risk: ${payload.customerName}`,
   body:`${payload.customerName} missed before and has no reminder for ${when} — send a reminder now?`,
-  draft:{message:v.reminderTemplate.replace('{business}',ctx.businessName).replace('{when}',when),
+  draft:{message:reminderTemplateFor(v,ctx.tone).replace('{business}',ctx.businessName).replace('{when}',when),
    audience:'at-risk customer',audienceCount:1,
    recipients:[{name:payload.customerName,phone:payload.customerPhone,when,bookingId:payload.bookingId}],meta:{bookingId:payload.bookingId,customerId:payload.customerId}}};
 }
@@ -288,6 +336,10 @@ export async function sendSuggestionCard(env:Env,actor:Actor,cardId:string,trans
   return finish({simulated:true,audienceCount:1,sentCount:1,failed:0});
  }
 
+ // Crew 6f/loop-1 light-up landmine: Instagram DM recipients (ig:<senderId>) are not
+ // phone numbers — never hand them to Telnyx. IG reply transport ships at light-up.
+ const igRecipients=draft.recipients.filter(r=>r.phone.startsWith('ig:'));
+ if(igRecipients.length)throw new HttpError(400,'ig_reply_not_supported','Instagram replies are not available yet — app review is still pending. The message was not sent.');
  let sentCount=0,failed=0;
  const smsRows=[];
  for(const r of draft.recipients){
@@ -429,7 +481,7 @@ function roiKpiLabel(vertical:Vertical,key:string):string|null{
 /** ROI tile nouns stay vertical-aware: reservations vs appointments vs jobs vs visits. */
 const ROI_BOOKING_NOUN:Record<Vertical,string>={
  salon:'Appointments',restaurant:'Reservations',plumbing_hvac:'Jobs',
- dental:'Visits',auto_repair:'Service appointments',other:'Appointments',
+ dental:'Visits',auto_repair:'Service appointments',pet_grooming:'Appointments',med_spa:'Appointments',other:'Appointments',
 };
 
 /** ROI dashboard tile labels for a vertical — labels only, no new metrics or amounts. */
@@ -549,17 +601,20 @@ export async function buildBriefing(env:Env,actor:Actor,nowMs=Date.now()){
  const pickNoun=(value:unknown,fallback:string)=>typeof value==='string'&&value.trim()?value.trim():fallback;
  const nouns={appointments:pickNoun(maybeNouns?.appointments,pluralOf(vp.vocabulary.booking)),
   customers:pickNoun(maybeNouns?.customers,pluralOf(vp.vocabulary.customer))};
+ const esBriefing=ctx.language==='es'?esTemplates(ctx.vertical).nouns:null;
+ if(esBriefing){nouns.appointments=esBriefing.appointments;nouns.customers=esBriefing.customers;}
  const wordFor=(n:number,plural:string)=>n===1?plural.replace(/s$/,''):plural;
  const apptsToday=todayRows.results.length,noShowCount=noShowsYesterday?.n??0;
+ const briefingCopy=esBriefing
+  ?esBriefingCopy(kept,apptsToday,noShowCount,esBriefing.appointments)
+  :{yesterday:`${kept} ${wordFor(kept,nouns.appointments)} yesterday${noShowCount?`, ${noShowCount} ${wordFor(noShowCount,'no-show')}`:''}`,
+    today:apptsToday?`${apptsToday} ${wordFor(apptsToday,nouns.appointments)} today`:`No ${wordFor(2,nouns.appointments)} today`};
  return {
   date:today,
   businessName:ctx.businessName,
   vertical:ctx.vertical,
   nouns,
-  copy:{
-   yesterday:`${kept} ${wordFor(kept,nouns.appointments)} yesterday${noShowCount?`, ${noShowCount} ${wordFor(noShowCount,'no-show')}`:''}`,
-   today:apptsToday?`${apptsToday} ${wordFor(apptsToday,nouns.appointments)} today`:`No ${wordFor(2,nouns.appointments)} today`,
-  },
+  copy:briefingCopy,
   yesterday:{
    appointments:apptsYesterday?.n??0,
    noShows:noShowsYesterday?.n??0,

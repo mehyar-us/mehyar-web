@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import ReportPreview from "@/components/ReportPreview";
+import BusinessReportView, { type BusinessReportPayload } from "@/components/BusinessReportView";
 
 type FullReport = {
   score: number;
@@ -127,35 +128,62 @@ export default function AuditReport() {
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
   const [reportDate, setReportDate] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
+  // New $330 "Audit My Business" product: when the token belongs to a business
+  // audit, render the business report view instead of the legacy $5 flow.
+  const [businessPayload, setBusinessPayload] = useState<BusinessReportPayload | null>(null);
 
   // Poll for the report when we have a token.
+  // Business (audit-my-business) tokens are tried FIRST against the new
+  // /api/audit/business/report endpoint; anything else falls through to the
+  // legacy $5 full-report flow below.
   useEffect(() => {
-    if (!token || !/^[0-9a-f]{64}$/.test(token)) {
-      if (q.get("token")) setLoadError("Invalid report link.");
-      return;
-    }
+    if (!token) return;
     let alive = true;
-    let tries = 0;
-    const poll = async () => {
+    const tryBusinessToken = async (): Promise<boolean> => {
       try {
-        const r = await fetch(`/api/audit/full-report/get?token=${encodeURIComponent(token)}`);
-        const data = await r.json();
-        if (!alive) return;
-        if (data.ok) {
-          setStatus(data.status);
-          setSiteUrl(data.url || null);
-          setReportDate(data.delivered_at || data.created_at || null);
-          if (data.report) { setReport(data.report); return; }
-        } else {
-          setLoadError("Report not found.");
-          return;
+        const r = await fetch(`/api/audit/business/report?token=${encodeURIComponent(token)}`);
+        const data = (await r.json()) as BusinessReportPayload;
+        if (!alive) return true;
+        if (data.ok && data.status) {
+          setBusinessPayload(data);
+          return true;
         }
-      } catch { /* retry */ }
-      tries++;
-      if (alive && tries < 40) setTimeout(poll, 5000);
-      else if (alive) setLoadError("Still generating — check your email shortly.");
+      } catch {
+        /* business endpoint missing/unreachable — fall through to legacy */
+      }
+      return false;
     };
-    poll();
+    const legacyPoll = () => {
+      if (!/^[0-9a-f]{64}$/.test(token)) {
+        if (alive) setLoadError("Invalid report link.");
+        return;
+      }
+      let tries = 0;
+      const poll = async () => {
+        try {
+          const r = await fetch(`/api/audit/full-report/get?token=${encodeURIComponent(token)}`);
+          const data = await r.json();
+          if (!alive) return;
+          if (data.ok) {
+            setStatus(data.status);
+            setSiteUrl(data.url || null);
+            setReportDate(data.delivered_at || data.created_at || null);
+            if (data.report) { setReport(data.report); return; }
+          } else {
+            setLoadError("Report not found.");
+            return;
+          }
+        } catch { /* retry */ }
+        tries++;
+        if (alive && tries < 40) setTimeout(poll, 5000);
+        else if (alive) setLoadError("Still generating — check your email shortly.");
+      };
+      poll();
+    };
+    void (async () => {
+      const isBusiness = await tryBusinessToken();
+      if (!isBusiness) legacyPoll();
+    })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -199,13 +227,22 @@ export default function AuditReport() {
 
   /* ── REPORT VIEW ── */
   if (token) {
+    if (businessPayload) {
+      return (
+        <section className="px-4 py-10 md:py-14">
+          <div className="site-shell max-w-4xl">
+            <BusinessReportView token={token} initial={businessPayload} />
+          </div>
+        </section>
+      );
+    }
     if (loadError) {
       return (
         <section className="site-hero px-4"><div className="site-shell max-w-2xl text-center">
           <AlertTriangle className="mx-auto h-10 w-10 text-amber-500" />
           <h1 className="site-display mt-4">Hmm.</h1>
           <p className="site-lede mt-4">{loadError}</p>
-          <Link href="/audit" className={buttonVariants({ variant: "cta", className: "mt-6" })}>Back to free audit</Link>
+          <Link href="/audit/free" className={buttonVariants({ variant: "cta", className: "mt-6" })}>Back to free audit</Link>
         </div></section>
       );
     }
