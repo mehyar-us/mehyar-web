@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import ReportPreview from "@/components/ReportPreview";
 import BusinessReportView, { type BusinessReportPayload } from "@/components/BusinessReportView";
-import { trackBeginCheckout, trackFullReportPurchase } from "@/components/MarketingTags";
 
 type FullReport = {
   score: number;
@@ -201,18 +200,10 @@ export default function AuditReport() {
     return () => { document.title = "MehyarSoft — AI Website Evaluation"; };
   }, [report, siteUrl]);
 
-  /* Purchase conversion (AU-509-2): a rendered report exists only for a
-     paid token — fire the $5 purchase event once per token when it lands. */
-  useEffect(() => {
-    if (report && token) trackFullReportPurchase(token);
-  }, [report, token]);
-
   const buy = async (e: React.FormEvent) => {
     e.preventDefault();
     setBuyError("");
     setBuying(true);
-    /* Money-path event (rot509): fire before the POST/redirect. */
-    trackBeginCheckout("audit-full-report", 5);
     try {
       const r = await fetch("/api/pay/checkout", {
         method: "POST",
@@ -529,15 +520,6 @@ export default function AuditReport() {
               </div>
             )}
 
-            {/* ── GO DEEPER ── */}
-            <div className="no-print mt-10 flex items-start gap-3 rounded-3xl border border-[#0B1B33]/20 bg-[#0B1B33] p-6 text-left text-white md:p-8">
-              <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
-              <p className="text-sm leading-6 text-slate-200">
-                <strong className="text-white">Want the deepest read?</strong> This report covers your site. <strong className="text-white">Audit My Business ($330)</strong> goes further — add a short CEO walkthrough video and get a transcript-based assessment of the whole business, with a prioritized fix plan. Your $5 is credited toward Audit My Business when you check out with the same email — the discount shows on the checkout page before you pay.{" "}
-                <Link href="/audit" className="font-semibold text-white underline underline-offset-4 hover:text-sky-200">Explore the $330 audit <ArrowRight className="inline h-4 w-4" /></Link>
-              </p>
-            </div>
-
             {/* ── BOTTOM DOWNLOAD ── */}
             <div className="no-print mt-12 flex flex-col items-center gap-3 rounded-3xl bg-[#0B1B33] p-8 text-center text-white">
               <ShieldCheck className="h-8 w-8 text-emerald-400" />
@@ -638,11 +620,6 @@ export default function AuditReport() {
                     <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
                   </p>
                   <p className="text-center text-xs text-muted-foreground">One-time · Delivered in about a minute · Less than a coffee</p>
-                  <p className="text-center text-xs leading-5 text-muted-foreground">
-                    All sales are final — the Full Report is a one-time digital report, and purchases are not
-                    refundable. If your report hasn't arrived within a few minutes, email info@mehyar.us and
-                    we'll re-send it right away.
-                  </p>
                 </form>
               </CardContent>
             </Card>

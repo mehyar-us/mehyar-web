@@ -3,7 +3,6 @@ import { ArrowRight, Award, CheckCircle, Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import QuickAnswer from "@/components/QuickAnswer";
-import MayorBait from "@/components/MayorBait";
 
 const values = [
   { title: "Practicality", description: "Find the leak that costs the most, fix it first, and stop adding tools before the case is clear.", icon: Award },
@@ -139,7 +138,6 @@ const About = () => {
           </Link>
         </div>
       </section>
-      <MayorBait campaign="about" />
     </>
   );
 };

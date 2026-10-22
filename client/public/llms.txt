@@ -26,16 +26,14 @@
 - Portfolio: https://mehyar.us/portfolio
 - Blog: https://mehyar.us/blog
 - Apps directory: https://mehyar.us/apps
-- Audit My Business: https://mehyar.us/audit
 - Contact: https://mehyar.us/contact
 - Privacy: https://mehyar.us/privacy-policy
 - Terms: https://mehyar.us/terms
 
 ## Pricing (from the site's own FAQ)
 
-- Free AI website scan: $0
-- Full Report: $5 one-time — the complete written breakdown of the free Audit My Business scan: every money leak found, priced and ranked. The $5 credits in full toward the full audit below.
-- Audit My Business: $330 one-time — the deep AI audit: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and an AI opportunity map, delivered by email. Full Report buyers pay $325 at checkout ($330 − the $5 credit).
+- Tech Audit: from $150
+- Website Diagnosis Report: $250
 - Custom builds: $1,000–$25,000
 - Retainers: $500–$3,500/month
 - Hourly advisory: $150/hour
@@ -47,45 +45,9 @@
 
 ## Products we own
 
-The full directory is at https://mehyar.us/apps.
-
-<!-- PRODUCTS:BEGIN -->
-MehyarSoft LLC owns and operates 33 products:
-
-- **Rizza** (https://rizza.app) — Your AI wingman in your pocket.
-- **AiMech** (https://aimech.app) — AI mechanic for everyday car owners.
-- **BabyPeek** (https://baby.mehyar.us) — Peek at your future baby.
-- **RoastMe** (https://roast.mehyar.us) — Upload a photo. Get destroyed. (Lovingly.)
-- **Crayon Kid** (https://crayonkid.mehyar.us) — A coloring book with YOUR kid's name on every page.
-- **jobs.mehyar** (https://jobs.mehyar.us) — Tell it the job you want.
-- **Stuff Pretty Good** (https://stuffprettygood.com) — Useful gifts, starter kits & budget finds.
-- **Designful** (https://designful.mehyar.us) — Agency-grade design jobs at $49, delivered in minutes.
-- **HustleKit** (https://hustlekit.mehyar.us) — Your AI side-hustle starter kit — a personalized 15-page playbook for $27.
-- **Sprint30** (https://sprint30.mehyar.us) — 30 days. 30 missions. One real side-income stream.
-- **BizBuilder** (https://bizbuilder.mehyar.us) — Your business idea becomes a launch-ready plan for $17.
-- **CreditFix Kit** (https://creditfixkit.mehyar.us) — Fix your credit yourself — the letters, the plan, the knowledge.
-- **PrepGuide** (https://prepguide.mehyar.us) — A preparedness plan built around your actual household.
-- **TrueSketch** (https://truesketch.mehyar.us) — Your AI portrait sketch + a 2-page reading about you — for $37.
-- **PLR Vault** (https://plrvault.mehyar.us) — Five sellable digital packs you can rebrand and resell — for $9.95.
-- **FreelancerOS** (https://freelanceros.mehyar.us) — Your entire freelance business. One dashboard.
-- **PromptPack Pro** (https://promptpack.mehyar.us) — 50 AI prompts + 10 swipe files, written for your trade.
-- **BeachCall** (https://beachcall.mehyar.us) — Should we go to the beach today — and exactly which hours?
-- **PureTap** (https://puretap.mehyar.us) — Is your tap water safe?
-- **TicketBeat** (https://ticketbeat.mehyar.us) — Photo your ticket. Know your odds. Fight it in two minutes.
-- **FloodLens** (https://floodlens.mehyar.us) — What flood zone is this address in, and what does it cost you?
-- **The Mayor** (https://mayor.mehyar.us) — The AI built for each business.
-- **Legit** (https://legit.mehyar.us) — An AI advisor for forming your LLC.
-- **Moonroom** (https://moonroom.mehyar.us) — Studio portraits from one selfie.
-- **Audit My Business** (https://mehyar.us/audit/) — A $330 AI audit that finds where your business is leaking money.
-- **DUST** (https://dust.mehyar.us) — Your dust is a lottery ticket.
-- **Billcut** (https://billcut.mehyar.us) — Find money you're missing.
-- **Coach** (https://coach.mehyar.us) — Your resume, aimed at this job. Your interview, rehearsed.
-- **SproutScore** (https://sproutscore.mehyar.us) — NYC daycare inspection records, decoded for parents.
-- **Playbook** (https://playbook.mehyar.us) — 30 days of content, planned for your niche.
-- **Clipnote** (https://clipnote.mehyar.us) — Paste your release notes. Get a launch video.
-- **WattWise** (https://wattwise.mehyar.us) — Is your electric bill ripping you off?
-- **Memoir** (https://memoir.mehyar.us) — Their stories, in their own words — a book in days, not a year.
-<!-- PRODUCTS:END -->
+MehyarSoft LLC ships one-time digital products on *.mehyar.us subdomains
+(PureTap, SproutScore, HustleKit, TrueSketch, CreditFix Kit, PLR Vault,
+PromptPack, and others). The full directory is at https://mehyar.us/apps.
 
 ## Compliance
 
