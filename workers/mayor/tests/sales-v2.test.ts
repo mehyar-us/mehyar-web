@@ -90,7 +90,7 @@ it('generates one page per vertical from verticals.ts (single source of truth)',
     // Shared legal footer, no street address.
     expect(page).toContain('MehyarSoft LLC');
     expect(page).toContain('https://mehyar.us/privacy-policy/');
-    expect(page).not.toContain('Purchases are final'); // scope ruling 2026-10-17
+    expect(page).toContain('Purchases are final');
     expect(page).not.toContain('96th St');
   }
 });

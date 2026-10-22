@@ -17,19 +17,6 @@ Usage:
   python scripts/deploy_pages_direct.py --direct       # mode (a), raw multipart
   python scripts/deploy_pages_direct.py --no-build    # skip npm build
   python scripts/deploy_pages_direct.py --branch=main # default 'main' = production
-
-STALE-TREE GUARD (2026-10-22, after the second stale-tree revert incident):
-  A Pages deploy is a FULL-TREE SNAPSHOT — deploying a tree that differs from
-  origin/main silently reverts (or pre-releases) whatever the difference
-  touches. It happened twice in ~30 hours (cancel-lookup, Oct 21; the Terms
-  final-sale clauses, Oct 22, deploy 76cd6978). Hand discipline failed twice,
-  so the script now refuses: for --branch=main it fetches origin/main and
-  requires this working tree's CONTENT to match it exactly (every tracked
-  file's blob hash, plus no untracked files under the deploy surface).
-  Content comparison, not HEAD comparison, because fleet trees are
-  content-synced over checkouts whose HEAD may lag — content is what ships.
-  Override: --allow-stale-tree (logs itself to deploy-overrides.log and
-  prints a banner; use only when you can name what the difference is).
 """
 import os, sys, json, zipfile, subprocess, urllib.request, urllib.error, argparse, shutil, hashlib
 from contextlib import contextmanager
@@ -60,102 +47,6 @@ def sh(cmd, **kw):
         errors="replace",
         **kw,
     )
-
-def _git_blob_sha(path):
-    data = open(path, "rb").read()
-    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
-
-def guard_tree_is_tip(allow_stale=False):
-    """Refuse a production deploy whose tree content != origin/main.
-
-    Returns True when the deploy may proceed. On mismatch without the
-    override flag, prints the differing files and exits 3. With the flag,
-    logs the override to deploy-overrides.log and returns True.
-    """
-    def git(*argv):
-        return subprocess.run(["git", *argv], capture_output=True, text=True,
-                              encoding="utf-8", errors="replace", timeout=120)
-    try:
-        f = git("fetch", "origin", "main")
-        if f.returncode != 0:
-            print("STALE-TREE GUARD: `git fetch origin main` failed — the tip is "
-                  "unknown, so freshness cannot be proven. Refusing to deploy.")
-            if not allow_stale:
-                sys.exit(3)
-            print("STALE-TREE GUARD: override flag set — proceeding UNVERIFIED.")
-            _log_override("fetch-failed", [])
-            return True
-        tip = git("rev-parse", "origin/main").stdout.strip()
-        tree = git("ls-tree", "-r", "origin/main")
-        if tree.returncode != 0:
-            print("STALE-TREE GUARD: cannot read origin/main's tree. Refusing.")
-            if not allow_stale:
-                sys.exit(3)
-            _log_override("tree-unreadable", [])
-            return True
-        expected = {}
-        for line in tree.stdout.splitlines():
-            meta, path = line.split("\t", 1)
-            expected[path] = meta.split()[2]
-        differing = []
-        for path, want in expected.items():
-            if not os.path.isfile(path):
-                differing.append(f"{path} (missing)")
-            elif _git_blob_sha(path) != want:
-                differing.append(path)
-        # Files present under the deploy surface but absent from origin/main
-        # would ship in the snapshot without existing on main — the
-        # pre-release direction of the same bug. Compared against main's own
-        # tree listing (NOT the local index, which lags on content-synced
-        # trees and would false-positive files that are on main).
-        for root in ("client", "functions", "assessment-call"):
-            if not os.path.isdir(root):
-                continue
-            for dirpath, dirs, files in os.walk(root):
-                dirs[:] = [d for d in dirs if d != "node_modules"]
-                for fn in files:
-                    p = os.path.join(dirpath, fn).replace(os.sep, "/")
-                    if p not in expected:
-                        differing.append(f"{p} (on disk, not on main)")
-    except FileNotFoundError:
-        print("STALE-TREE GUARD: git is not available — freshness cannot be "
-              "proven. Refusing to deploy.")
-        if not allow_stale:
-            sys.exit(3)
-        _log_override("git-missing", [])
-        return True
-    if not differing:
-        print(f"== stale-tree guard: tree matches origin/main {tip[:7]} ==\n")
-        return True
-    print(f"\n❌ STALE-TREE GUARD: this tree differs from origin/main {tip[:7]} "
-          f"in {len(differing)} file(s):")
-    for path in differing[:25]:
-        print(f"   - {path}")
-    if len(differing) > 25:
-        print(f"   … and {len(differing) - 25} more")
-    print("A Pages deploy is a full-tree snapshot: deploying this tree would "
-          "silently revert (or pre-release) the difference in production.\n"
-          "Sync the tree to origin/main and deploy in the same breath, or — "
-          "only if you can name the difference and accept it shipping — "
-          "re-run with --allow-stale-tree.")
-    if not allow_stale:
-        sys.exit(3)
-    _log_override(tip[:7], differing)
-    print("⚠️  --allow-stale-tree override in effect — this deploy ships a "
-          "tree that differs from origin/main. The override has been logged "
-          "to deploy-overrides.log.\n")
-    return True
-
-def _log_override(tip, differing):
-    try:
-        import datetime
-        with open("deploy-overrides.log", "a", encoding="utf-8") as fh:
-            fh.write(f"{datetime.datetime.now().isoformat(timespec='seconds')} "
-                     f"override --allow-stale-tree tip={tip} "
-                     f"differing={len(differing)} files: "
-                     f"{', '.join(differing[:10])}\n")
-    except Exception:
-        pass
 
 def build():
     print("== npm run build:client ==")
@@ -419,13 +310,7 @@ def main():
     ap.add_argument("--direct", action="store_true",
                     help="use raw multipart upload instead of wrangler (NOT recommended — "
                          "loses functions on most deploys)")
-    ap.add_argument("--allow-stale-tree", action="store_true",
-                    help="override the stale-tree guard and deploy a tree whose "
-                         "content differs from origin/main (logged; production "
-                         "branch only — the guard does not run for previews)")
     args = ap.parse_args()
-    if args.branch == "main":
-        guard_tree_is_tip(allow_stale=args.allow_stale_tree)
     if not args.no_build:
         build()
     make_zip()

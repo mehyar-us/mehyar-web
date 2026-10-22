@@ -14,7 +14,6 @@
  * card before it leaves this module.
  */
 import {assertNoSecretLeak,type ConnectorCardEvent,type ConnectorCardPayload} from './connector-cards';
-import {CAPABILITIES} from './auth/capabilities';
 import {getConnectorSession,listConnectorSessions,startConnectorSession} from './connector-engine';
 import type {Actor,Env} from './env';
 
@@ -26,7 +25,7 @@ export interface SessionCardView{
  method:({kind:string;oneClick:boolean}&Record<string,unknown>)|null;
  methodIndex:number;methodsTotal:number;
  failureKind:string|null;connectionId:string|null;
- unlocks:string;capabilities?:string[];platformGate:string|null;firstAttempt:boolean;
+ unlocks:string;platformGate:string|null;firstAttempt:boolean;
 }
 
 const FAILURE_PLAIN:Record<string,string>={
@@ -38,20 +37,6 @@ const FAILURE_PLAIN:Record<string,string>={
  owner_abandoned:'The attempt was set aside.',
  unknown:'Something went wrong while checking the connection.',
 };
-
-/** Door 1: the capabilities a recipe's OAuth method must request, from
- * its semantic tags ('calendar' -> calendar_manage, 'email' ->
- * gmail_read), filtered to ids the provider's catalog actually has —
- * so a card's Connect tap signs in WITH the scopes the engine's
- * verify will check for, instead of identity-only. */
-const TAG_TO_CAPABILITY:Record<string,string>={calendar:'calendar_manage',email:'gmail_read'};
-function oauthCapabilities(view:SessionCardView,provider:unknown):string[]{
- if(typeof provider!=='string')return [];
- const catalog=(CAPABILITIES as Record<string,readonly {id:string}[]>)[provider]??[];
- const known=new Set(catalog.map(c=>c.id));
- const wanted=(view.capabilities??[]).map(tag=>TAG_TO_CAPABILITY[tag]).filter((id):id is string=>Boolean(id));
- return [...new Set(wanted.filter(id=>known.has(id)))];
-}
 
 function providerName(provider:unknown):string{
  return typeof provider==='string'&&provider?provider[0].toUpperCase()+provider.slice(1):'the provider';
@@ -69,14 +54,7 @@ export function sessionCard(view:SessionCardView,appOrigin?:string):ConnectorCar
  };
  const gateNote=view.platformGate?` Note: ${view.platformGate}`:'';
  const firstNote=view.firstAttempt?`First time connecting ${name} — I'll walk you through it. `:'';
- if(view.state==='connected'&&view.method?.kind==='assisted'){
-  // Door 4: an assisted connection is the owner's own confirmation —
-  // no credential was checked and no data flows from the platform.
-  // It must not wear the verified connections' label or unlocks copy.
-  card.title=`${name} is set up`;
-  card.body=`Set up by your confirmation: you completed the steps on ${name} itself. The Mayor cannot read data from ${name} — this is your confirmation, not a data feed.`;
-  card.actions=[{id:'open_connections',label:'View in Connections'},{id:'dismiss',label:'Done'}];
- }else if(view.state==='connected'){
+ if(view.state==='connected'){
   card.title=`${name} is connected`;
   card.body=view.unlocks||`${name} is connected and verified.`;
   card.actions=[{id:'open_connections',label:'View in Connections'},{id:'dismiss',label:'Done'}];
@@ -98,7 +76,7 @@ export function sessionCard(view:SessionCardView,appOrigin?:string):ConnectorCar
    if(method.oneClick){
     card.kind='oauth';
     card.body=`${lead}One tap: sign in with ${providerName(method.provider)} on its own secure page — The Mayor never sees your password.${gateNote}`;
-    card.actions=[{id:'connect_oauth',label:`Connect ${name}`,provider:method.provider as 'google'|'microsoft'|'zoho',capabilities:oauthCapabilities(view,method.provider)},{id:'dismiss',label:'Not now'}];
+    card.actions=[{id:'connect_oauth',label:`Connect ${name}`,provider:method.provider as 'google'|'microsoft'|'zoho'},{id:'dismiss',label:'Not now'}];
    }else{
     card.body=`${lead}Sign-in for ${name} is not set up on The Mayor's side yet, so this way cannot start. Ask me in chat and I'll take the next way available.${gateNote}`;
    }

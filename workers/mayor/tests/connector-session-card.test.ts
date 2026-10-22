@@ -144,37 +144,3 @@ describe('ensureSessionCard',()=>{
   await expect(sessionCardFor(env,{tenantId:TENANT2,userId:USER},started.id)).rejects.toThrow();
  });
 });
-
-describe('door 1: the oauth card carries the capabilities verify will check',()=>{
- it('google calendar+email recipe requests calendar_manage and gmail_read',()=>{
-  const card=sessionCard(view({capabilities:['calendar','email'],method:{kind:'oauth',provider:'google',oneClick:true}}));
-  expect(card.actions[0]).toMatchObject({id:'connect_oauth',provider:'google',capabilities:['calendar_manage','gmail_read']});
- });
- it('microsoft gets calendar_manage only — gmail_read is not in its catalog',()=>{
-  const card=sessionCard(view({capabilities:['calendar','email'],method:{kind:'oauth',provider:'microsoft',oneClick:true}}));
-  expect(card.actions[0]).toMatchObject({id:'connect_oauth',provider:'microsoft',capabilities:['calendar_manage']});
- });
- it('zoho calendar recipe requests calendar_manage',()=>{
-  const card=sessionCard(view({capabilities:['calendar'],method:{kind:'oauth',provider:'zoho',oneClick:true}}));
-  expect(card.actions[0]).toMatchObject({id:'connect_oauth',provider:'zoho',capabilities:['calendar_manage']});
- });
- it('unknown semantic tags are dropped, never invented into scopes',()=>{
-  const card=sessionCard(view({capabilities:['payments','social'],method:{kind:'oauth',provider:'google',oneClick:true}}));
-  expect(card.actions[0]).toMatchObject({id:'connect_oauth',capabilities:[]});
- });
-});
-
-describe('door 4: an assisted connection does not wear the verified label',()=>{
- it('assisted-connected renders as set up by confirmation, with no data-feed claim',()=>{
-  const card=sessionCard(view({state:'connected',method:{kind:'assisted',oneClick:false}}));
-  expect(card.title).toContain('is set up');
-  expect(card.body).toContain('your confirmation');
-  expect(card.body).toContain('cannot read data');
-  expect(card.body).not.toContain('Reads your');
- });
- it('a verified connection keeps the connected label and its unlocks',()=>{
-  const card=sessionCard(view({state:'connected'}));
-  expect(card.title).toContain('is connected');
-  expect(card.body).toContain('See your Square sales');
- });
-});

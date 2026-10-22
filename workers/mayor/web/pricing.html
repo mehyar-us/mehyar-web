@@ -83,6 +83,7 @@
           <h3>Extensive business audit</h3>
           <p class="plan-tier">One business · one focused plan</p>
           <p>A reviewed report covering your website and customer journey, services and booking, retention, local visibility, and daily operations. Payment queues your audit — the report is generated after intake and put through a separate AI review, not delivered instantly.</p>
+          <p>Purchases are final — no refunds.</p>
           <a class="button button-small" href="/business-audit">Start your audit</a>
         </article>
       </div>
@@ -95,6 +96,7 @@
         <li>No hidden fees — phone and messaging usage is billed by your own provider at its rates, never marked up by us.</li>
         <li>No credit card to start.</li>
         <li>Cancel anytime — cancelling stops renewal, and your plan runs to the end of the paid period.</li>
+        <li>Purchases are final — no refunds.</li>
       </ul>
     </section>
 
@@ -117,6 +119,7 @@
       <button type="button" class="mayor-consent-link" data-mayor-consent-reopen>Cookie settings</button>
       <a href="mailto:info@mehyar.us">info@mehyar.us</a>
     </nav>
+    <p class="footer-note">Purchases are final — no refunds.</p>
     <p class="footer-note">© 2026 MehyarSoft LLC. All rights reserved.</p>
   </footer>
 
@@ -130,15 +133,13 @@
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'
         +'<p class="plan-tier">'+Number(p.replyLimit).toLocaleString()+' reply attempts (≈'+Math.round(Number(p.replyLimit)/10)+' real conversations a month) · '+Number(p.voiceMinuteLimit)+' microphone minutes a month</p>'
         +'<p>'+(p.id==='free'?'A good place to start. Talk to The Mayor and feel the money loop working.':'For the busier business: the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls.')+'</p>'
-        +'<a class="button button-small" href="'+(p.id==='pro'?'/billing?plan=pro':'/?start=1')+'">'+(p.id==='pro'?'Go Pro — $'+Math.round(Number(p.priceCents)/100)+'/mo':'Start free')+'</a>'
-        +(p.id==='pro'?'<p class="plan-final-sale">Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>':'')+'</article>';
+        +'<a class="button button-small" href="'+(p.id==='pro'?'/billing?plan=pro':'/?start=1')+'">'+(p.id==='pro'?'Go Pro — $'+Math.round(Number(p.priceCents)/100)+'/mo':'Start free')+'</a></article>';
     }
     function topupCard(p){
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'
         +'<p class="plan-tier">One-time</p>'
         +'<p>+'+Number(p.replyAttempts).toLocaleString()+' reply attempts (≈'+Math.round(Number(p.replyAttempts)/10)+' real conversations) · +'+Number(p.voiceMinutes)+' microphone minutes</p>'
         +'<a class="button button-small" href="/billing?pack='+p.id+'">Buy '+esc(p.name)+'</a>'
-        +'<p class="plan-final-sale">Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>'
         +'<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>';
     }
     function fail(el){el.innerHTML='<p class="plans-note">Plans could not be loaded. <button class="text-link" onclick="location.reload()">Try again</button>.</p>';}

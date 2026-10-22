@@ -70,43 +70,9 @@ function mountAuditPage(){
   let data:any;try{data=await response.json();}catch{throw new Error('The request could not be verified. Please try again.');}
   if(!response.ok)throw new Error(typeof data.message==='string'?data.message:'The request could not be completed. Please try again.');return data;
  }
- // CHG-093: the availability check must resolve the button on EVERY
- // path — success, unavailable, error, or a wedged fetch. The offer
- // endpoint is healthy but slow (the app-wide latency pattern), and
- // the only deadline used to be the fetch's own 20s abort signal: a
- // fetch that never settles strands the button on "Checking
- // checkout…" looking dead for as long as it hangs. The UI races its
- // own deadline, carries a visible progress treatment while checking,
- // and a failure gets a working retry — never a dead button and a
- // "please refresh" plea. The success path's writes are unchanged.
- const OFFER_UI_TIMEOUT_MS=15000;
- let offerCheckInFlight=false,offerRetryButton:HTMLButtonElement|null=null;
- const showOfferChecking=()=>{
-  checkout.disabled=true;checkout.classList.add('is-checking');setButton('Checking checkout…');
-  availability.textContent='Checking checkout availability…';offerRetryButton?.remove();
- };
- const ensureOfferRetryButton=()=>{
-  if(offerRetryButton)return offerRetryButton;
-  offerRetryButton=document.createElement('button');
-  offerRetryButton.type='button';offerRetryButton.className='button button-outline button-small offer-retry';offerRetryButton.textContent='Try again';
-  offerRetryButton.addEventListener('click',()=>{void loadOffer();});
-  return offerRetryButton;
- };
  async function loadOffer(){
-  if(offerCheckInFlight)return;
-  offerCheckInFlight=true;showOfferChecking();
-  try{
-   let timer:ReturnType<typeof setTimeout>|undefined;
-   const wedged=new Promise<never>((_resolve,reject)=>{timer=setTimeout(()=>reject(new Error('The checkout availability check timed out.')),OFFER_UI_TIMEOUT_MS);});
-   offer=await Promise.race([api('/api/business-audit/offer') as Promise<AuditOfferResponse>,wedged]).finally(()=>{if(timer!==undefined)clearTimeout(timer);});
-   const state=checkoutAvailability(offer);availability.textContent=state.message;testNotice.textContent=state.test?'Test checkout. No live payment is collected. Any completed test payment stays labeled as a test.':'';testNotice.hidden=!state.test;checkout.disabled=!state.available;setButton(state.label);
-  }catch{
-   availability.textContent='Checkout availability could not be verified. ';
-   availability.append(ensureOfferRetryButton());
-   setButton('Checkout unavailable');checkout.disabled=true;
-  }finally{
-   checkout.classList.remove('is-checking');offerCheckInFlight=false;
-  }
+  try{offer=await api('/api/business-audit/offer') as AuditOfferResponse;const state=checkoutAvailability(offer);availability.textContent=state.message;testNotice.hidden=!state.test;checkout.disabled=!state.available;setButton(state.label);}
+  catch{availability.textContent='Checkout availability could not be verified. Please refresh to try again.';setButton('Checkout unavailable');checkout.disabled=true;}
  }
  const pushReceipt=(view:ReceiptView)=>loadAuditReceipt(receiptPanel,{view,onRefresh:()=>void loadReceipt()});
  async function loadReceipt(){
@@ -141,11 +107,7 @@ function mountAuditPage(){
   if(validAuditToken(returnedToken)){statusToken=returnedToken;try{sessionStorage.setItem(statusTokenKey,statusToken);}catch{}}
   currentUrl.searchParams.delete('receipt');currentUrl.searchParams.delete('payment');window.history.replaceState({},'',currentUrl.pathname+currentUrl.search+currentUrl.hash);
  }else{try{const saved=sessionStorage.getItem(statusTokenKey);if(validAuditToken(saved))statusToken=saved;}catch{}}
- // A failure in the cosmetic icon pass must never strand the
- // checkout state machine — decorate is decoration; loadOffer runs
- // regardless so the button always reaches a resolved state.
- try{decorate();}catch{/* icons are decoration; the offer check still runs */}
- void loadOffer();if(statusToken)void loadReceipt();
+ decorate();void loadOffer();if(statusToken)void loadReceipt();
 }
 if(typeof document!=='undefined'&&document.getElementById('audit-intake-form')){
  if(window.location.pathname.replace(/\/$/,'')==='/business-audit/report')void mountAuditReport(statusTokenKey,validAuditToken);

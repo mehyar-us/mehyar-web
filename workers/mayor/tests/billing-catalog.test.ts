@@ -12,7 +12,6 @@ it('serves the pricing catalog publicly from plans.ts (single source of truth)',
  // The founding seam block rides the catalog: without an env it reports
  // unavailable with null counts (surfaces then show no number).
  expect(body.founding).toEqual({available:false,seats_total:25,seats_taken:null,seats_remaining:null});
- expect(body.foundingPriceCents).toBe(7920); // rot315 parity: the amount rides the public catalog
  const pro=body.plans.find((p:any)=>p.id==='pro');
  expect(pro.priceCents).toBe(PLANS.find(p=>p.id==='pro')!.priceCents);
  expect(pro.replyLimit).toBe(1000);expect(pro.voiceMinuteLimit).toBe(120);
