@@ -1,15 +1,8 @@
--- RECOVERED-RECORD — documentation-grade reconstruction, Slice 0 (2026-10-21).
--- Applied to production (recorded in production's d1_migrations) but its
--- file existed in NO repo. Recovered from production's live schema: the
--- end-state effect attributable to 0063+0065 together is the widened
--- mayor_notifications kind CHECK in production; the split between the two
--- files is inferred from their recorded names — 0063 "authority kinds"
--- adds the kinds the authority-tier system emits ('proactive_suggestion_sent',
--- 'appointment_booked'); 0065 "reask kinds" adds the rest. The rebuild
--- follows the established 0044/0057/0058 pattern. A from-scratch build
--- applying 0063 then 0065 lands byte-identical (modulo whitespace) to
--- production's stored table definition.
-CREATE TABLE mayor_notifications_with_authority_kinds (
+-- 0063: widen mayor_notifications kinds for authority-tier auto actions:
+-- 'appointment_booked' (auto-tier booking) and 'proactive_suggestion_sent'
+-- (auto-tier suggestion send). Rebuild follows the 0044/0057/0058/0060 pattern.
+-- Additive only.
+CREATE TABLE mayor_notifications_with_authority (
  id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, user_id TEXT NOT NULL,
  dedupe_key TEXT NOT NULL,
  kind TEXT NOT NULL CHECK(kind IN ('onboarding','calendar_connection','scheduled_check_failed','phone_call_review','missed_call_texted','missed_call_simulated','missed_call','proactive_suggestion','proactive_suggestion_sent','proactive_briefing','appointment_booked')),
@@ -19,8 +12,8 @@ CREATE TABLE mayor_notifications_with_authority_kinds (
  UNIQUE(tenant_id,user_id,dedupe_key),
  FOREIGN KEY(tenant_id,user_id) REFERENCES agent_memberships(tenant_id,user_id)
 );
-INSERT INTO mayor_notifications_with_authority_kinds(id,tenant_id,user_id,dedupe_key,kind,state,created_at,updated_at,read_at,occurrence)
+INSERT INTO mayor_notifications_with_authority(id,tenant_id,user_id,dedupe_key,kind,state,created_at,updated_at,read_at,occurrence)
  SELECT id,tenant_id,user_id,dedupe_key,kind,state,created_at,updated_at,read_at,occurrence FROM mayor_notifications;
 DROP TABLE mayor_notifications;
-ALTER TABLE mayor_notifications_with_authority_kinds RENAME TO mayor_notifications;
+ALTER TABLE mayor_notifications_with_authority RENAME TO mayor_notifications;
 CREATE INDEX mayor_notifications_inbox ON mayor_notifications(tenant_id,user_id,state,created_at);

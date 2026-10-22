@@ -17,6 +17,15 @@ const content={
  // Crew 3 proactive engine: suggestion + morning briefing surface cards.
  proactive_suggestion:{title:'A proactive suggestion is ready',message:'The Mayor spotted a way to fill slow time or win back business. Review the suggestion.',action:'suggestions'},
  proactive_briefing:{title:'Your morning briefing is ready',message:'Yesterday, today, and open opportunities at a glance.',action:'briefing'},
+ // P1 authority tiers: honest copy for actions The Mayor took automatically
+ // under the owner's rules — never "ready for review" when it already happened.
+ proactive_suggestion_sent:{title:'The Mayor sent a suggestion text',message:'A suggestion text went out automatically under your rules. Review it in Suggestions.',action:'suggestions'},
+ appointment_booked:{title:'The Mayor booked an appointment',message:'An appointment was booked automatically under your rules. Review it in Today.',action:'today'},
+ // P7 day-one re-asks: honest copy phrased from real evidence only — a missed
+ // call LOGGED here (never "seen" on an unconnected phone), hours NOT SET
+ // (never a GBP comparison — no GBP read path exists).
+ phone_connect_reask:{title:'Connect your phone so I can catch missed calls',message:'A missed call was logged here recently and handled by hand. I could have caught that missed call myself — and texted the caller back — if your phone were connected. Connect it and I will take the next one.',action:'connections'},
+ profile_hours_missing:{title:'Add your opening hours',message:'Your opening hours are not set, so I cannot tell when you are open — bookings and my quiet-hours checks may not line up with your real day. Add your hours and I will work to them.',action:'chat'},
 } as const;
 type Kind=keyof typeof content;
 export type NotificationRunGuard={revision:number;leaseToken:string};

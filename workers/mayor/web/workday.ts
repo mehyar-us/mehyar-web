@@ -1,10 +1,11 @@
-import {createIcons,House,Sparkles,CalendarDays,Users,ListTodo,CreditCard,Settings,CircleHelp,Store,Bell,Mic,ArrowUp,ArrowRight,ChevronRight,Plus,Check,Clock,RefreshCw,Copy,X,Search,Phone,CalendarCheck,Menu,Plug} from 'lucide';
+import {createIcons,House,Sparkles,CalendarDays,Users,ListTodo,CreditCard,Settings,CircleHelp,Store,Bell,Mic,ArrowUp,ArrowRight,ChevronRight,Plus,Check,Clock,RefreshCw,Copy,X,Search,Phone,CalendarCheck,CalendarClock,CalendarX,Menu,Plug,MessageSquare} from 'lucide';
 import {createBusinessRoutines} from './business-routines';
 import {createBusinessAgent} from './business-agent';
 import {createProactive, proactiveIcons} from './proactive-ui';
+import {createCanvas} from './canvas';
+import {createSpeakShow} from './speak-show';
+import {orderCanvasDayCards, type CanvasCardKind} from './canvas-model';
 import './credit-packs.css';
-import {loadBillingPanel} from './billing-loader';
-import type {BillingIntent} from './billing-intent';
 
 export type WorkdayView='today'|'chat'|'feed'|'billing'|'connections'|'account';
 type Api=(path:string,body?:unknown,headers?:Record<string,string>)=>Promise<any>;
@@ -13,7 +14,7 @@ type Appointment={id:string;input:{title:string;appointmentType:string;staff?:st
 type Customer={id:string;name:string;email?:string|null;phone?:string|null;revision:number};
 type Task={id:string;title:string;dueAt:string|null;priority:string;status:'open'|'completed';revision:number;customer?:{id:string;name:string}|null};
 const views:WorkdayView[]=['today','chat','feed','billing','connections','account'];
-const icons={House,Sparkles,CalendarDays,Users,ListTodo,CreditCard,Settings,CircleHelp,Store,Bell,Mic,ArrowUp,ArrowRight,ChevronRight,Plus,Check,Clock,RefreshCw,Copy,X,Search,Phone,CalendarCheck,Menu,Plug,...proactiveIcons};
+const icons={House,Sparkles,CalendarDays,Users,ListTodo,CreditCard,Settings,CircleHelp,Store,Bell,Mic,ArrowUp,ArrowRight,ChevronRight,Plus,Check,Clock,RefreshCw,Copy,X,Search,Phone,CalendarCheck,CalendarClock,CalendarX,Menu,Plug,MessageSquare,...proactiveIcons};
 const $=(id:string)=>document.getElementById(id)!;
 function el<K extends keyof HTMLElementTagNameMap>(tag:K,text='',className=''):HTMLElementTagNameMap[K]{const node=document.createElement(tag);node.textContent=text;node.className=className;return node;}
 function icon(name:string){const node=el('i');node.dataset.lucide=name;node.setAttribute('aria-hidden','true');return node;}
@@ -24,8 +25,10 @@ function select(form:HTMLElement,label:string,name:string,choices:{value:string;
 function dateInZone(timeZone:string){const parts=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const part=(name:string)=>parts.find(p=>p.type===name)!.value;return `${part('year')}-${part('month')}-${part('day')}`;}
 
 export function createWorkday(hooks:Hooks){
- let pendingBillingIntent:BillingIntent|null=null;
- let current:WorkdayView='today',timeZone='UTC',businessDate=dateInZone('UTC'),appointmentDate='',ready=false,workspaceRole='',loadVersion=0;
+ // P2: the conversation canvas (the chat view) is the primary home surface —
+ // an owner landing in the app lands in the conversation, with the day's
+ // cards in the flow. The tabbed views remain reachable via navigation.
+ let current:WorkdayView='chat',timeZone='UTC',businessDate=dateInZone('UTC'),appointmentDate='',ready=false,workspaceRole='',loadVersion=0;
  let taskVersion=0,customerVersion=0,agendaVersion=0,billingVersion=0;
  let accessVersion=0;const originalApi=hooks.api;
  hooks={...hooks,api:async(path,body,headers)=>{const version=accessVersion;if(!ready)throw new Error('Your workspace access has ended.');const result=await originalApi(path,body,headers);if(version!==accessVersion||!ready)throw new Error('Your workspace access has ended.');return result;}};
@@ -35,9 +38,29 @@ export function createWorkday(hooks:Hooks){
  const routines=createBusinessRoutines({api:hooks.api,tenant:hooks.tenant,ask:hooks.ask,onChanged:hooks.onChanged});
  const businessAgent=createBusinessAgent({api:hooks.api,tenant:hooks.tenant,actor:hooks.actor,ask:hooks.ask,onChanged:()=>{hooks.onChanged?.();void refreshOverview(false);}});
  // Crew 3 proactive engine: morning briefing + suggestion cards + ROI dashboard.
- // The stack mounts at the top of the Today view; chatHome mounts in the chat view.
- const proactive=createProactive({api:hooks.api,tenant:hooks.tenant,timeZone:()=>timeZone,onNotice:hooks.onNotice,onNavigate:view=>hooks.onNavigate(view),paint:()=>paintIcons()});
- $('onboarding-progress').before(proactive.chatHome);
+ // P2 — the proactive stack is the conversation canvas's card lane: it mounts
+ // inside the chat view (#canvas-cards), above the conversation, so the
+ // briefing, money, and suggestion cards materialize in the flow of talk
+ // instead of living in the Today tab. The ROI dashboard still mounts in the
+ // Feed view (its proof stream). chatHome is no longer mounted — the canvas
+ // shows the full cards, not a compact summary of them.
+ const proactive=createProactive({api:hooks.api,tenant:hooks.tenant,timeZone:()=>timeZone,onNotice:hooks.onNotice,onNavigate:view=>hooks.onNavigate(view),onOpenAgenda:()=>openAgenda(),paint:()=>paintIcons()});
+ // The canvas composer owns the one card proactive-ui doesn't: missed-call
+ // highlights. Its dialog is the same missed-calls dialog the Today view uses.
+ const canvas=createCanvas({api:hooks.api,tenant:hooks.tenant,timeZone:()=>timeZone,onOpenMissedCalls:()=>{void missedCallsDialog();},paint:()=>paintIcons()});
+ // P3 speak-and-show: turn visuals (booking cards, calendar inventory)
+ // materialize in the canvas lane as The Mayor speaks. When a booking
+ // settles, the existing day cards refresh quietly so their real figures
+ // (money this week, today's count, missed calls, suggestions) update in
+ // place — the money figure counts up to its new real value.
+ const speakShow=createSpeakShow({api:hooks.api,tenant:hooks.tenant,timeZone:()=>timeZone,paint:()=>paintIcons(),onBookingSettled:()=>{void proactive.refresh({keepContent:true});void canvas.refresh();}});
+ $('canvas-cards').append(proactive.stack);
+ $('canvas-cards').append(speakShow.element);
+ // Compose the lane in canvas event order (web/canvas-model.ts): briefing →
+ // money → missed-call highlights → suggestions. Appending each section in
+ // that order moves it into place inside the stack container.
+ const laneNodes:Record<CanvasCardKind,HTMLElement|null>={setup:null,briefing:proactive.sections.briefing,money:proactive.sections.money,'missed-call':canvas.missedCalls,booking:null,suggestion:proactive.sections.suggestions,notification:null};
+ for(const kind of orderCanvasDayCards(['briefing','money','missed-call','suggestion']))proactive.stack.append(laneNodes[kind]!);
  const dateLabel=(date:string)=>new Intl.DateTimeFormat(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric',timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
  const time=(value:string)=>new Intl.DateTimeFormat(undefined,{timeZone,hour:'numeric',minute:'2-digit'}).format(new Date(value));
  const fullTime=(value:string)=>new Intl.DateTimeFormat(undefined,{timeZone,dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
@@ -108,13 +131,14 @@ export function createWorkday(hooks:Hooks){
    if(!data.appointments.length){const blank=el('div','','agenda-empty');blank.append(el('p','No upcoming Mayor bookings today.'),button('New appointment',()=>openAgenda(),'quiet'));agenda.append(blank);}
    for(const item of data.appointments as Appointment[])agenda.append(appointmentPreview(item));
    agenda.append(el('p','Mayor bookings only · '+timeZone,'source-note'));grid.append(attention,agenda);const oldGrid=target.querySelector('.today-grid');if(oldGrid)oldGrid.replaceWith(grid);else target.append(grid);
-   // Crew 3 proactive stack stays pinned at the top of the Today view.
-   target.prepend(proactive.stack);
+   // P2: the proactive stack lives in the conversation canvas now — a Today
+   // refresh still refreshes its data (the canvas cards and the Feed's ROI
+   // share the one proactive engine), it just no longer mounts here.
    void proactive.refresh();
    const taskSection=el('section','','today-tasks');const taskHeading=el('div','','section-heading');taskHeading.append(el('h2','Your next steps'),button('Customers',()=>openCustomers(),'quiet'),button(`View tasks (${data.counts.tasksOpen})`,()=>openTasks(),'quiet'));taskSection.append(taskHeading);
    if(data.tasks.length){for(const task of data.tasks as Task[])taskSection.append(taskRow(task));}else taskSection.append(el('p','Your shared task list is clear. Add a next step whenever you need it.','subtle'));
    if(grid.nextSibling!==businessAgent.element)grid.after(businessAgent.element);const oldTasks=target.querySelector('.today-tasks');if(oldTasks)oldTasks.replaceWith(taskSection);else target.append(taskSection);paintIcons();if(loadAgent)await businessAgent.load();
-  }catch(reason){if(version===loadVersion){if(existing)hooks.onNotice(reason instanceof Error?reason.message:'Today could not refresh.');else error(target,reason,()=>void refreshOverview());}}
+  }catch(reason){if(version===loadVersion){/* The canvas cards load independently of the overview — never let an overview failure leave them blank. */void proactive.refresh();if(existing)hooks.onNotice(reason instanceof Error?reason.message:'Today could not refresh.');else error(target,reason,()=>void refreshOverview());}}
  }
  function appointmentPreview(item:Appointment){const row=el('article','','appointment-preview'),clock=el('div','','appointment-clock');clock.append(el('strong',time(item.input.start)),el('small',time(item.input.end)));const copy=el('div','','row-copy');copy.append(el('h3',item.customer?.name??item.input.title),el('p',item.input.appointmentType+(item.input.staff?' · '+item.input.staff:'')));row.append(clock,copy);return row;}
  function taskRow(task:Task,onToggled?:()=>Promise<void>){const row=el('article','','task-row');const toggle=button('',guarded(async()=>{toggle.disabled=true;try{await hooks.api(base()+'/tasks/'+task.id,{revision:task.revision,status:task.status==='open'?'completed':'open'});await (onToggled??refreshOverview)();}finally{toggle.disabled=false;}}),'task-toggle');toggle.setAttribute('aria-label',`${task.status==='completed'?'Reopen':'Complete'} ${task.title}`);toggle.setAttribute('aria-pressed',String(task.status==='completed'));if(task.status==='completed')toggle.append(icon('check'));
@@ -224,7 +248,12 @@ export function createWorkday(hooks:Hooks){
    const title=field(form,'Appointment title','title');title.required=true;const type=select(form,'Service','appointmentType',policy.appointmentTypes.map((item:any)=>({value:item.name,label:`${item.name} · ${item.durationMinutes} min`})),policy.appointmentTypes[0]?.name??'');const staff=policy.staff.length?select(form,'Staff','staff',policy.staff.map((item:any)=>({value:item.name,label:item.name})),policy.staff[0]?.name??''):null;
    const start=field(form,'Starts (device timezone)','start','datetime-local');start.required=true;const end=field(form,'Ends (device timezone)','end','datetime-local');end.required=true;const attendee=field(form,'Invitation email (optional)','attendee','email');const linkedCustomer=await customerPicker(form,presetCustomer);const {submit,status,actions}=formActions(form,'Review appointment');
    const find=button('Find openings',()=>{find.disabled=true;void guarded(async()=>{try{if(!start.value)throw new Error('Choose a start time to search the next 24 hours.');const result=await hooks.api(base()+'/availability',{start:new Date(start.value).toISOString(),end:new Date(new Date(start.value).getTime()+86400000).toISOString(),appointmentType:type.value,...(staff?{staff:staff.value}:{}),limit:5});openings.replaceChildren();for(const slot of result.openings??result.slots??[]){openings.append(button(`${fullTime(slot.start)}–${time(slot.end)}`,()=>{start.value=localInputDate(slot.start);end.value=localInputDate(slot.end);}));}if(!openings.children.length)openings.append(el('p','No openings returned in this window. Try another starting time.'));}finally{find.disabled=false;}},status)();});actions.prepend(find);const openings=el('div','','openings');form.append(openings);
-   form.onsubmit=event=>{event.preventDefault();submit.disabled=true;void guarded(async()=>{try{const body={title:title.value.trim(),appointmentType:type.value,...(staff?{staff:staff.value}:{}),start:new Date(start.value).toISOString(),end:new Date(end.value).toISOString(),attendees:attendee.value.trim()?[attendee.value.trim()]:[],...(linkedCustomer.value?{customerId:linkedCustomer.value}:{})};const {proposal}=await hooks.api(base()+'/appointments/propose',body);reviewProposal(node,proposal,'Confirm booking',async()=>{const {result}=await hooks.api(base()+'/appointments/confirm',{id:proposal.id,confirm:true});if(result.status!=='applied')throw new Error(result.status==='uncertain'?'The calendar result is uncertain. Close this review and check Calendar requests before booking again.':`The appointment was not confirmed (${result.status}). Close this review and choose another time.`);node.close();await onBooked();},()=>{node.replaceChildren(form);});}finally{submit.disabled=false;}},status)();};title.focus();
+   form.onsubmit=event=>{event.preventDefault();submit.disabled=true;void guarded(async()=>{try{const body={title:title.value.trim(),appointmentType:type.value,...(staff?{staff:staff.value}:{}),start:new Date(start.value).toISOString(),end:new Date(end.value).toISOString(),attendees:attendee.value.trim()?[attendee.value.trim()]:[],...(linkedCustomer.value?{customerId:linkedCustomer.value}:{})};const {proposal}=await hooks.api(base()+'/appointments/propose',body);
+     // P1 authority tiers: an 'auto' tier books immediately — the server returns
+     // status 'applied' and there is nothing left to review. Show the honest
+     // booked confirmation instead of a review dialog for a done booking.
+     if(proposal.status==='applied'){node.replaceChildren(el('h2','Booked'),el('p',typeof proposal.readback==='string'?proposal.readback:'The appointment was booked automatically under your rules and is logged.','proposal-readback'));const done=button('Done',()=>{node.close();void onBooked();},'primary');node.append(done);done.focus();return;}
+     reviewProposal(node,proposal,'Confirm booking',async()=>{const {result}=await hooks.api(base()+'/appointments/confirm',{id:proposal.id,confirm:true});if(result.status!=='applied')throw new Error(result.status==='uncertain'?'The calendar result is uncertain. Close this review and check Calendar requests before booking again.':`The appointment was not confirmed (${result.status}). Close this review and choose another time.`);node.close();await onBooked();},()=>{node.replaceChildren(form);});}finally{submit.disabled=false;}},status)();};title.focus();
   },form)();
  }
  function changeDialog(appointment:Appointment,kind:'cancel'|'reschedule',reload:()=>Promise<void>){
@@ -234,47 +263,43 @@ export function createWorkday(hooks:Hooks){
  }
  async function loadBilling(sync=false){
   if(!ready)return;const version=++billingVersion;
-  const target=loading('billing');try{let data=await hooks.api(base()+'/billing');if(sync&&data.permissions.canManage){await hooks.api(base()+'/billing/sync',{}, {'Idempotency-Key':crypto.randomUUID()});data=await hooks.api(base()+'/billing');}if(version!==billingVersion||!ready)return;
-   // React migration S1: the loaded billing state renders via the React
-   // panel (billing.tsx, lazy chunk); data, dialogs, and checkout flows
-   // stay here. The version predicate re-checks before the mount lands.
-   const billingHost=el('div');target.replaceChildren(billingHost);
-   loadBillingPanel(billingHost,{data,formatTime:fullTime,onPaint:()=>paintIcons(),onRefresh:()=>void loadBilling(true),onUpgrade:()=>{void checkout();},onCreditCheckout:(pack:any)=>creditCheckout(pack),onPortal:()=>{void portal();}},()=>version===billingVersion&&ready);
-      async function creditCheckout(pack:any){if(!data.permissions.canManage||!data.readiness.creditPacks||pack.available!==true)return;const price=new Intl.NumberFormat(undefined,{style:'currency',currency:pack.currency.toUpperCase(),maximumFractionDigits:0}).format(pack.priceCents/100),node=dialog(`Review ${pack.name} pack`);node.append(el('p',`${price} once adds ${pack.replyAttempts.toLocaleString()} reply attempts and ${pack.voiceMinutes} microphone minutes to ${$('business-name').textContent}. Stripe verifies payment before adding allowance.`),el('p',`This pack expires ${fullTime(data.credits.expiresAt)}. Unused credits do not transfer if you upgrade or downgrade, and do not roll over. This is a one-time purchase.`,'inline-note'));const checkoutRequestId=data.credits.checkout?.pending&&data.credits.checkout.packId===pack.id?data.credits.checkout.requestId:crypto.randomUUID(),status=el('p'),go=button('Continue to Stripe',()=>{go.disabled=true;void guarded(async()=>{try{const result=await hooks.api(base()+'/billing/credit-checkout',{packId:pack.id,periodKey:data.credits.periodKey},{'Idempotency-Key':checkoutRequestId});stripeRedirect(result.url);}finally{go.disabled=false;}},status)();},'primary');status.setAttribute('role','status');node.append(status,go);}
-   async function checkout(preselectFounding=false){if(!data.permissions.canManage||!data.readiness.checkout){hooks.onNotice(data.readiness.message??'Checkout is not available yet.');return;}const pro=data.plans.find((plan:any)=>plan.id==='pro');if(!pro)throw new Error('The current Pro offer could not be verified. Refresh Plan & usage.');const price=new Intl.NumberFormat(undefined,{style:'currency',currency:pro.currency.toUpperCase(),maximumFractionDigits:0}).format(pro.priceCents/100),node=dialog(preselectFounding?'Founding \u2014 the plan you chose':'Upgrade to Pro');const status=el('p');
-   // Reinvention Slice 1 \u2014 the founding door, whole (blueprint \u00a72.1
-   // E-0): a carried plan=founding intent opens this dialog PRESELECTED
-   // on founding \u2014 the founding section renders first, named as the
-   // plan the owner chose, with Pro as the stated alternative. The
-   // seat gate still decides at claim time (dialog data + the server);
-   // if the cohort filled between the click and this dialog, the
-   // dialog says so in words and offers Pro \u2014 never a silent swap.
-   // Without a founding intent the dialog is byte-for-byte the
-   // standard upgrade dialog (Pro first, founding section after).
-   const foundingOpen=Boolean(data.founding?.available&&(data.founding.seats_remaining??0)>0&&data.foundingPriceCents);
-   const appendPro=()=>{node.append(el('p',`Pro is ${price} per month for this business. Stripe handles payment. Your allowance changes after verified payment.`));if(data.credits?.replyAttempts||data.credits?.voiceMinutes)node.append(el('p','Unused usage packs belong to your current Free period and expire when Pro starts. They do not transfer to your new paid period.','inline-note'));const checkoutRequestId=data.checkout.requestId??crypto.randomUUID(),go=button('Continue to Stripe',()=>{go.disabled=true;void guarded(async()=>{try{const result=await hooks.api(base()+'/billing/checkout',{planId:'pro'}, {'Idempotency-Key':checkoutRequestId});stripeRedirect(result.url);}finally{go.disabled=false;}},status)();},'primary');node.append(status,go);};
-   const appendFounding=()=>{if(!foundingOpen)return;const foundingPrice=new Intl.NumberFormat(undefined,{style:'currency',currency:pro.currency.toUpperCase()}).format(data.foundingPriceCents/100);node.append(el('p',`Founding cohort: lock ${foundingPrice} per month for life \u2014 ${data.founding.seats_remaining} of ${data.founding.seats_total} seats left.`,'inline-note'));const foundingRequestId=crypto.randomUUID();let fallbackUrl='';const goFounding=button(`Continue with Founding \u2014 ${foundingPrice}/mo for life`,()=>{if(fallbackUrl){stripeRedirect(fallbackUrl);return;}goFounding.disabled=true;void guarded(async()=>{try{const result=await hooks.api(base()+'/billing/checkout',{planId:'pro-founding'},{'Idempotency-Key':foundingRequestId});if(result.foundingFallback){fallbackUrl=result.url;status.textContent=`The founding cohort just filled, so this checkout is Pro at ${price}/mo instead. Nothing is charged until you pay on the Stripe page.`;goFounding.textContent=`Continue at ${price}/mo`;goFounding.disabled=false;return;}stripeRedirect(result.url);}finally{if(!fallbackUrl)goFounding.disabled=false;}},status)();},'primary');node.append(goFounding);};
-   if(preselectFounding&&foundingOpen){node.append(el('p','You picked Founding on Pricing \u2014 here is that exact plan. Nothing is charged until you pay on the Stripe page.','inline-note'));appendFounding();node.append(el('p','Or take the standard plan instead:','subtle'));appendPro();}
-   else{if(preselectFounding)node.append(el('p','Founding just filled, so the plan available now is Pro \u2014 the standard plan below, at its standard price.','inline-note'));appendPro();appendFounding();}}
+  const target=loading('billing');try{let data=await hooks.api(base()+'/billing');if(sync&&data.permissions.canManage){await hooks.api(base()+'/billing/sync',{}, {'Idempotency-Key':crypto.randomUUID()});data=await hooks.api(base()+'/billing');}if(version!==billingVersion||!ready)return;target.replaceChildren();toolbar(target,`${data.plan.name} · ${data.plan.status}`, [button('Refresh payment status',()=>void loadBilling(true),'secondary')]);
+   const usage=el('section','','usage-panel');usage.append(el('h2','Your business allowance'),el('p','Shared across this business. Usage resets '+fullTime(data.usage.resetAt)+'.','subtle'));
+   for(const [label,item] of [['Assistant replies',data.usage.replies],['Microphone minutes',data.usage.voiceMinutes]] as [string,{used:number;limit:number;remaining:number}][]){const row=el('div','','usage-row'),progress=el('progress');progress.max=item.limit;progress.value=item.used;progress.setAttribute('aria-label',label);row.append(el('strong',label),el('span',`${Math.round(item.used*10)/10} / ${item.limit}`),progress);usage.append(row);}target.append(usage);
+   if(data.credits&&Array.isArray(data.creditPacks)){
+    const credits=el('section','','credit-packs');credits.append(el('span','A LITTLE EXTRA, WHEN YOU NEED IT','eyebrow'),el('h2','One-time usage packs'),el('p',`Add to this business’s current allowance until ${fullTime(data.credits.expiresAt)}. Unused packs expire when this usage period ends or you change between Free and Pro. They do not roll over.`,'subtle'));
+    if(data.credits.replyAttempts||data.credits.voiceMinutes)credits.append(el('p',`Verified packs in this period add ${data.credits.replyAttempts.toLocaleString()} reply attempts and ${data.credits.voiceMinutes} microphone minutes. These are included in the allowance above.`,'inline-note'));
+    const pending=data.credits.checkout?.pending;if(pending)credits.append(el('p','A pack checkout is pending. No allowance is added until Stripe verifies payment. Resume it below or refresh payment status after returning.','inline-note'));
+    const cards=el('div','','credit-pack-grid');for(const pack of data.creditPacks){const card=el('article','','credit-pack-card'),price=new Intl.NumberFormat(undefined,{style:'currency',currency:pack.currency.toUpperCase(),maximumFractionDigits:0}).format(pack.priceCents/100);card.append(el('h3',pack.name),el('p',`${price} once`,'credit-pack-price'),el('p',`+${pack.replyAttempts.toLocaleString()} reply attempts · +${pack.voiceMinutes} microphone minutes`));const resume=pending&&data.credits.checkout.packId===pack.id,buy=button(resume?'Resume pack checkout':`Choose ${pack.name}`,()=>creditCheckout(pack),'secondary');buy.disabled=!data.permissions.canManage||!data.readiness.creditPacks||pack.available!==true||Boolean(pending&&!resume);card.append(buy);cards.append(card);}credits.append(cards,el('p','Optional on either plan. No subscription, automatic purchase, or overage charge. A refund or dispute removes that pack’s allowance; usage already consumed remains counted.','source-note'));
+    if(data.credits.purchases?.length){const history=el('details','','credit-pack-history');history.append(el('summary','Pack purchases this period'));const list=el('ul');for(const purchase of data.credits.purchases){const pack=data.creditPacks.find((item:any)=>item.id===purchase.packId);list.append(el('li',`${pack?.name??'Usage pack'} · ${String(purchase.status).replaceAll('_',' ')}${purchase.paidAt?' · '+fullTime(purchase.paidAt):''}`));}history.append(list);credits.append(history);}target.append(credits);
+   }
+   if(data.plan.cancelAtPeriodEnd)target.append(el('p','Pro ends at the close of this paid period. Your saved business records remain available on Free.','inline-note'));
+   const plans=el('div','','plan-grid');for(const plan of data.plans){const card=el('section','','plan-card'+(plan.id==='pro'?' recommended':''));card.append(el('span',plan.id==='pro'?'FOR A BUSIER BUSINESS':'A GOOD PLACE TO START','eyebrow'),el('h2',plan.name));const price=el('p','','plan-price');price.append(el('strong',new Intl.NumberFormat(undefined,{style:'currency',currency:plan.currency.toUpperCase(),maximumFractionDigits:0}).format(plan.priceCents/100)),el('span',plan.priceCents?' / month':' / month, always'));card.append(price);const list=el('ul','','plan-features');for(const label of [`${plan.replyLimit.toLocaleString()} assistant replies`,`${plan.voiceMinuteLimit} microphone minutes`,'Customers, appointments, and tasks','Calendar connection and saved business profile']){const item=el('li');item.append(icon('check'),el('span',label));list.append(item);}card.append(list);
+    if(plan.id===data.plan.id)card.append(el('p','Your current plan','current-plan'));else if(plan.id==='pro'){const upgrade=button(data.checkout.pending?'Resume checkout':'Upgrade to Pro',()=>{void checkout();},'primary');upgrade.disabled=!data.permissions.canManage||!data.readiness.checkout;card.append(upgrade);}else card.append(el('p','Manage a paid subscription below to return to Free.','subtle'));plans.append(card);}target.append(plans);
+   const message=el('p',data.readiness.message??'','subtle');target.append(message);if(data.readiness.mode==='test')target.append(el('p','Payment testing is enabled. Checkout uses Stripe test mode; no real payment is taken.','inline-note'));
+   if(data.permissions.canManage&&data.readiness.portal)target.append(button('Manage subscription & invoices',()=>void portal(),'secondary'));if(!data.permissions.canManage)target.append(el('p','A business owner or a person with the billing role can manage the subscription.','subtle'));
+   target.append(el('p','No automatic overage charges. Paid periods begin after Stripe verifies payment. Carrier charges for a connected business phone are separate.','source-note'));paintIcons();
+   async function creditCheckout(pack:any){if(!data.permissions.canManage||!data.readiness.creditPacks||pack.available!==true)return;const price=new Intl.NumberFormat(undefined,{style:'currency',currency:pack.currency.toUpperCase(),maximumFractionDigits:0}).format(pack.priceCents/100),node=dialog(`Review ${pack.name} pack`);node.append(el('p',`${price} once adds ${pack.replyAttempts.toLocaleString()} reply attempts and ${pack.voiceMinutes} microphone minutes to ${$('business-name').textContent}. Stripe verifies payment before adding allowance.`),el('p',`This pack expires ${fullTime(data.credits.expiresAt)}. Unused credits do not transfer if you upgrade or downgrade, and do not roll over. This is a one-time purchase.`,'inline-note'));const checkoutRequestId=data.credits.checkout?.pending&&data.credits.checkout.packId===pack.id?data.credits.checkout.requestId:crypto.randomUUID(),status=el('p'),go=button('Continue to Stripe',()=>{go.disabled=true;void guarded(async()=>{try{const result=await hooks.api(base()+'/billing/credit-checkout',{packId:pack.id,periodKey:data.credits.periodKey},{'Idempotency-Key':checkoutRequestId});stripeRedirect(result.url);}finally{go.disabled=false;}},status)();},'primary');status.setAttribute('role','status');node.append(status,go);}
+   async function checkout(){if(!data.permissions.canManage||!data.readiness.checkout){hooks.onNotice(data.readiness.message??'Checkout is not available yet.');return;}const pro=data.plans.find((plan:any)=>plan.id==='pro');if(!pro)throw new Error('The current Pro offer could not be verified. Refresh Plan & usage.');const price=new Intl.NumberFormat(undefined,{style:'currency',currency:pro.currency.toUpperCase(),maximumFractionDigits:0}).format(pro.priceCents/100),node=dialog('Upgrade to Pro');node.append(el('p',`Pro is ${price} per month for this business. Stripe handles payment. Your allowance changes after verified payment.`));if(data.credits?.replyAttempts||data.credits?.voiceMinutes)node.append(el('p','Unused usage packs belong to your current Free period and expire when Pro starts. They do not transfer to your new paid period.','inline-note'));const checkoutRequestId=data.checkout.requestId??crypto.randomUUID(),status=el('p'),go=button('Continue to Stripe',()=>{go.disabled=true;void guarded(async()=>{try{const result=await hooks.api(base()+'/billing/checkout',{planId:'pro'}, {'Idempotency-Key':checkoutRequestId});stripeRedirect(result.url);}finally{go.disabled=false;}},status)();},'primary');node.append(status,go);}
    async function portal(){await guarded(async()=>{const result=await hooks.api(base()+'/billing/portal',{}, {'Idempotency-Key':crypto.randomUUID()});stripeRedirect(result.url);})();}
-   // Purchase intent (NEW-1, 2026-10-17): the first billing load
-   // after main.ts hands over a validated intent opens the SAME
-   // dialog the matching button opens. Consumed before invocation,
-   // so refreshes never re-fire it. Reinvention Slice 1: a founding
-   // intent opens the dialog PRESELECTED on founding (checkout(true))
-   // \u2014 the in-dialog founding choice and the server seat gate still
-   // decide the cohort at claim time; preselection is never a seat.
-   if(pendingBillingIntent){const intent=pendingBillingIntent;pendingBillingIntent=null;
-    if(intent.kind==='plan'){if(data.plan.id!=='pro')void checkout(intent.id==='founding');}
-    else{const pack=(data.creditPacks??[]).find((candidate:any)=>candidate.id===intent.id);if(pack)creditCheckout(pack);}}
   }catch(reason){if(version===billingVersion&&ready)error(target,reason,()=>void loadBilling(sync));}
  }
  function stripeRedirect(raw:string){const url=new URL(raw);if(url.protocol!=='https:'||!['checkout.stripe.com','billing.stripe.com'].includes(url.hostname)||url.username||url.password||url.port)throw new Error('Unexpected payment destination. Please try again.');location.assign(url.href);}
- function show(view:WorkdayView){if(current!==view)window.scrollTo({top:0,behavior:'instant'});current=view;document.body.dataset.view=view;for(const name of views){$(`${name}-view`).hidden=name!==view;const tab=$(`${name}-tab`);if(!tab)continue;tab.classList.toggle('active',name===view);if(name===view)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');}
+ let canvasLoaded=false;
+ function show(view:WorkdayView){const viewChanged=current!==view;if(viewChanged)window.scrollTo({top:0,behavior:'instant'});current=view;document.body.dataset.view=view;for(const name of views){$(`${name}-view`).hidden=name!==view;const tab=$(`${name}-tab`);if(!tab)continue;tab.classList.toggle('active',name===view);if(name===view)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');}
   updateDesktopTabs();updateMobileTabs();
   if(!ready){if(['feed','billing'].includes(view))$(`${view}-content`).replaceChildren(empty('Your workspace is waiting.','Sign in to bring your business together.',button('Continue with Google',hooks.onSignIn,'primary')));return;}
   if(!hooks.canManage()&&['today','feed','connections'].includes(view)){$(`${view}-content`).replaceChildren(empty('Your workspace is ready.',hooks.canChat()?'Owners and managers manage shared business records. Your role can use the conversation below.':'Owners and managers manage shared business records. Your role can read shared usage in Plan & usage.',button(hooks.canChat()?'Back to conversation':'Plan & usage',()=>hooks.onNavigate(hooks.canChat()?'chat':'billing'),'primary')));return;}
   if(view==='today')void refreshOverview();if(view==='feed')void loadFeed();if(view==='billing')void loadBilling();
+  // Landing on the canvas refreshes its cards progressively (each section
+  // paints as its data lands) — on arrival and on first load only, so
+  // in-canvas actions that re-show the chat view never flash the lane back
+  // to its loading states. Manager-only: the card endpoints are manager
+  // surfaces; other roles get the conversation alone. The overview loads
+  // first because it carries the business timezone the cards format with
+  // (and it refreshes the proactive engine itself once that is known);
+  // it also pre-renders the Today view for the owner's first tap over.
+  if(view==='chat'&&hooks.canManage()&&(viewChanged||!canvasLoaded)){canvasLoaded=true;void(async()=>{await refreshOverview(false);await canvas.refresh();})();}
  }
  /** Deep-link into the Business agent section from Settings or Feed: show
   * Today, then reveal the agent section once it has rendered. */
@@ -292,8 +317,9 @@ export function createWorkday(hooks:Hooks){
   const panel=dialog('Your workspace');panel.classList.add('mobile-navigation');menuButton.setAttribute('aria-expanded','true');
   panel.append(el('p',`${$('business-name').textContent} · ${$('business-role').textContent}`,'subtle'));
   const links=el('div','','mobile-navigation-links');
-  for(const [label,view,mark] of [['Today','today','house'],['Feed','feed','trending-up'],['Connectors','connections','plug'],['Plan & usage','billing','credit-card'],['Settings','account','settings']] as [string,WorkdayView,string][]){
+  for(const [label,view,mark] of [['Home','chat','house'],['Today','today','calendar-days'],['Feed','feed','trending-up'],['Connectors','connections','plug'],['Plan & usage','billing','credit-card'],['Settings','account','settings']] as [string,WorkdayView,string][]){
    if(!ready)continue;
+   if(view==='chat'&&!hooks.canChat())continue;
    if(['today','feed','connections'].includes(view)&&!hooks.canManage())continue;
    if(view==='account'&&workspaceRole==='billing')continue;
    const item=button(label,()=>{
@@ -308,12 +334,22 @@ export function createWorkday(hooks:Hooks){
  },'icon-button mobile-menu-toggle');
  menuButton.setAttribute('aria-label','Open workspace menu');menuButton.setAttribute('aria-haspopup','dialog');menuButton.setAttribute('aria-expanded','false');menuButton.append(icon('menu'));document.querySelector('.sidebar')!.prepend(menuButton);
  const phoneTabs=el('nav','','mobile-tabs');phoneTabs.setAttribute('aria-label','Mobile navigation');
- for(const [label,view,mark] of [['Today','today','house'],['Feed','feed','trending-up'],['Connectors','connections','plug']] as [string,WorkdayView,string][]){const tab=button('',()=>hooks.onNavigate(view),'mobile-tab');tab.dataset.view=view;tab.setAttribute('aria-label',label);tab.append(icon(mark),el('span',label));phoneTabs.append(tab);}
+ // P2: Home (the canvas) leads the phone tab bar; Today and Feed stay one
+ // tap away, and Connectors / Plan & usage / Settings live in More.
+ for(const [label,view,mark] of [['Home','chat','house'],['Today','today','calendar-days'],['Feed','feed','trending-up']] as [string,WorkdayView,string][]){const tab=button('',()=>hooks.onNavigate(view),'mobile-tab');tab.dataset.view=view;tab.setAttribute('aria-label',label);tab.append(icon(mark),el('span',label));phoneTabs.append(tab);}
  const moreTab=button('',()=>menuButton.click(),'mobile-tab');moreTab.setAttribute('aria-label','More workspace tools');moreTab.append(icon('menu'),el('span','More'));phoneTabs.append(moreTab);document.body.append(phoneTabs);
- function updateMobileTabs(){let primary=false,count=1;for(const tab of phoneTabs.querySelectorAll<HTMLButtonElement>('[data-view]')){tab.hidden=!ready||!hooks.canManage();if(!tab.hidden)count++;if(!tab.hidden&&tab.dataset.view===current){tab.setAttribute('aria-current','page');primary=true;}else tab.removeAttribute('aria-current');}phoneTabs.style.gridTemplateColumns=`repeat(${count},minmax(0,1fr))`;if(!primary)moreTab.setAttribute('aria-current','page');else moreTab.removeAttribute('aria-current');}
- function updateDesktopTabs(){for(const view of views){const tab=$(`${view}-tab`);if(!tab)continue;const operator=['today','feed','connections'].includes(view);tab.hidden=operator?(!ready||!hooks.canManage()):false;}}
+ function updateMobileTabs(){let primary=false,count=1;for(const tab of phoneTabs.querySelectorAll<HTMLButtonElement>('[data-view]')){tab.hidden=tab.dataset.view==='chat'?(!ready||!hooks.canChat()):(!ready||!hooks.canManage());if(!tab.hidden)count++;if(!tab.hidden&&tab.dataset.view===current){tab.setAttribute('aria-current','page');primary=true;}else tab.removeAttribute('aria-current');}phoneTabs.style.gridTemplateColumns=`repeat(${count},minmax(0,1fr))`;if(!primary)moreTab.setAttribute('aria-current','page');else moreTab.removeAttribute('aria-current');}
+ function updateDesktopTabs(){for(const view of views){const tab=$(`${view}-tab`);if(!tab)continue;if(view==='chat'){tab.hidden=!ready||!hooks.canChat();continue;}const operator=['today','feed','connections'].includes(view);tab.hidden=operator?(!ready||!hooks.canManage()):false;}}
  async function refreshCurrent(){if(!ready)return;if(current==='today')await refreshOverview();if(current==='feed')await loadFeed();if(current==='billing')await loadBilling(true);}
+ /** Pull-to-refresh on the canvas: reload the card lane's data. */
+ function refreshCanvas(){if(!ready||!hooks.canManage())return;canvasLoaded=true;void proactive.refresh();void canvas.refresh();}
+ /** P3: quiet canvas refresh (no loading flash) — used mid-conversation. */
+ function refreshCanvasQuiet(){if(!ready||!hooks.canManage())return;canvasLoaded=true;void proactive.refresh({keepContent:true});void canvas.refresh();}
+ /** P3 barge-in: halt the speak-and-show sequence for the current turn and
+  * stop any in-flight card animation, in sync with the voice interruption.
+  * Synchronous — pending visuals never appear, shown cards snap to final. */
+ function interruptSpeakShow(){speakShow.interrupt();proactive.stopAnimations();}
  for(const view of views){const tab=$(`${view}-tab`);if(tab)tab.onclick=()=>hooks.onNavigate(view);}
  updateDesktopTabs();updateMobileTabs();paintIcons();
- return {show,billingIntent(intent:BillingIntent){pendingBillingIntent=intent;if(ready){hooks.onNavigate('billing');void loadBilling();}},refresh:refreshOverview,refreshCurrent,openBusinessAgent,openMissedCalls:()=>{void missedCallsDialog();},openAgenda,openCustomers,openTasks,proactive,ready(name:string,role:string){ready=true;workspaceRole=role;phoneTabs.hidden=false;menuButton.disabled=false;$('business-name').textContent=name;$('business-name').title=name;$('business-role').textContent=role.charAt(0).toUpperCase()+role.slice(1)+' workspace';show(current);const query=new URLSearchParams(location.search);if(query.get('billing')){hooks.onNavigate('billing');void loadBilling(true);}},clear(){ready=false;workspaceRole='';agendaHost=customerHost=taskHost=null;updateDesktopTabs();phoneTabs.hidden=true;menuButton.disabled=true;menuButton.setAttribute('aria-expanded','false');routines.clear();businessAgent.clear();proactive.reset();accessVersion++;loadVersion++;feedVersion++;taskVersion++;customerVersion++;agendaVersion++;billingVersion++;appointmentDate='';customerRows=[];taskRows=[];agendaRows=[];customerQuery='';customerCursor=taskCursor=agendaCursor=null;for(const view of ['today','feed','billing'])$(`${view}-content`).replaceChildren();document.querySelectorAll<HTMLDialogElement>('.workday-dialog').forEach(node=>node.close());$('business-name').textContent='Your business';$('business-name').removeAttribute('title');$('business-role').textContent='Workspace access ended';}};
+ return {show,refresh:refreshOverview,refreshCurrent,refreshCanvas,refreshCanvasQuiet,speakShow,interruptSpeakShow,openBusinessAgent,openMissedCalls:()=>{void missedCallsDialog();},openAgenda,openCustomers,openTasks,proactive,ready(name:string,role:string){ready=true;workspaceRole=role;phoneTabs.hidden=false;menuButton.disabled=false;$('business-name').textContent=name;$('business-name').title=name;$('business-role').textContent=role.charAt(0).toUpperCase()+role.slice(1)+' workspace';show(current);const query=new URLSearchParams(location.search);if(query.get('billing')){hooks.onNavigate('billing');void loadBilling(true);}},clear(){ready=false;workspaceRole='';agendaHost=customerHost=taskHost=null;updateDesktopTabs();phoneTabs.hidden=true;menuButton.disabled=true;menuButton.setAttribute('aria-expanded','false');routines.clear();businessAgent.clear();proactive.reset();canvas.reset();speakShow.reset();canvasLoaded=false;accessVersion++;loadVersion++;feedVersion++;taskVersion++;customerVersion++;agendaVersion++;billingVersion++;appointmentDate='';customerRows=[];taskRows=[];agendaRows=[];customerQuery='';customerCursor=taskCursor=agendaCursor=null;for(const view of ['today','feed','billing'])$(`${view}-content`).replaceChildren();document.querySelectorAll<HTMLDialogElement>('.workday-dialog').forEach(node=>node.close());$('business-name').textContent='Your business';$('business-name').removeAttribute('title');$('business-role').textContent='Workspace access ended';}};
 }

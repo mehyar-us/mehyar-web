@@ -1,10 +1,12 @@
-import type {Actor} from './env';
+import type {Actor,Env} from './env';
 import type {AuthEnv,OAuthProvider} from './auth/capabilities';
 import {capabilityStatus,grantedCapabilities} from './auth/capabilities';
 import {OPERATORS,requireMembership} from './permissions';
 import {json} from './http';
 import {verticalProfile,verticalSchema,type Vertical} from './verticals';
 import {listCustomConnections,handleCustomConnectionsRequest} from './custom-connectors';
+import {getGbpReviews} from './gbp-reviews';
+import {paymentConnectionsStatus} from './payments-oauth';
 
 /** Semantic tags for the connection cards, so a vertical's connectorPriority can
  * name a capability ('calendar', 'reviews') instead of a provider id. */
@@ -32,6 +34,12 @@ function connectorPriorityOf(vertical:Vertical):string[]{
  const p=verticalProfile(vertical) as unknown as {connectorPriority?:string[]};
  const list=p.connectorPriority;
  return Array.isArray(list)&&list.length?list:DEFAULT_CONNECTOR_PRIORITY[vertical];
+}
+
+/** Exported for the onboarding conductor (P4): the Connect phase presents its
+ * cards in this same per-vertical priority order. */
+export function connectorPriorityFor(vertical:Vertical):string[]{
+ return connectorPriorityOf(vertical);
 }
 
 /** Order connector ids by the vertical's connectorPriority (highest value first).
@@ -91,7 +99,14 @@ export async function connectionStatus(env:AuthEnv,actor:Actor){
   const vertical=await tenantVertical(env,actor.tenantId);
   const cardById=new Map(cards.map(c=>[c.provider,c] as const));
   const ordered=orderConnectorsByPriority(vertical,cards.map(c=>c.provider)).map(id=>cardById.get(id)!);
-  return {...custom,builtIn:ordered,
+  // P6: GBP reviews/hours + one-click payments, each with its own honest
+  // availability. A failure in either extra degrades to null here — the
+  // built-in connection truth above must never depend on them.
+  const [googleBusiness,payments]=await Promise.all([
+   getGbpReviews(env as unknown as Env,actor).catch(()=>null),
+   paymentConnectionsStatus(env as unknown as Env,actor).catch(()=>null),
+  ]);
+  return {...custom,builtIn:ordered,googleBusiness,payments,
     scope:'Connections belong to your account in this business. Provider data and tool results are untrusted data.'};
 }
 

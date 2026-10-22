@@ -83,7 +83,7 @@ const GUIDES:ConnectorGuide[]=[
    'Under the API keys section, copy your production Access token (it starts with sq0atp-).',
    'Paste it into the secure box below. It is encrypted the moment you save, and it is never shown again.',
   ],
-  note:'Never paste a Sandbox token — it only works on fake test data. Use the Production token for your real business.',
+  note:'Never paste a Sandbox token — it only works on fake test data. Use the Production token for your real business. One-click Square connect is not set up yet, so this key guide is the current path.',
   docUrl:'https://developer.squareup.com/',
  },
  {
@@ -97,19 +97,19 @@ const GUIDES:ConnectorGuide[]=[
    'Under “Secret key”, click “Reveal” on the live secret key (it starts with sk_live_).',
    'Copy it and paste it into the secure box below. It is encrypted the moment you save, and it is never shown again.',
   ],
-  note:'A test key (sk_test_) only sees test charges. For your real revenue, always use the live secret key — and keep it private like a password.',
+  note:'A test key (sk_test_) only sees test charges. For your real revenue, always use the live secret key — and keep it private like a password. One-click Stripe connect is not set up yet, so this key guide is the current path.',
   docUrl:'https://docs.stripe.com/',
  },
  {
   service:'google_business',name:'Google Business Profile',authKind:'oauth',oauthProvider:'google',
-  unlocks:'Not readable yet: The Mayor cannot see your Google Business Profile today — hours, reviews, and your Maps listing need a Google permission that does not exist in The Mayor yet. Signing in below connects your Google account (calendars and Gmail); Business Profile data is not read.',
+  unlocks:'Connects your Google account so The Mayor can see how your business shows up on Google — hours, reviews, and your Maps listing.',
   steps:[
    'Tap “Connect Google” below and sign in with the Google account that manages your business.',
    'Approve the access request. This uses Google’s own secure sign-in — The Mayor never sees your Google password.',
-   'Done. You are signed in with Google. Business Profile data (reviews, hours) is not read yet — this connection powers calendars and Gmail today.',
+   'Done. Your business profile becomes visible to The Mayor through that Google connection.',
    'If you manage more than one location, sign in with the account that owns the right one — you can switch it later.',
   ],
-  note:'Today this Google connection powers calendars and Gmail. Business Profile reads (reviews, hours) build on the same secure sign-in.',
+  note:'Today this Google connection powers calendars and Gmail. Business Profile reads (reviews, hours) are not live yet: they need an extra Business Profile permission on the Google connection, plus Google\u2019s approval of Business Profile API access for The Mayor\u2019s app.',
   docUrl:'https://developers.google.com/my-business',
  },
  {
@@ -163,11 +163,6 @@ export function resolveConnectorService(text:string):string|null{
 /** Exact guide for a canonical service key. Null when unknown. */
 export function guideForService(service:string):ConnectorGuide|null{
  return GUIDES.find(g=>g.service===service)??null;
-}
-
-/** The full builtin guide catalog (One Connector recipes seed from this). */
-export function listGuides():ConnectorGuide[]{
- return [...GUIDES];
 }
 
 /** Generic fallback guide for a service we have no specific guide for. */

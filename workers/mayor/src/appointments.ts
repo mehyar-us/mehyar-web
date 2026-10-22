@@ -4,7 +4,8 @@ import {z} from 'zod';
 import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
-import {readSchedulingPolicy,validateSlot} from './scheduling-policy';
+import {readSchedulingPolicy,validateSlot,bookingAuthority} from './scheduling-policy';
+import {notifyOwners} from './proactive';
 import {selectedCalendar} from './calendars';
 import {connectorCredential,connectionAuthorizationStamp} from './connectors/credentials';
 import {GoogleCalendarClient,GOOGLE_CALENDAR_OPERATIONS} from './connectors/google-calendar';
@@ -30,7 +31,30 @@ async function recordBooking(env:Env,actor:Actor,job:Job,receipt:AppointmentRece
   env.AGENT_DB.prepare("INSERT INTO mayor_audit(id,tenant_id,actor_id,event,resource_id,created_at) SELECT ?,?,COALESCE((SELECT 'phone:'||call_id FROM mayor_phone_bookings WHERE booking_id=?),?),'appointment.booked',?,? WHERE changes()=1").bind(crypto.randomUUID(),actor.tenantId,job.id,actor.userId,job.id,now),
  ]);
 }
-export async function proposeBooking(env:Env,actor:Actor,raw:Booking){
+/**
+ * Booking entry point with P1 authority-tier enforcement (single choke point).
+ * - 'readonly': The Mayor will not create appointments; availability stays readable.
+ * - 'draft' (default): propose → review → confirm, as before.
+ * - 'auto': with opts.autoConfirm (owner-side flows only — never phone-caller
+ *   flows, where the caller's own confirmation is always required), the proposal
+ *   is confirmed immediately through the same safety-checked confirmBooking
+ *   path, then logged and notified.
+ */
+export async function proposeBooking(env:Env,actor:Actor,raw:Booking,opts:{autoConfirm?:boolean}={}){
+ await requireMembership(env,actor,OPERATORS);
+ const tier=await bookingAuthority(env,actor);
+ if(tier==='readonly')
+  throw new HttpError(403,'booking_readonly','Booking is set to \u201cAsk me first\u201d — The Mayor can show availability but will not create appointments. Change this in Settings under \u201cHow The Mayor acts\u201d.');
+ const proposal=await proposeBookingInner(env,actor,raw);
+ if(tier==='auto'&&opts.autoConfirm){
+  const result=await confirmBooking(env,actor,proposal.id);
+  if(result.status!=='applied')return {...proposal,status:result.status};
+  await notifyOwners(env,actor.tenantId,'appointment_booked',`appointment_booked:${proposal.id}`);
+  return {...proposal,status:'applied' as const,receipt:result.receipt};
+ }
+ return proposal;
+}
+async function proposeBookingInner(env:Env,actor:Actor,raw:Booking){
  await requireMembership(env,actor,OPERATORS);
  const {customerId,...input}=bookingProposalSchema.parse(raw);
  const customer=customerId?await readCustomer(env,actor,customerId):null;
