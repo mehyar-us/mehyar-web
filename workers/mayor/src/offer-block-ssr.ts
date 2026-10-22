@@ -148,7 +148,12 @@ export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  * web/offer-block.tsx), and the top-up pack cards gain the line on
  * /pricing and /sales (a top-up is a purchase; no carve-out for
  * in-product asks), alongside — never replacing — the packs' expiry
- * truth. The verticals remain out of scope for this line. */
+ * truth. The verticals remain out of scope for this line.
+ * rot551 fold C4 (🔵 order, same day) SUPERSEDES that last sentence:
+ * the seven vertical pages gain the same sales cards (injectVertical-
+ * Plans below, reusing salesPlansSsrHtml), so their Pro and top-up
+ * asks carry this line too — the checklist carve-out that kept the
+ * verticals ask-free is retired by name in the rot551 addendum. */
 export const FINAL_SALE_LINE=`<p class="plan-final-sale">Payments are final and non-refundable \u2014 see <a href="/terms">Terms</a>.</p>`;
 export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:string;packs:string}|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
@@ -253,6 +258,26 @@ export function injectSalesPlans(html:string,auditAvailable=false,founding?:Foun
   const audit=auditCardSsrHtml();
   if(audit)out=injectIntoContainer(out,'sales-audit',audit);
   return injectProviderExample(injectFaqPage(injectStructuredData(out,auditAvailable,founding)));
+}
+/* ------------------------------------------------------------------ */
+/* Vertical pages (rot551 fold C4): the seven /sales/<slug> pages gain */
+/* the subscription offer path in the stack's established pattern —    */
+/* the SAME sales cards /sales serves (salesPlansSsrHtml: Free, Pro    */
+/* with the founding anchor, Top up), rendered from the live catalog   */
+/* with the same serve-time founding block, injected into the page's   */
+/* #vertical-plan-cards container. The generated page source stays     */
+/* price-free (fallback cards, same voice as /sales); the catalog —    */
+/* never a page literal — supplies every price, and FINAL_SALE_LINE    */
+/* rides the Pro and top-up cards exactly as on /sales. Cards only:    */
+/* the /sales extras (audit card, provider example, FAQ/JSON-LD) are   */
+/* not this fold's ask and are not duplicated here. Returns the HTML   */
+/* UNCHANGED when the container is missing, already server-rendered,   */
+/* or the catalog can't be trusted — the fallback cards stay.          */
+/* ------------------------------------------------------------------ */
+export function injectVerticalPlans(html:string,founding?:FoundingSsrBlock|null):string{
+  const rendered=salesPlansSsrHtml(founding);
+  if(!rendered)return html;
+  return injectIntoContainer(html,'vertical-plan-cards',rendered);
 }
 /* ------------------------------------------------------------------ */
 /* Structured data (rot130): a Product record for the selling pages,    */

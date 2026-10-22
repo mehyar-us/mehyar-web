@@ -65,7 +65,7 @@ function pushChatView(){pushChatApp(chatSnapshot);}
 // consumed by rendering), the public catalog (price/seats, fail-quiet),
 // the operations overview, and billing status (commitments). It
 // fetches nothing on its own and writes nothing to the carrier.
-interface DeskCatalog {foundingPriceLabel?:string;proPriceLabel?:string;seats?:{remaining:number;total:number}|null;soldOut?:boolean;}
+interface DeskCatalog {foundingPriceLabel?:string;proPriceLabel?:string;seats?:{remaining:number;total:number}|null;soldOut?:boolean;packLabels?:Partial<Record<'small'|'medium'|'large',{name:string;priceLabel:string}>>;}
 let deskCatalog:DeskCatalog={};
 let deskOverview:any=null;
 let deskBilling:any=null;
@@ -79,9 +79,25 @@ const deskMoney=(cents:number)=>new Intl.NumberFormat(undefined,{style:'currency
 function deskRibbonIntent():DeskIntent|null{
  if(deskIntentDismissed)return null;
  const intent=peekBillingIntent();
- if(!intent||intent.kind!=='plan'||intent.id!=='founding')return null;
- if(deskCatalog.soldOut)return {id:'ribbon-founding',version:1,type:'intent-ribbon',planRef:'founding',state:'unhonorable',headline:'Founding just filled',detail:'Every founding seat is claimed. The standard plan is the way in now — same Mayor, standard price.',alternativeLabel:deskCatalog.proPriceLabel?`Pro — ${deskCatalog.proPriceLabel}/mo`:'Pro — the standard plan',summary:'Founding just filled. The standard plan is the way in now.'};
- return {id:'ribbon-founding',version:1,type:'intent-ribbon',planRef:'founding',state:'carried',headline:"Founding — you're headed here.",detail:loggedIn?'Continue and the billing dialog opens on this exact plan. Nothing to pay yet.':"We'll set up your shop first, then open this exact plan. Nothing to pay yet.",...(deskCatalog.foundingPriceLabel?{priceLabel:deskCatalog.foundingPriceLabel}:{}),seats:deskCatalog.seats??null,summary:"Founding — you're headed here. We'll set up your shop first, then open this exact plan."};
+ if(!intent)return null;
+ if(intent.kind==='plan'&&intent.id==='founding'){
+  if(deskCatalog.soldOut)return {id:'ribbon-founding',version:1,type:'intent-ribbon',planRef:'founding',state:'unhonorable',headline:'Founding just filled',detail:'Every founding seat is claimed. The standard plan is the way in now — same Mayor, standard price.',alternativeLabel:deskCatalog.proPriceLabel?`Pro — ${deskCatalog.proPriceLabel}/mo`:'Pro — the standard plan',summary:'Founding just filled. The standard plan is the way in now.'};
+  return {id:'ribbon-founding',version:1,type:'intent-ribbon',planRef:'founding',state:'carried',headline:"Founding — you're headed here.",detail:loggedIn?'Continue and the billing dialog opens on this exact plan. Nothing to pay yet.':"We'll set up your shop first, then open this exact plan. Nothing to pay yet.",...(deskCatalog.foundingPriceLabel?{priceLabel:deskCatalog.foundingPriceLabel}:{}),seats:deskCatalog.seats??null,summary:"Founding — you're headed here. We'll set up your shop first, then open this exact plan."};
+ }
+ // rot551 fold C5: the summary-before-the-wall covers every carried
+ // intent, not only founding — a Pro or pack buyer sees what they're
+ // buying before authenticating to buy it. Same builder discipline:
+ // catalog-fed labels only (fail-quiet — no label, no price), seats
+ // never ride a non-founding Ribbon, and the carrier is only peeked.
+ if(intent.kind==='plan'&&intent.id==='pro'){
+  return {id:'ribbon-pro',version:1,type:'intent-ribbon',planRef:'pro',state:'carried',headline:"Pro — you're headed here.",detail:loggedIn?'Continue and the billing dialog opens on this exact plan. Nothing to pay yet.':"We'll set up your shop first, then open this exact plan. Nothing to pay yet.",...(deskCatalog.proPriceLabel?{priceLabel:`${deskCatalog.proPriceLabel}/mo`}:{}),summary:"Pro — you're headed here. We'll set up your shop first, then open this exact plan."};
+ }
+ if(intent.kind==='pack'){
+  const pack=deskCatalog.packLabels?.[intent.id];
+  const name=pack?`${pack.name} top-up`:'Top-up';
+  return {id:`ribbon-pack-${intent.id}`,version:1,type:'intent-ribbon',planRef:'pack',packId:intent.id,state:'carried',headline:`${name} — you're headed here.`,detail:loggedIn?'Continue and the billing dialog opens on this exact top-up. Nothing to pay yet.':"We'll set up your shop first, then open this exact top-up. Nothing to pay yet.",...(pack?{priceLabel:pack.priceLabel}:{}),summary:`${name} — you're headed here. We'll set up your shop first, then open this exact top-up.`};
+ }
+ return null;
 }
 function deskIntents():DeskIntent[]{
  const intents:DeskIntent[]=[];
@@ -113,12 +129,22 @@ function refreshDesk(){
  if(!deskMounted){deskMounted=true;mountDeskStrip($('desk-root'),snapshot,{onDismissIntent:()=>{deskIntentDismissed=true;dismissBillingIntent();stripIntentParams();refreshDesk();},onActionVerb:(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string)=>{void deskActionVerb(actionId,verb,text);},onRuleScenario:(scenarioId:string,allowed:boolean)=>{void deskRuleScenario(scenarioId,allowed);},onRevokeGrant:(grantId:string)=>{void deskRevokeGrant(grantId);}});}
  else pushDeskStrip(snapshot);
  // Name the intent inside the auth surface too (blueprint §2.1 E-0):
- // the sign-in block carries the founding line while signed out.
+ // the sign-in block carries the plan line while signed out — founding
+ // since Slice 1; rot551 fold C5 extends the same line to the Pro and
+ // pack intents, same fail-quiet discipline (no catalog label, no price).
  const line=$('signin-intent-line');
  if(line){
   const intent=peekBillingIntent();
-  if(!loggedIn&&intent?.kind==='plan'&&intent.id==='founding'&&!deskIntentDismissed){
+  if(!loggedIn&&intent&&!deskIntentDismissed&&intent.kind==='plan'&&intent.id==='founding'){
    line.textContent=deskCatalog.foundingPriceLabel?`Founding — you're headed here. Sign in and we'll open the Founding plan you chose — ${deskCatalog.foundingPriceLabel}.`:"Founding — you're headed here. Sign in and we'll open the Founding plan you chose.";
+   line.hidden=false;
+  }else if(!loggedIn&&intent&&!deskIntentDismissed&&intent.kind==='plan'&&intent.id==='pro'){
+   line.textContent=deskCatalog.proPriceLabel?`Pro — you're headed here. Sign in and we'll open the Pro plan you chose — ${deskCatalog.proPriceLabel}/mo.`:"Pro — you're headed here. Sign in and we'll open the Pro plan you chose.";
+   line.hidden=false;
+  }else if(!loggedIn&&intent&&!deskIntentDismissed&&intent.kind==='pack'){
+   const pack=deskCatalog.packLabels?.[intent.id];
+   const name=pack?`${pack.name} top-up`:'Top-up';
+   line.textContent=pack?`${name} — you're headed here. Sign in and we'll open the top-up you chose — ${pack.priceLabel}.`:`${name} — you're headed here. Sign in and we'll open the top-up you chose.`;
    line.hidden=false;
   }else line.hidden=true;
  }
@@ -138,11 +164,20 @@ async function loadDeskCatalog(){
   const catalog=await response.json() as any;
   const founding=catalog?.founding;
   const pro=(catalog?.plans??[]).find((plan:any)=>plan.id==='pro');
+  // rot551 fold C5: pack labels ride the same catalog read, so the
+  // pre-auth summary can name a carried top-up and its one-time price.
+  // Fail-quiet per pack: a malformed entry is dropped, never guessed.
+  const packLabels:DeskCatalog['packLabels']={};
+  for(const pack of (catalog?.creditPacks??[])){
+   if(!pack||(pack.id!=='small'&&pack.id!=='medium'&&pack.id!=='large')||typeof pack.priceCents!=='number')continue;
+   packLabels[pack.id]={name:typeof pack.name==='string'&&pack.name?pack.name:pack.id,priceLabel:`${deskMoney(pack.priceCents)} one-time`};
+  }
   deskCatalog={
    ...(typeof catalog?.foundingPriceCents==='number'?{foundingPriceLabel:`${deskMoneyExact(catalog.foundingPriceCents)}/mo · locked for life`}:{}),
    ...(pro?{proPriceLabel:deskMoney(pro.priceCents)}:{}),
    seats:founding?.available&&typeof founding.seats_remaining==='number'?{remaining:founding.seats_remaining,total:founding.seats_total}:null,
    soldOut:Boolean(founding?.available&&founding.seats_remaining===0),
+   ...(Object.keys(packLabels).length?{packLabels}:{}),
   };
  }catch{/* fail-quiet: the Ribbon renders with no price and no count */}
  refreshDesk();
