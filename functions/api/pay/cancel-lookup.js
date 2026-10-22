@@ -64,7 +64,25 @@ export async function onRequestPost({ request, env }) {
       .bind(email, productId)
       .first()
       .catch(() => null);
-    if (!payment) return json({ ok: true });
+    // Audit trail (also the only window into send failures — the neutral
+    // response contract hides them from callers by design). Stores the
+    // recipient domain only, never the token or the full address.
+    const log = async (sendStatus, sendError) => {
+      try {
+        await env.LEADS_DB
+          .prepare(
+            "CREATE TABLE IF NOT EXISTS cancel_lookup_log (" +
+              "id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')), " +
+              "email_domain TEXT, found INTEGER, send_status TEXT, send_error TEXT)"
+          )
+          .run();
+        await env.LEADS_DB
+          .prepare("INSERT INTO cancel_lookup_log (email_domain, found, send_status, send_error) VALUES (?, ?, ?, ?)")
+          .bind(email.split("@")[1] || "", payment ? 1 : 0, sendStatus || "", String(sendError || "").slice(0, 300))
+          .run();
+      } catch (_) {}
+    };
+    if (!payment) { await log("not_found", ""); return json({ ok: true }); }
 
     const link = product.cancelBase + "?token=" + encodeURIComponent(payment.access_token);
     const text =
@@ -104,6 +122,7 @@ export async function onRequestPost({ request, env }) {
       html,
     });
     if (!sent.ok) console.error("cancel-lookup send failed:", sent.status, sent.error || "");
+    await log(sent.status || (sent.ok ? "ok" : "unknown"), sent.ok ? "" : sent.error || "");
     return json({ ok: true });
   } catch (e) {
     console.error("cancel-lookup error:", e && e.message);
