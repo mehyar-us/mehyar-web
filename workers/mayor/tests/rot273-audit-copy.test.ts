@@ -21,6 +21,13 @@ describe('rot273 audit page copy', () => {
   });
   it('carries the OG tags with the spec values', () => {
     expect(page).toContain('<meta property="og:title" content="Business Audit — The Mayor">');
-    expect(page).toContain('<meta property="og:description" content="A $330 one-time audit of your business\'s online presence, delivered within 3 business days. All sales final.">');
+    // §8.2 RULING (Reinvention blueprint, Product Chief, binding; Slice 0):
+    // the OG aligns TO the offer — the "delivered within 3 business days"
+    // deadline was removed from og:description because GET
+    // /api/business-audit/offer's delivery statement makes no such
+    // promise. The final-sale line in the OG stands (the Mayor's granted
+    // exception). This expectation supersedes the rot273 spec value.
+    expect(page).toContain('<meta property="og:description" content="A $330 one-time audit of your business\'s online presence. Payment queues your audit — it does not mean a report is complete. All sales final.">');
+    expect(page).not.toContain('og:description" content="A $330 one-time audit of your business\'s online presence, delivered within 3 business days.');
   });
 });

@@ -781,9 +781,18 @@ async function api(path:string,body?:unknown,headers:Record<string,string>={}){
  const captured=path==='/api/auth/sign-out'?null:workspaceAccess.capture();
  const customConnection=/^\/api\/businesses\/[a-f0-9]{32}\/connections(?:\/|$)/.test(path);
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),customConnection?20000:15000);
+ // Engine events (Slice 0, §1.7): when this browser holds a current
+ // GRANTED analytics consent record, assert it on the request — the
+ // server then includes analytics copies of money-path events in the
+ // response, and the consent-gated loader (the only dispatcher) fires
+ // them after re-verifying the record itself. No assertion, no copies.
+ const consentApi=(globalThis as any).MayorConsent as {choice?:()=>string|null;emitEngineEvents?:(directives:unknown)=>number}|undefined;
+ const consentHeaders:Record<string,string>=consentApi?.choice?.()==='granted'?{'x-mayor-analytics-consent':'granted'}:{};
  try{
-  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'content-type':'application/json'}),...headers},body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal});
-  const result=await response.json();if(captured!==null)workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(path,tenantId,loggedIn,result.error))endWorkspaceAccess();throw Object.assign(new Error(result.message??'This service could not finish. Please try again.'),{code:result.error});}return result;
+  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'content-type':'application/json'}),...consentHeaders,...headers},body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal});
+  const result=await response.json();if(captured!==null)workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(path,tenantId,loggedIn,result.error))endWorkspaceAccess();throw Object.assign(new Error(result.message??'This service could not finish. Please try again.'),{code:result.error});}
+  if(Array.isArray(result?.analyticsEvents)&&result.analyticsEvents.length){try{consentApi?.emitEngineEvents?.(result.analyticsEvents);}catch{/* measurement never breaks the money path */}}
+  return result;
  }catch(error){if(controller.signal.aborted)throw new Error(customConnection?'The connection took too long. Check the connected service before repeating an action.':'This service took too long. Please try again.');throw error;}finally{clearTimeout(timer);}
 }
 let conversationPositioned=false,conversationAtEnd=true,conversationHeight=0,conversationWidth=0;

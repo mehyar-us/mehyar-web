@@ -212,11 +212,90 @@
     }
   }
 
+  /* ------------------------------------------------------------------ */
+  /* 3b. Engine events (Slice 0, blueprint §1.7). The engine emits       */
+  /* money-path events server-side and returns their analytics copies  */
+  /* as directives on API responses — but ONLY when the request        */
+  /* asserted a current granted consent record. This function is the   */
+  /* second gate: it re-reads the stored record at fire time and       */
+  /* dispatches nothing unless it is 'granted'. Dispatch happens ONLY  */
+  /* here, through the tags this file loaded on the granted path —     */
+  /* no other script may fire GA4/Meta events. Delivery is deduped     */
+  /* per event id so a purchase offered on repeat page loads fires     */
+  /* exactly once per browser.                                         */
+  /* ------------------------------------------------------------------ */
+  var DELIVERED_KEY = 'mayor.analytics-delivered.v1';
+  var META_EVENT_NAMES = {
+    sign_up: 'CompleteRegistration',
+    begin_checkout: 'InitiateCheckout',
+    purchase: 'Purchase'
+  };
+  function readDelivered() {
+    try {
+      var raw = window.localStorage.getItem(DELIVERED_KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      return [];
+    }
+  }
+  function writeDelivered(list) {
+    try {
+      window.localStorage.setItem(DELIVERED_KEY, JSON.stringify(list.slice(-100)));
+    } catch (err) {
+      /* private mode: dedupe simply does not persist */
+    }
+  }
+  function fireEngineEvent(directive) {
+    var params = directive.params || {};
+    gtag('event', directive.name, params);
+    var metaName = META_EVENT_NAMES[directive.name];
+    if (metaName && window.fbq) {
+      var metaParams = {};
+      if (typeof params.value === 'number') metaParams.value = params.value;
+      metaParams.currency = typeof params.currency === 'string' ? params.currency : 'USD';
+      window.fbq('track', metaName, metaParams);
+    }
+  }
+
   window.MayorConsent = {
     /** Clear the stored choice and re-show the banner (footer link). */
     reopen: function () {
       clearChoice();
       showConsentBanner();
+    },
+    /** The current stored consent record ('granted' | 'denied' | null). */
+    choice: function () {
+      return readChoice();
+    },
+    /**
+     * Fire engine-issued analytics directives (sign_up / begin_checkout /
+     * purchase). Returns how many fired. Fires NOTHING unless the stored
+     * record is 'granted' at call time, whatever the caller believes.
+     */
+    emitEngineEvents: function (directives) {
+      if (readChoice() !== 'granted' || !Array.isArray(directives)) {
+        return 0;
+      }
+      enableGrantedAnalytics();
+      var delivered = readDelivered();
+      var fired = 0;
+      for (var i = 0; i < directives.length; i++) {
+        var directive = directives[i];
+        if (!directive || typeof directive.name !== 'string' || typeof directive.eventId !== 'string') {
+          continue;
+        }
+        if (delivered.indexOf(directive.eventId) >= 0) {
+          continue;
+        }
+        fireEngineEvent(directive);
+        delivered.push(directive.eventId);
+        fired++;
+      }
+      if (fired > 0) {
+        writeDelivered(delivered);
+      }
+      return fired;
     }
   };
 
