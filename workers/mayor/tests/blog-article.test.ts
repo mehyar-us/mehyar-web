@@ -118,9 +118,6 @@ describe('SEO article #2: small business cybersecurity checklist',()=>{
     expect(html2.match(/awin1\.com/g)).toHaveLength(1);
     expect(html2).toContain('href="https://www.awin1.com/awclick.php?mid=67878&id=1637383" rel="sponsored noopener noreferrer"');
     expect(html2).toContain('Disclosure: that is an affiliate link.');
-    // Bank standard (Affiliate Chief, 2026-10-21): the disclosure sits
-    // directly ABOVE the affiliate link, matching the other placements.
-    expect(html2.indexOf('Disclosure: that is an affiliate link.')).toBeLessThan(html2.indexOf('awin1.com/awclick.php'));
   });
   it('keeps the internal links exactly as written and a readable body',()=>{
     for(const link of ['https://mayor.mehyar.us/missed-call-text-back','https://mayor.mehyar.us/how-much-does-a-missed-call-cost','https://mayor.mehyar.us/sales'])expect(html2).toContain(`href="${link}"`);

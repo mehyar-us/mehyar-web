@@ -14,13 +14,13 @@ import {businessGuidance,mehyarKnowledge} from './mehyar-knowledge';
 import {businessVoiceGreeting} from './voice-greeting';
 import {assistantName,assistantNameChoice,assistantNameWasChosen,assistantNameReadback,assistantPersonaPrompt,businessFirstTurnPrompt,growthMetricsInstruction} from './assistant-persona';
 import {requireMembership,OPERATORS} from './permissions';
-import {collectTextTurn,streamTextTurn,StreamIdleTimeout,textStreamLimits} from './text-turn';
+import {collectTextTurn} from './text-turn';
 import {StreamDeadlineError,withStreamDeadline} from './stream-deadline';
 import {IMAGE_UPLOAD,saveChatImage,getChatImages,deleteChatImage,describeAttachedImages} from './image-qa';
 import {asksCurrentCapabilities,currentCapabilities} from './current-capabilities';
 import {HttpError,json,readJson} from './http';
 import type { Env } from './env';
-import { profileSchema, readMemory, confirmProfile, isSpokenConfirmation, profileSourceSchema,verifyProfileSource,profileChanges,type Profile,type ProfilePatch,type ProfileSource } from './memory';
+import { profileSchema, readMemory, confirmProfile, isSpokenConfirmation, profileSourceSchema,verifyProfileSource,type Profile,type ProfilePatch,type ProfileSource } from './memory';
 import {researchWebsite,publicWebsiteUrl,websiteWasSupplied,websiteEvidenceReadback} from './website';
 import {profileReadback,policyReadback,bookingReadback,changeReadback,confirmationStream,guardedSpeech} from './confirmation';
 import {suggestVertical,verticalSuggestionFraming,MODE_LABELS} from './vertical-mapping';
@@ -114,32 +114,7 @@ export class MayorVoice extends Base<Env> {
     const supportReference=crypto.randomUUID(),started=Date.now();
     let stage='access',failureLogged=false;
     const logFailure=(kind:'internal'|'deadline')=>{if(!failureLogged){failureLogged=true;console.warn('mayor_text_failure',{supportReference,stage,kind,elapsedMs:Date.now()-started});}};
-    // Chat reenvision Slice 2 — streaming turns. The client opts in with
-    // the x-mayor-stream: ndjson header (forwarded by src/index.ts);
-    // without it NOTHING below changes: events collect and the JSON
-    // whole-reply response is byte-identical to before, so an old client
-    // (or an intermediary that cannot stream) is always safe. With it,
-    // the response is NDJSON frames — {type:'delta',text},
-    // {type:'event',event}, and exactly one terminal frame:
-    // {type:'done',reply,requestId} or {type:'error',status,message}.
-    // usage_notice payloads are HELD until the turn ends: a denial must
-    // surface exactly as the whole-reply path surfaces it (one error,
-    // no rendered notice), and the notice's position was never load-
-    // bearing (its handler only updates the usage line).
-    const streaming=request.headers.get('x-mayor-stream')==='ndjson';
-    let streamWrite:((frame:Record<string,unknown>)=>void)|undefined;
-    const heldNotices:Array<{message?:string;allowed?:boolean}> =[];
-    // Every payload in arrival order, for the idempotency receipt: a
-    // replayed streaming turn returns the stored whole-reply body, whose
-    // events must read exactly as the fallback path would have sent them.
-    const receiptEvents:unknown[]=[];
-    const connection={id,send:(data:string)=>{
-      const parsed=JSON.parse(data);
-      if(!streaming){if(events.length<30)events.push(parsed);return;}
-      if(receiptEvents.length<30)receiptEvents.push(parsed);
-      if(parsed&&parsed.type==='usage_notice'){heldNotices.push(parsed);return;}
-      streamWrite?.({type:'event',event:parsed});
-    }} as Connection;
+    const connection={id,send:(data:string)=>{if(events.length<30)events.push(JSON.parse(data));}} as Connection;
     try{
       await requireVoiceAccess(this.env,identity);
       stage='input';
@@ -151,70 +126,7 @@ export class MayorVoice extends Base<Env> {
       if(this.textBusy||this.callOwner)return json({message:'Finish the current voice or text turn before sending another message.'},409);
       this.textBusy=true;
       const controller=new AbortController();
-      // The whole-reply path keeps its 25s wall. A streaming turn is
-      // bounded by the streamTextTurn idle/total limits instead, and the
-      // total-limit timer below is only its wedge guard; the client's
-      // disconnect (Stop) also aborts the turn in streaming mode.
-      const deadline=setTimeout(()=>controller.abort(),streaming?textStreamLimits.totalMs:25000);
-      if(streaming)request.signal.addEventListener('abort',()=>controller.abort(),{once:true});
-      if(streaming){
-        const encoder=new TextEncoder();
-        let sink:ReadableStreamDefaultController<Uint8Array>|undefined;
-        let streamClosed=false;
-        const body=new ReadableStream<Uint8Array>({start(controller){sink=controller;},cancel(){controller.abort();}});
-        streamWrite=(frame)=>{if(streamClosed)return;try{sink?.enqueue(encoder.encode(JSON.stringify(frame)+'\n'));}catch{streamClosed=true;}};
-        const finishStream=()=>{if(streamClosed)return;streamClosed=true;try{sink?.close();}catch{}};
-        const streamingTask=(async()=>{
-          this.identities.set(id,identity);
-          try{
-            stage='history_recovery';
-            await this.recoverConversation(identity);
-            const messages=this.getConversationHistory(20);
-            stage='request_save';
-            this.sql`INSERT INTO mayor_text_receipts(id,response,created_at) VALUES(${input.requestId},NULL,${Date.now()})`;
-            this.saveMessage('user',input.text+(input.imageIds?.length?' [photo attached]':''));
-            stage='connector_card';
-            const connectorNeed=detectConnectorNeed(input.text);
-            if(connectorNeed){
-              const sessionEvent=await ensureSessionCard(this.env,{tenantId:identity.tenantId,userId:identity.userId},connectorNeed.service);
-              if(sessionEvent)this.showConnectorCardOnce(id,connection,connectorNeed.service,sessionEvent);
-              else{
-                const needGuide=guideForService(connectorNeed.service);
-                if(needGuide)this.showConnectorCardOnce(id,connection,connectorNeed.service,connectorOfferEvent(needGuide));
-              }
-            }
-            stage='turn';
-            const reply=await streamTextTurn(this.onTurn(input.text,{connection,messages,signal:controller.signal,imageIds:input.imageIds}),controller.signal,text=>streamWrite?.({type:'delta',text}));
-            stage='access_recheck';
-            await this.authorize(connection);
-            if(controller.signal.aborted)throw new Error('Conversation timed out');
-            const denial=heldNotices.find(event=>event.allowed===false);
-            if(denial){this.clearProposals(connection);streamWrite({type:'error',status:429,message:denial.message});return;}
-            for(const notice of heldNotices)streamWrite({type:'event',event:notice});
-            if(!reply.trim())throw new Error('No reply');
-            stage='reply_save';
-            this.saveMessage('assistant',reply);
-            const bodyText=JSON.stringify({reply,events:receiptEvents,requestId:input.requestId});
-            this.sql`UPDATE mayor_text_receipts SET response=${bodyText} WHERE id=${input.requestId}`;
-            this.sql`DELETE FROM mayor_text_receipts WHERE created_at<${Date.now()-86400000}`;
-            stage='recovery_flush';
-            await this.recoveryQueue;
-            streamWrite({type:'done',reply,requestId:input.requestId});
-          }catch(error){
-            this.clearProposals(connection);
-            // A client that already left (Stop / disconnect) needs no
-            // terminal frame; a live client gets the failure IN FLOW,
-            // with the same statuses and copy the whole-reply path uses.
-            if(!controller.signal.aborted){
-              if(error instanceof StreamIdleTimeout){logFailure('deadline');streamWrite({type:'error',status:504,message:`The reply took too long. Your message may have been processed. Check the conversation before repeating a change. Support reference: ${supportReference}`});}
-              else if(error instanceof HttpError)streamWrite({type:'error',status:error.status,message:error.message});
-              else{logFailure('internal');streamWrite({type:'error',status:502,message:`I could not finish this reply. Your message may have been processed; review the conversation before repeating a change. Support reference: ${supportReference}`});}
-            }
-          }finally{clearTimeout(deadline);this.textBusy=false;this.identities.delete(id);finishStream();}
-        })();
-        this.ctx.waitUntil(streamingTask);
-        return new Response(body,{headers:{'content-type':'application/x-ndjson; charset=utf-8','cache-control':'no-store','x-accel-buffering':'no'}});
-      }
+      const deadline=setTimeout(()=>controller.abort(),25000);
       const task=(async()=>{
         this.identities.set(id,identity);
         try{
@@ -605,20 +517,12 @@ export class MayorVoice extends Base<Env> {
             await requireMembership(this.env,actor,OPERATORS);
             if(!assistantNameWasChosen(transcript,patch.assistantName,previousAssistant||(!memory.profile.assistantName?businessVoiceGreeting(memory.profile):'')))throw new Error('Use only an assistant name chosen by the owner in this turn.');
           }
-          // CHG-094: verification covers ONLY the fields that change
-          // the confirmed profile. A patch restating the whole record
-          // (the LIVE-01 dump: a normal request answered with "Please
-          // verify: name… vertical… language…") collapses here to the
-          // already-saved outcome; a patch with one new field reads
-          // back that field alone, and only it is proposed.
-          const changes=profileChanges(memory.profile,patch);
-          if(!Object.keys(changes).length){
+          if(Object.entries(patch).every(([key,value])=>JSON.stringify(memory.profile[key as keyof Profile])===JSON.stringify(value))){
             claimProposal();
             setReadback(`Already saved: ${Object.entries(patch).map(([key,value])=>`${key.replace(/([A-Z])/g,' $1').toLowerCase()}: ${Array.isArray(value)?value.join('; '):value}`).join('. ')}. No changes made.`);
             readOnlyReadback=true;
             return {status:'already_saved'};
           }
-          patch=changes;
           claimProposal();
           this.pendingCalendar.delete(context.connection.id);
           this.pendingPolicy.delete(context.connection.id);
@@ -761,24 +665,12 @@ export class MayorVoice extends Base<Env> {
       }}),proposeWebsiteProfile:tool({description:'When asked to suggest, prepare or propose website-derived profile facts, call this after researchWebsite even if the user says do not save yet. Only a subsequent separate confirmation saves. Propose website-derived business facts, never save automatically. Include an exact supporting excerpt for each field, read back the facts and source domain, and ask yes to confirm. Missing details remain unknown. This does not configure scheduling rules.',inputSchema:z.object({patch:profileSchema,source:profileSourceSchema}).strict(),execute:async({patch,source})=>{
           claimProposal();
         await this.authorize(context.connection);
-        // CHG-094: the same gate as proposeProfileChange — only fields
-        // that change the confirmed profile may be read back for
-        // verification. The source quotes narrow with the patch
-        // (verifyProfileSource requires quotes ⇔ patch keys, here and
-        // again when the stored proposal is confirmed).
-        const changes=profileChanges(memory.profile,patch);
-        if(!Object.keys(changes).length){
-          setReadback(`Already saved: ${Object.entries(patch).map(([key,value])=>`${key.replace(/([A-Z])/g,' $1').toLowerCase()}: ${Array.isArray(value)?value.join('; '):value}`).join('. ')}. No changes made.`);
-          readOnlyReadback=true;
-          return {status:'already_saved'};
-        }
-        const narrowedSource:ProfileSource={sourceId:source.sourceId,quotes:Object.fromEntries(Object.entries(source.quotes).filter(([field])=>field in changes))};
-        const verified=await verifyProfileSource(this.env,actor,changes,narrowedSource);
-        setReadback(profileReadback(changes,verified.url));
+        const verified=await verifyProfileSource(this.env,actor,patch,source);
+        setReadback(profileReadback(patch,verified.url));
         this.pendingCalendar.delete(context.connection.id);this.pendingPolicy.delete(context.connection.id);this.pendingChange.delete(context.connection.id);this.pendingBooking.delete(context.connection.id);
-        this.pending.set(context.connection.id,{patch:changes,source:narrowedSource,revision:memory.revision,expiresAt:Date.now()+120000});
-        context.connection.send(JSON.stringify({type:'profile_proposal',patch:changes,source:verified}));
-        return {status:'awaiting_confirmation',patch:changes,sourceUrl:verified.url};
+        this.pending.set(context.connection.id,{patch,source,revision:memory.revision,expiresAt:Date.now()+120000});
+        context.connection.send(JSON.stringify({type:'profile_proposal',patch,source:verified}));
+        return {status:'awaiting_confirmation',patch,sourceUrl:verified.url};
       }}),phoneConnectionStatus:tool({description:'Read phone connection status. If disconnected, guide the user to the secure phone provider API key form in Account, never ask for secrets in conversation. callsReady=false means phone calls are not enabled.',inputSchema:z.object({}).strict(),execute:async()=>{await this.authorize(context.connection);return phoneConnections(this.env,actor);}}),
       listPhoneNumbers:tool({description:'Read numbers owned by the selected connected phone provider. Ask which provider if unclear. Does not buy numbers or change routing.',inputSchema:z.object({provider:z.enum(['twilio','telnyx'])}).strict(),execute:async({provider})=>{await this.authorize(context.connection);return (provider==='telnyx'?telnyxNumbers:twilioNumbers)(this.env,actor);}}),
       selectPhoneNumber:tool({description:'Save the number explicitly chosen by the user from listPhoneNumbers. This is only a preference: it never changes routing or enables calls. Explain that calls still need setup and verification.',inputSchema:z.object({provider:z.enum(['twilio','telnyx']),id:z.string().max(64)}).strict(),execute:async({provider,id})=>{await this.authorize(context.connection);return (provider==='telnyx'?selectTelnyxNumber:selectTwilioNumber)(this.env,actor,id);}}),

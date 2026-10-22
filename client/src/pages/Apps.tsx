@@ -10,7 +10,6 @@ interface ManagedApp {
   id: string;
   name: string;
   url: string;
-  facebook?: string;
   tagline: string;
   description: string;
   audience: string;
@@ -381,8 +380,7 @@ const managedApps: ManagedApp[] = [
     id: "mayor",
     name: "The Mayor",
     url: "https://mayor.mehyar.us",
-    tagline: "Mayor. Talk to your business.",
-    facebook: "https://www.facebook.com/profile.php?id=61595399794348",
+    tagline: "The AI built for each business.",
     description:
       // PRICING: mirrors the live Mayor catalog (Pro $99/mo since 2026-10-16).
       "AI business workspace for Main Street: customers, appointments, playbooks, and voice — with a $99/mo Pro plan (founding cohort $79.20/mo for life) and one-time credit packs.",
@@ -419,7 +417,7 @@ const managedApps: ManagedApp[] = [
     url: "https://moonroom.mehyar.us",
     tagline: "Studio portraits from one selfie.",
     description:
-      "AI photo studio that turns one selfie into studio portraits: $49 headshot packs, $39 product-photo backgrounds for sellers, $29 seasonal theme packs. One-time payments — no subscription.",
+      "AI photo studio that turns one selfie into studio portraits: $24 headshot packs, $15 product-photo backgrounds for sellers, $9 seasonal theme packs. One-time payments — no subscription.",
     audience: "Job seekers and professionals who need a great headshot, and online sellers who need clean product photos without a photo shoot.",
     highlights: [
       "AI headshot packs, product photos, and themed portraits from a single selfie",
@@ -606,10 +604,10 @@ const managedApps: ManagedApp[] = [
     id: "visakit",
     name: "Visakit",
     url: "https://visakit.mehyar.us",
-    tagline: "Your visa application pack, prepared for you — five routes live, any route on request.",
+    tagline: "Your Schengen visa application, prepared for you.",
     description:
-      "A tourist-visa application pack, prepared for you: a free eligibility pre-check, a document checklist built for your exact route, your forms filled from your documents, and a human review before you submit. Live routes today: Egypt, Pakistan, Nigeria, and Morocco to Schengen, plus Egypt to the UK — any other route can be requested in the pre-check. $39 per pack ($29 early-bird for the first 25 packs). We prepare applications; visa decisions are made by consulates.",
-    audience: "Travelers whose passports make tourist visas hard — any nationality, any destination: five routes live today, every other route on request.",
+      "Visakit is an AI tourist-visa agent for travelers with weak passports, starting with one corridor: Egypt → Schengen. Start with an eligibility pre-check, get a document checklist built for your case, and receive a prepared form-data pack as a PDF — human-reviewed before it reaches you. $39 per prepared pack, $29 early-bird. Preparation help only: Visakit does not book appointments in v1 and no one can guarantee a visa — the decision is always the consulate's.",
+    audience: "Egyptian travelers applying for a Schengen tourist visa who fear a rejection — or paying an agency 3–5× this price — more than the form itself.",
     highlights: [
       "Eligibility pre-check first — know where you stand before you pay",
       "A document checklist built for your case, not a generic template",
@@ -767,16 +765,6 @@ const Apps = () => {
                     >
                       Read the launch note
                     </Link>
-                    {app.facebook ? (
-                      <a
-                        href={app.facebook}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={buttonVariants({ variant: "outline", size: "sm" })}
-                      >
-                        Facebook Page
-                      </a>
-                    ) : null}
                   </div>
                 </CardContent>
               </Card>
