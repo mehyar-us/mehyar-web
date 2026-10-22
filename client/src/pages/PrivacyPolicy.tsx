@@ -110,7 +110,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          This site is intentionally low-cookie. The only persistent client-side storage in current use is:
+          This site is intentionally low-cookie. The persistent client-side storage in use is:
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
@@ -129,15 +129,25 @@ const sections: Section[] = [
             A short-lived sidebar <code>sidebar_state</code> cookie on admin pages. Not used by the
             public site.
           </li>
+          <li>
+            A first-party visitor cookie, <code>mh_vid</code> — a random visitor identifier (no
+            name, no account information) set by our own analytics, described below. It lasts up
+            to one year.
+          </li>
         </ul>
         <p className="mt-2">
-          <strong>Analytics:</strong> we use <strong>Google Analytics 4</strong> (measurement ID{" "}
-          <code>G-25N8E18944</code>) to understand aggregate site traffic — which pages are visited,
-          roughly where visitors come from, and which buttons get clicked. It sets <code>_ga</code>{" "}
-          cookies in your browser for that purpose. <strong>It only loads after you click
-          &quot;Accept&quot; on our cookie banner</strong> — if you click &quot;Decline,&quot; no
-          analytics script loads and no <code>_ga</code> cookie is set. Aggregate traffic visibility
-          also comes from Cloudflare&apos;s server-side request logs, which we can read but do not
+          <strong>Analytics:</strong> Our own analytics is first-party: we operate it ourselves,
+          its data is stored in our own systems, and it is never sold. It records pages viewed,
+          links and buttons clicked, time engaged with a page, and — on our product sites —
+          funnel steps such as starting a checkout or completing a purchase, tied to the{" "}
+          <code>mh_vid</code> visitor identifier. Events are sent to our own collection endpoint
+          at <code>mayor.mehyar.us</code>. Collection honors Do Not Track and Global Privacy
+          Control signals, and stops if you decline cookies/analytics where a site offers that
+          choice. This site also loads <strong>Google Analytics 4</strong> (measurement ID{" "}
+          <code>G-25N8E18944</code>), which sets <code>_ga</code> cookies —{" "}
+          <strong>only after you click &quot;Accept&quot; on our cookie banner</strong>; if you
+          click &quot;Decline,&quot; it does not load. Separately, aggregate traffic visibility
+          comes from Cloudflare&apos;s server-side request logs, which we can read but do not
           share. You can also opt out of Google Analytics entirely with{" "}
           <a className="text-brand-700 underline dark:text-brand-100" href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">
             Google&apos;s opt-out add-on
