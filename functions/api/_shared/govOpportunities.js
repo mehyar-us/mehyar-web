@@ -456,7 +456,7 @@ export async function upsertGovOpportunity(db, item, runId, now = new Date(), en
         summary: item.summary,
         source: item.source,
       });
-      if (r?.used_llm && r?.parsed && Number.isFinite(Number(r.parsed.fit_score))) {
+      if ((r?.used_llm || r?.used_decision_model) && r?.parsed && Number.isFinite(Number(r.parsed.fit_score))) {
         ai = r.parsed;
       }
     } catch (e) {

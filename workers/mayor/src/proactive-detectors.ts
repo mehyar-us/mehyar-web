@@ -1,6 +1,5 @@
 import type {Env} from './env';
-import {verticalProfile,textbackTemplateFor,type Vertical,type VerticalProfile} from './verticals';
-import {renderTextback,esFollowupCard,esAgoText,resolveLanguage,type Language} from './i18n';
+import {verticalProfile,type Vertical,type VerticalProfile} from './verticals';
 import {schedulingPolicySchema,type SchedulingPolicy} from './scheduling-policy';
 
 /** Crew 3 proactive engine: detectors.
@@ -17,14 +16,6 @@ export interface ProactiveContext{
  vertical:Vertical;
  timeZone:string;
  policy:SchedulingPolicy|null;
- /** Owner-chosen customer-facing language. Unset (e.g. older callers/tests) means English. */
- language:Language;
- /** Customer-facing register from the business profile. Unset (e.g. older
-  * callers/tests) means the friendly default. */
- tone?:string;
- /** Real trade when the vertical came from the honest adjacent map
-  * (e.g. "tattoo" running in salon mode). Card copy stays trade-honest. */
- verticalMappedFrom?:string;
 }
 
 export interface NewDetection{
@@ -43,7 +34,7 @@ export interface DetectionRow{
  * the vertical profile's detectorParams first and fall back here — never a
  * second hardcoded copy. */
 export const LAPSED_DAYS:Record<Vertical,number>={
- salon:56,restaurant:60,plumbing_hvac:180,dental:180,auto_repair:180,pet_grooming:70,med_spa:120,other:90,
+ salon:56,restaurant:60,plumbing_hvac:180,dental:180,auto_repair:180,other:90,
 };
 
 /** Optional per-vertical detector tuning. Enriched on the vertical profile by the
@@ -149,18 +140,15 @@ export function dayGaps(periods:{startMinute:number;endMinute:number}[],busy:{st
 /** Scheduled context reads the tenant profile directly — no user session exists. */
 export async function loadProactiveContext(env:Env,tenantId:string,nowMs=Date.now()):Promise<ProactiveContext>{
  const mem=await env.AGENT_DB.prepare("SELECT value_json FROM mayor_memory WHERE tenant_id=? AND field='profile'").bind(tenantId).first<{value_json:string}>();
- const profile=mem?JSON.parse(mem.value_json) as {name?:string;vertical?:string;timeZone?:string;language?:unknown;tone?:string;verticalMappedFrom?:string}:{ };
+ const profile=mem?JSON.parse(mem.value_json) as {name?:string;vertical?:string;timeZone?:string}:{ };
  const polRow=await env.AGENT_DB.prepare("SELECT value_json FROM mayor_memory WHERE tenant_id=? AND field='scheduling_policy'").bind(tenantId).first<{value_json:string}>();
  const policy=polRow?schedulingPolicySchema.parse(JSON.parse(polRow.value_json)):null;
  return {
   tenantId,nowMs,
   businessName:typeof profile.name==='string'&&profile.name.trim()?profile.name.trim():'your business',
   vertical:verticalProfile(profile.vertical).vertical,
-  tone:typeof profile.tone==='string'?profile.tone:'friendly',
-  verticalMappedFrom:typeof profile.verticalMappedFrom==='string'&&profile.verticalMappedFrom.trim()?profile.verticalMappedFrom.trim():undefined,
   timeZone:policy?.timeZone??(typeof profile.timeZone==='string'?profile.timeZone:'America/New_York'),
   policy,
-  language:resolveLanguage(profile.language),
  };
 }
 
@@ -304,20 +292,10 @@ export function buildFollowupCardCopy(
  payload:{missedCallId:string;callerNumber:string;occurredAt:string},
 ):FollowupCardCopy{
  const v=verticalProfile(ctx.vertical);
- if(ctx.language==='es'){
-  const copy=esFollowupCard(payload.callerNumber,esAgoText(Date.parse(payload.occurredAt),ctx.nowMs));
-  return {
-   title:copy.title,
-   body:copy.body,
-   draft:{message:renderTextback(ctx.vertical,'es',ctx.businessName,ctx.tone),
-    audience:'llamada perdida',audienceCount:1,
-    recipients:[{name:'',phone:payload.callerNumber}],meta:{missedCallId:payload.missedCallId}},
-  };
- }
  return {
   title:'Missed call needs a text-back',
   body:`A call from ${payload.callerNumber} ${agoText(Date.parse(payload.occurredAt),ctx.nowMs)} never got a text-back — send it now?`,
-  draft:{message:textbackTemplateFor(v,ctx.tone).replace('{business}',ctx.businessName),
+  draft:{message:v.textbackTemplate.replace('{business}',ctx.businessName),
    audience:'missed caller',audienceCount:1,
    recipients:[{name:'',phone:payload.callerNumber}],meta:{missedCallId:payload.missedCallId}},
  };
@@ -362,20 +340,17 @@ export async function ensureMissedCallFollowupCard(
 
 /** Mark pending follow-up cards for a missed call as sent once a text-back
  * goes out through ANY path (card Send, manual text-back, instant engine),
- * so a handled call never leaves a stale suggestion behind. The card a send
- * is in flight on (exceptCardId — the suggestion-card Send path) is NOT
- * resolved here: that send's own finish() writes its full result, and
- * pre-marking the card would clobber it (its UPDATE is state-guarded). */
-export async function resolveMissedCallFollowupCards(env:Env,tenantId:string,missedCallId:string,exceptCardId?:string){
+ * so a handled call never leaves a stale suggestion behind. */
+export async function resolveMissedCallFollowupCards(env:Env,tenantId:string,missedCallId:string){
  const now=new Date().toISOString(),dedupeKey=`mc:${missedCallId}`;
  await env.AGENT_DB.batch([
   env.AGENT_DB.prepare(
    `UPDATE mayor_suggestion_cards SET state='sent',decided_at=?,
     result_json=json_object('resolved_by','textback_sent')
-    WHERE tenant_id=? AND state IN ('pending','edited')${exceptCardId?' AND id<>?':''} AND detection_id IN
+    WHERE tenant_id=? AND state IN ('pending','edited') AND detection_id IN
     (SELECT id FROM mayor_proactive_detections
      WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=?)`)
-   .bind(...(exceptCardId?[now,tenantId,exceptCardId,tenantId,dedupeKey]:[now,tenantId,tenantId,dedupeKey])),
+   .bind(now,tenantId,tenantId,dedupeKey),
   env.AGENT_DB.prepare(
    `UPDATE mayor_proactive_detections SET state='resolved'
     WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=? AND state IN ('open','surfaced')`)

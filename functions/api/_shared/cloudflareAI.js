@@ -76,18 +76,84 @@ function safeJsonParse(s) {
 // the MehyarSoft capability statement and returns a 0-100 fit_score,
 // why_fit (bullets), why_not_fit, missing_requirements.
 //
+// decide()-first fast path (2026-10-09): a high-confidence clear pass
+// (score ≤ 35, the documented hard-rule floor for license renewals /
+// brand-name resale / hardware-only / expired) skips the 70b call entirely
+// and returns a pass-shaped result. Everything else falls through to the
+// existing LLM path UNCHANGED — low confidence or decide() downtime never
+// changes behavior.
+//
 // Returns a single item's result for parallel use via boundedMap.
-export async function fitScoreOne(env, item, signal) {
+export async function fitScoreOne(env, item, signal, opts = {}) {
   const capabilityStatement =
     `MehyarSoft LLC — Brooklyn, NY — founder-led software/systems/AI automation consulting firm.\n` +
     `NAICS: 541511 Custom Computer Programming, 541512 Computer Systems Design, 541519 Other Computer Related Services.\n` +
     `Set-asides: Total Small Business; HUBZone.\n` +
-    `Service offerings: 6-tier offer ladder — Free scan $0 → Full Report $5 → Audit My Business $330 → ` +
+    `Service offerings: 6-tier offer ladder — $150 Tech Audit → $250 Website Diagnosis Report → ` +
     `$1k-$25k Custom Build → $500-$3.5k/mo Quarterly Retainer → $150/hr Hourly Advisory.\n` +
     `Past performance: 2 live managed apps (Rizza, AiMech); pharma systems-engineering discipline; ` +
     `founder-led, no agency theater; remote-first delivery continental US; small team of 1-3.\n` +
     `Pain points we're good at: lead leaks, manual CRM workflows, disconnected tools, weak websites, ` +
     `missed calls, AI features (RAG, classification), regulated-data systems.`;
+
+    // decide()-first: clear passes skip the expensive call. Fail-closed: any
+  // error, !ok, or sub-threshold confidence falls through to the LLM below.
+  try {
+    const { decide, verdict } = await import("./decide.js");
+    const state = {
+      title: item.title || item.name || "",
+      agency: item.agency || "",
+      naics: item.naicsCodes || item.naics_codes || [],
+      value: item.estimatedValue || item.estimated_value || null,
+      deadline: item.responseDeadline || item.response_deadline || null,
+      type: item.opportunityType || item.opportunity_type || "",
+      summary: String(item.summary || "").slice(0, 1200),
+    };
+    const d = await decide(env, state, {
+      fit: {
+        type: "score",
+        ask: "Score this opportunity's fit for MehyarSoft (0-100): small custom software, automation, CRM, data, AI workflow, web app, or integration services for a small business or government buyer. Score license renewals, brand-name-only resale, hardware-only buys, and expired deadlines below 35.",
+        levels: ["No fit", "Weak fit", "Moderate fit", "Strong fit", "Perfect fit"],
+      },
+      action: {
+        type: "choice",
+        ask: "Recommended next action for this opportunity",
+        options: {
+          draft_proposal: "realistic win-and-collect fit, draft a proposal",
+          pass: "no realistic path to revenue, skip it",
+          ask_user: "needs owner judgment",
+          check_referral: "better suited to a partner, refer out",
+        },
+      },
+    }, {
+      tag: "fitscore-assist",
+      ...(opts.decideTransport ? { transport: opts.decideTransport } : {}),
+    });
+    if (d.ok) {
+      const vFit = verdict(d.answers.fit, { autoAt: 0.8, reviewAt: 0.5 });
+      if (vFit === "auto" && d.answers.fit.decision <= 35) {
+        return {
+          used_llm: false,
+          used_decision_model: true,
+          content: "",
+          parsed: {
+            fit_score: d.answers.fit.decision,
+            confidence: "high",
+            why_fit: [],
+            why_not_fit: [],
+            missing_requirements: ["Decision-model clear pass — full LLM review skipped"],
+            next_action: "pass",
+          },
+          latency_ms: d.latency_ms,
+          neurons: d.usage.input_tokens,
+          provider: "cloudflare-decide",
+          model: d.model,
+        };
+      }
+    }
+  } catch {
+    // decide() unavailable — fall through to the LLM path below.
+  }
 
   const sysPrompt = `You are MehyarSoft's strict revenue operator. Score opportunities for realistic ability to win and collect cash, not keyword similarity.
 Return strict JSON only — no prose, no fences:
@@ -205,7 +271,7 @@ export async function draftOne(env, ctx, { kind = "cold" } = {}) {
   const sysPrompt = `You are Mehyar Swelim, founder of MehyarSoft. Write revenue-focused outreach that is truthful, specific, and easy to reply to.
 Plain text only. No emojis, no fake familiarity, no unverifiable case studies, no exaggerated metrics, no "I hope this finds you well".
 First sentence must cite one observed business signal or solicitation fact. Pick exactly one paid next step and name the price range:
-- Local business: the free scan ($0), the Full Report ($5), Audit My Business ($330), $1,500-$7,500 fixed-scope quick fix, $7,500-$25,000 automation sprint, or $500-$3,500/mo retainer.
+- Local business: $150 leak audit, $250 written diagnosis, $1,500-$7,500 fixed-scope quick fix, $7,500-$25,000 automation sprint, or $500-$3,500/mo retainer.
 - Government/contract: capability teaser, fit rationale, one clear next step, no unsupported certifications, no invented pricing beyond owner-approved offer ranges.
 No online payment links. If payment is mentioned, say scope is confirmed first and invoiced manually by email for ACH, wire, check, or cash.
 Do not offer free audits, free Looms, discounts, guarantees, or speculative ROI. Do not ask for sensitive data.

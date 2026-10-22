@@ -41,7 +41,7 @@ export interface Briefing {
 
 export interface SuggestionDraft { message: string; audience: string; audienceCount: number }
 export interface SuggestionCard {
-  id: string; kind: string; detector?: string; confidence?: 1 | 2 | 3; title: string; body: string;
+  id: string; kind: string; detector?: string; title: string; body: string;
   draft: SuggestionDraft; state: string; createdAt: string;
 }
 export interface SendResult { sent: boolean; audienceCount: number; simulated: boolean }
@@ -96,27 +96,6 @@ export async function editSuggestion(api: Api, tenantId: string, id: string, mes
 export async function dismissSuggestion(api: Api, tenantId: string, id: string): Promise<void> {
   // Real backend returns {dismissed:true}; the result carries no UI data.
   await api(`${base(tenantId)}/suggestions/${encodeURIComponent(id)}/dismiss`, {});
-}
-
-/* Twin (slice 2b): the owner's writing-style onboarding state. */
-export interface StyleState {
-  totalSamples: number;
-  onboardingSamples: number;
-  dismissed: boolean;
-  greetingAdopted: boolean;
-}
-
-export async function fetchStyleState(api: Api, tenantId: string): Promise<StyleState | null> {
-  try { return await api(`${base(tenantId)}/style`) as StyleState; }
-  catch (error) { if (isNotLive(error)) return null; throw error; }
-}
-
-export async function saveStyleSamples(api: Api, tenantId: string, texts: string[]): Promise<StyleState> {
-  return await api(`${base(tenantId)}/style/samples`, { texts }) as StyleState;
-}
-
-export async function dismissStyleOnboarding(api: Api, tenantId: string): Promise<StyleState> {
-  return await api(`${base(tenantId)}/style/dismiss`, {}) as StyleState;
 }
 
 export async function fetchRoi(api: Api, tenantId: string): Promise<ProactiveRoi | null> {

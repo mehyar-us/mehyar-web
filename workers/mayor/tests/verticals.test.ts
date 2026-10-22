@@ -2,8 +2,8 @@ import {describe,it,expect} from 'vitest';
 import {VERTICAL_PROFILES,verticalProfile,detectVerticalFromCategory,verticalSchema,ONBOARDING_QUESTIONS_FALLBACK,onboardingQuestionsFor} from '../src/verticals';
 
 describe('vertical profiles',()=>{
- it('has 7 launch profiles plus other',()=>{
-  expect(Object.keys(VERTICAL_PROFILES)).toEqual(['salon','restaurant','plumbing_hvac','dental','auto_repair','pet_grooming','med_spa','other']);
+ it('has 5 launch profiles plus other',()=>{
+  expect(Object.keys(VERTICAL_PROFILES)).toEqual(['salon','restaurant','plumbing_hvac','dental','auto_repair','other']);
  });
  it('every profile has a text-back template with {business} and opt-out',()=>{
   for(const profile of Object.values(VERTICAL_PROFILES)){
@@ -30,8 +30,7 @@ describe('vertical profiles',()=>{
  });
  it('detects vertical from Places category',()=>{
   expect(detectVerticalFromCategory('Hair Salon')).toBe('salon');
-  // Adjacent trades route through the honest suggestion (loop-1 fix)
-  expect(detectVerticalFromCategory('Barber Shop')).toBeNull();
+  expect(detectVerticalFromCategory('Barber Shop')).toBe('salon');
   expect(detectVerticalFromCategory('Italian Restaurant')).toBe('restaurant');
   expect(detectVerticalFromCategory('Plumber')).toBe('plumbing_hvac');
   expect(detectVerticalFromCategory('Dental Clinic')).toBe('dental');
@@ -90,15 +89,13 @@ describe('crew4 enriched vertical profiles',()=>{
  });
  it('detects vertical from Places category slugs',()=>{
   expect(detectVerticalFromCategory('hair_salon')).toBe('salon');
-  // Adjacent trades route through the honest suggestion (loop-1 fix)
-  expect(detectVerticalFromCategory('barber_shop')).toBeNull();
+  expect(detectVerticalFromCategory('barber_shop')).toBe('salon');
   expect(detectVerticalFromCategory('plumbing')).toBe('plumbing_hvac');
   expect(detectVerticalFromCategory('dentist')).toBe('dental');
   expect(detectVerticalFromCategory('auto_repair_shop')).toBe('auto_repair');
   expect(detectVerticalFromCategory('restaurant')).toBe('restaurant');
-  expect(detectVerticalFromCategory('pizzeria')).toBeNull();
-  // nail_salon routes through the honest suggestion (loop-1 fix)
-  expect(detectVerticalFromCategory('nail_salon')).toBeNull();
+  expect(detectVerticalFromCategory('pizzeria')).toBe('restaurant');
+  expect(detectVerticalFromCategory('nail_salon')).toBe('salon');
  });
  it('fallback onboarding questions are the generic 7',()=>{
   expect(ONBOARDING_QUESTIONS_FALLBACK.length).toBe(7);

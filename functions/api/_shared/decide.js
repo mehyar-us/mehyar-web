@@ -313,11 +313,6 @@ export const DECIDE_THRESHOLDS = {
   affiliate_intent: { autoAt: 0.8, reviewAt: 0.55 },
   // Campaign judge panel: advisory scores, not actions.
   campaign_judge: { autoAt: 0.7, reviewAt: 0.4 },
-  // Audit My Business findings: a stated finding is a paid claim about the
-  // buyer's business — auto-state only at high confidence; anything lower is
-  // labeled "Needs review", never stated as fact. (Added 2026-10-09 for the
-  // audit-business pipeline; canonical preset, not a fork.)
-  audit_finding: { autoAt: 0.8, reviewAt: 0.55 },
 };
 
 // Convenience: build a text+images multimodal state part list.

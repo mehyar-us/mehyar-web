@@ -1,6 +1,5 @@
 import {createElement,Target,Sparkles,Plus,Settings2,Play,Check,ArrowLeft,ListChecks,FlaskConical,Clock,NotebookPen,ClipboardCheck} from 'lucide';
 import './business-agent.css';
-import {formatMoney} from './proactive-stub';
 
 type Metric={baseline:number;current:number;target:number;unit:string};
 type Goal={id:string;revision:number;title:string;description:string;metric:Metric|null;deadline:string|null;archived:boolean};
@@ -29,8 +28,6 @@ const localDate=(value:string|null)=>{if(!value)return '';const date=new Date(va
 /** Read-only reports and explicit, reviewed saves. Authorization remains with the supplied API. */
 export function createBusinessAgent(hooks:Hooks){
  const element=node('section','','business-agent');element.setAttribute('aria-label','Business agent');
- // Deep-link anchor: Settings and Feed entry points scroll here.
- element.id='business-agent';
  const dialogs=new Set<HTMLDialogElement>();
  let data:Data|null=null,epoch=0,loadVersion=0,activeTenant='',activeActor='',busy=false,requestId:string|null=null,revealAfterSave='';
  const base=()=>`/api/businesses/${encodeURIComponent(hooks.tenant())}/harness`;
@@ -99,7 +96,7 @@ export function createBusinessAgent(hooks:Hooks){
     else card.append(node('p','No measured progress entered yet.'));goals.append(card);
    }section.append(goals);
   }
-  const metrics=node('div','','agent-metrics');for(const metric of report.metrics){const row=node('div');row.append(node('strong',metric.value===null?'Unknown':metric.key==='revenue'?formatMoney(metric.value):metric.value.toLocaleString()),node('span',metric.label));metrics.append(row);}section.append(metrics);
+  const metrics=node('div','','agent-metrics');for(const metric of report.metrics){const row=node('div');row.append(node('strong',metric.value===null?'Unknown':metric.value.toLocaleString()),node('span',metric.label));metrics.append(row);}section.append(metrics);
   const nextSteps=node('details','','agent-next-steps');nextSteps.dataset.agentDisclosure='plan:'+report.id;nextSteps.open=!matchMedia('(max-width:760px)').matches;nextSteps.append(node('summary','Plan & next steps'));
   if(report.priorities.length){const priorities=node('section','','agent-priorities');priorities.append(node('h4','What needs attention'));for(const item of report.priorities){const card=node('article');card.append(node('h5',item.title),node('p',item.detail),sourceDetails(item.sourceIds,report));priorities.append(card);}nextSteps.append(priorities);}
   if(report.taskDrafts.length){const drafts=node('section','','agent-drafts');drafts.append(node('h4','Suggested tasks'));
@@ -197,17 +194,5 @@ export function createBusinessAgent(hooks:Hooks){
   form.onsubmit=event=>{event.preventDefault();if(save.disabled)return;save.disabled=true;const captured=epoch,tenant=activeTenant;void(async()=>{try{const dueAt=due.value?new Date(due.value).toISOString():null;const result=await hooks.api(base()+'/tasks/prepare',{runId,draftId:draft.id,title:title.value.trim(),priority:priority.value,dueAt,customerId:draft.customerId??null});if(!current(captured,tenant)||!modal.isConnected)return;const proposal=result.proposal as {id:string;expiresAt:string;readback:string};review(modal,'Confirm internal task',[proposal.readback,`This review expires ${dateText(proposal.expiresAt)}.`],async()=>{await hooks.api(base()+'/tasks/confirm',{proposal:{id:proposal.id}});},restore,'Save internal task');}catch(error){if(current(captured,tenant)&&modal.isConnected){message.textContent=errorText(error);save.disabled=false;}}})();};modal.append(form);title.focus();
  }
  function clear(){epoch++;loadVersion++;data=null;activeTenant='';activeActor='';requestId=null;busy=false;revealAfterSave='';element.replaceChildren();for(const modal of [...dialogs]){modal.close();modal.remove();}dialogs.clear();}
- /** Scroll to the Business agent section and open "Goals, skills & automation".
-  * Returns false when the section is not rendered yet (caller retries). */
- function reveal():boolean{
-  if(!element.isConnected||!data)return false;
-  const manage=element.querySelector<HTMLDetailsElement>('details[data-agent-disclosure="manage"]');
-  if(!manage)return false;
-  manage.open=true;
-  element.scrollIntoView({block:'start',behavior:'smooth'});
-  const heading=element.querySelector<HTMLElement>('.agent-heading h2');
-  if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
-  return true;
- }
- return {element,load,clear,reveal};
+ return {element,load,clear};
 }

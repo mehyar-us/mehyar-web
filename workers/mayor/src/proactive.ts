@@ -2,12 +2,10 @@ import {z} from 'zod';
 import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
-import {verticalProfile,isProfessionalTone,professionalFillGapTemplate,professionalWinbackTemplate,PROFESSIONAL_LEAD_REPLY_TEMPLATE,reminderTemplateFor,type Vertical} from './verticals';
-import {esTemplates,esFillGapCard,esWinbackCard,esLeadReplyCard,esNoShowCard,esFillGapDraft,esWinbackDraft,esLeadReplyDraft,esAgoText,esBriefingCopy,esFormatWhen,renderReminder} from './i18n';
+import {decide} from './decide.js';
+import {verticalProfile,type Vertical} from './verticals';
 import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
-import {readHarnessRuntime} from './harness-runtime';
-import {captureStyleSample,readStyleProfile,applyGreetingStyle} from './style-profile';
 import {
  inQuietHours,localDayKey,localParts,localDayBoundsUtc,monthBoundsUtc,shiftLocalDate,dayGaps,
  lapsedCustomers,loadProactiveContext,runDetectors,agoText,buildFollowupCardCopy,LAPSED_DAYS,
@@ -24,17 +22,6 @@ const DETECTOR_CARD:Record<DetectorName,CardKind>={
  slow_day:'fill_gap',lapsed_regular:'winback',missed_call_followup:'followup',
  unanswered_lead:'lead_reply',no_show_risk:'reminder_nudge',
 };
-/** WS1 build 2 (2026-10-16): visual confidence, presentation law —
- * owners see a 3-level mark, never a number. Interim mapping from
- * detector evidence, server-side only, until the harness rebuild's
- * decide() ranker supplies the level: a specific recorded event
- * (one missed call, one waiting lead) is strongest; a pattern over
- * real history (a booking at risk, a lapsed regular) is next; a
- * pace inference (slow day) is the softest signal. */
-export const DETECTOR_CONFIDENCE:Record<DetectorName,1|2|3>={
- missed_call_followup:3,unanswered_lead:3,no_show_risk:2,lapsed_regular:2,slow_day:1,
-};
-export function confidenceFor(detector:DetectorName):1|2|3{return DETECTOR_CONFIDENCE[detector]??1;}
 const MAX_NUDGES_PER_DAY=3;
 const STOP='Reply STOP to opt out.';
 
@@ -81,6 +68,78 @@ async function notifyOwners(env:Env,tenantId:string,kind:'proactive_suggestion'|
 }
 
 /* ---------------- card copy (vertical-aware) ---------------- */
+
+/** PII-scrubbed one-line summary of a detection for the triage question.
+ * Only detector kind, age, and counts — never names, numbers, or message bodies. */
+export function triageSummary(detection:DetectionRow,nowMs:number):string{
+ const payload=JSON.parse(detection.payload_json) as Record<string,any>;
+ const ageMin=Math.max(1,Math.round((nowMs-Date.parse(detection.detected_at))/60000));
+ const age=ageMin<60?`${ageMin} min ago`:`${Math.round(ageMin/60)}h ago`;
+ switch(detection.detector){
+  case 'missed_call_followup':return `Missed call ${age}; no text-back sent yet.`;
+  case 'unanswered_lead':return `Inbound lead text ${age}; still no reply.`;
+  case 'lapsed_regular':{const n=Array.isArray(payload.customers)?payload.customers.length:(payload.count??0);return `${n} lapsed customers not booked in ${payload.cutoffDays??'?'}+ days.`;}
+  case 'slow_day':return `Open schedule gap of ${payload.maxGapMinutes??'?'} min tomorrow.`;
+  case 'no_show_risk':return `Upcoming booking with a customer who missed before and has no reminder.`;
+  default:return `New ${detection.detector} detection ${age}.`;
+ }
+}
+
+/** Normalized triage score from a detection payload (0-100), or null when unscored. */
+export function triageScoreOf(payloadJson:string):number|null{
+ try{
+  const v=(JSON.parse(payloadJson) as {triage_score?:unknown}).triage_score;
+  return typeof v==='number'&&Number.isFinite(v)?Math.max(0,Math.min(100,v)):null;
+ }catch{return null;}
+}
+
+export interface TriageItem{detection:DetectionRow;card:{id:string;title:string;body:string}}
+
+/**
+ * decide()-assisted nudge triage (2026-10-09). When a proactive cycle creates
+ * two or more suggestion cards, one batched clef-flash score question per
+ * detection ranks "how much does this deserve the owner's attention right now?"
+ * so the daily nudge cap spends on the highest-value nudges first. Read-only
+ * curation: it only reorders surfacing, never creates or suppresses anything.
+ * Strictly fail-closed: fewer than 2 items, any decide() failure, or unusable
+ * answers keep the original creation order and write nothing. Scores persist on
+ * the detection payload (triage_score) so card lists and briefings order by
+ * them without another model call on read paths. State summaries are
+ * PII-scrubbed (kind + age + counts only); the audit carries question ids,
+ * decisions, and confidences — never customer text.
+ */
+export async function prioritizeDetectionsDecide(
+ env:Env,ctx:ProactiveContext,items:TriageItem[],
+ opts:{decideTransport?:any}={},
+):Promise<TriageItem[]>{
+ if(items.length<2)return items;
+ try{
+  const questions:Record<string,any>={};
+  items.forEach((item,i)=>{
+   questions[`triage_${i}`]={
+    type:'score',
+    ask:`How much does this proactive nudge deserve the small business owner's attention right now? ${triageSummary(item.detection,ctx.nowMs)}`,
+    levels:['Not worth surfacing','Low priority','Worth a look','Important','Urgent — money or a customer is at stake'],
+   };
+  });
+  const d=await decide(env,{note:'proactive nudge triage'},questions,{tag:'proactive-triage',...(opts.decideTransport?{transport:opts.decideTransport}:{})});
+  if(!d.ok)return items;
+  const scored=items.map((item,i)=>{
+   const a=d.answers[`triage_${i}`];
+   return {item,score:a&&a.ok?Number(a.decision):-1};
+  });
+  // Persist scores for read-path ordering; unscored rows keep no score.
+  for(const {item,score} of scored){
+   if(score<0)continue;
+   await env.AGENT_DB.prepare(`UPDATE mayor_proactive_detections SET payload_json=json_set(payload_json,'$.triage_score',?) WHERE id=? AND json_valid(payload_json)`)
+    .bind(Math.round(score),item.detection.id).run();
+  }
+  return scored
+   .map((s,idx)=>({...s,idx}))
+   .sort((a,b)=>b.score-a.score||a.idx-b.idx)
+   .map(s=>s.item);
+ }catch{return items;}
+}
 function formatWhen(ms:number,timeZone:string,nowMs:number){
  const day=localDayKey(ms,timeZone),today=localDayKey(nowMs,timeZone);
  const time=new Intl.DateTimeFormat('en-US',{timeZone,hour:'numeric',minute:'2-digit'}).format(ms);
@@ -93,36 +152,19 @@ function personalize(message:string,businessName:string,recipient:{name:string})
  return message.replace('{business}',businessName).replace('{name}',recipient.name||'there');
 }
 
-export async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<{kind:CardKind;title:string;body:string;draft:Draft}|null>{
+async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<{kind:CardKind;title:string;body:string;draft:Draft}|null>{
  const kind=DETECTOR_CARD[detection.detector];
  const v=verticalProfile(ctx.vertical);
  const cust=v.vocabulary.customer,booking=v.vocabulary.booking;
- const professional=isProfessionalTone(ctx.tone);
  const payload=JSON.parse(detection.payload_json) as Record<string,any>;
- const es=ctx.language==='es';
- const esNouns=es?esTemplates(ctx.vertical).nouns:null;
  if(kind==='fill_gap'){
   const audience=await lapsedCustomers(env,ctx.tenantId,ctx.vertical,ctx.nowMs,25);
   const hours=Math.max(2,Math.round((payload.maxGapMinutes??120)/60));
   const n=audience.length;
-  if(es){
-   const copy=esFillGapCard(hours,n,esNouns!.customers);
-   return {kind,
-    title:copy.title,
-    body:copy.body,
-    draft:{message:esFillGapDraft(),
-     audience:'clientes que no vuelven',audienceCount:n,
-     recipients:audience.map(a=>({name:a.name,phone:a.phone})),meta:{}}};
-  }
-  const mappedFillBody=ctx.verticalMappedFrom
-   ?`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-schedule text to ${n} lapsed ${cust}${n===1?'':'s'}?`
-   :`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-chairs text to ${n} lapsed ${cust}${n===1?'':'s'}?`;
-  const mappedFillDraft=ctx.verticalMappedFrom&&!professional
-   ?`Hi {name}, it's {business}! We have a few open spots tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`:null;
   return {kind,
    title:`Fill ${hours} slow hour${hours===1?'':'s'} tomorrow`,
-   body:mappedFillBody,
-   draft:{message:professional?professionalFillGapTemplate(booking):(mappedFillDraft??`Hi {name}, it's {business}! We have a few open ${booking}s tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`),
+   body:`${hours} slow hour${hours===1?'':'s'} tomorrow with nothing booked — send this fill-the-chairs text to ${n} lapsed ${cust}${n===1?'':'s'}?`,
+   draft:{message:`Hi {name}, it's {business}! We have a few open ${booking}s tomorrow — want in? Reply YES and we'll find you a time. ${STOP}`,
     audience:'lapsed regulars',audienceCount:n,
     recipients:audience.map(a=>({name:a.name,phone:a.phone})),meta:{}}};
  }
@@ -130,21 +172,10 @@ export async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:Detec
   const customers=(payload.customers??[]) as LapsedCustomer[];
   const days=payload.cutoffDays??LAPSED_DAYS[ctx.vertical];
   const n=customers.length;
-  if(es){
-   const copy=esWinbackCard(n,esNouns!.customers,days);
-   return {kind,
-    title:copy.title,
-    body:copy.body,
-    draft:{message:esWinbackDraft(esNouns!.booking),
-     audience:'clientes que no vuelven',audienceCount:n,
-     recipients:customers.map(c=>({name:c.name,phone:c.phone})),meta:{}}};
-  }
-  const mappedWinbackDraft=ctx.verticalMappedFrom&&!professional
-   ?`Hi {name}, it's {business} — it's been a while! Thinking about your next visit? Reply YES and we'll find you a time. ${STOP}`:null;
   return {kind,
    title:`Win back ${n} lapsed ${cust}${n===1?'':'s'}`,
    body:`${n} ${cust}${n===1?'':'s'} ${n===1?'has':'have'}n't booked in ${days}+ days — send this win-back text?`,
-   draft:{message:professional?professionalWinbackTemplate(booking):(mappedWinbackDraft??`Hi {name}, it's {business} — it's been a while! Ready to book your next ${booking}? Reply YES and we'll find you a time. ${STOP}`),
+   draft:{message:`Hi {name}, it's {business} — it's been a while! Ready to book your next ${booking}? Reply YES and we'll find you a time. ${STOP}`,
     audience:'lapsed regulars',audienceCount:n,
     recipients:customers.map(c=>({name:c.name,phone:c.phone})),meta:{}}};
  }
@@ -153,38 +184,19 @@ export async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:Detec
   return {kind,...buildFollowupCardCopy(ctx,payload as {missedCallId:string;callerNumber:string;occurredAt:string})};
  }
  if(kind==='lead_reply'){
-  if(es){
-   const copy=esLeadReplyCard(payload.fromNumber,esAgoText(Date.parse(payload.receivedAt),ctx.nowMs));
-   return {kind,
-    title:copy.title,
-    body:copy.body,
-    draft:{message:esLeadReplyDraft(),
-     audience:'contacto',audienceCount:1,
-     recipients:[{name:'',phone:payload.fromNumber}],meta:{smsId:payload.smsId}}};
-  }
   return {kind,
    title:'Unanswered lead',
    body:`A text from ${payload.fromNumber} ${agoText(Date.parse(payload.receivedAt),ctx.nowMs)} has no reply — send this follow-up?`,
-   draft:{message:professional?PROFESSIONAL_LEAD_REPLY_TEMPLATE:`Hi, this is {business} — thanks for reaching out! Sorry for the delay — how can we help? ${STOP}`,
+   draft:{message:`Hi, this is {business} — thanks for reaching out! Sorry for the delay — how can we help? ${STOP}`,
     audience:'lead',audienceCount:1,
     recipients:[{name:'',phone:payload.fromNumber}],meta:{smsId:payload.smsId}}};
  }
  // reminder_nudge
  const when=formatWhen(Date.parse(payload.startsAt),ctx.timeZone,ctx.nowMs);
- const whenEs=es?esFormatWhen(Date.parse(payload.startsAt),ctx.timeZone,ctx.nowMs):when;
- if(es){
-  const copy=esNoShowCard(payload.customerName,whenEs);
-  return {kind,
-   title:copy.title,
-   body:copy.body,
-   draft:{message:renderReminder(ctx.vertical,'es',ctx.businessName,whenEs,ctx.tone),
-    audience:'cliente en riesgo',audienceCount:1,
-    recipients:[{name:payload.customerName,phone:payload.customerPhone,when,bookingId:payload.bookingId}],meta:{bookingId:payload.bookingId,customerId:payload.customerId}}};
- }
  return {kind,
   title:`No-show risk: ${payload.customerName}`,
   body:`${payload.customerName} missed before and has no reminder for ${when} — send a reminder now?`,
-  draft:{message:reminderTemplateFor(v,ctx.tone).replace('{business}',ctx.businessName).replace('{when}',when),
+  draft:{message:v.reminderTemplate.replace('{business}',ctx.businessName).replace('{when}',when),
    audience:'at-risk customer',audienceCount:1,
    recipients:[{name:payload.customerName,phone:payload.customerPhone,when,bookingId:payload.bookingId}],meta:{bookingId:payload.bookingId,customerId:payload.customerId}}};
 }
@@ -192,46 +204,11 @@ export async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:Detec
 export async function createSuggestionCard(env:Env,ctx:ProactiveContext,detection:DetectionRow){
  const copy=await buildCardCopy(env,ctx,detection);
  if(!copy)return null;
- // Twin (slice 2a): adopt the owner's dominant greeting once their
- // corpus supports it; otherwise the template stands unchanged.
- copy.draft.message=applyGreetingStyle(copy.draft.message,await readStyleProfile(env,ctx.tenantId));
  const id=crypto.randomUUID(),now=new Date(ctx.nowMs).toISOString();
  await env.AGENT_DB.prepare(`INSERT INTO mayor_suggestion_cards(id,tenant_id,detection_id,kind,title,body,draft_json,state,created_at)
   VALUES(?,?,?,?,?,?,?,'pending',?)`)
   .bind(id,ctx.tenantId,detection.id,copy.kind,copy.title,copy.body,JSON.stringify(copy.draft),now).run();
  return {id,...copy};
-}
-
-/** Harness slice 1: the per-detection materialization both runtimes
- * share — create the card, respect the surface gate (quiet hours +
- * the 3/day nudge cap), surface it. The cron cycle and the
- * MayorBusiness agent's ranked drain call this one path, so a
- * detection behaves identically in either runtime. */
-export async function materializeDetection(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<'surfaced'|'carded'|'skipped'>{
- const card=await createSuggestionCard(env,ctx,detection);
- if(!card)return 'skipped';
- if(!(await surfaceGate(env,ctx)).ok)return 'carded';
- await surfaceDetection(env,ctx,detection,card);
- return 'surfaced';
-}
-
-/** The 08:05 briefing, shared by both runtimes (same dedupe + gate).
- * Due at 08:05 local; the first cycle at/after 08:05 builds it. */
-export async function maybeSendBriefing(env:Env,ctx:ProactiveContext):Promise<boolean>{
- const parts=localParts(ctx.nowMs,ctx.timeZone);
- // Due-based, not window-based (soak finding 2026-10-17): the old
- // [08:05,08:10) window matched the 5-minute cron's grid but NEVER
- // intersects the agent runtime's 15-minute sweep grid, so the
- // briefing could never fire there. First cycle/sweep at or after
- // 08:05 local builds it; the per-day dedupe below bounds it to one.
- if(!(parts.hour>8||(parts.hour===8&&parts.minute>=5)))return false;
- const dayKey=parts.date;
- const already=await env.AGENT_DB.prepare('SELECT 1 FROM mayor_notifications WHERE tenant_id=? AND dedupe_key=? LIMIT 1')
-  .bind(ctx.tenantId,`proactive_briefing:${dayKey}`).first();
- if(already||!(await surfaceGate(env,ctx)).ok)return false;
- await notifyOwners(env,ctx.tenantId,'proactive_briefing',`proactive_briefing:${dayKey}`);
- await logNudge(env,ctx.tenantId,'briefing',dayKey);
- return true;
 }
 
 /* ---------------- scheduler ---------------- */
@@ -249,28 +226,34 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
  let detections=0,cards=0,surfaced=0,briefings=0;
  for(const t of tenants.results){
   try{
-   // Harness slice 1: a tenant flagged 'do' runs in its
-   // MayorBusiness agent instead — exactly one runtime per tenant.
-   // The flag is the single switch (soak, 2026-10-17): the cycle
-   // keeps a 'do' tenant's agent armed (arm() is idempotent), so
-   // flipping the flag is the whole operation and flipping it back
-   // reverts cleanly. A failed arm retries on the next cycle.
-   if(await readHarnessRuntime(env,t.id)==='do'){
-    try{
-     const stub=env.MAYOR_BUSINESS.get(env.MAYOR_BUSINESS.idFromName(t.id));
-     await stub.arm(t.id);
-    }catch{/* next cycle retries */}
-    continue;
-   }
    const {context,created}=await runDetectors(env,t.id,nowMs);
    detections+=created.length;
+   const pending:TriageItem[]=[];
    for(const d of created){
-    const outcome=await materializeDetection(env,context,d);
-    if(outcome!=='skipped')cards++;
-    if(outcome==='surfaced')surfaced++;
+    const card=await createSuggestionCard(env,context,d);
+    if(!card)continue;
+    cards++;
+    pending.push({detection:d,card});
    }
-   // Morning briefing: once per local day, due 08:05, nudge-capped.
-   if(await maybeSendBriefing(env,context))briefings++;
+   // Highest-triage-value nudges surface first under the daily cap.
+   const ordered=await prioritizeDetectionsDecide(env,context,pending);
+   for(const {detection:d,card} of ordered){
+    if(!(await surfaceGate(env,context)).ok)continue;
+    await surfaceDetection(env,context,d,card);
+    surfaced++;
+   }
+   // Morning briefing: once per local day, in the 08:05–08:10 window, nudge-capped.
+   const parts=localParts(nowMs,context.timeZone);
+   if(parts.hour===8&&parts.minute>=5&&parts.minute<10){
+    const dayKey=parts.date;
+    const already=await env.AGENT_DB.prepare('SELECT 1 FROM mayor_notifications WHERE tenant_id=? AND dedupe_key=? LIMIT 1')
+     .bind(t.id,`proactive_briefing:${dayKey}`).first();
+    if(!already&&(await surfaceGate(env,context)).ok){
+     await notifyOwners(env,t.id,'proactive_briefing',`proactive_briefing:${dayKey}`);
+     await logNudge(env,t.id,'briefing',dayKey);
+     briefings++;
+    }
+   }
   }catch(error){
    console.warn(JSON.stringify({event:'proactive_cycle_tenant_failed',tenant:t.id}));
   }
@@ -282,27 +265,21 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
 
 function publicCard(row:CardRow&{detector:DetectorName}){
  const draft=JSON.parse(row.draft_json) as Draft;
- return {id:row.id,kind:row.kind,detector:row.detector,confidence:confidenceFor(row.detector),title:row.title,body:row.body,
+ return {id:row.id,kind:row.kind,detector:row.detector,title:row.title,body:row.body,
   draft:{message:draft.message,audience:draft.audience,audienceCount:draft.audienceCount},
   state:row.state,createdAt:row.created_at};
 }
 export async function listSuggestionCards(env:Env,actor:Actor){
  await requireMembership(env,actor,OPERATORS);
- const rows=await env.AGENT_DB.prepare(`SELECT c.*,d.detector FROM mayor_suggestion_cards c
+ const rows=await env.AGENT_DB.prepare(`SELECT c.*,d.detector,
+  COALESCE(CAST(json_extract(d.payload_json,'$.triage_score') AS INTEGER),-1) AS triage_score
+  FROM mayor_suggestion_cards c
   JOIN mayor_proactive_detections d ON d.id=c.detection_id WHERE c.tenant_id=?
-  ORDER BY CASE c.state WHEN 'pending' THEN 0 WHEN 'edited' THEN 1 WHEN 'sent' THEN 2 ELSE 3 END, c.created_at DESC LIMIT 50`)
+  ORDER BY CASE c.state WHEN 'pending' THEN 0 WHEN 'edited' THEN 1 WHEN 'sent' THEN 2 ELSE 3 END,
+   triage_score DESC, c.created_at DESC LIMIT 50`)
   .bind(actor.tenantId).all<CardRow&{detector:DetectorName}>();
  await requireMembership(env,actor,OPERATORS);
- // WS1 build 3 (2026-10-17): the list IS the ranked queue — inside
- // each state group, strongest evidence first (the same server-side
- // confidence the card renders), newest first inside a level. The
- // SQL order remains the stable base; this sort only refines it.
- const stateRank=(state:string)=>state==='pending'?0:state==='edited'?1:state==='sent'?2:3;
- const cards=rows.results.map(publicCard);
- cards.sort((a,b)=>stateRank(a.state)-stateRank(b.state)
-  ||(b.confidence??1)-(a.confidence??1)
-  ||(a.createdAt<b.createdAt?1:a.createdAt>b.createdAt?-1:0));
- return {cards};
+ return {cards:rows.results.map(publicCard)};
 }
 
 export const proactiveSettingsSchema=z.object({liveSms:z.boolean()}).strict();
@@ -380,11 +357,11 @@ export async function sendSuggestionCard(env:Env,actor:Actor,cardId:string,trans
    .bind(missedCallId,actor.tenantId).first<{source:string;textback_sent_at:string|null}>();
   if(!call)throw new HttpError(404,'suggestion_unavailable','The missed call for this suggestion is gone.');
   if(call.source==='test'){
-   await simulateTextBack(env,actor,missedCallId,{exceptCardId:cardId});
+   await simulateTextBack(env,actor,missedCallId);
    return finish({simulated:true,audienceCount:1,sentCount:1,failed:0});
   }
   if(live){
-   const res=await sendTextBack(env,actor,missedCallId,transport,{exceptCardId:cardId});
+   const res=await sendTextBack(env,actor,missedCallId,transport);
    return finish({simulated:false,audienceCount:1,sentCount:res.alreadySent?0:1,failed:0});
   }
   await env.AGENT_DB.prepare(`INSERT INTO mayor_sms_log(id,tenant_id,direction,to_number,from_number,body,provider_message_id,status,related_missed_call_id)
@@ -393,10 +370,6 @@ export async function sendSuggestionCard(env:Env,actor:Actor,cardId:string,trans
   return finish({simulated:true,audienceCount:1,sentCount:1,failed:0});
  }
 
- // Crew 6f/loop-1 light-up landmine: Instagram DM recipients (ig:<senderId>) are not
- // phone numbers — never hand them to Telnyx. IG reply transport ships at light-up.
- const igRecipients=draft.recipients.filter(r=>r.phone.startsWith('ig:'));
- if(igRecipients.length)throw new HttpError(400,'ig_reply_not_supported','Instagram replies are not available yet — app review is still pending. The message was not sent.');
  let sentCount=0,failed=0;
  const smsRows=[];
  for(const r of draft.recipients){
@@ -432,9 +405,6 @@ export async function editSuggestionCard(env:Env,actor:Actor,cardId:string,messa
  const draft={...JSON.parse(card.draft_json),message} as Draft;
  await env.AGENT_DB.prepare("UPDATE mayor_suggestion_cards SET draft_json=?,state='edited' WHERE id=? AND state IN ('pending','edited')")
   .bind(JSON.stringify(draft),cardId).run();
- // Twin (slice 2a): the owner's own wording is a style sample —
- // captured as a side effect of the edit they already made.
- await captureStyleSample(env,actor.tenantId,'card_edit',message);
  return {id:cardId,message,audience:draft.audience,audienceCount:draft.audienceCount,state:'edited' as const};
 }
 
@@ -472,37 +442,6 @@ export async function setRoiConfig(env:Env,actor:Actor,input:z.infer<typeof roiC
   ON CONFLICT(tenant_id,field) DO UPDATE SET value_json=excluded.value_json,confirmed_by=excluded.confirmed_by,confirmed_at=excluded.confirmed_at,revision=mayor_memory.revision+1,updated_at=excluded.updated_at`)
   .bind(actor.tenantId,JSON.stringify(parsed),actor.userId,now,now,actor.tenantId,actor.userId,now).run();
  return {avgTicketCents:parsed.avgTicketCents};
-}
-
-export type RevenueSource='configured_avg_ticket'|'recorded_amounts'|'not_configured';
-export interface RevenueSignals{recoveredCents:number|null;source:RevenueSource;recoveries:number;windowDays:number}
-
-/** Real per-tenant revenue signals for the harness and routine contexts
- * (rebuild prerequisite: revenue instrumentation). Reads the same
- * recorded ledger buildRoi reports on — mayor_roi_events recoveries in
- * a trailing 30-day window — with buildRoi's exact fallback semantics:
- * a configured average ticket prices recoveries whose recorded amount
- * is missing; with no ticket, only recorded amounts count; with
- * neither, the value stays null (unknown), never an invented zero.
- * Read-only: seeding stays with the flows that record the events. */
-export async function readRevenueSignals(env:Env,tenantId:string,nowMs=Date.now()):Promise<RevenueSignals>{
- const windowDays=30,end=new Date(nowMs).toISOString(),start=new Date(nowMs-windowDays*86400000).toISOString();
- const recoveries=await env.AGENT_DB.prepare(`SELECT amount_cents FROM mayor_roi_events
-  WHERE tenant_id=? AND kind='recovery' AND occurred_at>=? AND occurred_at<?`).bind(tenantId,start,end).all<{amount_cents:number|null}>();
- const avgTicket=await readAvgTicket(env,tenantId);
- if(avgTicket!=null){
-  return {recoveredCents:recoveries.results.reduce((s,r)=>s+(r.amount_cents??avgTicket),0),source:'configured_avg_ticket',recoveries:recoveries.results.length,windowDays};
- }
- const recorded=recoveries.results.map(r=>r.amount_cents).filter((v):v is number=>v!=null);
- if(recorded.length)return {recoveredCents:recorded.reduce((s,v)=>s+v,0),source:'recorded_amounts',recoveries:recoveries.results.length,windowDays};
- return {recoveredCents:null,source:'not_configured',recoveries:recoveries.results.length,windowDays};
-}
-
-/** The one revenue metric shape the harness and routine contexts share,
- * so the label always names the source of the number. */
-export function revenueMetric(signals:RevenueSignals,unmeasuredLabel:string):{key:'revenue';label:string;value:number|null}{
- if(signals.recoveredCents==null)return {key:'revenue',label:unmeasuredLabel,value:null};
- return {key:'revenue',label:signals.source==='recorded_amounts'?`Recovered revenue · last ${signals.windowDays} days (recorded amounts)`:`Recovered revenue · last ${signals.windowDays} days (at your average ticket)`,value:signals.recoveredCents};
 }
 
 /** Record a no-show. Called by whichever flow marks one (phone confirmation,
@@ -572,7 +511,7 @@ function roiKpiLabel(vertical:Vertical,key:string):string|null{
 /** ROI tile nouns stay vertical-aware: reservations vs appointments vs jobs vs visits. */
 const ROI_BOOKING_NOUN:Record<Vertical,string>={
  salon:'Appointments',restaurant:'Reservations',plumbing_hvac:'Jobs',
- dental:'Visits',auto_repair:'Service appointments',pet_grooming:'Appointments',med_spa:'Appointments',other:'Appointments',
+ dental:'Visits',auto_repair:'Service appointments',other:'Appointments',
 };
 
 /** ROI dashboard tile labels for a vertical — labels only, no new metrics or amounts. */
@@ -676,9 +615,12 @@ export async function buildBriefing(env:Env,actor:Actor,nowMs=Date.now()){
   FROM mayor_missed_calls WHERE tenant_id=? AND occurred_at>=? AND occurred_at<?`)
   .bind(actor.tenantId,yb.start,yb.end).first<{total:number;texted:number;recovered:number}>();
 
- const cards=await env.AGENT_DB.prepare(`SELECT id,title,body FROM mayor_suggestion_cards
-  WHERE tenant_id=? AND state IN ('pending','edited') ORDER BY created_at DESC LIMIT 10`)
-  .bind(actor.tenantId).all<{id:string;title:string;body:string}>();
+ const cards=await env.AGENT_DB.prepare(`SELECT c.id,c.title,c.body,
+  COALESCE(CAST(json_extract(d.payload_json,'$.triage_score') AS INTEGER),-1) AS triage_score
+  FROM mayor_suggestion_cards c JOIN mayor_proactive_detections d ON d.id=c.detection_id
+  WHERE c.tenant_id=? AND c.state IN ('pending','edited')
+  ORDER BY triage_score DESC, c.created_at DESC LIMIT 10`)
+  .bind(actor.tenantId).all<{id:string;title:string;body:string;triage_score:number}>();
 
  const starts=todayRows.results.map(r=>r.reserved_start).sort();
  // Briefing nouns are vertical-aware. The parallel agent's optional briefingNouns
@@ -692,20 +634,17 @@ export async function buildBriefing(env:Env,actor:Actor,nowMs=Date.now()){
  const pickNoun=(value:unknown,fallback:string)=>typeof value==='string'&&value.trim()?value.trim():fallback;
  const nouns={appointments:pickNoun(maybeNouns?.appointments,pluralOf(vp.vocabulary.booking)),
   customers:pickNoun(maybeNouns?.customers,pluralOf(vp.vocabulary.customer))};
- const esBriefing=ctx.language==='es'?esTemplates(ctx.vertical).nouns:null;
- if(esBriefing){nouns.appointments=esBriefing.appointments;nouns.customers=esBriefing.customers;}
  const wordFor=(n:number,plural:string)=>n===1?plural.replace(/s$/,''):plural;
  const apptsToday=todayRows.results.length,noShowCount=noShowsYesterday?.n??0;
- const briefingCopy=esBriefing
-  ?esBriefingCopy(kept,apptsToday,noShowCount,esBriefing.appointments)
-  :{yesterday:`${kept} ${wordFor(kept,nouns.appointments)} yesterday${noShowCount?`, ${noShowCount} ${wordFor(noShowCount,'no-show')}`:''}`,
-    today:apptsToday?`${apptsToday} ${wordFor(apptsToday,nouns.appointments)} today`:`No ${wordFor(2,nouns.appointments)} today`};
  return {
   date:today,
   businessName:ctx.businessName,
   vertical:ctx.vertical,
   nouns,
-  copy:briefingCopy,
+  copy:{
+   yesterday:`${kept} ${wordFor(kept,nouns.appointments)} yesterday${noShowCount?`, ${noShowCount} ${wordFor(noShowCount,'no-show')}`:''}`,
+   today:apptsToday?`${apptsToday} ${wordFor(apptsToday,nouns.appointments)} today`:`No ${wordFor(2,nouns.appointments)} today`,
+  },
   yesterday:{
    appointments:apptsYesterday?.n??0,
    noShows:noShowsYesterday?.n??0,
