@@ -645,6 +645,30 @@ export async function onRequestPost({ request, env, waitUntil }) {
     // verify (legacy), but verification is not fulfillment.
     const configuredMode = env.STRIPE_MODE === "test" ? "test" : "live";
     if (event.livemode !== (configuredMode === "live")) {
+      // Crew-gated test scope (rot545, 2026-10-22): a test event is admitted
+      // ONLY when it belongs to an order minted through the crew test gate —
+      // its billing_payments row carries a cs_test_ session id. It then
+      // fulfills in test scope, exactly as crew test payments did before the
+      // mode hardening. Every other mismatch — above all a test event
+      // naming a LIVE order — is rejected below, unchanged.
+      let gatedTestOrder = false;
+      if (event.livemode === false) {
+        try {
+          const obj0 = (event.data && event.data.object) ? event.data.object : {};
+          const pid0 = Number(obj0.metadata && obj0.metadata.payment_id) || null;
+          if (pid0) {
+            const prow = await db.prepare(
+              "SELECT stripe_session_id FROM billing_payments WHERE id = ?"
+            ).bind(pid0).first();
+            gatedTestOrder = !!(
+              prow &&
+              typeof prow.stripe_session_id === "string" &&
+              prow.stripe_session_id.startsWith("cs_test_")
+            );
+          }
+        } catch (_) { /* a failed lookup admits nothing */ }
+      }
+      if (!gatedTestOrder) {
       try {
         const obj = (event.data && event.data.object) ? event.data.object : {};
         const pid = Number(obj.metadata && obj.metadata.payment_id) || null;
@@ -653,6 +677,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
         ).bind(pid, String(event.type || "") + " " + String(obj.id || "")).run();
       } catch (_) { /* logging never blocks the rejection */ }
       return json({ ok: false, error: "stripe_mode_mismatch" }, 400);
+      }
     }
 
     if (event.type === "checkout.session.completed") {

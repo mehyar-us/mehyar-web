@@ -5,7 +5,11 @@
 // Body: {
 //   product_id:  "audit-full-report"            (required — looked up in billing_products)
 //   email:       "buyer@example.com"            (required)
-//   test:       true                           (optional — use STRIPE_TEST_SECRET_KEY)
+//   (header)    x-crew-test-mint: <secret>     (crew-only — mints a TEST session via
+//                                               STRIPE_TEST_SECRET_KEY when the header
+//                                               matches the CREW_TEST_MINT_SECRET project
+//                                               secret; there is NO body flag for test
+//                                               mode — client test flags are ignored)
 //   success_url: "https://other.mehyar.us/ty"  (optional — host must be in allowed_return_hosts)
 //   cancel_url:  "https://other.mehyar.us/"     (optional — host must be in allowed_return_hosts)
 //   params:      { ... }                        (optional — product-specific fields, <=2KB)
@@ -318,9 +322,21 @@ export async function onRequestPost({ request, env }) {
     // property and is NEVER selected by the client. This endpoint previously
     // honored a client-supplied `test: true` and minted cs_test_ sessions on
     // the production account; test payments fulfilled into production tables.
-    // Client test flags are ignored. Internal test proofs run against a
-    // separate staging deployment, never via a request flag here.
-    const testMode = false;
+    // Client test flags are ignored.
+    //
+    // Crew-gated test mint (rot545, 2026-10-22): the ONE exception is a
+    // server-side gate — a request carrying the crew-held secret in the
+    // x-crew-test-mint header, checked here against the CREW_TEST_MINT_SECRET
+    // project secret, mints in test mode for internal E2E proofs. No body or
+    // flag shape can open it: without the header the public surface is
+    // live-only, exactly as hardened. Test-minted orders fulfill in test
+    // scope only (the webhook admits a test event solely for an order whose
+    // stored session is cs_test_).
+    const crewMintSecret = env.CREW_TEST_MINT_SECRET;
+    const testMode = !!(
+      crewMintSecret &&
+      request.headers.get("x-crew-test-mint") === crewMintSecret
+    );
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return J(
