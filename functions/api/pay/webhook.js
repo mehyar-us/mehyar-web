@@ -549,6 +549,12 @@ async function resolveMirrorPurchase({ db, request, env, waitUntil }, sess) {
     ? (env.STRIPE_TEST_SECRET_KEY || env.STRIPE_SECRET_KEY)
     : env.STRIPE_SECRET_KEY;
   if (!key) { console.error("pay/webhook mirror: no Stripe key for session", sess.id); return; }
+  // Key-prefix assertion (house billing pattern): never call Stripe with a
+  // key whose (sk|rk)_ prefix belongs to the opposite mode.
+  if ((sess.livemode && /^(sk|rk)_test_/.test(key)) || (!sess.livemode && /^(sk|rk)_live_/.test(key))) {
+    console.error("pay/webhook mirror: stripe_mode_mismatch for session", sess.id);
+    return;
+  }
   const api = async (path) => {
     const r = await fetch("https://api.stripe.com" + path, {
       headers: { authorization: "Bearer " + key },
@@ -629,22 +635,24 @@ export async function onRequestPost({ request, env, waitUntil }) {
 
     const event = JSON.parse(rawBody);
 
-    // Payment integrity (rot541, 2026-10-22): production fulfills LIVE
-    // events only. A test-mode event (livemode === false) is refused here —
-    // after signature verification, before any ledger write, mirror
-    // resolution, or fulfillment dispatch — and the refusal is logged to
-    // webhook_debug. Test-endpoint signatures still verify (legacy), but
-    // verification is not fulfillment. Internal test proofs belong on a
-    // staging deployment, never on production webhooks.
-    if (event.livemode === false) {
+    // Payment integrity (rot541, 2026-10-22) — mirrors The Mayor worker's
+    // billing pattern (workers/mayor/src/billing/events.ts): the configured
+    // mode is env-only (STRIPE_MODE; production runs "live"), and any event
+    // whose livemode differs from the configured mode is rejected with
+    // 400 stripe_mode_mismatch — after signature verification, before any
+    // ledger write, mirror resolution, or fulfillment dispatch. The
+    // rejection is logged to webhook_debug. Test-endpoint signatures still
+    // verify (legacy), but verification is not fulfillment.
+    const configuredMode = env.STRIPE_MODE === "test" ? "test" : "live";
+    if (event.livemode !== (configuredMode === "live")) {
       try {
         const obj = (event.data && event.data.object) ? event.data.object : {};
         const pid = Number(obj.metadata && obj.metadata.payment_id) || null;
         await db.prepare(
-          "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'refused_test_mode', ?)"
+          "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'stripe_mode_mismatch', ?)"
         ).bind(pid, String(event.type || "") + " " + String(obj.id || "")).run();
-      } catch (_) { /* logging never blocks the refusal */ }
-      return json({ ok: true, refused: "test_mode" }, 200);
+      } catch (_) { /* logging never blocks the rejection */ }
+      return json({ ok: false, error: "stripe_mode_mismatch" }, 400);
     }
 
     if (event.type === "checkout.session.completed") {

@@ -163,6 +163,11 @@ export async function onRequestPost({ request, env }) {
         testMode ? 400 : 503
       );
     }
+    // Key-prefix assertion (house billing pattern): never charge with a key
+    // carrying the opposite mode's (sk|rk)_ prefix.
+    if (/^(sk|rk)_test_/.test(stripeKey)) {
+      return J({ ok: false, error: "stripe_mode_mismatch" }, 500);
+    }
 
     // Resolve the saved payment method from the base PaymentIntent.
     const piGet = await stripeCall(

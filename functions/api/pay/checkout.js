@@ -308,6 +308,14 @@ export async function onRequestPost({ request, env }) {
         testMode ? 400 : 503
       );
     }
+    // Key-prefix assertion (mirrors baseConfiguration in The Mayor worker's
+    // billing): the configured key must not carry the opposite mode's
+    // (sk|rk)_ prefix. Fires only on a genuine cross-mode misconfiguration —
+    // e.g. a test key pasted into the live slot, which would silently
+    // recreate mode confusion at the API layer.
+    if (/^(sk|rk)_test_/.test(stripeKey)) {
+      return J({ ok: false, error: "stripe_mode_mismatch" }, 500);
+    }
 
     // Order-init hook (fulfillment-specific).
     const hook = orderHooks[product.fulfillment] || orderHooks.none;
