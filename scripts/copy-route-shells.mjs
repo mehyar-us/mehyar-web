@@ -120,12 +120,6 @@ const routeMeta = {
       'A practical MehyarSoft framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.',
     path: '/blog/small-business-tech-audit-revenue-leaks',
   },
-  '/blog/what-does-a-business-audit-check': {
-    title: 'What Does a Business Audit Check? | Audit My Business',
-    description:
-      'What does a business audit check? Your site, booking path, and follow-up — leaks priced in dollars, fixes ranked. Free scan first, $330 full audit.',
-    path: '/blog/what-does-a-business-audit-check',
-  },
   '/blog/missed-calls-crm-follow-up': {
     title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
     description:
