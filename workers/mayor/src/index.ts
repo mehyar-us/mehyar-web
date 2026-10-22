@@ -1,11 +1,10 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
-import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans} from './offer-block-ssr';
+import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} from './offer-block-ssr';
 import {auditOffer} from './billing/audit';
 import {foundingSeats} from './billing/founding';
 import {handleConnectionsRequest} from './connections';
-import {handleEngineRequest} from './engine/routes';
 import {handleConnectorEngineRequest,getConnectorSession} from './connector-engine';
 import {readHarnessRuntime} from './harness-runtime';
 import {sessionCardFor,ensureSessionCard} from './connector-session-card';
@@ -193,22 +192,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(isSalesVerticalPath(url.pathname)&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
     const target=new URL(url.pathname,request.url);
-    const assetRes=await env.ASSETS.fetch(new Request(target,request));
-    const contentType=assetRes.headers.get('content-type')??'';
-    if(assetRes.ok&&contentType.includes('text/html')){
-      // rot551 fold C4: server-render the plan cards from the live
-      // billing catalog into the page's plans section — the same
-      // renderers and the same founding seam as /sales (amounts never
-      // hardcoded; the page source stays price-free). If injection
-      // changes nothing, serve the asset as-is.
-      const original=await assetRes.text(),injected=injectVerticalPlans(original,await foundingSeats(env));
-      if(injected!==original){
-        const headers=new Headers(assetRes.headers);
-        headers.set('content-type','text/html; charset=utf-8');
-        return new Response(injected,{status:assetRes.status,headers});
-      }
-    }
-    return assetRes;
+    return env.ASSETS.fetch(new Request(target,request));
   }
   const telnyxIncoming=url.pathname.match(/^\/api\/phone\/telnyx\/incoming\/([a-f0-9-]{32,36})$/);
   const telnyxStream=url.pathname.match(/^\/api\/phone\/telnyx\/stream\/([a-f0-9-]{36})\/([a-f0-9]{64})$/);
@@ -271,8 +255,6 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const actor={tenantId:businessRoute[1],userId:session.user.id};
     const connections=await handleConnectionsRequest(request,env,actor);
     if(connections)return connections;
-    const engine=await handleEngineRequest(request,env,actor);
-    if(engine)return engine;
     const connectorEngine=await handleConnectorEngineRequest(request,env,actor);
     if(connectorEngine)return connectorEngine;
     const sessionCardRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/card$/);
