@@ -36,8 +36,8 @@ async function booking(identity=actor,state='confirmed',jobState='applied'){
  await env.AGENT_DB.batch([env.AGENT_DB.prepare("INSERT INTO mayor_appointment_jobs(id,tenant_id,actor_id,provider,grant_id,calendar_id,authorization_stamp,policy_revision,input_json,reserved_start,reserved_end,state,expires_at,created_at,updated_at) VALUES(?,?,?,'google','fixture-grant','fixture-calendar','fixture-stamp',1,?,?,?,?,?,?,?)").bind(id,identity.tenantId,identity.userId,JSON.stringify(input),start,end,jobState,now,now,now),env.AGENT_DB.prepare("INSERT INTO mayor_appointments(id,tenant_id,provider,calendar_id,event_id,input_json,state,created_at,updated_at) VALUES(?,?,'google','fixture-calendar',?,?,?,?,?)").bind(id,identity.tenantId,crypto.randomUUID(),JSON.stringify(input),state,now,now)]);return id;
 }
 
-it('exposes nine truthful templates, starts paused and requires a saved configuration',async()=>{
- const state=await readBusinessRoutines(env,actor);expect(state.catalog).toHaveLength(9);expect(new Set(state.catalog.map(item=>item.id)).size).toBe(9);
+it('exposes eight truthful templates, starts paused and requires a saved configuration',async()=>{
+ const state=await readBusinessRoutines(env,actor);expect(state.catalog).toHaveLength(8);expect(new Set(state.catalog.map(item=>item.id)).size).toBe(8);
  expect(state.config).toMatchObject({enabled:false,templateIds:['daily-priorities'],revision:0,schedule:null});expect(state.latestBrief).toBeNull();
  await expect(runBusinessRoutineNow(env,actor,{requestId:crypto.randomUUID()})).rejects.toMatchObject({code:'routine_config_required'});
  expect(businessRoutineConfigSchema.safeParse({revision:0,enabled:true,templateIds:['unknown'],schedule}).success).toBe(false);
@@ -51,7 +51,7 @@ it('runs paused saved routines with actual records, excludes unconfirmed booking
  await save(actor,false,{templateIds:BUSINESS_ROUTINE_CATALOG.map(item=>item.id)});
  const result=await runBusinessRoutineNow(env,actor,{requestId:crypto.randomUUID()});expect(result.replay).toBe(false);
  expect(Object.fromEntries(result.brief.metrics.map(metric=>[metric.key,metric.value]))).toMatchObject({open_tasks:1,overdue_tasks:1,pending_callbacks:1,bookings_next_7_days:1,saved_customers:1,customers_with_contact:1,revenue:null});
- expect(result.brief.priorities.map(item=>item.source.id)).toEqual(expect.arrayContaining([taskId,callbackId,bookingId]));expect(result.brief.suggestions).toHaveLength(9);
+ expect(result.brief.priorities.map(item=>item.source.id)).toEqual(expect.arrayContaining([taskId,callbackId,bookingId]));expect(result.brief.suggestions).toHaveLength(8);
  expect(JSON.stringify(result.brief)).not.toContain('routine-contact@example.test');expect(JSON.stringify(result.brief)).not.toContain('+12025550102');expect(result.brief.scope).toContain('nothing is sent');
  expect((await readBusinessRoutines(env,actor)).config.enabled).toBe(false);expect((await routineNotifications(env,actor))[0].id).toBe(result.brief.id);
  expect((await env.AGENT_DB.prepare('SELECT status FROM mayor_tasks WHERE id=?').bind(taskId).first<any>()).status).toBe('open');

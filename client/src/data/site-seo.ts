@@ -12,7 +12,7 @@ export type SeoMeta = {
   jsonLd?: Record<string, unknown>[];
 };
 const pages: Record<string, [string, string]> = {
-  "/mayor": ["The Mayor: AI for Your Local Business", "Meet The Mayor: business knowledge, customers, tasks, appointments and voice assistance. Free $0 and Pro $99 USD/month. Sign in to your private business workspace."],
+  "/mayor": ["The Mayor: AI for Your Local Business", "Meet The Mayor: business knowledge, customers, tasks, appointments and voice assistance. Free $0 and Pro $14 USD/month. Sign in to your private business workspace."],
   "/explore": ["Ask The Mayor: Visual AI Conversation", "Talk to The Mayor about business, AI and software. Explore visual answers and save conversations on your device by choice. No signup to begin."],
   "/enterprise": ["Custom AI for Enterprise & Regulated Teams", "Explore scoped AI and software pilots for technology, healthcare, pharma, finance and enterprise operations, with approved knowledge, access boundaries and human review."],
   "/": [
@@ -33,7 +33,7 @@ const pages: Record<string, [string, string]> = {
   ],
   "/portfolio": [
     "Work & Illustrative Workflow Patterns",
-    "Explore illustrative engagement patterns and expected deliverables.",
+    "Explore illustrative engagement patterns and expected deliverables. These are not client case studies or measured results.",
   ],
   "/apps": [
     "Products & Labs",
@@ -53,15 +53,15 @@ const pages: Record<string, [string, string]> = {
   ],
   "/micro-offer": [
     "$330 Founder-Led Audit",
-    "A focused review of your website, inquiry path and current tools with a written action plan.",
+    "A focused review of your website, inquiry path and current tools with a written action plan. Implementation is separate.",
   ],
   "/audit": [
     "Free Automated Website Diagnostic",
-    "An automated website diagnostic with suggested improvements, delivered in about 60 seconds.",
+    "An automated website diagnostic with suggested improvements. Scenario estimates are not measured business outcomes.",
   ],
   "/audit/report": [
     "$5 Automated Website Report",
-    "A fuller automated website evaluation with suggested workflows and the capacity math shown step by step.",
+    "A fuller automated website evaluation. Suggested workflows and estimates are illustrative, not implementation guarantees.",
   ],
   "/blog": [
     "Insights & Practical AI Notes",
@@ -124,7 +124,7 @@ export function resolveMeta(raw: string): SeoMeta {
     if (item)
       entry = [
         `${item.title}: Illustrative Pattern`,
-        `${item.description} An illustrative scope with expected deliverables.`,
+        `${item.description} An illustrative scope, not a measured client result.`,
       ];
   }
   if (path.startsWith("/blog/")) {

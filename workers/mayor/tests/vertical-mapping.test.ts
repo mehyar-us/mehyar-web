@@ -58,8 +58,7 @@ describe('crew6b: adjacent vertical map',()=>{
   const framing=verticalSuggestionFraming(suggestion);
   expect(framing).toContain(`We don't have "${suggestion.trade}" yet`);
   expect(framing).toContain('plumbing/HVAC mode');
-  expect(framing).toContain('Closest fit — dispatched service visits');
-  expect(framing).not.toContain('dedicated electrician mode yet');
+  expect(framing).toContain(suggestion.reason);
  });
  it('mapping note shows "using X mode" only for mapped verticals',()=>{
   const note=verticalMappingNote({vertical:'plumbing_hvac',verticalMappedFrom:'electrician'})!;

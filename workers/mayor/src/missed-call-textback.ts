@@ -3,7 +3,7 @@ import type {Actor,Env} from './env';
 import {HttpError} from './http';
 import {OPERATORS,requireMembership} from './permissions';
 import {readMemory} from './memory';
-import {verticalProfile} from './verticals';
+import {verticalProfile,textbackTemplateFor} from './verticals';
 import {renderTextback,resolveLanguage} from './i18n';
 import {telnyxManagementAccess} from './telnyx-connections';
 import {loadProactiveContext,ensureMissedCallFollowupCard,resolveMissedCallFollowupCards} from './proactive-detectors';
@@ -14,11 +14,12 @@ import {loadProactiveContext,ensureMissedCallFollowupCard,resolveMissedCallFollo
 
 const e164=z.string().regex(/^\+[1-9]\d{6,14}$/);
 
-/** Crew 6c+6d: language picks the pack (Spanish vs English), tone picks the
- * register inside the pack (professional Spanish exists too). */
+/** Crew 6c+6d: Spanish wins when language==='es' (friendly register); otherwise
+ * the tone-aware English template (professional vs friendly). */
 function textbackText(profile:ReturnType<typeof verticalProfile>,memProfile:{language?:unknown;tone?:unknown},businessName:string):string{
  const language=resolveLanguage(memProfile.language);
- return renderTextback(profile.vertical,language,businessName,memProfile.tone);
+ if(language==='es')return renderTextback(profile.vertical,language,businessName);
+ return textbackTemplateFor(profile,memProfile.tone).replace('{business}',businessName);
 }
 
 export const missedCallInputSchema=z.object({
@@ -74,7 +75,7 @@ export async function recordMissedCall(env:Env,actor:Actor,input:MissedCallInput
 const telnyxMessageResponse=z.object({data:z.object({id:z.string()})});
 
 /** Send the vertical-aware text-back via Telnyx. Updates the missed-call record and SMS log. */
-export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,transport:typeof fetch=fetch,opts?:{exceptCardId?:string}){
+export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,transport:typeof fetch=fetch){
  await requireMembership(env,actor,OPERATORS);
  const call=await env.AGENT_DB.prepare('SELECT * FROM mayor_missed_calls WHERE id=? AND tenant_id=?').bind(missedCallId,actor.tenantId).first<MissedCallRecord&{source:string}>();
  if(!call)throw new HttpError(404,'missed_call_not_found','Missed call not found.');
@@ -101,7 +102,7 @@ export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,trans
  ]);
  await notifyMissedCallTexted(env,actor,call,false);
  // A handled call leaves no stale suggestion behind (card Send path does this too).
- await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId,opts?.exceptCardId);
+ await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId);
  return {alreadySent:false,messageId};
 }
 
@@ -109,7 +110,7 @@ export async function sendTextBack(env:Env,actor:Actor,missedCallId:string,trans
  * marks the call texted, and writes the owner notification — but never touches
  * Telnyx or any real provider. This function takes no transport: simulation has
  * no network capability. Only calls recorded by the test simulator may be simulated. */
-export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string,opts?:{exceptCardId?:string}){
+export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string){
  await requireMembership(env,actor,OPERATORS);
  const call=await env.AGENT_DB.prepare('SELECT * FROM mayor_missed_calls WHERE id=? AND tenant_id=?').bind(missedCallId,actor.tenantId).first<MissedCallRecord&{source:string}>();
  if(!call)throw new HttpError(404,'missed_call_not_found','Missed call not found.');
@@ -127,7 +128,7 @@ export async function simulateTextBack(env:Env,actor:Actor,missedCallId:string,o
  ]);
  await notifyMissedCallTexted(env,actor,call,true);
  // A handled call leaves no stale suggestion behind (card Send path does this too).
- await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId,opts?.exceptCardId);
+ await resolveMissedCallFollowupCards(env,actor.tenantId,missedCallId);
  return {alreadySent:false,messageId:null,simulated:true};
 }
 

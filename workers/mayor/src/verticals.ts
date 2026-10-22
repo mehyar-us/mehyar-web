@@ -2,7 +2,7 @@ import {z} from 'zod';
 
 /** Runtime vertical profiles. The 41 docs in docs/verticals/ are the content source;
  * these 7 ship now. One `vertical` field on the business profile selects the profile.
- * Everything downstream — templates, vocabulary, detector params — keys off this. */
+ * Everything downstream — templates, vocabulary, detectors — keys off this. */
 export const verticalSchema=z.enum(['salon','restaurant','plumbing_hvac','dental','auto_repair','pet_grooming','med_spa','other']);
 export type Vertical=z.infer<typeof verticalSchema>;
 
@@ -34,6 +34,8 @@ export interface VerticalProfile{
  professionalTextbackTemplate?:string;
  professionalTextbackConfirmTemplate?:string;
  professionalReminderTemplate?:string;
+ /** What the proactive detectors watch for this vertical. */
+ detectors:string[];
  /** Per-vertical detector tuning knobs. All optional so profiles keep working
   * for other consumers; defaults live in the detector runtime. */
  detectorParams?:{
@@ -88,10 +90,11 @@ const STOP='Reply STOP to opt out.';
 export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
  salon:{vertical:'salon',label:'Hair salon / Barbershop',
   vocabulary:{customer:'client',booking:'appointment',staff:'stylist',service:'service'},
-  placesHints:['hair salon','beauty salon'],
+  placesHints:['hair salon','barber shop','beauty salon','nail salon'],
   textbackTemplate:'Hi, this is {business}. Sorry we missed your call! Want to book an appointment? Reply YES and we will find you a time. '+STOP,
   textbackConfirmTemplate:'Thanks! We will text you shortly with available times.',
   reminderTemplate:'Reminder: you have an appointment at {business} {when}. Reply CANCEL to cancel.',
+  detectors:['rebooking_gap','missed_call','slow_day','lapsed_regular'],
   detectorParams:{lapsedRegularDays:56,rebookingCycleDays:42,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
   kpis:[
    {key:'rebooking_rate',label:'Rebooking rate',hint:'Share of clients who rebook within their service cycle'},
@@ -110,10 +113,11 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
   briefingNouns:{appointments:'appointments',customers:'clients'}},
  restaurant:{vertical:'restaurant',label:'Restaurant',
   vocabulary:{customer:'guest',booking:'reservation',staff:'server',service:'table'},
-  placesHints:['restaurant','cafe','diner'],
+  placesHints:['restaurant','pizzeria','cafe','diner'],
   textbackTemplate:'Hi, this is {business}. Sorry we missed your call! Want to book a table? Reply YES and we will find you a time. '+STOP,
   textbackConfirmTemplate:'Thanks! We will text you shortly with available times.',
   reminderTemplate:'Reminder: your reservation at {business} is {when}. Reply CANCEL to cancel.',
+  detectors:['slow_night','missed_call','no_show_risk','unanswered_lead'],
   detectorParams:{lapsedRegularDays:45,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
   kpis:[
    {key:'covers',label:'Covers',hint:'Guests served tonight vs your usual pace'},
@@ -132,10 +136,11 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
   briefingNouns:{appointments:'reservations',customers:'guests'}},
  plumbing_hvac:{vertical:'plumbing_hvac',label:'Plumbing / HVAC',
   vocabulary:{customer:'customer',booking:'job',staff:'technician',service:'service'},
-  placesHints:['plumber','hvac','heating contractor'],
+  placesHints:['plumber','hvac','heating contractor','electrician'],
   textbackTemplate:'Hi, this is {business}. Sorry we missed your call! Is this urgent? Reply YES and we will get you scheduled right away. '+STOP,
-  textbackConfirmTemplate:'Got it — we will be in touch shortly.',
+  textbackConfirmTemplate:'Got it — we will call you back within 15 minutes.',
   reminderTemplate:'Reminder: your service visit with {business} is {when}. Reply CANCEL to reschedule.',
+  detectors:['after_hours_emergency','missed_call','unanswered_lead','slow_day'],
   detectorParams:{lapsedRegularDays:365,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90,afterHoursStart:'17:00',afterHoursEnd:'08:00'},
   kpis:[
    {key:'response_time',label:'Response time',hint:'Minutes from first contact to a scheduled visit'},
@@ -158,6 +163,7 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
   textbackTemplate:'Hi, this is {business}. Sorry we missed your call! Want to book a visit? Reply YES and we will find you a time. '+STOP,
   textbackConfirmTemplate:'Thanks! We will text you shortly with available times.',
   reminderTemplate:'Reminder: your visit at {business} is {when}. Reply CANCEL to cancel.',
+  detectors:['lapsed_regular','missed_call','no_show_risk','rebooking_gap'],
   detectorParams:{lapsedRegularDays:180,rebookingCycleDays:180,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
   kpis:[
    {key:'recare_rate',label:'Recare rate',hint:'Share of patients due for a cleaning who got rebooked'},
@@ -180,6 +186,7 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
   textbackTemplate:'Hi, this is {business}. Sorry we missed your call! Want to schedule service? Reply YES and we will find you a time. '+STOP,
   textbackConfirmTemplate:'Thanks! We will text you shortly with available times.',
   reminderTemplate:'Reminder: your service appointment at {business} is {when}. Reply CANCEL to cancel.',
+  detectors:['missed_call','lapsed_regular','slow_day','unanswered_lead'],
   detectorParams:{lapsedRegularDays:180,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
   kpis:[
    {key:'bay_utilization',label:'Bay utilization',hint:'Booked bay-hours vs available bay-hours'},
@@ -202,6 +209,7 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
   textbackTemplate:'Hi, this is {business}. Sorry we missed your call! Want to book a grooming appointment? Reply YES and we will find a spot for your pet. '+STOP,
   textbackConfirmTemplate:'Thanks! We will text you shortly with open grooming times.',
   reminderTemplate:'Reminder: your pet has a grooming appointment at {business} {when}. Reply CANCEL to cancel.',
+  detectors:['rebooking_gap','missed_call','slow_day','lapsed_regular','no_show_risk'],
   detectorParams:{lapsedRegularDays:70,rebookingCycleDays:49,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
   kpis:[
    {key:'rebooking_rate',label:'Rebooking rate',hint:'Share of clients who rebook within their grooming cycle'},
@@ -223,13 +231,14 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
   placesHints:['med spa','medical spa','botox','laser hair removal'],
   textbackTemplate:'Hi, this is {business}. Sorry we missed your call. Would you like to book a consultation? Reply YES and we will find you a time. '+STOP,
   textbackConfirmTemplate:'Thank you — we will text you shortly with available times.',
-  reminderTemplate:'Reminder: your treatment at {business} is {when}. Reply CANCEL to cancel. If you cannot make it, please let us know in advance.',
+  reminderTemplate:'Reminder: your treatment at {business} is {when}. Reply CANCEL to cancel.',
+  detectors:['no_show_risk','rebooking_gap','missed_call','lapsed_regular'],
   detectorParams:{lapsedRegularDays:120,rebookingCycleDays:90,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
   kpis:[
    {key:'rebooking_rate',label:'Rebooking rate',hint:'Share of clients who rebook within their treatment cycle'},
    {key:'room_utilization',label:'Room utilization',hint:'Booked treatment room-hours vs available room-hours'},
    {key:'avg_ticket',label:'Average ticket',hint:'Average revenue per visit, per client'},
-   {key:'no_show_rate',label:'No-show rate',hint:'Share of appointments that never showed — each one is a visit you already staffed for'},
+   {key:'no_show_rate',label:'No-show rate',hint:'Share of appointments that never showed — one missed visit can cost $400 or more'},
   ],
   onboardingQuestions:[
    {field:'treatments',question:'What treatments do you offer, and what do you charge? You can type it out or paste your menu.'},
@@ -247,6 +256,7 @@ export const VERTICAL_PROFILES:Record<Vertical,VerticalProfile>={
   textbackTemplate:'Hi, this is {business}. Sorry we missed your call! Reply YES and we will get back to you shortly. '+STOP,
   textbackConfirmTemplate:'Thanks! We will be in touch shortly.',
   reminderTemplate:'Reminder: your appointment at {business} is {when}. Reply CANCEL to cancel.',
+  detectors:['missed_call','unanswered_lead','slow_day'],
   detectorParams:{lapsedRegularDays:90,slowDayMinGapMinutes:120,unansweredLeadMinutes:120,noShowLookbackDays:90},
   kpis:[
    {key:'missed_call_catch',label:'Missed-call catch',hint:'Missed calls we texted back before the customer moved on'},
@@ -270,7 +280,7 @@ export function verticalProfile(vertical:string|undefined|null):VerticalProfile{
  * define its own professional*Template overrides. */
 export const PROFESSIONAL_TEXTBACK_TEMPLATE='This is {business}. We missed your call and will follow up shortly. '+STOP;
 export const PROFESSIONAL_TEXTBACK_CONFIRM_TEMPLATE='Thank you. We will be in touch shortly.';
-export const PROFESSIONAL_REMINDER_TEMPLATE='Reminder: your {booking} at {business} is {when}. Reply CANCEL to cancel.';
+export const PROFESSIONAL_REMINDER_TEMPLATE='Reminder: your appointment at {business} is {when}. Reply CANCEL to cancel.';
 /** Tone-aware template selectors. Everything that renders customer SMS goes
  * through these, so the professional register follows automatically. */
 export function textbackTemplateFor(profile:VerticalProfile,tone:unknown):string{
@@ -280,9 +290,7 @@ export function textbackConfirmTemplateFor(profile:VerticalProfile,tone:unknown)
  return isProfessionalTone(tone)?(profile.professionalTextbackConfirmTemplate??PROFESSIONAL_TEXTBACK_CONFIRM_TEMPLATE):profile.textbackConfirmTemplate;
 }
 export function reminderTemplateFor(profile:VerticalProfile,tone:unknown):string{
- const booking=profile.vocabulary.booking;
- if(isProfessionalTone(tone))return (profile.professionalReminderTemplate??PROFESSIONAL_REMINDER_TEMPLATE).replace('{booking}',booking);
- return profile.reminderTemplate;
+ return isProfessionalTone(tone)?(profile.professionalReminderTemplate??PROFESSIONAL_REMINDER_TEMPLATE):profile.reminderTemplate;
 }
 /** Professional variants of the inline proactive suggestion drafts (win-back,
  * lead-reply, fill-gap). {name}, {business} are replaced at render time;

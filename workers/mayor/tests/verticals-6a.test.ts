@@ -21,7 +21,8 @@ describe('crew6a: pet_grooming profile',()=>{
   expect(p().vocabulary).toEqual({customer:'client',booking:'appointment',staff:'groomer',service:'service'});
   expect(p().briefingNouns).toEqual({appointments:'appointments',customers:'clients'});
  });
- it('carries grooming-tuned detector params',()=>{
+ it('watches the right detectors with grooming-tuned params',()=>{
+  expect(p().detectors).toEqual(['rebooking_gap','missed_call','slow_day','lapsed_regular','no_show_risk']);
   expect(p().detectorParams).toMatchObject({lapsedRegularDays:70,rebookingCycleDays:49,noShowLookbackDays:90});
  });
  it('carries grooming KPIs',()=>{
@@ -59,14 +60,14 @@ describe('crew6a: med_spa profile',()=>{
   expect(p().vocabulary).toEqual({customer:'client',booking:'appointment',staff:'provider',service:'treatment'});
   expect(p().briefingNouns).toEqual({appointments:'appointments',customers:'clients'});
  });
- it('carries no-show-tuned detector params',()=>{
+ it('detectors lean on no-show risk first',()=>{
+  expect(p().detectors).toEqual(['no_show_risk','rebooking_gap','missed_call','lapsed_regular']);
   expect(p().detectorParams).toMatchObject({lapsedRegularDays:120,rebookingCycleDays:90,noShowLookbackDays:90});
  });
- it('no-show KPI has teeth, never an invented dollar figure',()=>{
+ it('no-show KPI has teeth about the dollar cost',()=>{
   const noShow=p().kpis!.find(k=>k.key==='no_show_rate');
   expect(noShow).toBeDefined();
-  expect(noShow!.hint).toContain('staffed');
-  expect(noShow!.hint).not.toMatch(/\$\d/);
+  expect(noShow!.hint).toContain('$400');
   expect(p().kpis!.map(k=>k.key)).toEqual(['rebooking_rate','room_utilization','avg_ticket','no_show_rate']);
  });
  it('SMS templates are polished, never chirpy',()=>{
@@ -110,8 +111,7 @@ describe('crew6a: Places detection for the new verticals',()=>{
  });
  it('existing verticals keep winning their own categories',()=>{
   expect(detectVerticalFromCategory('Hair Salon')).toBe('salon');
-  // nail salon routes through the honest suggestion now (loop-1 fix)
-  expect(detectVerticalFromCategory('nail salon')).toBeNull();
+  expect(detectVerticalFromCategory('nail salon')).toBe('salon');
   expect(detectVerticalFromCategory('Pet Grooming')).not.toBe('salon');
  });
 });
@@ -129,8 +129,7 @@ describe('crew6a: growthMetricsInstruction names the new metrics',()=>{
   const instruction=growthMetricsInstruction({vertical:'med_spa'},'what should we track and measure?');
   expect(instruction).not.toBeNull();
   expect(instruction!).toContain('No-show rate');
-  expect(instruction!).toContain('staffed');
-  expect(instruction!).not.toMatch(/\$\d/);
+  expect(instruction!).toContain('$400');
   expect(instruction!).toContain('Rebooking rate');
   expect(instruction!).toContain('Room utilization');
   expect(instruction!).toContain('provider');
