@@ -110,7 +110,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          This site is intentionally low-cookie. The persistent client-side storage in use is:
+          This site is intentionally low-cookie. The only persistent client-side storage in current use is:
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
@@ -129,25 +129,15 @@ const sections: Section[] = [
             A short-lived sidebar <code>sidebar_state</code> cookie on admin pages. Not used by the
             public site.
           </li>
-          <li>
-            A first-party visitor cookie, <code>mh_vid</code> — a random visitor identifier (no
-            name, no account information) set by our own analytics, described below. It lasts up
-            to one year.
-          </li>
         </ul>
         <p className="mt-2">
-          <strong>Analytics:</strong> Our own analytics is first-party: we operate it ourselves,
-          its data is stored in our own systems, and it is never sold. It records pages viewed,
-          links and buttons clicked, time engaged with a page, and — on our product sites —
-          funnel steps such as starting a checkout or completing a purchase, tied to the{" "}
-          <code>mh_vid</code> visitor identifier. Events are sent to our own collection endpoint
-          at <code>mayor.mehyar.us</code>. Collection honors Do Not Track and Global Privacy
-          Control signals, and stops if you decline cookies/analytics where a site offers that
-          choice. This site also loads <strong>Google Analytics 4</strong> (measurement ID{" "}
-          <code>G-25N8E18944</code>), which sets <code>_ga</code> cookies —{" "}
-          <strong>only after you click &quot;Accept&quot; on our cookie banner</strong>; if you
-          click &quot;Decline,&quot; it does not load. Separately, aggregate traffic visibility
-          comes from Cloudflare&apos;s server-side request logs, which we can read but do not
+          <strong>Analytics:</strong> we use <strong>Google Analytics 4</strong> (measurement ID{" "}
+          <code>G-25N8E18944</code>) to understand aggregate site traffic — which pages are visited,
+          roughly where visitors come from, and which buttons get clicked. It sets <code>_ga</code>{" "}
+          cookies in your browser for that purpose. <strong>It only loads after you click
+          &quot;Accept&quot; on our cookie banner</strong> — if you click &quot;Decline,&quot; no
+          analytics script loads and no <code>_ga</code> cookie is set. Aggregate traffic visibility
+          also comes from Cloudflare&apos;s server-side request logs, which we can read but do not
           share. You can also opt out of Google Analytics entirely with{" "}
           <a className="text-brand-700 underline dark:text-brand-100" href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">
             Google&apos;s opt-out add-on
@@ -227,7 +217,7 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized coloring books.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">jobs.mehyar — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="font-semibold">mehyar.jobs — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Fit-scored career listings.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
@@ -292,11 +282,11 @@ const sections: Section[] = [
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">The Mayor — <a className="text-brand-700 underline dark:text-brand-100" href="https://mayor.mehyar.us" target="_blank" rel="noreferrer">mayor.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             {/* PRICING: update when the $39 catalog ships (see ~/workspace/mayor-pilot/pricing-39.diff) */}
-            <div className="text-sm text-muted-foreground">AI business assistant for local service businesses — customers, appointments, playbooks, and voice. Free plan; $99/month Pro; one-time credit packs from $4.</div>
+            <div className="text-sm text-muted-foreground">AI business assistant for local service businesses — customers, appointments, playbooks, and voice. Free plan; $14/month Pro; one-time credit packs from $4.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Moonroom — <a className="text-brand-700 underline dark:text-brand-100" href="https://moonroom.mehyar.us" target="_blank" rel="noreferrer">moonroom.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI photo studio: studio portraits from one selfie — $49 headshot packs, $39 product-photo studio, $29 theme packs. One-time payments, no subscription.</div>
+            <div className="text-sm text-muted-foreground">AI photo studio: studio portraits from one selfie — $24 headshot packs, $15 product-photo studio, $9 theme packs. One-time payments, no subscription.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Audit My Business — <a className="text-brand-700 underline dark:text-brand-100" href="https://mehyar.us/audit/" target="_blank" rel="noreferrer">mehyar.us/audit <ExternalLink className="inline h-3 w-3" /></a></div>
@@ -306,16 +296,10 @@ const sections: Section[] = [
             <div className="font-semibold">DUST — <a className="text-brand-700 underline dark:text-brand-100" href="https://dust.mehyar.us" target="_blank" rel="noreferrer">dust.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Meme-coin experiment: the 7-day Great Sweep distributes 100% of the $DUST supply pro-rata to sweepers — no presale, no insiders. Currently testnet only; nothing for sale. 18+.</div>
           </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Clipnote — <a className="text-brand-700 underline dark:text-brand-100" href="https://clipnote.mehyar.us" target="_blank" rel="noreferrer">clipnote.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Release notes in, a polished 60-second narrated launch video out — free script preview, $29 per video or $19/mo for 4 videos.</div>
-          </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Billcut — <a className="text-brand-700 underline dark:text-brand-100" href="https://billcut.mehyar.us" target="_blank" rel="noreferrer">billcut.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Statement audit: upload a bank or card statement and get every recurring charge ranked by yearly cost, with a cancel or negotiation script for each. $9 one-time full audit; $7/month monitoring. No bank login is required; your file is deleted right after it's read. Optional: after purchase you may connect an account read-only through Stripe Financial Connections — the login happens on Stripe's hosted window, Billcut never receives bank credentials, only the transactions permission is requested, raw transactions are processed and discarded (only the connection identifier and the audit summary are kept), and you can disconnect anytime from your report page.</div>
-            <div className="font-semibold">Coach — <a className="text-brand-700 underline dark:text-brand-100" href="https://coach.mehyar.us" target="_blank" rel="noreferrer">coach.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI job-search copilot: paste your resume and the job post and Coach tailors the resume to that job (rewritten summary, re-aimed bullets, honest keyword-gap list) and runs STAR interview practice with per-element scores. Free preview; Coach Pro is a $19/month subscription, cancel anytime via the Stripe customer portal. Paste-text intake only — resume and job-post text are stored only behind a private session token and can be deleted in-product at any time. Coach does not guarantee interviews or jobs, and its AI drafts must be reviewed and made true by the user before sending.</div>
           </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
@@ -331,20 +315,12 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">The 30-Day Content Playbook — free hook teaser, $27 full playbook with posting plan.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">Clipnote — <a className="text-brand-700 underline dark:text-brand-100" href="https://clipnote.mehyar.us" target="_blank" rel="noreferrer">clipnote.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Release notes → 60-second narrated launch video. Free script preview; $29/video or $19/mo for 4.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">WattWise — <a className="text-brand-700 underline dark:text-brand-100" href="https://wattwise.mehyar.us" target="_blank" rel="noreferrer">wattwise.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Electric-bill checker — free rate gauge from a bill photo, $14.99 full audit, $7.99/mo monitoring.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Memoir — <a className="text-brand-700 underline dark:text-brand-100" href="https://memoir.mehyar.us" target="_blank" rel="noreferrer">memoir.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI-guided memoir interviewer: a 12-chapter interview compiles a storyteller's own answers into a finished book (web + PDF + print-ready files). Free Sample Chapter; $79 Digital or $149 Complete, one-time — no subscription. We collect only the storyteller's name and relationship, the buyer's email, and the interview answers; stories live behind a private link, are never used for marketing or sold, and can be deleted in-product at any time. Complete includes print-ready files only — no book is mailed.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">ValleyGods — <a className="text-brand-700 underline dark:text-brand-100" href="https://valleygods.mehyar.us" target="_blank" rel="noreferrer">valleygods.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">A living AI town of 150 Minimes — free to watch, read their Mindlogs, or sign in to occupy one. Free, no paid tier.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Visakit — <a className="text-brand-700 underline dark:text-brand-100" href="https://visakit.mehyar.us" target="_blank" rel="noreferrer">visakit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI tourist-visa application preparation — five routes live, any route on request, $39 per pack ($29 early-bird for the first 25 packs). Preparation help only; visa decisions belong to the consulate.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites (white-label)</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and selected hosted-PWA tenants under <code>connectree-*</code> / <code>blue-apple-space-*</code> namespaces.</div>
