@@ -101,18 +101,17 @@ export async function onRequestPost({ request, env }) {
       "Didn't ask for this? Someone typed your email into the cancel page; you can ignore this message and nothing changes.</p>" +
       "<p>— TicketBeat (Mehyar Soft LLC)</p>";
 
-    // Prefer the purpose-built email credential set: the project's
-    // CLOUDFLARE_API_KEY is a scoped token and fails x-auth-key auth against
-    // the Email Sending API, while CF_EMAIL_GLOBAL_KEY is the global key
-    // that endpoint requires (diagnosed rot520: raw global-key send queued,
-    // helper-default send silently failed). Shim only this call's env; the
-    // shared helper and every other caller keep their behavior.
-    const mailEnv = {
-      ...env,
-      CLOUDFLARE_API_KEY: env.CF_EMAIL_GLOBAL_KEY || env.CLOUDFLARE_API_KEY,
-      CLOUDFLARE_EMAIL: env.CF_EMAIL || env.CLOUDFLARE_EMAIL,
-    };
-    const sent = await sendCloudflareEmail(mailEnv, {
+    // Send path (rot520 diagnosis): the project's CLOUDFLARE_API_KEY and
+    // CF_EMAIL_GLOBAL_KEY secrets are EMPTY in the runtime (zeroed by a past
+    // env read-modify-write; the presence map proved ckey=0/cfkey=0 while
+    // CLOUDFLARE_EMAIL and STRIPE_SECRET_KEY are present), so the shared
+    // helper's x-auth-key path returns not_configured here. This endpoint
+    // therefore sends with its own scoped credential: CANCEL_LOOKUP_MAIL_TOKEN,
+    // an API token minted with only the Email Sending Write permission,
+    // calling the same Email Sending API with Bearer auth (probe-verified
+    // 200/queued). If that var is ever absent, fall back to the shared
+    // helper in case the project keys get restored.
+    const message = {
       to: payment.email,
       from: "info@mehyar.us",
       fromName: "TicketBeat",
@@ -120,7 +119,45 @@ export async function onRequestPost({ request, env }) {
       subject: "Your TicketBeat Watchdog cancel link",
       text,
       html,
-    });
+    };
+    let sent;
+    if (env.CANCEL_LOOKUP_MAIL_TOKEN) {
+      try {
+        const accountId = env.CF_EMAIL_ACCOUNT_ID || env.CLOUDFLARE_ACCOUNT_ID;
+        const r = await fetch(
+          "https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(accountId) + "/email/sending/send",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: "Bearer " + env.CANCEL_LOOKUP_MAIL_TOKEN,
+            },
+            body: JSON.stringify({
+              to: message.to,
+              from: { address: message.from, name: message.fromName },
+              reply_to: message.replyTo,
+              subject: message.subject,
+              text: message.text,
+              html: message.html,
+            }),
+            signal: AbortSignal.timeout(20000),
+          }
+        );
+        const payload = await r.json().catch(() => ({}));
+        if (r.ok && payload?.success !== false) {
+          const delivered = Array.isArray(payload?.result?.delivered) ? payload.result.delivered : [];
+          const queued = Array.isArray(payload?.result?.queued) ? payload.result.queued : [];
+          sent = { ok: true, status: delivered.length ? "delivered" : queued.length ? "queued" : "accepted" };
+        } else {
+          const firstError = Array.isArray(payload?.errors) ? payload.errors[0] : null;
+          sent = { ok: false, status: "cloudflare_email_" + r.status, error: String(firstError?.message || "cloudflare_email_send_failed").slice(0, 300) };
+        }
+      } catch (e) {
+        sent = { ok: false, status: "send_exception", error: String(e && e.message).slice(0, 300) };
+      }
+    } else {
+      sent = await sendCloudflareEmail(env, message);
+    }
     if (!sent.ok) console.error("cancel-lookup send failed:", sent.status, sent.error || "");
     let sendErr = sent.ok ? "" : sent.error || "";
     if (!sent.ok && sent.status === "not_configured") {
@@ -129,7 +166,8 @@ export async function onRequestPost({ request, env }) {
       const P = (v) => (v ? "1" : "0");
       sendErr += " | acct=" + P(env.CF_EMAIL_ACCOUNT_ID || env.CLOUDFLARE_ACCOUNT_ID) +
         " cem=" + P(env.CLOUDFLARE_EMAIL) + " ckey=" + P(env.CLOUDFLARE_API_KEY) +
-        " cfkey=" + P(env.CF_EMAIL_GLOBAL_KEY) + " stripe=" + P(env.STRIPE_SECRET_KEY) +
+        " cfkey=" + P(env.CF_EMAIL_GLOBAL_KEY) + " mailtok=" + P(env.CANCEL_LOOKUP_MAIL_TOKEN) +
+        " stripe=" + P(env.STRIPE_SECRET_KEY) +
         " envname=" + P(env.ENVIRONMENT) + " from=" + P(env.CONTACT_FROM_EMAIL);
     }
     await log(sent.status || (sent.ok ? "ok" : "unknown"), sendErr);
