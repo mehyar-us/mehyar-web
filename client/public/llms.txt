@@ -76,7 +76,7 @@ MehyarSoft LLC owns and operates 33 products:
 - **The Mayor** (https://mayor.mehyar.us) — The AI built for each business.
 - **Legit** (https://legit.mehyar.us) — An AI advisor for forming your LLC.
 - **Moonroom** (https://moonroom.mehyar.us) — Studio portraits from one selfie.
-- **Audit My Business** (https://mehyar.us/audit/) — A $330 AI audit that finds where your business is leaking money. Starts with a free scan; the $5 Full Report credits in full toward the audit ($325 at checkout).
+- **Audit My Business** (https://mehyar.us/audit/) — A $330 AI audit that finds where your business is leaking money.
 - **DUST** (https://dust.mehyar.us) — Your dust is a lottery ticket.
 - **Billcut** (https://billcut.mehyar.us) — Find money you're missing.
 - **Coach** (https://coach.mehyar.us) — Your resume, aimed at this job. Your interview, rehearsed.
