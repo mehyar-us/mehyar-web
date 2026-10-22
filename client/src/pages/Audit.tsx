@@ -1362,6 +1362,12 @@ export default function Audit() {
                 {checkoutOpen === false ? (<>Checkout is briefly unavailable</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : creditInfo?.eligible ? (<>Pay ${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")} — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
               <p className="text-center text-xs text-muted-foreground">One-time payment · {creditInfo?.eligible ? `$${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")}` : "$330"} · Report emailed with a permanent link</p>
+              <p className="text-center text-xs text-muted-foreground">
+                All sales are final — Audit My Business is a one-time digital service, and purchases are not
+                refundable. If your report hasn&rsquo;t arrived within 3–5 business days, email{" "}
+                <a href="mailto:info@mehyar.us" className="underline underline-offset-2 hover:text-foreground">info@mehyar.us</a>{" "}
+                and we&rsquo;ll re-send it right away.
+              </p>
             </form>
           </CardContent>
         </Card>
