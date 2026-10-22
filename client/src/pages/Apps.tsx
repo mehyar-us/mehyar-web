@@ -10,7 +10,6 @@ interface ManagedApp {
   id: string;
   name: string;
   url: string;
-  facebook?: string;
   tagline: string;
   description: string;
   audience: string;
@@ -381,8 +380,7 @@ const managedApps: ManagedApp[] = [
     id: "mayor",
     name: "The Mayor",
     url: "https://mayor.mehyar.us",
-    tagline: "Mayor. Talk to your business.",
-    facebook: "https://www.facebook.com/profile.php?id=61595399794348",
+    tagline: "The AI built for each business.",
     description:
       // PRICING: mirrors the live Mayor catalog (Pro $99/mo since 2026-10-16).
       "AI business workspace for Main Street: customers, appointments, playbooks, and voice — with a $99/mo Pro plan (founding cohort $79.20/mo for life) and one-time credit packs.",
@@ -419,7 +417,7 @@ const managedApps: ManagedApp[] = [
     url: "https://moonroom.mehyar.us",
     tagline: "Studio portraits from one selfie.",
     description:
-      "AI photo studio that turns one selfie into studio portraits: $49 headshot packs, $39 product-photo backgrounds for sellers, $29 seasonal theme packs. One-time payments — no subscription.",
+      "AI photo studio that turns one selfie into studio portraits: $24 headshot packs, $15 product-photo backgrounds for sellers, $9 seasonal theme packs. One-time payments — no subscription.",
     audience: "Job seekers and professionals who need a great headshot, and online sellers who need clean product photos without a photo shoot.",
     highlights: [
       "AI headshot packs, product photos, and themed portraits from a single selfie",
@@ -585,40 +583,6 @@ const managedApps: ManagedApp[] = [
     logo: "/assets/memoir-logo.png",
     accentClass: "from-orange-100 to-white dark:from-orange-900 dark:to-orange-950",
   },
-  {
-    id: "valleygods",
-    name: "ValleyGods",
-    url: "https://valleygods.mehyar.us",
-    tagline: "Watch them live. Read their minds. Play their god.",
-    description:
-      "ValleyGods is a living AI town of 150 Minimes — simulated people with homes, jobs, relationships, and minds you can actually read. Watch the town live for free with no sign-in, open any Minime to see what they're doing, where they're headed, and what they're thinking (their Mindlog). Sign in with Google to occupy exactly one Minime and god-nudge their life.",
-    audience: "Anyone curious about emergent AI life — simulation and worldbuilding fans who want to watch a town think, and quietly steer one life inside it.",
-    highlights: [
-      "Free to watch live — no sign-in, the town is the homepage",
-      "150 Minimes with homes, jobs, schedules, and readable minds (Mindlog)",
-      "Open any Minime: what they're doing, where they're headed, what they're thinking",
-      "Sign in with Google to occupy one Minime and god-nudge their life",
-    ],
-    logo: "/assets/valleygods-logo.png",
-    accentClass: "from-purple-100 to-white dark:from-purple-900 dark:to-purple-950",
-  },
-  {
-    id: "visakit",
-    name: "Visakit",
-    url: "https://visakit.mehyar.us",
-    tagline: "Your visa application pack, prepared for you — five routes live, any route on request.",
-    description:
-      "A tourist-visa application pack, prepared for you: a free eligibility pre-check, a document checklist built for your exact route, your forms filled from your documents, and a human review before you submit. Live routes today: Egypt, Pakistan, Nigeria, and Morocco to Schengen, plus Egypt to the UK — any other route can be requested in the pre-check. $39 per pack ($29 early-bird for the first 25 packs). We prepare applications; visa decisions are made by consulates.",
-    audience: "Travelers whose passports make tourist visas hard — any nationality, any destination: five routes live today, every other route on request.",
-    highlights: [
-      "Eligibility pre-check first — know where you stand before you pay",
-      "A document checklist built for your case, not a generic template",
-      "Prepared form-data pack as a PDF, human-reviewed before delivery",
-      "$39 per prepared pack ($29 early-bird) — per trip, no subscription",
-    ],
-    logo: "/assets/visakit-logo.png",
-    accentClass: "from-rose-100 to-white dark:from-rose-900 dark:to-rose-950",
-  },
 ];
 
 const buildPillars = [
@@ -767,16 +731,6 @@ const Apps = () => {
                     >
                       Read the launch note
                     </Link>
-                    {app.facebook ? (
-                      <a
-                        href={app.facebook}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={buttonVariants({ variant: "outline", size: "sm" })}
-                      >
-                        Facebook Page
-                      </a>
-                    ) : null}
                   </div>
                 </CardContent>
               </Card>
@@ -870,7 +824,7 @@ const Apps = () => {
             <Link href="/data-deletion" className="text-brand-700 underline dark:text-brand-100">
               See the data-deletion policy
             </Link>{" "}
-            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise, Memoir, ValleyGods, Visakit), and the request form.
+            for the full process, product-by-product details (Rizza, AiMech, Designful, Sprint30, BizBuilder, CreditFix Kit, HustleKit, PLR Vault, PromptPack Pro, BeachCall, PureTap, TicketBeat, FloodLens, The Mayor, Moonroom, Audit My Business, DUST, Billcut, Coach, Legit, SproutScore, Playbook, Clipnote, WattWise, Memoir), and the request form.
           </p>
         </div>
       </section>

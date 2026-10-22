@@ -134,9 +134,7 @@ it('audit offer card renders from AUDIT_OFFER and injects on /sales and /pricing
   // rot127: review wording matches the Terms phrase ("separate AI review").
   expect(card).toContain('separate AI review');
   expect(card).not.toContain('independently reviewed');
-  // Scope ruling (2026-10-17): the cross-sell card carries no final-sale
-  // line; the line lives on the /business-audit checkout itself.
-  expect(card).not.toContain('Purchases are final');
+  expect(card).toContain('Purchases are final — no refunds.');
   expect(card).toContain('href="/business-audit"');
   const sales=injectSalesPlans(readWeb('sales.html'));
   expect(sales).toContain(`$${AUDIT_OFFER.priceCents/100}`);
@@ -274,7 +272,7 @@ it('footers share one canonical brand set',()=>{
     const html=readWeb(f);
     expect(html,`${f} brand`).toContain('The Mayor');
     expect(html,`${f} company`).toMatch(/MEHYARSOFT LLC|MehyarSoft LLC/);
-    expect(html,`${f} no-refunds`).not.toContain('Purchases are final'); // scope ruling 2026-10-17
+    expect(html,`${f} no-refunds`).toContain('Purchases are final');
   }
   const index=readWeb('index.html');
   expect(index).toContain('The Mayor · MehyarSoft LLC');
@@ -313,17 +311,12 @@ it('rot152: counting notes reach the homepage offer block + mic-minutes counting
 
 it('rot156: slogan on all three heroes + homepage hero price anchor from the catalog',()=>{
  const pro=PLANS.find(p=>p.id==='pro')!;
- for(const f of ['sales.html','pricing.html'])expect(readWeb(f)).toContain('<p class="hero-slogan">Mayor. Talk to your business.</p>');
+ for(const f of ['index.html','sales.html','pricing.html'])expect(readWeb(f)).toContain('<p class="hero-slogan">Mayor. Talk to your business.</p>');
  const home=readWeb('index.html');
  expect(home).toContain('<p class="hero-price" id="hero-price"></p>'); // ships empty; SSR fills it
  // rot173: the anchor is a direct #chat-view child, NOT inside .page-heading
  // (heading-scoped CSS in the chat layout can clip it there).
- // Chat reenvision Slice 1 (2026-10-21): .page-heading and .voice-stage are
- // deleted from the chat view — the presence bar replaces them and the
- // slogan leaves the in-product surface (it stays on the /sales + /pricing
- // heroes and in the homepage <title>). The anchor now sits directly
- // before the ChatApp mount.
- expect(home).toContain('<p class="hero-price" id="hero-price"></p><div id="chat-app">');
+ expect(home).toContain('</div><p class="hero-price" id="hero-price"></p><div class="voice-stage">');
  const filled=injectHeroPrice(home);
  expect(filled).toContain(`<p class="hero-price" id="hero-price"><a href="/?start=1">Start free</a> \u00b7 Pro $${pro.priceCents/100}/mo</p>`);
  // Client fallback derives the identical string from a fetched catalog.

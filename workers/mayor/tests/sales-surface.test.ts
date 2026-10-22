@@ -72,13 +72,13 @@ it('carries the vision pitch and never names the product Jarvis',()=>{
  expect(standalone).toEqual([]);
 });
 
-it('carries the legal footer (no final-sale line per the 2026-10-17 scope ruling) and no street address',()=>{
+it('carries the legal footer with purchases-final and no street address',()=>{
  expect(html).toContain('MehyarSoft LLC');
  expect(html).toContain('href="/terms"');
  expect(html).toContain('https://mehyar.us/privacy-policy/');
  expect(html).toContain('https://mehyar.us/terms/');
  expect(html).toContain('https://mehyar.us/data-deletion/');
- expect(html).not.toContain('Purchases are final');
+ expect(html).toContain('Purchases are final');
  expect(html).toContain('mailto:info@mehyar.us');
  expect(html).not.toContain('96th St');
  expect(html).not.toContain('11209');

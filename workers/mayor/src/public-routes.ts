@@ -33,10 +33,6 @@ export function isPublicAssetPath(path:string):boolean{
   if(path==='/how-much-does-a-missed-call-cost'||path==='/how-much-does-a-missed-call-cost.html')return true;
   if(path==='/ai-receptionist-vs-answering-service'||path==='/ai-receptionist-vs-answering-service.html')return true;
   if(path==='/missed-call-text-back'||path==='/missed-call-text-back.html')return true;
-  // SEO blog (daily articles from the marketing SEO engine): static files in
-  // web/public/blog/ — article pages (bare or .html) and their .webp images.
-  // A new article ships by adding its file + a sitemap line; no route change.
-  if(/^\/blog\/[a-z0-9]+(?:-[a-z0-9]+)*(\.html|\.webp|\.css)?$/.test(path))return true;
   if(path==='/pricing'||path==='/pricing.html')return true;
   if(path==='/robots.txt'||path==='/sitemap.xml'||path==='/llms.txt'||path==='/favicon.ico')return true;
   if(path==='/a1b2c3d4e5f6478899aabbccddeeff00.txt')return true;
