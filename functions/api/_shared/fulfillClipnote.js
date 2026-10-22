@@ -70,15 +70,18 @@ export async function fulfillClipnote({ db, env, waitUntil, sendEmail }, payment
     const run = async () => {
       try {
         const watch = `${baseUrl(env)}/#create`;
+        const planUrl = `${baseUrl(env)}/plan?token=${accessToken}`;
         const subject = "Your Clipnote Plan is active — 4 video credits added";
         const text =
           `Welcome to the Clipnote Plan!\n\n` +
           `4 video credits are now on ${email}. Draft a script from your next changelog, then choose "Use a plan credit" to render it.\n\n` +
-          `Start here:\n${watch}\n\n-- ${fromName}`;
+          `Start here:\n${watch}\n\n` +
+          `Manage your plan or cancel anytime:\n${planUrl}\n\n-- ${fromName}`;
         const html =
           `<p>Welcome to the <strong>Clipnote Plan</strong>!</p>` +
           `<p>4 video credits are now on <strong>${email}</strong>. Draft a script from your next changelog, then choose "Use a plan credit" to render it.</p>` +
           `<p><a href="${watch}" style="display:inline-block;background:#7c3aed;color:#ffffff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;">Draft your next script</a></p>` +
+          `<p><a href="${planUrl}">Manage your plan or cancel anytime</a></p>` +
           `<p>-- ${fromName}</p>`;
         const result = await sendEmail(env, { from, fromName, to: payment.email, replyTo: "info@mehyar.us", subject, text, html });
         if (!result.ok) console.error("fulfillClipnote credits email failed", result.error);
