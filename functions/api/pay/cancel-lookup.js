@@ -122,7 +122,17 @@ export async function onRequestPost({ request, env }) {
       html,
     });
     if (!sent.ok) console.error("cancel-lookup send failed:", sent.status, sent.error || "");
-    await log(sent.status || (sent.ok ? "ok" : "unknown"), sent.ok ? "" : sent.error || "");
+    let sendErr = sent.ok ? "" : sent.error || "";
+    if (!sent.ok && sent.status === "not_configured") {
+      // Presence map only (1/0 per name, never values): names the exact
+      // credential the runtime lacks so the config gap is fixable in one step.
+      const P = (v) => (v ? "1" : "0");
+      sendErr += " | acct=" + P(env.CF_EMAIL_ACCOUNT_ID || env.CLOUDFLARE_ACCOUNT_ID) +
+        " cem=" + P(env.CLOUDFLARE_EMAIL) + " ckey=" + P(env.CLOUDFLARE_API_KEY) +
+        " cfkey=" + P(env.CF_EMAIL_GLOBAL_KEY) + " stripe=" + P(env.STRIPE_SECRET_KEY) +
+        " envname=" + P(env.ENVIRONMENT) + " from=" + P(env.CONTACT_FROM_EMAIL);
+    }
+    await log(sent.status || (sent.ok ? "ok" : "unknown"), sendErr);
     return json({ ok: true });
   } catch (e) {
     console.error("cancel-lookup error:", e && e.message);
