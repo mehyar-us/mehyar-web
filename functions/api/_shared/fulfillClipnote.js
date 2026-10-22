@@ -154,7 +154,7 @@ export async function fulfillClipnote({ db, env, waitUntil, sendEmail }, payment
           `<p><a href="${watch}" style="display:inline-block;background:#7c3aed;color:#ffffff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;">Draft your next script</a></p>` +
           `<p><a href="${planUrl}">Manage your plan or cancel anytime</a></p>` +
           `<p>-- ${fromName}</p>`;
-        const result = await sendWithFallback(env, db, sendEmail, payment.id, "plan_welcome", { from, fromName, to: payment.email, replyTo: "team@mehyar.us", subject, text, html });
+        const result = await sendWithFallback(env, db, sendEmail, payment.id, "plan_welcome", { from, fromName, to: payment.email, replyTo: "info@mehyar.us", subject, text, html });
         if (!result.ok) console.error("fulfillClipnote credits email failed", result.error);
       } catch (e) {
         console.error("fulfillClipnote credits email threw", e && e.message);
@@ -212,7 +212,7 @@ export async function fulfillClipnote({ db, env, waitUntil, sendEmail }, payment
         `<p><a href="${watchUrl}" style="display:inline-block;background:#7c3aed;color:#ffffff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;">Watch progress</a></p>` +
         `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${watchUrl}">${watchUrl}</a></p>` +
         `<p>-- ${fromName}</p>`;
-      const result = await sendWithFallback(env, db, sendEmail, payment.id, "video_queued", { from, fromName, to: payment.email, replyTo: "team@mehyar.us", subject, text, html });
+      const result = await sendWithFallback(env, db, sendEmail, payment.id, "video_queued", { from, fromName, to: payment.email, replyTo: "info@mehyar.us", subject, text, html });
       if (!result.ok) console.error("fulfillClipnote queued email failed", productId, result.error);
       if (result.ok) {
         await db
