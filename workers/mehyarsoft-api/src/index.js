@@ -246,8 +246,14 @@ var BILLING_SERVICES = [
   { id: "website-booking-cleanup-deposit", name: "Website + Booking Cleanup Deposit", category: "Conversion", description: "Deposit to start a scoped cleanup of website messaging, CTA path, booking/contact intake, and analytics events.", unit_amount_cents: 75e3, estimated_cost_cents: 25e3, currency: "usd", mode: "payment", delivery_window: "Kickoff in 2 business days", features: ["Scope confirmation", "Mobile-first CTA cleanup", "Booking/contact wiring", "Analytics checklist"], requires_scope_review: true },
   { id: "automation-sprint-deposit", name: "Automation Sprint Deposit", category: "Automation", description: "Deposit to reserve a workflow automation sprint after fit review and owner-approved scope.", unit_amount_cents: 15e4, estimated_cost_cents: 55e3, currency: "usd", mode: "payment", delivery_window: "Kickoff after scope approval", features: ["Workflow discovery", "Implementation plan", "First automations", "Operator handoff"], requires_scope_review: true }
 ];
-function billingMode(env, requested) {
-  return text(requested, "test") === "live" ? "live" : "test";
+function billingMode(env) {
+  // Server-side only (rot542, 2026-10-22): Stripe mode is this worker's own
+  // configuration, never a request input — a client flag (or its absence)
+  // must not select the key a session is minted under. The public billing
+  // surface is live only when the owner has enabled live charges; checkout
+  // refuses otherwise instead of minting test sessions (handleCreateCheckout).
+  // Internal test minting belongs on staging.
+  return env.STRIPE_MEHYARSOFT_LIVE_CHARGES_ENABLED === "1" || env.STRIPE_MEHYARSOFT_LIVE_CHARGES_ENABLED === "true" ? "live" : "test";
 }
 __name(billingMode, "billingMode");
 function stripeSecretKey(env, mode) {
@@ -304,7 +310,7 @@ function stripeEnvStatus(env, mode) {
 }
 __name(stripeEnvStatus, "stripeEnvStatus");
 async function handleBillingServices(request, env) {
-  const mode = billingMode(env, new URL(request.url).searchParams.get("mode"));
+  const mode = billingMode(env);
   return json({ ok: true, contract: BILLING_CONTRACT, services: BILLING_SERVICES.map(publicBillingService), stripe: stripeEnvStatus(env, mode), supported_billing_methods: ["checkout_session", "payment_link", "invoice_draft"], safety: { live_charges_require_owner_approval: true, no_real_customer_charge_without_owner_approval: true, secret_values_returned: false } });
 }
 __name(handleBillingServices, "handleBillingServices");
@@ -361,9 +367,13 @@ async function createBillingOfferFromOpportunity(request, env, opportunityId) {
 __name(createBillingOfferFromOpportunity, "createBillingOfferFromOpportunity");
 async function handleCreateCheckout(request, env) {
   const body = await readJson(request);
-  const mode = billingMode(env, body.mode);
+  // Server-side mode (rot542, 2026-10-22): this public route mints ONLY live
+  // sessions, and only under the owner gate (LIVE_CHARGES_ENABLED + owner
+  // approval code). Anything else refuses — a client-supplied mode flag is
+  // never read, and silence no longer defaults to test minting.
+  const mode = "live";
   const method = billingMethod(body.billing_method ?? body.billingMethod);
-  if (mode === "live" && !liveBillingAllowed(env, body)) return json({ error: "live_charges_blocked", message: "Live Stripe charges require STRIPE_MEHYARSOFT_LIVE_CHARGES_ENABLED plus owner approval code." }, { status: 403 });
+  if (!liveBillingAllowed(env, body)) return json({ error: "live_charges_blocked", message: "Live Stripe charges require STRIPE_MEHYARSOFT_LIVE_CHARGES_ENABLED plus owner approval code." }, { status: 403 });
   const serviceId = text(body.service_id ?? body.serviceId, "tech-audit-330") || "tech-audit-330";
   const service = BILLING_SERVICES.find((item) => item.id === serviceId);
   if (!service) return json({ error: "service_not_found", services: BILLING_SERVICES.map((item) => item.id) }, { status: 404 });
@@ -373,8 +383,10 @@ async function handleCreateCheckout(request, env) {
   const successUrl = text(body.success_url ?? body.successUrl, `${env.PUBLIC_SITE_URL || "https://mehyar.us"}/billing/success?session_id={CHECKOUT_SESSION_ID}`) || `${env.PUBLIC_SITE_URL || "https://mehyar.us"}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = text(body.cancel_url ?? body.cancelUrl, `${env.PUBLIC_SITE_URL || "https://mehyar.us"}/billing/cancel?service=${encodeURIComponent(service.id)}`) || `${env.PUBLIC_SITE_URL || "https://mehyar.us"}/billing/cancel?service=${encodeURIComponent(service.id)}`;
   const orderId = id("ord");
-  const gross = Math.max(100, integer(body.amount_cents, service.unit_amount_cents) * quantity);
-  const estimatedCost = Math.max(0, integer(body.estimated_cost_cents, service.estimated_cost_cents) * quantity);
+  // Catalog prices only (rot542, 2026-10-22): the charged amount and the
+  // cost basis come from BILLING_SERVICES, never the request body.
+  const gross = service.unit_amount_cents * quantity;
+  const estimatedCost = service.estimated_cost_cents * quantity;
   const estimatedFee = billingFeeEstimate(gross);
   const net = gross - estimatedFee;
   const profit = net - estimatedCost;
@@ -488,10 +500,13 @@ async function handleStripeWebhook(request, env) {
   const feeToUse = actualFee > 0 ? actualFee : feeEstimate;
   if (env.DB) {
     await env.DB.prepare("INSERT OR IGNORE INTO billing_events (id, created_at, mode, stripe_event_id, event_type, order_id, checkout_session_id, verified, payload_summary_json) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)").bind(id("bill_evt"), now(), mode, eventId, eventType, orderId, sessionId, jsonString(safeStorageMetadata({ stripe_event_id: eventId, type: eventType, payment_status: paymentStatus, checkout_session_id: sessionId, source_opportunity_id: sourceOpportunityId, refunded_cents: refunded, actual_fee_cents: actualFee }))).run();
-    if ((eventType === "checkout.session.completed" || eventType === "payment_intent.succeeded" || eventType === "charge.succeeded" || eventType === "invoice.paid") && (orderId || sessionId)) {
+    // Mode condition (rot542, 2026-10-22): a verified TEST-mode event is
+    // recorded above in billing_events and ignored here — it never flips an
+    // order to 'paid' (or 'refunded'). Only live events change order status.
+    if (mode === "live" && (eventType === "checkout.session.completed" || eventType === "payment_intent.succeeded" || eventType === "charge.succeeded" || eventType === "invoice.paid") && (orderId || sessionId)) {
       await env.DB.prepare("UPDATE billing_orders SET updated_at = ?, status = 'paid', payment_status = ?, stripe_payment_intent_id = COALESCE(?, stripe_payment_intent_id), estimated_fee_cents = CASE WHEN estimated_fee_cents > 0 THEN estimated_fee_cents ELSE ? END, actual_fee_cents = CASE WHEN ? > 0 THEN ? ELSE actual_fee_cents END, refunded_cents = ?, net_cents = amount_cents - CASE WHEN ? > 0 THEN ? ELSE ? END - ?, profit_cents = amount_cents - CASE WHEN ? > 0 THEN ? ELSE ? END - ? - estimated_cost_cents, margin_percent = CASE WHEN amount_cents > 0 THEN ROUND(((amount_cents - CASE WHEN ? > 0 THEN ? ELSE ? END - ? - estimated_cost_cents) * 1000.0 / amount_cents)) / 10.0 ELSE 0 END WHERE id = COALESCE(?, id) AND (stripe_checkout_session_id = COALESCE(?, stripe_checkout_session_id) OR id = COALESCE(?, id))").bind(now(), paymentStatus || "paid", paymentIntent, feeEstimate, actualFee, actualFee, refunded, actualFee, actualFee, feeEstimate, refunded, actualFee, actualFee, feeEstimate, refunded, actualFee, actualFee, feeEstimate, refunded, orderId, sessionId, orderId).run();
     }
-    if ((eventType === "charge.refunded" || eventType === "refund.created") && (orderId || sessionId)) {
+    if (mode === "live" && (eventType === "charge.refunded" || eventType === "refund.created") && (orderId || sessionId)) {
       await env.DB.prepare("UPDATE billing_orders SET updated_at = ?, status = 'refunded', payment_status = 'refunded', refunded_cents = ?, net_cents = amount_cents - COALESCE(NULLIF(actual_fee_cents,0), estimated_fee_cents) - ?, profit_cents = amount_cents - COALESCE(NULLIF(actual_fee_cents,0), estimated_fee_cents) - ? - estimated_cost_cents, margin_percent = CASE WHEN amount_cents > 0 THEN ROUND(((amount_cents - COALESCE(NULLIF(actual_fee_cents,0), estimated_fee_cents) - ? - estimated_cost_cents) * 1000.0 / amount_cents)) / 10.0 ELSE 0 END WHERE id = COALESCE(?, id) OR stripe_checkout_session_id = COALESCE(?, stripe_checkout_session_id)").bind(now(), refunded || gross, refunded || gross, refunded || gross, refunded || gross, orderId, sessionId).run();
     }
   }
