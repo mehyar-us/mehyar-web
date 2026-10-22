@@ -2,6 +2,7 @@ import {z} from 'zod';
 import type {Actor,Env} from './env';
 import {OPERATORS,requireMembership} from './permissions';
 import {HttpError} from './http';
+import {getAuthorityTier,type AuthorityTier} from './authority-tiers';
 
 const zone=z.string().max(100).refine(value=>{try{new Intl.DateTimeFormat('en',{timeZone:value});return true;}catch{return false;}}).describe('IANA time zone identifier. Translate a clear location such as New York to America/New_York. Ask a short location question only when ambiguous; never ask the user to supply technical notation.');
 const minute=z.number().int().min(0).max(1440);
@@ -24,12 +25,20 @@ export const schedulingPolicySchema=z.object({
  if(policy.staff.some(s=>s.appointmentTypes.some(t=>!policy.appointmentTypes.some(type=>type.name===t))))ctx.addIssue({code:'custom',message:'Staff must reference a configured appointment type.'});
 });
 export type SchedulingPolicy=z.infer<typeof schedulingPolicySchema>;
+/** The owner's booking authority tier (P1 authority tiers). The tier itself is
+ * stored in mayor_authority_tiers — the single source of truth — and surfaced
+ * here so the booking flow reads authority alongside the scheduling policy.
+ * Default is 'draft' (propose → review → confirm). */
+export async function bookingAuthority(env:Env,actor:Actor):Promise<AuthorityTier>{
+ await requireMembership(env,actor);
+ return getAuthorityTier(env.AGENT_DB,actor.tenantId,'booking');
+}
 export async function readSchedulingPolicy(env:Env,actor:Actor){
  await requireMembership(env,actor);
  const row=await env.AGENT_DB.prepare("SELECT value_json,revision FROM mayor_memory WHERE tenant_id=? AND field='scheduling_policy'").bind(actor.tenantId).first<{value_json:string;revision:number}>();
  // Access can change while D1 is reading; discard data for a revoked reader.
  await requireMembership(env,actor);
- return {policy:row?schedulingPolicySchema.parse(JSON.parse(row.value_json)):null,revision:row?.revision??0};
+ return {policy:row?schedulingPolicySchema.parse(JSON.parse(row.value_json)):null,revision:row?.revision??0,bookingAuthority:await getAuthorityTier(env.AGENT_DB,actor.tenantId,'booking')};
 }
 export async function confirmSchedulingPolicy(env:Env,actor:Actor,input:SchedulingPolicy,revision:number,setupRevision?:number){
  await requireMembership(env,actor,OPERATORS);

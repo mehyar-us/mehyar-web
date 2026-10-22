@@ -50,10 +50,7 @@
         "@type": "Place",
         "name": "New York City, NY"
       },
-      "sameAs": [
-        "https://mehyar.us",
-        "https://github.com/mehyarsoft"
-      ]
+      "sameAs": ["https://mehyar.us", "https://github.com/mehyarsoft"]
     },
     {
       "@type": "BreadcrumbList",
@@ -69,77 +66,6 @@
           "position": 2,
           "name": "Founder Story",
           "item": "https://mehyar.us/about"
-        }
-      ]
-    }
-  ],
-  "/apps": [
-    {
-      "@type": "WebPage",
-      "@id": "https://mehyar.us/apps/#webpage",
-      "url": "https://mehyar.us/apps/",
-      "name": "Products We Own | MehyarSoft LLC",
-      "description": "Every product MehyarSoft builds and operates, with what each one does, live pricing, and links to buy.",
-      "isPartOf": {
-        "@id": "https://mehyar.us/#website"
-      },
-      "about": {
-        "@id": "https://mehyar.us/#professional-service"
-      }
-    },
-    {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://mehyar.us/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Products We Own",
-          "item": "https://mehyar.us/apps/"
-        }
-      ]
-    },
-    {
-      "@type": "CollectionPage",
-      "@id": "https://mehyar.us/apps/#collection",
-      "url": "https://mehyar.us/apps/",
-      "name": "Products We Own",
-      "description": "Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy."
-    }
-  ],
-  "/data-deletion": [
-    {
-      "@type": "WebPage",
-      "@id": "https://mehyar.us/data-deletion/#webpage",
-      "url": "https://mehyar.us/data-deletion/",
-      "name": "Data Deletion | MehyarSoft LLC",
-      "description": "Request deletion of your data from any MehyarSoft app (Rizza, AiMech). In-app controls plus a plain-English email fallback.",
-      "isPartOf": {
-        "@id": "https://mehyar.us/#website"
-      },
-      "about": {
-        "@id": "https://mehyar.us/#professional-service"
-      }
-    },
-    {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://mehyar.us/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Data Deletion",
-          "item": "https://mehyar.us/data-deletion/"
         }
       ]
     }
@@ -356,7 +282,7 @@
           "name": "How fast do I get the audit results?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Most audits are delivered within 3 business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs."
+            "text": "Most audits are delivered within a few business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs."
           }
         },
         {
@@ -464,23 +390,6 @@
           "name": "When to Build Custom Software (and When Not To)"
         }
       ]
-    },
-    {
-      "@type": "Service",
-      "@id": "https://mehyar.us/audit/#service",
-      "name": "Audit My Business",
-      "url": "https://mehyar.us/audit/",
-      "description": "One-time $330 AI audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
-      "provider": {
-        "@id": "https://mehyar.us/#professional-service"
-      },
-      "areaServed": "Worldwide",
-      "offers": {
-        "@type": "Offer",
-        "price": "330",
-        "priceCurrency": "USD",
-        "url": "https://mehyar.us/audit/"
-      }
     }
   ],
   "/blog/small-business-tech-audit-revenue-leaks": [
@@ -649,9 +558,7 @@
         "@type": "Person",
         "name": "Mehyar Swelim"
       },
-      "publisher": {
-        "@id": "https://mehyar.us/#organization"
-      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
       "image": "https://mehyar.us/assets/blog/barber-booking-client-ownership.webp",
       "mainEntityOfPage": {
         "@type": "WebPage",
@@ -674,9 +581,7 @@
         "@type": "Person",
         "name": "Mehyar Swelim"
       },
-      "publisher": {
-        "@id": "https://mehyar.us/#organization"
-      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
       "image": "https://mehyar.us/assets/blog/restaurant-mobile-intent.webp",
       "mainEntityOfPage": {
         "@type": "WebPage",
@@ -699,9 +604,7 @@
         "@type": "Person",
         "name": "Mehyar Swelim"
       },
-      "publisher": {
-        "@id": "https://mehyar.us/#organization"
-      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
       "image": "https://mehyar.us/assets/blog/clinic-minimum-data-automation.webp",
       "mainEntityOfPage": {
         "@type": "WebPage",
@@ -724,9 +627,7 @@
         "@type": "Person",
         "name": "Mehyar Swelim"
       },
-      "publisher": {
-        "@id": "https://mehyar.us/#organization"
-      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
       "image": "https://mehyar.us/assets/blog/real-estate-lead-ownership.webp",
       "mainEntityOfPage": {
         "@type": "WebPage",
@@ -747,9 +648,7 @@
         "@type": "Person",
         "name": "Mehyar Swelim"
       },
-      "publisher": {
-        "@id": "https://mehyar.us/#organization"
-      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
       "image": "https://mehyar.us/assets/rizza-logo.png",
       "mainEntityOfPage": {
         "@type": "WebPage",
@@ -770,9 +669,7 @@
         "@type": "Person",
         "name": "Mehyar Swelim"
       },
-      "publisher": {
-        "@id": "https://mehyar.us/#organization"
-      },
+      "publisher": { "@id": "https://mehyar.us/#organization" },
       "image": "https://mehyar.us/assets/aimech-logo.png",
       "mainEntityOfPage": {
         "@type": "WebPage",
@@ -908,7 +805,7 @@
       "@type": "ItemList",
       "@id": "https://mehyar.us/services#offer-catalog",
       "name": "MehyarSoft consulting offers",
-      "description": "Six public offer lanes plus a custom-build lane, ranging from a $330 tech audit to a $25,000 custom build. Each lane maps a typical leak to the smallest useful next step.",
+      "description": "Six public offer lanes plus a custom-build lane, ranging from a $150 tech audit to a $25,000 custom build. Each lane maps a typical leak to the smallest useful next step.",
       "itemListOrder": "https://schema.org/ItemListOrderAscending",
       "numberOfItems": 7,
       "itemListElement": [
@@ -916,7 +813,7 @@
           "@type": "ListItem",
           "position": 1,
           "url": "https://mehyar.us/services#tech-audit",
-          "name": "Local Business Tech Audit — $330"
+          "name": "Local Business Tech Audit — $150-$500"
         },
         {
           "@type": "ListItem",
@@ -964,12 +861,8 @@
       "url": "https://mehyar.us/pricing",
       "name": "Industry-Specific Pricing | MehyarSoft",
       "description": "Starting prices and scoped packages for NYC barbers and beauty pros, clinics, real estate teams, restaurants, wellness studios, contractors, and professional services firms.",
-      "isPartOf": {
-        "@id": "https://mehyar.us/#website"
-      },
-      "about": {
-        "@id": "https://mehyar.us/#professional-service"
-      }
+      "isPartOf": { "@id": "https://mehyar.us/#website" },
+      "about": { "@id": "https://mehyar.us/#professional-service" }
     },
     {
       "@type": "FAQPage",
@@ -1059,9 +952,7 @@
           "email": "info@mehyar.us",
           "contactType": "consulting intake",
           "areaServed": "US",
-          "availableLanguage": [
-            "English"
-          ],
+          "availableLanguage": ["English"],
           "url": "https://mehyar.us/contact"
         },
         {
@@ -1069,9 +960,7 @@
           "telephone": "+1-347-674-0098",
           "contactType": "customer support",
           "areaServed": "US",
-          "availableLanguage": [
-            "English"
-          ]
+          "availableLanguage": ["English"]
         }
       ],
       "address": {
@@ -1722,7 +1611,7 @@
     {
       "@type": "Service",
       "name": "Audit My Business — $330 AI Business Audit",
-      "description": "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment.",
+      "description": "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 2-minute CEO walkthrough video (up to 30 min) for a deeper transcript-based assessment.",
       "provider": {
         "@id": "https://mehyar.us/#professional-service"
       },
@@ -1739,10 +1628,10 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "Which offer is which — the free scan, the Full Report, or Audit My Business?",
+          "name": "Is this the same as the founder-led $330 tech audit?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Three different rungs. The free scan scores your public site and names your top money leaks — free, no card. The Full Report ($5, one-time) is the complete written breakdown of that scan: every leak found, priced and ranked. Audit My Business ($330, one-time) is the deep audit — a separate, fuller report built from your site and your walkthrough video, with prioritized fixes and an AI opportunity map, delivered by email within 3–5 business days; if you bought the Full Report first, its $5 is credited toward the $330. The founder-led $330 tech audit is a different product again: a human review, invoiced by email."
+            "text": "No — same price, different product. The founder-led $330 tech audit is a human review, manually invoiced after a scope check. Audit My Business is the automated AI counterpart: instant checkout, AI-written visual report, delivered by email."
           }
         },
         {
@@ -1750,71 +1639,26 @@
           "name": "Do I need the walkthrough video?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings drawn from your own words."
+            "text": "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings it can't get from the site."
           }
         },
         {
           "@type": "Question",
-          "name": "How thorough is the audit?",
+          "name": "What if the AI isn't sure about something?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Every finding is tied to something the audit actually saw on your site or in your walkthrough — specific, evidenced, and ranked by impact."
+            "text": "It says so. Low-confidence findings carry a “Needs review” flag, and anything the audit couldn't see enough of is marked “couldn't be assessed” instead of guessed at."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I get a refund?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Purchases are final — there are no refunds on the $330 audit. Read the honest scope on the page before paying."
           }
         }
       ]
-    }
-  ],
-  "/audit/report": [
-    {
-      "@type": "WebPage",
-      "@id": "https://mehyar.us/audit/report/#webpage",
-      "url": "https://mehyar.us/audit/report/",
-      "name": "$5 Full Report | MehyarSoft",
-      "description": "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, and your 90-day plan.",
-      "isPartOf": {
-        "@id": "https://mehyar.us/#website"
-      },
-      "about": {
-        "@id": "https://mehyar.us/#professional-service"
-      }
-    },
-    {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://mehyar.us/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Audit My Business",
-          "item": "https://mehyar.us/audit/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": "$5 Full Report",
-          "item": "https://mehyar.us/audit/report/"
-        }
-      ]
-    },
-    {
-      "@type": "Service",
-      "name": "$5 Full Report",
-      "description": "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.",
-      "provider": {
-        "@id": "https://mehyar.us/#professional-service"
-      },
-      "areaServed": "Worldwide",
-      "offers": {
-        "@type": "Offer",
-        "price": "5",
-        "priceCurrency": "USD",
-        "url": "https://mehyar.us/audit/report/"
-      }
     }
   ]
 }

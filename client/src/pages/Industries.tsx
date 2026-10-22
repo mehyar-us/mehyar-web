@@ -17,8 +17,8 @@ export default function Industries() {
           Start with the work your business does.
         </h1>
         <p className="site-lede mt-5 max-w-3xl">
-          Find custom workflow examples for your team, shaped around your tools
-          and the problem to solve.
+          Find custom workflow examples for your team. Actual scope depends on
+          your tools and the problem to solve.
         </p>
         <label
           htmlFor="industry-search"

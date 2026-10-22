@@ -41,12 +41,27 @@ export interface Briefing {
 
 export interface SuggestionDraft { message: string; audience: string; audienceCount: number }
 export interface SuggestionCard {
-  id: string; kind: string; detector?: string; confidence?: 1 | 2 | 3; title: string; body: string;
+  id: string; kind: string; detector?: string; title: string; body: string;
   draft: SuggestionDraft; state: string; createdAt: string;
 }
 export interface SendResult { sent: boolean; audienceCount: number; simulated: boolean }
 /** Real edit response shape (differs from the draft contract's {card}). */
 export interface EditResult { id: string; message: string; audience: string; audienceCount: number; state: string }
+
+/** P5 "Money this week" card contract (GET /money-week). bookedValueCents is
+ * an ESTIMATE — confirmed bookings × the owner's own average ticket — and is
+ * null whenever no average ticket is configured (never a fake $0). It is
+ * never collected revenue: no payments connection exists yet. */
+export interface MoneyWeekPeriod { bookings: number; bookedValueCents: number | null }
+export interface MoneyWeek {
+  weekStart: string; weekEnd: string; lastWeekStart: string; lastWeekEnd: string;
+  timeZone: string; vertical: string | null; bookingNoun: string;
+  thisWeek: MoneyWeekPeriod; lastWeek: MoneyWeekPeriod;
+  bookingsDelta: number; bookedValueDeltaCents: number | null;
+  avgTicketCents: number | null; avgTicketConfigured: boolean;
+  valueBasis: 'average_ticket_estimate' | 'not_configured';
+  generatedAt: string;
+}
 
 export interface RoiMonth { month: string; rate: number }
 export interface ProactiveRoi {
@@ -98,29 +113,13 @@ export async function dismissSuggestion(api: Api, tenantId: string, id: string):
   await api(`${base(tenantId)}/suggestions/${encodeURIComponent(id)}/dismiss`, {});
 }
 
-/* Twin (slice 2b): the owner's writing-style onboarding state. */
-export interface StyleState {
-  totalSamples: number;
-  onboardingSamples: number;
-  dismissed: boolean;
-  greetingAdopted: boolean;
-}
-
-export async function fetchStyleState(api: Api, tenantId: string): Promise<StyleState | null> {
-  try { return await api(`${base(tenantId)}/style`) as StyleState; }
+export async function fetchRoi(api: Api, tenantId: string): Promise<ProactiveRoi | null> {
+  try { return await api(`${base(tenantId)}/roi`) as ProactiveRoi; }
   catch (error) { if (isNotLive(error)) return null; throw error; }
 }
 
-export async function saveStyleSamples(api: Api, tenantId: string, texts: string[]): Promise<StyleState> {
-  return await api(`${base(tenantId)}/style/samples`, { texts }) as StyleState;
-}
-
-export async function dismissStyleOnboarding(api: Api, tenantId: string): Promise<StyleState> {
-  return await api(`${base(tenantId)}/style/dismiss`, {}) as StyleState;
-}
-
-export async function fetchRoi(api: Api, tenantId: string): Promise<ProactiveRoi | null> {
-  try { return await api(`${base(tenantId)}/roi`) as ProactiveRoi; }
+export async function fetchMoneyWeek(api: Api, tenantId: string): Promise<MoneyWeek | null> {
+  try { return await api(`${base(tenantId)}/money-week`) as MoneyWeek; }
   catch (error) { if (isNotLive(error)) return null; throw error; }
 }
 
@@ -156,6 +155,17 @@ export function formatBriefingDate(date: string): string {
   const parsed = new Date(date.length === 10 ? `${date}T12:00:00Z` : date);
   if (Number.isNaN(parsed.getTime())) return date;
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(parsed);
+}
+
+/** "2026-10-12","2026-10-18" -> "Mon, Oct 12 – Sun, Oct 18" (dates are
+ * business-local calendar dates, so weekday math runs at UTC noon). */
+export function formatWeekRange(startDate: string, endDate: string): string {
+  const fmt = (date: string) => {
+    const parsed = new Date(`${date}T12:00:00Z`);
+    if (Number.isNaN(parsed.getTime())) return date;
+    return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(parsed);
+  };
+  return `${fmt(startDate)} – ${fmt(endDate)}`;
 }
 
 /** generatedAt ISO -> "8:32 AM" for the "as of" captions. */

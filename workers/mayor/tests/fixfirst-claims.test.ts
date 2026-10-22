@@ -19,6 +19,7 @@ it('spaViewForPath maps known app views and rejects everything else',()=>{
   expect(spaViewForPath('/billing')).toBe('billing');
   expect(spaViewForPath('/settings')).toBe('account');
   expect(spaViewForPath('/account')).toBe('account');
+  expect(spaViewForPath('/get-started')).toBe('chat');
   // Unknown paths → null (worker serves the real 404 page).
   for(const bad of ['/nope','/sales/saloon','/admin','/api/billing/catalog','/connectors/extra','/CONNECTORs']){
     expect(spaViewForPath(bad),bad).toBe(null);

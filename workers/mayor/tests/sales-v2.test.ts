@@ -1,8 +1,11 @@
 /**
  * sales-v2.test.ts — the public sales surface v2.
  *
- * 1. /sales pricing section: talks about pricing with ZERO amounts
- *    (no $14, no $39, no "per month", no dollar digits anywhere).
+ * 1. /sales pricing section: presents the CURRENT catalog prices from
+ *    src/billing/plans.ts (Free/Pro plans + credit-pack top-ups). Prices
+ *    are shown, never hidden — an earlier zero-amounts version failed the
+ *    product-compliance audit for price concealment. No future price
+ *    (e.g. $39) may appear before plans.ts itself changes.
  * 2. Seven vertical routes generated from verticals.ts (single source of
  *    truth): each page carries the vertical's label, vocabulary, and KPIs,
  *    an illustrative money-loop example, and a sign-in CTA. No price claims.
@@ -14,8 +17,9 @@ import {readFileSync,existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
 import {VERTICAL_PROFILES} from '../src/verticals';
+import {PLANS,CREDIT_PACKS} from '../src/billing/plans';
 import {generateVerticalPages,VERTICAL_SLUGS} from '../scripts/gen-sales-verticals.mjs';
-import {isPublicAssetPath,isSalesVerticalPath,SALES_VERTICAL_SLUGS,normalizePathname} from '../src/public-routes';
+import {isPublicAssetPath,isSalesVerticalPath,SALES_VERTICAL_SLUGS,SALES_SLUG_REDIRECTS,normalizePathname} from '../src/public-routes';
 import {NOT_FOUND_HTML} from '../src/not-found-page';
 
 const here=dirname(fileURLToPath(import.meta.url));
@@ -33,25 +37,34 @@ beforeAll(()=>{
 
 const html=()=>readWeb('sales.html');
 const css=()=>readWeb('sales.css');
+// Synced to src/billing/plans.ts: PLANS (Free/Pro) + CREDIT_PACKS amounts.
+const CATALOG_DOLLARS=[...new Set([...PLANS,...CREDIT_PACKS].map(p=>p.priceCents/100))].sort((a,b)=>a-b);
 
-it('pricing section exists on /sales with zero amounts',()=>{
+it('pricing section exists on /sales and shows the current catalog prices',()=>{
   const page=html(),style=css();
   expect(page).toContain('id="plans"');
-  expect(page).toContain('Start free. Go Pro when you');
-  for(const tier of ['Free','Pro','Top up'])expect(page).toContain(`<h3>${tier}</h3>`);
+  expect(page).toContain('Start free. Grow when you');
+  // Tier names unified with plans.ts (Free/Pro) plus the top-up card.
+  for(const tier of [...PLANS.map(p=>p.name),'Top up'])expect(page).toContain(`<h3>${tier}</h3>`);
   expect(page).toContain('No credit card to start');
   expect(page).toContain('No hidden fees');
   expect(page).toContain('Cancel anytime');
-  for(const source of [page,style]){
-    expect(source).not.toMatch(/\$\d/);
-    expect(source).not.toContain('per month');
-    expect(source).not.toContain('$14');
-    expect(source).not.toContain('$39');
-  }
+  // Prices derive from src/billing/plans.ts — the billing source of truth —
+  // so a catalog change that forgets this page fails here.
+  const free=PLANS.find(p=>p.id==='free')!;
+  const pro=PLANS.find(p=>p.id==='pro')!;
+  expect(page).toContain(`$${free.priceCents/100} — free to start`);
+  expect(page).toContain(`$${pro.priceCents/100}/month`);
+  for(const pack of CREDIT_PACKS)expect(page).toContain(`${pack.name} $${pack.priceCents/100}`);
+  // Provider-billing disclosure sits with the pricing, not buried.
+  expect(page).toContain('provider charges are billed by them, not us');
+  // The only dollar amounts on the surface are the catalog amounts:
+  // nothing hidden, nothing extra (no $39 before its Stripe Price IDs exist).
+  const shown=[...new Set([...(page+style).matchAll(/\$(\d+)/g)].map(m=>Number(m[1])))].sort((a,b)=>a-b);
+  expect(shown).toEqual(CATALOG_DOLLARS);
   // Forbidden pricing-widget naming from the strip-down contract.
   expect(page).not.toMatch(/pricing-section|price-card|price-amount/);
   expect(page).not.toContain('id="pricing"');
-  expect(page).not.toMatch(/credit pack/i);
 });
 
 it('generates one page per vertical from verticals.ts (single source of truth)',()=>{
@@ -76,21 +89,22 @@ it('generates one page per vertical from verticals.ts (single source of truth)',
     expect(page).toContain('not a customer story');
     expect(page).toContain('nothing here promises revenue');
     expect(page).not.toMatch(/\$\d/);
-    // The only scripts allowed are the consent-gated analytics snippet and
-    // the audience beacon tag (merged 2026-10-15) — no product JavaScript
-    // on the generated sales pages.
+    // The only script allowed is the consent-gated analytics snippet —
+    // no product JavaScript on the generated sales pages.
     const scripts=[...page.matchAll(/<script\b[^>]*>/g)].map(m=>m[0]);
-    expect(scripts).toEqual(['<script src="/analytics-consent.js">','<script async src="https://audience.mehyar.us/b.js" data-product="mayor">']);
+    expect(scripts).toEqual(['<script src="/analytics-consent.js">']);
     // SEO + CTA plumbing.
     expect(page).toContain(`<link rel="canonical" href="https://mayor.mehyar.us/sales/${slug}">`);
     expect(page).toContain('href="/sales#plans"');
-    const ctas=[...page.matchAll(/<a[^>]*href="([^"]*)"[^>]*>(?:Sign in|Start free)<\/a>/g)].map(m=>m[1]);
+    const ctas=[...page.matchAll(/<a[^>]*href="([^"]*)"[^>]*>(Sign in|Start free)<\/a>/g)].map(m=>({href:m[1],label:m[2]}));
     expect(ctas.length).toBeGreaterThanOrEqual(4);
-    for(const href of ctas)expect(['/','/?start=1']).toContain(href);
+    // Start-free CTAs deep-link into the app's chat onboarding entry;
+    // plain Sign-in CTAs keep the app home.
+    for(const {href,label} of ctas)expect(href,label).toBe(label==='Start free'?'/get-started':'/');
     // Shared legal footer, no street address.
     expect(page).toContain('MehyarSoft LLC');
     expect(page).toContain('https://mehyar.us/privacy-policy/');
-    expect(page).not.toContain('Purchases are final'); // scope ruling 2026-10-17
+    expect(page).toContain('Purchases are final');
     expect(page).not.toContain('96th St');
   }
 });
@@ -103,6 +117,21 @@ it('vertical slugs match the worker route contract',()=>{
   }
   expect(isSalesVerticalPath('/sales/saloon')).toBe(false);
   expect(isSalesVerticalPath('/sales')).toBe(false);
+});
+
+it('guessed sales slugs redirect to real pages, never a guessed 404',()=>{
+  expect(SALES_SLUG_REDIRECTS['/sales/plumbing']).toBe('/sales/plumbing-hvac');
+  expect(SALES_SLUG_REDIRECTS['/sales/hvac']).toBe('/sales/plumbing-hvac');
+  expect(SALES_SLUG_REDIRECTS['/sales/auto']).toBe('/sales/auto-repair');
+  expect(SALES_SLUG_REDIRECTS['/sales/fitness']).toBe('/sales');
+  // Every redirect destination is a real page.
+  for(const target of Object.values(SALES_SLUG_REDIRECTS)){
+    expect(target==='/sales'||isSalesVerticalPath(target)).toBe(true);
+  }
+  // Real slugs are pages, not redirects.
+  for(const slug of SALES_VERTICAL_SLUGS){
+    expect(SALES_SLUG_REDIRECTS[`/sales/${slug}`]).toBeUndefined();
+  }
 });
 
 it('ships robots.txt and sitemap.xml covering the public surface',()=>{
@@ -135,7 +164,7 @@ it('ships a real favicon.ico and a clean 404 page',()=>{
 });
 
 it('isPublicAssetPath allows the public surface and nothing else',()=>{
-  for(const ok of ['/','/index.html','/terms','/terms.html','/missed-call-checklist','/missed-call-checklist.html','/robots.txt','/sitemap.xml','/llms.txt','/favicon.ico','/sw.js','/manifest.webmanifest','/microphone-worklet.js','/icon-192.png','/mayor-avatar.png','/device-check','/404.html','/assets/sales-abc123.css']){
+  for(const ok of ['/','/index.html','/terms','/terms.html','/robots.txt','/sitemap.xml','/favicon.ico','/sw.js','/manifest.webmanifest','/microphone-worklet.js','/icon-192.png','/mayor-avatar.png','/device-check','/404.html','/assets/sales-abc123.css']){
     expect(isPublicAssetPath(ok),ok).toBe(true);
   }
   for(const bad of ['/nope','/sales/saloon','/admin','/api/billing/catalog','.env','/sales/../etc']){

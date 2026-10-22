@@ -116,6 +116,25 @@ export function localDayBoundsUtc(date:string,timeZone:string){
  };
 }
 
+/** Monday-start week containing a local YYYY-MM-DD date: returns that Monday.
+ * The week runs Monday 00:00 through Sunday 23:59 business-local. This is the
+ * app's single "this week" definition (P5 money card); nothing else in the app
+ * defines a competing week boundary. Pure (weekday of a calendar date is
+ * timezone-independent). */
+export function weekStartLocalDate(date:string){
+ const [y,m,d]=date.split('-').map(Number);
+ const dow=new Date(Date.UTC(y,m-1,d)).getUTCDay(); // 0=Sun..6=Sat
+ return shiftLocalDate(date,-((dow+6)%7));
+}
+
+/** UTC ISO bounds + local dates for the Monday-start week containing `date`. Pure. */
+export function localWeekBoundsUtc(date:string,timeZone:string){
+ const startDate=weekStartLocalDate(date),endDate=shiftLocalDate(startDate,6);
+ return {startDate,endDate,
+  start:localDayBoundsUtc(startDate,timeZone).start,
+  end:localDayBoundsUtc(endDate,timeZone).end};
+}
+
 /** UTC ISO bounds for a local YYYY-MM month. Pure. */
 export function monthBoundsUtc(year:number,month:number,timeZone:string){
  const startLocal=Date.UTC(year,month-1,1),endLocal=Date.UTC(year,month,1);
@@ -362,20 +381,17 @@ export async function ensureMissedCallFollowupCard(
 
 /** Mark pending follow-up cards for a missed call as sent once a text-back
  * goes out through ANY path (card Send, manual text-back, instant engine),
- * so a handled call never leaves a stale suggestion behind. The card a send
- * is in flight on (exceptCardId — the suggestion-card Send path) is NOT
- * resolved here: that send's own finish() writes its full result, and
- * pre-marking the card would clobber it (its UPDATE is state-guarded). */
-export async function resolveMissedCallFollowupCards(env:Env,tenantId:string,missedCallId:string,exceptCardId?:string){
+ * so a handled call never leaves a stale suggestion behind. */
+export async function resolveMissedCallFollowupCards(env:Env,tenantId:string,missedCallId:string){
  const now=new Date().toISOString(),dedupeKey=`mc:${missedCallId}`;
  await env.AGENT_DB.batch([
   env.AGENT_DB.prepare(
    `UPDATE mayor_suggestion_cards SET state='sent',decided_at=?,
     result_json=json_object('resolved_by','textback_sent')
-    WHERE tenant_id=? AND state IN ('pending','edited')${exceptCardId?' AND id<>?':''} AND detection_id IN
+    WHERE tenant_id=? AND state IN ('pending','edited') AND detection_id IN
     (SELECT id FROM mayor_proactive_detections
      WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=?)`)
-   .bind(...(exceptCardId?[now,tenantId,exceptCardId,tenantId,dedupeKey]:[now,tenantId,tenantId,dedupeKey])),
+   .bind(now,tenantId,tenantId,dedupeKey),
   env.AGENT_DB.prepare(
    `UPDATE mayor_proactive_detections SET state='resolved'
     WHERE tenant_id=? AND detector='missed_call_followup' AND dedupe_key=? AND state IN ('open','surfaced')`)

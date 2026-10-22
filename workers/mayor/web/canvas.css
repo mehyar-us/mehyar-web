@@ -1,0 +1,38 @@
+/* P2 — Conversation canvas: the card lane inside the chat view.
+   The lane is a flex column in the chat view's own column layout, between
+   the onboarding setup card and the conversation. It scrolls in its own
+   bounded region (the pattern the chat view already uses for in-chat
+   cards) so card arrivals never push the composer or hijack the thread's
+   scroll. Cards load progressively — each section paints when its data
+   lands; nothing ever overlays the canvas with a blocking spinner. */
+.canvas-cards{min-height:0}
+.canvas-cards:empty{display:none}
+body[data-view=chat] #canvas-cards{flex:0 1 auto;max-height:38dvh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;margin:0 0 14px;padding:2px 2px 4px}
+body[data-view=chat] #canvas-cards .proactive-stack{margin-bottom:0}
+
+/* Card entrance: information arriving, not decoration. Under 1s total
+   (0.45s + at most 3 stagger steps of 70ms), transform/opacity only, and
+   fully disabled under prefers-reduced-motion. Sections are stable
+   elements — the animation plays when the lane first mounts, not on
+   every data refresh. */
+@keyframes canvas-card-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.canvas-cards .proactive-stack>*{animation:canvas-card-in .45s ease-out both}
+.canvas-cards .proactive-stack>*:nth-child(2){animation-delay:.07s}
+.canvas-cards .proactive-stack>*:nth-child(3){animation-delay:.14s}
+.canvas-cards .proactive-stack>*:nth-child(4){animation-delay:.21s}
+@media(prefers-reduced-motion:reduce){.canvas-cards .proactive-stack>*{animation:none}}
+
+/* Missed-call highlights (canvas.ts) — same card language as Money this week. */
+.missed-calls-section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;scroll-margin-top:20px;text-align:left}
+.missed-calls-section .section-heading{margin-bottom:10px}
+.missed-calls-section .section-heading h2 svg{width:19px;height:19px;color:#a5761a;vertical-align:-3px;margin-right:2px}
+.missed-calls-section .section-heading .source-note{margin-left:auto;margin-top:0}
+.missed-call-intro{font-size:13px;color:var(--ink);margin:0 0 6px;line-height:1.6}
+.missed-call-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+.missed-call-row .row-copy h3{font-size:14px}
+.missed-call-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.missed-call-actions button{font-size:13px;min-height:44px}
+@media(max-width:760px){
+ .missed-calls-section{padding:18px}
+ body[data-view=chat] #canvas-cards{max-height:34dvh;margin-bottom:10px}
+}
