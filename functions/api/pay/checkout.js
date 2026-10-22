@@ -294,7 +294,13 @@ export async function onRequestPost({ request, env }) {
     const attribution = sanitizeAttribution(params.attribution);
     const attributionJson = attribution ? JSON.stringify(attribution) : null;
 
-    const testMode = body.test === true;
+    // Payment integrity (rot541, 2026-10-22): Stripe mode is a server-side
+    // property and is NEVER selected by the client. This endpoint previously
+    // honored a client-supplied `test: true` and minted cs_test_ sessions on
+    // the production account; test payments fulfilled into production tables.
+    // Client test flags are ignored. Internal test proofs run against a
+    // separate staging deployment, never via a request flag here.
+    const testMode = false;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return J(

@@ -153,7 +153,9 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
-    const testMode = body.test === true;
+    // Payment integrity (rot541, 2026-10-22): Stripe mode is never
+    // client-selected — see checkout.js. Client test flags are ignored.
+    const testMode = false;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return J(
