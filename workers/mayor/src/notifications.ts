@@ -3,20 +3,12 @@ import {OPERATORS,requireMembership} from './permissions';
 import {readMemory} from './memory';
 import {selectedCalendar} from './calendars';
 import {HttpError} from './http';
-import {esNotificationCopy,resolveLanguage} from './i18n';
 
 const content={
  phone_call_review:{title:'A phone call needs your attention',message:'The Mayor could not confirm that a Telnyx call ended. Check active calls in your Telnyx account and end any unintended call. Provider charges may continue until the call ends.',action:'account'},
  scheduled_check_failed:{title:'Your recurring account check could not finish',message:'The Mayor could not verify your account or selected calendar. Review your connection and the latest check status in Account.',action:'account'},
  onboarding:{title:'Tell The Mayor about your business',message:'Share your business name and what you offer, or provide a website. Review the suggested facts before saving them.',action:'chat'},
  calendar_connection:{title:'Your calendar connection needs attention',message:'Review your selected calendar in Account. Reconnect or select it again before relying on scheduling.',action:'account'},
- missed_call_texted:{title:'Missed call recovered',message:'A text-back was sent to the missed caller. Review it in Missed calls.',action:'missed-calls'},
- missed_call:{title:'Missed call — text-back ready',message:'A call was missed. Open Missed calls to review it and send the text-back.',action:'missed-calls'},
- // Honest test-mode copy (compliance item 12): never imply a real SMS was sent.
- missed_call_simulated:{title:'Test text-back logged — no SMS sent',message:'The simulated text-back for this test missed call was logged to the SMS log. Nothing was sent to a real phone.',action:'missed-calls'},
- // Crew 3 proactive engine: suggestion + morning briefing surface cards.
- proactive_suggestion:{title:'A proactive suggestion is ready',message:'The Mayor spotted a way to fill slow time or win back business. Review the suggestion.',action:'suggestions'},
- proactive_briefing:{title:'Your morning briefing is ready',message:'Yesterday, today, and open opportunities at a glance.',action:'briefing'},
 } as const;
 type Kind=keyof typeof content;
 export type NotificationRunGuard={revision:number;leaseToken:string};
@@ -44,15 +36,9 @@ export async function refreshAttentionNotifications(env:Env,actor:Actor,run?:Not
 }
 export async function listNotifications(env:Env,actor:Actor){
  await requireMembership(env,actor,OPERATORS);
- const mem=await readMemory(env,actor);
- const es=resolveLanguage((mem.profile as {language?:unknown}).language)==='es';
  const rows=await env.AGENT_DB.prepare("SELECT id,kind,created_at,read_at FROM mayor_notifications WHERE tenant_id=? AND user_id=? AND state='open' ORDER BY created_at DESC,id LIMIT 51").bind(actor.tenantId,actor.userId).all<{id:string;kind:Kind;created_at:string;read_at:string|null}>();
  await requireMembership(env,actor,OPERATORS);
- return {notifications:rows.results.slice(0,50).map(row=>{
-  const en=content[row.kind];
-  const copy=es?(esNotificationCopy(row.kind)??en):en;
-  return {id:row.id,...en,...copy,createdAt:row.created_at,read:row.read_at!==null};
- }),hasMore:rows.results.length>50};
+ return {notifications:rows.results.slice(0,50).map(row=>({id:row.id,...content[row.kind],createdAt:row.created_at,read:row.read_at!==null})),hasMore:rows.results.length>50};
 }
 export async function markNotificationRead(env:Env,actor:Actor,id:string){
  await requireMembership(env,actor,OPERATORS);const now=new Date().toISOString();

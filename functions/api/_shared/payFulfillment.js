@@ -17,7 +17,6 @@ import { fulfillPrepguide } from "./fulfillPrepguide.js";
 import { fulfillTruesketch } from "./fulfillTruesketch.js";
 import { fulfillTiktokgrowth } from "./fulfillTiktokgrowth.js";
 import { fulfillPromptpack } from "./fulfillPromptpack.js";
-import { fulfillAuditBusiness } from "./fulfillAuditBusiness.js";
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
@@ -37,7 +36,6 @@ const ORDER_FULFILL = {
   truesketch: fulfillTruesketch,
   tiktokgrowth: fulfillTiktokgrowth,
   promptpack: fulfillPromptpack,
-  audit_business: fulfillAuditBusiness,
 };
 
 /** Mark a billing_payments row paid from a Stripe session. Returns the payment row or null. */

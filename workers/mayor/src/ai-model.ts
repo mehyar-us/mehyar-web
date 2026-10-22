@@ -31,71 +31,11 @@ export function normalizeWorkersAIStream(stream:ReadableStream<Uint8Array>){
  }));
 }
 
-import {gatewayRun} from './ai-gateway';
-
-/**
- * Workers AI quirk (captured 2026-10-08 against @cf/qwen/qwen3-30b-a3b-fp8):
- * non-streaming chat responses carry the generated text in
- * `choices[0].message.reasoning_content` (mirrored in `.reasoning`) while
- * `choices[0].message.content` and the top-level `response` are null — with
- * AND without `chat_template_kwargs: {enable_thinking:false}`. The streaming
- * path is unaffected (deltas carry `delta.content` correctly).
- *
- * workers-ai-provider's processText only reads content/response, so
- * generateText callers see empty text and 502. Remap once here so
- * every non-streaming caller gets the text. Never clobbers a real content
- * value; never touches streams.
- */
-export function remapReasoningContent(output:unknown):unknown{
- if(!output||typeof output!=='object')return output;
- const message=(output as {choices?:Array<{message?:unknown}>}).choices?.[0]?.message;
- if(!message||typeof message!=='object')return output;
- const content=(message as {content?:unknown}).content;
- if(typeof content==='string'&&content.length>0)return output;
- const reasoning=(message as {reasoning_content?:unknown;reasoning?:unknown}).reasoning_content
-  ??(message as {reasoning?:unknown}).reasoning;
- if(typeof reasoning==='string'&&reasoning.length>0){
-  (message as {content?:unknown}).content=reasoning;
- }
- return output;
-}
-
-export function mayorModel(env:Pick<Env,'AI'|'AI_GATEWAY_ACCOUNT_ID'|'AI_GATEWAY_ID'|'AI_GATEWAY_TOKEN'>){
- // Model traffic prefers the shared AI Gateway (caching, fallbacks,
- // per-tenant rate limits, unified observability) when AI_GATEWAY_ACCOUNT_ID
- // and AI_GATEWAY_TOKEN are configured. The gateway client falls back to the
- // direct Workers AI binding when unconfigured or on network/5xx errors.
- // NOTE (2026-10-08): production currently has no AI_GATEWAY_* secrets set,
- // so all live traffic uses the direct binding.
- const run=gatewayRun(env as Env);
- const binding={run:(async(model:string,input:unknown,options?:{stream?:boolean;signal?:AbortSignal})=>{
-  const output=await run(model,input,options);
-  // The gateway returns raw SSE; the direct-binding fallback inside gatewayRun
-  // returns raw output too — normalize once here for the streaming case.
-  if(output instanceof ReadableStream)return normalizeWorkersAIStream(output);
-  // Non-streaming: repair the reasoning_content quirk before the provider reads it.
-  return remapReasoningContent(output);
+export function mayorModel(ai:Env['AI']){
+ // The chat provider uses only run(); keep invocation bound to the actual binding.
+ const binding={run:(async(...args:Parameters<Env['AI']['run']>)=>{
+  const output=await ai.run(...args);
+  return output instanceof ReadableStream?normalizeWorkersAIStream(output):output;
  }) as Env['AI']['run']};
  return createWorkersAI({binding:binding as Env['AI']})('@cf/qwen/qwen3-30b-a3b-fp8',{chat_template_kwargs:{enable_thinking:false}});
-}
-
-/** Vision model for photo Q&A. The text model (@cf/qwen/qwen3-30b-a3b-fp8)
- * is text-only and cannot take images, so image turns go to Workers AI's
- * chat vision model instead: @cf/meta/llama-3.2-11b-vision-instruct accepts
- * OpenAI-style image_url content parts, handles English and Spanish, and
- * runs through the same gateway with the same direct-binding fallback.
- * The text model still owns the final answer (tools, persona, policy) —
- * vision only produces the photo observation, which is appended to the
- * user message deterministically (see image-qa.ts). */
-export const MAYOR_VISION_MODEL='@cf/meta/llama-3.2-11b-vision-instruct';
-
-/** Raw run() for the vision model through the same gatewayRun + fallback
- * path as mayorModel. Callers build the Workers AI REST input themselves
- * (messages with image_url parts). Non-streaming only. */
-export function mayorVisionRun(env:Pick<Env,'AI'|'AI_GATEWAY_ACCOUNT_ID'|'AI_GATEWAY_ID'|'AI_GATEWAY_TOKEN'>){
- const run=gatewayRun(env as Env);
- return async(model:string,input:unknown,options?:{signal?:AbortSignal}):Promise<unknown>=>{
-  const output=await run(model,input,{...options,stream:false});
-  return remapReasoningContent(output);
- };
 }

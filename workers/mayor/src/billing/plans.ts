@@ -1,14 +1,7 @@
 export const BILLING_DOMAIN='mayor_pwa';
 export const BILLING_VERSION='2026-10-03.1';
-export const PRO_PRICE_VERSION='2026-10-16.1';
-export const PRO_PRICE_CENTS=9900;
-/* Founding cohort (Mayor's resolution 2026-10-16): the first 25
- * businesses lock $79.20/mo (9900 x 0.80 exactly) FOR LIFE on a separate
- * dedicated Price. Existing $14 subscribers are grandfathered — never
- * migrated; the cohort and the $99 list apply to new checkouts only. */
-export const FOUNDING_PRICE_CENTS=7920;
-export const FOUNDING_PRICE_VERSION='2026-10-16.1';
-export const FOUNDING_SEATS_TOTAL=25;
+export const PRO_PRICE_VERSION='2026-10-03.2';
+export const PRO_PRICE_CENTS=1400;
 export const CREDIT_PACK_VERSION='2026-10-03.1';
 export const CREDIT_PACK_DOMAIN='mayor_credit_pack';
 export const CREDIT_PACKS=Object.freeze([
@@ -17,12 +10,6 @@ export const CREDIT_PACKS=Object.freeze([
  Object.freeze({id:'large',name:'Large',priceCents:1200,currency:'USD',replyAttempts:800,voiceMinutes:90}),
 ] as const);
 export type CreditPackId=typeof CREDIT_PACKS[number]['id'];
-/* Buyer-facing translation of the attempt meter (rot149): allowances are
- * also shown as approximate conversations, always computed from the same
- * attempt numbers with this single divisor, and the basis is printed
- * wherever the equivalence appears ("roughly 10 replies per conversation"). */
-export const REPLIES_PER_CONVERSATION=10;
-export function approxConversations(attempts:number):number{return Math.max(1,Math.round(attempts/REPLIES_PER_CONVERSATION));}
 export const PLANS=Object.freeze([
  Object.freeze({id:'free',name:'Free',priceCents:0,currency:'USD',interval:'calendar_month',replyLimit:100,voiceMinuteLimit:10}),
  Object.freeze({id:'pro',name:'Pro',priceCents:PRO_PRICE_CENTS,currency:'USD',interval:'month',replyLimit:1000,voiceMinuteLimit:120}),

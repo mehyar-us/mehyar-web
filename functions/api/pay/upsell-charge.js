@@ -136,10 +136,7 @@ export async function onRequestPost({ request, env }) {
     const gid = String(baseMeta.gid || "");
     if (!/^[0-9a-f]{32}$/.test(gid))
       return J({ ok: false, error: "base_not_paid" }, 402);
-    // The customer id is resolved from the PaymentIntent below when the
-    // row doesn't carry it (the webhook backfills it best-effort). Only
-    // the payment intent is strictly required here.
-    if (!base.stripe_payment_intent)
+    if (!base.stripe_customer_id || !base.stripe_payment_intent)
       return J({ ok: false, error: "no_saved_card" }, 409);
 
     // Idempotency: one upsell per generation. A paid upsell row for this
@@ -153,20 +150,13 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
-    // Payment integrity (rot541, 2026-10-22): Stripe mode is never
-    // client-selected — see checkout.js. Client test flags are ignored.
-    const testMode = false;
+    const testMode = body.test === true;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return J(
         { ok: false, error: testMode ? "stripe_test_not_configured" : "stripe_not_configured" },
         testMode ? 400 : 503
       );
-    }
-    // Key-prefix assertion (house billing pattern): never charge with a key
-    // carrying the opposite mode's (sk|rk)_ prefix.
-    if (/^(sk|rk)_test_/.test(stripeKey)) {
-      return J({ ok: false, error: "stripe_mode_mismatch" }, 500);
     }
 
     // Resolve the saved payment method from the base PaymentIntent.
@@ -175,26 +165,7 @@ export async function onRequestPost({ request, env }) {
       "/v1/payment_intents/" + encodeURIComponent(base.stripe_payment_intent)
     );
     const savedPm = piGet.ok && piGet.data && piGet.data.payment_method;
-    let customer = (piGet.ok && piGet.data && piGet.data.customer) || base.stripe_customer_id;
-    // Resilience (2026-10-06): some base purchases reach us with a saved
-    // card on the PaymentIntent but no customer object (observed live on a
-    // real test purchase). Stripe requires a customer for off-session
-    // charges, so create one now, attach the saved card, and backfill the
-    // row — the one-click upsell then works for old and edge-case rows too.
-    if (piGet.ok && savedPm && !customer) {
-      const cs = new URLSearchParams();
-      cs.set("email", base.email || "");
-      cs.set("payment_method", String(savedPm));
-      cs.set("description", "BabyPeek one-click upsell buyer");
-      const cRes = await stripeCall(stripeKey, "POST", "/v1/customers", cs);
-      if (cRes.ok && cRes.data && cRes.data.id) {
-        customer = cRes.data.id;
-        try {
-          await db.prepare("UPDATE billing_payments SET stripe_customer_id=? WHERE id=?")
-            .bind(String(customer), base.id).run();
-        } catch (e) { console.error("pay/upsell-charge customer backfill failed", e && e.message); }
-      }
-    }
+    const customer = (piGet.ok && piGet.data && piGet.data.customer) || base.stripe_customer_id;
     if (!piGet.ok || !savedPm || !customer) {
       return J({ ok: false, error: "no_saved_card" }, 409);
     }

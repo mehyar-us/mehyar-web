@@ -72,7 +72,7 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized coloring books.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">jobs.mehyar — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="font-semibold">mehyar.jobs — <a className="text-brand-700 underline dark:text-brand-100" href="https://jobs.mehyar.us" target="_blank" rel="noreferrer">jobs.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Fit-scored career listings.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
@@ -100,6 +100,10 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">DIY credit repair kit — dispute letters and rebuild plan.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">TikTok Growth System — <a className="text-brand-700 underline dark:text-brand-100" href="https://tiktokgrowth.mehyar.us" target="_blank" rel="noreferrer">tiktokgrowth.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">AI-generated organic short-form growth playbook.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">PLR Vault — <a className="text-brand-700 underline dark:text-brand-100" href="https://plrvault.mehyar.us" target="_blank" rel="noreferrer">plrvault.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Private-label-rights digital product vault — planner pack, content calendar, email swipes, course outlines.</div>
           </li>
@@ -117,10 +121,18 @@ const sections: Section[] = [
             <div className="text-sm text-muted-foreground">Personalized household preparedness playbook — calm, practical, no fear-mongering.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
+            <div className="font-semibold">OpenSeason — <a className="text-brand-700 underline dark:text-brand-100" href="https://openseason.mehyar.us" target="_blank" rel="noreferrer">openseason.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Every hunting-season date for your state, in plain English — free next-3 openers, $12 state packs.</div>
+          </li>
+          <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">BeachCall — <a className="text-brand-700 underline dark:text-brand-100" href="https://beachcall.mehyar.us" target="_blank" rel="noreferrer">beachcall.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">Daily go/no-go beach verdicts with best-hours windows — free for one beach a day, $9 summer pass for all your beaches.</div>
           </li>
 
+          <li className="rounded-xl border border-border bg-card/60 p-3">
+<div className="font-semibold">CareRank — <a className="text-brand-700 underline dark:text-brand-100" href="https://carerank.mehyar.us" target="_blank" rel="noreferrer">carerank.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
+            <div className="text-sm text-muted-foreground">Nursing-home shortlist from real CMS data — free quiz with blurred top 3, $29 one-time for the full ranked 12-page PDF.</div>
+          </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">PureTap — <a className="text-brand-700 underline dark:text-brand-100" href="https://puretap.mehyar.us" target="_blank" rel="noreferrer">puretap.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
@@ -128,7 +140,7 @@ const sections: Section[] = [
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">TicketBeat — <a className="text-brand-700 underline dark:text-brand-100" href="https://ticketbeat.mehyar.us" target="_blank" rel="noreferrer">ticketbeat.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Free NYC parking-ticket dismissal odds from real DOF appeal data — $9.99 one-time for a tailored dispute letter, $6.99/month for dispute letters for up to 3 plates. Payments are final and non-refundable.</div>
+            <div className="text-sm text-muted-foreground">Free NYC parking-ticket dismissal odds from real DOF appeal data — $9.99 one-time for a tailored dispute letter, $6.99/month covering every ticket.</div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">FloodLens — <a className="text-brand-700 underline dark:text-brand-100" href="https://floodlens.mehyar.us" target="_blank" rel="noreferrer">floodlens.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
@@ -136,67 +148,9 @@ const sections: Section[] = [
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">The Mayor — <a className="text-brand-700 underline dark:text-brand-100" href="https://mayor.mehyar.us" target="_blank" rel="noreferrer">mayor.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            {/* PRICING: update when the $39 catalog ships (see ~/workspace/mayor-pilot/pricing-39.diff) */}
-            <div className="text-sm text-muted-foreground">AI business assistant for local service businesses — customers, appointments, playbooks, and voice. Free plan; $99/month Pro; one-time credit packs from $4.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Moonroom — <a className="text-brand-700 underline dark:text-brand-100" href="https://moonroom.mehyar.us" target="_blank" rel="noreferrer">moonroom.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI photo studio: studio portraits from one selfie — $49 headshot packs, $39 product-photo studio, $29 theme packs. One-time payments, no subscription.</div>
-            <div className="text-sm text-muted-foreground mt-2 space-y-2">
-              <p><strong>Additional Moonroom terms.</strong> Moonroom sells one-time digital photo packs, delivered as AI-generated images in your online gallery: <strong>Headshot Pack — $49 one-time</strong> (60 AI portraits across Corporate, Creative, Outdoor, and Studio styles); <strong>Product Studio — $39 one-time</strong> (50 AI product shots across Clean White, Marble, Lifestyle, and Gradient styles); <strong>Theme Pack — $29 one-time</strong> (20 AI themed portraits in the current seasonal edition — launch edition: Halloween, available through October 31, 2026). Photo fix-ups (Upscale, Background Blur, Object Removal) are free within the same 3 free previews per device, shared with portrait and product previews; a pack does not add a separate fix-up allowance. Prices are one-time payments in USD, charged through Stripe. There is no subscription and nothing renews.</p>
-              <p><strong>All Moonroom sales are final.</strong> Moonroom purchases are non-refundable. Every pack can be evaluated before purchase through 3 free watermarked previews, and the paid packs are offered on the basis of those previews. AI-generated results vary with the input photo you provide. Free previews are watermarked, are provided for evaluation only, and may not be used commercially.</p>
-              <p><strong>Your rights in the output.</strong> For every image you unlock with a paid pack, you receive full commercial rights: you may use, reproduce, publish, and sell the unlocked watermark-free images, including in advertising and in products you offer for sale, without further payment to Mehyar Soft LLC. Mehyar Soft LLC claims no ownership of your unlocked images. These rights apply to Moonroom's output only: you are responsible for making sure you have the right to use any photo you upload (including the people and products shown in it), and Mehyar Soft LLC does not grant you any rights in third-party trademarks, likenesses, or branded products that appear in your uploads or outputs. Because the images are AI-generated, Mehyar Soft LLC cannot guarantee that an output will be unique to you or registrable as a trademark.</p>
-              <p><strong>Delivery and access.</strong> Paid packs are delivered in the browser through your purchase token and gallery link; there is no account and no cross-device sync. Your purchase token is your key — it lives in your success link and your gallery link, and we email you a copy at your checkout email when your pack is ready, so it's in your inbox if you need it — still, keep the link somewhere safe. Still have the token? Paste it on the Account page to restore your order on this device. Lost it? Email info@mehyar.us from your checkout email and we'll restore your access after verifying it's you. Uploads are deleted 30 days after upload; you may request deletion of your data at any time via the <a className="text-brand-700 underline dark:text-brand-100" href="/data-deletion/">data-deletion page</a>. Moonroom's output is generated by AI models. Portraits are artistic renderings based on your input photo; they are not photographs of you and results are not guaranteed to satisfy any third party's photo requirements (for example, government ID standards).</p>
-            </div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Audit My Business — <a className="text-brand-700 underline dark:text-brand-100" href="https://mehyar.us/audit/" target="_blank" rel="noreferrer">mehyar.us/audit <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">$330 AI business audit: overall score, money leaks ranked by severity, prioritized fixes, and an AI opportunity map. One-time payment, purchases final.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">DUST — <a className="text-brand-700 underline dark:text-brand-100" href="https://dust.mehyar.us" target="_blank" rel="noreferrer">dust.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Meme-coin experiment: the 7-day Great Sweep distributes 100% of the $DUST supply pro-rata to sweepers — no presale, no insiders. Currently testnet only; nothing for sale. 18+.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Clipnote — <a className="text-brand-700 underline dark:text-brand-100" href="https://clipnote.mehyar.us" target="_blank" rel="noreferrer">clipnote.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Release notes in, a polished 60-second narrated launch video out — free script preview, $29 per video or $19/mo for 4 videos. Payments are final and non-refundable.</div>
+            <div className="text-sm text-muted-foreground">AI business assistant for local service businesses — customers, appointments, playbooks, and voice. Free plan; $14/month Pro; one-time credit packs from $4.</div>
           </li>
 
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Billcut — <a className="text-brand-700 underline dark:text-brand-100" href="https://billcut.mehyar.us" target="_blank" rel="noreferrer">billcut.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Statement audit: upload a bank or card statement and get every recurring charge ranked by yearly cost, with a cancel or negotiation script for each. $9 one-time full audit; $7/month monitoring. No bank login is required; your file is deleted right after it's read. Optional: after purchase you may connect an account read-only through Stripe Financial Connections — the login happens on Stripe's hosted window, Billcut never receives bank credentials, only the transactions permission is requested, raw transactions are processed and discarded (only the connection identifier and the audit summary are kept), and you can disconnect anytime from your report page.</div>
-            <div className="font-semibold">Coach — <a className="text-brand-700 underline dark:text-brand-100" href="https://coach.mehyar.us" target="_blank" rel="noreferrer">coach.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI job-search copilot: paste your resume and the job post and Coach tailors the resume to that job (rewritten summary, re-aimed bullets, honest keyword-gap list) and runs STAR interview practice with per-element scores. Free preview; Coach Pro is a $19/month subscription, cancel anytime via the Stripe customer portal. Paste-text intake only — resume and job-post text are stored only behind a private session token and can be deleted in-product at any time. Coach does not guarantee interviews or jobs, and its AI drafts must be reviewed and made true by the user before sending.</div>
-          </li>
-
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Legit — <a className="text-brand-700 underline dark:text-brand-100" href="https://legit.mehyar.us" target="_blank" rel="noreferrer">legit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI LLC-formation advisor — free name check, filing guidance, and generated documents ($29 session). Self-help software, not a law firm.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">SproutScore — <a className="text-brand-700 underline dark:text-brand-100" href="https://sproutscore.mehyar.us" target="_blank" rel="noreferrer">sproutscore.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">NYC daycare inspection decoder — free center search, $19 full decoded report.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Playbook — <a className="text-brand-700 underline dark:text-brand-100" href="https://playbook.mehyar.us" target="_blank" rel="noreferrer">playbook.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">The 30-Day Content Playbook — free hook teaser, $27 full playbook with posting plan.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">WattWise — <a className="text-brand-700 underline dark:text-brand-100" href="https://wattwise.mehyar.us" target="_blank" rel="noreferrer">wattwise.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Electric-bill checker — free rate gauge from a bill photo, $14.99 full audit, $7.99/mo monitoring.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Memoir — <a className="text-brand-700 underline dark:text-brand-100" href="https://memoir.mehyar.us" target="_blank" rel="noreferrer">memoir.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI-guided memoir interviewer: a 12-chapter interview compiles a storyteller's own answers into a finished book (web + PDF + print-ready files). Free Sample Chapter; $79 Digital or $149 Complete, one-time — no subscription, purchases are final. Stories live behind a private link, are never used for marketing or sold, and can be deleted in-product at any time. Complete includes print-ready files only — no book is mailed.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">ValleyGods — <a className="text-brand-700 underline dark:text-brand-100" href="https://valleygods.mehyar.us" target="_blank" rel="noreferrer">valleygods.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">A living AI town of 150 Minimes — free to watch, read their Mindlogs, or sign in to occupy one. Free, no paid tier.</div>
-          </li>
-          <li className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="font-semibold">Visakit — <a className="text-brand-700 underline dark:text-brand-100" href="https://visakit.mehyar.us" target="_blank" rel="noreferrer">visakit.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">AI tourist-visa application preparation — five routes live, any route on request, $39 per pack ($29 early-bird for the first 25 packs). Preparation help only; visa decisions belong to the consulate.</div>
-          </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">            <div className="font-semibold">Tenant sites</div>
             <div className="text-sm text-muted-foreground">Branded client sites including mehyarmobile.com, stuffprettygood.com, rochelle.love, and white-label hosted PWAs under <code>connectree-*</code> / <code>blue-apple-space-*</code>.</div>
           </li>
@@ -372,8 +326,7 @@ const sections: Section[] = [
           <a className="text-brand-700 underline dark:text-brand-100" href={`mailto:${contactEmail}`}>{contactEmail}</a>.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Operated by <strong>{company}</strong>. Mail: 244 96th St APT 1B, Brooklyn, NY 11209.
-          Effective July 18, 2026.
+          Operated by <strong>{company}</strong>. Effective July 18, 2026.
         </p>
       </>
     ),
