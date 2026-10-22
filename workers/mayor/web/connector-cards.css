@@ -70,20 +70,3 @@
   font-size: 0.9rem;
   margin: 0.5rem 0 0;
 }
-.connector-handoff {
-  margin: 0.75rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-.connector-handoff img {
-  display: block;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px;
-}
-.connector-handoff-link {
-  word-break: break-all;
-  font-size: 0.9rem;
-}

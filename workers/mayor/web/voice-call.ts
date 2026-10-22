@@ -7,48 +7,20 @@ function startupMessage(message:string){
   ? microphoneHelp
   : message;
 }
-/** Plain-language notice for the degraded voice state. Pure — no DOM — so the
- *  exact wording is unit-testable and shared by every voice start path. */
-export function voiceUnavailableNotice(reason:string){
- const cause=reason&&reason.trim()?reason.trim():'voice service is not configured';
- return `Voice isn't available right now — ${cause}. Chat works normally.`;
-}
-/** Stall watchdog bounds. A turn spends a few seconds thinking and at most
- *  about a minute speaking (replies are token-capped); past these bounds with
- *  no status change and no transcript activity, the server side has stalled
- *  and the call is ended with an explanation instead of trapping the owner. */
-const THINKING_STALL_MS=45000,SPEAKING_STALL_MS=90000;
-const STUCK_MESSAGE='Voice got stuck, so I ended the call. Tap the mic to talk again — or just type below.';
 /** Server listening status may precede local microphone permission/readiness. */
 export function createVoiceCall(client:Client,changed:()=>void,failed:(message:string)=>void,prepare?:()=>Promise<void>){
  let starting=false,active=false,pending=false,localReady=false,serverReady=false,generation=0,timer:ReturnType<typeof setTimeout>|undefined;
- let remote='idle',stallTimer:ReturnType<typeof setTimeout>|undefined;
- const clearStall=()=>{clearTimeout(stallTimer);stallTimer=undefined;};
- const armStall=()=>{
-  clearStall();
-  if(!active)return;
-  const limit=remote==='thinking'?THINKING_STALL_MS:remote==='speaking'?SPEAKING_STALL_MS:0;
-  if(!limit)return;
-  stallTimer=setTimeout(()=>{stallTimer=undefined;if(!active)return;stop();failed(STUCK_MESSAGE);},limit);
- };
- const reset=()=>{generation++;clearTimeout(timer);clearStall();remote='idle';starting=false;active=false;localReady=false;serverReady=false;changed();};
+ const reset=()=>{generation++;clearTimeout(timer);starting=false;active=false;localReady=false;serverReady=false;changed();};
  const stop=()=>{reset();client.endCall();};
- const ready=()=>{if(starting&&localReady&&serverReady){starting=false;active=true;clearTimeout(timer);changed();armStall();}};
+ const ready=()=>{if(starting&&localReady&&serverReady){starting=false;active=true;clearTimeout(timer);changed();}};
  return {
   get starting(){return starting;},get active(){return active;},reset,stop,
-  /** A sign of life from the server (transcript or recognition activity):
-   *  restarts the stall countdown for the current thinking/speaking state. */
-  activity(){if(active&&(remote==='thinking'||remote==='speaking'))armStall();},
   status(status:string){
    if(status==='idle'){
     // A connection's initial idle snapshot may arrive after start_call.
     // Once acknowledged, idle means the server ended this call.
     if(active||(starting&&serverReady))stop();
-    return;
-   }
-   remote=status;
-   if(starting){serverReady=true;ready();}
-   if(active)armStall();
+   }else if(starting){serverReady=true;ready();}
   },
   error(message:string|null){
    if(!message)return;
