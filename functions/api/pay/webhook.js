@@ -628,6 +628,25 @@ export async function onRequestPost({ request, env, waitUntil }) {
     }
 
     const event = JSON.parse(rawBody);
+
+    // Payment integrity (rot541, 2026-10-22): production fulfills LIVE
+    // events only. A test-mode event (livemode === false) is refused here —
+    // after signature verification, before any ledger write, mirror
+    // resolution, or fulfillment dispatch — and the refusal is logged to
+    // webhook_debug. Test-endpoint signatures still verify (legacy), but
+    // verification is not fulfillment. Internal test proofs belong on a
+    // staging deployment, never on production webhooks.
+    if (event.livemode === false) {
+      try {
+        const obj = (event.data && event.data.object) ? event.data.object : {};
+        const pid = Number(obj.metadata && obj.metadata.payment_id) || null;
+        await db.prepare(
+          "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'refused_test_mode', ?)"
+        ).bind(pid, String(event.type || "") + " " + String(obj.id || "")).run();
+      } catch (_) { /* logging never blocks the refusal */ }
+      return json({ ok: true, refused: "test_mode" }, 200);
+    }
+
     if (event.type === "checkout.session.completed") {
       const sess = (event.data && event.data.object) ? event.data.object : {};
       const paymentId = Number(sess.metadata && sess.metadata.payment_id);
