@@ -99,7 +99,7 @@ function mountAuditPage(){
    let timer:ReturnType<typeof setTimeout>|undefined;
    const wedged=new Promise<never>((_resolve,reject)=>{timer=setTimeout(()=>reject(new Error('The checkout availability check timed out.')),OFFER_UI_TIMEOUT_MS);});
    offer=await Promise.race([api('/api/business-audit/offer') as Promise<AuditOfferResponse>,wedged]).finally(()=>{if(timer!==undefined)clearTimeout(timer);});
-   const state=checkoutAvailability(offer);availability.textContent=state.message;testNotice.hidden=!state.test;checkout.disabled=!state.available;setButton(state.label);
+   const state=checkoutAvailability(offer);availability.textContent=state.message;testNotice.textContent=state.test?'Test checkout. No live payment is collected. Any completed test payment stays labeled as a test.':'';testNotice.hidden=!state.test;checkout.disabled=!state.available;setButton(state.label);
   }catch{
    availability.textContent='Checkout availability could not be verified. ';
    availability.append(ensureOfferRetryButton());
