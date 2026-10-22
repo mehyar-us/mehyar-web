@@ -150,7 +150,7 @@ function heuristicFallback(signals) {
       { name: "Document Scanner", what: "Snap a photo of any document — AI extracts the data and flags what needs attention.", upside: "Estimated: cuts admin hours by half on paperwork-heavy weeks." },
     ],
     full_report_hooks: [
-      "The $5 full report grades every page of your site and shows the AI capacity math for your numbers, step by step.",
+      "The $5 full report grades every page of your site and shows the 500% AI upside math step by step.",
       "It includes a 90-day AI automation blueprint tailored to your business type.",
     ],
     _fallback: true,
@@ -180,10 +180,10 @@ function reportEmailHtml(lead, report) {
     ${leakRows}
     <h2 style="font-size:18px;margin-top:24px;">3 quick wins</h2>
     <ol style="padding-left:20px;">${wins}</ol>
-    ${pipelines ? `<h2 style="font-size:18px;margin-top:24px;">Your AI upside — the capacity math for your numbers</h2>${pipelines}` : ""}
+    ${pipelines ? `<h2 style="font-size:18px;margin-top:24px;">Your AI upside — up to 5x capacity</h2>${pipelines}` : ""}
     <div style="background:#0f172a;color:#fff;border-radius:12px;padding:20px;margin-top:24px;">
       <p style="margin:0 0 8px;font-weight:700;font-size:18px;">Get the complete professional evaluation — just $5</p>
-      <p style="margin:0 0 12px;color:#cbd5e1;">Every page graded. How you compare. The AI automation blueprint with the capacity math shown step by step. 90-day plan.</p>
+      <p style="margin:0 0 12px;color:#cbd5e1;">Every page graded. How you compare. The 500% AI automation blueprint with the math shown step by step. 90-day plan.</p>
       <a href="https://mehyar.us/audit/report" style="display:inline-block;background:#22c55e;color:#052e16;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;">Get my full report — $5</a>
     </div>
     <p style="color:#94a3b8;font-size:12px;margin-top:24px;">You received this because you requested a free website audit at mehyar.us.<br>

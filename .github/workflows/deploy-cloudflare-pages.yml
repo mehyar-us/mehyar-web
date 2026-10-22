@@ -69,46 +69,21 @@ jobs:
         run: |
           printf '%s' "$SECRET_STRIPE_TEST" | npx wrangler pages secret put STRIPE_TEST_SECRET_KEY --project-name=mehyar-web
           printf '%s' "$SECRET_WH_TEST2" | npx wrangler pages secret put STRIPE_WEBHOOK_SECRET_TEST2 --project-name=mehyar-web
-          # 2026-10-05: sync the shared automation + email identity secrets so the
-          # fulfillment sweep (Bearer AUDIT_CRON_SECRET) and buyer emails work.
-          # secret put overwrites — it can never 409 like a [vars] duplicate.
-          test -n "$SECRET_AUDIT_CRON" || { echo "SECRET_AUDIT_CRON is missing" >&2; exit 1; }
-          printf '%s' "$SECRET_AUDIT_CRON" | npx wrangler pages secret put AUDIT_CRON_SECRET --project-name=mehyar-web
-          printf '%s' "$SECRET_CF_EMAIL" | npx wrangler pages secret put CLOUDFLARE_EMAIL --project-name=mehyar-web
         env:
           SECRET_STRIPE_TEST: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
           SECRET_WH_TEST2: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST2 }}
-          SECRET_AUDIT_CRON: ${{ secrets.AUDIT_CRON_SECRET }}
-          SECRET_CF_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
-          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      - name: Restore Stripe LIVE secrets as project secrets (survive deploys)
+      - name: Restore Stripe live secret as project secret (survives deploys)
         run: |
-          # 2026-10-09: the audit $330 checkout returned stripe_not_configured on
-          # live because STRIPE_SECRET_KEY was never provisioned on the project.
-          # These no-op with a loud warning until the repo secrets exist -- add
-          # STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET in GitHub repo secrets to
-          # enable live purchases (plus register the live webhook endpoint in
-          # Stripe pointing at https://mehyar.us/api/pay/webhook).
           if [ -z "$SECRET_STRIPE_LIVE" ]; then
-            echo "WARNING: STRIPE_SECRET_KEY repo secret not set -- live checkout stays disabled (stripe_not_configured). Test mode is unaffected."
-          else
-            printf '%s' "$SECRET_STRIPE_LIVE" | npx wrangler pages secret put STRIPE_SECRET_KEY --project-name=mehyar-web
-            echo "STRIPE_SECRET_KEY restored."
+            echo "STRIPE_SECRET_KEY repo secret not set — skipping live secret restore"
+            exit 0
           fi
-          if [ -z "$SECRET_WH_LIVE" ]; then
-            echo "WARNING: STRIPE_WEBHOOK_SECRET repo secret not set -- live webhook verification will fail once live checkout is enabled."
-          else
-            printf '%s' "$SECRET_WH_LIVE" | npx wrangler pages secret put STRIPE_WEBHOOK_SECRET --project-name=mehyar-web
-            echo "STRIPE_WEBHOOK_SECRET restored."
-          fi
+          printf '%s' "$SECRET_STRIPE_LIVE" | npx wrangler pages secret put STRIPE_SECRET_KEY --project-name=mehyar-web
         env:
           SECRET_STRIPE_LIVE: ${{ secrets.STRIPE_SECRET_KEY }}
-          SECRET_WH_LIVE: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Deploy Pages site and Functions
         run: |
           echo "Injecting secrets into wrangler.toml [vars] (not committed)..."
@@ -119,14 +94,9 @@ jobs:
               "MEHYARSOFT_ADMIN_USERNAME": os.environ["SECRET_ADMIN_USERNAME"],
               "MEHYARSOFT_API_ADMIN_USERNAME": os.environ["SECRET_API_ADMIN_USERNAME"],
               "MEHYARSOFT_ADMIN_PASSWORD": os.environ["SECRET_ADMIN_PASSWORD"],
-              # 2026-10-05 12:15 ET: CLOUDFLARE_API_KEY stays OUT of [vars] injection
-              # (already bound in production as a secret — re-injecting 409s the
-              # deploy). CLOUDFLARE_EMAIL + AUDIT_CRON_SECRET are synced via
-              # `wrangler pages secret put` in the step below instead: secret put
-              # overwrites and can never collide with a binding the way [vars] can.
-              # 12:20 ET: an ad_hoc `wrangler pages deploy` (1bbdb268) briefly
-              # superseded Actions builds — production must ONLY come from this
-              # workflow. Never deploy mehyar-web via wrangler (wipes bindings).
+              "CLOUDFLARE_EMAIL": os.environ["SECRET_CF_EMAIL"],
+              "CLOUDFLARE_API_KEY": os.environ["SECRET_CF_API_KEY"],
+              "AUDIT_CRON_SECRET": os.environ["SECRET_AUDIT_CRON"],
               "TURNSTILE_SECRET_KEY": os.environ["SECRET_TURNSTILE"],
               "CRM_ACCESS_CLIENT_ID": os.environ["SECRET_CRM_ID"],
               "ADMIN_SESSION_SECRET": os.environ["SECRET_SESSION"],

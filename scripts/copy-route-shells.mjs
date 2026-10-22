@@ -20,28 +20,10 @@ const appShell = readFileSync(indexHtml, 'utf8');
 // its own meta.
 const routeMeta = {
   '/audit': {
-    title: 'Audit My Business — $330 AI Business Audit | MehyarSoft',
-    description:
-      'A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.',
-    path: '/audit',
-  },
-  '/audit/free': {
     title: 'Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft',
     description:
       'Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.',
-    path: '/audit/free',
-  },
-  '/audit/report': {
-    title: '$5 Full Report | MehyarSoft',
-    description:
-      'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.',
-    path: '/audit/report',
-  },
-  '/audit/sample-report': {
-    title: 'Sample Report — Audit My Business | MehyarSoft',
-    description:
-      'See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.',
-    path: '/audit/sample-report',
+    path: '/audit',
   },
   '/': {
     title: 'MehyarSoft LLC | Software, Systems & AI Automation',
@@ -120,12 +102,6 @@ const routeMeta = {
       'A practical MehyarSoft framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.',
     path: '/blog/small-business-tech-audit-revenue-leaks',
   },
-  '/blog/what-does-a-business-audit-check': {
-    title: 'What Does a Business Audit Check? | Audit My Business',
-    description:
-      'What does a business audit check? Your site, booking path, and follow-up — leaks priced in dollars, fixes ranked. Free scan first, $330 full audit.',
-    path: '/blog/what-does-a-business-audit-check',
-  },
   '/blog/missed-calls-crm-follow-up': {
     title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
     description:
@@ -193,9 +169,9 @@ const routeMeta = {
       path: '/about',
     },
     '/apps': {
-      title: 'Products We Own | MehyarSoft LLC',
+      title: 'Apps MehyarSoft Builds and Operates | MehyarSoft',
       description:
-        'Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy.',
+        'Live apps shipped by MehyarSoft: browse the products directory, the launch notes, and the app-launch playbook behind them.',
       path: '/apps',
     },
     '/330': {
@@ -324,8 +300,7 @@ function applyRouteMeta(html, route) {
   if (!meta) return html;
 
   const canonicalPath = meta.path || route;
-  const normalizedPath = canonicalPath === "/" ? "/" : `${canonicalPath.replace(/\/$/, "")}/`;
-  const canonicalUrl = `${SITE_ORIGIN}${normalizedPath}`;
+  const canonicalUrl = `${SITE_ORIGIN}${canonicalPath}`;
   const title = meta.title;
   const description = meta.description;
   const robots = meta.robots || 'index,follow';
@@ -395,9 +370,6 @@ if (missingBlogShells.length > 0) {
 
 const directRoutes = [
   'audit',
-  'audit/free',
-  'audit/report',
-  'audit/sample-report',
   'services',
   'pricing',
   'proposals',
@@ -494,10 +466,10 @@ function adminShell(route) {
     .replace(/<meta name="description" content="[^"]*" \/>/, '<meta name="description" content="Owner-only MehyarSoft admin area." />')
     .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
     .replace(/<meta property="og:description" content="[^"]*" \/>/, '<meta property="og:description" content="Owner-only MehyarSoft admin area." />')
-    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${SITE_ORIGIN}/${route.replace(/\/$/, "")}/" />`)
+    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${SITE_ORIGIN}/${route}" />`)
     .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${title}" />`)
     .replace(/<meta name="twitter:description" content="[^"]*" \/>/, '<meta name="twitter:description" content="Owner-only MehyarSoft admin area." />')
-    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${SITE_ORIGIN}/${route.replace(/\/$/, "")}/" />`);
+    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${SITE_ORIGIN}/${route}" />`);
 }
 
 // Build a 404-themed noindex app shell so static hosts (Cloudflare Pages) that

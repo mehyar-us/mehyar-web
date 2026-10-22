@@ -65,7 +65,7 @@ export const REGISTRY = [
   { id: "plrvault",    name: "PLR Vault",       domain: "plrvault.mehyar.us",     url: "https://plrvault.mehyar.us",     kind: "digital-product", status: "live",   sources: {} },
   { id: "prepguide",   name: "PrepGuide",       domain: "prepguide.mehyar.us",    url: "https://prepguide.mehyar.us",    kind: "digital-product", status: "live",   sources: {} },
   { id: "sprint30",    name: "Sprint30",        domain: "sprint30.mehyar.us",     url: "https://sprint30.mehyar.us",     kind: "digital-product", status: "live",   sources: {} },
-  { id: "tiktokgrowth", name: "TikTokGrowth",   domain: "tiktokgrowth.mehyar.us", url: "https://tiktokgrowth.mehyar.us", kind: "digital-product", status: "live",   sources: {} },
+  { id: "playbook",     name: "ContentPlaybook", domain: "playbook.mehyar.us",     url: "https://playbook.mehyar.us",     kind: "digital-product", status: "live",   sources: {} },
   { id: "bizbuilder",  name: "BizBuilder",      domain: "bizbuilder.mehyar.us",   url: "https://bizbuilder.mehyar.us",   kind: "digital-product", status: "live",   sources: {} },
   { id: "creditfix",   name: "CreditFix Kit",   domain: "creditfix.mehyar.us",    url: "https://creditfix.mehyar.us",    kind: "digital-product", status: "live",   sources: {} },
   { id: "freelanceros", name: "FreelancerOS",   domain: "freelanceros.mehyar.us", url: "https://freelanceros.mehyar.us", kind: "digital-product", status: "live",   sources: {} },
