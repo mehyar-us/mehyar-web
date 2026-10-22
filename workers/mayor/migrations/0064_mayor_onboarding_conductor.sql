@@ -1,13 +1,11 @@
--- RECOVERED-RECORD — documentation-grade reconstruction, Slice 0 (2026-10-21).
--- Applied to production (recorded in production's d1_migrations) but its
--- file existed in NO repo. The DDL below was recovered verbatim from
--- production's live schema (sqlite_master) on 2026-10-21.
--- Attribution: mayor_onboarding_state + idx_onboarding_state_phase are
--- this file's by name. mayor_gbp_snapshot is attributed here by theme and
--- elimination (the onboarding conductor imports the shop's Google
--- Business Profile snapshot; the remaining unrecovered file, 0066, is
--- payment connections) — flagged as inferred in the Slice 0 report.
-CREATE TABLE mayor_onboarding_state (
+-- 0064: P4 Chief of Staff onboarding conductor — per-tenant phase state.
+-- Additive only. Phase COMPLETION is derived from ground truth (profile
+-- facts, real connection grants, explicit authority tiers); this row stores
+-- only what cannot be derived: the owner's skip decisions, the "use the
+-- defaults" rules decision, the missing-vertical signal, and when the
+-- hand-off summary was delivered. A skipped connection is never stored as
+-- connected — connection status is always read from the real grants.
+CREATE TABLE IF NOT EXISTS mayor_onboarding_state (
  tenant_id TEXT PRIMARY KEY,
  phase TEXT NOT NULL DEFAULT 'identify' CHECK(phase IN ('identify','learn','connect','rules','handoff','done')),
  skipped_connections TEXT NOT NULL DEFAULT '[]',
@@ -16,10 +14,4 @@ CREATE TABLE mayor_onboarding_state (
  handoff_at TEXT,
  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
-CREATE INDEX idx_onboarding_state_phase ON mayor_onboarding_state(phase);
-CREATE TABLE mayor_gbp_snapshot (
- tenant_id TEXT PRIMARY KEY REFERENCES agent_tenants(id),
- grant_id TEXT NOT NULL,
- snapshot_json TEXT NOT NULL,
- fetched_at TEXT NOT NULL
-);
+CREATE INDEX IF NOT EXISTS idx_onboarding_state_phase ON mayor_onboarding_state(phase);

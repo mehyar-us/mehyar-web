@@ -139,7 +139,7 @@ describe('briefing copy (es)',()=>{
 
 describe('notification copy (es)',()=>{
  it('covers every bell kind with no English leftovers',()=>{
-  const kinds=['phone_call_review','scheduled_check_failed','onboarding','calendar_connection','missed_call_texted','missed_call','missed_call_simulated','proactive_suggestion','proactive_briefing'];
+  const kinds=['phone_call_review','scheduled_check_failed','onboarding','calendar_connection','missed_call_texted','missed_call','missed_call_simulated','proactive_suggestion','proactive_briefing','phone_connect_reask','profile_hours_missing'];
   expect(Object.keys(NOTIFICATION_COPY_ES).sort()).toEqual(kinds.sort());
   for(const kind of kinds){
    const copy=esNotificationCopy(kind)!;

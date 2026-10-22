@@ -25,7 +25,16 @@ export async function findPhoneAvailability(env:Env,callId:string,raw:z.infer<ty
 export const phoneBookingSlotSchema=bookingSchema.omit({title:true,attendees:true});
 export async function proposePhoneBooking(env:Env,callId:string,raw:z.infer<typeof phoneBookingSlotSchema>){
  const slot=phoneBookingSlotSchema.parse(raw),scope=await bookingScope(env,callId),actor={tenantId:scope.tenantId,userId:scope.grantor};
- const proposal=await proposeBooking(env,actor,{...slot,title:'Appointment',attendees:[],customerId:scope.customerId});
+ let proposal;
+ try{
+  // Owner tier never auto-confirms a phone booking: the caller's own
+  // confirmation is always required. 'readonly' surfaces as the standard
+  // caller-safe unavailability message, never internal settings copy.
+  proposal=await proposeBooking(env,actor,{...slot,title:'Appointment',attendees:[],customerId:scope.customerId});
+ }catch(error){
+  if(error instanceof HttpError&&error.code==='booking_readonly')throw deny();
+  throw error;
+ }
  await assertPhoneCustomer(env,callId,scope);
  const now=new Date().toISOString();
  await env.AGENT_DB.batch([

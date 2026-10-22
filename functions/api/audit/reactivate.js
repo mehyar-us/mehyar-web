@@ -27,7 +27,7 @@ const STEPS = {
     headline: "A free AI website audit, built for you",
     body: (name) =>
       "Hi " + name + ",\n\nYou reached out to MehyarSoft a while back, and I wanted you to be first to try something I just built:\n\n" +
-      "A FREE AI WEBSITE AUDIT. Drop in your URL, and in 60 seconds it tears your site apart — every money leak priced in dollars, plus the AI systems that fit your business, with the capacity math shown for your numbers.\n\n" +
+      "A FREE AI WEBSITE AUDIT. Drop in your URL, and in 60 seconds it tears your site apart — every money leak priced in dollars, plus the AI systems that could multiply your output up to 5x.\n\n" +
       "No account. No card. Your report lands in your inbox.\n\nRun it here: https://mehyar.us\n\n" +
       "It detects your business type automatically — local shop, clinic, or enterprise — and shows the exact AI pipelines (voice agents, smart scheduling, document scanning) built for businesses like yours.\n\n" +
       "Try it and tell me your score.\n\n— Mehyar\nMehyarSoft\n\n" +
@@ -36,7 +36,7 @@ const STEPS = {
       "<p>Hi " + escapeHtml(name) + ",</p>" +
       "<p>You reached out to MehyarSoft a while back, and I wanted you to be first to try something I just built:</p>" +
       "<h2>A free AI website audit</h2>" +
-      "<p>Drop in your URL, and in 60 seconds it tears your site apart — every money leak priced in dollars, plus the AI systems that fit your business, with the capacity math shown for your numbers.</p>" +
+      "<p>Drop in your URL, and in 60 seconds it tears your site apart — every money leak priced in dollars, plus the AI systems that could multiply your output up to 5x.</p>" +
       "<p>No account. No card. Your report lands in your inbox.</p>" +
       "<p><a href='https://mehyar.us' style='display:inline-block;background:#0f172a;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none'>Run my free audit</a></p>" +
       "<p>It detects your business type automatically and shows the exact AI pipelines (voice agents, smart scheduling, document scanning) built for businesses like yours.</p>" +
@@ -69,13 +69,13 @@ const STEPS = {
     headline: "Last call — $5 launch pricing",
     body: (name) =>
       "Hi " + name + ",\n\nLast note on this — the free audit will always be free, but the complete professional evaluation is $5 at launch pricing.\n\n" +
-      "That's every page of your site graded A–F. Every leak priced. The AI automation blueprint with the capacity math shown for your numbers. Your 90-day revenue plan.\n\n" +
+      "That's every page of your site graded A–F. Every leak priced. The 500% AI automation blueprint with the math shown. Your 90-day revenue plan.\n\n" +
       "Get it here: https://mehyar.us/audit/report\n\n" +
       "— Mehyar\nMehyarSoft",
     html: (name) =>
       "<p>Hi " + escapeHtml(name) + ",</p>" +
       "<p>Last note — the free audit is free forever, but the <strong>complete professional evaluation</strong> is $5 at launch pricing.</p>" +
-      "<p>Every page graded A–F. Every leak priced. The AI blueprint with the capacity math shown for your numbers. Your 90-day revenue plan.</p>" +
+      "<p>Every page graded A–F. Every leak priced. The 500% AI blueprint with the math shown. Your 90-day revenue plan.</p>" +
       "<p><a href='https://mehyar.us/audit/report' style='display:inline-block;background:#22c55e;color:#052e16;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none'>Get the full report — $5</a></p>" +
       "<p>— Mehyar<br>MehyarSoft</p>",
   },

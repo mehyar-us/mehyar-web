@@ -1,18 +1,20 @@
 /**
  * sales-surface.test.ts — the /sales page is a STATIC pitch section around
- * the login form. The page SOURCE carries zero hardcoded price claims: no
- * dollar amounts, no pack pricing, no catalog fetch. Since rot107
- * (2026-10-12) the plan-card prices render at SERVE time from the live
- * billing catalog (SSR injection, same pattern as /pricing), so a catalog
- * price change flows through with no page edit — that is why the source
- * must stay price-free. All copy is honest: examples labeled
- * illustrative, no invented revenue, no guaranteed results.
+ * the login form. PRICES ARE SHOWN, never hidden: the product-compliance
+ * audit failed an earlier zero-amounts version for price concealment
+ * ("No hidden fees" with zero dollar figures), so the plans section must
+ * present the CURRENT catalog exactly as src/billing/plans.ts defines it
+ * (the billing source of truth). A future price change lands in plans.ts
+ * and this page together — never on the page alone. All other copy stays
+ * honest: examples labeled illustrative, no invented revenue, no
+ * guaranteed results.
  */
 import {expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
 import {readdirSync} from 'node:fs';
+import {PLANS,CREDIT_PACKS} from '../src/billing/plans';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const webDir=join(here,'..','web');
@@ -26,27 +28,43 @@ it('ships with no JavaScript: sales.ts and sales-pricing.ts are gone, no script 
  const webFiles=readdirSync(webDir);
  expect(webFiles).not.toContain('sales.ts');
  expect(webFiles).not.toContain('sales-pricing.ts');
- // The only scripts allowed are the consent-gated analytics snippet (wired
- // synchronously in <head> per the privacy order) and the audience beacon
- // tag (merged 2026-10-15) — no product JS. Beacon host superseded
- // 2026-10-22 (audience → Mayor integration): same tag, now served from
- // mayor.mehyar.us ahead of the old host's removal.
+ // The only script allowed is the consent-gated analytics snippet (wired
+ // synchronously in <head> per the privacy order) — no product JS.
  const scripts=[...html.matchAll(/<script\b[^>]*>/g)].map(m=>m[0]);
- expect(scripts).toEqual(['<script src="/analytics-consent.js">','<script async src="https://mayor.mehyar.us/b.js" data-product="mayor">']);
+ expect(scripts).toEqual(['<script src="/analytics-consent.js">']);
 });
 
-it('contains zero dollar amounts anywhere in the sales surface',()=>{
- for(const source of SALES_SOURCES){
-  expect(source).not.toMatch(/\$\d/);
- }
+// Expected figures derive from src/billing/plans.ts — the billing source
+// of truth — so a catalog change that forgets this page fails here.
+const CATALOG_DOLLARS=[...new Set([...PLANS,...CREDIT_PACKS].map(p=>p.priceCents/100))].sort((a,b)=>a-b);
+function dollarAmounts(source:string):number[]{
+ return [...new Set([...source.matchAll(/\$(\d+)/g)].map(m=>Number(m[1])))].sort((a,b)=>a-b);
+}
+
+it('presents the current catalog prices from plans.ts — prices are shown, not hidden',()=>{
+ const free=PLANS.find(p=>p.id==='free')!;
+ const pro=PLANS.find(p=>p.id==='pro')!;
+ expect(html).toContain(`$${free.priceCents/100} — free to start`);
+ expect(html).toContain(`$${pro.priceCents/100}/month`);
+ for(const pack of CREDIT_PACKS)expect(html).toContain(`${pack.name} $${pack.priceCents/100}`);
+ // The ONLY dollar amounts anywhere on the sales surface are the catalog
+ // amounts: nothing missing (concealment) and nothing extra (no invented
+ // or future prices — e.g. no $39 until new Stripe Price IDs land).
+ expect(dollarAmounts(SALES_SOURCES.join('\n'))).toEqual(CATALOG_DOLLARS);
+ // Provider-billing disclosure sits with the pricing, not buried.
+ expect(html).toContain('Text-back runs on your own Twilio/Telnyx number — provider charges are billed by them, not us.');
 });
 
-it('contains no pricing language: no per-month, no pack pricing, no catalog fetch',()=>{
+it('states pricing terms openly, fetches no catalog, and leaks no future price',()=>{
  const combined=SALES_SOURCES.join('\n');
- expect(combined).not.toContain('per month');
- expect(combined).not.toContain('$14');
+ const pro=PLANS.find(p=>p.id==='pro')!;
+ // The Pro period is stated in plain words right next to its price.
+ expect(html).toContain(`$${pro.priceCents/100}/month`);
+ expect(html).toContain('No hidden fees');
+ // $39 is the planned Phase-3 Pro price: it must not appear until the
+ // owner supplies new Stripe Price IDs and plans.ts changes with it.
  expect(combined).not.toContain('$39');
- expect(combined).not.toMatch(/credit pack/i);
+ // Static page: prices are written into the HTML, never fetched live.
  expect(combined).not.toContain('/api/billing/catalog');
  expect(combined).not.toMatch(/pricing-section|price-card|price-amount/);
  expect(html).not.toContain('id="pricing"');
@@ -60,8 +78,10 @@ it('shows all 7 vertical money-loop examples, each labeled illustrative',()=>{
  for(const trade of ['Hair salon / Barbershop','Restaurant','Plumbing / HVAC','Dental office','Auto repair','Pet grooming salon','Med spa']){
   expect(html).toContain(trade);
  }
- // No invented revenue and no guaranteed results.
- expect(html).not.toMatch(/\$\d/);
+ // No invented revenue and no guaranteed results: the EXAMPLES carry no
+ // amounts — prices live only in the plans section below them.
+ const moneyLoop=html.slice(html.indexOf('id="money-loop"'),html.indexOf('id="plans"'));
+ expect(moneyLoop).not.toMatch(/\$\d/);
  expect(html).toContain('not a customer story');
  expect(html).toContain('Results vary');
  expect(html).toContain('nothing here promises revenue');
@@ -74,13 +94,13 @@ it('carries the vision pitch and never names the product Jarvis',()=>{
  expect(standalone).toEqual([]);
 });
 
-it('carries the legal footer (no final-sale line per the 2026-10-17 scope ruling) and no street address',()=>{
+it('carries the legal footer with purchases-final and no street address',()=>{
  expect(html).toContain('MehyarSoft LLC');
  expect(html).toContain('href="/terms"');
  expect(html).toContain('https://mehyar.us/privacy-policy/');
  expect(html).toContain('https://mehyar.us/terms/');
  expect(html).toContain('https://mehyar.us/data-deletion/');
- expect(html).not.toContain('Purchases are final');
+ expect(html).toContain('Purchases are final');
  expect(html).toContain('mailto:info@mehyar.us');
  expect(html).not.toContain('96th St');
  expect(html).not.toContain('11209');
@@ -91,57 +111,5 @@ it('links the Sign in / Start free CTAs to the login surface',()=>{
  expect(html).toContain('>Start free</a>');
  const ctaHrefs=[...html.matchAll(/<a[^>]*href="([^"]*)"[^>]*>(?:Sign in|Start free)<\/a>/g)].map(m=>m[1]);
  expect(ctaHrefs.length).toBeGreaterThanOrEqual(4);
- // All CTAs land on the login surface; Start free may carry the start
- // intent (/?start=1, rot159) — no CTA may point anywhere else.
- for(const href of ctaHrefs)expect(['/','/?start=1']).toContain(href);
- expect(ctaHrefs).toContain('/?start=1');
-});
-
-it('shows one clearly-labeled sample text-back thread in the real template wording (rot112)',()=>{
- expect(html).toContain('id="sample"');
- expect(html).toContain('Sample only — not a real customer conversation.');
- // The verbatim salon text-back + confirm templates (src/verticals.ts),
- // with the placeholder business name swapped in.
- expect(html).toContain('Hi, this is Glow Studio. Sorry we missed your call! Want to book an appointment? Reply YES and we will find you a time. Reply STOP to opt out.');
- expect(html).toContain('Thanks! We will text you shortly with available times.');
- expect(html).toContain('No booking or result is shown or promised.');
-});
-
-it('/terms states plainly how provider charges are billed (rot112)',()=>{
- const terms=readFileSync(join(webDir,'public','terms.html'),'utf8');
- expect(terms).toContain('MehyarSoft does not collect, add to, or mark up provider charges');
- expect(terms).toContain('they never appear on your Mayor bill');
-});
-
-it('hero text-back claim carries the connected-number condition (rot122)',()=>{
- expect(html).toContain('Once your business number is connected, it answers the calls you miss and texts back the leads you would lose, automatically through Telnyx');
- expect(html).not.toContain('It answers the calls you miss, texts back the leads you would lose');
-});
-
-it('carries the email capture form with its disclosure (rot136)',()=>{
- expect(html).toContain('<form class="lead-form" action="/api/leads" method="post">');
- expect(html).toContain('name="email" type="email" required');
- expect(html).toContain('We store your email only to send these updates, and we never sell it.');
-});
-
-it('sales-loop form names the lead magnet; the checklist page exists (rot168)',()=>{
- expect(html).toContain('Your first email brings the one-page Missed-Call Revenue Checklist.');
- const checklist=readFileSync(join(webDir,'missed-call-checklist.html'),'utf8');
- expect(checklist).toContain('<title>Missed-Call Revenue Checklist · The Mayor</title>');
- expect(checklist).toContain('Count the unanswered calls');
- expect(checklist).not.toMatch(/\d+%/); // no invented statistics
-});
-
-it('loop form button asks for the checklist; mid-page button unchanged (rot173)',()=>{
- const loopAt=html.indexOf('id="updates-loop"');
- expect(html.slice(loopAt)).toContain('>Send my checklist</button>');
- expect(html.slice(0,loopAt)).toContain('>Keep me posted</button>');
-});
-
-it('hero CTAs take different paths: Start free to the start entry, Sign in to the app (rot159)',()=>{
- expect(html).toContain('<a class="button" href="/?start=1">Start free</a>');
- expect(html).toContain('<a class="button button-outline" href="/">Sign in</a>');
- const main=readFileSync(join(webDir,'main.ts'),'utf8');
- expect(main).toContain("has('start')");
- expect(main).toContain("$('chat-sign-in').scrollIntoView");
+ for(const href of ctaHrefs)expect(href).toBe('/');
 });

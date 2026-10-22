@@ -280,7 +280,13 @@ export async function handleOperationsRequest(request:Request,env:Env,actor:Acto
   if(path==='customers/prepare')return prepareContact(env,actor,request);
   if(path==='customers/confirm')return confirmContact(env,actor,request);
   if(path.startsWith('callbacks/')){z.object({confirm:z.literal(true)}).strict().parse(await readJson(request,256));const callback=await handleCallback(env,actor,z.uuid().parse(path.split('/')[1]));await requireMembership(env,actor,OPERATORS);return json({callback});}
-  if(path==='appointments/propose'){const proposal=await proposeBooking(env,actor,bookingProposalSchema.parse(await readJson(request,8192)));return json({proposal:{...proposal,readback:bookingReadback(proposal)}},201);}
+  if(path==='appointments/propose'){
+   const proposal=await proposeBooking(env,actor,bookingProposalSchema.parse(await readJson(request,8192)),{autoConfirm:true});
+   const readback=proposal.status==='applied'
+    ?`Booked: ${proposal.input.title}, ${proposal.input.appointmentType}, from ${proposal.input.start} to ${proposal.input.end}. This booking was made automatically under your rules and is logged.`
+    :bookingReadback(proposal);
+   return json({proposal:{...proposal,readback}},201);
+  }
   if(path==='appointments/confirm'){const input=confirmationSchema.parse(await readJson(request,512));return json({result:await confirmBooking(env,actor,input.id)});}
   if(path==='appointment-changes/propose'){const proposal=await proposeAppointmentChange(env,actor,changeSchema.parse(await readJson(request,4096)));return json({proposal:{...proposal,readback:changeReadback(proposal)}},201);}
   if(path==='appointment-changes/confirm'){const input=confirmationSchema.parse(await readJson(request,512));return json({result:await confirmAppointmentChange(env,actor,input.id)});}

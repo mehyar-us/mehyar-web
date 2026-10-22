@@ -23,6 +23,14 @@ export const CAPABILITIES = {
   ],
   google: [
     { id: "gmail_read", label: "Read Gmail inbox", scopes: ["https://www.googleapis.com/auth/gmail.readonly"] },
+    // P6: Business Profile reviews/hours read. The scope alone is NOT enough:
+    // Google also has to approve Business Profile API access for the Cloud
+    // project (the APIs answer 403 until then). The capability stays dark
+    // until GOOGLE_ENABLED_CAPABILITIES includes business_reviews — prod
+    // currently enables only calendar_read,calendar_manage,gmail_read, so
+    // no existing grant carries this scope and reads honestly report
+    // unavailable (see src/gbp-reviews.ts).
+    { id: "business_reviews", label: "Read Google Business Profile reviews and hours", scopes: ["https://www.googleapis.com/auth/business.manage"] },
     { id: "calendar_read", label: "Check calendar availability", scopes: ["https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events.readonly", "https://www.googleapis.com/auth/calendar.freebusy"] },
     { id: "calendar_manage", label: "Manage appointments", scopes: ["https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar.freebusy"] },
   ],

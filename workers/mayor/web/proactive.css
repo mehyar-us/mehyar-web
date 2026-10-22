@@ -20,6 +20,20 @@
 .opportunity-result{flex-basis:100%;font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.6}
 .opportunity-result:empty{display:none}
 
+/* Money this week (P5 glanceable card) */
+.money-section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;scroll-margin-top:20px}
+.money-section .section-heading{margin-bottom:10px}
+.money-section .section-heading h2 svg{width:19px;height:19px;color:#a5761a;vertical-align:-3px;margin-right:2px}
+.money-range{font-size:12px;color:var(--muted);margin:0 0 8px}
+.money-label{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);font-weight:700;margin:0 0 4px}
+.money-value{font-family:Manrope,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.6px;margin:0 0 4px;overflow-wrap:anywhere}
+.money-basis{font-size:13px;color:var(--ink);margin:0 0 6px}
+.money-compare{font-size:13px;color:var(--ink);margin:0 0 6px}
+.money-note{font-size:11px;color:#8391a0;margin:0;line-height:1.6}
+.money-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.money-actions button{font-size:13px;display:inline-flex;align-items:center;gap:7px}
+.money-config{margin-top:6px;max-width:340px}
+
 /* Suggestion cards */
 .suggestion-list{display:flex;flex-direction:column;gap:16px}
 .suggestion-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;scroll-margin-top:20px}
@@ -72,12 +86,12 @@ button.roi-tile:focus-visible{outline:2px solid #274f7c;outline-offset:2px}
 .flash{animation:proactive-flash .85s ease-out;border-radius:14px}
 @media(prefers-reduced-motion:reduce){.flash{animation:none}}
 
-/* Desktop: pin the stack full-width above the existing Today grid rows. */
+/* Desktop Today grid rows. P2: the proactive stack lives in the conversation
+   canvas, not the Today view — the rows below close up without it. */
 @media(min-width:1101px){
- #today-view:has(.today-grid) .proactive-stack{grid-column:1/-1;grid-row:2}
- #today-view:has(.today-grid) .attention-section{grid-column:1;grid-row:3}
- #today-view:has(.today-grid) .agenda-preview{grid-column:2;grid-row:2/span 2}
- #today-view:has(.today-grid) .today-tasks{grid-column:1/-1;grid-row:4}
+ #today-view:has(.today-grid) .attention-section{grid-column:1;grid-row:2}
+ #today-view:has(.today-grid) .agenda-preview{grid-column:2;grid-row:1/span 2}
+ #today-view:has(.today-grid) .today-tasks{grid-column:1/-1;grid-row:3}
 }
 @media(max-width:1100px){
  .roi-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
@@ -86,6 +100,9 @@ button.roi-tile:focus-visible{outline:2px solid #274f7c;outline-offset:2px}
  .proactive-stack{gap:26px}
  .briefing-section{padding:20px}
  .briefing-date{font-size:18px}
+ .money-section{padding:18px}
+ .money-value{font-size:26px}
+ .money-actions button{flex:1;justify-content:center;min-height:44px}
  .suggestion-card{padding:18px}
  .suggestion-card .card-actions button{flex:1;justify-content:center;min-height:44px}
  .opportunity-row{flex-direction:column;align-items:stretch}
@@ -93,22 +110,3 @@ button.roi-tile:focus-visible{outline:2px solid #274f7c;outline-offset:2px}
  .roi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
  .roi-value{font-size:20px}
 }
-
-/* WS1 build 2: visual confidence mark (ink segments, no alarm colors) */
-.confidence-mark{display:flex;align-items:center;gap:8px;margin:8px 0 0}
-.confidence-bars{display:inline-flex;gap:3px;align-items:flex-end}
-.confidence-bar{width:5px;height:12px;border-radius:2px;background:var(--line,#d8dee6)}
-.confidence-bar.filled{background:var(--ink,#12283f)}
-.confidence-phrase{font-size:12px;color:var(--muted);font-weight:600}
-
-/* Twin (slice 2b): "Say it your way" onboarding capture. */
-.style-capture{margin:0 0 18px;padding:16px;border:1px solid var(--line,#e5e0d8);border-radius:14px;background:var(--card,#fff)}
-.style-capture-intro{margin:0 0 12px;color:var(--ink-2,#5a554d);font-size:14px;line-height:1.45}
-.style-capture-field{display:block;margin:0 0 10px}
-.style-capture-field span{display:block;margin:0 0 5px;font-size:13px;font-weight:600}
-.style-capture-field textarea{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line,#e5e0d8);border-radius:10px;font:inherit;font-size:14px;resize:vertical}
-.style-capture-actions{display:flex;gap:10px;align-items:center;margin-top:4px}
-.style-capture-save{padding:9px 14px;border:0;border-radius:999px;background:var(--ink,#1c1a17);color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
-.style-capture-save:disabled{opacity:.6}
-.style-capture-skip{padding:9px 6px;border:0;background:none;color:var(--ink-2,#5a554d);font:inherit;font-size:14px;cursor:pointer}
-.style-capture-done{margin:0;font-size:14px;line-height:1.45}

@@ -7,15 +7,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#102b47">
   <meta name="description" content="The Mayor pricing: start free, grow when you're ready. Simple plans for local businesses — no credit card to start, no hidden fees.">
+  <meta name="referrer" content="no-referrer">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="The Mayor · Your AI Front Desk for Local Business">
+  <meta property="og:title" content="The Mayor · Pricing">
   <meta property="og:description" content="The Mayor pricing: start free, grow when you're ready. Simple plans for local businesses — no credit card to start, no hidden fees.">
-  <meta property="og:url" content="https://mayor.mehyar.us/pricing"><link rel="canonical" href="https://mayor.mehyar.us/pricing">
+  <meta property="og:url" content="https://mayor.mehyar.us/pricing">
   <meta property="og:image" content="https://mayor.mehyar.us/icon-512.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="The Mayor · Your AI Front Desk for Local Business">
+  <meta name="twitter:title" content="The Mayor · Pricing">
   <meta name="twitter:description" content="The Mayor pricing: start free, grow when you're ready. Simple plans for local businesses — no credit card to start, no hidden fees.">
-  <meta name="referrer" content="no-referrer">
+  <meta name="twitter:image" content="https://mayor.mehyar.us/icon-512.png">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="canonical" href="https://mayor.mehyar.us/pricing">
   <link rel="stylesheet" href="/sales.css">
@@ -32,7 +33,7 @@
     </nav>
     <div class="header-ctas">
       <a class="text-link" href="/">Sign in</a>
-      <a class="button button-small" href="/?start=1">Start free</a>
+      <a class="button button-small" href="/">Start free</a>
     </div>
   </header>
 
@@ -40,12 +41,10 @@
     <section class="hero page-width" aria-labelledby="pricing-heading">
       <div class="hero-copy">
         <span class="section-kicker">PRICING</span>
-        <h1 id="pricing-heading">Start free. Go Pro when you're ready.</h1>
-        <p class="hero-slogan">Mayor. Talk to your business.</p>
-        <p class="hero-price" id="hero-price"></p>
+        <h1 id="pricing-heading">Start free. Grow when you're ready.</h1>
         <p class="hero-description">Every business starts free — no credit card, no setup call, no sales rep. When The Mayor is earning its keep on your real book, simple plans grow with your business.</p>
         <div class="hero-ctas">
-          <a class="button" href="/?start=1">Start free</a>
+          <a class="button" href="/">Start free</a>
         </div>
       </div>
     </section>
@@ -56,8 +55,6 @@
       <div id="plan-cards" class="plan-grid" aria-live="polite">
         <p class="plans-note">Loading plans…</p>
       </div>
-      <p class="decision-note">Usage counts reply attempts — every try counts toward your allowance, not only delivered replies. Conversation estimates figure roughly 10 replies per conversation. Microphone minutes count from the moment the mic opens — startup and silence included.</p>
-      <p class="plans-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates — separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>
       <!-- OFFER SLOT: the priced offer hydrates here when the owner sets the price.
            Rendered from GET /api/billing/catalog by pricing-offer.js (future).
            Until then this slot stays empty — no amounts are ever hardcoded. -->
@@ -71,37 +68,23 @@
       <div id="topup-cards" class="plan-grid" aria-live="polite">
         <p class="plans-note">Loading top-ups…</p>
       </div>
-      <p class="plans-note">Credits activate after verified payment and expire at the end of the purchased Free UTC calendar month or Pro paid period. They do not roll over or transfer when switching plans.</p>
-    </section>
-
-    <section class="page-width" aria-labelledby="audit-heading">
-      <span class="section-kicker">GO DEEPER</span>
-      <h2 id="audit-heading">The full picture, once.</h2>
-      <p class="section-lead">Separate from the plans: a one-time, reviewed audit of your whole business, with a prioritized 30/60/90-day plan.</p>
-      <div id="audit-card">
-        <article class="plan-card">
-          <h3>Extensive business audit</h3>
-          <p class="plan-tier">One business · one focused plan</p>
-          <p>A reviewed report covering your website and customer journey, services and booking, retention, local visibility, and daily operations. Payment queues your audit — the report is generated after intake and put through a separate AI review, not delivered instantly.</p>
-          <a class="button button-small" href="/business-audit">Start your audit</a>
-        </article>
-      </div>
     </section>
 
     <section class="page-width" aria-labelledby="fair-heading">
       <span class="section-kicker">FAIR TERMS</span>
       <h2 id="fair-heading">No fine print.</h2>
       <ul class="feature-list">
-        <li>No hidden fees — phone and messaging usage is billed by your own provider at its rates, never marked up by us.</li>
+        <li>No hidden fees.</li>
         <li>No credit card to start.</li>
-        <li>Cancel anytime — cancelling stops renewal, and your plan runs to the end of the paid period.</li>
+        <li>Cancel anytime.</li>
+        <li>Purchases are final — no refunds.</li>
       </ul>
     </section>
 
     <section class="cta-band page-width" aria-labelledby="cta-heading">
       <h2 id="cta-heading">Meet your chief of staff.</h2>
       <div class="hero-ctas">
-        <a class="button" href="/?start=1">Start free</a>
+        <a class="button" href="/">Start free</a>
         <a class="button button-outline" href="/">Sign in</a>
       </div>
     </section>
@@ -117,6 +100,7 @@
       <button type="button" class="mayor-consent-link" data-mayor-consent-reopen>Cookie settings</button>
       <a href="mailto:info@mehyar.us">info@mehyar.us</a>
     </nav>
+    <p class="footer-note">Purchases are final — no refunds.</p>
     <p class="footer-note">© 2026 MehyarSoft LLC. All rights reserved.</p>
   </footer>
 
@@ -128,18 +112,14 @@
     function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
     function planCard(p){
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'
-        +'<p class="plan-tier">'+Number(p.replyLimit).toLocaleString()+' reply attempts (≈'+Math.round(Number(p.replyLimit)/10)+' real conversations a month) · '+Number(p.voiceMinuteLimit)+' microphone minutes a month</p>'
-        +'<p>'+(p.id==='free'?'A good place to start. Talk to The Mayor and feel the money loop working.':'For the busier business: the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls.')+'</p>'
-        +'<a class="button button-small" href="'+(p.id==='pro'?'/billing?plan=pro':'/?start=1')+'">'+(p.id==='pro'?'Go Pro — $'+Math.round(Number(p.priceCents)/100)+'/mo':'Start free')+'</a>'
-        +(p.id==='pro'?'<p class="plan-final-sale">Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>':'')+'</article>';
+        +'<p class="plan-tier">'+Number(p.replyLimit).toLocaleString()+' assistant replies · '+Number(p.voiceMinuteLimit)+' microphone minutes a month</p>'
+        +'<p>'+(p.id==='free'?'A good place to start. Talk to The Mayor and feel the money loop working.':'For the busier business: the full proactive engine watching your book.')+'</p>'
+        +'<a class="button button-small" href="/">Start free</a></article>';
     }
     function topupCard(p){
       return '<article class="plan-card"><h3>'+esc(p.name)+'</h3>'
         +'<p class="plan-tier">One-time</p>'
-        +'<p>+'+Number(p.replyAttempts).toLocaleString()+' reply attempts (≈'+Math.round(Number(p.replyAttempts)/10)+' real conversations) · +'+Number(p.voiceMinutes)+' microphone minutes</p>'
-        +'<a class="button button-small" href="/billing?pack='+p.id+'">Buy '+esc(p.name)+'</a>'
-        +'<p class="plan-final-sale">Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>'
-        +'<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>';
+        +'<p>+'+Number(p.replyAttempts).toLocaleString()+' reply attempts · +'+Number(p.voiceMinutes)+' microphone minutes</p></article>';
     }
     function fail(el){el.innerHTML='<p class="plans-note">Plans could not be loaded. <button class="text-link" onclick="location.reload()">Try again</button>.</p>';}
     async function load(){
@@ -160,5 +140,5 @@
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
   })();
   </script>
-<script async src="https://mayor.mehyar.us/b.js" data-product="mayor"></script></body>
+</body>
 </html>

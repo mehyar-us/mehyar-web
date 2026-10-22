@@ -55,7 +55,7 @@ it('SSR pricing renders the live PLANS catalog (no hardcoded amounts)',()=>{
   expect(html).toContain('Free');
   // Whatever the catalog serves today must appear — currently $14.
   expect(html).toContain(`$${pro.priceCents/100}`);
-  expect(html).not.toContain('Purchases are final'); // scope ruling 2026-10-17
+  expect(html).toContain('Purchases are final');
   expect(html).toContain('offer-plans');
 });
 
