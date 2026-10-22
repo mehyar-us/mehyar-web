@@ -60,7 +60,12 @@ export function offerBlockSsrHtml(auditAvailable=false,founding?:FoundingSsrBloc
   // WS1 build 2 (rot298 input 2): the founding line joins the home
  // offer block under the Pro row — the SAME helper and the SAME
  // fail-quiet seam as /sales and /pricing (no state, no line).
- return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.',foundingLineSsrHtml(founding))}</div>`+
+ // rot543 fold: the final-sale disclosure (FINAL_SALE_LINE, below)
+ // rides the home Pro row too — 🔵 rot543 ruling: the home ask joins
+ // the /pricing + /sales scope. It is unconditional (not founding
+ // state): the row presents the Pro price, so the ask is disclosed
+ // whether or not the founding line renders.
+ return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.',foundingLineSsrHtml(founding)+FINAL_SALE_LINE)}</div>`+
     `<p class="offer-note">Cancel Pro renewal in Manage billing.</p>`+
     `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`+
     `<p class="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates \u2014 separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>`+
@@ -137,8 +142,13 @@ export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  * Pro card on /pricing and /sales (the card that carries both the Pro
  * CTA and the founding anchor, so both asks are covered). Disclosure
  * only: no refund flow exists or is implied, and the pages' separate
- * "Cancel anytime" renewal line stands untouched beside it. Home and
- * the verticals are out of scope for this line. */
+ * "Cancel anytime" renewal line stands untouched beside it.
+ * rot543 extension (🔵 ruling, same day): the scope completes — the
+ * home Pro ask joins (offerBlockSsrHtml above + the React mirror in
+ * web/offer-block.tsx), and the top-up pack cards gain the line on
+ * /pricing and /sales (a top-up is a purchase; no carve-out for
+ * in-product asks), alongside — never replacing — the packs' expiry
+ * truth. The verticals remain out of scope for this line. */
 export const FINAL_SALE_LINE=`<p class="plan-final-sale">Payments are final and non-refundable \u2014 see <a href="/terms">Terms</a>.</p>`;
 export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:string;packs:string}|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
@@ -157,7 +167,7 @@ export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:stri
     priceLine(p.priceCents,' one-time')+
     `<p class="plan-tier">+${p.replyAttempts.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyAttempts)} real conversations) · `+
     `+${p.voiceMinutes} microphone minutes</p>`+
-    `<a class="button button-small" href="/billing?pack=${p.id}">Buy ${escapeHtml(p.name)}</a>`+
+    `<a class="button button-small" href="/billing?pack=${p.id}">Buy ${escapeHtml(p.name)}</a>${FINAL_SALE_LINE}`+
     `<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>`;
   return {
     plans:planCard(free,'A good place to start. Talk to The Mayor and feel the money loop working.')
@@ -227,7 +237,7 @@ export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null):string|null{
     `</ul>`+
     `<p>Buy only what you use — no subscription change, no overage surprises.</p>`+
     `<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p>`+
-    `<a class="button button-small" href="/pricing">See pricing</a></article>`;
+    `<a class="button button-small" href="/pricing">See pricing</a>${FINAL_SALE_LINE}</article>`;
   return start+grow+topup;
 }
 /**

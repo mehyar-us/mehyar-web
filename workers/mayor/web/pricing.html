@@ -138,6 +138,7 @@
         +'<p class="plan-tier">One-time</p>'
         +'<p>+'+Number(p.replyAttempts).toLocaleString()+' reply attempts (≈'+Math.round(Number(p.replyAttempts)/10)+' real conversations) · +'+Number(p.voiceMinutes)+' microphone minutes</p>'
         +'<a class="button button-small" href="/billing?pack='+p.id+'">Buy '+esc(p.name)+'</a>'
+        +'<p class="plan-final-sale">Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>'
         +'<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>';
     }
     function fail(el){el.innerHTML='<p class="plans-note">Plans could not be loaded. <button class="text-link" onclick="location.reload()">Try again</button>.</p>';}

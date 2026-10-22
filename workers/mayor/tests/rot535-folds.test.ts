@@ -13,6 +13,11 @@
  *
  * Fold 4 (§8.2 completion on the /business-audit FAQ) is pinned in
  * tests/rot273-audit-copy.test.ts with its supersession recorded.
+ *
+ * rot543 addendum (🔵, 2026-10-22): the two scope exclusions above —
+ * home out of scope, pack cards without the line — are SUPERSEDED.
+ * The flips are recorded at the pins themselves; the extension is
+ * pinned in tests/rot543-folds.test.ts.
  */
 import {expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
@@ -38,17 +43,35 @@ it('rot535 fold 1: /pricing SSR carries the final-sale line once, on the Pro car
   // inside the same article (both asks covered by the one card).
   const proCard=rendered.plans.slice(rendered.plans.indexOf('>Pro<'));
   expect(proCard).toContain('Payments are final and non-refundable');
-  expect(rendered.packs).not.toContain('Payments are final');
+  // SUPERSEDED by rot543 (🔵 ruling, 2026-10-22): this pin asserted the
+  // pack cards carry NO line (rot535's order named the Pro/Founding
+  // asks only). rot543 rules a top-up is a purchase with no carve-out —
+  // the packs now carry the line, once per card; the detailed pins live
+  // in tests/rot543-folds.test.ts.
+  expect(count(rendered.packs,'Payments are final and non-refundable')).toBe(3);
 });
 
 it('rot535 fold 1: /sales SSR carries the final-sale line once, on the Pro card',()=>{
   const rendered=salesPlansSsrHtml(LIVE_FOUNDING)!;
-  expect(count(rendered,'Payments are final and non-refundable')).toBe(1);
+  // SUPERSEDED in count by rot543 (🔵 ruling, 2026-10-22): the whole-
+  // output count was 1 when the Pro card was the only disclosed ask.
+  // rot543 gives the /sales top-up card the line too (packs render
+  // there as an offer card) — whole-output count is now 2, pinned in
+  // tests/rot543-folds.test.ts. This pin keeps its subject: the Pro
+  // card itself carries the line exactly once.
+  const proCard=rendered.slice(rendered.indexOf('<h3>Pro</h3>'),rendered.indexOf('<h3>Top up</h3>'));
+  expect(count(proCard,'Payments are final and non-refundable')).toBe(1);
   expect(rendered).toContain(FINAL_SALE_LINE);
 });
 
-it('rot535 fold 1: home offer block stays OUT of scope (no line added there)',()=>{
-  expect(offerBlockSsrHtml(true,LIVE_FOUNDING)).not.toContain('Payments are final');
+it('rot535 fold 1: home offer block — absence pin SUPERSEDED by rot543',()=>{
+  // rot535 scope: home was OUT — this pin asserted the home offer block
+  // carries no final-sale line. 🔵 rot543 ruling (2026-10-22): the home
+  // ask joins the final-sale scope. The absence pin is superseded; the
+  // line now rides the home Pro row exactly once, and the full pins
+  // live in tests/rot543-folds.test.ts. This test remains as the
+  // supersession record, following the rot273 pattern.
+  expect(count(offerBlockSsrHtml(true,LIVE_FOUNDING)!,'Payments are final and non-refundable')).toBe(1);
 });
 
 it('rot535 fold 1: the Cancel-anytime renewal truth stands beside it on both pages',()=>{
