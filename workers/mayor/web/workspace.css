@@ -70,6 +70,8 @@ textarea:focus-visible{outline:3px solid #397cdd;outline-offset:3px}
 .offer-plan .plan-final-sale{color:#5d7285;font-size:11px;margin:6px 0 0}.offer-plan .plan-final-sale a{color:inherit;text-underline-offset:3px}
 .offer-note{font-size:11px;color:#5d7285}
 .home-audit-band{margin-top:14px;background:#fff;border:1px solid #e2eaf3;border-radius:10px;padding:14px 16px}
+#home-audit-slot{margin-top:1.25rem}
+#home-audit-slot:empty{display:none}
 .home-audit-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .home-audit-head strong{font-size:15px;color:#102b47}
 .home-audit-price{font-size:15px;font-weight:700;color:#102b47;white-space:nowrap}

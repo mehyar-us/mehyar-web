@@ -1,7 +1,7 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
-import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans} from './offer-block-ssr';
+import {injectOfferBlock,injectHomeAuditSlot,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans} from './offer-block-ssr';
 import {auditOffer} from './billing/audit';
 import {foundingSeats} from './billing/founding';
 import {handleConnectionsRequest} from './connections';
@@ -117,7 +117,7 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const assetRes=await env.ASSETS.fetch(new Request(new URL('/',request.url),request));
     const contentType=assetRes.headers.get('content-type')??'';
     if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),injected=stampDescriptorHash(injectHeroPrice(injectOfferBlock(original,auditOffer(env).available,await foundingSeats(env))),(await currentDescriptor(env)).hash);
+      const original=await assetRes.text(),injected=stampDescriptorHash(injectHeroPrice(injectOfferBlock(injectHomeAuditSlot(original,auditOffer(env).available),await foundingSeats(env))),(await currentDescriptor(env)).hash);
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');

@@ -39,9 +39,16 @@ function validPlan(p:unknown):p is SsrPlan{
  * showing a stale or invented amount).
  */
 /* The home audit band (front-door repair): the extensive business
- * audit, priced from AUDIT_OFFER and linked to its own page, rendered
- * under the plan summary on the signed-out home — only while the audit
- * offer is available (the same gate the checkout enforces). */
+ * audit, priced from AUDIT_OFFER and linked to its own page — only
+ * while the audit offer is available (the same gate the checkout
+ * enforces).
+ * rot564 sell-first rework (2026-10-22): the band's PLACEMENT moved.
+ * It no longer rides at the foot of the offer block (below the
+ * sign-in buttons); injectHomeAuditSlot renders it into the
+ * #home-audit-slot container ABOVE the one surviving sign-in block,
+ * so a cold visitor meets the audit call to action before the
+ * sign-in wall. Markup, price source, availability gate, and copy
+ * are unchanged — only the position moved. */
 export function homeAuditBandSsrHtml():string{
   // WS1 build 2 (2026-10-16): promoted from a footnote line to a card
  // at the plan rows' weight (rot298 input 1) — same name, price,
@@ -49,7 +56,7 @@ export function homeAuditBandSsrHtml():string{
  return `<aside class="home-audit-band"><div class="home-audit-head"><strong>${escapeHtml(AUDIT_OFFER.name)}</strong><span class="home-audit-price">${escapeHtml(formatPrice(AUDIT_OFFER.priceCents))} one-time</span></div><p>A reviewed report on how people find your business, become customers, and come back — plus a practical plan for a better workday.</p><a class="home-audit-cta" href="/business-audit">See the business audit</a></aside>`;
 }
 
-export function offerBlockSsrHtml(auditAvailable=false,founding?:FoundingSsrBlock|null):string|null{
+export function offerBlockSsrHtml(founding?:FoundingSsrBlock|null):string|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
   if(!validPlan(free)||!validPlan(pro))return null;
   const row=(p:SsrPlan,blurb:string,extra='')=>
@@ -68,8 +75,7 @@ export function offerBlockSsrHtml(auditAvailable=false,founding?:FoundingSsrBloc
  return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.',foundingLineSsrHtml(founding)+FINAL_SALE_LINE)}</div>`+
     `<p class="offer-note">Cancel Pro renewal in Manage billing.</p>`+
     `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`+
-    `<p class="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates \u2014 separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>`+
-    (auditAvailable?homeAuditBandSsrHtml():'');
+    `<p class="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates \u2014 separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>`;
 }
 
 
@@ -369,7 +375,7 @@ export function auditCardSsrHtml():string{
  * missing, already server-rendered, structurally unexpected, or the catalog
  * can't be trusted — the price-free client fallback then stays in place.
  */
-export function injectOfferBlock(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null):string{
+export function injectOfferBlock(html:string,founding?:FoundingSsrBlock|null):string{
   const openAt=html.indexOf(OFFER_OPEN);
   if(openAt<0)return html;
   const tagEnd=html.indexOf('>',openAt);
@@ -379,10 +385,36 @@ export function injectOfferBlock(html:string,auditAvailable=false,founding?:Foun
   const closeAt=html.indexOf('</div>',tagEnd);
   if(closeAt<0)return html;
   if(html.slice(tagEnd+1,closeAt).includes('<div'))return html; // unexpected nesting — don't guess
-  const rendered=offerBlockSsrHtml(auditAvailable,founding);
+  const rendered=offerBlockSsrHtml(founding);
   if(!rendered)return html;
   const tagged=openingTag.replace(OFFER_OPEN,`${OFFER_OPEN} data-ssr="catalog"`);
   return html.slice(0,openAt)+tagged+rendered+html.slice(closeAt);
+}
+
+/**
+ * Inject the audit band into the #home-audit-slot container of a served
+ * home page, above the sign-in buttons (rot564 sell-first rework,
+ * 2026-10-22 — the band moved out of the offer block; see
+ * homeAuditBandSsrHtml). Marks the container data-ssr="catalog" like
+ * the other injections. Returns the HTML UNCHANGED when the audit
+ * offer is unavailable, the container is missing or already rendered,
+ * or its content is not the expected empty slot — the slot then stays
+ * empty and the page keeps its price-free static form.
+ */
+const AUDIT_SLOT_OPEN='<div id="home-audit-slot"';
+export function injectHomeAuditSlot(html:string,auditAvailable:boolean):string{
+  if(!auditAvailable)return html;
+  const openAt=html.indexOf(AUDIT_SLOT_OPEN);
+  if(openAt<0)return html;
+  const tagEnd=html.indexOf('>',openAt);
+  if(tagEnd<0)return html;
+  const openingTag=html.slice(openAt,tagEnd+1);
+  if(openingTag.includes('data-ssr='))return html; // already rendered
+  const closeAt=html.indexOf('</div>',tagEnd);
+  if(closeAt<0)return html;
+  if(html.slice(tagEnd+1,closeAt).trim()!=='')return html; // unexpected content — don't guess
+  const tagged=openingTag.replace(AUDIT_SLOT_OPEN,`${AUDIT_SLOT_OPEN} data-ssr="catalog"`);
+  return html.slice(0,openAt)+tagged+homeAuditBandSsrHtml()+html.slice(closeAt);
 }
 
 /* Homepage hero price anchor (rot156): the Pro price above the fold,

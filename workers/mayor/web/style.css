@@ -16,6 +16,12 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 .home-sample-heading{margin:0.5rem 0 0.4rem}
 .home-sample-lead{margin:0 0 0.5rem}
 .home-sample-note{font-size:0.9rem;color:#4d5a6b;margin:0.75rem 0 0}
+
+/* Home story block (rot564 sell-first rework): the /sales money-loop story at the head of the signed-out welcome, above the sample proof. */
+.home-story{margin:0;text-align:left}
+.home-story-heading{margin:0.5rem 0 0.4rem}
+.home-story p{margin:0 0 0.5rem}
+.home-story-note{font-size:0.9rem;color:#4d5a6b;margin:0.75rem 0 0}
 .sample-thread{max-width:34rem;margin:1rem auto;background:#f6f8fa;border:1px solid #dde4ec;border-radius:1rem;padding:1.25rem}
 .sample-meta{font-size:0.85rem;color:#4d5a6b;text-align:center;margin:0 0 0.9rem}
 .sample-msg{max-width:85%;padding:0.65rem 0.9rem;border-radius:0.9rem;margin:0 0 0.6rem;line-height:1.45}

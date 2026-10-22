@@ -41,7 +41,7 @@ const catalog=()=>({currency:'USD',plans:[
 /* ---- Fold 1: the home ask joins the final-sale scope --------------- */
 
 it('rot543 fold 1: home offer block SSR carries the line once, inside the Pro row',()=>{
-  const html=offerBlockSsrHtml(true,LIVE_FOUNDING)!;
+  const html=offerBlockSsrHtml(LIVE_FOUNDING)!;
   expect(count(html,LINE)).toBe(1);
   expect(html).toContain(FINAL_SALE_LINE);
   // Inside the Pro row (the second .offer-plan), after the founding
@@ -55,8 +55,8 @@ it('rot543 fold 1: home offer block SSR carries the line once, inside the Pro ro
 });
 
 it('rot543 fold 1: the home line is unconditional — present with no founding state and with a full cohort',()=>{
-  expect(count(offerBlockSsrHtml(false,null)!,LINE)).toBe(1);
-  expect(count(offerBlockSsrHtml(true,FULL_FOUNDING)!,LINE)).toBe(1);
+  expect(count(offerBlockSsrHtml(null)!,LINE)).toBe(1);
+  expect(count(offerBlockSsrHtml(FULL_FOUNDING)!,LINE)).toBe(1);
 });
 
 it('rot543 fold 1: the React mirror (degraded home path) carries the identical line once',()=>{

@@ -71,7 +71,7 @@ it('rot535 fold 1: home offer block — absence pin SUPERSEDED by rot543',()=>{
   // line now rides the home Pro row exactly once, and the full pins
   // live in tests/rot543-folds.test.ts. This test remains as the
   // supersession record, following the rot273 pattern.
-  expect(count(offerBlockSsrHtml(true,LIVE_FOUNDING)!,'Payments are final and non-refundable')).toBe(1);
+  expect(count(offerBlockSsrHtml(LIVE_FOUNDING)!,'Payments are final and non-refundable')).toBe(1);
 });
 
 it('rot535 fold 1: the Cancel-anytime renewal truth stands beside it on both pages',()=>{

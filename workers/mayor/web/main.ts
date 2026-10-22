@@ -282,8 +282,13 @@ $('connections-content').append(connectionHub.element);
 $('open-connections').onclick=()=>show('connections');
 const workday=createWorkday({api,tenant:()=>tenantId,actor:()=>sessionUserId,canManage,canChat,onNavigate:show,ask:text=>{show('chat');const input=$<HTMLTextAreaElement>('message');input.value=text;resizeComposer();input.focus();},onNotice:message=>notice(message),onChanged:()=>void refreshInbox(),onSignIn:()=>void signIn()});
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-prompt]'))button.onclick=()=>{show('chat');const input=$<HTMLTextAreaElement>('message');input.value=button.dataset.prompt??'';resizeComposer();input.focus();};
-$('today-sign-in').onclick=()=>signIn();
-$('today-microsoft-sign-in').onclick=()=>signIn('microsoft');
+// Homepage sell-first rework (rot564, 2026-10-22): the home carries ONE
+// sign-in block — the chat welcome's OAuth pair. The header button and
+// the Today panel's start button route the visitor to that block (the
+// start flow's landing: panel in view, primary button focused) instead
+// of carrying duplicate OAuth pairs of their own.
+const goToSignInBlock=()=>{show('chat');$('chat-sign-in').scrollIntoView({block:'center'});$<HTMLButtonElement>('chat-google-sign-in').focus({preventScroll:true});};
+$('today-start').onclick=()=>goToSignInBlock();
 $('calendar-status').onclick=()=>{show('connections');$('connections-heading').focus();};
 $('dock-voice-label').onclick=()=>{show('chat');$('talk').click();};
 // React migration S2c: the notifications inbox renders via React from
@@ -1192,8 +1197,7 @@ async function signIn(provider='google',capabilities:string[]=[]){
     const url=new URL(data.url);if(!['accounts.google.com','login.microsoftonline.com','accounts.zoho.com'].includes(url.hostname))throw new Error('Unexpected sign-in destination.');location.assign(url.href);
   }catch(error){notice((error as Error).message);}
 }
-$('sign-in').onclick=()=>signIn();
-$('sign-in-microsoft').onclick=()=>signIn('microsoft');
+$('sign-in').onclick=()=>goToSignInBlock();
 $('chat-google-sign-in').onclick=()=>signIn();
 $('chat-microsoft-sign-in').onclick=()=>signIn('microsoft');
 $('logout').onclick=async()=>{endWorkspaceAccess();try{await api('/api/auth/sign-out',{});location.reload();}catch{setStatusText('Sign-out could not finish. Reload to check your account.');}};
@@ -1336,15 +1340,11 @@ async function init(){
   $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
   const capabilities=await api('/api/auth/capabilities');
   if(!capabilities.providers.google.configured){
-    $<HTMLButtonElement>('sign-in').disabled=true;
     $<HTMLButtonElement>('chat-google-sign-in').disabled=true;
-    $<HTMLButtonElement>('today-sign-in').disabled=true;
     $('voice-hint').textContent='Google sign-in is being connected. Voice onboarding will be available after setup.';
   }
   if(!capabilities.providers.microsoft.configured){
-    $<HTMLButtonElement>('sign-in-microsoft').disabled=true;
     $<HTMLButtonElement>('chat-microsoft-sign-in').disabled=true;
-    $<HTMLButtonElement>('today-microsoft-sign-in').disabled=true;
   }
   const session=await api('/api/auth/get-session');
   if(!session){
@@ -1364,7 +1364,7 @@ async function init(){
     }
     return;
   }
-  sessionUserId=session.user.id;loggedIn=true;$('sign-in').hidden=true;$('sign-in-microsoft').hidden=true;$('chat-sign-in').hidden=true;$('chat-empty').hidden=false;$('logout').hidden=false;$('user-detail').textContent=session.user.email;
+  sessionUserId=session.user.id;loggedIn=true;$('sign-in').hidden=true;$('chat-sign-in').hidden=true;$('chat-empty').hidden=false;$('logout').hidden=false;$('user-detail').textContent=session.user.email;
   document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')!.hidden=false;
   const businesses=await api('/api/businesses');
   const business=selectWorkspaceBusiness(businesses.businesses as Array<{id:string;name:string;role:string}>,new URLSearchParams(location.search).get('business'));
