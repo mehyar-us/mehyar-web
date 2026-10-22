@@ -160,9 +160,9 @@ describe('banner and choice storage',()=>{
     expect(consentCss).toContain('.mayor-consent-btn');
   });
 
-  it('uses honest copy: names Google Analytics and Meta ads, loads only on accept',()=>{
-    expect(snippet).toContain('Google Analytics and Meta (Facebook) tools to understand site traffic and measure our ads');
-    expect(snippet).toContain('They only load if you accept');
+  it('uses honest copy: aggregate traffic, loads only on accept',()=>{
+    expect(snippet).toContain('aggregate site traffic');
+    expect(snippet).toContain('It only loads if you accept');
   });
 
   it('persists the choice in localStorage under the versioned key',()=>{
@@ -242,16 +242,5 @@ describe('worker and headers plumbing',()=>{
     expect(cspLine).toContain('https://www.google-analytics.com');
     // The consent file itself stays same-origin: no unsafe-inline added.
     expect(cspLine).not.toContain('unsafe-inline');
-  });
-
-  it('CSP allows the consent-gated Meta hosts (script/connect/img)',()=>{
-    const headers=readFileSync(join(publicDir,'_headers'),'utf8');
-    const cspLine=headers.split('\n').find(l=>l.includes('Content-Security-Policy'))??'';
-    // fbevents.js loads from connect.facebook.net (script-src); the /tr
-    // PageView beacon goes to www.facebook.com (connect-src + img-src).
-    // Without these the pixel tag injects but the browser refuses the
-    // fetch — the AIMech defect (rot286 order #1).
-    expect(cspLine).toContain("script-src 'self' 'wasm-unsafe-eval' https://www.googletagmanager.com https://connect.facebook.net");
-    expect(cspLine).toContain('https://www.facebook.com');
   });
 });

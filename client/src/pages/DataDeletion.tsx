@@ -14,7 +14,7 @@
 //  4. RoastMe — https://roast.mehyar.us (AI photo roasts)
 //  5. BabyPeek — https://baby.mehyar.us (AI future-baby portraits)
 //  6. StuffPrettyGood — https://stuffprettygood.com (shopping guides + digital playbooks)
-//  7. jobs.mehyar — https://jobs.mehyar.us (automated personal jobs dashboard)
+//  7. Mehyar Jobs — https://jobs.mehyar.us (automated personal jobs dashboard)
 //  8. Designful — https://designful.mehyar.us (AI design studio: fixed-price design products)
 //  9. FreelancerOS — https://freelanceros.mehyar.us (freelancer OS: clients, invoices, content, templates)
 //  10. Sprint30 — https://sprint30.mehyar.us (30-day side-income challenge)
@@ -39,7 +39,6 @@
 //  29. Playbook — https://playbook.mehyar.us (the 30-Day Content Playbook: free hook scripts, $27 full playbook)
 //  30. Clipnote — https://clipnote.mehyar.us (release notes turned into a 60-second narrated launch video)
 //  31. WattWise — https://wattwise.mehyar.us (electric-bill checker: free rate gauge from a bill photo, $14.99 audit, $7.99/mo monitoring)
-//  32. Memoir — https://memoir.mehyar.us (AI-guided memoir interviewer: 12-chapter interview compiled into a book from the storyteller's own words; free sample chapter, $79 Digital / $149 Complete one-time)
 // Plus any future products MehyarSoft ships.
 //
 // Two paths are offered:
@@ -50,7 +49,7 @@
 //
 // Last updated: 2026-09-14.
 
-import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt, Scale, Sprout, ListVideo, Video, BookOpen, Stamp } from "lucide-react";
+import { Trash2, Mail, ShieldCheck, Clock, ExternalLink, Smartphone, MessageSquare, Car, Pencil, Flame, Baby, ShoppingBag, Briefcase, Palette, Zap, Rocket, FileText, Target, TrendingUp, HeartHandshake, Archive , Sparkles, LayoutDashboard, Crosshair, Waves, Droplets, Gavel, House, Store, Camera, ScanLine, Coins, Receipt, Scale, Sprout, ListVideo, Video} from "lucide-react";
 const company = "MehyarSoft LLC";
 const contactEmail = "info@mehyar.us";
 
@@ -140,7 +139,7 @@ const apps: AppInfo[] = [
   },
   {
     id: "mehyarjobs",
-    name: "jobs.mehyar",
+    name: "Mehyar Jobs",
     url: "https://jobs.mehyar.us",
     tagline: "Automated personal jobs dashboard.",
     icon: Briefcase,
@@ -163,7 +162,7 @@ const apps: AppInfo[] = [
       "Email address, submitted business assets, generated deliverables, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
-    id: "hustlekit",
+id: "hustlekit",
     name: "HustleKit",
     url: "https://hustlekit.mehyar.us",
     tagline: "AI side-hustle starter kit: personalized playbook PDFs.",
@@ -321,7 +320,7 @@ const apps: AppInfo[] = [
     id: "mayor",
     name: "The Mayor",
     url: "https://mayor.mehyar.us",
-    tagline: "Mayor. Talk to your business.",
+    tagline: "The AI built for each business.",
     icon: Store,
     inAppPath: "Email fallback (info@mehyar.us) — contact us to request deletion",
     whatWeCollect:
@@ -378,16 +377,16 @@ const apps: AppInfo[] = [
       "The audit summary (charges and report), delivery email, and any Stripe Financial Connections link — Delete my data disconnects the bank at Stripe and wipes the link immediately; email fallback actions within 14 days. The uploaded file itself is already gone: it is deleted at parse time.",
   },
   {
-    id: "coach",
-    name: "Coach",
-    url: "https://coach.mehyar.us",
-    tagline: "Your resume, aimed at this job. Your interview, rehearsed.",
-    icon: Briefcase,
-    inAppPath: "Tool result area (coach.mehyar.us) — Delete my session data button; email fallback (info@mehyar.us)",
+    id: "hustlekit",
+    name: "HustleKit",
+    url: "https://hustlekit.mehyar.us",
+    tagline: "AI side-hustle starter kits: personalized playbook PDFs.",
+    icon: Rocket,
+    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product",
     whatWeCollect:
-      "The resume text and job-post text you paste (stored only behind your private session token so Coach Pro can unlock your work), your email if you subscribe or buy Pro, and free-tier usage counts by hashed IP for the daily limit. No file uploads, no accounts or passwords in v1.",
+      "Email address (to deliver your purchase), your intake answers (skills, interests, available time), the generated starter-kit PDF, and checkout records.",
     whatWeDelete:
-      "Your session content (resume text, job-post text, tailored output, cover letter) is wiped immediately by the in-product Delete my session data button; your subscriber email is removed on unsubscribe or via the email fallback within 14 days.",
+      "Email address, intake answers, generated kit, and purchase records tied to your email. Deletion via the email fallback within 14 days.",
   },
   {
     id: "legit",
@@ -448,42 +447,6 @@ const apps: AppInfo[] = [
       "The bill photo you upload — read once to extract numbers, then discarded; the image is never stored — the extracted bill numbers (rate, usage, charges), and email/checkout records for the paid audit and monitoring.",
     whatWeDelete:
       "Extracted bill numbers and purchase records tied to your email.",
-  },
-  {
-    id: "memoir",
-    name: "Memoir",
-    url: "https://memoir.mehyar.us",
-    tagline: "Their stories, in their own words — a book in days, not a year.",
-    icon: BookOpen,
-    inAppPath: "Memoir project page (memoir.mehyar.us/m/<your link>) — Delete my memoir button; email fallback (info@mehyar.us)",
-    whatWeCollect:
-      "The storyteller's name and relationship to the buyer, the buyer's email (for the purchase and book link), and the interview answers the storyteller gives — nothing else. No accounts or passwords, no health, financial, or government data. Stories stay behind a private token link and are never used for marketing.",
-    whatWeDelete:
-      "Every interview answer and the project record are wiped immediately by the Delete my memoir button on the project page; the payer email is cleared with the project. Email fallback (info@mehyar.us) actions within 14 days.",
-  },
-  {
-    id: "valleygods",
-    name: "ValleyGods",
-    url: "https://valleygods.mehyar.us",
-    tagline: "Watch them live. Read their minds. Play their god.",
-    icon: Sparkles,
-    inAppPath: "Email fallback (info@mehyar.us) — account deletion on request",
-    whatWeCollect:
-      "If you only watch, nothing — watching needs no account. If you sign in with Google to occupy a Minime: your Google account identity (name/email), which Minime you occupy, and the nudges/direction you give it. No payment data — ValleyGods is free.",
-    whatWeDelete:
-      "Sign-in identity, your occupation link, and your nudge/direction history tied to your account.",
-  },
-  {
-    id: "visakit",
-    name: "Visakit",
-    url: "https://visakit.mehyar.us",
-    tagline: "Your visa application pack, prepared for you — five routes live, any route on request.",
-    icon: Stamp,
-    inAppPath: "Email fallback (info@mehyar.us) — no accounts on this product at launch",
-    whatWeCollect:
-      "Your intake answers (travel plans, employment/financial evidence summaries), the documents you upload for your pack (stored encrypted), your email address, and checkout records. Upload only what your checklist asks for.",
-    whatWeDelete:
-      "Uploaded documents, intake answers, your generated pack, and purchase records tied to your email.",
   },
 ];
 

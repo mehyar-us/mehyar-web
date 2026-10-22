@@ -26,13 +26,10 @@ it('ships with no JavaScript: sales.ts and sales-pricing.ts are gone, no script 
  const webFiles=readdirSync(webDir);
  expect(webFiles).not.toContain('sales.ts');
  expect(webFiles).not.toContain('sales-pricing.ts');
- // The only scripts allowed are the consent-gated analytics snippet (wired
- // synchronously in <head> per the privacy order) and the audience beacon
- // tag (merged 2026-10-15) — no product JS. Beacon host superseded
- // 2026-10-22 (audience → Mayor integration): same tag, now served from
- // mayor.mehyar.us ahead of the old host's removal.
+ // The only script allowed is the consent-gated analytics snippet (wired
+ // synchronously in <head> per the privacy order) — no product JS.
  const scripts=[...html.matchAll(/<script\b[^>]*>/g)].map(m=>m[0]);
- expect(scripts).toEqual(['<script src="/analytics-consent.js">','<script async src="https://mayor.mehyar.us/b.js" data-product="mayor">']);
+ expect(scripts).toEqual(['<script src="/analytics-consent.js">']);
 });
 
 it('contains zero dollar amounts anywhere in the sales surface',()=>{
@@ -74,13 +71,13 @@ it('carries the vision pitch and never names the product Jarvis',()=>{
  expect(standalone).toEqual([]);
 });
 
-it('carries the legal footer (no final-sale line per the 2026-10-17 scope ruling) and no street address',()=>{
+it('carries the legal footer with purchases-final and no street address',()=>{
  expect(html).toContain('MehyarSoft LLC');
  expect(html).toContain('href="/terms"');
  expect(html).toContain('https://mehyar.us/privacy-policy/');
  expect(html).toContain('https://mehyar.us/terms/');
  expect(html).toContain('https://mehyar.us/data-deletion/');
- expect(html).not.toContain('Purchases are final');
+ expect(html).toContain('Purchases are final');
  expect(html).toContain('mailto:info@mehyar.us');
  expect(html).not.toContain('96th St');
  expect(html).not.toContain('11209');
