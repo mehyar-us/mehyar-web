@@ -1,6 +1,5 @@
 import {z} from 'zod';
 import type {Env} from './env';
-import {providerConfigured,type AuthEnv} from './auth/capabilities';
 import {listGuides,guideForService,genericConnectorGuide,type ConnectorGuide,type OAuthProviderId} from './connector-guides';
 
 /**
@@ -117,13 +116,6 @@ export async function listRecipes(env:Pick<Env,'AGENT_DB'>):Promise<ConnectorRec
 export async function getRecipe(env:Pick<Env,'AGENT_DB'>,service:string):Promise<ConnectorRecipe|null>{
  const all=await listRecipes(env);
  return all.find(r=>r.service===service)??null;
-}
-
-/** One-click means the owner taps once and signs in — an OAuth method on a
- * configured provider. Everything else (paste a key, follow steps) is not,
- * and the engine prefers one-click ways first (Mayor's order, 2026-10-15). */
-export function isOneClick(env:AuthEnv,method:ConnectMethod):boolean{
- return method.kind==='oauth'&&providerConfigured(env,method.provider);
 }
 
 export {guideForService};

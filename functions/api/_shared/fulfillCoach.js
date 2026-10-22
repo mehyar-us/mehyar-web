@@ -11,12 +11,11 @@
 //   1. Idempotent on payment.id: coach_sessions.payment_id records the
 //      fulfilling payment; a replay with the same payment already recorded
 //      returns {replay:true} and sends no second email.
-//   2. Tokens: billing_payments.access_token stays the original checkout
-//      token, so the {access_token} in the Stripe success URL (and
-//      /api/pay/status) keeps working. The Coach worker unifies tokens:
-//      GET /api/session/:token accepts the session token OR the billing
-//      access_token (resolved via metadata_json.session_token). The
-//      welcome email below carries the session token.
+//   2. Token unification: billing_payments.access_token := the Coach
+//      session token, so the {access_token} in success_url_template lands
+//      the buyer on https://coach.mehyar.us/success?token=<session token>
+//      and the Coach worker shows Pro immediately (it also self-heals from
+//      billing_payments if this hook ever lags).
 //   3. Emails the buyer their personal Pro link (transactional; sender is
 //      the proven team@mehyar.us identity). Never throws out of the hook.
 
@@ -60,12 +59,11 @@ export async function fulfillCoach({ db, env, waitUntil, sendEmail }, payment) {
     .bind(payment.id, buyerEmail || null, sessionToken)
     .run();
 
-  // NOTE: billing_payments.access_token is deliberately NOT overwritten.
-  // It stays the original checkout token (the one in the buyer's Stripe
-  // success URL and /api/pay/status). Token unification lives in the
-  // Coach worker: GET /api/session/:token resolves a billing access_token
-  // via this payment's metadata_json.session_token. The welcome email
-  // below links the session token directly.
+  // Token unification — one token gates every Coach buyer surface.
+  await db
+    .prepare("UPDATE billing_payments SET access_token = ? WHERE id = ?")
+    .bind(sessionToken, payment.id)
+    .run();
 
   if (buyerEmail && typeof sendEmail === "function") {
     const run = async () => {

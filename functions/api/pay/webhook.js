@@ -41,7 +41,6 @@ import { fulfillAuditBusiness } from "../_shared/fulfillAuditBusiness.js";
 import { fulfillBillcut } from "../_shared/fulfillBillcut.js";
 import { fulfillCoach } from "../_shared/fulfillCoach.js";
 import { fulfillClipnote } from "../_shared/fulfillClipnote.js";
-import { fulfillMemoir } from "../_shared/fulfillMemoir.js";
 
 // Buyer CRM hardening (tracking-crm-fix, 2026-10-05).
 //
@@ -129,7 +128,6 @@ async function recordCustomerDetails(db, paymentId, sess) {
     const addr = cd.address || {};
     await db.prepare(
       "UPDATE billing_payments SET " +
-      "email=COALESCE(NULLIF(email, ''), ?), " +
       "customer_name=COALESCE(?, customer_name), " +
       "billing_city=COALESCE(?, billing_city), " +
       "billing_state=COALESCE(?, billing_state), " +
@@ -137,7 +135,6 @@ async function recordCustomerDetails(db, paymentId, sess) {
       "stripe_customer_id=COALESCE(?, stripe_customer_id) " +
       "WHERE id=?"
     ).bind(
-      (cd.email || "").slice(0, 254) || null,
       (cd.name || "").slice(0, 160) || null,
       (addr.city || "").slice(0, 120) || null,
       (addr.state || "").slice(0, 120) || null,
@@ -512,108 +509,7 @@ const fulfillHooks = {
     const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
     await fulfillClipnote({ db, env, waitUntil, sendEmail }, payment);
   },
-
-  // Memoir ($79 Digital / $149 Complete, one-time). Marks the
-  // memoir_projects row paid + stamps the SKU (idempotent on
-  // payment_id), emails the buyer their personal memoir link.
-  async memoir({ db, env, waitUntil }, payment) {
-    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
-    await fulfillMemoir({ db, env, waitUntil, sendEmail }, payment);
-  },
 };
-
-
-// ── Payment Link (mirror) resolution ─────────────────────────────────────
-// Mirror objects are link-only Stripe Product+Price pairs created for
-// Payment Link sales (the WhatsApp flights). Their product carries
-// metadata.mirror_of = the billing_products sku. A link purchase has no
-// pre-created billing_payments row and no metadata.payment_id, so the
-// native path above cannot see it. Resolution: read the session's line
-// items from Stripe, map the purchased product's mirror_of to the D1
-// product, verify the amount against the D1 price, create the payment
-// row (idempotent on the Stripe session id), then run the same buyer-CRM
-// capture + fulfillment-hook dispatch as a native checkout.
-function mirrorRandomHex(bytes) {
-  const b = new Uint8Array(bytes);
-  crypto.getRandomValues(b);
-  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
-}
-
-async function resolveMirrorPurchase({ db, request, env, waitUntil }, sess) {
-  if (!sess.id || sess.payment_status !== "paid") return;
-  const existing = await db.prepare(
-    "SELECT id FROM billing_payments WHERE stripe_session_id = ?"
-  ).bind(sess.id).first();
-  if (existing) return; // first delivery already created + dispatched
-  const key = sess.livemode === false
-    ? (env.STRIPE_TEST_SECRET_KEY || env.STRIPE_SECRET_KEY)
-    : env.STRIPE_SECRET_KEY;
-  if (!key) { console.error("pay/webhook mirror: no Stripe key for session", sess.id); return; }
-  // Key-prefix assertion (house billing pattern): never call Stripe with a
-  // key whose (sk|rk)_ prefix belongs to the opposite mode.
-  if ((sess.livemode && /^(sk|rk)_test_/.test(key)) || (!sess.livemode && /^(sk|rk)_live_/.test(key))) {
-    console.error("pay/webhook mirror: stripe_mode_mismatch for session", sess.id);
-    return;
-  }
-  const api = async (path) => {
-    const r = await fetch("https://api.stripe.com" + path, {
-      headers: { authorization: "Bearer " + key },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!r.ok) throw new Error("stripe " + r.status + " " + path);
-    return r.json();
-  };
-  const items = await api("/v1/checkout/sessions/" + encodeURIComponent(sess.id) + "/line_items?expand[]=data.price.product&limit=10");
-  const line = items && items.data && items.data[0];
-  const price = line && line.price;
-  const productObj = price && typeof price.product === "object" ? price.product : null;
-  const sku = String((productObj && productObj.metadata && productObj.metadata.mirror_of) || (price && price.metadata && price.metadata.mirror_of) || "").trim();
-  if (!sku) return; // not a mirror purchase — nothing to resolve
-  const product = await db.prepare(
-    "SELECT * FROM billing_products WHERE id = ? AND active = 1"
-  ).bind(sku).first();
-  if (!product) { console.error("pay/webhook mirror: unknown sku", sku); return; }
-  if (Number(sess.amount_total) !== Number(product.price_cents)) {
-    console.error("pay/webhook mirror: amount mismatch", sku, sess.amount_total, product.price_cents);
-    return;
-  }
-  const email = String((sess.customer_details && sess.customer_details.email) || sess.customer_email || "").toLowerCase().trim();
-  const isSub = sess.mode === "subscription" && sess.subscription;
-  const ins = await db.prepare(
-    "INSERT INTO billing_payments (product_id, brand, email, amount_cents, currency, access_token, metadata_json, attribution_json, status, stripe_payment_intent, stripe_session_id, stripe_subscription_id, subscription_status, paid_at) " +
-    "VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 'paid', ?, ?, ?, ?, " + nowSql + ")"
-  ).bind(
-    product.id, product.brand, email, Number(product.price_cents), product.currency || "usd",
-    mirrorRandomHex(32),
-    JSON.stringify({ mirror_of: sku, via: "payment_link", stripe_price_id: price.id, stripe_product_id: productObj ? productObj.id : null }),
-    sess.payment_intent || null, sess.id,
-    isSub ? String(sess.subscription) : null, isSub ? "active" : null
-  ).run();
-  const paymentId = ins && ins.meta && ins.meta.last_row_id;
-  if (!paymentId) return;
-  const payment = await db.prepare("SELECT * FROM billing_payments WHERE id = ?").bind(paymentId).first();
-  if (!payment) return;
-  try {
-    await recordCustomerDetails(db, paymentId, sess);
-    if (email) {
-      await recordBuyerCRM(db, { email, brand: product.brand, amountCents: Number(product.price_cents), attributionJson: null });
-    }
-  } catch (e) {
-    console.error("pay/webhook mirror CRM failed", e && e.message);
-  }
-  const fulfillment = product.fulfillment || "none";
-  try {
-    await db.prepare(
-      "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (" + nowSql + ", ?, 'mirror_resolved', ?)"
-    ).bind(payment.id, JSON.stringify({ sku, fulfillment }).slice(0, 300)).run();
-  } catch {}
-  const hook = fulfillHooks[fulfillment] || fulfillHooks.none;
-  try {
-    await hook({ db, request, env, waitUntil }, payment, sess);
-  } catch (e) {
-    console.error("pay/webhook mirror fulfillment failed", product.id, e && e.message);
-  }
-}
 
 export async function onRequestPost({ request, env, waitUntil }) {
   try {
@@ -634,52 +530,6 @@ export async function onRequestPost({ request, env, waitUntil }) {
     }
 
     const event = JSON.parse(rawBody);
-
-    // Payment integrity (rot541, 2026-10-22) — mirrors The Mayor worker's
-    // billing pattern (workers/mayor/src/billing/events.ts): the configured
-    // mode is env-only (STRIPE_MODE; production runs "live"), and any event
-    // whose livemode differs from the configured mode is rejected with
-    // 400 stripe_mode_mismatch — after signature verification, before any
-    // ledger write, mirror resolution, or fulfillment dispatch. The
-    // rejection is logged to webhook_debug. Test-endpoint signatures still
-    // verify (legacy), but verification is not fulfillment.
-    const configuredMode = env.STRIPE_MODE === "test" ? "test" : "live";
-    if (event.livemode !== (configuredMode === "live")) {
-      // Crew-gated test scope (rot545, 2026-10-22): a test event is admitted
-      // ONLY when it belongs to an order minted through the crew test gate —
-      // its billing_payments row carries a cs_test_ session id. It then
-      // fulfills in test scope, exactly as crew test payments did before the
-      // mode hardening. Every other mismatch — above all a test event
-      // naming a LIVE order — is rejected below, unchanged.
-      let gatedTestOrder = false;
-      if (event.livemode === false) {
-        try {
-          const obj0 = (event.data && event.data.object) ? event.data.object : {};
-          const pid0 = Number(obj0.metadata && obj0.metadata.payment_id) || null;
-          if (pid0) {
-            const prow = await db.prepare(
-              "SELECT stripe_session_id FROM billing_payments WHERE id = ?"
-            ).bind(pid0).first();
-            gatedTestOrder = !!(
-              prow &&
-              typeof prow.stripe_session_id === "string" &&
-              prow.stripe_session_id.startsWith("cs_test_")
-            );
-          }
-        } catch (_) { /* a failed lookup admits nothing */ }
-      }
-      if (!gatedTestOrder) {
-      try {
-        const obj = (event.data && event.data.object) ? event.data.object : {};
-        const pid = Number(obj.metadata && obj.metadata.payment_id) || null;
-        await db.prepare(
-          "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'stripe_mode_mismatch', ?)"
-        ).bind(pid, String(event.type || "") + " " + String(obj.id || "")).run();
-      } catch (_) { /* logging never blocks the rejection */ }
-      return json({ ok: false, error: "stripe_mode_mismatch" }, 400);
-      }
-    }
-
     if (event.type === "checkout.session.completed") {
       const sess = (event.data && event.data.object) ? event.data.object : {};
       const paymentId = Number(sess.metadata && sess.metadata.payment_id);
@@ -697,7 +547,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut","coach","clipnote","memoir"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut","coach","clipnote"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
@@ -714,25 +564,14 @@ export async function onRequestPost({ request, env, waitUntil }) {
             const payRow = await db.prepare(
               "SELECT email, brand, amount_cents, attribution_json FROM billing_payments WHERE id=?"
             ).bind(paymentId).first();
-            if (payRow) {
-              const stripeEmail = (sess.customer_details && sess.customer_details.email) || null;
-              // Anonymous checkouts (Moonroom's optional email) arrive with
-              // a NULL email: backfill from Stripe's customer_details FIRST,
-              // so the CRM record and the fulfillment dispatch below both
-              // see the payer's address.
-              if (payRow.email || stripeEmail) {
-                await recordCustomerDetails(db, paymentId, sess);
-                const effEmail = payRow.email || stripeEmail;
-                if (effEmail) {
-                  if (!payment.email) payment.email = effEmail;
-                  await recordBuyerCRM(db, {
-                    email: effEmail,
-                    brand: payRow.brand,
-                    amountCents: payRow.amount_cents,
-                    attributionJson: payRow.attribution_json || (sess.metadata && sess.metadata.attribution) || null,
-                  });
-                }
-              }
+            if (payRow && payRow.email) {
+              await recordCustomerDetails(db, paymentId, sess);
+              await recordBuyerCRM(db, {
+                email: payRow.email,
+                brand: payRow.brand,
+                amountCents: payRow.amount_cents,
+                attributionJson: payRow.attribution_json || (sess.metadata && sess.metadata.attribution) || null,
+              });
             }
           } catch (e) {
             console.error("pay/webhook buyer CRM hardening failed", e && e.message);
@@ -761,14 +600,6 @@ export async function onRequestPost({ request, env, waitUntil }) {
               } catch {}
             }
           }
-        }
-      } else if (sess.id) {
-        // Payment Link purchase (mirror object): no payment_id metadata
-        // and no pre-created payment row — resolve via mirror_of.
-        try {
-          await resolveMirrorPurchase({ db, request, env, waitUntil }, sess);
-        } catch (e) {
-          console.error("pay/webhook mirror resolution failed", e && e.message);
         }
       }
     } else if (event.type === "invoice.payment_succeeded") {
