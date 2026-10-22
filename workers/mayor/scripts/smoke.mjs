@@ -3,7 +3,6 @@ const origin=new URL(process.argv[2]??'https://mayor.mehyar.us').origin;
 const checks=[['/',200],['/?connected=telnyx',200],['/terms',200],['/manifest.webmanifest',200],['/mayor-avatar.png',200],['/api/health',200],['/api/phone-guide?mode=new',200],['/api/phone-guide?mode=existing',200],['/api/businesses',401],['/agents/mayor-voice/unauthorized',401],['/api/auth/get-access-token',404]];
 checks.push(['/business-audit',200],['/business-audit/report',200],['/api/business-audit/status',404],['/api/business-audit/report',404]);
 checks.push(['/sales',200],['/robots.txt',200],['/sitemap.xml',200],['/favicon.ico',200]);
-checks.push(['/analytics-consent.js',200],['/analytics-consent.css',200]);
 for(const slug of ['salon','restaurant','plumbing-hvac','dental','auto-repair','pet-grooming','med-spa'])checks.push([`/sales/${slug}`,200]);
 checks.push(['/sales/saloon',404],['/definitely-not-a-page-xyz',404]);
 // Trailing-slash normalization: every public route resolves with and without.

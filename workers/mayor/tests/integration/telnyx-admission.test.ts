@@ -12,7 +12,6 @@ beforeEach(async()=>{
  actor={tenantId:crypto.randomUUID(),userId:crypto.randomUUID()};
  await env.AGENT_DB.prepare('INSERT INTO agent_tenants(id,name,created_at) VALUES(?,?,?)').bind(actor.tenantId,'Telnyx admission fixture',new Date().toISOString()).run();
  await env.AGENT_DB.prepare("INSERT INTO agent_memberships(tenant_id,user_id,role) VALUES(?,?,'owner')").bind(actor.tenantId,actor.userId).run();
- await env.AGENT_DB.prepare('INSERT INTO mayor_phone_recording_consent(tenant_id,consent_version,acknowledged_at,acknowledged_by) VALUES(?,1,?,?)').bind(actor.tenantId,new Date().toISOString(),actor.userId).run();
  keys=await crypto.subtle.generateKey('Ed25519',true,['sign','verify']) as CryptoKeyPair;
  input={apiKey:'KEY_admission_test_only',inbound:{publicKey:encoded(await crypto.subtle.exportKey('raw',keys.publicKey)),applicationId:'76543',testCaller:'+12025550123'}};
  await connectTelnyx(env,actor,input,transport);await selectTelnyxNumber(env,actor,number.id,transport);

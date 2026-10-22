@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ArrowRight, Bot, CalendarClock, CheckCircle2, FileText, ListChecks,
-  Loader2, Lock, Printer, Scale, Search, ShieldCheck, Sparkles, Target, TrendingDown, AlertTriangle,
+  Loader2, Printer, Scale, Search, ShieldCheck, Sparkles, Target, TrendingDown, AlertTriangle,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import ReportPreview from "@/components/ReportPreview";
 import BusinessReportView, { type BusinessReportPayload } from "@/components/BusinessReportView";
-import { trackBeginCheckout, trackFullReportPurchase } from "@/components/MarketingTags";
 
 type FullReport = {
   score: number;
@@ -106,11 +105,11 @@ function gradeColor(g?: string) {
 }
 
 const WHATS_INSIDE = [
-  "Leak map — every leak priced in estimated dollars",
+  "Leak map — every leak priced in dollars",
   "Page-by-page grades (A–F)",
   "How you stack up vs typical sites in your industry",
   "AI automation blueprint for your business type",
-  "The AI capacity math, shown step by step",
+  "The 500% capacity math, shown step by step",
   "Your 90-day action plan",
   "The one thing to fix first",
 ];
@@ -124,9 +123,6 @@ export default function AuditReport() {
   const [url, setUrl] = useState(q.get("url") || "");
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState("");
-  const [payBlocked, setPayBlocked] = useState(false);
-  const [notifyState, setNotifyState] = useState<"idle" | "saving" | "saved">("idle");
-  const [notifyMsg, setNotifyMsg] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [report, setReport] = useState<FullReport | null>(null);
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
@@ -201,18 +197,10 @@ export default function AuditReport() {
     return () => { document.title = "MehyarSoft — AI Website Evaluation"; };
   }, [report, siteUrl]);
 
-  /* Purchase conversion (AU-509-2): a rendered report exists only for a
-     paid token — fire the $5 purchase event once per token when it lands. */
-  useEffect(() => {
-    if (report && token) trackFullReportPurchase(token);
-  }, [report, token]);
-
   const buy = async (e: React.FormEvent) => {
     e.preventDefault();
     setBuyError("");
     setBuying(true);
-    /* Money-path event (rot509): fire before the POST/redirect. */
-    trackBeginCheckout("audit-full-report", 5);
     try {
       const r = await fetch("/api/pay/checkout", {
         method: "POST",
@@ -226,9 +214,7 @@ export default function AuditReport() {
       }
       if (!data.ok) {
         if (data.error === "stripe_not_configured") {
-          setPayBlocked(true);
-          setBuying(false);
-          return;
+          throw new Error("Checkout opens very soon — we saved your spot. Check back in a bit!");
         }
         throw new Error(data.message || "Couldn't start checkout.");
       }
@@ -237,33 +223,6 @@ export default function AuditReport() {
       setBuyError(err?.message || "Something went wrong.");
       setBuying(false);
     }
-  };
-
-  /* Blocked-checkout fallback: capture the notify-me click (the click is the
-     consent) via /api/audit/full-report/pay-blocked. */
-  const notifyWhenBack = async () => {
-    setNotifyMsg("");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
-      setNotifyMsg("Enter your email above so we can notify you.");
-      return;
-    }
-    setNotifyState("saving");
-    try {
-      const r = await fetch("/api/audit/full-report/pay-blocked", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), url }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (data.ok) {
-        setNotifyState("saved");
-        return;
-      }
-      setNotifyMsg("Couldn't save that just now — try again in a moment.");
-    } catch {
-      setNotifyMsg("Couldn't save that just now — try again in a moment.");
-    }
-    setNotifyState("idle");
   };
 
   /* ── REPORT VIEW ── */
@@ -294,8 +253,8 @@ export default function AuditReport() {
           <h1 className="site-display mt-4 text-3xl">{justPaid ? "Payment received — building your report…" : "Loading your report…"}</h1>
           <p className="site-lede mx-auto mt-4 max-w-xl">
             {justPaid
-              ? "Our AI is analyzing your site and writing your full report. This takes about a minute — it's also being emailed to you."
-              : "Fetching your full report…"}
+              ? "Our AI is analyzing your site and writing your full evaluation. This takes about a minute — it's also being emailed to you."
+              : "Fetching your full evaluation…"}
           </p>
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
         </div></section>
@@ -357,7 +316,7 @@ export default function AuditReport() {
             {hasLeaks && (
               <div className="report-print-section mt-10">
                 <h2 className="flex items-center gap-2 text-2xl font-semibold text-[#0B1B33] dark:text-foreground">
-                  <TrendingDown className="h-6 w-6 text-[#DC2626]" /> Leak map — every leak priced in estimated dollars
+                  <TrendingDown className="h-6 w-6 text-[#DC2626]" /> Leak map — every leak priced
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                   What's quietly costing you money, and what each fix is worth. Losses hurt more than gains feel good — that's why we price the pain first.
@@ -393,7 +352,7 @@ export default function AuditReport() {
                   <FileText className="h-6 w-6 text-[#0B1B33] dark:text-sky-300" /> Page-by-page grades
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Every key page, graded on what your visitors actually see.
+                  Grades are based on your homepage's public signals, extrapolated across your key pages.
                 </p>
                 <div className="mt-4 space-y-4">
                   {report.page_by_page!.map((p, i) => (
@@ -418,7 +377,7 @@ export default function AuditReport() {
                   <Scale className="h-6 w-6 text-[#F59E0B]" /> How you compare
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  How your site stacks up against the patterns that win in your business type.
+                  Typical patterns for your business type — not a crawl of your actual competitors.
                 </p>
                 <Card className="mt-4"><CardContent className="p-5 md:p-6">
                   {hyc.note && <p className="text-sm leading-6 text-foreground">{hyc.note}</p>}
@@ -463,7 +422,7 @@ export default function AuditReport() {
             {/* ── 500% MATH ── */}
             {hasMath && (
               <div className="report-print-section mt-10 overflow-hidden rounded-3xl bg-[#0B1B33] p-6 text-white md:p-10">
-                <h2 className="text-2xl font-semibold">The capacity math — step by step</h2>
+                <h2 className="text-2xl font-semibold">The 500% math — step by step</h2>
                 <p className="mt-2 text-sm text-slate-300">
                   Capacity arithmetic: what your operation handles today vs. with these AI systems in place.
                 </p>
@@ -477,7 +436,7 @@ export default function AuditReport() {
                 )}
                 {(m500.honest_caveats || []).length > 0 && (
                   <div className="mt-6 rounded-xl border border-amber-400/40 bg-amber-400/10 p-4">
-                    <p className="text-sm font-semibold text-amber-300">How to read this math</p>
+                    <p className="text-sm font-semibold text-amber-300">⚠️ Honest caveats — read these</p>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-amber-100/90">
                       {m500.honest_caveats!.map((x, i) => <li key={i}>{x}</li>)}
                     </ul>
@@ -529,15 +488,6 @@ export default function AuditReport() {
               </div>
             )}
 
-            {/* ── GO DEEPER ── */}
-            <div className="no-print mt-10 flex items-start gap-3 rounded-3xl border border-[#0B1B33]/20 bg-[#0B1B33] p-6 text-left text-white md:p-8">
-              <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
-              <p className="text-sm leading-6 text-slate-200">
-                <strong className="text-white">Want the deepest read?</strong> This report covers your site. <strong className="text-white">Audit My Business ($330)</strong> goes further — add a short CEO walkthrough video and get a transcript-based assessment of the whole business, with a prioritized fix plan. Your $5 is credited toward Audit My Business when you check out with the same email — the discount shows on the checkout page before you pay.{" "}
-                <Link href="/audit" className="font-semibold text-white underline underline-offset-4 hover:text-sky-200">Explore the $330 audit <ArrowRight className="inline h-4 w-4" /></Link>
-              </p>
-            </div>
-
             {/* ── BOTTOM DOWNLOAD ── */}
             <div className="no-print mt-12 flex flex-col items-center gap-3 rounded-3xl bg-[#0B1B33] p-8 text-center text-white">
               <ShieldCheck className="h-8 w-8 text-emerald-400" />
@@ -557,20 +507,10 @@ export default function AuditReport() {
   return (
     <section className="site-hero px-4">
       <div className="site-shell max-w-4xl">
-        <p className="site-eyebrow mb-4 text-center">The full report</p>
+        <p className="site-eyebrow mb-4 text-center">The full evaluation</p>
         <h1 className="site-display mx-auto max-w-2xl text-balance text-center">The free audit is the trailer — this is the movie.</h1>
         <p className="site-lede mx-auto mt-4 max-w-xl text-balance text-center">
-          The complete professional report on <em>your</em> site — every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.
-        </p>
-
-        <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border bg-secondary/50 p-4 text-left">
-          <p className="text-sm leading-6 text-muted-foreground">
-            Read this first: this is a one-time scan of your public-facing site. It checks what a visitor (and Google) can see today; it is not a security penetration test and does not look inside your servers or accounts.
-          </p>
-        </div>
-
-        <p className="mx-auto mt-3 max-w-2xl text-xs leading-5 text-muted-foreground">
-          Results vary by business — this report shows what's true for your site today, and no audit can guarantee specific revenue results.
+          The complete professional evaluation of <em>your</em> site — every leak priced, page-by-page grades, how you compare, the 500% AI blueprint with the math shown step by step, and your 90-day plan.
         </p>
 
         <div className="mx-auto mt-10 grid max-w-3xl items-start gap-8 md:grid-cols-2">
@@ -579,7 +519,7 @@ export default function AuditReport() {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="rounded-xl bg-[#F59E0B] px-3 py-1 text-4xl font-extrabold text-[#0B1B33]">$5</span>
-              <span className="text-sm text-muted-foreground">one-time · emailed with a permanent link</span>
+              <span className="text-sm text-muted-foreground">one-time · yours forever</span>
             </div>
 
             <h2 className="mt-6 flex items-center gap-2 font-semibold text-foreground">
@@ -605,44 +545,10 @@ export default function AuditReport() {
                     <Input id="r-email" type="email" autoComplete="email" required placeholder="you@youremail.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 h-12 text-base" />
                   </div>
                   {buyError && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">{buyError}</p>}
-                  {payBlocked && (
-                    <div className="rounded-2xl border border-border bg-secondary/50 p-4">
-                      <p className="text-sm font-semibold text-foreground">Don't lose your report</p>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        Checkout is opening shortly. Tap below and we'll send you one message the
-                        moment it's live — nothing else, ever. No charge is made until you pay.
-                      </p>
-                      {notifyState === "saved" ? (
-                        <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                          You're on the list — we'll email {email.trim()} the moment checkout opens.
-                        </p>
-                      ) : (
-                        <>
-                          <Button type="button" variant="outline" size="lg" className="mt-3 w-full" onClick={notifyWhenBack} disabled={notifyState === "saving"}>
-                            {notifyState === "saving" ? "Saving…" : "Notify me when checkout opens"}
-                          </Button>
-                          {notifyMsg && <p role="alert" className="mt-2 text-sm text-amber-700 dark:text-amber-300">{notifyMsg}</p>}
-                        </>
-                      )}
-                      <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                        Rather talk to a human?{" "}
-                        <a href="mailto:info@mehyar.us" className="font-semibold text-foreground underline underline-offset-2">Email info@mehyar.us</a>{" "}
-                        — we'll sort it out personally.
-                      </p>
-                    </div>
-                  )}
                   <Button type="submit" variant="cta" size="lg" className="h-13 w-full bg-emerald-500 py-4 text-base text-emerald-950 hover:bg-emerald-400" disabled={buying}>
-                    {buying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting checkout…</> : <>Get my $5 report <ArrowRight className="ml-2 h-4 w-4" /></>}
+                    {buying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting checkout…</> : <>Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" /></>}
                   </Button>
-                  <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                    <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Secure checkout via Stripe. We never see your card number.
-                  </p>
-                  <p className="text-center text-xs text-muted-foreground">One-time · Delivered in about a minute · Less than a coffee</p>
-                  <p className="text-center text-xs leading-5 text-muted-foreground">
-                    All sales are final — the Full Report is a one-time digital report, and purchases are not
-                    refundable. If your report hasn't arrived within a few minutes, email info@mehyar.us and
-                    we'll re-send it right away.
-                  </p>
+                  <p className="text-center text-xs text-muted-foreground">One-time · Instant delivery · Less than a coffee</p>
                 </form>
               </CardContent>
             </Card>
@@ -652,15 +558,7 @@ export default function AuditReport() {
         <div className="mx-auto mt-10 flex max-w-2xl items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left">
           <Search className="mt-0.5 h-5 w-5 shrink-0 text-[#0B1B33] dark:text-sky-300" />
           <p className="text-sm leading-6 text-muted-foreground">
-            <strong className="text-foreground">How it works:</strong> pay $5 once, our AI writes the full report for your site in about a minute, and it's emailed to you with a permanent link. No subscription, no upsell required to get value.
-          </p>
-        </div>
-
-        <div className="mx-auto mt-4 flex max-w-2xl items-start gap-3 rounded-2xl border border-[#0B1B33]/20 bg-[#0B1B33] p-5 text-left text-white">
-          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
-          <p className="text-sm leading-6 text-slate-200">
-            <strong className="text-white">Want the deepest read?</strong> This report covers your site. <strong className="text-white">Audit My Business ($330)</strong> goes further — add a short CEO walkthrough video and get a transcript-based assessment of the whole business, with a prioritized fix plan.{" "}
-            <Link href="/audit" className="font-semibold text-white underline underline-offset-4 hover:text-sky-200">Explore the $330 audit <ArrowRight className="inline h-4 w-4" /></Link>
+            <strong className="text-foreground">How it works:</strong> pay $5 once, our AI writes the full evaluation for your site in about a minute, and it's emailed to you with a permanent link. No subscription, no upsell required to get value.
           </p>
         </div>
       </div>

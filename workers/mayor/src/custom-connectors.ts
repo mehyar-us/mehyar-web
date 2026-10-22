@@ -200,22 +200,6 @@ export async function listCustomTools(env:AuthEnv,actor:Actor,id:string,transpor
   const row=await owned(env,actor,id),config=await open<Config>(env,actor,row.id,row.ciphertext);
   return {tools:safeConnectorResult(await toolsFor(env,actor,row,config,transport),config.secret),untrusted:true};
 }
-/** Execute a recipe's documented verify check (One Connector door 2)
- * through this module, so the secret never leaves it: the check's URL
- * and auth style replace the stored endpoint/mode for this one call.
- * A pass is recorded as last_check_status 'verified' — distinct from
- * the generic check's 'reachable', because this one actually proved
- * the credential against the platform's own endpoint. */
-export async function verifyConnectionWithCheck(env:AuthEnv,actor:Actor,id:string,check:{method:'GET';url:string;auth:'bearer'},transport:typeof fetch=fetch){
-  const row=await owned(env,actor,id),config=await open<Config>(env,actor,id,row.ciphertext);
-  if(!config.secret)throw failure('connection_provider_rejected',502);
-  const checkConfig:Config={...config,endpoint:check.url,authentication:check.auth};
-  await client(env,actor,row,checkConfig,transport)('GET');
-  await owned(env,actor,id,row.revision);const at=new Date().toISOString();
-  await env.AGENT_DB.prepare('UPDATE mayor_custom_connections SET last_checked_at=?,last_check_status=? WHERE id=? AND tenant_id=? AND user_id=? AND revision=?')
-    .bind(at,'verified',id,actor.tenantId,actor.userId,row.revision).run();
-  return {id,status:'verified',checkedAt:at};
-}
 export async function checkCustomConnection(env:AuthEnv,actor:Actor,id:string,transport:typeof fetch=fetch){
   const row=await owned(env,actor,id),config=await open<Config>(env,actor,id,row.ciphertext);customEndpoint(config.endpoint,env.APP_ORIGIN);
   let status='configured',toolCount:number|undefined;

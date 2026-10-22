@@ -37,8 +37,8 @@ const css=()=>readWeb('sales.css');
 it('pricing section exists on /sales with zero amounts',()=>{
   const page=html(),style=css();
   expect(page).toContain('id="plans"');
-  expect(page).toContain('Start free. Go Pro when you');
-  for(const tier of ['Free','Pro','Top up'])expect(page).toContain(`<h3>${tier}</h3>`);
+  expect(page).toContain('Start free. Grow when you');
+  for(const tier of ['Start','Grow','Top up'])expect(page).toContain(`<h3>${tier}</h3>`);
   expect(page).toContain('No credit card to start');
   expect(page).toContain('No hidden fees');
   expect(page).toContain('Cancel anytime');
@@ -76,23 +76,17 @@ it('generates one page per vertical from verticals.ts (single source of truth)',
     expect(page).toContain('not a customer story');
     expect(page).toContain('nothing here promises revenue');
     expect(page).not.toMatch(/\$\d/);
-    // The only scripts allowed are the consent-gated analytics snippet and
-    // the audience beacon tag (merged 2026-10-15) — no product JavaScript
-    // on the generated sales pages. Beacon host superseded 2026-10-22
-    // (audience → Mayor integration): same tag, now served from
-    // mayor.mehyar.us ahead of the old host's removal.
-    const scripts=[...page.matchAll(/<script\b[^>]*>/g)].map(m=>m[0]);
-    expect(scripts).toEqual(['<script src="/analytics-consent.js">','<script async src="https://mayor.mehyar.us/b.js" data-product="mayor">']);
+    expect(page).not.toContain('<script');
     // SEO + CTA plumbing.
     expect(page).toContain(`<link rel="canonical" href="https://mayor.mehyar.us/sales/${slug}">`);
     expect(page).toContain('href="/sales#plans"');
     const ctas=[...page.matchAll(/<a[^>]*href="([^"]*)"[^>]*>(?:Sign in|Start free)<\/a>/g)].map(m=>m[1]);
     expect(ctas.length).toBeGreaterThanOrEqual(4);
-    for(const href of ctas)expect(['/','/?start=1']).toContain(href);
+    for(const href of ctas)expect(href).toBe('/');
     // Shared legal footer, no street address.
     expect(page).toContain('MehyarSoft LLC');
     expect(page).toContain('https://mehyar.us/privacy-policy/');
-    expect(page).not.toContain('Purchases are final'); // scope ruling 2026-10-17
+    expect(page).toContain('Purchases are final');
     expect(page).not.toContain('96th St');
   }
 });
@@ -137,7 +131,7 @@ it('ships a real favicon.ico and a clean 404 page',()=>{
 });
 
 it('isPublicAssetPath allows the public surface and nothing else',()=>{
-  for(const ok of ['/','/index.html','/terms','/terms.html','/missed-call-checklist','/missed-call-checklist.html','/robots.txt','/sitemap.xml','/llms.txt','/favicon.ico','/sw.js','/manifest.webmanifest','/microphone-worklet.js','/icon-192.png','/mayor-avatar.png','/device-check','/404.html','/assets/sales-abc123.css']){
+  for(const ok of ['/','/index.html','/terms','/terms.html','/robots.txt','/sitemap.xml','/favicon.ico','/sw.js','/manifest.webmanifest','/microphone-worklet.js','/icon-192.png','/mayor-avatar.png','/device-check','/404.html','/assets/sales-abc123.css']){
     expect(isPublicAssetPath(ok),ok).toBe(true);
   }
   for(const bad of ['/nope','/sales/saloon','/admin','/api/billing/catalog','.env','/sales/../etc']){
