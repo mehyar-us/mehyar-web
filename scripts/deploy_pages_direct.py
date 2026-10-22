@@ -103,14 +103,20 @@ def guard_tree_is_tip(allow_stale=False):
                 differing.append(f"{path} (missing)")
             elif _git_blob_sha(path) != want:
                 differing.append(path)
-        # Untracked, non-ignored files under the deploy surface would ship in
-        # the snapshot without existing on main — the pre-release direction
-        # of the same bug.
-        others = git("ls-files", "--others", "--exclude-standard", "--",
-                     "client", "functions", "assessment-call")
-        if others.returncode == 0:
-            for path in others.stdout.split():
-                differing.append(f"{path} (untracked, not on main)")
+        # Files present under the deploy surface but absent from origin/main
+        # would ship in the snapshot without existing on main — the
+        # pre-release direction of the same bug. Compared against main's own
+        # tree listing (NOT the local index, which lags on content-synced
+        # trees and would false-positive files that are on main).
+        for root in ("client", "functions", "assessment-call"):
+            if not os.path.isdir(root):
+                continue
+            for dirpath, dirs, files in os.walk(root):
+                dirs[:] = [d for d in dirs if d != "node_modules"]
+                for fn in files:
+                    p = os.path.join(dirpath, fn).replace(os.sep, "/")
+                    if p not in expected:
+                        differing.append(f"{p} (on disk, not on main)")
     except FileNotFoundError:
         print("STALE-TREE GUARD: git is not available — freshness cannot be "
               "proven. Refusing to deploy.")
