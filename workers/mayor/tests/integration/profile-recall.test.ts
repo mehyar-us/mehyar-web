@@ -23,7 +23,7 @@ it('does not arm a new confirmation when the model proposes an already saved pro
   if(typeof result==='string')return result;
   let answer='';for await(const chunk of result)answer+=chunk;return answer;
  };
- expect(await turn('What do you remember? Do not change anything.')).toBe('Already saved: name: Recall fixture. language: en. services: Consulting. No changes made.');
+ expect(await turn('What do you remember? Do not change anything.')).toBe('Already saved: name: Recall fixture. services: Consulting. No changes made.');
  expect(calls).toBe(1);
  expect(voice.ready.size).toBe(0);
  expect(voice.pending.size).toBe(0);
@@ -93,7 +93,7 @@ it.each(['proposal','unknown','staff_repaired','clarification','unbacked_ack','u
  expect((await readMemory(env,actor)).revision).toBe(0);
  if(['proposal','unknown','staff_repaired'].includes(mode)){
   if(mode==='staff_repaired')expect(modelCalls).toBe(2);
-  expect(events.find(event=>event.type==='profile_proposal')?.patch).toEqual({...patch,language:'en'});
+  expect(events.find(event=>event.type==='profile_proposal')?.patch).toEqual(patch);
   expect(answer).toContain('to save these business details');expect(voice.ready.has('intake')).toBe(true);
   const callsBefore=modelCalls;
   const confirmation=await turn('Yes.');expect(confirmation).toMatch(/^Saved\./);
@@ -102,7 +102,7 @@ it.each(['proposal','unknown','staff_repaired','clarification','unbacked_ack','u
    expect(confirmation).not.toContain('When is your business available');
   }
   expect(modelCalls).toBe(callsBefore);
-  expect((await readMemory(env,actor)).profile).toEqual({...patch,language:'en'});
+  expect((await readMemory(env,actor)).profile).toEqual(patch);
  }else{
   expect(voice.pending.size).toBe(0);expect(voice.ready.size).toBe(0);
   expect(answer).toBe(mode==='clarification'?'What services do you offer?':'I could not complete that request. Please tell me the change again.');

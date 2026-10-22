@@ -54,22 +54,6 @@ a{color:var(--brand)}
 .site-header nav a{text-decoration:none;color:var(--ink);font-weight:600;font-size:0.95rem}
 .site-header nav a:hover{text-decoration:underline}
 .header-ctas{display:flex;align-items:center;gap:1rem}
-
-/* WS1 build 1 (2026-10-16): the mobile header pattern for the whole
- * family — one row for brand + actions, the nav as a single
- * scrollable strip below it. Nothing wraps mid-element and nothing
- * stacks into a third row at phone width (rot298 input 4). */
-@media (max-width:760px){
-  .site-header{gap:0.55rem 0.75rem;padding:0.6rem 1rem}
-  .brand{font-size:1rem;margin-right:0}
-  .brand img{width:32px;height:32px}
-  .brand small{display:none}
-  .site-header nav{order:3;flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;gap:1.1rem;padding-bottom:0.1rem;scrollbar-width:none}
-  .site-header nav::-webkit-scrollbar{display:none}
-  .site-header nav a{white-space:nowrap;font-size:0.92rem}
-  .header-ctas{gap:0.85rem;margin-left:auto}
-  .header-ctas .button-small{padding:0.45rem 0.85rem;font-size:0.9rem}
-}
 .text-link{font-weight:700;text-decoration:none}
 .text-link:hover{text-decoration:underline}
 
@@ -157,11 +141,10 @@ section.page-width{padding-top:2.5rem;padding-bottom:2.5rem}
 .lead-form input[type="email"]{flex:1 1 16rem;padding:0.7rem 0.9rem;border:1px solid #c3d0dd;border-radius:0.6rem;font:inherit;background:#fff;color:var(--ink)}
 .lead-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .hero-slogan{font-size:1.35rem;font-weight:700;color:var(--navy,#102b47);letter-spacing:-0.01em;margin:0.35rem 0 0.5rem}
-.hero-price{font-weight:700;color:#315d86;margin:1rem 0 0}.hero-price a{color:inherit;text-underline-offset:3px}
+.hero-price{font-weight:700;color:#315d86;margin:1rem 0 0}
 .hero-price:empty{margin:0}
 .decision-note{font-size:1rem;color:var(--ink);max-width:44rem;margin-top:1.25rem}
 .pack-note{color:var(--muted);font-size:0.85rem;margin:0.6rem 0 0}
-.plan-final-sale{color:var(--muted);font-size:0.85rem;margin:0.6rem 0 0}.plan-final-sale a{color:inherit;text-underline-offset:3px}
 .loop-note{color:var(--muted);font-size:0.92rem;margin-top:1.25rem;max-width:44rem}
 
 /* FAQ */

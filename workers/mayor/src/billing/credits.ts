@@ -6,7 +6,6 @@ import {ACTIVE_PERIOD_SQL,billingUsageContext} from './state';
 import {assertAccount,ensureCustomer} from './service';
 import {acquireLease,commitLease,releaseLease} from './locking';
 import {assertMode,baseConfiguration,clientFor,mode,objectId,stripeUrl,type BillingEnv,type StripeClient,type StripeEvent,type StripeObject} from './stripe';
-import {emitEngineEventOnce,recordEngineEventOnceStatement} from '../engine-events';
 
 interface CreditCheckout {id:string;tenant_id:string;mode:'test'|'live';request_id:string;pack_id:CreditPackId;catalog_version:string;price_id:string;period_key:string;period_start:number;period_end:number;status:string;stripe_session_id:string|null;stripe_payment_intent_id:string|null;checkout_url:string|null;expires_at:number|null;provider_started_at:number|null;created_at:string;}
 export function creditPriceId(env:BillingEnv,packId:CreditPackId){return {small:env.MAYOR_STRIPE_CREDIT_PRICE_SMALL,medium:env.MAYOR_STRIPE_CREDIT_PRICE_MEDIUM,large:env.MAYOR_STRIPE_CREDIT_PRICE_LARGE}[packId];}
@@ -36,7 +35,7 @@ export async function creditStatus(env:BillingEnv,actor:Actor,canManage:boolean,
  const available=CREDIT_PACKS.map(pack=>{let ready=false;try{creditConfiguration(env,pack.id);ready=context.periodEnd-seconds>=1800;}catch{}return {...pack,available:ready};});
  return {creditPacks:available,credits:{periodKey:context.periodKey,periodStart:new Date(context.periodStart*1000).toISOString(),expiresAt:new Date(context.periodEnd*1000).toISOString(),replyAttempts:grants?.replies??0,voiceMinutes:grants?.minutes??0,purchases:(rows?.results??[]).map(row=>({id:row.id,packId:row.pack_id,status:row.status,paidAt:row.paid_at,expiresAt:new Date(row.period_end*1000).toISOString()})),checkout:{pending:Boolean(pending),...(pending&&canManage?{requestId:pending.request_id,packId:pending.pack_id,periodKey:pending.period_key,...(pending.checkout_url?{url:stripeUrl(pending.checkout_url,'checkout.stripe.com')}:{})}:{})},note:'One-time credits are shared by this business, expire with the purchased billing period, and do not transfer when plans change. No rollover or automatic purchase. Refunds or disputes revoke the pack allowance; consumed usage stays counted.'},ready:available.some(pack=>pack.available)};
 }
-export async function createCreditCheckout(env:BillingEnv,actor:Actor,requestId:string,packId:CreditPackId,periodKey:string,injected?:StripeClient,consentGranted=false){
+export async function createCreditCheckout(env:BillingEnv,actor:Actor,requestId:string,packId:CreditPackId,periodKey:string,injected?:StripeClient){
  await requireMembership(env,actor,BILLING_ROLES);const config=creditConfiguration(env,packId),client=clientFor(env,injected),pack=packFor(packId);await assertAccount(env,client);
  let row=await env.AGENT_DB.prepare('SELECT * FROM mayor_billing_credit_checkouts WHERE tenant_id=? AND mode=? AND request_id=?').bind(actor.tenantId,config.mode,requestId).first<CreditCheckout>();
  if(row&&(row.pack_id!==packId||row.period_key!==periodKey))throw new HttpError(409,'credit_request_changed','Retry the original credit pack request, or start a new purchase.');
@@ -46,10 +45,7 @@ export async function createCreditCheckout(env:BillingEnv,actor:Actor,requestId:
  if(periodKey!==current.periodKey||row&&row.period_end!==current.periodEnd)throw new HttpError(409,'credit_period_changed','Your billing period changed. Refresh the allowance before purchasing credits.');
  if(current.periodEnd-seconds<1800)throw new HttpError(409,'credit_period_ending','This period ends soon. Purchase credits in the next billing period.');
  if(row?.checkout_url&&row.status==='open'&&(row.expires_at??0)>seconds){
-  // Engine events (§1.7): begin_checkout is recorded once per checkout
-  // row; a replay return emits nothing new (see service.ts).
-  const replayDirectives=await emitEngineEventOnce(env,{tenantId:actor.tenantId,actorId:actor.userId,type:'begin_checkout',resourceId:row.id,consentGranted,valueCents:packFor(packId).priceCents,itemRef:`pack:${packId}`,itemName:`${packFor(packId).name} credit pack`});
-  return {url:await currentCheckoutUrl(env,actor,row),requestId,replay:true,...(replayDirectives.length?{analyticsEvents:replayDirectives}:{})};
+  return {url:await currentCheckoutUrl(env,actor,row),requestId,replay:true};
  }
  if(!row){
   const pending=await env.AGENT_DB.prepare("SELECT * FROM mayor_billing_credit_checkouts WHERE tenant_id=? AND mode=? AND status IN ('pending','open')").bind(actor.tenantId,config.mode).first<CreditCheckout>();
@@ -77,9 +73,7 @@ export async function createCreditCheckout(env:BillingEnv,actor:Actor,requestId:
  await requireMembership(env,actor,BILLING_ROLES);const afterSubmit=await billingUsageContext(env,actor);if(afterSubmit.periodKey!==row.period_key||afterSubmit.periodEnd!==row.period_end)throw new HttpError(409,'credit_period_changed','Your billing period changed during checkout. Refresh your allowance.');
  const guard=periodGuard(row,Math.floor(Date.now()/1000));
  await env.AGENT_DB.prepare(`UPDATE mayor_billing_credit_checkouts SET stripe_session_id=?,checkout_url=?,expires_at=?,status='open',updated_at=? WHERE id=? AND status='pending' AND ${guard.sql} AND EXISTS(SELECT 1 FROM agent_memberships m JOIN agent_tenants t ON t.id=m.tenant_id AND t.status='active' WHERE m.tenant_id=? AND m.user_id=? AND m.role IN ('owner','billing') AND m.status='active' AND (m.expires_at IS NULL OR m.expires_at>?))`).bind(session.id,url,session.expires_at,new Date().toISOString(),row.id,...guard.bindings,actor.tenantId,actor.userId,new Date(Date.now()).toISOString()).run();
- // Engine events (§1.7): begin_checkout, engine-side, as in service.ts.
- const directives=await emitEngineEventOnce(env,{tenantId:actor.tenantId,actorId:actor.userId,type:'begin_checkout',resourceId:row.id,consentGranted,valueCents:pack.priceCents,itemRef:`pack:${packId}`,itemName:`${pack.name} credit pack`});
- return {url:await currentCheckoutUrl(env,actor,row,session.id),requestId,replay:false,...(directives.length?{analyticsEvents:directives}:{})};
+ return {url:await currentCheckoutUrl(env,actor,row,session.id),requestId,replay:false};
 }
 export async function creditSessionEffects(env:BillingEnv,row:CreditCheckout,client:StripeClient):Promise<D1PreparedStatement[]>{
  if(!row.stripe_session_id)return [];const config=creditConfiguration(env,row.pack_id),pack=packFor(row.pack_id);await assertAccount(env,client);
@@ -94,11 +88,7 @@ export async function creditSessionEffects(env:BillingEnv,row:CreditCheckout,cli
  const chargeId=objectId(intent.latest_charge);if(!/^ch_[A-Za-z0-9]+$/.test(chargeId??''))throw new HttpError(409,'credit_payment_unverified','The credit payment charge is not verified.');const charge=await client.request(`/v1/charges/${chargeId}`);assertMode(charge,config.mode);if(charge.paid!==true||charge.captured!==true||charge.amount!==pack.priceCents||charge.currency!=='usd'||objectId(charge.payment_intent)!==intentId||objectId(charge.customer)!==customer?.stripe_customer_id)throw new HttpError(409,'credit_payment_unverified','The credit payment charge is not verified.');
  const seconds=Math.floor(Date.now()/1000),guard=periodGuard(row,seconds),inPeriod=seconds>=row.period_start&&seconds<row.period_end&&(row.period_key.startsWith('pro:')||row.period_key===freePeriod().periodKey),invalidated=charge.refunded===true||charge.amount_refunded>0||charge.disputed===true;
  const valid=`(${inPeriod&&!invalidated?1:0}=1 AND ${guard.sql})`,status=invalidated?(charge.disputed?'disputed':'refunded'):'paid_expired';
- return [env.AGENT_DB.prepare(`UPDATE mayor_billing_credit_checkouts SET stripe_payment_intent_id=?,status=CASE WHEN status IN ('refunded','disputed','paid_expired') THEN status WHEN status='expired' THEN 'paid_expired' WHEN ${valid} THEN 'paid' ELSE ? END,updated_at=? WHERE id=?`).bind(intentId,...guard.bindings,status,updated,row.id),env.AGENT_DB.prepare(`INSERT INTO mayor_billing_credit_grants(checkout_id,tenant_id,mode,period_key,period_start,period_end,reply_attempts,voice_minutes,invalidated,paid_at) SELECT ?,?,?,?,?,?,?,?,CASE WHEN ${valid} AND (SELECT status FROM mayor_billing_credit_checkouts WHERE id=?)='paid' THEN 0 ELSE 1 END,? ON CONFLICT(checkout_id) DO NOTHING`).bind(row.id,row.tenant_id,row.mode,row.period_key,row.period_start,row.period_end,pack.replyAttempts,pack.voiceMinutes,...guard.bindings,row.id,updated),...(invalidated?[env.AGENT_DB.prepare('UPDATE mayor_billing_credit_grants SET invalidated=1 WHERE checkout_id=?').bind(row.id)]:[]),
- // Engine events (§1.7): a verified, non-invalidated pack payment is a
- // purchase — recorded once per checkout, in the same batch as the
- // grant write. Refunded/disputed payments record nothing here.
- ...(invalidated?[]:[recordEngineEventOnceStatement(env,{tenantId:row.tenant_id,actorId:'system',type:'purchase_completed',resourceId:row.id,at:updated})])];
+ return [env.AGENT_DB.prepare(`UPDATE mayor_billing_credit_checkouts SET stripe_payment_intent_id=?,status=CASE WHEN status IN ('refunded','disputed','paid_expired') THEN status WHEN status='expired' THEN 'paid_expired' WHEN ${valid} THEN 'paid' ELSE ? END,updated_at=? WHERE id=?`).bind(intentId,...guard.bindings,status,updated,row.id),env.AGENT_DB.prepare(`INSERT INTO mayor_billing_credit_grants(checkout_id,tenant_id,mode,period_key,period_start,period_end,reply_attempts,voice_minutes,invalidated,paid_at) SELECT ?,?,?,?,?,?,?,?,CASE WHEN ${valid} AND (SELECT status FROM mayor_billing_credit_checkouts WHERE id=?)='paid' THEN 0 ELSE 1 END,? ON CONFLICT(checkout_id) DO NOTHING`).bind(row.id,row.tenant_id,row.mode,row.period_key,row.period_start,row.period_end,pack.replyAttempts,pack.voiceMinutes,...guard.bindings,row.id,updated),...(invalidated?[env.AGENT_DB.prepare('UPDATE mayor_billing_credit_grants SET invalidated=1 WHERE checkout_id=?').bind(row.id)]:[])];
 }
 export async function syncCreditEffects(env:BillingEnv,actor:Actor,client:StripeClient){const selected=mode(env),row=selected?await env.AGENT_DB.prepare("SELECT * FROM mayor_billing_credit_checkouts WHERE tenant_id=? AND mode=? AND status IN ('pending','open')").bind(actor.tenantId,selected).first<CreditCheckout>():null;return row?creditSessionEffects(env,row,client):[];}
 export async function processCreditEvent(env:BillingEnv,event:StripeEvent,injected?:StripeClient){

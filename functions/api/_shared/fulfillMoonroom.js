@@ -54,8 +54,6 @@ function fromAddress() {
   return { from: "team@mehyar.us", fromName: "Moonroom" };
 }
 
-import { sendBridgedEmail } from "./bridgedEmail.js";
-
 export async function fulfillMoonroom({ db, env, waitUntil, sendEmail }, payment) {
   if (!db || !payment || !payment.id) throw new Error("fulfillMoonroom: bad args");
 
@@ -120,20 +118,19 @@ export async function fulfillMoonroom({ db, env, waitUntil, sendEmail }, payment
         .bind(orderId)
         .run();
 
-      const galleryUrl = `${baseUrl(env)}/gallery?token=${accessToken}`;
+      const galleryUrl = `${baseUrl(env)}/gallery.html?token=${accessToken}`;
       const subject = `We're generating your Moonroom ${productName}`;
       const text =
         `Thanks for your purchase!\n\n` +
-        `Your Moonroom ${productName} is in the studio now — usually ready within 10 minutes. We'll email you the moment it's done.\n\n` +
+        `Your Moonroom ${productName} is in the studio now — usually ready in a few minutes. We'll email you the moment it's done.\n\n` +
         `You can watch the progress here:\n${galleryUrl}\n\n-- ${fromName}`;
       const html =
         `<p>Thanks for your purchase!</p>` +
-        `<p>Your <strong>Moonroom ${productName}</strong> is in the studio now — usually ready within 10 minutes. We'll email you the moment it's done.</p>` +
+        `<p>Your <strong>Moonroom ${productName}</strong> is in the studio now — usually ready in a few minutes. We'll email you the moment it's done.</p>` +
         `<p><a href="${galleryUrl}" style="display:inline-block;background:#e6c98a;color:#141021;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;">Watch progress</a></p>` +
         `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${galleryUrl}">${galleryUrl}</a></p>` +
         `<p>-- ${fromName}</p>`;
-      const mailer = env.MOONROOM_MAIL_TOKEN ? sendBridgedEmail : sendEmail;
-      const result = await mailer(env, { from, fromName, to: payment.email, replyTo: "info@mehyar.us", subject, text, html });
+      const result = await sendEmail(env, { from, fromName, to: payment.email, replyTo: "info@mehyar.us", subject, text, html });
       if (!result.ok) {
         console.error("fulfillMoonroom generating email failed", productId, result.error);
       }
