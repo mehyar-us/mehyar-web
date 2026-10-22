@@ -124,6 +124,64 @@ export interface SeatsLineIntent extends IntentBase {
   soldOut?: boolean;
 }
 
+/** Slice 2 — the engine's cards (emitted by src/engine/surface.ts).
+ * Readiness is a treatment, never a number: no field here can carry
+ * a numeric confidence (§1.2). */
+
+/** A prepared action awaiting the owner's word. `state` is the
+ * readiness treatment: 'ready' full-strength, 'worth-a-look'
+ * softened (near the edge of the owner's rule). MONEY-adjacent: the
+ * primary verb can move a customer send. */
+export interface ActionCardIntent extends IntentBase {
+  type: 'action-card';
+  actionId: string;
+  state: 'ready' | 'worth-a-look';
+  headline: string;
+  personName?: string;
+  draftText?: string;
+  basisLine?: string;
+  provenance?: { grantId: string };
+  primaryLabel: string;
+}
+
+/** A shadow-mode action: what the engine WOULD have sent under the
+ * owner's rule, shown for a ruling instead of sent. MONEY-adjacent
+ * for the same reason as the action card. */
+export interface ShadowCardIntent extends IntentBase {
+  type: 'shadow-card';
+  actionId: string;
+  headline: 'Would have sent';
+  personName?: string;
+  draftText?: string;
+  provenance: { ruleText: string; predicate: string };
+  nearBoundary: boolean;
+}
+
+/** A probe question: the owner rules the scenario Allowed or
+ * Blocked; the tap IS the ruling, so `expected` is never rendered
+ * as a hint or pre-selected answer. */
+export interface ScenarioCardIntent extends IntentBase {
+  type: 'scenario-card';
+  scenarioId: string;
+  grantId: string;
+  prompt: string;
+  expected: 'allowed' | 'blocked';
+}
+
+/** A standing rule (Grant) as its card: the owner's own words, the
+ * compiled summary, the NEVER lines verbatim, scope chips, and the
+ * lifecycle state. */
+export interface GrantCardIntent extends IntentBase {
+  type: 'grant-card';
+  grantId: string;
+  state: 'proposed' | 'probed' | 'shadow' | 'live' | 'narrowed' | 'revoked' | 'expired';
+  ownerWords: string;
+  summaryText: string;
+  neverLines: string[];
+  scopeChips: string[];
+  actsCount: number;
+}
+
 export type DeskIntent =
   | LineIntent
   | ReceiptIntent
@@ -135,14 +193,22 @@ export type DeskIntent =
   | EmptyIntent
   | InlineErrorIntent
   | IntentRibbonIntent
-  | SeatsLineIntent;
+  | SeatsLineIntent
+  | ActionCardIntent
+  | ShadowCardIntent
+  | ScenarioCardIntent
+  | GrantCardIntent;
 
 /** Intent types that carry money identity. An unknown or newer
  * version of one of these degrades to a non-actionable Line — never
- * a tappable control (§3.2). */
+ * a tappable control (§3.2). The Slice 2 action and shadow cards
+ * are money-adjacent — their verbs can move a customer send — so
+ * they degrade the same way. */
 export const MONEY_INTENT_TYPES: ReadonlySet<string> = new Set([
   'intent-ribbon',
   'seats-line',
+  'action-card',
+  'shadow-card',
 ]);
 
 export const KNOWN_INTENT_TYPES: ReadonlySet<string> = new Set([
@@ -157,6 +223,10 @@ export const KNOWN_INTENT_TYPES: ReadonlySet<string> = new Set([
   'inline-error',
   'intent-ribbon',
   'seats-line',
+  'action-card',
+  'shadow-card',
+  'scenario-card',
+  'grant-card',
 ]);
 
 /** What an intent degrades to when this client cannot render it:

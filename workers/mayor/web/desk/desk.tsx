@@ -16,7 +16,7 @@
  */
 import { createRoot, type Root } from 'react-dom/client';
 import type { DeskIntent } from './intents';
-import { IntentView, MorningLine } from './primitives';
+import { IntentView, MorningLine, type ActionVerb } from './primitives';
 
 export interface DeskSnapshot {
   /** True once a session exists; false renders the signed-out strip
@@ -33,6 +33,15 @@ export interface DeskCallbacks {
    * is cleared host-side; the intent is NOT consumed toward billing. */
   onDismissIntent?: (id: string) => void;
   onRetryIntent?: (id: string) => void;
+  /** Slice 2 engine cards: a verb on a prepared action (approve =
+   * send it, dismiss, or edit with the owner's revised text). The
+   * shadow card's rulings ride the same verbs (approve = "That's
+   * right", dismiss = "Not right"). */
+  onActionVerb?: (actionId: string, verb: ActionVerb, text?: string) => void;
+  /** A probe scenario ruling: the owner's tap is the ruling. */
+  onRuleScenario?: (scenarioId: string, allowed: boolean) => void;
+  /** Revoke a standing rule (Grant) from its card. */
+  onRevokeGrant?: (grantId: string) => void;
 }
 
 export function DeskStrip({ snapshot, callbacks }: { snapshot: DeskSnapshot; callbacks: DeskCallbacks }) {
@@ -47,6 +56,9 @@ export function DeskStrip({ snapshot, callbacks }: { snapshot: DeskSnapshot; cal
               intent={intent}
               onDismissIntent={callbacks.onDismissIntent}
               onRetryIntent={callbacks.onRetryIntent}
+              onActionVerb={callbacks.onActionVerb}
+              onRuleScenario={callbacks.onRuleScenario}
+              onRevokeGrant={callbacks.onRevokeGrant}
             />
           ))}
         </div>

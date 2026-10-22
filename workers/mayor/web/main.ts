@@ -69,6 +69,7 @@ interface DeskCatalog {foundingPriceLabel?:string;proPriceLabel?:string;seats?:{
 let deskCatalog:DeskCatalog={};
 let deskOverview:any=null;
 let deskBilling:any=null;
+let deskEngineIntents:DeskIntent[]=[];
 let deskIntentDismissed=false;
 let deskMounted=false;
 let deskDataAt=0;
@@ -96,6 +97,10 @@ function deskIntents():DeskIntent[]{
    intents.push({id:`appt-${appt?.id??title}`,version:1,type:'person',name:name||title,context:name?title:undefined,state:'known',summary:name?`${name} — ${title}`:title});
   }
  }
+ // Slice 2: the engine's cards merge AFTER the snapshot's own
+ // intents. An engine fetch failure leaves this empty — the Desk
+ // keeps working without engine intents (see loadDeskData).
+ intents.push(...deskEngineIntents);
  if(!intents.length)intents.push({id:'desk-empty',version:1,type:'empty',text:'Nothing needs you right now.',summary:'Nothing needs you right now.'});
  return intents;
 }
@@ -105,7 +110,7 @@ function deskSnapshotNow():DeskSnapshot{
 }
 function refreshDesk(){
  const snapshot=deskSnapshotNow();
- if(!deskMounted){deskMounted=true;mountDeskStrip($('desk-root'),snapshot,{onDismissIntent:()=>{deskIntentDismissed=true;dismissBillingIntent();stripIntentParams();refreshDesk();}});}
+ if(!deskMounted){deskMounted=true;mountDeskStrip($('desk-root'),snapshot,{onDismissIntent:()=>{deskIntentDismissed=true;dismissBillingIntent();stripIntentParams();refreshDesk();},onActionVerb:(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string)=>{void deskActionVerb(actionId,verb,text);},onRuleScenario:(scenarioId:string,allowed:boolean)=>{void deskRuleScenario(scenarioId,allowed);},onRevokeGrant:(grantId:string)=>{void deskRevokeGrant(grantId);}});}
  else pushDeskStrip(snapshot);
  // Name the intent inside the auth surface too (blueprint §2.1 E-0):
  // the sign-in block carries the founding line while signed out.
@@ -148,14 +153,40 @@ async function loadDeskData(force=false){
  if(deskDataFlight)return deskDataFlight;
  deskDataFlight=(async()=>{
   try{
-   const [overview,billing]=await Promise.all([api(`/api/businesses/${tenantId}/overview`).catch(()=>null),api(`/api/businesses/${tenantId}/billing`).catch(()=>null)]);
+   const [overview,billing,engine]=await Promise.all([api(`/api/businesses/${tenantId}/overview`).catch(()=>null),api(`/api/businesses/${tenantId}/billing`).catch(()=>null),api(`/api/businesses/${tenantId}/engine/desk`).catch(()=>null)]);
    if(overview)deskOverview=overview;
    if(billing)deskBilling=billing;
+   // Fail-quiet: a failed engine fetch keeps the last known engine
+   // intents (initially none) and never surfaces an error — the
+   // Desk works without the engine.
+   if(engine&&Array.isArray(engine.intents))deskEngineIntents=engine.intents as DeskIntent[];
    deskDataAt=Date.now();
    refreshDesk();
   }finally{deskDataFlight=null;}
  })();
  return deskDataFlight;
+}
+/** Re-read the engine's Desk intents after a card verb resolves and
+ * re-push the snapshot. Degrades quietly on failure, like the load. */
+async function refreshEngineDeskIntents(){
+ if(!tenantId)return;
+ try{
+  const engine=await api(`/api/businesses/${tenantId}/engine/desk`);
+  if(engine&&Array.isArray(engine.intents))deskEngineIntents=engine.intents as DeskIntent[];
+ }catch{/* fail-quiet: the Desk keeps its current intents */}
+ refreshDesk();
+}
+async function deskActionVerb(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string){
+ try{await api(`/api/businesses/${tenantId}/engine/actions/${actionId}/${verb}`,verb==='edit'?{text:text??''}:{});}catch{/* the refetch below shows the card's true state */}
+ await refreshEngineDeskIntents();
+}
+async function deskRuleScenario(scenarioId:string,allowed:boolean){
+ try{await api(`/api/businesses/${tenantId}/engine/scenarios/${scenarioId}/rule`,{allowed});}catch{/* the refetch below shows the card's true state */}
+ await refreshEngineDeskIntents();
+}
+async function deskRevokeGrant(grantId:string){
+ try{await api(`/api/businesses/${tenantId}/engine/grants/${grantId}/revoke`,{});}catch{/* the refetch below shows the card's true state */}
+ await refreshEngineDeskIntents();
 }
 // The signed-out home block is a static, server-injected subtree (the
 // worker SSR-fills #offer-block in the served HTML). It joins the

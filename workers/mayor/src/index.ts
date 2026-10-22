@@ -5,6 +5,7 @@ import {injectOfferBlock,injectHeroPrice,injectPricingCards,injectSalesPlans} fr
 import {auditOffer} from './billing/audit';
 import {foundingSeats} from './billing/founding';
 import {handleConnectionsRequest} from './connections';
+import {handleEngineRequest} from './engine/routes';
 import {handleConnectorEngineRequest,getConnectorSession} from './connector-engine';
 import {readHarnessRuntime} from './harness-runtime';
 import {sessionCardFor,ensureSessionCard} from './connector-session-card';
@@ -255,6 +256,8 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const actor={tenantId:businessRoute[1],userId:session.user.id};
     const connections=await handleConnectionsRequest(request,env,actor);
     if(connections)return connections;
+    const engine=await handleEngineRequest(request,env,actor);
+    if(engine)return engine;
     const connectorEngine=await handleConnectorEngineRequest(request,env,actor);
     if(connectorEngine)return connectorEngine;
     const sessionCardRoute=url.pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/connector-engine\/sessions\/([a-f0-9-]{36})\/card$/);
