@@ -1,29 +1,10 @@
 import type {ProfilePatch} from './memory';
 import type {SchedulingPolicy} from './scheduling-policy';
 
-/** Default bound for one speech synthesis. A healthy Workers AI speech call
- *  finishes in a few seconds; past this bound the provider is stalled, and a
- *  stalled synthesis must never wedge a call — the speech pipeline treats
- *  "no audio" as a skipped sentence and returns the call to listening. */
-export const SPEECH_SYNTHESIS_TIMEOUT_MS = 15_000;
-
-export function guardedSpeech(provider:{synthesize(text:string,signal?:AbortSignal):Promise<ArrayBuffer|null>},invalidate:()=>void,timeoutMs:number=SPEECH_SYNTHESIS_TIMEOUT_MS){
+export function guardedSpeech(provider:{synthesize(text:string,signal?:AbortSignal):Promise<ArrayBuffer|null>},invalidate:()=>void){
  return {async synthesize(text:string,signal?:AbortSignal){
-  const bounded=new AbortController();
-  const forwardAbort=()=>bounded.abort(signal?.reason);
-  if(signal?.aborted)bounded.abort(signal.reason);
-  else signal?.addEventListener('abort',forwardAbort,{once:true});
-  let timer:ReturnType<typeof setTimeout>|undefined;
-  const timeout=new Promise<null>(resolve=>{timer=setTimeout(()=>{bounded.abort(new Error('speech_synthesis_timeout'));resolve(null);},timeoutMs);});
-  try{
-   // The race settles this call even if the provider ignores the abort
-   // signal entirely; a late provider rejection stays handled by the race.
-   const audio=await Promise.race([provider.synthesize(text,bounded.signal),timeout]);
-   if(!audio?.byteLength)invalidate();
-   return audio;
-  }
+  try{const audio=await provider.synthesize(text,signal);if(!audio?.byteLength)invalidate();return audio;}
   catch(error){invalidate();throw error;}
-  finally{ if(timer!==undefined)clearTimeout(timer); signal?.removeEventListener('abort',forwardAbort); }
  }};
 }
 

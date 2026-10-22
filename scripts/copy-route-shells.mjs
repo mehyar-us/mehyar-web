@@ -22,7 +22,7 @@ const routeMeta = {
   '/audit': {
     title: 'Audit My Business — $330 AI Business Audit | MehyarSoft',
     description:
-      'A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.',
+      'A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional 30-minute CEO walkthrough video. One-time $330, no subscription.',
     path: '/audit',
   },
   '/audit/free': {
@@ -30,18 +30,6 @@ const routeMeta = {
     description:
       'Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.',
     path: '/audit/free',
-  },
-  '/audit/report': {
-    title: '$5 Full Report | MehyarSoft',
-    description:
-      'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.',
-    path: '/audit/report',
-  },
-  '/audit/sample-report': {
-    title: 'Sample Report — Audit My Business | MehyarSoft',
-    description:
-      'See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.',
-    path: '/audit/sample-report',
   },
   '/': {
     title: 'MehyarSoft LLC | Software, Systems & AI Automation',
@@ -120,12 +108,6 @@ const routeMeta = {
       'A practical MehyarSoft framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.',
     path: '/blog/small-business-tech-audit-revenue-leaks',
   },
-  '/blog/what-does-a-business-audit-check': {
-    title: 'What Does a Business Audit Check? | Audit My Business',
-    description:
-      'What does a business audit check? Your site, booking path, and follow-up — leaks priced in dollars, fixes ranked. Free scan first, $330 full audit.',
-    path: '/blog/what-does-a-business-audit-check',
-  },
   '/blog/missed-calls-crm-follow-up': {
     title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
     description:
@@ -193,9 +175,9 @@ const routeMeta = {
       path: '/about',
     },
     '/apps': {
-      title: 'Products We Own | MehyarSoft LLC',
+      title: 'Apps MehyarSoft Builds and Operates | MehyarSoft',
       description:
-        'Every product MehyarSoft builds and operates — Audit My Business, The Mayor, AI Mechanic, Rizza, Moonroom, TicketBeat, Legit, and more — with what each one does, live pricing, and links to buy.',
+        'Live apps shipped by MehyarSoft: Rizza (AI dating-app wingman) and AiMech (AI mechanic for everyday car owners). See the apps, the launch notes, and the app-launch playbook behind them.',
       path: '/apps',
     },
     '/330': {
@@ -396,8 +378,6 @@ if (missingBlogShells.length > 0) {
 const directRoutes = [
   'audit',
   'audit/free',
-  'audit/report',
-  'audit/sample-report',
   'services',
   'pricing',
   'proposals',
