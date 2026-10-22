@@ -777,6 +777,11 @@ export default function Audit() {
               Already know you want it? Skip the free scan — buy the audit now
             </button>
           </p>
+          <p className="mt-2 text-sm">
+            <a href="/blog/what-does-a-business-audit-check" className="font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-100">
+              Prefer to read first? What a business audit checks, area by area
+            </a>
+          </p>
         </div>
       </section>
 

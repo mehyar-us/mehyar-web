@@ -345,6 +345,86 @@ export const blogPosts: BlogPost[] = [
     textColorClass: "text-primary",
     hoverColorClass: "text-primary-dark",
   },
+  {
+    id: 10,
+    title:
+      "What Does a Business Audit Check? Your Website, Booking Path, and Follow-Up",
+    slug: "what-does-a-business-audit-check",
+    date: "2026-10-22",
+    author: "Mehyar Swelim",
+    category: "Operations",
+    excerpt:
+      "What does a business audit check? Your site, booking path, and follow-up — leaks priced in dollars, fixes ranked. Free scan first, $330 full audit.",
+    readTime: 7,
+    image: "/blog/what-does-a-business-audit-check/audit-website-leak-review-real.webp",
+    content: [
+      "A customer finds your bakery on her phone at 7 a.m. and wants a birthday cake for Saturday. The menu loads, the prices are there — but there is no order button she can find, the phone number is an image she cannot tap, and the contact form asks for six things before it will send. She closes the tab and orders down the street. You never hear about it. That is the moment the question forms: what does a business audit check — and would it have caught this?",
+      "Not your taxes, and not your bookkeeping. This audit checks the public path a customer walks to reach you: your website, your booking path, and your follow-up, read the way a first-time buyer reads them.",
+    ],
+    sections: [
+      {
+        title: "The problem: leaks you cannot see from inside",
+        content: [
+          "Owners usually sense the leak before they can point at it. The phone is quieter than it should be. Inquiries arrive, then go cold. Customer details sit in a spreadsheet someone retypes into another tool every Friday. Each gap looks small alone, which is why they survive: nobody lays the whole path end to end and prices what falls out.",
+          "The common leaks are unglamorous and specific: a homepage that never says plainly what to do next; a booking path with too many fields, no confirmation, and no alert when a request lands; calls that ring out and are never followed up because nothing tracks them; follow-up that depends on someone remembering; and trust gaps a buyer spots in seconds — no clear service area, no prices or ranges, reviews nowhere in sight.",
+          "An audit turns that into a ranked list: this leak first, that one second, this one can wait.",
+        ],
+      },
+      {
+        title: "What does a business audit check, area by area?",
+        content: [
+          "Audit My Business (mehyar.us/audit) works in three steps, following the customer's path in order.",
+          "1. Your website, read like a first-time buyer. You paste in your URL — that is the whole intake. The audit fetches your public site itself, finds your business details, and reads the pages as a stranger would: Is the offer clear in the first screen? Does each page say what happens next? Does the mobile path work? Where would a buyer give up? Every finding is tied to the page evidence behind it, not a generic checklist.",
+          "2. How you sell, book, and follow up. The full audit goes past the homepage: the form fields a prospect faces, the call and email handoff, whether a request gets a confirmation, and whether a missed inquiry stays visible or disappears. This is where most money leaks live — a clear website feeding a broken booking path still loses the customer.",
+          "3. Your own walkthrough, if you add one. An optional step most audits do not have: record a short video — even 2 minutes works, up to 30 minutes of MP4 — talking through your business the way you would show a friend. The audit transcribes it and adds findings from your own words, catching leaks a website cannot show: the manual retyping, the follow-up step that lives in one person's head, the service you sell constantly but never list.",
+        ],
+      },
+      {
+        title: "What you actually receive",
+        content: [
+          "The report is a visual report, emailed with a permanent link. It contains an overall score from 0 to 100 with what it measures; your money leaks, ranked by estimated dollar impact; the flaws found in your site, messaging, and conversion path; prioritized fixes — what to do first, second, and third; a map of where software help fits your business; and transcript-based findings, if you added the walkthrough video.",
+          "Three depths, and you choose how far to go. The free scan (mehyar.us/audit/free) takes about 60 seconds with no card: a score snapshot, your top 3 money leaks priced in dollars, and 3 quick wins you can do today. The Full Report is $5, one-time, website only — every page graded, every leak priced with the math shown, plus a capacity blueprint and a 90-day plan, delivered in about a minute. The full audit is $330, one-time, for the whole business, delivered by email within 3–5 business days. Bought the $5 report first with the same email, and its $5 is credited: you pay $325, discount shown before you pay.",
+          "One distinction: a separate founder-led $330 tech audit (mehyar.us/micro-offer) also exists — a human review, invoiced by email. Same price, different product. This article is about the audit that starts from your URL.",
+        ],
+      },
+      {
+        title: "A worked example: the bakery's Saturday cake",
+        content: [
+          "Here is what this looks like in practice, as an example — a fictional bakery, with the math labeled the way the report labels it.",
+          "Say the audit finds the mobile order path broken as above: no tappable number, a six-field form, no confirmation. The report prices that leak with assumptions shown: a stated average cake ticket, multiplied by the ready buyers turned away each week, over a month. Disagree with an assumption and you can redo the math with your own figures — it is printed next to the number.",
+          "The fix list ranks by impact: make the number tappable and cut the form to three fields first, add an automatic confirmation second, and defer the prettier gallery page — the gallery was never the leak. That ordering is the point of paying for a check before a rebuild. Our earlier note on finding revenue leaks before buying more software (mehyar.us/blog/small-business-tech-audit-revenue-leaks) covers the same logic from the founder-led side.",
+        ],
+      },
+      {
+        title: "Who this is for — and who it is not for",
+        content: [
+          "It fits you if you run an owner-led business — a local service company, clinic, restaurant, shop, or agency — suspect leads are leaking through unclear website flow, missed calls, slow follow-up, or tools that do not connect, and want the smallest useful next move before a bigger build.",
+          "It is not for you if you need a financial, tax, or compliance audit — this check reads your public customer path, not your books. Nor is it a guarantee: it shows what is true today, ranked by estimated impact, and no audit can promise specific revenue results. Replacing your site anyway? Start with the free scan and save the $330 for the new one.",
+        ],
+      },
+      {
+        title: "Frequently asked questions",
+        content: [
+          "What does a business audit check first? Your public website, starting with the homepage and service pages: whether the offer is clear, the next step obvious, the mobile path working, and where trust gaps make a first-time buyer hesitate. The full audit then checks how you sell, book, and follow up.",
+          "Do I need the walkthrough video? No. The audit works on your public site alone. The video — 2 to 30 minutes, phone footage is fine — unlocks the deeper section: findings drawn from the transcript of you explaining your business, including manual steps and follow-up gaps a website cannot show.",
+          "How much does it cost, and is there a subscription? No subscription. The scan is free with no card. The Full Report is $5, one-time. The full audit is $330, one-time — or $325 at checkout if you bought the $5 report first with the same email, since the $5 is credited.",
+          "How long until I get the report? The free scan takes about 60 seconds, the $5 Full Report about a minute. The full $330 audit arrives by email, with a permanent link, within 3–5 business days.",
+          "What if I only want the quick wins? Take them. The free scan names 3 quick wins you can do today, and the report is a standalone deliverable — stop at the written plan, or act on the first fix yourself.",
+        ],
+      },
+      {
+        title: "Start with the free scan",
+        content: [
+          "Paste your URL into the free scan (mehyar.us/audit/free) and see your score, top 3 priced leaks, and 3 quick wins in about a minute — no card. If it names a leak worth chasing, start the full Audit My Business (mehyar.us/audit) for the ranked fix list for your whole business.",
+        ],
+      },
+    ],
+    tags: ["Business Audit", "Tech Audit", "Local Business", "Conversion"],
+    badgeColorClass: "text-primary",
+    badgeBgClass: "bg-primary/10",
+    textColorClass: "text-primary",
+    hoverColorClass: "text-primary-dark",
+  },
 ];
 
 export default blogPosts;

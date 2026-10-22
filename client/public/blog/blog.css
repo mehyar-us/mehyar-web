@@ -1,0 +1,102 @@
+/* blog.css — mehyar.us hub blog design (daily SEO engine).
+   Self-contained on purpose: hub blog articles are static files in
+   client/public/blog/ and must never depend on a vite-bundled stylesheet
+   (whose served path is hashed and 404s at the clean path). Design language:
+   light paper hero band, giant ink headline, byline row, wide hero image,
+   calm reading column. Every static hub article links this one file.
+   (Adapted from the Mayor article pass, which was built to this design.) */
+:root{
+  --ink:#0d2137;
+  --ink-soft:#22303c;
+  --muted:#5c6d78;
+  --paper:#eef2f0;
+  --line:#dde5e1;
+  --chip-bg:#dcefe9;
+  --chip-ink:#0b5d50;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#fff;color:var(--ink-soft);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:16px;line-height:1.5}
+a{color:var(--ink)}
+
+/* Header (same markup family as the guides, styled locally) */
+.site-header{background:var(--paper);border-bottom:1px solid var(--line)}
+.site-header .bar{max-width:76rem;margin:0 auto;padding:.8rem 1.25rem;
+  display:flex;align-items:center;gap:1.5rem}
+.site-header .brand{display:flex;align-items:center;gap:.6rem;text-decoration:none;
+  color:var(--ink);font-weight:800;font-size:1.15rem;letter-spacing:-.01em}
+.site-header .brand img{border-radius:.45rem}
+.site-header .brand small{display:block;font-size:.6rem;font-weight:700;
+  letter-spacing:.14em;color:var(--muted)}
+.site-header nav{display:flex;gap:1.4rem;margin-left:auto}
+.site-header nav a{text-decoration:none;font-weight:500;font-size:.98rem}
+.site-header nav a:hover{text-decoration:underline;text-underline-offset:3px}
+.header-ctas{display:flex;align-items:center;gap:1rem;margin-left:1.5rem}
+.header-ctas .text-link{text-decoration:none;font-weight:500}
+.button{display:inline-block;background:var(--ink);color:#fff;text-decoration:none;
+  font-weight:600;padding:.8rem 1.45rem;border-radius:999px;font-size:1rem}
+.button:hover{background:#17334f}
+.button-small{padding:.55rem 1.05rem;font-size:.92rem}
+
+/* Hero band */
+.blog-hero{background:var(--paper);border-bottom:1px solid var(--line);
+  padding:3.2rem 1.25rem 2.6rem}
+.hero-inner{max-width:76rem;margin:0 auto}
+.chip{display:inline-block;background:var(--chip-bg);color:var(--chip-ink);
+  padding:.32rem .75rem;border-radius:999px;font-size:.78rem;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase}
+.blog-hero h1{font-size:clamp(2.5rem,6vw,4.4rem);line-height:1.01;
+  letter-spacing:-.03em;font-weight:800;color:var(--ink);
+  margin:1.1rem 0 1.3rem;max-width:60rem}
+.byline{display:flex;flex-wrap:wrap;gap:.5rem 1.6rem;color:var(--muted);
+  font-size:.95rem}
+.byline strong{color:var(--ink-soft);font-weight:600}
+
+/* Hero image */
+.hero{max-width:64rem;margin:2.6rem auto 0;padding:0 1.25rem}
+.hero img{display:block;width:100%;height:auto;border-radius:1rem}
+
+/* Reading column */
+.col{max-width:46rem;margin:0 auto;padding:1rem 1.25rem 3rem}
+.col p{font-size:1.125rem;line-height:1.75;margin:0 0 1.4rem}
+.col h2{font-size:1.95rem;line-height:1.15;letter-spacing:-.02em;font-weight:800;
+  color:var(--ink);margin:2.9rem 0 1rem}
+.col a{font-weight:550;text-underline-offset:3px}
+.guide-steps{margin:0 0 1.6rem;padding-left:1.35rem;display:grid;gap:.6rem}
+.guide-steps li{font-size:1.125rem;line-height:1.7}
+.blog-img{display:block;width:100%;height:auto;border-radius:.9rem;margin:2.2rem 0}
+figure{margin:0}
+figcaption{color:var(--muted);font-size:.92rem;line-height:1.5;margin-top:.6rem}
+.hero figcaption{max-width:64rem;margin-left:auto;margin-right:auto;padding:0 1.25rem}
+.col figure{margin:2.2rem 0}
+.col figure .blog-img{margin:0}
+.guide-faq{border-top:1px solid var(--line);padding:1.15rem 0 .35rem}
+.guide-faq h3{font-size:1.18rem;margin:0 0 .45rem;color:var(--ink);letter-spacing:-.01em}
+.guide-faq p{margin:0 0 1rem}
+.col .button{margin-top:.4rem}
+
+/* Footer */
+.site-footer{background:var(--paper);border-top:1px solid var(--line);
+  padding:2.2rem 1.25rem 2.6rem}
+.site-footer .foot{max-width:76rem;margin:0 auto}
+.footer-brand{font-weight:800;color:var(--ink);font-size:1.05rem;margin:0 0 .9rem}
+.footer-brand small{font-size:.62rem;letter-spacing:.14em;color:var(--muted);
+  margin-left:.5rem}
+.site-footer nav{display:flex;flex-wrap:wrap;gap:.4rem 1.4rem}
+.site-footer nav a{color:var(--ink-soft);text-decoration:none;font-size:.95rem}
+.site-footer nav a:hover{text-decoration:underline;text-underline-offset:3px}
+.mayor-consent-link{background:none;border:0;padding:0;font:inherit;cursor:pointer;
+  color:var(--ink-soft);font-size:.95rem}
+.footer-note{color:var(--muted);font-size:.88rem;margin:1.1rem 0 0}
+
+@media (max-width:700px){
+  .site-header nav{display:none}
+  .header-ctas{margin-left:auto}
+  .blog-hero{padding:2.2rem 1.1rem 1.9rem}
+  .blog-hero h1{font-size:2.35rem}
+  .hero{margin-top:1.6rem;padding:0 1.1rem}
+  .col{padding:0 1.1rem 2.4rem}
+  .col h2{font-size:1.6rem}
+}
