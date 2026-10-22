@@ -7,10 +7,10 @@
 // Redeploy trigger: CF_EMAIL_ACCOUNT_ID added 2026-10-09.
 // Body: { order_token, status: "ready"|"failed", manifest? }
 
-import { sendCloudflareEmail } from "../_shared/cloudflareEmail.js";
+import { sendBridgedEmail } from "../_shared/bridgedEmail.js";
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-const GALLERY_URL = "https://moonroom.mehyar.us/gallery.html";
+const GALLERY_URL = "https://moonroom.mehyar.us/gallery";
 
 function j(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -100,7 +100,7 @@ export async function onRequestPost({ request, env }) {
         : `<p>We hit a snag generating your <strong>Moonroom ${packName}</strong>. Nothing was lost — just reply to this email and we'll get it sorted right away.</p>` +
           `<p style="color:#6b7280;font-size:13px;">Order status:<br><a href="${galleryUrl}">${galleryUrl}</a></p>`) +
       `<p>-- Moonroom</p>`;
-    const result = await sendCloudflareEmail(env, {
+    const result = await sendBridgedEmail(env, {
       from: "team@mehyar.us",
       fromName: "Moonroom",
       to: order.email,
