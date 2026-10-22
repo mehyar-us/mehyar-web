@@ -5,11 +5,7 @@
 // Body: {
 //   product_id:  "audit-full-report"            (required — looked up in billing_products)
 //   email:       "buyer@example.com"            (required)
-//   (header)    x-crew-test-mint: <secret>     (crew-only — mints a TEST session via
-//                                               STRIPE_TEST_SECRET_KEY when the header
-//                                               matches the CREW_TEST_MINT_SECRET project
-//                                               secret; there is NO body flag for test
-//                                               mode — client test flags are ignored)
+//   test:       true                           (optional — use STRIPE_TEST_SECRET_KEY)
 //   success_url: "https://other.mehyar.us/ty"  (optional — host must be in allowed_return_hosts)
 //   cancel_url:  "https://other.mehyar.us/"     (optional — host must be in allowed_return_hosts)
 //   params:      { ... }                        (optional — product-specific fields, <=2KB)
@@ -20,7 +16,7 @@
 // initOrder hook below; the audit_report hook mirrors the legacy
 // /api/audit/full-report/checkout behavior.
 
-import { sha256hex, normalizeUrl } from "../_shared/auditBusinessShared.js";
+import { sha256hex } from "../_shared/auditBusinessShared.js";
 import { fullReportCreditCents } from "./_shared/credit.js";
 
 // Attribution threading (tracking-crm-fix, 2026-10-05). Product pages
@@ -219,28 +215,8 @@ const orderHooks = {
   // Mints the 64-hex access token here so the Stripe success_url (?token=)
   // and the audit row share ONE token from the start.
   async audit_business(db, product, { email, params }) {
-    let auditId = sanitize(params.audit_id, 64);
-    if (!/^[0-9a-f-]{36}$/i.test(auditId)) {
-      // Direct-buy lane (rot542, 2026-10-22): no Step 1 intake in front of
-      // payment — the buyer pays from the landing and the intake data
-      // (business name + URL) is collected in the pay action itself, so the
-      // row is created here in the same 'intake' state the intake endpoint
-      // leaves, keyed to the checkout email (mismatch impossible by
-      // construction). The build re-fetches the site itself
-      // (auditBusinessBuild step 1), so no preview signals are needed; the
-      // gate's quality purpose — a named business, a valid URL, an
-      // email-linked row — is preserved inside the payment.
-      if (params.direct !== true && params.direct !== "true") return { error: "invalid_audit_id" };
-      const businessName = sanitize(params.business_name, 160);
-      const directUrl = normalizeUrl(sanitize(params.url, 300));
-      if (!businessName) return { error: "missing_business_name" };
-      if (!directUrl) return { error: "invalid_url" };
-      auditId = crypto.randomUUID();
-      const directEmailHash = await sha256hex("audit-business|" + email);
-      await db.prepare(
-        "INSERT INTO audit_business_reports (id, email_hash, url, business_name, status, signals_json) VALUES (?, ?, ?, ?, 'intake', NULL)"
-      ).bind(auditId, directEmailHash, directUrl, businessName).run();
-    }
+    const auditId = sanitize(params.audit_id, 64);
+    if (!/^[0-9a-f-]{36}$/i.test(auditId)) return { error: "invalid_audit_id" };
     const row = await db.prepare(
       "SELECT id, status, email_hash FROM audit_business_reports WHERE id = ?"
     ).bind(auditId).first();
@@ -318,25 +294,7 @@ export async function onRequestPost({ request, env }) {
     const attribution = sanitizeAttribution(params.attribution);
     const attributionJson = attribution ? JSON.stringify(attribution) : null;
 
-    // Payment integrity (rot541, 2026-10-22): Stripe mode is a server-side
-    // property and is NEVER selected by the client. This endpoint previously
-    // honored a client-supplied `test: true` and minted cs_test_ sessions on
-    // the production account; test payments fulfilled into production tables.
-    // Client test flags are ignored.
-    //
-    // Crew-gated test mint (rot545, 2026-10-22): the ONE exception is a
-    // server-side gate — a request carrying the crew-held secret in the
-    // x-crew-test-mint header, checked here against the CREW_TEST_MINT_SECRET
-    // project secret, mints in test mode for internal E2E proofs. No body or
-    // flag shape can open it: without the header the public surface is
-    // live-only, exactly as hardened. Test-minted orders fulfill in test
-    // scope only (the webhook admits a test event solely for an order whose
-    // stored session is cs_test_).
-    const crewMintSecret = env.CREW_TEST_MINT_SECRET;
-    const testMode = !!(
-      crewMintSecret &&
-      request.headers.get("x-crew-test-mint") === crewMintSecret
-    );
+    const testMode = body.test === true;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return J(

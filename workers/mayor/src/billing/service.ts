@@ -7,7 +7,6 @@ import {usageBalance} from './state';
 import {creditStatus,syncCreditEffects} from './credits';
 import {acquireLease,commitLease,releaseLease} from './locking';
 import {assertFoundingPrice,assertMode,assertPrice,baseConfiguration,clientFor,configuration,foundingConfiguration,metadata,mode,objectId,stripeUrl,type BillingEnv,type StripeClient,type StripeObject} from './stripe';
-import {emitEngineEventOnce,recordEngineEventOnceStatement,type AnalyticsDirective} from '../engine-events';
 
 interface Checkout {id:string;tenant_id:string;mode:'test'|'live';request_id:string;status:string;stripe_session_id:string|null;checkout_url:string|null;expires_at:number|null;provider_started_at:number|null;created_at:string;cohort?:string|null;}
 interface Subscription {stripe_subscription_id:string;stripe_customer_id:string;checkout_id:string;status:string;cancel_at_period_end:number;}
@@ -18,14 +17,10 @@ export async function billingStatus(env:BillingEnv,actor:Actor,now=Date.now()){
  const subscription=selected?await env.AGENT_DB.prepare('SELECT status,cancel_at_period_end FROM mayor_billing_subscriptions WHERE tenant_id=? AND mode=?').bind(actor.tenantId,selected).first<{status:string;cancel_at_period_end:number}>():null;
  const customer=selected?await env.AGENT_DB.prepare('SELECT tenant_id FROM mayor_billing_customers WHERE tenant_id=? AND mode=?').bind(actor.tenantId,selected).first():null;
  const pending=selected?await env.AGENT_DB.prepare("SELECT request_id,checkout_url FROM mayor_billing_checkouts WHERE tenant_id=? AND mode=? AND status IN ('pending','open') AND (expires_at IS NULL OR expires_at>?)").bind(actor.tenantId,selected,Math.floor(now/1000)).first<{request_id:string;checkout_url:string|null}>():null;
- // Commitments (migration 0076): the tenant's fulfilled purchase intent
- // rides the billing status so the Desk can show the intent completed.
- // Read failure degrades to no commitments — never a fabricated record.
- const commitments=await env.AGENT_DB.prepare("SELECT id,kind,plan_ref,amount_cents,status,created_at FROM mayor_commitments WHERE tenant_id=? ORDER BY created_at DESC LIMIT 5").bind(actor.tenantId).all<{id:string;kind:string;plan_ref:string|null;amount_cents:number|null;status:string;created_at:string}>().then(rows=>rows.results).catch(()=>[]);
  let ready=false;try{configuration(env);ready=true;}catch{}
  const credit=await creditStatus(env,actor,BILLING_ROLES.includes(membership.role),now);
  const plan=PLANS[balance.context.planId==='pro'?1:0];
- return {founding:await foundingSeats(env),foundingPriceCents:FOUNDING_PRICE_CENTS,creditPacks:credit.creditPacks,credits:credit.credits,plans:PLANS,plan:{id:plan.id,name:plan.name,status:balance.context.planId==='pro'?(subscription?.cancel_at_period_end?'canceling':subscription?.status??'active'):subscription&&['past_due','unpaid','incomplete'].includes(subscription.status)?'payment_required':'active',periodStart:balance.usage.periodStart,periodEnd:balance.usage.resetAt,cancelAtPeriodEnd:Boolean(subscription?.cancel_at_period_end)},usage:balance.usage,permissions:{canManage:BILLING_ROLES.includes(membership.role)},readiness:{creditPacks:credit.ready,checkout:ready&&plan.id==='free'&&!subscription?.status?.match(/^(active|past_due|unpaid|paused|incomplete|trialing)$/),portal:ready&&Boolean(customer&&/^bpc_[A-Za-z0-9]+$/.test(env.MAYOR_STRIPE_PORTAL_CONFIGURATION??'')),mode:selected,message:ready?(selected==='test'?'Stripe test mode. No real charges.':null):'Payments are being prepared. You can keep using Free.'},checkout:{pending:Boolean(pending),...(pending&&BILLING_ROLES.includes(membership.role)?{requestId:pending.request_id,...(pending.checkout_url?{url:stripeUrl(pending.checkout_url,'checkout.stripe.com')}:{})}:{})},usageNote:'Allowances are shared by this business. Failed or interrupted reply attempts may count. App microphone time includes startup and silence; reserved minutes are not refunded. Basic business records remain available when an allowance ends. Phone-provider charges are separate.',commitments};
+ return {founding:await foundingSeats(env),foundingPriceCents:FOUNDING_PRICE_CENTS,creditPacks:credit.creditPacks,credits:credit.credits,plans:PLANS,plan:{id:plan.id,name:plan.name,status:balance.context.planId==='pro'?(subscription?.cancel_at_period_end?'canceling':subscription?.status??'active'):subscription&&['past_due','unpaid','incomplete'].includes(subscription.status)?'payment_required':'active',periodStart:balance.usage.periodStart,periodEnd:balance.usage.resetAt,cancelAtPeriodEnd:Boolean(subscription?.cancel_at_period_end)},usage:balance.usage,permissions:{canManage:BILLING_ROLES.includes(membership.role)},readiness:{creditPacks:credit.ready,checkout:ready&&plan.id==='free'&&!subscription?.status?.match(/^(active|past_due|unpaid|paused|incomplete|trialing)$/),portal:ready&&Boolean(customer&&/^bpc_[A-Za-z0-9]+$/.test(env.MAYOR_STRIPE_PORTAL_CONFIGURATION??'')),mode:selected,message:ready?(selected==='test'?'Stripe test mode. No real charges.':null):'Payments are being prepared. You can keep using Free.'},checkout:{pending:Boolean(pending),...(pending&&BILLING_ROLES.includes(membership.role)?{requestId:pending.request_id,...(pending.checkout_url?{url:stripeUrl(pending.checkout_url,'checkout.stripe.com')}:{})}:{})},usageNote:'Allowances are shared by this business. Failed or interrupted reply attempts may count. App microphone time includes startup and silence; reserved minutes are not refunded. Basic business records remain available when an allowance ends. Phone-provider charges are separate.'};
 }
 export async function ensureCustomer(env:BillingEnv,actor:Actor,client:StripeClient){
  const selected=baseConfiguration(env).mode,row=await env.AGENT_DB.prepare('SELECT stripe_customer_id FROM mayor_billing_customers WHERE tenant_id=? AND mode=?').bind(actor.tenantId,selected).first<{stripe_customer_id:string}>();if(row)return row.stripe_customer_id;
@@ -33,7 +28,7 @@ export async function ensureCustomer(env:BillingEnv,actor:Actor,client:StripeCli
  await env.AGENT_DB.prepare('INSERT INTO mayor_billing_customers(tenant_id,mode,stripe_customer_id,created_at) VALUES(?,?,?,?) ON CONFLICT(tenant_id,mode) DO NOTHING').bind(actor.tenantId,selected,customer.id,new Date().toISOString()).run();
  const mapped=await env.AGENT_DB.prepare('SELECT stripe_customer_id FROM mayor_billing_customers WHERE tenant_id=? AND mode=?').bind(actor.tenantId,selected).first<{stripe_customer_id:string}>();if(mapped?.stripe_customer_id!==customer.id)throw new HttpError(409,'customer_conflict','Billing setup needs review.');return customer.id as string;
 }
-export async function createCheckout(env:BillingEnv,actor:Actor,requestId:string,injected?:StripeClient,cohort?:'founding',consentGranted=false){
+export async function createCheckout(env:BillingEnv,actor:Actor,requestId:string,injected?:StripeClient,cohort?:'founding'){
  await requireMembership(env,actor,BILLING_ROLES);
  // A founding request requires the founding configuration to exist at
  // all; whether it lands on the founding Price is decided at row
@@ -47,13 +42,7 @@ export async function createCheckout(env:BillingEnv,actor:Actor,requestId:string
   const compatible=cohort?stored==='founding'||stored==='founding-fallback':stored===null;
   if(!compatible)throw new HttpError(409,'checkout_request_changed','Retry the original upgrade request.');
  }
- if(checkout?.checkout_url&&checkout.status==='open'&&(checkout.expires_at??0)>Date.now()/1000){
-  // Engine events (§1.7): a begin_checkout belongs to this checkout row;
-  // on a replay return it is already recorded (emit-once), so this is a
-  // no-op unless the first response was lost before recording.
-  const replayDirectives=await emitEngineEventOnce(env,{tenantId:actor.tenantId,actorId:actor.userId,type:'begin_checkout',resourceId:checkout.id,consentGranted,valueCents:checkout.cohort==='founding'?FOUNDING_PRICE_CENTS:PRO_PRICE_CENTS,itemRef:checkout.cohort==='founding'?'founding':'pro',itemName:checkout.cohort==='founding'?'Mayor Pro — Founding':'Mayor Pro'});
-  return {url:stripeUrl(checkout.checkout_url,'checkout.stripe.com'),requestId,replay:true,...(checkout.cohort==='founding-fallback'?{foundingFallback:true}:{}),...(replayDirectives.length?{analyticsEvents:replayDirectives}:{})};
- }
+ if(checkout?.checkout_url&&checkout.status==='open'&&(checkout.expires_at??0)>Date.now()/1000)return {url:stripeUrl(checkout.checkout_url,'checkout.stripe.com'),requestId,replay:true,...(checkout.cohort==='founding-fallback'?{foundingFallback:true}:{})};
  if(checkout&&!['pending','open'].includes(checkout.status))throw new HttpError(409,'checkout_resolved','This checkout has ended. Start a new upgrade request.');
  if(!checkout){
   const pending=await env.AGENT_DB.prepare("SELECT * FROM mayor_billing_checkouts WHERE tenant_id=? AND mode=? AND status IN ('pending','open')").bind(actor.tenantId,listConfig.mode).first<Checkout>();
@@ -77,14 +66,7 @@ export async function createCheckout(env:BillingEnv,actor:Actor,requestId:string
  const submitText=isFounding?'Founding Pro is $79.20 per month, locked at that rate for as long as the subscription stays active. Includes 1,000 reply attempts and 120 reserved app microphone minutes per paid period, shared by your business. Cancel renewal in Manage billing. Phone-provider charges are separate.':fallback?`The founding cohort just filled, so this checkout is Pro at $${PRO_PRICE_CENTS/100} per month. Includes 1,000 reply attempts and 120 reserved app microphone minutes per paid period, shared by your business. Cancel renewal in Manage billing. Phone-provider charges are separate.`:`Pro is $${PRO_PRICE_CENTS/100} per month. Includes 1,000 reply attempts and 120 reserved app microphone minutes per paid period, shared by your business. Cancel renewal in Manage billing. Phone-provider charges are separate.`;
  const session=await client.request('/v1/checkout/sessions','POST',{mode:'subscription',customer,line_items:[{price:config.priceId,quantity:1}],allowed_payment_method_types:['card'],metadata:metadata(actor.tenantId,checkout.id,isFounding?'founding':undefined),subscription_data:{metadata:metadata(actor.tenantId,checkout.id,isFounding?'founding':undefined)},success_url:`${origin}/?billing=success&business=${encodeURIComponent(actor.tenantId)}`,cancel_url:`${origin}/?billing=canceled&business=${encodeURIComponent(actor.tenantId)}`,client_reference_id:checkout.id,custom_text:{submit:{message:submitText}}},`mayor-pwa:checkout:${config.mode}:${checkout.id}`);
  assertMode(session,config.mode);assertMetadata(session,actor.tenantId);if(!/^cs_(test_|live_)?[A-Za-z0-9]+$/.test(session.id??'')||objectId(session.customer)!==customer||session.metadata.mayor_checkout_id!==checkout.id||!Number.isSafeInteger(session.expires_at))throw new HttpError(502,'checkout_invalid','Checkout could not be verified.');const url=stripeUrl(session.url,'checkout.stripe.com');
- await env.AGENT_DB.prepare("UPDATE mayor_billing_checkouts SET stripe_session_id=?,checkout_url=?,expires_at=?,status='open',updated_at=? WHERE id=? AND status='pending'").bind(session.id,url,session.expires_at,new Date().toISOString(),checkout.id).run();
- // Engine events (§1.7): begin_checkout fires engine-side the moment
- // the checkout session exists — operational copy to the tenant ledger
- // always; the analytics copy rides this response only with a current
- // granted consent record. A failure here fails the run loudly rather
- // than letting a money run proceed unmeasured.
- const directives:AnalyticsDirective[]=await emitEngineEventOnce(env,{tenantId:actor.tenantId,actorId:actor.userId,type:'begin_checkout',resourceId:checkout.id,consentGranted,valueCents:isFounding?FOUNDING_PRICE_CENTS:PRO_PRICE_CENTS,itemRef:isFounding?'founding':'pro',itemName:isFounding?'Mayor Pro — Founding':'Mayor Pro'});
- return {url,requestId,replay:false,...(fallback?{foundingFallback:true}:{}),...(directives.length?{analyticsEvents:directives}:{})};
+ await env.AGENT_DB.prepare("UPDATE mayor_billing_checkouts SET stripe_session_id=?,checkout_url=?,expires_at=?,status='open',updated_at=? WHERE id=? AND status='pending'").bind(session.id,url,session.expires_at,new Date().toISOString(),checkout.id).run();return {url,requestId,replay:false,...(fallback?{foundingFallback:true}:{})};
 }
 export async function portalSession(env:BillingEnv,actor:Actor,requestId:string,injected?:StripeClient){
  await requireMembership(env,actor,BILLING_ROLES);const config=configuration(env),client=clientFor(env,injected);if(!/^bpc_[A-Za-z0-9]+$/.test(env.MAYOR_STRIPE_PORTAL_CONFIGURATION??''))throw new HttpError(503,'portal_not_ready','Billing management is being prepared.');await assertAccount(env,client);
@@ -122,18 +104,6 @@ export async function subscriptionEffects(env:BillingEnv,tenantId:string,subscri
  const intent=await client.request(`/v1/payment_intents/${intentId}`);assertMode(intent,config.mode);if(intent.id!==intentId||intent.status!=='succeeded'||intent.currency!=='usd'||intent.amount_received<invoice.total||objectId(intent.customer)!==customerId)throw new HttpError(409,'payment_unverified','The invoice payment has not been verified.');
  const periodKey=`pro:${config.mode}:${subscriptionId}:${start}`,calendar=freePeriod(start*1000).periodKey;
  effects.push(env.AGENT_DB.prepare(`INSERT INTO mayor_billing_paid_periods(tenant_id,mode,period_key,stripe_subscription_id,stripe_invoice_id,stripe_payment_intent_id,period_start,period_end,verified_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,period_key) DO NOTHING`).bind(tenantId,config.mode,periodKey,subscriptionId,invoice.id,intentId,start,end,now));
- // Engine events (§1.7): the purchase itself is an engine event. It
- // rides the same atomic batch as the paid-period write, recorded once
- // per invoice (the statement no-ops if this purchase was already
- // recorded by the webhook or a sync). Its analytics copy is offered
- // later via billing status — a webhook has no browser to fire it.
- effects.push(recordEngineEventOnceStatement(env,{tenantId,actorId:'system',type:'purchase_completed',resourceId:invoice.id}));
- // Reinvention Slice 1 (blueprint §5, Demand 8 tail): a fulfilled
- // founding purchase converts the carried intent into the tenant's
- // first Commitment record — post-claim, exactly once per checkout
- // (deterministic id + INSERT OR IGNORE: webhook replays, syncs, and
- // renewals all re-run this path and can never duplicate the record).
- if(checkout.cohort==='founding')effects.push(env.AGENT_DB.prepare("INSERT OR IGNORE INTO mayor_commitments(id,tenant_id,kind,plan_ref,amount_cents,resource_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?, 'fulfilled',?,?)").bind(`purchase-intent:${checkout.id}`,tenantId,'purchase_intent','founding',FOUNDING_PRICE_CENTS,checkout.id,now,now));
  // A switch consumes the old period's opportunity permanently: Free credits cannot resurrect on downgrade.
   if(start<=Date.now()/1000&&end>Date.now()/1000){
   const active="EXISTS(SELECT 1 FROM mayor_billing_paid_periods p JOIN mayor_billing_subscriptions s ON s.tenant_id=p.tenant_id AND s.mode=p.mode AND s.stripe_subscription_id=p.stripe_subscription_id WHERE p.tenant_id=? AND p.mode=? AND p.period_key=? AND p.invalidated=0 AND p.period_start<=? AND p.period_end>?)",current=Math.floor(Date.now()/1000),fence=[tenantId,config.mode,periodKey,current,current];

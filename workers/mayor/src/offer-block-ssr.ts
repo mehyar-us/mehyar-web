@@ -60,12 +60,7 @@ export function offerBlockSsrHtml(auditAvailable=false,founding?:FoundingSsrBloc
   // WS1 build 2 (rot298 input 2): the founding line joins the home
  // offer block under the Pro row — the SAME helper and the SAME
  // fail-quiet seam as /sales and /pricing (no state, no line).
- // rot543 fold: the final-sale disclosure (FINAL_SALE_LINE, below)
- // rides the home Pro row too — 🔵 rot543 ruling: the home ask joins
- // the /pricing + /sales scope. It is unconditional (not founding
- // state): the row presents the Pro price, so the ask is disclosed
- // whether or not the founding line renders.
- return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.',foundingLineSsrHtml(founding)+FINAL_SALE_LINE)}</div>`+
+ return `<div class="offer-plans">${row(free,'A good place to start.')}${row(pro,'For a busier business.',foundingLineSsrHtml(founding))}</div>`+
     `<p class="offer-note">Cancel Pro renewal in Manage billing.</p>`+
     `<p class="offer-note">Usage counts reply attempts \u2014 every try counts toward your allowance, not only delivered replies. Microphone minutes count from the moment the mic opens \u2014 startup and silence included. Conversation estimates figure roughly 10 replies per conversation.</p>`+
     `<p class="offer-note">Calls, texts, and your business number run through your own provider account (Telnyx or Twilio): your provider bills you directly for number rental, calls, and messages at its own rates \u2014 separate from your Mayor plan, and never on your Mayor bill. Twilio numbers connect for voice calls; automatic text-backs are sent through Telnyx.</p>`+
@@ -125,31 +120,12 @@ export interface FoundingSsrBlock {available:boolean;seats_total:number;seats_ta
  * once the cohort is full — the list block stands alone. */
 export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  if(!founding)return '';
- // Reinvention Slice 1 — the founding door, whole (blueprint §2.1 E-0):
- // the line is a REAL anchor to /billing?plan=founding. Visibility
- // conditions are unchanged (live count only while computable and
- // seats remain; the static no-number line when the count is
- // unavailable; nothing once the cohort is full) — the anchor carries
- // intent only; the seat gate still decides at claim time.
  if(founding.available){
   if(founding.seats_remaining===null||founding.seats_remaining<=0)return '';
-  return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</a></p>`;
+  return `<p class="plan-founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</p>`;
  }
- return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</a></p>`;
+ return `<p class="plan-founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</p>`;
 }
-/* rot535 fold (Product Chief order, 2026-10-22): the final-sale
- * disclosure at the purchase asks — one line, Terms linked, riding the
- * Pro card on /pricing and /sales (the card that carries both the Pro
- * CTA and the founding anchor, so both asks are covered). Disclosure
- * only: no refund flow exists or is implied, and the pages' separate
- * "Cancel anytime" renewal line stands untouched beside it.
- * rot543 extension (🔵 ruling, same day): the scope completes — the
- * home Pro ask joins (offerBlockSsrHtml above + the React mirror in
- * web/offer-block.tsx), and the top-up pack cards gain the line on
- * /pricing and /sales (a top-up is a purchase; no carve-out for
- * in-product asks), alongside — never replacing — the packs' expiry
- * truth. The verticals remain out of scope for this line. */
-export const FINAL_SALE_LINE=`<p class="plan-final-sale">Payments are final and non-refundable \u2014 see <a href="/terms">Terms</a>.</p>`;
 export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:string;packs:string}|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
   if(!validPlan(free)||!validPlan(pro))return null;
@@ -161,13 +137,13 @@ export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:stri
     `<p class="plan-tier">${p.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyLimit)} real conversations a month) · `+
     `${p.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>${blurb}</p>${p.id==='pro'?foundingLineSsrHtml(founding):''}<a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/?start=1'}">`+
-    `${p.id==='pro'?`Go Pro — ${escapeHtml(formatPrice(p.priceCents))}/mo`:'Start free'}</a>${p.id==='pro'?FINAL_SALE_LINE:''}</article>`;
+    `${p.id==='pro'?`Go Pro — ${escapeHtml(formatPrice(p.priceCents))}/mo`:'Start free'}</a></article>`;
   const packCard=(p:SsrPack)=>
     `<article class="plan-card"><h3>${escapeHtml(p.name)}</h3>`+
     priceLine(p.priceCents,' one-time')+
     `<p class="plan-tier">+${p.replyAttempts.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyAttempts)} real conversations) · `+
     `+${p.voiceMinutes} microphone minutes</p>`+
-    `<a class="button button-small" href="/billing?pack=${p.id}">Buy ${escapeHtml(p.name)}</a>${FINAL_SALE_LINE}`+
+    `<a class="button button-small" href="/billing?pack=${p.id}">Buy ${escapeHtml(p.name)}</a>`+
     `<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>`;
   return {
     plans:planCard(free,'A good place to start. Talk to The Mayor and feel the money loop working.')
@@ -200,7 +176,7 @@ export function injectPricingCards(html:string,auditAvailable=false,founding?:Fo
   let out=injectIntoContainer(html,'plan-cards',rendered.plans);
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
   out=injectIntoContainer(out,'audit-card',auditCardSsrHtml());
-  return injectProviderExample(injectStructuredData(out,auditAvailable,founding));
+  return injectProviderExample(injectStructuredData(out,auditAvailable));
 }
 /* ------------------------------------------------------------------ */
 /* /sales SSR — priced plan cards for the pitch page (rot107).          */
@@ -228,7 +204,7 @@ export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null):string|null{
     `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(pro.replyLimit)} real conversations a month) · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
     foundingLineSsrHtml(founding)+
-    `<a class="button button-small" href="/billing?plan=pro">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a>${FINAL_SALE_LINE}</article>`;
+    `<a class="button button-small" href="/billing?plan=pro">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a></article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+
     `<p class="plan-tier">One-time, as you need it</p>`+
@@ -237,7 +213,7 @@ export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null):string|null{
     `</ul>`+
     `<p>Buy only what you use — no subscription change, no overage surprises.</p>`+
     `<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p>`+
-    `<a class="button button-small" href="/pricing">See pricing</a>${FINAL_SALE_LINE}</article>`;
+    `<a class="button button-small" href="/pricing">See pricing</a></article>`;
   return start+grow+topup;
 }
 /**
@@ -252,7 +228,7 @@ export function injectSalesPlans(html:string,auditAvailable=false,founding?:Foun
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
   const audit=auditCardSsrHtml();
   if(audit)out=injectIntoContainer(out,'sales-audit',audit);
-  return injectProviderExample(injectFaqPage(injectStructuredData(out,auditAvailable,founding)));
+  return injectProviderExample(injectFaqPage(injectStructuredData(out,auditAvailable)));
 }
 /* ------------------------------------------------------------------ */
 /* Structured data (rot130): a Product record for the selling pages,    */
@@ -261,7 +237,7 @@ export function injectSalesPlans(html:string,auditAvailable=false,founding?:Foun
 /* price. Amounts are schema numbers (price + priceCurrency), never     */
 /* display strings.                                                     */
 /* ------------------------------------------------------------------ */
-export function structuredDataSsrHtml(auditAvailable:boolean,founding?:FoundingSsrBlock|null):string{
+export function structuredDataSsrHtml(auditAvailable:boolean):string{
   const offers:Record<string,unknown>[]=[];
   for(const p of PLANS){
     if(!validPlan(p))continue;
@@ -271,21 +247,6 @@ export function structuredDataSsrHtml(auditAvailable:boolean,founding?:FoundingS
     };
     if(p.priceCents>0)offer.priceSpecification={'@type':'UnitPriceSpecification',price:p.priceCents/100,priceCurrency:p.currency,unitText:'MON'};
     offers.push(offer);
-    if(p.id==='pro'){
-      /* rot535 fold: the founding price is a real checkout price that
-       * both selling pages render (the founding anchor) — the
-       * structured data must carry it too, from the same catalog
-       * constant (FOUNDING_PRICE_CENTS), or crawlers see a price set
-       * that omits it. Availability mirrors the visible founding line
-       * exactly: OutOfStock only when the block says the cohort is
-       * full (the same condition under which the line disappears). */
-      const foundingFull=!!founding&&founding.available&&(founding.seats_remaining===null||founding.seats_remaining<=0);
-      offers.push({
-        '@type':'Offer',name:'Founding cohort',price:FOUNDING_PRICE_CENTS/100,priceCurrency:'USD',
-        availability:foundingFull?'https://schema.org/OutOfStock':'https://schema.org/InStock',url:'https://mayor.mehyar.us/pricing',
-        priceSpecification:{'@type':'UnitPriceSpecification',price:FOUNDING_PRICE_CENTS/100,priceCurrency:'USD',unitText:'MON'},
-      });
-    }
   }
   for(const p of CREDIT_PACKS){
     if(!validPack(p))continue;
@@ -300,9 +261,9 @@ export function structuredDataSsrHtml(auditAvailable:boolean,founding?:FoundingS
   };
   return `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
 }
-export function injectStructuredData(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null):string{
+export function injectStructuredData(html:string,auditAvailable=false):string{
   if(html.includes('"@type":"Product"'))return html;
-  return html.replace('</head>',`${structuredDataSsrHtml(auditAvailable,founding)}</head>`);
+  return html.replace('</head>',`${structuredDataSsrHtml(auditAvailable)}</head>`);
 }
 /* FAQPage structured data: built from the same Q&A text the /sales page
  * shows in its visible FAQ (a unit test pins the two to the same strings,

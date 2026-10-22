@@ -419,7 +419,7 @@ const managedApps: ManagedApp[] = [
     url: "https://moonroom.mehyar.us",
     tagline: "Studio portraits from one selfie.",
     description:
-      "AI photo studio that turns one selfie into studio portraits: $49 headshot packs, $39 product-photo backgrounds for sellers, $29 seasonal theme packs. One-time payments — no subscription.",
+      "AI photo studio that turns one selfie into studio portraits: $24 headshot packs, $15 product-photo backgrounds for sellers, $9 seasonal theme packs. One-time payments — no subscription.",
     audience: "Job seekers and professionals who need a great headshot, and online sellers who need clean product photos without a photo shoot.",
     highlights: [
       "AI headshot packs, product photos, and themed portraits from a single selfie",

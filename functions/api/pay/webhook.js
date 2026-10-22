@@ -549,12 +549,6 @@ async function resolveMirrorPurchase({ db, request, env, waitUntil }, sess) {
     ? (env.STRIPE_TEST_SECRET_KEY || env.STRIPE_SECRET_KEY)
     : env.STRIPE_SECRET_KEY;
   if (!key) { console.error("pay/webhook mirror: no Stripe key for session", sess.id); return; }
-  // Key-prefix assertion (house billing pattern): never call Stripe with a
-  // key whose (sk|rk)_ prefix belongs to the opposite mode.
-  if ((sess.livemode && /^(sk|rk)_test_/.test(key)) || (!sess.livemode && /^(sk|rk)_live_/.test(key))) {
-    console.error("pay/webhook mirror: stripe_mode_mismatch for session", sess.id);
-    return;
-  }
   const api = async (path) => {
     const r = await fetch("https://api.stripe.com" + path, {
       headers: { authorization: "Bearer " + key },
@@ -634,52 +628,6 @@ export async function onRequestPost({ request, env, waitUntil }) {
     }
 
     const event = JSON.parse(rawBody);
-
-    // Payment integrity (rot541, 2026-10-22) — mirrors The Mayor worker's
-    // billing pattern (workers/mayor/src/billing/events.ts): the configured
-    // mode is env-only (STRIPE_MODE; production runs "live"), and any event
-    // whose livemode differs from the configured mode is rejected with
-    // 400 stripe_mode_mismatch — after signature verification, before any
-    // ledger write, mirror resolution, or fulfillment dispatch. The
-    // rejection is logged to webhook_debug. Test-endpoint signatures still
-    // verify (legacy), but verification is not fulfillment.
-    const configuredMode = env.STRIPE_MODE === "test" ? "test" : "live";
-    if (event.livemode !== (configuredMode === "live")) {
-      // Crew-gated test scope (rot545, 2026-10-22): a test event is admitted
-      // ONLY when it belongs to an order minted through the crew test gate —
-      // its billing_payments row carries a cs_test_ session id. It then
-      // fulfills in test scope, exactly as crew test payments did before the
-      // mode hardening. Every other mismatch — above all a test event
-      // naming a LIVE order — is rejected below, unchanged.
-      let gatedTestOrder = false;
-      if (event.livemode === false) {
-        try {
-          const obj0 = (event.data && event.data.object) ? event.data.object : {};
-          const pid0 = Number(obj0.metadata && obj0.metadata.payment_id) || null;
-          if (pid0) {
-            const prow = await db.prepare(
-              "SELECT stripe_session_id FROM billing_payments WHERE id = ?"
-            ).bind(pid0).first();
-            gatedTestOrder = !!(
-              prow &&
-              typeof prow.stripe_session_id === "string" &&
-              prow.stripe_session_id.startsWith("cs_test_")
-            );
-          }
-        } catch (_) { /* a failed lookup admits nothing */ }
-      }
-      if (!gatedTestOrder) {
-      try {
-        const obj = (event.data && event.data.object) ? event.data.object : {};
-        const pid = Number(obj.metadata && obj.metadata.payment_id) || null;
-        await db.prepare(
-          "INSERT INTO webhook_debug (created_at, payment_id, step, detail) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?, 'stripe_mode_mismatch', ?)"
-        ).bind(pid, String(event.type || "") + " " + String(obj.id || "")).run();
-      } catch (_) { /* logging never blocks the rejection */ }
-      return json({ ok: false, error: "stripe_mode_mismatch" }, 400);
-      }
-    }
-
     if (event.type === "checkout.session.completed") {
       const sess = (event.data && event.data.object) ? event.data.object : {};
       const paymentId = Number(sess.metadata && sess.metadata.payment_id);

@@ -14,7 +14,7 @@ import './workspace.css';
 import './workday.css';
 import './proactive.css';
 import {createWorkday,type WorkdayView} from './workday';
-import {captureBillingIntent,dismissBillingIntent,hasBillingIntent,peekBillingIntent,takeBillingIntent} from './billing-intent';
+import {captureBillingIntent,hasBillingIntent,takeBillingIntent} from './billing-intent';
 import {createConnections} from './connections';
 import {createVoiceDiagnostics} from './voice-diagnostics';
 import {createVoiceHealth} from './voice-health';
@@ -35,10 +35,7 @@ import {loadAccountCards} from './account-cards-loader';
 import {mountChatApp,pushChatApp,type ChatAppSnapshot} from './chat-app';
 import type {TranscriptRow} from './transcript-list';
 import {loadNotificationsInbox} from './notifications-inbox-loader';
-import {mountDeskStrip,pushDeskStrip,type DeskSnapshot} from './desk-loader';
-import type {DeskIntent} from './desk/intents';
 import './mobile-compact.css';
-import './desk.css';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 function resizeComposer(){const input=$<HTMLTextAreaElement>('message');input.style.height='auto';const keyboardHeight=document.body.dataset.chatKeyboard==='open'?parseFloat(document.body.style.getPropertyValue('--chat-viewport-height')):undefined;const limit=chatComposerHeightLimit(matchMedia('(max-width:760px)').matches,keyboardHeight,document.body.dataset.view==='chat'?window.innerHeight:undefined);input.style.height=`${Math.min(limit,Math.max(36,input.scrollHeight))}px`;input.style.overflowY=input.scrollHeight>limit?'auto':'hidden';}
 $('message').addEventListener('input',resizeComposer);window.addEventListener('resize',resizeComposer);
@@ -56,138 +53,6 @@ const chatCallbacks={onCopyFailed:()=>notice('Copy could not finish. Select the 
  onEarlier:()=>void loadEarlier(),onCancelQueued:(turnId:string)=>textChat.cancelQueued(turnId),onRetryTurn:()=>{const outcome=textChat.retryFailed();if(outcome)void settleTextOutcome(outcome);},onDismissError:()=>textChat.dismissFailed()};
 mountChatApp($('chat-app'),chatSnapshot,chatCallbacks,{composerHost});
 function pushChatView(){pushChatApp(chatSnapshot);}
-// ── The Desk strip (Reinvention Slice 1, blueprint §3.1) ────────────
-// A React strip at the head of the home (chat) view: Morning Line +
-// the intent stream (carried-intent Ribbon, completion Receipt,
-// attention Lines, today's people), rendered from the primitive
-// catalog in web/desk/. The strip is fed snapshots built here from
-// state the shell already owns — the intent carrier (peeked, never
-// consumed by rendering), the public catalog (price/seats, fail-quiet),
-// the operations overview, and billing status (commitments). It
-// fetches nothing on its own and writes nothing to the carrier.
-interface DeskCatalog {foundingPriceLabel?:string;proPriceLabel?:string;seats?:{remaining:number;total:number}|null;soldOut?:boolean;}
-let deskCatalog:DeskCatalog={};
-let deskOverview:any=null;
-let deskBilling:any=null;
-let deskEngineIntents:DeskIntent[]=[];
-let deskIntentDismissed=false;
-let deskMounted=false;
-let deskDataAt=0;
-let deskDataFlight:Promise<void>|null=null;
-const deskMoneyExact=(cents:number)=>new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100);
-const deskMoney=(cents:number)=>new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(cents/100);
-function deskRibbonIntent():DeskIntent|null{
- if(deskIntentDismissed)return null;
- const intent=peekBillingIntent();
- if(!intent||intent.kind!=='plan'||intent.id!=='founding')return null;
- if(deskCatalog.soldOut)return {id:'ribbon-founding',version:1,type:'intent-ribbon',planRef:'founding',state:'unhonorable',headline:'Founding just filled',detail:'Every founding seat is claimed. The standard plan is the way in now — same Mayor, standard price.',alternativeLabel:deskCatalog.proPriceLabel?`Pro — ${deskCatalog.proPriceLabel}/mo`:'Pro — the standard plan',summary:'Founding just filled. The standard plan is the way in now.'};
- return {id:'ribbon-founding',version:1,type:'intent-ribbon',planRef:'founding',state:'carried',headline:"Founding — you're headed here.",detail:loggedIn?'Continue and the billing dialog opens on this exact plan. Nothing to pay yet.':"We'll set up your shop first, then open this exact plan. Nothing to pay yet.",...(deskCatalog.foundingPriceLabel?{priceLabel:deskCatalog.foundingPriceLabel}:{}),seats:deskCatalog.seats??null,summary:"Founding — you're headed here. We'll set up your shop first, then open this exact plan."};
-}
-function deskIntents():DeskIntent[]{
- const intents:DeskIntent[]=[];
- const ribbon=deskRibbonIntent();if(ribbon)intents.push(ribbon);
- if(!loggedIn)return intents;
- const commitment=Array.isArray(deskBilling?.commitments)?deskBilling.commitments.find((row:any)=>row?.kind==='purchase_intent'&&row?.status==='fulfilled'):null;
- if(commitment)intents.push({id:`receipt-${commitment.id}`,version:1,type:'receipt',text:commitment.plan_ref==='founding'?"Founding — you're in.":'Your plan is active.',detail:`${deskMoneyExact(Number(commitment.amount_cents??0))}/mo · locked for life while this subscription stays active.`,summary:"Founding — you're in. Your founding price is locked for life while this subscription stays active."});
- if(deskOverview){
-  for(const item of (deskOverview.attention??[]).slice(0,3))intents.push({id:`attention-${item.id}`,version:1,type:'line',text:`${item.title} — ${item.detail}`,summary:`${item.title} — ${item.detail}`});
-  for(const appt of (deskOverview.appointments??[]).slice(0,3)){
-   const title=appt?.input?.title??appt?.title??'Appointment';
-   const name=appt?.customer?.name??appt?.customerName??'';
-   intents.push({id:`appt-${appt?.id??title}`,version:1,type:'person',name:name||title,context:name?title:undefined,state:'known',summary:name?`${name} — ${title}`:title});
-  }
- }
- // Slice 2: the engine's cards merge AFTER the snapshot's own
- // intents. An engine fetch failure leaves this empty — the Desk
- // keeps working without engine intents (see loadDeskData).
- intents.push(...deskEngineIntents);
- if(!intents.length)intents.push({id:'desk-empty',version:1,type:'empty',text:'Nothing needs you right now.',summary:'Nothing needs you right now.'});
- return intents;
-}
-function deskSnapshotNow():DeskSnapshot{
- const counts=deskOverview?.counts;
- return {signedIn:loggedIn,businessName:chatSnapshot.businessName||'The Mayor',statusLine:chatSnapshot.statusText,stats:loggedIn&&counts?[{label:'Bookings today',value:String(counts.appointmentsToday??0)},{label:'Waiting on you',value:String(counts.attention??0)},{label:'Open tasks',value:String(counts.tasksOpen??0)}]:undefined,intents:deskIntents()};
-}
-function refreshDesk(){
- const snapshot=deskSnapshotNow();
- if(!deskMounted){deskMounted=true;mountDeskStrip($('desk-root'),snapshot,{onDismissIntent:()=>{deskIntentDismissed=true;dismissBillingIntent();stripIntentParams();refreshDesk();},onActionVerb:(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string)=>{void deskActionVerb(actionId,verb,text);},onRuleScenario:(scenarioId:string,allowed:boolean)=>{void deskRuleScenario(scenarioId,allowed);},onRevokeGrant:(grantId:string)=>{void deskRevokeGrant(grantId);}});}
- else pushDeskStrip(snapshot);
- // Name the intent inside the auth surface too (blueprint §2.1 E-0):
- // the sign-in block carries the founding line while signed out.
- const line=$('signin-intent-line');
- if(line){
-  const intent=peekBillingIntent();
-  if(!loggedIn&&intent?.kind==='plan'&&intent.id==='founding'&&!deskIntentDismissed){
-   line.textContent=deskCatalog.foundingPriceLabel?`Founding — you're headed here. Sign in and we'll open the Founding plan you chose — ${deskCatalog.foundingPriceLabel}.`:"Founding — you're headed here. Sign in and we'll open the Founding plan you chose.";
-   line.hidden=false;
-  }else line.hidden=true;
- }
-}
-function stripIntentParams(){
- try{
-  const url=new URL(location.href);
-  if(!url.searchParams.has('plan')&&!url.searchParams.has('pack'))return;
-  url.searchParams.delete('plan');url.searchParams.delete('pack');
-  history.replaceState(history.state,'',url.toString());
- }catch{/* the carrier is already consumed; the param is inert */}
-}
-async function loadDeskCatalog(){
- try{
-  const response=await fetch('/api/billing/catalog');
-  if(!response.ok)return;
-  const catalog=await response.json() as any;
-  const founding=catalog?.founding;
-  const pro=(catalog?.plans??[]).find((plan:any)=>plan.id==='pro');
-  deskCatalog={
-   ...(typeof catalog?.foundingPriceCents==='number'?{foundingPriceLabel:`${deskMoneyExact(catalog.foundingPriceCents)}/mo · locked for life`}:{}),
-   ...(pro?{proPriceLabel:deskMoney(pro.priceCents)}:{}),
-   seats:founding?.available&&typeof founding.seats_remaining==='number'?{remaining:founding.seats_remaining,total:founding.seats_total}:null,
-   soldOut:Boolean(founding?.available&&founding.seats_remaining===0),
-  };
- }catch{/* fail-quiet: the Ribbon renders with no price and no count */}
- refreshDesk();
-}
-async function loadDeskData(force=false){
- if(!tenantId)return;
- if(!force&&Date.now()-deskDataAt<15000)return;
- if(deskDataFlight)return deskDataFlight;
- deskDataFlight=(async()=>{
-  try{
-   const [overview,billing,engine]=await Promise.all([api(`/api/businesses/${tenantId}/overview`).catch(()=>null),api(`/api/businesses/${tenantId}/billing`).catch(()=>null),api(`/api/businesses/${tenantId}/engine/desk`).catch(()=>null)]);
-   if(overview)deskOverview=overview;
-   if(billing)deskBilling=billing;
-   // Fail-quiet: a failed engine fetch keeps the last known engine
-   // intents (initially none) and never surfaces an error — the
-   // Desk works without the engine.
-   if(engine&&Array.isArray(engine.intents))deskEngineIntents=engine.intents as DeskIntent[];
-   deskDataAt=Date.now();
-   refreshDesk();
-  }finally{deskDataFlight=null;}
- })();
- return deskDataFlight;
-}
-/** Re-read the engine's Desk intents after a card verb resolves and
- * re-push the snapshot. Degrades quietly on failure, like the load. */
-async function refreshEngineDeskIntents(){
- if(!tenantId)return;
- try{
-  const engine=await api(`/api/businesses/${tenantId}/engine/desk`);
-  if(engine&&Array.isArray(engine.intents))deskEngineIntents=engine.intents as DeskIntent[];
- }catch{/* fail-quiet: the Desk keeps its current intents */}
- refreshDesk();
-}
-async function deskActionVerb(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string){
- try{await api(`/api/businesses/${tenantId}/engine/actions/${actionId}/${verb}`,verb==='edit'?{text:text??''}:{});}catch{/* the refetch below shows the card's true state */}
- await refreshEngineDeskIntents();
-}
-async function deskRuleScenario(scenarioId:string,allowed:boolean){
- try{await api(`/api/businesses/${tenantId}/engine/scenarios/${scenarioId}/rule`,{allowed});}catch{/* the refetch below shows the card's true state */}
- await refreshEngineDeskIntents();
-}
-async function deskRevokeGrant(grantId:string){
- try{await api(`/api/businesses/${tenantId}/engine/grants/${grantId}/revoke`,{});}catch{/* the refetch below shows the card's true state */}
- await refreshEngineDeskIntents();
-}
 // The signed-out home block is a static, server-injected subtree (the
 // worker SSR-fills #offer-block in the served HTML). It joins the
 // conversation section as the SAME live node — adopted, never
@@ -916,18 +781,9 @@ async function api(path:string,body?:unknown,headers:Record<string,string>={}){
  const captured=path==='/api/auth/sign-out'?null:workspaceAccess.capture();
  const customConnection=/^\/api\/businesses\/[a-f0-9]{32}\/connections(?:\/|$)/.test(path);
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),customConnection?20000:15000);
- // Engine events (Slice 0, §1.7): when this browser holds a current
- // GRANTED analytics consent record, assert it on the request — the
- // server then includes analytics copies of money-path events in the
- // response, and the consent-gated loader (the only dispatcher) fires
- // them after re-verifying the record itself. No assertion, no copies.
- const consentApi=(globalThis as any).MayorConsent as {choice?:()=>string|null;emitEngineEvents?:(directives:unknown)=>number}|undefined;
- const consentHeaders:Record<string,string>=consentApi?.choice?.()==='granted'?{'x-mayor-analytics-consent':'granted'}:{};
  try{
-  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'content-type':'application/json'}),...consentHeaders,...headers},body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal});
-  const result=await response.json();if(captured!==null)workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(path,tenantId,loggedIn,result.error))endWorkspaceAccess();throw Object.assign(new Error(result.message??'This service could not finish. Please try again.'),{code:result.error});}
-  if(Array.isArray(result?.analyticsEvents)&&result.analyticsEvents.length){try{consentApi?.emitEngineEvents?.(result.analyticsEvents);}catch{/* measurement never breaks the money path */}}
-  return result;
+  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'content-type':'application/json'}),...headers},body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal});
+  const result=await response.json();if(captured!==null)workspaceAccess.assert(captured);if(!response.ok){if(workspaceAccessWasRejected(path,tenantId,loggedIn,result.error))endWorkspaceAccess();throw Object.assign(new Error(result.message??'This service could not finish. Please try again.'),{code:result.error});}return result;
  }catch(error){if(controller.signal.aborted)throw new Error(customConnection?'The connection took too long. Check the connected service before repeating an action.':'This service took too long. Please try again.');throw error;}finally{clearTimeout(timer);}
 }
 let conversationPositioned=false,conversationAtEnd=true,conversationHeight=0,conversationWidth=0;
@@ -1283,7 +1139,6 @@ function show(tab:WorkdayView){
   workday.show(tab);
   chatKeyboard.sync();
   if(tab==='chat'&&!conversationPositioned)requestAnimationFrame(()=>{if(document.body.dataset.view==='chat')transcripts();});
-  if(tab==='chat')void loadDeskData();
   if(tab==='account')account().catch(error=>notice(error.message));
   if(tab==='connections'&&canManage()){void connectionHub.activate().catch(error=>notice(error.message));loadConnectorSessions({api,tenant:()=>tenantId,signIn,onNotice:message=>notice(message)});}
 }
@@ -1294,10 +1149,6 @@ async function init(){
   // Public offer block: catalog-priced plans on the logged-out view. Non-blocking;
   // the price-free fallback stays if the catalog can't be reached.
   void loadOfferBlock();
-  // The Desk strip (Slice 1): the catalog feeds the founding Ribbon's
-  // price/seats (fail-quiet); the strip itself mounts on arrival.
-  void loadDeskCatalog();
-  refreshDesk();
   $('open-connections').hidden=true;$('open-connections').closest<HTMLElement>('.account-card')!.hidden=true;
   const capabilities=await api('/api/auth/capabilities');
   if(!capabilities.providers.google.configured){
@@ -1346,7 +1197,6 @@ async function init(){
  * owner's answer becomes the business name. No business exists yet here. */
 function enterNamingMode(){
   namingMode=true;
-  refreshDesk();
   document.querySelector<HTMLElement>('.assistant-dock')!.hidden=false;
   composerSnapshot={...composerSnapshot,actionsHidden:false,newChatHidden:true};pushComposer();
   // No conversation exists yet — a reset would hit a tenant-less endpoint.
@@ -1408,33 +1258,14 @@ async function enterBusiness(businesses:Array<{id:string;name:string;role:string
   // SPA deep links: /today, /feed, /billing, /connectors, /settings, /account
   // serve the app shell (see spaViewForPath in src/public-routes.ts).
   // Activate the matching view; workday.show() already guards by role.
-  // Slice 1: /today lands on the Desk — the home view (chat view head)
-  // where the Morning Line + intent stream live; the legacy workday
-  // overview remains on its Today tab until the view-merge slice.
-  const deepLink:Record<string,WorkdayView>={'/today':'chat','/feed':'feed','/billing':'billing','/connectors':'connections','/settings':'account','/account':'account'};
+  const deepLink:Record<string,WorkdayView>={'/today':'today','/feed':'feed','/billing':'billing','/connectors':'connections','/settings':'account','/account':'account'};
   const deepView=deepLink[location.pathname];
   if(deepView)show(deepView);
   // Purchase intent (NEW-1): a /sales or /pricing buy click lands
   // here after sign-in (URL param, or the stash from the pre-sign-in
   // boot). Land on billing with the plan/pack preselected.
   const purchaseIntent=takeBillingIntent();
-  if(purchaseIntent){
-    workday.billingIntent(purchaseIntent);
-    // The carrier is consumed: clear the URL params so a peek (the
-    // Ribbon) or a later boot can never resurrect a spent intent.
-    stripIntentParams();
-  }
-  refreshDesk();
-  void loadDeskData();
-  // Stripe return (Slice 1): the owner lands in the Desk — the home
-  // view — with the fulfilled intent visible as a completion Receipt
-  // once the billing sync writes it. The sync itself runs through
-  // workday.ready()'s billing load; the Desk re-reads on a beat so
-  // the Receipt lands without a manual refresh.
-  if(new URLSearchParams(location.search).get('billing')==='success'){
-    show('chat');
-    window.setTimeout(()=>{void loadDeskData(true);},3000);
-  }
+  if(purchaseIntent)workday.billingIntent(purchaseIntent);
   // One Connector phone handoff (P3 slice 2): /connect/<session id> renders
   // that session's card in chat — the same attempt, continued on this device.
   const handoff=location.pathname.match(/^\/connect\/([a-f0-9-]{36})$/);
