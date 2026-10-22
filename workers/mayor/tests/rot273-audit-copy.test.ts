@@ -15,8 +15,18 @@ describe('rot273 audit page copy', () => {
     expect(sale).toBeGreaterThan(price);
     expect(sale).toBeLessThan(page.indexOf('id="audit-intake-form"'));
   });
-  it('states the bounded delivery window; the old disclaimer is gone', () => {
-    expect(page).toContain('Your audit is delivered within 3 business days of checkout; if we need more from you, we email you the same day.');
+  it('states NO delivery timeframe in the FAQ; the queue-not-complete truth stands', () => {
+    // SUPERSESSION (rot535 fold, Product Chief, 2026-10-22): the rot273
+    // "bounded delivery window" sentence in the visible FAQ carried the
+    // same "3 business days" deadline §8.2 removed from og:description —
+    // GET /api/business-audit/offer's delivery statement makes no such
+    // promise, so the deadline comes out of the FAQ too (ratified as
+    // inside §8.2, not an extension). The FAQ now carries the offer's
+    // own delivery truth, and no replacement timeframe is promised
+    // (the "same day" email timeframe is gone with it).
+    expect(page).not.toContain('delivered within 3 business days');
+    expect(page).not.toContain('we email you the same day');
+    expect(page).toContain('Payment queues your audit — it does not mean a report is complete. If we need more from you, we email you.');
     expect(page).not.toContain('No delivery deadline is automatically promised.');
   });
   it('carries the OG tags with the spec values', () => {

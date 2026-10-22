@@ -161,6 +161,7 @@ section.page-width{padding-top:2.5rem;padding-bottom:2.5rem}
 .hero-price:empty{margin:0}
 .decision-note{font-size:1rem;color:var(--ink);max-width:44rem;margin-top:1.25rem}
 .pack-note{color:var(--muted);font-size:0.85rem;margin:0.6rem 0 0}
+.plan-final-sale{color:var(--muted);font-size:0.85rem;margin:0.6rem 0 0}.plan-final-sale a{color:inherit;text-underline-offset:3px}
 .loop-note{color:var(--muted);font-size:0.92rem;margin-top:1.25rem;max-width:44rem}
 
 /* FAQ */
