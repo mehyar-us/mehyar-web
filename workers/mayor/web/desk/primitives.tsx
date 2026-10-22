@@ -1,10 +1,9 @@
 /**
- * desk/primitives.tsx — the primitive catalog (Reinvention
- * Slice 1, blueprint §3.2; Slice 2 adds the engine's cards). One
- * renderer per primitive; the Desk stream is a composition of these
- * and nothing else. Chrome never shares the Draft register: the
- * Draft is paper within the product, rendered only inside the
- * action and shadow cards that carry one.
+ * desk/primitives.tsx — the primitive catalog v1 (Reinvention
+ * Slice 1, blueprint §3.2). One renderer per primitive; the Desk
+ * stream is a composition of these and nothing else. Chrome never
+ * shares the Draft register (the Draft primitive itself is Slice 2
+ * territory — it is not in catalog v1).
  *
  * Token discipline (§3.4): type sizes come only from the scale
  * (13/15/17/20/24/32/40), weights 400/600/700, targets ≥44px — the
@@ -17,28 +16,19 @@ import { useState, type ReactNode } from 'react';
 import {
   degradeIntent,
   isRenderable,
-  type ActionCardIntent,
   type ChipIntent,
   type DeskIntent,
   type EmptyIntent,
   type FactIntent,
-  type GrantCardIntent,
   type InlineErrorIntent,
   type IntentRibbonIntent,
   type LineIntent,
   type PersonIntent,
   type ReceiptIntent,
-  type ScenarioCardIntent,
   type SeatsLineIntent,
-  type ShadowCardIntent,
   type SkeletonIntent,
   type StatIntent,
 } from './intents';
-
-export type ActionVerb = 'approve' | 'dismiss' | 'edit';
-export type ActionVerbHandler = (actionId: string, verb: ActionVerb, text?: string) => void;
-export type ScenarioRulingHandler = (scenarioId: string, allowed: boolean) => void;
-export type RevokeGrantHandler = (grantId: string) => void;
 
 export function Line({ intent }: { intent: LineIntent }) {
   return <p className={`desk-line${intent.tone === 'muted' ? ' desk-line-muted' : ''}`}>{intent.text}</p>;
@@ -211,220 +201,6 @@ export function IntentRibbon({
   );
 }
 
-/** The Draft register: the words that would go to a customer,
- * rendered as paper within the product (the paper ground, its own
- * block) — visibly distinct from chrome, which never uses it. */
-export function Draft({ text }: { text: string }) {
-  return (
-    <div className="desk-draft">
-      <p className="desk-draft-text">{text}</p>
-    </div>
-  );
-}
-
-export function ActionCard({
-  intent,
-  onActionVerb,
-}: {
-  intent: ActionCardIntent;
-  onActionVerb?: ActionVerbHandler;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(intent.draftText ?? '');
-  return (
-    <div className={`desk-card desk-action-card desk-action-${intent.state}`}>
-      <div className="desk-card-head">
-        <p className="desk-card-headline">{intent.headline}</p>
-        {intent.personName ? <p className="desk-card-person">{intent.personName}</p> : null}
-      </div>
-      {intent.draftText ? <Draft text={intent.draftText} /> : null}
-      {intent.basisLine ? <p className="desk-card-basis">{intent.basisLine}</p> : null}
-      {editing ? (
-        <div className="desk-card-edit-wrap">
-          <label className="desk-card-edit-label" htmlFor={`desk-edit-${intent.id}`}>
-            Edit the message
-          </label>
-          <textarea
-            id={`desk-edit-${intent.id}`}
-            className="desk-card-edit"
-            value={draft}
-            rows={4}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-        </div>
-      ) : null}
-      <div className="desk-card-actions">
-        <button
-          type="button"
-          className="desk-card-primary"
-          onClick={onActionVerb ? () => onActionVerb(intent.actionId, 'approve') : undefined}
-        >
-          {intent.primaryLabel}
-        </button>
-        {intent.draftText ? (
-          editing ? (
-            <button
-              type="button"
-              className="desk-card-verb"
-              onClick={
-                onActionVerb
-                  ? () => {
-                      onActionVerb(intent.actionId, 'edit', draft);
-                      setEditing(false);
-                    }
-                  : undefined
-              }
-            >
-              Save
-            </button>
-          ) : (
-            <button type="button" className="desk-card-verb" onClick={() => setEditing(true)}>
-              Edit
-            </button>
-          )
-        ) : null}
-        <button
-          type="button"
-          className="desk-card-quiet"
-          onClick={onActionVerb ? () => onActionVerb(intent.actionId, 'dismiss') : undefined}
-        >
-          Dismiss
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export function ShadowCard({
-  intent,
-  onActionVerb,
-}: {
-  intent: ShadowCardIntent;
-  onActionVerb?: ActionVerbHandler;
-}) {
-  return (
-    <div className="desk-card desk-shadow-card">
-      <div className="desk-card-head">
-        <p className="desk-card-headline">{intent.headline}</p>
-        {intent.personName ? <p className="desk-card-person">{intent.personName}</p> : null}
-      </div>
-      {intent.draftText ? <Draft text={intent.draftText} /> : null}
-      <div className="desk-card-provenance">
-        <p className="desk-card-provenance-line">Under your rule: “{intent.provenance.ruleText}”</p>
-        <p className="desk-card-provenance-line">Because: {intent.provenance.predicate}</p>
-      </div>
-      {intent.nearBoundary ? (
-        <p className="desk-card-near">Close to the edge of your rule — worth a look.</p>
-      ) : null}
-      <div className="desk-card-actions">
-        <button
-          type="button"
-          className="desk-card-primary"
-          onClick={onActionVerb ? () => onActionVerb(intent.actionId, 'approve') : undefined}
-        >
-          {"That's right"}
-        </button>
-        <button
-          type="button"
-          className="desk-card-quiet"
-          onClick={onActionVerb ? () => onActionVerb(intent.actionId, 'dismiss') : undefined}
-        >
-          Not right
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export function ScenarioCard({
-  intent,
-  onRuleScenario,
-}: {
-  intent: ScenarioCardIntent;
-  onRuleScenario?: ScenarioRulingHandler;
-}) {
-  return (
-    <div className="desk-card desk-scenario-card">
-      <p className="desk-scenario-prompt">{intent.prompt}</p>
-      <div className="desk-card-actions">
-        <button
-          type="button"
-          className="desk-card-primary"
-          onClick={onRuleScenario ? () => onRuleScenario(intent.scenarioId, true) : undefined}
-        >
-          Allowed
-        </button>
-        <button
-          type="button"
-          className="desk-card-verb"
-          onClick={onRuleScenario ? () => onRuleScenario(intent.scenarioId, false) : undefined}
-        >
-          Blocked
-        </button>
-      </div>
-    </div>
-  );
-}
-
-const GRANT_STATE_WORDS: Record<GrantCardIntent['state'], string> = {
-  proposed: 'Proposed',
-  probed: 'Checked',
-  shadow: 'Watching — would-have-sent mode',
-  live: 'Live',
-  narrowed: 'Narrowed',
-  revoked: 'Revoked',
-  expired: 'Expired',
-};
-
-export function GrantCard({
-  intent,
-  onRevokeGrant,
-}: {
-  intent: GrantCardIntent;
-  onRevokeGrant?: RevokeGrantHandler;
-}) {
-  const closed = intent.state === 'revoked' || intent.state === 'expired';
-  return (
-    <div className={`desk-card desk-grant-card desk-grant-${intent.state}${closed ? ' desk-grant-closed' : ''}`}>
-      <p className="desk-grant-owner">“{intent.ownerWords}”</p>
-      <p className="desk-grant-summary">{intent.summaryText}</p>
-      {intent.neverLines.length ? (
-        <ul className="desk-grant-never">
-          {intent.neverLines.map((line, index) => (
-            <li key={`${index}-${line}`}>{line}</li>
-          ))}
-        </ul>
-      ) : null}
-      {intent.scopeChips.length ? (
-        <div className="desk-grant-chips">
-          {intent.scopeChips.map((chip, index) => (
-            <span key={`${index}-${chip}`} className="desk-grant-chip">
-              {chip}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      <p className="desk-grant-state">{GRANT_STATE_WORDS[intent.state]}</p>
-      {intent.actsCount > 0 ? (
-        <p className="desk-grant-acts">
-          {intent.actsCount} {intent.actsCount === 1 ? 'act' : 'acts'} under this rule
-        </p>
-      ) : null}
-      {!closed ? (
-        <div className="desk-card-actions">
-          <button
-            type="button"
-            className="desk-card-quiet"
-            onClick={onRevokeGrant ? () => onRevokeGrant(intent.grantId) : undefined}
-          >
-            Revoke
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 /** The dispatcher: exactly one renderer per catalog primitive.
  * Unknown types and newer versions degrade to a Line carrying the
  * intent's mandatory summary; money intents degrade non-actionably
@@ -433,16 +209,10 @@ export function IntentView({
   intent,
   onDismissIntent,
   onRetryIntent,
-  onActionVerb,
-  onRuleScenario,
-  onRevokeGrant,
 }: {
   intent: DeskIntent | { type: string; version: number; summary?: string; id: string };
   onDismissIntent?: (id: string) => void;
   onRetryIntent?: (id: string) => void;
-  onActionVerb?: ActionVerbHandler;
-  onRuleScenario?: ScenarioRulingHandler;
-  onRevokeGrant?: RevokeGrantHandler;
 }) {
   if (!isRenderable(intent)) {
     const degraded = degradeIntent(intent);
@@ -472,14 +242,6 @@ export function IntentView({
       return <IntentRibbon intent={known} onDismiss={onDismissIntent} />;
     case 'seats-line':
       return <SeatsLine intent={known} />;
-    case 'action-card':
-      return <ActionCard intent={known} onActionVerb={onActionVerb} />;
-    case 'shadow-card':
-      return <ShadowCard intent={known} onActionVerb={onActionVerb} />;
-    case 'scenario-card':
-      return <ScenarioCard intent={known} onRuleScenario={onRuleScenario} />;
-    case 'grant-card':
-      return <GrantCard intent={known} onRevokeGrant={onRevokeGrant} />;
     default:
       return <p className="desk-line desk-line-degraded">{degradeIntent(known).text}</p>;
   }

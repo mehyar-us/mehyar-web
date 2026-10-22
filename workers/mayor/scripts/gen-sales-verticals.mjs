@@ -3,10 +3,7 @@
  * workers/mayor/src/verticals.ts (the single source of truth for vertical
  * label, vocabulary, and KPIs). Run before `vite build` (wired into
  * `npm run build:web`). Pages land in web/sales/<slug>.html and are picked up
- * as vite rollup inputs. Zero JavaScript, zero price claims in the output:
- * the plans section ships price-free fallback cards (the same fallback
- * voice as /sales), and the priced cards render at serve time from the
- * live catalog via injectVerticalPlans (rot551 fold C4).
+ * as vite rollup inputs. Zero JavaScript, zero price claims in the output.
  */
 import {writeFileSync, mkdirSync} from 'node:fs';
 import {dirname, join} from 'node:path';
@@ -128,29 +125,6 @@ export function verticalPage(vertical, profile) {
           <li><strong>The recovered ${esc(v.booking)}.</strong> ${cap(v.customer)} replies YES. The Mayor takes it from there, and the ${esc(v.booking)} lands on your book — before you have even seen the missed call.</li>
         </ol>
       </article>
-    </section>
-
-    <section id="plans" class="page-width" aria-labelledby="plans-heading">
-      <span class="section-kicker">PRICING</span>
-      <h2 id="plans-heading">Start free. Go Pro when you're ready.</h2>
-      <p class="section-lead">Every business starts free — no credit card, no setup call, no sales rep. When The Mayor is earning its keep on your real book, simple plans grow with your business.</p>
-      <div id="vertical-plan-cards" class="plan-grid">
-        <article class="plan-card">
-          <h3>Free</h3>
-          <p class="plan-tier">Free to start</p>
-          <p>Talk to The Mayor, tell it about your business, and feel the money loop working: missed-call text-backs once your number is connected (automatic text-backs send through Telnyx), reminders, and the morning briefing.</p>
-        </article>
-        <article class="plan-card">
-          <h3>Pro</h3>
-          <p class="plan-tier">One simple plan</p>
-          <p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls. No hidden fees — phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>
-        </article>
-        <article class="plan-card">
-          <h3>Top up</h3>
-          <p class="plan-tier">As you need it</p>
-          <p>One-time top-ups in three sizes — Small, Medium, and Large — for the months that run hot. Buy only what you use — no subscription change, no overage surprises.</p>
-        </article>
-      </div>
     </section>
 
     <section class="cta-band page-width" aria-labelledby="cta-heading">

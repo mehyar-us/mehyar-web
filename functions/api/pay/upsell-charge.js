@@ -153,20 +153,13 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
-    // Payment integrity (rot541, 2026-10-22): Stripe mode is never
-    // client-selected — see checkout.js. Client test flags are ignored.
-    const testMode = false;
+    const testMode = body.test === true;
     const stripeKey = testMode ? env.STRIPE_TEST_SECRET_KEY : env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return J(
         { ok: false, error: testMode ? "stripe_test_not_configured" : "stripe_not_configured" },
         testMode ? 400 : 503
       );
-    }
-    // Key-prefix assertion (house billing pattern): never charge with a key
-    // carrying the opposite mode's (sk|rk)_ prefix.
-    if (/^(sk|rk)_test_/.test(stripeKey)) {
-      return J({ ok: false, error: "stripe_mode_mismatch" }, 500);
     }
 
     // Resolve the saved payment method from the base PaymentIntent.
