@@ -37,12 +37,6 @@ const routeMeta = {
       'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.',
     path: '/audit/report',
   },
-  '/audit/sample-report': {
-    title: 'Sample Report — Audit My Business | MehyarSoft',
-    description:
-      'See what the $330 Audit My Business report looks like: a labelled sample with a fictional business — site score, money leaks priced in dollars, flaws, and prioritized fixes in the real report format.',
-    path: '/audit/sample-report',
-  },
   '/': {
     title: 'MehyarSoft LLC | Software, Systems & AI Automation',
     description:
@@ -119,12 +113,6 @@ const routeMeta = {
     description:
       'A practical MehyarSoft framework for finding missed calls, weak CTAs, booking friction, CRM gaps, and manual work before committing to a bigger build.',
     path: '/blog/small-business-tech-audit-revenue-leaks',
-  },
-  '/blog/what-does-a-business-audit-check': {
-    title: 'What Does a Business Audit Check? | Audit My Business',
-    description:
-      'What does a business audit check? Your site, booking path, and follow-up — leaks priced in dollars, fixes ranked. Free scan first, $330 full audit.',
-    path: '/blog/what-does-a-business-audit-check',
   },
   '/blog/missed-calls-crm-follow-up': {
     title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
@@ -397,7 +385,6 @@ const directRoutes = [
   'audit',
   'audit/free',
   'audit/report',
-  'audit/sample-report',
   'services',
   'pricing',
   'proposals',

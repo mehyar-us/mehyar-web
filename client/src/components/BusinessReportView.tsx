@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Bot,
-  Check,
   CheckCircle2,
-  Copy,
   EyeOff,
   FileText,
   ListChecks,
@@ -19,11 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { trackAuditPurchase } from "./MarketingTags";
-import WalkthroughBooking from "./WalkthroughBooking";
 
 /* ── Payload contract (GET /api/audit/business/report?token=<64-hex>) ───────
    { ok, status: "generating"|"ready"|"failed",
-     audit_id, url, business_name, created_at, paid_at, amount_cents,
+     audit_id, url, business_name, created_at, paid_at,
      failure_reason, buyer_message,
      report?: {
        score (0-100), grade, deterministic_score, ai_score, score_rationale,
@@ -82,9 +79,6 @@ export type BusinessReportPayload = {
   business_name?: string;
   created_at?: string;
   paid_at?: string;
-  /* Amount actually charged, in cents, from the payment record — the
-     purchase event reports this, never a hard-coded list price (AU-509-2). */
-  amount_cents?: number | null;
   failure_reason?: string;
   buyer_message?: string;
   report?: BusinessReport | null;
@@ -206,62 +200,6 @@ const PRINT_CSS = `
 }
 `;
 
-/* ── REFERENCE-DATA pattern (Mayor, 2026-10-16 — Robinhood lesson) ─────────
-   Any identifier a buyer may need elsewhere lives in one grouped block:
-   plain header, small muted label above (qualifier in parentheses), value
-   large and legible, one-tap copy on every row with "Copied" feedback,
-   hairline separators, no cards/chrome. A $330 buyer grabs their audit
-   reference in one tap for any support exchange. */
-function CopyRow({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = value;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand("copy"); } catch { /* clipboard unavailable */ }
-      document.body.removeChild(ta);
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <div className="flex items-start justify-between gap-4 py-3">
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="mt-1 break-all font-mono text-base font-semibold leading-6 text-foreground">{value}</p>
-      </div>
-      <button
-        type="button"
-        onClick={copy}
-        aria-label={`Copy ${label}`}
-        className="mt-4 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
-      >
-        {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
-        {copied ? "Copied" : "Copy"}
-      </button>
-    </div>
-  );
-}
-
-function PurchaseReference({ auditId, reportUrl }: { auditId?: string; reportUrl?: string }) {
-  if (!auditId && !reportUrl) return null;
-  return (
-    <div className="no-print mt-8 text-left">
-      <p className="text-sm font-semibold text-foreground">Your purchase</p>
-      <div className="mt-1 divide-y divide-border border-y border-border">
-        {auditId && <CopyRow label="Audit reference (for support)" value={auditId} />}
-        {reportUrl && <CopyRow label="Report link (permanent — bookmark it)" value={reportUrl} />}
-      </div>
-    </div>
-  );
-}
-
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function BusinessReportView({ token, initial }: { token: string; initial?: BusinessReportPayload | null }) {
   const [payload, setPayload] = useState<BusinessReportPayload | null>(initial ?? null);
@@ -269,15 +207,9 @@ export default function BusinessReportView({ token, initial }: { token: string; 
   const [timedOut, setTimedOut] = useState(false);
 
   /* Purchase conversion for the marketing stack: fires once per report token
-     when the paid report lands (the success_url Stripe returns to). The
-     value is the amount actually charged — the payload's amount_cents comes
-     from the payment record (32500 when the $5 credit applied). The 330
-     fallback covers only legacy rows with no payment record to read. */
+     when the paid report lands (the success_url Stripe returns to). */
   useEffect(() => {
-    if (payload?.status === "ready") {
-      const cents = typeof payload.amount_cents === "number" && payload.amount_cents > 0 ? payload.amount_cents : null;
-      trackAuditPurchase(token, cents !== null ? cents / 100 : 330);
-    }
+    if (payload?.status === "ready") trackAuditPurchase(token, 330);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payload?.status]);
 
@@ -334,7 +266,6 @@ export default function BusinessReportView({ token, initial }: { token: string; 
           {payload?.buyer_message || "Building your audit hit a snag on our side — we're on it, and your report will be ready shortly. Nothing was lost; your purchase is safe."}
         </p>
         <p className="mt-3 text-sm text-muted-foreground">We'll email you the permanent link as soon as it's ready.</p>
-        <PurchaseReference auditId={payload?.audit_id} />
       </div>
     );
   }
@@ -344,19 +275,16 @@ export default function BusinessReportView({ token, initial }: { token: string; 
       <div className="mx-auto max-w-2xl py-10 text-center">
         <Loader2 className="mx-auto h-10 w-10 animate-spin text-brand-700" aria-hidden="true" />
         <h1 className="mt-4 text-2xl font-semibold text-foreground md:text-3xl">
-          {timedOut ? "Still working on it…" : "Building your Audit My Business report…"}
+          {timedOut ? "Still working on it…" : "Building your audit report…"}
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
           {timedOut
             ? "This is taking longer than usual. Your report is still being written — we'll email you the permanent link as soon as it's ready."
             : "Our AI is analyzing your site and writing your professional evaluation — we'll email you the permanent link as soon as it's ready."}
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">Delivered by email within 3–5 business days.</p>
         {!timedOut && (
           <p className="mt-3 text-xs text-muted-foreground">Status: {status || "starting"} · auto-refreshing</p>
         )}
-        <PurchaseReference auditId={payload?.audit_id} />
-        <WalkthroughBooking businessName={payload?.business_name} />
       </div>
     );
   }
@@ -415,10 +343,6 @@ export default function BusinessReportView({ token, initial }: { token: string; 
           )}
         </div>
       </div>
-
-      <PurchaseReference auditId={payload?.audit_id} reportUrl={`https://mehyar.us/audit?token=${token}`} />
-
-      <WalkthroughBooking businessName={businessName} />
 
       {/* ── EXECUTIVE SUMMARY ── */}
       <div className="avoid-break mt-10">

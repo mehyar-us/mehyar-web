@@ -6,8 +6,6 @@ import {verticalProfile,isProfessionalTone,professionalFillGapTemplate,professio
 import {esTemplates,esFillGapCard,esWinbackCard,esLeadReplyCard,esNoShowCard,esFillGapDraft,esWinbackDraft,esLeadReplyDraft,esAgoText,esBriefingCopy,esFormatWhen,renderReminder} from './i18n';
 import {sendTextBack,simulateTextBack} from './missed-call-textback';
 import {telnyxManagementAccess} from './telnyx-connections';
-import {readHarnessRuntime} from './harness-runtime';
-import {captureStyleSample,readStyleProfile,applyGreetingStyle} from './style-profile';
 import {
  inQuietHours,localDayKey,localParts,localDayBoundsUtc,monthBoundsUtc,shiftLocalDate,dayGaps,
  lapsedCustomers,loadProactiveContext,runDetectors,agoText,buildFollowupCardCopy,LAPSED_DAYS,
@@ -24,17 +22,6 @@ const DETECTOR_CARD:Record<DetectorName,CardKind>={
  slow_day:'fill_gap',lapsed_regular:'winback',missed_call_followup:'followup',
  unanswered_lead:'lead_reply',no_show_risk:'reminder_nudge',
 };
-/** WS1 build 2 (2026-10-16): visual confidence, presentation law —
- * owners see a 3-level mark, never a number. Interim mapping from
- * detector evidence, server-side only, until the harness rebuild's
- * decide() ranker supplies the level: a specific recorded event
- * (one missed call, one waiting lead) is strongest; a pattern over
- * real history (a booking at risk, a lapsed regular) is next; a
- * pace inference (slow day) is the softest signal. */
-export const DETECTOR_CONFIDENCE:Record<DetectorName,1|2|3>={
- missed_call_followup:3,unanswered_lead:3,no_show_risk:2,lapsed_regular:2,slow_day:1,
-};
-export function confidenceFor(detector:DetectorName):1|2|3{return DETECTOR_CONFIDENCE[detector]??1;}
 const MAX_NUDGES_PER_DAY=3;
 const STOP='Reply STOP to opt out.';
 
@@ -192,46 +179,11 @@ export async function buildCardCopy(env:Env,ctx:ProactiveContext,detection:Detec
 export async function createSuggestionCard(env:Env,ctx:ProactiveContext,detection:DetectionRow){
  const copy=await buildCardCopy(env,ctx,detection);
  if(!copy)return null;
- // Twin (slice 2a): adopt the owner's dominant greeting once their
- // corpus supports it; otherwise the template stands unchanged.
- copy.draft.message=applyGreetingStyle(copy.draft.message,await readStyleProfile(env,ctx.tenantId));
  const id=crypto.randomUUID(),now=new Date(ctx.nowMs).toISOString();
  await env.AGENT_DB.prepare(`INSERT INTO mayor_suggestion_cards(id,tenant_id,detection_id,kind,title,body,draft_json,state,created_at)
   VALUES(?,?,?,?,?,?,?,'pending',?)`)
   .bind(id,ctx.tenantId,detection.id,copy.kind,copy.title,copy.body,JSON.stringify(copy.draft),now).run();
  return {id,...copy};
-}
-
-/** Harness slice 1: the per-detection materialization both runtimes
- * share — create the card, respect the surface gate (quiet hours +
- * the 3/day nudge cap), surface it. The cron cycle and the
- * MayorBusiness agent's ranked drain call this one path, so a
- * detection behaves identically in either runtime. */
-export async function materializeDetection(env:Env,ctx:ProactiveContext,detection:DetectionRow):Promise<'surfaced'|'carded'|'skipped'>{
- const card=await createSuggestionCard(env,ctx,detection);
- if(!card)return 'skipped';
- if(!(await surfaceGate(env,ctx)).ok)return 'carded';
- await surfaceDetection(env,ctx,detection,card);
- return 'surfaced';
-}
-
-/** The 08:05 briefing, shared by both runtimes (same dedupe + gate).
- * Due at 08:05 local; the first cycle at/after 08:05 builds it. */
-export async function maybeSendBriefing(env:Env,ctx:ProactiveContext):Promise<boolean>{
- const parts=localParts(ctx.nowMs,ctx.timeZone);
- // Due-based, not window-based (soak finding 2026-10-17): the old
- // [08:05,08:10) window matched the 5-minute cron's grid but NEVER
- // intersects the agent runtime's 15-minute sweep grid, so the
- // briefing could never fire there. First cycle/sweep at or after
- // 08:05 local builds it; the per-day dedupe below bounds it to one.
- if(!(parts.hour>8||(parts.hour===8&&parts.minute>=5)))return false;
- const dayKey=parts.date;
- const already=await env.AGENT_DB.prepare('SELECT 1 FROM mayor_notifications WHERE tenant_id=? AND dedupe_key=? LIMIT 1')
-  .bind(ctx.tenantId,`proactive_briefing:${dayKey}`).first();
- if(already||!(await surfaceGate(env,ctx)).ok)return false;
- await notifyOwners(env,ctx.tenantId,'proactive_briefing',`proactive_briefing:${dayKey}`);
- await logNudge(env,ctx.tenantId,'briefing',dayKey);
- return true;
 }
 
 /* ---------------- scheduler ---------------- */
@@ -249,28 +201,28 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
  let detections=0,cards=0,surfaced=0,briefings=0;
  for(const t of tenants.results){
   try{
-   // Harness slice 1: a tenant flagged 'do' runs in its
-   // MayorBusiness agent instead — exactly one runtime per tenant.
-   // The flag is the single switch (soak, 2026-10-17): the cycle
-   // keeps a 'do' tenant's agent armed (arm() is idempotent), so
-   // flipping the flag is the whole operation and flipping it back
-   // reverts cleanly. A failed arm retries on the next cycle.
-   if(await readHarnessRuntime(env,t.id)==='do'){
-    try{
-     const stub=env.MAYOR_BUSINESS.get(env.MAYOR_BUSINESS.idFromName(t.id));
-     await stub.arm(t.id);
-    }catch{/* next cycle retries */}
-    continue;
-   }
    const {context,created}=await runDetectors(env,t.id,nowMs);
    detections+=created.length;
    for(const d of created){
-    const outcome=await materializeDetection(env,context,d);
-    if(outcome!=='skipped')cards++;
-    if(outcome==='surfaced')surfaced++;
+    const card=await createSuggestionCard(env,context,d);
+    if(!card)continue;
+    cards++;
+    if(!(await surfaceGate(env,context)).ok)continue;
+    await surfaceDetection(env,context,d,card);
+    surfaced++;
    }
-   // Morning briefing: once per local day, due 08:05, nudge-capped.
-   if(await maybeSendBriefing(env,context))briefings++;
+   // Morning briefing: once per local day, in the 08:05–08:10 window, nudge-capped.
+   const parts=localParts(nowMs,context.timeZone);
+   if(parts.hour===8&&parts.minute>=5&&parts.minute<10){
+    const dayKey=parts.date;
+    const already=await env.AGENT_DB.prepare('SELECT 1 FROM mayor_notifications WHERE tenant_id=? AND dedupe_key=? LIMIT 1')
+     .bind(t.id,`proactive_briefing:${dayKey}`).first();
+    if(!already&&(await surfaceGate(env,context)).ok){
+     await notifyOwners(env,t.id,'proactive_briefing',`proactive_briefing:${dayKey}`);
+     await logNudge(env,t.id,'briefing',dayKey);
+     briefings++;
+    }
+   }
   }catch(error){
    console.warn(JSON.stringify({event:'proactive_cycle_tenant_failed',tenant:t.id}));
   }
@@ -282,7 +234,7 @@ export async function runProactiveCycle(env:Env,nowMs=Date.now()){
 
 function publicCard(row:CardRow&{detector:DetectorName}){
  const draft=JSON.parse(row.draft_json) as Draft;
- return {id:row.id,kind:row.kind,detector:row.detector,confidence:confidenceFor(row.detector),title:row.title,body:row.body,
+ return {id:row.id,kind:row.kind,detector:row.detector,title:row.title,body:row.body,
   draft:{message:draft.message,audience:draft.audience,audienceCount:draft.audienceCount},
   state:row.state,createdAt:row.created_at};
 }
@@ -293,16 +245,7 @@ export async function listSuggestionCards(env:Env,actor:Actor){
   ORDER BY CASE c.state WHEN 'pending' THEN 0 WHEN 'edited' THEN 1 WHEN 'sent' THEN 2 ELSE 3 END, c.created_at DESC LIMIT 50`)
   .bind(actor.tenantId).all<CardRow&{detector:DetectorName}>();
  await requireMembership(env,actor,OPERATORS);
- // WS1 build 3 (2026-10-17): the list IS the ranked queue — inside
- // each state group, strongest evidence first (the same server-side
- // confidence the card renders), newest first inside a level. The
- // SQL order remains the stable base; this sort only refines it.
- const stateRank=(state:string)=>state==='pending'?0:state==='edited'?1:state==='sent'?2:3;
- const cards=rows.results.map(publicCard);
- cards.sort((a,b)=>stateRank(a.state)-stateRank(b.state)
-  ||(b.confidence??1)-(a.confidence??1)
-  ||(a.createdAt<b.createdAt?1:a.createdAt>b.createdAt?-1:0));
- return {cards};
+ return {cards:rows.results.map(publicCard)};
 }
 
 export const proactiveSettingsSchema=z.object({liveSms:z.boolean()}).strict();
@@ -380,11 +323,11 @@ export async function sendSuggestionCard(env:Env,actor:Actor,cardId:string,trans
    .bind(missedCallId,actor.tenantId).first<{source:string;textback_sent_at:string|null}>();
   if(!call)throw new HttpError(404,'suggestion_unavailable','The missed call for this suggestion is gone.');
   if(call.source==='test'){
-   await simulateTextBack(env,actor,missedCallId,{exceptCardId:cardId});
+   await simulateTextBack(env,actor,missedCallId);
    return finish({simulated:true,audienceCount:1,sentCount:1,failed:0});
   }
   if(live){
-   const res=await sendTextBack(env,actor,missedCallId,transport,{exceptCardId:cardId});
+   const res=await sendTextBack(env,actor,missedCallId,transport);
    return finish({simulated:false,audienceCount:1,sentCount:res.alreadySent?0:1,failed:0});
   }
   await env.AGENT_DB.prepare(`INSERT INTO mayor_sms_log(id,tenant_id,direction,to_number,from_number,body,provider_message_id,status,related_missed_call_id)
@@ -432,9 +375,6 @@ export async function editSuggestionCard(env:Env,actor:Actor,cardId:string,messa
  const draft={...JSON.parse(card.draft_json),message} as Draft;
  await env.AGENT_DB.prepare("UPDATE mayor_suggestion_cards SET draft_json=?,state='edited' WHERE id=? AND state IN ('pending','edited')")
   .bind(JSON.stringify(draft),cardId).run();
- // Twin (slice 2a): the owner's own wording is a style sample —
- // captured as a side effect of the edit they already made.
- await captureStyleSample(env,actor.tenantId,'card_edit',message);
  return {id:cardId,message,audience:draft.audience,audienceCount:draft.audienceCount,state:'edited' as const};
 }
 
@@ -472,37 +412,6 @@ export async function setRoiConfig(env:Env,actor:Actor,input:z.infer<typeof roiC
   ON CONFLICT(tenant_id,field) DO UPDATE SET value_json=excluded.value_json,confirmed_by=excluded.confirmed_by,confirmed_at=excluded.confirmed_at,revision=mayor_memory.revision+1,updated_at=excluded.updated_at`)
   .bind(actor.tenantId,JSON.stringify(parsed),actor.userId,now,now,actor.tenantId,actor.userId,now).run();
  return {avgTicketCents:parsed.avgTicketCents};
-}
-
-export type RevenueSource='configured_avg_ticket'|'recorded_amounts'|'not_configured';
-export interface RevenueSignals{recoveredCents:number|null;source:RevenueSource;recoveries:number;windowDays:number}
-
-/** Real per-tenant revenue signals for the harness and routine contexts
- * (rebuild prerequisite: revenue instrumentation). Reads the same
- * recorded ledger buildRoi reports on — mayor_roi_events recoveries in
- * a trailing 30-day window — with buildRoi's exact fallback semantics:
- * a configured average ticket prices recoveries whose recorded amount
- * is missing; with no ticket, only recorded amounts count; with
- * neither, the value stays null (unknown), never an invented zero.
- * Read-only: seeding stays with the flows that record the events. */
-export async function readRevenueSignals(env:Env,tenantId:string,nowMs=Date.now()):Promise<RevenueSignals>{
- const windowDays=30,end=new Date(nowMs).toISOString(),start=new Date(nowMs-windowDays*86400000).toISOString();
- const recoveries=await env.AGENT_DB.prepare(`SELECT amount_cents FROM mayor_roi_events
-  WHERE tenant_id=? AND kind='recovery' AND occurred_at>=? AND occurred_at<?`).bind(tenantId,start,end).all<{amount_cents:number|null}>();
- const avgTicket=await readAvgTicket(env,tenantId);
- if(avgTicket!=null){
-  return {recoveredCents:recoveries.results.reduce((s,r)=>s+(r.amount_cents??avgTicket),0),source:'configured_avg_ticket',recoveries:recoveries.results.length,windowDays};
- }
- const recorded=recoveries.results.map(r=>r.amount_cents).filter((v):v is number=>v!=null);
- if(recorded.length)return {recoveredCents:recorded.reduce((s,v)=>s+v,0),source:'recorded_amounts',recoveries:recoveries.results.length,windowDays};
- return {recoveredCents:null,source:'not_configured',recoveries:recoveries.results.length,windowDays};
-}
-
-/** The one revenue metric shape the harness and routine contexts share,
- * so the label always names the source of the number. */
-export function revenueMetric(signals:RevenueSignals,unmeasuredLabel:string):{key:'revenue';label:string;value:number|null}{
- if(signals.recoveredCents==null)return {key:'revenue',label:unmeasuredLabel,value:null};
- return {key:'revenue',label:signals.source==='recorded_amounts'?`Recovered revenue · last ${signals.windowDays} days (recorded amounts)`:`Recovered revenue · last ${signals.windowDays} days (at your average ticket)`,value:signals.recoveredCents};
 }
 
 /** Record a no-show. Called by whichever flow marks one (phone confirmation,

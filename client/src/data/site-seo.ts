@@ -12,7 +12,7 @@ export type SeoMeta = {
   jsonLd?: Record<string, unknown>[];
 };
 const pages: Record<string, [string, string]> = {
-  "/mayor": ["The Mayor: AI for Your Local Business", "Meet The Mayor: business knowledge, customers, tasks, appointments and voice assistance. Free $0 and Pro $99 USD/month. Sign in to your private business workspace."],
+  "/mayor": ["The Mayor: AI for Your Local Business", "Meet The Mayor: business knowledge, customers, tasks, appointments and voice assistance. Free $0 and Pro $14 USD/month. Sign in to your private business workspace."],
   "/explore": ["Ask The Mayor: Visual AI Conversation", "Talk to The Mayor about business, AI and software. Explore visual answers and save conversations on your device by choice. No signup to begin."],
   "/enterprise": ["Custom AI for Enterprise & Regulated Teams", "Explore scoped AI and software pilots for technology, healthcare, pharma, finance and enterprise operations, with approved knowledge, access boundaries and human review."],
   "/": [

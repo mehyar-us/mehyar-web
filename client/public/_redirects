@@ -1,12 +1,3 @@
-# 0) /business-audit → /audit/ — 301 (rot547/rot548, Clef AUTO; Product Chief ruling
-#    2026-10-22). Outreach traffic typing "business-audit" is looking for Audit My
-#    Business, whose hub funnel is /audit/ — the redirect lives here, at the redirect
-#    layer, because the SPA otherwise answers a 200 soft-404. Bare + slash + splat
-#    rows mirror the /330 family's shape below.
-/business-audit            /audit/            301
-/business-audit/           /audit/            301
-/business-audit/*          /audit/:splat     301
-
 # 1) Legacy /330 short-URL alias for the $330 audit offer — 308 to canonical /micro-offer.
 #    /330 → /micro-offer.
 #    Both with and without trailing slash so any external / short-URL link lands on canonical.
