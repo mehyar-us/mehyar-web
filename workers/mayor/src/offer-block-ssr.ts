@@ -120,11 +120,17 @@ export interface FoundingSsrBlock {available:boolean;seats_total:number;seats_ta
  * once the cohort is full — the list block stands alone. */
 export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  if(!founding)return '';
+ // Reinvention Slice 1 — the founding door, whole (blueprint §2.1 E-0):
+ // the line is a REAL anchor to /billing?plan=founding. Visibility
+ // conditions are unchanged (live count only while computable and
+ // seats remain; the static no-number line when the count is
+ // unavailable; nothing once the cohort is full) — the anchor carries
+ // intent only; the seat gate still decides at claim time.
  if(founding.available){
   if(founding.seats_remaining===null||founding.seats_remaining<=0)return '';
-  return `<p class="plan-founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</p>`;
+  return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</a></p>`;
  }
- return `<p class="plan-founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</p>`;
+ return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</a></p>`;
 }
 export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:string;packs:string}|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');

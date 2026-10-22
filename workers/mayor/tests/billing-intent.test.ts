@@ -2,16 +2,19 @@
  * billing-intent.test.ts — purchase intent consumption (NEW-1, 2026-10-17).
  *
  * The allowlist is the contract: exactly the values /sales and
- * /pricing emit. plan=pro-founding must parse to null — founding is
- * seat-gated in the dialog and the server; a URL must never be able
- * to preselect a seat. The stash exists so the intent survives the
- * sign-in round trip; take() consumes it exactly once.
+ * /pricing emit. plan=pro-founding must parse to null — that is a
+ * checkout planId, not an intent. plan=founding joined the allowlist
+ * with the reinvention's founding door (Slice 1, blueprint §2.1 E-0):
+ * it is INTENT only — the seat gate still decides at claim time in
+ * the dialog and on the server, and preselection is never a seat.
+ * The stash exists so the intent survives the sign-in round trip;
+ * take() consumes it exactly once.
  */
 import {describe,expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import {captureBillingIntent,hasBillingIntent,parseBillingIntent,takeBillingIntent,type IntentStore} from '../web/billing-intent';
+import {captureBillingIntent,dismissBillingIntent,hasBillingIntent,parseBillingIntent,peekBillingIntent,takeBillingIntent,type IntentStore} from '../web/billing-intent';
 
 function fakeStore():IntentStore & {map:Map<string,string>}{
   const map=new Map<string,string>();
@@ -24,12 +27,14 @@ function fakeStore():IntentStore & {map:Map<string,string>}{
 describe('parseBillingIntent allowlist',()=>{
   it('accepts exactly the emitted values',()=>{
     expect(parseBillingIntent('?plan=pro')).toEqual({kind:'plan',id:'pro'});
+    expect(parseBillingIntent('?plan=founding')).toEqual({kind:'plan',id:'founding'});
+    expect(parseBillingIntent('?start=1&plan=founding')).toEqual({kind:'plan',id:'founding'});
     expect(parseBillingIntent('?pack=small')).toEqual({kind:'pack',id:'small'});
     expect(parseBillingIntent('?pack=medium')).toEqual({kind:'pack',id:'medium'});
     expect(parseBillingIntent('?pack=large')).toEqual({kind:'pack',id:'large'});
     expect(parseBillingIntent('plan=pro')).toEqual({kind:'plan',id:'pro'}); // no leading ?
   });
-  it('rejects everything else — founding can never be smuggled in',()=>{
+  it('rejects everything else — the founding planId can never be smuggled in as intent',()=>{
     expect(parseBillingIntent('?plan=pro-founding')).toBeNull();
     expect(parseBillingIntent('?plan=free')).toBeNull();
     expect(parseBillingIntent('?plan=PRO')).toBeNull();
@@ -89,10 +94,61 @@ describe('wiring pins',()=>{
   it('workday consumes the pending intent inside loadBilling via the button paths',()=>{
     const workday=web('workday.ts');
     expect(workday).toContain('pendingBillingIntent');
-    expect(workday).toContain("if(intent.kind==='plan'){if(data.plan.id!=='pro')void checkout();}");
+    expect(workday).toContain("if(intent.kind==='plan'){if(data.plan.id!=='pro')void checkout(intent.id==='founding');}");
     expect(workday).toContain('creditCheckout(pack)');
-    // The founding checkout path is not reachable from the intent:
+    // Slice 1: a founding intent opens the dialog PRESELECTED on
+    // founding; the checkout planId itself is never an intent value:
+    expect(workday).toContain('preselectFounding');
     expect(workday).not.toContain("intent.id==='pro-founding'");
+  });
+  it('main.ts renders the carrier through the Desk Ribbon (peek, never consume) and clears spent params',()=>{
+    const main=web('main.ts');
+    expect(main).toContain('peekBillingIntent()');
+    expect(main).toContain('mountDeskStrip');
+    expect(main).toContain('dismissBillingIntent()');
+    expect(main).toContain('stripIntentParams()');
+  });
+});
+
+describe('founding intent through the carrier (Slice 1)',()=>{
+  const T0=1_800_000_000_000;
+  function facade(map:Map<string,string>):IntentStore{
+    return {getItem:(k)=>map.get(k)??null,setItem:(k,v)=>{map.set(k,v);},removeItem:(k)=>{map.delete(k);}};
+  }
+  it('a founding intent survives a second-tab sign-in and is consumed exactly once',()=>{
+    const shared=new Map<string,string>();
+    // Tab A: the pricing click. Tab B: sign-in completes there; the
+    // boot on tab B has no URL params — the shared stash carries it.
+    expect(captureBillingIntent('?plan=founding',facade(shared),T0)).toEqual({kind:'plan',id:'founding'});
+    expect(takeBillingIntent('',facade(shared),T0+3*60*1000)).toEqual({kind:'plan',id:'founding'});
+    expect(takeBillingIntent('',facade(shared),T0+3*60*1000)).toBeNull(); // consumed once
+  });
+  it('peek renders the carrier without consuming it (the Ribbon contract)',()=>{
+    const store=fakeStore();
+    captureBillingIntent('?plan=founding',store,T0);
+    expect(peekBillingIntent('',store,T0+60*1000)).toEqual({kind:'plan',id:'founding'});
+    expect(peekBillingIntent('',store,T0+60*1000)).toEqual({kind:'plan',id:'founding'}); // still there
+    expect(takeBillingIntent('',store,T0+60*1000)).toEqual({kind:'plan',id:'founding'}); // take still works
+  });
+  it('a second visit shows no stale intent; an intent older than 60 minutes is ignored',()=>{
+    const store=fakeStore();
+    captureBillingIntent('?plan=founding',store,T0);
+    expect(peekBillingIntent('',store,T0+61*60*1000)).toBeNull();
+    expect(hasBillingIntent('',store,T0+61*60*1000)).toBe(false);
+  });
+  it('dismiss clears the carrier without consuming toward billing',()=>{
+    const store=fakeStore();
+    captureBillingIntent('?plan=founding',store,T0);
+    dismissBillingIntent(store);
+    expect(store.map.size).toBe(0);
+    expect(takeBillingIntent('',store,T0)).toBeNull();
+  });
+  it('a stored plan:founding from before the allowlist change is re-validated, never trusted raw',()=>{
+    const store=fakeStore();
+    store.setItem('mayor_billing_intent',`plan:founding@${T0}`);
+    expect(takeBillingIntent('',store,T0+1000)).toEqual({kind:'plan',id:'founding'});
+    store.setItem('mayor_billing_intent','plan:founding'); // no stamp — pre-hardening shape
+    expect(takeBillingIntent('',store,T0+1000)).toBeNull();
   });
 });
 
