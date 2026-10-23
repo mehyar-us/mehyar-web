@@ -135,9 +135,26 @@ async function evidenceStored(raw:string|null,origin:string):Promise<AuditEviden
  return evidence;
 }
 function contextFor(order:Order):AuditContext {const parsed=auditIntakeSchema.safeParse(parseStored(order.intake_json));if(!parsed.success)throw new AuditFailure('intake_invalid',true);const {businessName,website,goals,notes,links}=parsed.data;return {businessName,website,goals,notes,links};}
+// Per-stage artifact preservation (2026-10-23, DP-4 under ruling
+// chief-of-decisions-audit-quality-scope-dps): every stage output is also
+// recorded append-only in mayor_audit_stage_artifacts, so a judged run's
+// first-round draft and review survive later rounds instead of being
+// overwritten in the single-slot order columns (the gap that cost exercises
+// 2 and 9 their first-round texts). Archival is write-only and fail-silent
+// by construction: it reads nothing back, feeds no stage input, criterion
+// or flow decision, and can never fail or alter a stage transition.
+async function archiveStageArtifact(env:BusinessAuditEnv,order:Order,stage:Stage,kind:'evidence'|'draft'|'review',round:number,payload:string,model:string|null,now:number){
+ try{await env.AGENT_DB.prepare("INSERT INTO mayor_audit_stage_artifacts(id,order_id,stage,artifact_kind,round,model,payload_json,created_at) VALUES(?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(),order.id,stage,kind,round,model,payload,new Date(now).toISOString()).run();}catch{/* preservation never alters the pipeline */}
+}
 async function saveStage(env:BusinessAuditEnv,order:Order,now:number,next:Stage,fields:{evidence?:AuditEvidence;draft?:AuditDraft;draftModel?:AuditModel;review?:AuditReview;reviewCount?:number}){
  const result=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET evidence_json=COALESCE(?,evidence_json),draft_json=COALESCE(?,draft_json),analysis_draft_model=COALESCE(?,analysis_draft_model),review_json=COALESCE(?,review_json),analysis_review_count=COALESCE(?,analysis_review_count),analysis_stage=?,analysis_stage_attempts=0,analysis_next_attempt_at=0,analysis_error_code=NULL,analysis_token=NULL,analysis_lease_expires_at=NULL,analysis_job_id=NULL,analysis_job_model=NULL,analysis_job_reference=NULL,analysis_job_started_at=NULL,analysis_job_poll_failures=0,updated_at=? WHERE id=? AND analysis_token=? AND analysis_stage=? AND payment_status='paid' AND fulfillment_status='in_review' AND analysis_lease_expires_at>?")
- .bind(fields.evidence?JSON.stringify(fields.evidence):null,fields.draft?JSON.stringify(fields.draft):null,fields.draftModel??null,fields.review?JSON.stringify(fields.review):null,fields.reviewCount??null,next,new Date(now).toISOString(),order.id,order.analysis_token,order.analysis_stage,now).run();return Boolean(result.meta.changes);
+ .bind(fields.evidence?JSON.stringify(fields.evidence):null,fields.draft?JSON.stringify(fields.draft):null,fields.draftModel??null,fields.review?JSON.stringify(fields.review):null,fields.reviewCount??null,next,new Date(now).toISOString(),order.id,order.analysis_token,order.analysis_stage,now).run();
+ if(result.meta.changes){
+  if(fields.evidence)await archiveStageArtifact(env,order,order.analysis_stage,'evidence',0,JSON.stringify(fields.evidence),null,now);
+  if(fields.draft)await archiveStageArtifact(env,order,order.analysis_stage,'draft',order.analysis_review_count+1,JSON.stringify(fields.draft),fields.draftModel??null,now);
+  if(fields.review)await archiveStageArtifact(env,order,order.analysis_stage,'review',fields.reviewCount??order.analysis_review_count+1,JSON.stringify(fields.review),fields.review.model,now);
+ }
+ return Boolean(result.meta.changes);
 }
 async function reserveModel(env:BusinessAuditEnv,order:Order,model:string,now:number){
  if(order.analysis_job_reference&&!order.analysis_job_id)throw new AuditFailure('model_submission_uncertain',true);
@@ -250,12 +267,12 @@ async function processStage(env:BusinessAuditEnv,order:Order,options:AuditRunOpt
  const review:AuditReview={...reviewResult,model:job.model,reviewedAt:new Date(now()).toISOString()};
  const diagnostics=auditDraftQualityDiagnostics(draft,evidence);
  if(!approvedAuditReview(review)||diagnostics.length){
-  if(order.analysis_review_count>=1){const time=now();const result=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET review_json=?,analysis_review_count=analysis_review_count+1,fulfillment_status='needs_review',analysis_error_code=?,analysis_token=NULL,analysis_lease_expires_at=NULL,analysis_job_id=NULL,analysis_job_model=NULL,analysis_job_reference=NULL,analysis_job_started_at=NULL,updated_at=? WHERE id=? AND analysis_token=? AND analysis_stage='review' AND payment_status='paid' AND fulfillment_status='in_review' AND analysis_lease_expires_at>?").bind(JSON.stringify(review),approvedAuditReview(review)?'final_quality_rejected':'independent_review_rejected',new Date(time).toISOString(),order.id,order.analysis_token,time).run();return result.meta.changes?'needsReview':'lost';}
+  if(order.analysis_review_count>=1){const time=now();const result=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET review_json=?,analysis_review_count=analysis_review_count+1,fulfillment_status='needs_review',analysis_error_code=?,analysis_token=NULL,analysis_lease_expires_at=NULL,analysis_job_id=NULL,analysis_job_model=NULL,analysis_job_reference=NULL,analysis_job_started_at=NULL,updated_at=? WHERE id=? AND analysis_token=? AND analysis_stage='review' AND payment_status='paid' AND fulfillment_status='in_review' AND analysis_lease_expires_at>?").bind(JSON.stringify(review),approvedAuditReview(review)?'final_quality_rejected':'independent_review_rejected',new Date(time).toISOString(),order.id,order.analysis_token,time).run();if(result.meta.changes)await archiveStageArtifact(env,order,'review','review',order.analysis_review_count+1,JSON.stringify(review),job.model,time);return result.meta.changes?'needsReview':'lost';}
   return await saveStage(env,order,now(),'revise',{review,reviewCount:order.analysis_review_count+1})?'advanced':'lost';
  }
  const completedAt=now(),report=assembleAuditReport(order.id,context,evidence,draft,new Date(completedAt).toISOString(),{analysisModel:draftModel(order),reviewModel:job.model});
  const result=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET report_json=?,review_json=?,report_created_at=?,fulfillment_status='report_ready',analysis_review_count=analysis_review_count+1,analysis_error_code=NULL,analysis_token=NULL,analysis_lease_expires_at=NULL,analysis_job_id=NULL,analysis_job_model=NULL,analysis_job_reference=NULL,analysis_job_started_at=NULL,analysis_job_poll_failures=0,updated_at=? WHERE id=? AND analysis_token=? AND analysis_stage='review' AND payment_status='paid' AND fulfillment_status='in_review' AND analysis_lease_expires_at>?")
- .bind(JSON.stringify(report),JSON.stringify(review),report.generatedAt,report.generatedAt,order.id,order.analysis_token,completedAt).run();return result.meta.changes?'ready':'lost';
+ .bind(JSON.stringify(report),JSON.stringify(review),report.generatedAt,report.generatedAt,order.id,order.analysis_token,completedAt).run();if(result.meta.changes)await archiveStageArtifact(env,order,'review','review',order.analysis_review_count+1,JSON.stringify(review),job.model,completedAt);return result.meta.changes?'ready':'lost';
 }
 function validatedStoredDraft(value:string|null,evidence:AuditEvidence,repairInput=false){
  try{return repairInput?validateAuditDraft(parseStored(value),evidence,{repairInput:true}):validateAuditStoredInternalDraft(parseStored(value),evidence);}
