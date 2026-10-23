@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { buttonVariants } from "@/components/ui/button";
@@ -10,6 +11,19 @@ import SampleReportPreview from "@/components/SampleReportPreview";
    from /audit/. The preview component is fictional by design ("Sample
    Plumbing Co") and labelled SAMPLE throughout. */
 export default function AuditSampleReport() {
+  /* rot607 (2026-10-23): the sample page carries the same paused annotation
+     as its sibling surfaces while audit_paused holds — keyed to the same
+     availability flag, so it self-clears at the unpause. */
+  const [auditPaused, setAuditPaused] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pay/availability", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setAuditPaused(!!(d && d.ok && d.audit_paused)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <section className="px-4 py-12 md:py-16">
       <div className="site-shell max-w-3xl">
@@ -47,6 +61,12 @@ export default function AuditSampleReport() {
           <a href="/audit#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-2 min-h-12")}>
             Start Step 1 — it's free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
           </a>
+          {auditPaused && (
+            <p className="max-w-xl text-xs leading-5 text-muted-foreground">
+              Paid reports are currently paused while we restore full report
+              generation — the free scan in Step 1 runs as always.
+            </p>
+          )}
           <p className="text-xs leading-5 text-muted-foreground">
             Fictional business ("Sample Plumbing Co") — illustration, not a real audit.
           </p>

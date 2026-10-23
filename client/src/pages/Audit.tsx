@@ -384,11 +384,20 @@ export default function Audit() {
      the hero BEFORE they invest time in steps 1–2. Null = unknown (probe failed
      — stay quiet; the post-click blocked panel still catches it). */
   const [checkoutOpen, setCheckoutOpen] = useState<boolean | null>(null);
+  /* rot607 (2026-10-23): copy surfaces key off audit_paused itself — while
+     it holds, checkout-tense wording (the closing block, the results CTA)
+     names the paused state; the framing self-clears when the flag flips. */
+  const [auditPaused, setAuditPaused] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetch("/api/pay/availability", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => { if (!cancelled) setCheckoutOpen(d && d.ok ? (!!d.checkout_open && !d.audit_paused) : null); })
+      .then((d) => {
+        if (!cancelled) {
+          setCheckoutOpen(d && d.ok ? (!!d.checkout_open && !d.audit_paused) : null);
+          setAuditPaused(!!(d && d.ok && d.audit_paused));
+        }
+      })
       .catch(() => { if (!cancelled) setCheckoutOpen(null); });
     return () => { cancelled = true; };
   }, []);
@@ -1075,7 +1084,11 @@ export default function Audit() {
                   leaks, flaws, prioritized fixes, and where AI fits in your business.
                 </p>
                 <a href="#step-3" className={cn(buttonVariants({ variant: "cta" }), "mt-4")}>
-                  Continue to payment — $330 <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                  {auditPaused ? (
+                    <>Paid audits are currently paused <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>
+                  ) : (
+                    <>Continue to payment — $330 <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>
+                  )}
                 </a>
               </div>
             )}
@@ -1501,11 +1514,26 @@ export default function Audit() {
             <Sparkles className="mx-auto h-8 w-8 text-brand-200" aria-hidden="true" />
             <p className="mt-3 text-xl font-semibold">Know exactly what's leaking.</p>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/75">
-              One URL, one optional video, one $330 payment — and a professional report that tells
-              you what to fix first.
+              {auditPaused ? (
+                <>One URL, one optional video — and a professional report that tells
+                you what to fix first.</>
+              ) : (
+                <>One URL, one optional video, one $330 payment — and a professional report that tells
+                you what to fix first.</>
+              )}
             </p>
+            {auditPaused && (
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/60">
+                Paid audits are currently paused while we restore full report
+                generation — the free scan runs as always.
+              </p>
+            )}
             <a href="#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-6")}>
-              Start your audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              {auditPaused ? (
+                <>Start with the free scan <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>
+              ) : (
+                <>Start your audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>
+              )}
             </a>
           </div>
         </div>
