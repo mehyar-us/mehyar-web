@@ -82,7 +82,7 @@
           <h3>CashText</h3>
           <p class="plan-tier">Add-on module · its own subscription</p>
           <p>Invoice customers by conversation: The Mayor drafts each invoice and payment reminder, you approve every send, and your customers pay your own Stripe account. Bills as its own subscription, separate from your Mayor plan — cancel ends it at period end.</p>
-          <a class="button button-small" href="/billing?module=cashtext">Add CashText</a>
+          <p class="module-launch-note">Arrives with the module launch — pricing is announced at launch, and checkout opens then.</p>
         </article>
       </div>
     </section>
@@ -159,13 +159,15 @@
     function moduleCard(m){
       // Phase 1 renders the CashText card only; LeadProof's card joins
       // with its billing in Phase 5 (the catalog already lists both).
+      // Correction (2026-10-23): the card carries NO price and NO ask —
+      // CashText's launch price is undecided (D5 HOLD; the Clef re-run
+      // authorized no figure), so the module presents by name and
+      // description only until a price is ruled and checkout opens.
       if(m.id!=='cashtext')return '';
       return '<article class="plan-card"><h3>'+esc(m.name)+'</h3>'
-        +'<p class="plan-price"><strong>$'+Math.round(Number(m.priceCents)/100)+'</strong><span> / month</span></p>'
         +'<p class="plan-tier">Add-on module · its own subscription</p>'
         +'<p>Invoice customers by conversation: The Mayor drafts each invoice and payment reminder, you approve every send, and your customers pay your own Stripe account. Bills as its own subscription, separate from your Mayor plan — cancel ends it at period end.</p>'
-        +'<a class="button button-small" href="/billing?module=cashtext">Add '+esc(m.name)+' — $'+Math.round(Number(m.priceCents)/100)+'/mo</a>'
-        +'<p class="plan-final-sale">Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p></article>';
+        +'<p class="module-launch-note">Arrives with the module launch — pricing is announced at launch, and checkout opens then.</p></article>';
     }
     async function load(){
       var plansEl=document.getElementById('plan-cards'),packsEl=document.getElementById('topup-cards'),modulesEl=document.getElementById('module-cards');
