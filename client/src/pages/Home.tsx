@@ -83,13 +83,13 @@ export default function Home() {
           </p>
           <h2 className="site-display mx-auto max-w-5xl text-center text-balance">Is your website leaking money?</h2>
           <p className="site-lede mx-auto mt-5 max-w-3xl text-center text-balance">
-            Drop in your URL. Our AI tears your site apart like a buyer would — every leak priced in dollars — then maps the AI systems that fit your business, with the capacity math shown for your numbers. Free, 60 seconds.
+            Drop in your URL. Our AI tears your site apart like a buyer would — every leak priced in dollars — then maps the AI systems that fit your business, with the capacity math shown for your numbers. Free — about 10 seconds.
           </p>
           <div className="mt-8">
             <AuditWidget compact />
           </div>
           <div className="mx-auto mt-6 flex max-w-xl items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>Free 60-second scan · No credit card · Just an email for delivery</span>
+            <span>Free 10-second scan · No credit card · Just an email for delivery</span>
           </div>
         </div>
       </section>
@@ -133,7 +133,7 @@ export default function Home() {
         <div className="site-shell">
           <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
             {[
-              { icon: ScanSearch, title: "1. Free 60-second audit", desc: "Enter your URL. AI scores your site, finds your 3 biggest money leaks, and detects your business type." },
+              { icon: ScanSearch, title: "1. Free 10-second audit", desc: "Enter your URL. AI scores your site, finds your 3 biggest money leaks, and detects your business type." },
               { icon: Sparkles, title: "2. See your AI upside", desc: "Get the AI pipelines built for your industry — voice agents, scheduling, document scanning — with the capacity math shown step by step." },
               { icon: FileText, title: "3. Go deep for $5", desc: "The complete professional evaluation: every page graded, every leak priced, your AI blueprint, 90-day plan. Less than a coffee." },
             ].map((s) => (

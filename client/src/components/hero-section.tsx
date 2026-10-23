@@ -13,7 +13,7 @@ export default function HeroSection() {
         </p>
         <h1 className="site-display mx-auto max-w-5xl text-balance">Is your website leaking money?</h1>
         <p className="site-lede mx-auto mt-5 max-w-3xl text-balance">
-          Drop in your URL. Our AI scans your site in 60 seconds and shows you exactly where customers slip away — priced in dollars. Free, no card — just your email for delivery.
+          Drop in your URL. Our AI scans your site in about 10 seconds and shows you exactly where customers slip away — priced in dollars. Free, no card — just your email for delivery.
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
           <Link href="/audit/free" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>
@@ -24,7 +24,7 @@ export default function HeroSection() {
           </Link>
         </div>
         <p className="mx-auto mt-4 max-w-xl text-xs leading-5 text-muted-foreground">
-          Free 60-second scan · Your full report lands in your inbox
+          Free 10-second scan · Your full report lands in your inbox
         </p>
       </div>
     </section>

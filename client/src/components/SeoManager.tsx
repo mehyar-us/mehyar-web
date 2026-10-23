@@ -204,7 +204,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/audit/free": {
     title: "Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft",
     description:
-      "Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No card — just an email for delivery.",
+      "Free 10-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No card — just an email for delivery.",
     path: "/audit/free",
   },
   "/audit/report": {
@@ -307,7 +307,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "What does a first engagement cost?",
           answer:
-            "Start free: the 60-second AI website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email within 3–5 business days — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
+            "Start free: the 10-second AI website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email within 3–5 business days — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
         },
         {
           question: "Where is MehyarSoft based?",

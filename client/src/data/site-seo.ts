@@ -57,7 +57,7 @@ const pages: Record<string, [string, string]> = {
   ],
   "/audit": [
     "Free Automated Website Diagnostic",
-    "An automated website diagnostic with suggested improvements, delivered in about 60 seconds.",
+    "An automated website diagnostic with suggested improvements, delivered in about 10 seconds.",
   ],
   "/audit/report": [
     "$5 Automated Website Report",

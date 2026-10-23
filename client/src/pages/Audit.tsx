@@ -815,7 +815,7 @@ export default function Audit() {
             <div className="flex flex-col rounded-2xl border border-border bg-card p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Free scan</p>
               <p className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">$0</p>
-              <p className="mt-1 text-xs text-muted-foreground">60 seconds · no card</p>
+              <p className="mt-1 text-xs text-muted-foreground">About 10 seconds · no card</p>
               <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-muted-foreground">
                 <li>Overall site score snapshot</li>
                 <li>3 money leaks, priced in dollars</li>
@@ -903,7 +903,7 @@ export default function Audit() {
                   <Label htmlFor="ab-url">Your business website</Label>
                   <Input id="ab-url" type="text" inputMode="url" autoComplete="url" required placeholder="acmeplumbing.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="mt-2 h-14 text-lg" />
                   <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    Just the URL. We read your site and fill in your business details ourselves — free, about 10 seconds.
+                    Just the URL. We read your site and fill in your business details ourselves — free.
                   </p>
                 </div>
                 {intakeError && (
