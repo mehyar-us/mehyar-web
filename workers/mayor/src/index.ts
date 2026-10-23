@@ -4,6 +4,7 @@ import {NOT_FOUND_HTML} from './not-found-page';
 import {injectOfferBlock,injectHomeAuditSlot,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans} from './offer-block-ssr';
 import {auditOffer} from './billing/audit';
 import {foundingSeats} from './billing/founding';
+import {auditPaused} from './billing/audit-availability';
 import {handleConnectionsRequest} from './connections';
 import {handleEngineRequest} from './engine/routes';
 import {handleConnectorEngineRequest,getConnectorSession} from './connector-engine';
@@ -117,7 +118,14 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const assetRes=await env.ASSETS.fetch(new Request(new URL('/',request.url),request));
     const contentType=assetRes.headers.get('content-type')??'';
     if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),injected=stampDescriptorHash(injectHeroPrice(injectOfferBlock(injectHomeAuditSlot(original,auditOffer(env).available),await foundingSeats(env))),(await currentDescriptor(env)).hash);
+      const original=await assetRes.text();
+      // The audit band's paused annotation keys off the hub's
+      // availability flag, read at serve time (billing/audit-
+      // availability — cached per isolate, fail-safe to paused).
+      // The read runs only when the band will render; an unavailable
+      // band stays absent regardless of the pause state.
+      const auditAvailable=auditOffer(env).available,auditPausedState=auditAvailable?await auditPaused():true;
+      const injected=stampDescriptorHash(injectHeroPrice(injectOfferBlock(injectHomeAuditSlot(original,auditAvailable,auditPausedState),await foundingSeats(env))),(await currentDescriptor(env)).hash);
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');

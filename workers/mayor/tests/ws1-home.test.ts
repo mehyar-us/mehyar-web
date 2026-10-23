@@ -51,7 +51,10 @@ describe('home founding line',()=>{
 
 describe('home audit band card',()=>{
  it('is a card: head row with the catalog price and a CTA link',()=>{
-  const band=homeAuditBandSsrHtml();
+  // Pause-state arg added 2026-10-23 (audit-band paused annotation):
+  // this pin exercises the unpaused form; paused-form pins live in
+  // tests/audit-band-pause.test.ts.
+  const band=homeAuditBandSsrHtml(false);
   expect(band).toContain('home-audit-head');
   expect(band).toContain('home-audit-price');
   expect(band).toContain('$330');

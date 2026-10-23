@@ -81,21 +81,25 @@ describe('one sign-in block (rot564 collapse)',()=>{
 
 describe('home audit band',()=>{
   it('renders the catalog audit price and the audit page link',()=>{
-    const band=homeAuditBandSsrHtml();
+    // Call sites updated 2026-10-23 (audit-band paused annotation):
+    // the band and slot now take the serve-time pause state; these
+    // pins exercise the unpaused form — the paused form's pins live
+    // in tests/audit-band-pause.test.ts.
+    const band=homeAuditBandSsrHtml(false);
     expect(band).toContain('$330');
     expect(band).toContain('href="/business-audit"');
     expect(band).toContain('Extensive business audit');
   });
   it('renders into the audit slot above the sign-in, only when the audit offer is available (rot564 move)',()=>{
     const page='<div id="chat-sign-in"><div id="home-audit-slot"></div><div id="offer-block" class="offer-block" aria-label="Plans"><p class="offer-fallback">x</p></div></div>';
-    expect(injectHomeAuditSlot(page,true)).toContain('home-audit-band');
-    expect(injectHomeAuditSlot(page,true)).toContain('data-ssr="catalog"');
-    expect(injectHomeAuditSlot(page,false)).toBe(page);
-    expect(injectHomeAuditSlot(page,false)).not.toContain('home-audit-band');
+    expect(injectHomeAuditSlot(page,true,false)).toContain('home-audit-band');
+    expect(injectHomeAuditSlot(page,true,false)).toContain('data-ssr="catalog"');
+    expect(injectHomeAuditSlot(page,false,false)).toBe(page);
+    expect(injectHomeAuditSlot(page,false,false)).not.toContain('home-audit-band');
     // Idempotent + fail-quiet on unexpected markup.
-    const filled=injectHomeAuditSlot(page,true);
-    expect(injectHomeAuditSlot(filled,true)).toBe(filled);
-    expect(injectHomeAuditSlot('<p>no slot</p>',true)).toBe('<p>no slot</p>');
+    const filled=injectHomeAuditSlot(page,true,false);
+    expect(injectHomeAuditSlot(filled,true,false)).toBe(filled);
+    expect(injectHomeAuditSlot('<p>no slot</p>',true,false)).toBe('<p>no slot</p>');
   });
   it('no longer rides inside the offer block (rot564 move)',()=>{
     expect(offerBlockSsrHtml()).not.toContain('home-audit-band');

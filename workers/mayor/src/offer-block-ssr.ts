@@ -48,12 +48,22 @@ function validPlan(p:unknown):p is SsrPlan{
  * #home-audit-slot container ABOVE the one surviving sign-in block,
  * so a cold visitor meets the audit call to action before the
  * sign-in wall. Markup, price source, availability gate, and copy
- * are unchanged — only the position moved. */
-export function homeAuditBandSsrHtml():string{
+ * are unchanged — only the position moved.
+ * Paused annotation (2026-10-23, Product Chief order): while the hub
+ * Audit checkouts are paused (claim-posture ruling — paid rungs stay
+ * down until report generation verifiably runs the real AI), the band
+ * says so BEFORE the click and names what the click delivers today
+ * (the free scan + the notify path). The state is read at serve time
+ * from the hub's availability flag (billing/audit-availability) and
+ * the annotation is keyed off it: the serve path passes the flag's
+ * value, so the note retires itself when the hub unpauses. Only an
+ * affirmative unpaused read omits it. */
+export function homeAuditBandSsrHtml(auditPausedState:boolean):string{
   // WS1 build 2 (2026-10-16): promoted from a footnote line to a card
  // at the plan rows' weight (rot298 input 1) — same name, price,
  // sentence, and link; the price still comes only from AUDIT_OFFER.
- return `<aside class="home-audit-band"><div class="home-audit-head"><strong>${escapeHtml(AUDIT_OFFER.name)}</strong><span class="home-audit-price">${escapeHtml(formatPrice(AUDIT_OFFER.priceCents))} one-time</span></div><p>A reviewed report on how people find your business, become customers, and come back — plus a practical plan for a better workday.</p><a class="home-audit-cta" href="/business-audit">See the business audit</a></aside>`;
+ const note=auditPausedState?`<p class="home-audit-note">Audit checkout is paused while report generation is restored. The free scan is open, and the audit page can notify you when checkout returns.</p>`:'';
+ return `<aside class="home-audit-band"><div class="home-audit-head"><strong>${escapeHtml(AUDIT_OFFER.name)}</strong><span class="home-audit-price">${escapeHtml(formatPrice(AUDIT_OFFER.priceCents))} one-time</span></div><p>A reviewed report on how people find your business, become customers, and come back — plus a practical plan for a better workday.</p>${note}<a class="home-audit-cta" href="/business-audit">See the business audit</a></aside>`;
 }
 
 export function offerBlockSsrHtml(founding?:FoundingSsrBlock|null):string|null{
@@ -413,9 +423,12 @@ export function injectOfferBlock(html:string,founding?:FoundingSsrBlock|null):st
  * offer is unavailable, the container is missing or already rendered,
  * or its content is not the expected empty slot — the slot then stays
  * empty and the page keeps its price-free static form.
+ * `auditPausedState` is the serve-time hub availability read (see
+ * billing/audit-availability): true renders the band's paused
+ * annotation, false renders the band exactly as before the pause.
  */
 const AUDIT_SLOT_OPEN='<div id="home-audit-slot"';
-export function injectHomeAuditSlot(html:string,auditAvailable:boolean):string{
+export function injectHomeAuditSlot(html:string,auditAvailable:boolean,auditPausedState:boolean):string{
   if(!auditAvailable)return html;
   const openAt=html.indexOf(AUDIT_SLOT_OPEN);
   if(openAt<0)return html;
@@ -427,7 +440,7 @@ export function injectHomeAuditSlot(html:string,auditAvailable:boolean):string{
   if(closeAt<0)return html;
   if(html.slice(tagEnd+1,closeAt).trim()!=='')return html; // unexpected content — don't guess
   const tagged=openingTag.replace(AUDIT_SLOT_OPEN,`${AUDIT_SLOT_OPEN} data-ssr="catalog"`);
-  return html.slice(0,openAt)+tagged+homeAuditBandSsrHtml()+html.slice(closeAt);
+  return html.slice(0,openAt)+tagged+homeAuditBandSsrHtml(auditPausedState)+html.slice(closeAt);
 }
 
 /* Homepage hero price anchor (rot156): the Pro price above the fold,

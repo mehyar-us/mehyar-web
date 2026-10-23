@@ -76,5 +76,6 @@ textarea:focus-visible{outline:3px solid #397cdd;outline-offset:3px}
 .home-audit-head strong{font-size:15px;color:#102b47}
 .home-audit-price{font-size:15px;font-weight:700;color:#102b47;white-space:nowrap}
 .home-audit-band p{font-size:13px;color:#41586e;margin:8px 0 12px}
+.home-audit-note{font-weight:600;color:#102b47}
 .home-audit-cta{display:inline-block;background:#102b47;color:#fff;padding:8px 14px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none}
 @media(max-width:520px){.offer-plans{grid-template-columns:1fr}}
