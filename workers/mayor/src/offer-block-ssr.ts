@@ -228,12 +228,12 @@ function injectIntoContainer(html:string,containerId:string,rendered:string):str
  * missing, already server-rendered, or the catalog can't be trusted — the
  * client fallback then stays in place.
  */
-export function injectPricingCards(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null):string{
+export function injectPricingCards(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null,auditPaused=false):string{
   const rendered=pricingCardsSsrHtml(founding);
   if(!rendered)return html;
   let out=injectIntoContainer(html,'plan-cards',rendered.plans);
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
-  out=injectIntoContainer(out,'audit-card',auditCardSsrHtml());
+  out=injectIntoContainer(out,'audit-card',auditCardSsrHtml(auditPaused));
   return injectProviderExample(injectStructuredData(out,auditAvailable,founding));
 }
 /* ------------------------------------------------------------------ */
@@ -280,11 +280,11 @@ export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null):string|null{
  * container is missing, already server-rendered, or the catalog can't be
  * trusted — the price-free fallback cards then stay in place.
  */
-export function injectSalesPlans(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null):string{
+export function injectSalesPlans(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null,auditPaused=false):string{
   const rendered=salesPlansSsrHtml(founding);
   if(!rendered)return html;
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
-  const audit=auditCardSsrHtml();
+  const audit=auditCardSsrHtml(auditPaused);
   if(audit)out=injectIntoContainer(out,'sales-audit',audit);
   return injectProviderExample(injectFaqPage(injectStructuredData(out,auditAvailable,founding)));
 }
@@ -382,9 +382,20 @@ export function injectFaqPage(html:string):string{
 /* in Terms/Privacy, post-purchase surfaces, and the /business-audit  */
 /* checkout itself (Mayor scope ruling, 2026-10-17).                   */
 /* ------------------------------------------------------------------ */
-export function auditCardSsrHtml():string{
+export function auditCardSsrHtml(auditPaused=false):string{
   const scope=AUDIT_OFFER.scope.slice(0,-1).join(', ').toLowerCase();
   const plan=AUDIT_OFFER.scope[AUDIT_OFFER.scope.length-1].toLowerCase();
+  /* Paused form (2026-10-23, generation-state pause): the offer stays
+   * visible with its paused state stated before any click, and the
+   * purchase action is retired — the surviving link is the informational
+   * one the homepage band uses, to the page that presents the pause. No
+   * "Payment queues your audit" claim while no payment can be taken. */
+  if(auditPaused)return `<article class="plan-card"><h3>${escapeHtml(AUDIT_OFFER.name)}</h3>`+
+    priceLine(AUDIT_OFFER.priceCents,' one-time')+
+    `<p class="plan-tier">One business · one focused plan</p>`+
+    `<p>A reviewed report covering ${escapeHtml(scope)} — plus ${escapeHtml(plan)}. The report is generated after intake and put through a separate AI review, not delivered instantly.</p>`+
+    `<p class="audit-paused-note">Audit checkout is paused while report generation is restored.</p>`+
+    `<a class="button button-small" href="/business-audit">See the business audit</a></article>`;
   return `<article class="plan-card"><h3>${escapeHtml(AUDIT_OFFER.name)}</h3>`+
     priceLine(AUDIT_OFFER.priceCents,' one-time')+
     `<p class="plan-tier">One business · one focused plan</p>`+

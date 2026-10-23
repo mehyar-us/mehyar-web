@@ -42,6 +42,10 @@ export interface Env extends AuthEnv {
   MAYOR_AUDIT_FULFILLMENT_READY?: string;
   MAYOR_AUDIT_MODEL?: string;
   MAYOR_AUDIT_INFERENCE_MODE?: string;
+  /** Generation-state pause (2026-10-23): 'true' ⇒ the $330 audit offer
+   *  answers paused and checkout creation refuses server-side, until a
+   *  live generation exercise reaches report_ready on production rails. */
+  MAYOR_AUDIT_GENERATION_PAUSED?: string;
   ENVIRONMENT: string;
   ASSETS?: Fetcher;
   /** Stage 5 decide() endpoint (Slice 2). Unset ⇒ decide() is
