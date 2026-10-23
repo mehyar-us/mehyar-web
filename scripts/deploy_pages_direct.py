@@ -184,7 +184,13 @@ def make_zip():
     if os.path.isdir(src_funcs):
         if os.path.exists(dst_funcs):
             shutil.rmtree(dst_funcs)
-        shutil.copytree(src_funcs, dst_funcs)
+        # Test files are never Pages routes and are never imported by
+        # production functions (verified by grep), but wrangler's esbuild
+        # pass tries to compile them and top-level await in tests breaks
+        # the whole deploy under the ES2020 target (first hit 2026-10-23,
+        # assessment merge fc2bec9). Exclude them from the deploy bundle.
+        shutil.copytree(src_funcs, dst_funcs,
+                        ignore=shutil.ignore_patterns("*.test.js", "*.test.ts", "*.test.tsx"))
         print(f"  synced {src_funcs} -> {dst_funcs}")
     # Static assessment-call page (standalone HTML + adapter JS, not part of
     # the Vite SPA). Ships at /assessment-call/ with working relative imports.
