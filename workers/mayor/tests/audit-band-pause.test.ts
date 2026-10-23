@@ -14,10 +14,25 @@
  * failure, non-200, malformed body, missing field) reads as PAUSED,
  * because a stale note is a smaller harm than an unannounced dead
  * checkout. No real network: the reader takes an injected fetch.
+ *
+ * ADDENDUM (2026-10-23 re-rule, Product Chief): the pins above cover
+ * the annotation on the LIVE band (the hub's pause, the worker's
+ * offer available). The fold then paused the WORKER's own offer
+ * (MAYOR_AUDIT_GENERATION_PAUSED), which made the offer unavailable
+ * and the band dark. The re-rule: the band renders in PAUSED FORM
+ * while the worker's generation pause is set — one slot, two
+ * truthful states, never dark while either state is describable.
+ * The second describe block below pins the full state matrix:
+ * (worker offer available / generation-paused / unavailable-other)
+ * × (hub flag true / false / unreadable). In the generation-paused
+ * cells the worker's pause governs regardless of the hub flag —
+ * this band sells the worker's door. Unavailability WITHOUT the
+ * generation pause (e.g. missing Stripe configuration) stays dark:
+ * the pause copy would be a false claim for a config outage.
  */
 import {expect,it,describe,beforeEach} from 'vitest';
 import {auditPaused,resetAuditPausedCache,AUDIT_AVAILABILITY_URL} from '../src/billing/audit-availability';
-import {homeAuditBandSsrHtml,injectHomeAuditSlot} from '../src/offer-block-ssr';
+import {homeAuditBandSsrHtml,homeAuditBandPausedSsrHtml,injectHomeAuditSlot} from '../src/offer-block-ssr';
 
 const NOTE='Audit checkout is paused while report generation is restored. The free scan is open, and the audit page can notify you when checkout returns.';
 const okJson=(body:unknown):Response=>new Response(JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}});
@@ -95,7 +110,63 @@ describe('the band in both pause states',()=>{
     expect(injectHomeAuditSlot(page,true,true)).toContain(NOTE);
     expect(injectHomeAuditSlot(page,true,false)).not.toContain('home-audit-note');
     expect(injectHomeAuditSlot(page,true,false)).toContain('home-audit-band');
+    // 2026-10-23 re-rule: these two calls pass no generation-pause
+    // argument (it defaults false), so they pin the narrowed claim —
+    // unavailable AND NOT generation-paused stays empty in either
+    // hub state. The generation-paused cells are pinned below.
     expect(injectHomeAuditSlot(page,false,true)).toBe(page);
     expect(injectHomeAuditSlot(page,false,false)).toBe(page);
+  });
+});
+
+describe('the band in paused form — the worker generation pause (2026-10-23 re-rule)',()=>{
+  const page='<div id="chat-sign-in"><div id="home-audit-slot"></div><div id="offer-block" class="offer-block" aria-label="Plans"><p class="offer-fallback">x</p></div></div>';
+  it('paused form: the offer presented as paused — band shell, note, non-purchase CTA, no purchase path',()=>{
+    const band=homeAuditBandPausedSsrHtml();
+    expect(band).toContain('home-audit-band');
+    expect(band).toContain('Extensive business audit');
+    expect(band).toContain('$330');
+    expect(band).toContain(NOTE);
+    expect(band.indexOf('home-audit-note')).toBeLessThan(band.indexOf('home-audit-cta'));
+    expect(band).toContain('<a class="home-audit-cta" href="/business-audit">See the business audit</a>');
+    expect(band).not.toContain('Start your audit');
+  });
+  it('paused form is the live band in its annotated state — one paused dialect, byte-identical',()=>{
+    expect(homeAuditBandPausedSsrHtml()).toBe(homeAuditBandSsrHtml(true));
+  });
+  it('matrix: generation-paused renders the paused form when the hub flag reads true',()=>{
+    const out=injectHomeAuditSlot(page,false,true,true);
+    expect(out).toContain('home-audit-band');
+    expect(out).toContain(NOTE);
+    expect(out).toContain('data-ssr="catalog"');
+  });
+  it('matrix: generation-paused renders the paused form when the hub flag reads false — the worker pause governs',()=>{
+    const out=injectHomeAuditSlot(page,false,false,true);
+    expect(out).toContain('home-audit-band');
+    expect(out).toContain(NOTE);
+  });
+  it('matrix: generation-paused renders the paused form when the hub flag is unreadable',()=>{
+    // The serve path passes auditPausedState=true for an unreadable
+    // flag (the reader's fail-safe) whenever it reads the flag at
+    // all; the paused form does not depend on the value either way.
+    const out=injectHomeAuditSlot(page,false,true,true);
+    expect(out).toBe(injectHomeAuditSlot(page,false,false,true));
+    expect(out).toContain(NOTE);
+  });
+  it('matrix: unavailable WITHOUT the generation pause stays dark in either hub state (no false pause claim)',()=>{
+    expect(injectHomeAuditSlot(page,false,true,false)).toBe(page);
+    expect(injectHomeAuditSlot(page,false,false,false)).toBe(page);
+  });
+  it('matrix: available renders the live form even if the pause argument is passed (unreachable from the serve path; live wins by gate order)',()=>{
+    const out=injectHomeAuditSlot(page,true,false,true);
+    expect(out).toContain('home-audit-band');
+    expect(out).not.toContain('home-audit-note');
+  });
+  it('paused form respects the slot guards: missing, already-rendered, or non-empty slot stays untouched',()=>{
+    expect(injectHomeAuditSlot('<div id="chat-sign-in"></div>',false,true,true)).toBe('<div id="chat-sign-in"></div>');
+    const stamped='<div id="home-audit-slot" data-ssr="catalog">x</div>';
+    expect(injectHomeAuditSlot(stamped,false,true,true)).toBe(stamped);
+    const filled='<div id="home-audit-slot">content</div>';
+    expect(injectHomeAuditSlot(filled,false,true,true)).toBe(filled);
   });
 });

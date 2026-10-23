@@ -122,10 +122,13 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       // The audit band's paused annotation keys off the hub's
       // availability flag, read at serve time (billing/audit-
       // availability — cached per isolate, fail-safe to paused).
-      // The read runs only when the band will render; an unavailable
-      // band stays absent regardless of the pause state.
+      // The read runs only when the live band will render.
+      // Paused form (2026-10-23 re-rule): while the worker's own
+      // generation pause is set, the band renders in paused form
+      // instead of going dark — auditGenerationPaused is the same
+      // env read the /pricing and /sales injections already use.
       const auditAvailable=auditOffer(env).available,auditPausedState=auditAvailable?await auditPaused():true;
-      const injected=stampDescriptorHash(injectHeroPrice(injectOfferBlock(injectHomeAuditSlot(original,auditAvailable,auditPausedState),await foundingSeats(env))),(await currentDescriptor(env)).hash);
+      const injected=stampDescriptorHash(injectHeroPrice(injectOfferBlock(injectHomeAuditSlot(original,auditAvailable,auditPausedState,auditGenerationPaused(env)),await foundingSeats(env))),(await currentDescriptor(env)).hash);
       if(injected!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');

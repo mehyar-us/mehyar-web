@@ -57,13 +57,44 @@ function validPlan(p:unknown):p is SsrPlan{
  * from the hub's availability flag (billing/audit-availability) and
  * the annotation is keyed off it: the serve path passes the flag's
  * value, so the note retires itself when the hub unpauses. Only an
- * affirmative unpaused read omits it. */
+ * affirmative unpaused read omits it.
+ * Paused form (2026-10-23 re-rule, Product Chief): the annotation
+ * above covers the HUB's pause while THIS worker's offer is live.
+ * When the worker's own generation pause is set
+ * (MAYOR_AUDIT_GENERATION_PAUSED — the fold), the offer itself is
+ * unavailable and the band used to go dark. It now renders in
+ * PAUSED FORM instead (homeAuditBandPausedSsrHtml): the same band
+ * shell, name, price, and scope, the pause note, and the same
+ * non-purchase CTA to /business-audit — the offer presented
+ * truthfully as paused, never a live purchase path. The worker's
+ * pause governs the form regardless of the hub flag (this band
+ * sells the worker's door); the hub flag only ever drives the
+ * annotation on the live form. An offer unavailable for a
+ * NON-pause reason (e.g. missing Stripe configuration) still
+ * renders nothing: "paused while report generation is restored"
+ * would be a false claim for a configuration outage, so the slot
+ * keeps its fail-quiet dark behavior there. */
 export function homeAuditBandSsrHtml(auditPausedState:boolean):string{
   // WS1 build 2 (2026-10-16): promoted from a footnote line to a card
  // at the plan rows' weight (rot298 input 1) — same name, price,
  // sentence, and link; the price still comes only from AUDIT_OFFER.
  const note=auditPausedState?`<p class="home-audit-note">Audit checkout is paused while report generation is restored. The free scan is open, and the audit page can notify you when checkout returns.</p>`:'';
  return `<aside class="home-audit-band"><div class="home-audit-head"><strong>${escapeHtml(AUDIT_OFFER.name)}</strong><span class="home-audit-price">${escapeHtml(formatPrice(AUDIT_OFFER.priceCents))} one-time</span></div><p>A reviewed report on how people find your business, become customers, and come back — plus a practical plan for a better workday.</p>${note}<a class="home-audit-cta" href="/business-audit">See the business audit</a></aside>`;
+}
+
+/* The band's PAUSED FORM (2026-10-23 re-rule, Product Chief): the
+ * worker offer presented truthfully as paused. It is deliberately
+ * the live band in its annotated state — same shell, name, price,
+ * scope sentence, the established pause note, and the same
+ * non-purchase "See the business audit" CTA — so there is exactly
+ * ONE paused dialect on the site (the fold's /pricing treatment
+ * keeps name + price + scope + the same note + the same link in
+ * the same way). Byte-identity with homeAuditBandSsrHtml(true) is
+ * pinned in tests/audit-band-pause.test.ts: if the paused wording
+ * ever needs to diverge, it diverges here, in one place, on a
+ * ruling — never by drift. */
+export function homeAuditBandPausedSsrHtml():string{
+ return homeAuditBandSsrHtml(true);
 }
 
 export function offerBlockSsrHtml(founding?:FoundingSsrBlock|null):string|null{
@@ -430,17 +461,33 @@ export function injectOfferBlock(html:string,founding?:FoundingSsrBlock|null):st
  * home page, above the sign-in buttons (rot564 sell-first rework,
  * 2026-10-22 — the band moved out of the offer block; see
  * homeAuditBandSsrHtml). Marks the container data-ssr="catalog" like
- * the other injections. Returns the HTML UNCHANGED when the audit
- * offer is unavailable, the container is missing or already rendered,
- * or its content is not the expected empty slot — the slot then stays
- * empty and the page keeps its price-free static form.
+ * the other injections. Returns the HTML UNCHANGED when the container
+ * is missing or already rendered, or its content is not the expected
+ * empty slot — the slot then stays empty and the page keeps its
+ * price-free static form.
  * `auditPausedState` is the serve-time hub availability read (see
  * billing/audit-availability): true renders the band's paused
  * annotation, false renders the band exactly as before the pause.
+ * STATE MATRIX (2026-10-23 re-rule; every cell pinned in
+ * tests/audit-band-pause.test.ts):
+ *   offer available × hub true/false/unreadable → the LIVE band;
+ *     the note renders unless the hub flag affirmatively reads
+ *     false (an unreadable flag reads paused — the reader's
+ *     fail-safe — so it lands in the note cell).
+ *   offer unavailable × generation pause set (`auditGeneration
+ *     PausedState`, any hub state) → the PAUSED FORM. The worker's
+ *     pause governs regardless of the hub flag: this band sells
+ *     the worker's door, and its pause copy is the worker's truth.
+ *   offer unavailable × no generation pause → UNCHANGED (dark).
+ *     Unavailability without the pause (missing Stripe config or
+ *     status secret) has no truthful paused statement; fail-quiet.
+ * The serve path never passes available=true together with the
+ * generation pause (auditOffer returns available=false while the
+ * pause is set); if a caller did, the live form wins by gate order.
  */
 const AUDIT_SLOT_OPEN='<div id="home-audit-slot"';
-export function injectHomeAuditSlot(html:string,auditAvailable:boolean,auditPausedState:boolean):string{
-  if(!auditAvailable)return html;
+export function injectHomeAuditSlot(html:string,auditAvailable:boolean,auditPausedState:boolean,auditGenerationPausedState=false):string{
+  if(!auditAvailable&&!auditGenerationPausedState)return html;
   const openAt=html.indexOf(AUDIT_SLOT_OPEN);
   if(openAt<0)return html;
   const tagEnd=html.indexOf('>',openAt);
@@ -451,7 +498,8 @@ export function injectHomeAuditSlot(html:string,auditAvailable:boolean,auditPaus
   if(closeAt<0)return html;
   if(html.slice(tagEnd+1,closeAt).trim()!=='')return html; // unexpected content — don't guess
   const tagged=openingTag.replace(AUDIT_SLOT_OPEN,`${AUDIT_SLOT_OPEN} data-ssr="catalog"`);
-  return html.slice(0,openAt)+tagged+homeAuditBandSsrHtml(auditPausedState)+html.slice(closeAt);
+  const band=auditAvailable?homeAuditBandSsrHtml(auditPausedState):homeAuditBandPausedSsrHtml();
+  return html.slice(0,openAt)+tagged+band+html.slice(closeAt);
 }
 
 /* Homepage hero price anchor (rot156): the Pro price above the fold,
