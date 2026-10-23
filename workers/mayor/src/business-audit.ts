@@ -26,6 +26,22 @@ function draftModel(order:Order):AuditModel {
 export type AuditInference=(model:string,input:Record<string,unknown>,options?:{signal?:AbortSignal;queueRequest?:boolean})=>Promise<unknown>;
 export interface AuditRunOptions {limit?:number;allowTest?:boolean;/** Internal job hooks may target a verified order; never accept this from an unauthenticated request. */orderId?:string;/** Only test harnesses inject these; HTTP callers cannot select models, evidence, or time. */dependencies?:{collect?:(context:AuditContext,origin:string,now:number)=>Promise<AuditEvidence>;infer?:AuditInference;now?:()=>number};}
 const LEASE_MS=900000,JOB_API_TIMEOUT_MS=30000,SYNCHRONOUS_TIMEOUT_MS=600000,JOB_DEADLINE_MS=86400000,MAX_ATTEMPTS=12,MAX_STAGE_ATTEMPTS=3;
+// Submission reconciliation (2026-10-23, ruling audit-shape-20261023): an
+// unacknowledged submission no longer terminates its stage on the spot. The
+// durable reservation is held while the stage reconciles. Inside the settle
+// window nothing is resubmitted: the original may still be executing. Past
+// it, the original is provably unadoptable — a direct result exists only
+// in-band to its own invocation, and a batch job whose acknowledgement was
+// lost has no recorded id while result adoption is scoped to the live
+// reference — so the reservation is superseded (consuming one stage attempt)
+// and the stage resubmits under a fresh reference. MAX_STAGE_ATTEMPTS caps
+// submissions per stage; once every submission's settle window has elapsed
+// unsettled, the fate is genuinely unknowable and the
+// model_submission_uncertain fence falls terminally. The settle windows are
+// sized from the exercise record: settled direct completions landed within
+// ~200s (window 900s); settled batch jobs completed within ~15 minutes
+// door-to-door (window 1,800s).
+const SUBMISSION_SETTLE_MS=900000,BATCH_SUBMISSION_SETTLE_MS=1800000;
 // Only known server validation codes select fixed correction guidance. No model, source,
 // provider exception or arbitrary stored error text can become a privileged instruction.
 const VALIDATION_FEEDBACK=new Map<string,string>([
@@ -77,7 +93,10 @@ export function parseAuditCompletion(value:unknown):unknown {
 async function inferBounded(infer:AuditInference,model:string,input:Record<string,unknown>,mode:InferenceMode='batch'){
  let timer:ReturnType<typeof setTimeout>|undefined;const abort=new AbortController(),polling=typeof input.request_id==='string';
  // A rejected submission may have been accepted remotely before its acknowledgement was lost.
- // Only polling an already persisted job is safe to retry after an unknown transport failure.
+ // This layer only normalizes that uncertainty to model_submission_uncertain;
+ // modelJob reconciles it against the durable reservation rather than
+ // terminating the stage. Polling an already persisted job stays separately
+ // safe to retry after an unknown transport failure.
  // Streaming shares this single deadline with AI.run; receiving headers does not
  // settle a submission before its actual terminal event and complete drain.
  const request=async()=>{const raw=await infer(model,input,mode==='batch'?{signal:abort.signal,queueRequest:true}:{signal:abort.signal});return mode==='streaming'?await readAuditStream(raw as ReadableStream<Uint8Array>,model,abort.signal):raw;};
@@ -85,7 +104,9 @@ async function inferBounded(infer:AuditInference,model:string,input:Record<strin
 }
 function requireDirectCompletion(value:unknown,model:string){
  // An asynchronous acknowledgement or unmatched protocol is not a settled
- // direct result. Preserve its consumed reservation and hold, never resubmit.
+ // direct result. A well-formed async acknowledgement is adopted as a
+ // persisted job by modelJob; any other unmatched shape leaves its consumed
+ // reservation to submission reconciliation, never to an immediate resubmit.
  if(!value||typeof value!=='object'||Array.isArray(value))throw new AuditFailure('model_submission_uncertain',true);
  const body=value as Record<string,unknown>;
  if(['status','request_id','results','responses'].some(key=>key in body)||('model' in body&&body.model!==model)||!Array.isArray(body.choices)||body.choices.length!==1)throw new AuditFailure('model_submission_uncertain',true);
@@ -121,6 +142,16 @@ export function parseAuditBatch(value:unknown,reference:string,model:string=AUDI
 async function waitForModel(env:BusinessAuditEnv,order:Order,jobId:string,now:number){
  const result=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET analysis_job_id=?,analysis_job_poll_failures=0,analysis_next_attempt_at=?,analysis_error_code=NULL,analysis_token=NULL,analysis_lease_expires_at=NULL,updated_at=? WHERE id=? AND analysis_token=? AND analysis_stage=? AND payment_status='paid' AND fulfillment_status='in_review' AND analysis_lease_expires_at>?").bind(jobId,now+60000,new Date(now).toISOString(),order.id,order.analysis_token,order.analysis_stage,now).run();return Boolean(result.meta.changes);
 }
+// Release the claim while a submission reservation reconciles: the order
+// stays in_review under the same reservation, due again at nextAttemptAt.
+async function holdForReconciliation(env:BusinessAuditEnv,order:Order,nextAttemptAt:number,now:number){
+ const result=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET analysis_error_code='model_submission_uncertain',analysis_next_attempt_at=?,analysis_token=NULL,analysis_lease_expires_at=NULL,updated_at=? WHERE id=? AND analysis_token=? AND analysis_stage=? AND payment_status='paid' AND fulfillment_status='in_review' AND analysis_lease_expires_at>?").bind(nextAttemptAt,new Date(now).toISOString(),order.id,order.analysis_token,order.analysis_stage,now).run();return Boolean(result.meta.changes);
+}
+// Retire an unadoptable reservation so the stage can resubmit under a fresh
+// reference. The stage-attempt increment is the submission budget being spent.
+async function supersedeReservation(env:BusinessAuditEnv,order:Order,now:number){
+ const result=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET analysis_stage_attempts=analysis_stage_attempts+1,analysis_job_reference=NULL,analysis_job_model=NULL,analysis_job_started_at=NULL,analysis_job_poll_failures=0,updated_at=? WHERE id=? AND analysis_token=? AND analysis_stage=? AND payment_status='paid' AND fulfillment_status='in_review' AND analysis_lease_expires_at>?").bind(new Date(now).toISOString(),order.id,order.analysis_token,order.analysis_stage,now).run();return Boolean(result.meta.changes);
+}
 async function modelJob(env:BusinessAuditEnv,order:Order,infer:AuditInference,input:Record<string,unknown>,configuration:InferenceConfiguration|null,now:()=>number){
  let reference=order.analysis_job_reference,raw:unknown,model:AuditModel;
  if(order.analysis_job_id){
@@ -129,20 +160,57 @@ async function modelJob(env:BusinessAuditEnv,order:Order,infer:AuditInference,in
   if(now()-order.analysis_job_started_at>=JOB_DEADLINE_MS)throw new AuditFailure('model_job_expired',true);
   raw=await inferBounded(infer,model,{request_id:order.analysis_job_id});
  }else{
+  if(reference){
+   // Reconciliation of an unacknowledged submission: a durable reservation
+   // with no job id means one submission for this stage was started and never
+   // settled. Inside its settle window nothing is resubmitted — the original
+   // may still be executing. Past the window the original is provably
+   // unadoptable (a direct result exists only in-band to its own invocation;
+   // a batch orphan has no recorded id and result adoption is scoped to the
+   // live reference), so the reservation is superseded and the stage
+   // resubmits below under a fresh reference. Once the stage-attempt budget
+   // is spent and the last settle window has elapsed unsettled, the fate is
+   // genuinely unknowable and the fence falls terminally.
+   if(!allowedModel(order.analysis_job_model)||!order.analysis_job_started_at)throw new AuditFailure('stored_analysis_invalid',true);
+   const settleMs=!configuration||configuration.mode==='batch'?BATCH_SUBMISSION_SETTLE_MS:SUBMISSION_SETTLE_MS,settleAt=order.analysis_job_started_at+settleMs,current=now();
+   if(current<settleAt)return {state:await holdForReconciliation(env,order,settleAt,current)?'waiting' as const:'lost' as const};
+   if(order.analysis_stage_attempts>=MAX_STAGE_ATTEMPTS)throw new AuditFailure('model_submission_uncertain',true);
+   if(!configuration)return {state:await holdForReconciliation(env,order,current+60000,current)?'waiting' as const:'lost' as const};
+   if(!await supersedeReservation(env,order,current))return {state:'lost' as const};
+   order.analysis_stage_attempts++;order.analysis_job_reference=null;order.analysis_job_model=null;order.analysis_job_started_at=null;reference=null;
+  }
   // Invalid global settings leave fresh work unclaimed. This check also fences
   // internal callers against accidental unsupported transport/model pairs.
   if(!configuration)throw new AuditFailure('stored_analysis_invalid',true);
-  model=configuration.model;reference=await reserveModel(env,order,model,now());if(!reference)return {state:'lost' as const};order.modelSubmitted=true;
+  model=configuration.model;const reservedAt=now();reference=await reserveModel(env,order,model,reservedAt);if(!reference)return {state:'lost' as const};order.modelSubmitted=true;
+  const settleAt=reservedAt+(configuration.mode==='batch'?BATCH_SUBMISSION_SETTLE_MS:SUBMISSION_SETTLE_MS);
   if(configuration.mode!=='batch'){
    // Each allowlisted model has one explicit profile. Historical Kimi keeps its
    // high-reasoning contract; the flagship DeepSeek candidate requests none.
    // Actual completion and all quality gates still apply to its visible output.
    let directInput=model===AUDIT_DEEPSEEK_MODEL?{...input,reasoning_effort:'none'}:input;
    if(configuration.mode==='streaming'){const {response_format:unused,...streamInput}=directInput;directInput={...streamInput,stream:true};}
-   raw=await inferBounded(infer,model,directInput,configuration.mode);requireDirectCompletion(raw,model);order.modelSettled=true;
+   try{raw=await inferBounded(infer,model,directInput,configuration.mode);}catch(error){
+    if(error instanceof AuditFailure&&error.code==='model_submission_uncertain')return {state:await holdForReconciliation(env,order,settleAt,now())?'waiting' as const:'lost' as const};
+    throw error;
+   }
+   try{requireDirectCompletion(raw,model);}catch{
+    // An in-band asynchronous acknowledgement proves the submission landed:
+    // adopt the job it names and let the ordinary poll path settle it. Any
+    // other unmatched shape stays unadopted and reconciles by reservation.
+    let adopted:string|null=null;
+    try{const parsed=parseAuditBatch(raw,reference,model);if(parsed.pending&&parsed.jobId)adopted=parsed.jobId;}catch{adopted=null;}
+    if(adopted)return {state:await waitForModel(env,order,adopted,now())?'waiting' as const:'lost' as const};
+    return {state:await holdForReconciliation(env,order,settleAt,now())?'waiting' as const:'lost' as const};
+   }
+   order.modelSettled=true;
    return {state:'complete' as const,completion:parseAuditCompletion(raw),model};
   }
-  raw=await inferBounded(infer,model,{requests:[{...input,external_reference:reference}]});}
+  try{raw=await inferBounded(infer,model,{requests:[{...input,external_reference:reference}]});}catch(error){
+   if(error instanceof AuditFailure&&error.code==='model_submission_uncertain')return {state:await holdForReconciliation(env,order,settleAt,now())?'waiting' as const:'lost' as const};
+   throw error;
+  }
+ }
  const batch=parseAuditBatch(raw,reference!,model);
  if(batch.pending){if(order.analysis_job_id&&batch.jobId!==order.analysis_job_id)throw new AuditFailure('model_output_invalid',true);return {state:await waitForModel(env,order,batch.jobId!,now())?'waiting' as const:'lost' as const};}
  order.modelSettled=true;return {state:'complete' as const,completion:parseAuditCompletion(batch.completion),model};
@@ -188,8 +256,11 @@ export async function runBusinessAudits(env:BusinessAuditEnv,options:AuditRunOpt
  if(options.orderId&&!z.uuid().safeParse(options.orderId).success)return summary;
  const configuration=inferenceConfiguration(env);summary.enabled=configuration!==null;const now=options.dependencies?.now??Date.now,limit=mode==='live'?1:Math.max(1,Math.min(3,Math.floor(options.limit??1))),target=options.orderId??null;
  for(let i=0;i<limit;i++){
-  const time=now();if(configuration){const exhausted=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET fulfillment_status='needs_review',analysis_error_code='analysis_attempts_exhausted',analysis_token=NULL,analysis_lease_expires_at=NULL,updated_at=? WHERE mode=? AND (? IS NULL OR id=?) AND payment_status='paid' AND fulfillment_status IN ('queued','in_review') AND analysis_job_id IS NULL AND (analysis_attempts>=? OR analysis_stage_attempts>=?) AND (analysis_token IS NULL OR analysis_lease_expires_at<=?)").bind(new Date(time).toISOString(),mode,target,target,MAX_ATTEMPTS,MAX_STAGE_ATTEMPTS,time).run();summary.needsReview+=exhausted.meta.changes??0;}
-  const token=crypto.randomUUID();const order=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET fulfillment_status='in_review',analysis_token=?,analysis_lease_expires_at=?,analysis_attempts=analysis_attempts+CASE WHEN analysis_job_id IS NULL THEN 1 ELSE 0 END,analysis_stage_attempts=analysis_stage_attempts+CASE WHEN analysis_job_id IS NULL THEN 1 ELSE 0 END,updated_at=? WHERE id=(SELECT id FROM mayor_audit_orders WHERE mode=? AND (? IS NULL OR id=?) AND payment_status='paid' AND fulfillment_status IN ('queued','in_review') AND (?=1 OR analysis_job_id IS NOT NULL) AND analysis_next_attempt_at<=? AND (analysis_attempts<? OR analysis_job_id IS NOT NULL) AND (analysis_token IS NULL OR analysis_lease_expires_at<=?) ORDER BY analysis_next_attempt_at,created_at,id LIMIT 1) AND payment_status='paid' AND (analysis_token IS NULL OR analysis_lease_expires_at<=?) RETURNING *")
+  const time=now();if(configuration){
+  // Attempt exhaustion governs orders with no live submission reservation; an
+  // order holding one is reconciled (or fenced) by modelJob, never swept.
+  const exhausted=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET fulfillment_status='needs_review',analysis_error_code='analysis_attempts_exhausted',analysis_token=NULL,analysis_lease_expires_at=NULL,updated_at=? WHERE mode=? AND (? IS NULL OR id=?) AND payment_status='paid' AND fulfillment_status IN ('queued','in_review') AND analysis_job_id IS NULL AND analysis_job_reference IS NULL AND (analysis_attempts>=? OR analysis_stage_attempts>=?) AND (analysis_token IS NULL OR analysis_lease_expires_at<=?)").bind(new Date(time).toISOString(),mode,target,target,MAX_ATTEMPTS,MAX_STAGE_ATTEMPTS,time).run();summary.needsReview+=exhausted.meta.changes??0;}
+  const token=crypto.randomUUID();const order=await env.AGENT_DB.prepare("UPDATE mayor_audit_orders SET fulfillment_status='in_review',analysis_token=?,analysis_lease_expires_at=?,analysis_attempts=analysis_attempts+CASE WHEN analysis_job_id IS NULL AND analysis_job_reference IS NULL THEN 1 ELSE 0 END,analysis_stage_attempts=analysis_stage_attempts+CASE WHEN analysis_job_id IS NULL AND analysis_job_reference IS NULL THEN 1 ELSE 0 END,updated_at=? WHERE id=(SELECT id FROM mayor_audit_orders WHERE mode=? AND (? IS NULL OR id=?) AND payment_status='paid' AND fulfillment_status IN ('queued','in_review') AND (?=1 OR analysis_job_id IS NOT NULL) AND analysis_next_attempt_at<=? AND (analysis_attempts<? OR analysis_job_id IS NOT NULL OR analysis_job_reference IS NOT NULL) AND (analysis_token IS NULL OR analysis_lease_expires_at<=?) ORDER BY analysis_next_attempt_at,created_at,id LIMIT 1) AND payment_status='paid' AND (analysis_token IS NULL OR analysis_lease_expires_at<=?) RETURNING *")
   .bind(token,time+LEASE_MS,new Date(time).toISOString(),mode,target,target,configuration?1:0,time,MAX_ATTEMPTS,time,time).first<Order>();
   if(!order)break;summary.enabled=true;summary.processed++;
   try{const result=await processStage(env,order,options,configuration);if(result==='ready')summary.ready++;else if(result==='advanced')summary.advanced++;else if(result==='waiting')summary.waiting++;else if(result==='needsReview')summary.needsReview++;else {summary.lostLease++;await releaseHeldClaim(env,order.id,token);}}
