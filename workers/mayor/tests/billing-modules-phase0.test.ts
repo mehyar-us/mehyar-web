@@ -42,11 +42,17 @@ it('asserts the LeadProof pack price shape ($49 one-time, domain + version metad
 function fakeDb(row:unknown){return {prepare:(_sql:string)=>({bind:(..._args:unknown[])=>({first:async()=>row})})};}
 function branchEnv(row:unknown){return {...priceEnv(),AGENT_DB:fakeDb(row)};}
 function checkoutEvent(domain:string|undefined,sessionId='cs_test_fixture'){return {id:'evt_fixture',type:'checkout.session.completed',created:0,livemode:false,data:{object:{id:sessionId,...(domain?{metadata:{mayor_billing_domain:domain}}:{})}}} as any;}
-it('cashtext branch: foreign events pass through, claimed-but-unmapped fails loud, mapped waits for Phase 1',async()=>{
+it('cashtext branch: foreign events pass through, claimed-but-unmapped fails loud, mapped enters Phase 1 fulfillment',async()=>{
  await expect(processCashTextEvent(branchEnv(null),{id:'evt_fixture',type:'invoice.paid',created:0,livemode:false,data:{object:{id:'in_fixture'}}} as any)).resolves.toBeNull();
  await expect(processCashTextEvent(branchEnv(null),checkoutEvent(undefined))).resolves.toBeNull();
  await expect(processCashTextEvent(branchEnv(null),checkoutEvent('mayor_cashtext'))).rejects.toMatchObject({code:'cashtext_checkout_unmapped'});
- await expect(processCashTextEvent(branchEnv({id:'ct_fixture'}),checkoutEvent('mayor_cashtext'))).rejects.toMatchObject({code:'cashtext_fulfillment_not_ready'});
+ // Phase 1 supersedes the Phase 0 seam: a mapped session no longer
+ // fails with cashtext_fulfillment_not_ready — it enters the real
+ // fulfillment branch (which, against this first()-only fake DB, fails
+ // on the ledger write instead; the full battery lives in
+ // tests/integration/billing-cashtext.test.ts).
+ let seamCode:unknown;try{await processCashTextEvent(branchEnv({id:'ct_fixture',tenant_id:'a'.repeat(32),mode:'test',request_id:'req',status:'open',stripe_session_id:'cs_test_fixture'}),checkoutEvent('mayor_cashtext'));}catch(error){seamCode=(error as {code?:unknown})?.code;}
+ expect(seamCode).not.toBe('cashtext_fulfillment_not_ready');
 });
 it('leadproof branch: foreign events pass through, claimed-but-unmapped fails loud, mapped waits for Phase 5',async()=>{
  await expect(processLeadProofEvent(branchEnv(null),{id:'evt_fixture',type:'charge.refunded',created:0,livemode:false,data:{object:{id:'ch_fixture'}}} as any)).resolves.toBeNull();

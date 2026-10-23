@@ -24,7 +24,7 @@
  * a money run without its ledger rows is a failed run.
  */
 import type {Env} from './env';
-import {CREDIT_PACKS,FOUNDING_PRICE_CENTS,PRO_PRICE_CENTS} from './billing/plans';
+import {CASHTEXT_PRICE_CENTS,CREDIT_PACKS,FOUNDING_PRICE_CENTS,PRO_PRICE_CENTS} from './billing/plans';
 
 export type EngineEventType='sign_up'|'begin_checkout'|'purchase_completed'|'fulfillment_ready'|'first_action_executed'|'action_executed'|'grant_created';
 export const ENGINE_EVENT_PREFIX='engine.';
@@ -144,7 +144,12 @@ export async function pendingPurchaseDirectives(env:EngineEnv,tenantId:string,wi
   if(checkout){
    const pack=CREDIT_PACKS.find(p=>p.id===checkout.pack_id);
    if(pack)directives.push({eventId:row.id,name:'purchase',params:{value:pack.priceCents/100,currency:'USD',transaction_id:row.resource_id,items:JSON.stringify([{item_id:`pack:${pack.id}`,item_name:`${pack.name} credit pack`,price:pack.priceCents/100,quantity:1}])}});
+   continue;
   }
+  // CashText module purchase (spec §5.4): resource is the module
+  // checkout id; the value re-derives from the plans.ts constant.
+  const moduleCheckout=await env.AGENT_DB.prepare('SELECT id FROM mayor_cashtext_checkouts WHERE tenant_id=? AND id=?').bind(tenantId,row.resource_id).first<{id:string}>().catch(()=>null);
+  if(moduleCheckout)directives.push({eventId:row.id,name:'purchase',params:{value:CASHTEXT_PRICE_CENTS/100,currency:'USD',transaction_id:row.resource_id,items:JSON.stringify([{item_id:'cashtext_module',item_name:'CashText module',price:CASHTEXT_PRICE_CENTS/100,quantity:1}])}});
  }
  return directives;
 }

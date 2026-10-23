@@ -9,7 +9,8 @@
 /* with nothing preselected. This module is the consumer, following   */
 /* the pattern Rizza's 1a proved:                                     */
 /*   1. The allowlist is EXACTLY the emitted values — plan=pro,       */
-/*      plan=founding, pack=small|medium|large. Anything else          */
+/*      plan=founding, pack=small|medium|large, module=cashtext.      */
+/*      Anything else                                                 */
 /*      (including plan=pro-founding: that is a checkout planId, not   */
 /*      an intent) parses to null. plan=founding joined the allowlist  */
 /*      with the reinvention's founding door (blueprint §2.1 E-0,      */
@@ -38,7 +39,8 @@
 
 export type BillingIntent =
   | { kind: 'plan'; id: 'pro' | 'founding' }
-  | { kind: 'pack'; id: 'small' | 'medium' | 'large' };
+  | { kind: 'pack'; id: 'small' | 'medium' | 'large' }
+  | { kind: 'module'; id: 'cashtext' };
 
 const PACK_IDS = ['small', 'medium', 'large'] as const;
 const STORAGE_KEY = 'mayor_billing_intent';
@@ -51,6 +53,10 @@ export function parseBillingIntent(search: string): BillingIntent | null {
   if (query.get('plan') === 'founding') return { kind: 'plan', id: 'founding' };
   const pack = query.get('pack');
   if (pack === 'small' || pack === 'medium' || pack === 'large') return { kind: 'pack', id: pack };
+  // Module asks (CashText, spec §5.5): /pricing's module card links
+  // /billing?module=cashtext — intent only; the module checkout's own
+  // gates decide at claim time, exactly like plan/pack intents.
+  if (query.get('module') === 'cashtext') return { kind: 'module', id: 'cashtext' };
   return null;
 }
 
@@ -71,6 +77,7 @@ function deserialize(raw: string | null, nowMs: number): BillingIntent | null {
   const body = raw.slice(0, at);
   if (body === 'plan:pro') return { kind: 'plan', id: 'pro' };
   if (body === 'plan:founding') return { kind: 'plan', id: 'founding' };
+  if (body === 'module:cashtext') return { kind: 'module', id: 'cashtext' };
   const pack = body.startsWith('pack:') ? body.slice(5) : '';
   if (pack === 'small' || pack === 'medium' || pack === 'large') return { kind: 'pack', id: pack };
   return null;

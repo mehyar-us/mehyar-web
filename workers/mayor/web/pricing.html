@@ -73,6 +73,20 @@
       <p class="plans-note">Credits activate after verified payment and expire at the end of the purchased Free UTC calendar month or Pro paid period. They do not roll over or transfer when switching plans.</p>
     </section>
 
+    <section class="page-width" aria-labelledby="modules-heading">
+      <span class="section-kicker">MODULES</span>
+      <h2 id="modules-heading">Add a money module.</h2>
+      <p class="section-lead">Modules bill on their own, separate from your plan — subscribe to one without changing Free or Pro, and cancel it on its own.</p>
+      <div id="module-cards" class="plan-grid" aria-live="polite">
+        <article class="plan-card">
+          <h3>CashText</h3>
+          <p class="plan-tier">Add-on module · its own subscription</p>
+          <p>Invoice customers by conversation: The Mayor drafts each invoice and payment reminder, you approve every send, and your customers pay your own Stripe account. Bills as its own subscription, separate from your Mayor plan — cancel ends it at period end.</p>
+          <a class="button button-small" href="/billing?module=cashtext">Add CashText</a>
+        </article>
+      </div>
+    </section>
+
     <section class="page-width" aria-labelledby="audit-heading">
       <span class="section-kicker">GO DEEPER</span>
       <h2 id="audit-heading">The full picture, once.</h2>
@@ -142,8 +156,19 @@
         +'<p class="pack-note">Credits expire at the end of the purchased period — they do not roll over.</p></article>';
     }
     function fail(el){el.innerHTML='<p class="plans-note">Plans could not be loaded. <button class="text-link" onclick="location.reload()">Try again</button>.</p>';}
+    function moduleCard(m){
+      // Phase 1 renders the CashText card only; LeadProof's card joins
+      // with its billing in Phase 5 (the catalog already lists both).
+      if(m.id!=='cashtext')return '';
+      return '<article class="plan-card"><h3>'+esc(m.name)+'</h3>'
+        +'<p class="plan-price"><strong>$'+Math.round(Number(m.priceCents)/100)+'</strong><span> / month</span></p>'
+        +'<p class="plan-tier">Add-on module · its own subscription</p>'
+        +'<p>Invoice customers by conversation: The Mayor drafts each invoice and payment reminder, you approve every send, and your customers pay your own Stripe account. Bills as its own subscription, separate from your Mayor plan — cancel ends it at period end.</p>'
+        +'<a class="button button-small" href="/billing?module=cashtext">Add '+esc(m.name)+' — $'+Math.round(Number(m.priceCents)/100)+'/mo</a>'
+        +'<p class="plan-final-sale">Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p></article>';
+    }
     async function load(){
-      var plansEl=document.getElementById('plan-cards'),packsEl=document.getElementById('topup-cards');
+      var plansEl=document.getElementById('plan-cards'),packsEl=document.getElementById('topup-cards'),modulesEl=document.getElementById('module-cards');
       // Server-rendered cards (data-ssr="catalog") win — never re-fetch or double-render.
       if(plansEl&&plansEl.dataset.ssr==='catalog'&&packsEl&&packsEl.dataset.ssr==='catalog')return;
       try{
@@ -155,6 +180,7 @@
         if(!Array.isArray(data.plans)||!Array.isArray(data.creditPacks))throw new Error('bad shape');
         plansEl.innerHTML=data.plans.map(planCard).join('');
         packsEl.innerHTML=data.creditPacks.map(topupCard).join('');
+        if(modulesEl&&Array.isArray(data.modules)&&!(modulesEl.dataset.ssr==='catalog'))modulesEl.innerHTML=data.modules.map(moduleCard).join('');
       }catch(e){fail(plansEl);fail(packsEl);}
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();

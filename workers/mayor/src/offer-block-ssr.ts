@@ -12,7 +12,7 @@
  * when data-ssr="catalog" is present on #offer-block, so there is no
  * double-render or flicker.
  */
-import {PLANS,CREDIT_PACKS,approxConversations,FOUNDING_PRICE_CENTS} from './billing/plans';
+import {PLANS,CREDIT_PACKS,CASHTEXT_MODULE,approxConversations,FOUNDING_PRICE_CENTS} from './billing/plans';
 import {AUDIT_OFFER} from './billing/audit';
 import {providerExampleSsrHtml} from './provider-example';
 
@@ -215,7 +215,23 @@ export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  * asks carry this line too — the checklist carve-out that kept the
  * verticals ask-free is retired by name in the rot551 addendum. */
 export const FINAL_SALE_LINE=`<p class="plan-final-sale">Payments are final and non-refundable \u2014 see <a href="/terms">Terms</a>.</p>`;
-export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:string;packs:string}|null{
+/* Module cards (integration spec §5.5, Phase 1): CashText renders from
+ * the CASHTEXT_MODULE constant in plans.ts via the same offer-block
+ * pattern as the plan and pack cards — FINAL_SALE_LINE exactly once,
+ * and the real terms at the ask: it bills as its own subscription,
+ * cancel ends it at period end, and the tenant's customers pay the
+ * tenant's own Stripe account. Copy promises mechanics only (spec §8
+ * R2) — never a collections outcome. LeadProof's card joins in Phase 5
+ * with its billing; the catalog already carries both modules. */
+export function moduleCardsSsrHtml():string{
+  const m=CASHTEXT_MODULE;
+  return `<article class="plan-card"><h3>${escapeHtml(m.name)}</h3>`+
+    priceLine(m.priceCents,' / month')+
+    `<p class="plan-tier">Add-on module · its own subscription</p>`+
+    `<p>Invoice customers by conversation: The Mayor drafts each invoice and payment reminder, you approve every send, and your customers pay your own Stripe account. Bills as its own subscription, separate from your Mayor plan — cancel ends it at period end.</p>`+
+    `<a class="button button-small" href="/billing?module=cashtext">Add ${escapeHtml(m.name)} — ${escapeHtml(formatPrice(m.priceCents))}/mo</a>${FINAL_SALE_LINE}</article>`;
+}
+export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:string;packs:string;modules:string}|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
   if(!validPlan(free)||!validPlan(pro))return null;
   const packs=[...CREDIT_PACKS];
@@ -238,6 +254,7 @@ export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:stri
     plans:planCard(free,'A good place to start. Talk to The Mayor and feel the money loop working.')
       +planCard(pro,'For the busier business: the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls.'),
     packs:packs.map(packCard).join(''),
+    modules:moduleCardsSsrHtml(),
   };
 }
 function injectIntoContainer(html:string,containerId:string,rendered:string):string{
@@ -264,6 +281,7 @@ export function injectPricingCards(html:string,auditAvailable=false,founding?:Fo
   if(!rendered)return html;
   let out=injectIntoContainer(html,'plan-cards',rendered.plans);
   out=injectIntoContainer(out,'topup-cards',rendered.packs);
+  out=injectIntoContainer(out,'module-cards',rendered.modules);
   out=injectIntoContainer(out,'audit-card',auditCardSsrHtml(auditPaused));
   return injectProviderExample(injectStructuredData(out,auditAvailable,founding));
 }
@@ -377,6 +395,7 @@ export function structuredDataSsrHtml(auditAvailable:boolean,founding?:FoundingS
     offers.push({'@type':'Offer',name:`${p.name} top-up`,price:p.priceCents/100,priceCurrency:p.currency,availability:'https://schema.org/InStock',url:'https://mayor.mehyar.us/pricing'});
   }
   offers.push({'@type':'Offer',name:AUDIT_OFFER.name,price:AUDIT_OFFER.priceCents/100,priceCurrency:AUDIT_OFFER.currency,availability:auditAvailable?'https://schema.org/InStock':'https://schema.org/OutOfStock',url:'https://mayor.mehyar.us/business-audit'});
+  offers.push({'@type':'Offer',name:CASHTEXT_MODULE.name,price:CASHTEXT_MODULE.priceCents/100,priceCurrency:CASHTEXT_MODULE.currency,availability:'https://schema.org/InStock',url:'https://mayor.mehyar.us/pricing',priceSpecification:{'@type':'UnitPriceSpecification',price:CASHTEXT_MODULE.priceCents/100,priceCurrency:CASHTEXT_MODULE.currency,unitText:'MON'}});
   const data={
     '@context':'https://schema.org','@type':'Product',name:'The Mayor',
     description:'An AI chief of staff for local business owners. Once a business number is connected, it answers missed calls and texts back leads, and keeps the day\'s money in view.',

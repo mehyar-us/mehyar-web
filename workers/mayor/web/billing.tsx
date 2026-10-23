@@ -24,7 +24,21 @@ export interface BillingPlan {
   replyLimit: number;
   voiceMinuteLimit: number;
 }
+export interface BillingModuleCashText {
+  id: string;
+  name: string;
+  priceCents: number;
+  currency: string;
+  interval: string;
+  ready: boolean;
+  subscribed: boolean;
+  status: string;
+  cancelAtPeriodEnd: boolean;
+  connect: { status: string; chargesEnabled: boolean };
+  checkout: { pending?: boolean; requestId?: string };
+}
 export interface BillingData {
+  modules?: { cashtext: BillingModuleCashText };
   plan: { id: string; name: string; status: string; cancelAtPeriodEnd?: boolean };
   usage: {
     resetAt: string;
@@ -54,6 +68,8 @@ export interface BillingPanelProps {
   onRefresh: () => void;
   onUpgrade: () => void;
   onCreditCheckout: (pack: CreditPack) => void;
+  onModuleCheckout: () => void;
+  onModuleCancelToggle: (cancel: boolean) => void;
   onPortal: () => void;
 }
 
@@ -63,7 +79,7 @@ const moneyExact = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency: currency.toUpperCase(), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
 const approxConversations = (attempts: number) => Math.max(1, Math.round(attempts / 10));
 
-export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, onCreditCheckout, onPortal }: BillingPanelProps) {
+export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, onCreditCheckout, onModuleCheckout, onModuleCancelToggle, onPortal }: BillingPanelProps) {
   // Lucide placeholders render as <i data-lucide>; the host swaps them for
   // SVGs after each commit, exactly as the vanilla renderer did.
   useEffect(() => { onPaint(); });
@@ -142,6 +158,43 @@ export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, 
           ) : null}
         </section>
       )}
+
+      {data.modules?.cashtext && (() => {
+        const cashtext = data.modules.cashtext;
+        const modulePending = Boolean(cashtext.checkout.pending);
+        return (
+          <section className="credit-packs">
+            <span className="eyebrow">MODULES</span>
+            <h2>CashText</h2>
+            <p className="subtle">Invoice customers by conversation: The Mayor drafts each invoice and payment reminder, you approve every send, and your customers pay your own Stripe account.</p>
+            {cashtext.subscribed ? (
+              <>
+                <p className="inline-note">CashText is active for this business{cashtext.cancelAtPeriodEnd ? ' — it ends at the close of this paid period' : ''}.</p>
+                <button type="button" className="secondary" disabled={!canManage} onClick={() => onModuleCancelToggle(!cashtext.cancelAtPeriodEnd)}>
+                  {cashtext.cancelAtPeriodEnd ? 'Keep CashText' : 'Cancel CashText at period end'}
+                </button>
+              </>
+            ) : cashtext.status !== 'not_subscribed' ? (
+              <p className="inline-note">CashText is not active right now ({cashtext.status.replaceAll('_', ' ')}). No invoices can be sent until its payment is in good standing.</p>
+            ) : (
+              <>
+                <p className="credit-pack-price">{money(cashtext.priceCents, cashtext.currency)} / month</p>
+                <p className="subtle">Bills as its own subscription, separate from your Mayor plan. Cancel ends it at period end. Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>
+                {modulePending ? (
+                  <p className="inline-note">A CashText checkout is pending. Nothing is active until Stripe verifies payment.</p>
+                ) : null}
+                <button type="button" className="secondary" disabled={!canManage || !cashtext.ready} onClick={onModuleCheckout}>
+                  {modulePending ? 'Resume CashText checkout' : 'Add CashText'}
+                </button>
+                {!cashtext.ready ? (
+                  <p className="subtle">CashText is being prepared. You can keep using your plan.</p>
+                ) : null}
+              </>
+            )}
+            <p className="source-note">Stripe connection: {cashtext.connect.status === 'not_connected' ? 'not connected yet — you connect your own Stripe account in the CashText setup, and Stripe collects your business details on its own pages.' : `${cashtext.connect.status.replaceAll('_', ' ')}${cashtext.connect.chargesEnabled ? ' · charges enabled' : ''}.`}</p>
+          </section>
+        );
+      })()}
 
       {data.plan.cancelAtPeriodEnd ? (
         <p className="inline-note">Pro ends at the close of this paid period. Your saved business records remain available on Free.</p>
