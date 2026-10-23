@@ -34,6 +34,7 @@ describe('audit generation pause — offer + checkout refusal', () => {
   it('the offer answers paused: unavailable, paused flag set, paused message, no live sale', () => {
     const offer = auditOffer(pausedEnv);
     expect(offer.available).toBe(false);
+    expect(offer.mode).toBeNull();
     expect(offer.audit_paused).toBe(true);
     expect(offer.message).toBe(AUDIT_PAUSED_MESSAGE);
     expect(offer.message).toContain('paused while report generation is restored');
