@@ -89,7 +89,7 @@ export default function Home() {
             <AuditWidget compact />
           </div>
           <div className="mx-auto mt-6 flex max-w-xl items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>Free 60-second scan · No signup · No credit card</span>
+            <span>Free 60-second scan · No credit card · Just an email for delivery</span>
           </div>
         </div>
       </section>
