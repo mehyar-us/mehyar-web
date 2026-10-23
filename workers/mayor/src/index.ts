@@ -66,6 +66,7 @@ import {getStyleState,saveOnboardingSamples,dismissStyleOnboarding,onboardingSam
 import {generateTrendpostPlan,getTrendpostPlan,decideTrendpostPost,editTrendpostPost,editTrendpostPostSchema,trendpostAccessView} from './trendpost';
 import {handleInstagramWebhook} from './instagram-dm';
 import {voiceReadinessResponse} from './voice-readiness';
+import {runCashTextCadence} from './cashtext/cadence';
 export {MayorPhone} from './phone-voice';
 export {MayorBusiness} from './business-agent';
 export { MayorVoice } from './voice';
@@ -779,4 +780,5 @@ export default {async fetch(request:Request,env:Env,context?:ExecutionContext) {
   context.waitUntil(deliverPendingLeadEmails(env).catch(()=>undefined));
   context.waitUntil(deliverLoopEmails(env).catch(()=>undefined));
   context.waitUntil(runProactiveCycle(env).then(summary=>{console.log(JSON.stringify({event:'proactive_cycle',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'proactive_cycle_failed'}));}));
+  context.waitUntil(runCashTextCadence(env).then(summary=>{console.log(JSON.stringify({event:'cashtext_cadence',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'cashtext_cadence_failed'}));}));
 }} satisfies ExportedHandler<Env>;

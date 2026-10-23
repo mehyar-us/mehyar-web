@@ -120,6 +120,10 @@ export async function prepareInvoiceDraft(db: D1Database, input: {
  * returns the waiting one, never a duplicate card. */
 export async function prepareChaseDraft(db: D1Database, input: {
  tenantId: string; customer: CashTextCustomer; invoice: CashTextInvoice; chaseText?: string; now?: Date;
+ /** Cadence step (1/2/3) when the Phase 4 scan prepares this chase —
+  * recorded on the payload so a dismissed step is never re-prepared
+  * (§9.1). Talk-initiated chases carry no step. */
+ chaseStep?: number;
 }): Promise<{ action: PreparedAction; existing: boolean }> {
  const pending = await listPreparedActions(db, input.tenantId, ['prepared']);
  const existing = pending.find(a => a.actionClass === 'send_invoice_chase' && a.payload.invoice_id === input.invoice.id);
@@ -128,7 +132,7 @@ export async function prepareChaseDraft(db: D1Database, input: {
  const action = await insertPreparedAction(db, {
   tenantId: input.tenantId, kind: 'ask', actionClass: 'send_invoice_chase',
   targetPerson: input.customer.name, channel: 'email',
-  payload: { invoice_id: input.invoice.id, customer_id: input.customer.id, customer_name: input.customer.name, amount_cents: input.invoice.amountCents, chase_text: input.chaseText ?? defaultChaseText(input.customer, input.invoice), text: input.chaseText ?? defaultChaseText(input.customer, input.invoice), edit_hint: 'Rewrite the reminder in your own words.' },
+  payload: { invoice_id: input.invoice.id, customer_id: input.customer.id, customer_name: input.customer.name, amount_cents: input.invoice.amountCents, chase_text: input.chaseText ?? defaultChaseText(input.customer, input.invoice), text: input.chaseText ?? defaultChaseText(input.customer, input.invoice), edit_hint: 'Rewrite the reminder in your own words.', ...(input.chaseStep ? { chase_step: input.chaseStep } : {}) },
   payloadSummary: chaseSummary(input.customer.name, input.invoice),
   grantId: null, grantVersion: null, predicateFired: null, decisionId: null, nearBoundary: false,
   reversibility: null, expiresAt: new Date(now.getTime() + 24 * 3600_000).toISOString(),

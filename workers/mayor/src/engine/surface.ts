@@ -142,5 +142,23 @@ export async function buildEngineDeskIntents(db: DB, tenantId: string, currentSc
    });
   }
  } catch { /* 0078 not applied on this database — no invoice cards */ }
+ /* CashText Friday summary (§3.6, Phase 4): the stored weekly
+  * summary renders as a Desk stat while it is current (written
+  * within the last 8 days). The cron leg in cashtext/cadence.ts is
+  * the only writer; this is a read of its record, guarded like the
+  * invoice cards above. */
+ try {
+  const row = await db.prepare('SELECT week_key,text,summary_json,created_at FROM mayor_cashtext_summaries WHERE tenant_id=? ORDER BY week_key DESC LIMIT 1').bind(tenantId).first<Record<string, unknown>>();
+  if (row && Date.now() - Date.parse(row.created_at as string) < 8 * 86_400_000) {
+   const data = JSON.parse(row.summary_json as string) as { collectedThisWeekCents?: number };
+   intents.push({
+    type: 'stat', id: `cashtext-summary-${row.week_key as string}`, version: V,
+    summary: row.text as string,
+    label: 'CashText · Friday cash summary',
+    value: `$${(((data.collectedThisWeekCents ?? 0) as number) / 100).toFixed(2)} collected`,
+    context: `week of ${row.week_key as string}`,
+   });
+  }
+ } catch { /* 0081 not applied on this database — no summary stat */ }
  return intents;
 }
