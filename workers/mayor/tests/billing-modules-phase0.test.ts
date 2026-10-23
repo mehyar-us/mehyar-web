@@ -54,9 +54,14 @@ it('cashtext branch: foreign events pass through, claimed-but-unmapped fails lou
  let seamCode:unknown;try{await processCashTextEvent(branchEnv({id:'ct_fixture',tenant_id:'a'.repeat(32),mode:'test',request_id:'req',status:'open',stripe_session_id:'cs_test_fixture'}),checkoutEvent('mayor_cashtext'));}catch(error){seamCode=(error as {code?:unknown})?.code;}
  expect(seamCode).not.toBe('cashtext_fulfillment_not_ready');
 });
-it('leadproof branch: foreign events pass through, claimed-but-unmapped fails loud, mapped waits for Phase 5',async()=>{
+it('leadproof branch: foreign events pass through, claimed-but-unmapped fails loud, mapped fulfills for real (Phase 5)',async()=>{
  await expect(processLeadProofEvent(branchEnv(null),{id:'evt_fixture',type:'charge.refunded',created:0,livemode:false,data:{object:{id:'ch_fixture'}}} as any)).resolves.toBeNull();
  await expect(processLeadProofEvent(branchEnv(null),checkoutEvent(undefined))).resolves.toBeNull();
  await expect(processLeadProofEvent(branchEnv(null),checkoutEvent('mayor_leadproof_pack'))).rejects.toMatchObject({code:'leadproof_checkout_unmapped'});
- await expect(processLeadProofEvent(branchEnv({id:'lp_fixture'}),checkoutEvent('mayor_leadproof_pack'))).rejects.toMatchObject({code:'leadproof_fulfillment_not_ready'});
+ // Phase 5 replaced the seam: a mapped event enters real verification
+ // (the full battery lives in tests/integration/billing-leadproof.test.ts)
+ // and never raises the old seam code — with this stub row it fails
+ // verification loudly instead.
+ let seamCode:unknown;try{await processLeadProofEvent(branchEnv({id:'lp_fixture'}),checkoutEvent('mayor_leadproof_pack'));}catch(error){seamCode=(error as {code?:unknown})?.code;}
+ expect(seamCode).not.toBe('leadproof_fulfillment_not_ready');
 });

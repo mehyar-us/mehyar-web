@@ -8,6 +8,8 @@ import {baseConfiguration,parseEvent,rawBody,verifySignature,type BillingEnv,typ
 import {handleAuditPublic,auditOrders} from './audit';
 import {createCreditCheckout} from './credits';
 import {createModuleCheckout,processConnectEvent,refreshConnectStatus,setCashTextCancelAtPeriodEnd,startConnectOnboarding} from './cashtext';
+import {createLeadProofCheckout} from './leadproof';
+import {requestLeadProofPack} from '../leadproof/packs';
 export {billingUsageContext,usageBalance} from './state';
 import {PLANS,CREDIT_PACKS,BILLING_VERSION,PRO_PRICE_VERSION,CREDIT_PACK_VERSION,FOUNDING_PRICE_CENTS,CASHTEXT_MODULE,LEADPROOF_PACK} from './plans';
 import {FOUNDING_UNAVAILABLE} from './founding';
@@ -76,7 +78,7 @@ export async function handleBillingPublic(request:Request,env:BillingEnv,injecte
  if(pathname!=='/api/billing/webhook')return null;if(request.method!=='POST')throw new HttpError(405,'method_not_allowed','Use POST for billing events.');baseConfiguration(env);const bytes=await rawBody(request);await verifySignature(bytes,request.headers.get('stripe-signature'),env.MAYOR_STRIPE_WEBHOOK_SECRET!);return json(await processBillingEvent(env,parseEvent(bytes),injected));
 }
 export async function handleBillingRequest(request:Request,env:BillingEnv,actor:Actor,injected?:StripeClient):Promise<Response|null>{
- const match=new URL(request.url).pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/billing(?:\/(checkout|credit-checkout|module-checkout|module-cancel|connect-onboard|connect-refresh|portal|sync|audit-orders))?$/);if(!match)return null;
+ const match=new URL(request.url).pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/billing(?:\/(checkout|credit-checkout|module-checkout|module-cancel|connect-onboard|connect-refresh|leadproof-checkout|leadproof-request|portal|sync|audit-orders))?$/);if(!match)return null;
  if(match[1]!==actor.tenantId)throw new HttpError(403,'billing_tenant_mismatch','Select the correct business.');await requireMembership(env,actor);
  if(!match[2]&&request.method==='GET'){const status=await billingStatus(env,actor);
   // Engine events (§1.7): purchase_completed was recorded by the
@@ -91,5 +93,7 @@ export async function handleBillingRequest(request:Request,env:BillingEnv,actor:
  if(match[2]==='module-cancel'){const quote=z.object({module:z.enum(['cashtext']),cancel:z.boolean()}).strict().parse(body);return json(await setCashTextCancelAtPeriodEnd(env,actor,key,quote.cancel,injected));}
  if(match[2]==='connect-onboard'){z.object({module:z.enum(['cashtext'])}).strict().parse(body);return json(await startConnectOnboarding(env,actor,key,injected));}
  if(match[2]==='connect-refresh'){z.object({module:z.enum(['cashtext'])}).strict().parse(body);return json(await refreshConnectStatus(env,actor,injected));}
+ if(match[2]==='leadproof-checkout'){z.object({}).strict().parse(body);return json(await createLeadProofCheckout(env,actor,key,injected,analyticsConsentAsserted(request)));}
+ if(match[2]==='leadproof-request'){const ask=z.object({icpText:z.string().min(1).max(500),icpParams:z.object({category:z.string().min(1).max(120),geography:z.string().min(1).max(120),qualifiers:z.array(z.string().max(120)).max(8).optional(),scope:z.literal('businesses').optional()}).strict()}).strict().parse(body);return json(await requestLeadProofPack(env,actor,ask));}
  z.object({}).strict().parse(body);return json(match[2]==='portal'?await portalSession(env,actor,key,injected):await syncBilling(env,actor,injected));
 }

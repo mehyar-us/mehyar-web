@@ -37,8 +37,20 @@ export interface BillingModuleCashText {
   connect: { status: string; chargesEnabled: boolean; payoutsEnabled?: boolean; accountLinked?: boolean; onboardingOpen?: boolean };
   checkout: { pending?: boolean; requestId?: string };
 }
+export interface BillingModuleLeadProof {
+  id: string;
+  name: string;
+  priceCents: number;
+  currency: string;
+  interval: string;
+  leadTarget: number;
+  ready: boolean;
+  creditsHeld: number;
+  packs: { id: string; icpText: string; status: string; leadCount: number | null; shortfallReason: string | null; createdAt: string; readyAt: string | null; exportedAt: string | null }[];
+  checkout: { pending?: boolean; requestId?: string };
+}
 export interface BillingData {
-  modules?: { cashtext: BillingModuleCashText };
+  modules?: { cashtext: BillingModuleCashText; leadproof?: BillingModuleLeadProof };
   plan: { id: string; name: string; status: string; cancelAtPeriodEnd?: boolean };
   usage: {
     resetAt: string;
@@ -69,6 +81,8 @@ export interface BillingPanelProps {
   onUpgrade: () => void;
   onCreditCheckout: (pack: CreditPack) => void;
   onModuleCheckout: () => void;
+  onLeadProofCheckout: () => void;
+  onLeadProofRequest: () => void;
   onModuleCancelToggle: (cancel: boolean) => void;
   onConnectOnboard: () => void;
   onPortal: () => void;
@@ -80,7 +94,7 @@ const moneyExact = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency: currency.toUpperCase(), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
 const approxConversations = (attempts: number) => Math.max(1, Math.round(attempts / 10));
 
-export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, onCreditCheckout, onModuleCheckout, onModuleCancelToggle, onConnectOnboard, onPortal }: BillingPanelProps) {
+export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, onCreditCheckout, onModuleCheckout, onLeadProofCheckout, onLeadProofRequest, onModuleCancelToggle, onConnectOnboard, onPortal }: BillingPanelProps) {
   // Lucide placeholders render as <i data-lucide>; the host swaps them for
   // SVGs after each commit, exactly as the vanilla renderer did.
   useEffect(() => { onPaint(); });
@@ -179,7 +193,12 @@ export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, 
               <p className="inline-note">CashText is not active right now ({cashtext.status.replaceAll('_', ' ')}). No invoices can be sent until its payment is in good standing.</p>
             ) : (
               <>
-                <p className="credit-pack-price">{money(cashtext.priceCents, cashtext.currency)} / month</p>
+                {/* Display conversion (2026-10-23, Phase 8 gate item
+                    pulled forward): NO price figure on this card while
+                    the launch price is unruled (D5 HOLD) — launch
+                    language only, exactly as the public surfaces carry.
+                    The figure lives in plans.ts + Stripe checkout. */}
+                <p className="inline-note">Arrives with the module launch — pricing is announced at launch, and checkout opens then.</p>
                 <p className="subtle">Bills as its own subscription, separate from your Mayor plan. Cancel ends it at period end. Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>
                 {modulePending ? (
                   <p className="inline-note">A CashText checkout is pending. Nothing is active until Stripe verifies payment.</p>
@@ -201,6 +220,62 @@ export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, 
               <button type="button" className="secondary" disabled={!canManage} onClick={onConnectOnboard}>
                 {cashtext.connect.status === 'restricted' ? 'Resolve on Stripe' : cashtext.connect.accountLinked ? 'Continue Stripe setup' : 'Connect your Stripe account'}
               </button>
+            ) : null}
+          </section>
+        );
+      })()}
+
+      {data.modules?.leadproof && (() => {
+        const leadproof = data.modules.leadproof;
+        const packPending = Boolean(leadproof.checkout.pending);
+        return (
+          <section className="credit-packs">
+            <span className="eyebrow">MODULES</span>
+            <h2>LeadProof</h2>
+            <p className="subtle">Evidence-backed business leads: describe who you want to reach and get a pack of up to {leadproof.leadTarget} local businesses that match — every lead with the source behind it, ready to download. Export only: The Mayor never contacts them for you.</p>
+            {/* No price figure on this card either (the same display
+                conversion as CashText's): the pack price is a plans.ts
+                constant shown at Stripe checkout, not a page figure,
+                until a launch price is ruled. */}
+            <p className="inline-note">Arrives with the module launch — pricing is announced at launch, and checkout opens then.</p>
+            <p className="subtle">One pack, one credit. If fewer than 15 leads qualify, the pack credit comes back automatically. Payments are final and non-refundable — see <a href="/terms">Terms</a>.</p>
+            {leadproof.creditsHeld ? (
+              <>
+                <p className="inline-note">You hold {leadproof.creditsHeld} pack credit{leadproof.creditsHeld === 1 ? '' : 's'} — spend one when you request a pack.</p>
+                {/* The pack request (§4.1): who + where, in the tenant's
+                    own words. The confirm is a read-back dialog in
+                    workday.ts; the spend happens only on confirm. */}
+                <div className="leadproof-request">
+                  <label>Kind of business <input id="leadproof-category" type="text" maxLength={120} placeholder="property managers" /></label>
+                  <label>Where <input id="leadproof-geography" type="text" maxLength={120} placeholder="Brooklyn, NY" /></label>
+                  <label>Describe who you want to reach <input id="leadproof-icp" type="text" maxLength={500} placeholder="Property managers in Brooklyn who look busy" /></label>
+                  <button type="button" className="secondary" disabled={!canManage} onClick={onLeadProofRequest}>Request a pack</button>
+                </div>
+              </>
+            ) : null}
+            {packPending ? (
+              <p className="inline-note">A LeadProof checkout is pending. No credit lands until Stripe verifies payment.</p>
+            ) : null}
+            <button type="button" className="secondary" disabled={!canManage || !leadproof.ready} onClick={onLeadProofCheckout}>
+              {packPending ? 'Resume LeadProof checkout' : 'Buy a LeadProof pack'}
+            </button>
+            {!leadproof.ready ? (
+              <p className="subtle">LeadProof is being prepared. You can keep using your plan.</p>
+            ) : null}
+            {leadproof.packs.length ? (
+              <details>
+                <summary>Your packs</summary>
+                <ul className="purchase-list">
+                  {leadproof.packs.map((pack) => (
+                    <li key={pack.id}>
+                      {pack.icpText} · {pack.status.replaceAll('_', ' ')}{pack.leadCount != null ? ` · ${pack.leadCount} leads` : ''}{pack.shortfallReason ? ` · ${pack.shortfallReason}` : ''}
+                      {pack.status === 'ready' || pack.status === 'exported' ? (
+                        <> · <a href={`/api/billing/leadproof/packs/${pack.id}/export?format=csv`}>Download CSV</a> · <a href={`/api/billing/leadproof/packs/${pack.id}/export?format=json`}>JSON</a></>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             ) : null}
           </section>
         );

@@ -12,7 +12,7 @@
  * when data-ssr="catalog" is present on #offer-block, so there is no
  * double-render or flicker.
  */
-import {PLANS,CREDIT_PACKS,CASHTEXT_MODULE,approxConversations,FOUNDING_PRICE_CENTS} from './billing/plans';
+import {PLANS,CREDIT_PACKS,CASHTEXT_MODULE,LEADPROOF_PACK,approxConversations,FOUNDING_PRICE_CENTS} from './billing/plans';
 import {AUDIT_OFFER} from './billing/audit';
 import {providerExampleSsrHtml} from './provider-example';
 
@@ -231,10 +231,19 @@ export const FINAL_SALE_LINE=`<p class="plan-final-sale">Payments are final and 
  * already carries both modules. */
 export function moduleCardsSsrHtml():string{
   const m=CASHTEXT_MODULE;
-  return `<article class="plan-card"><h3>${escapeHtml(m.name)}</h3>`+
+  const cashtext=`<article class="plan-card"><h3>${escapeHtml(m.name)}</h3>`+
     `<p class="plan-tier">Add-on module · its own subscription</p>`+
     `<p>Invoice customers by conversation: The Mayor drafts each invoice and payment reminder, you approve every send, and your customers pay your own Stripe account. Bills as its own subscription, separate from your Mayor plan — cancel ends it at period end.</p>`+
     `<p class="module-launch-note">Arrives with the module launch — pricing is announced at launch, and checkout opens then.</p></article>`;
+  // LeadProof's card (Phase 5): the same corrected presentation — no
+  // price figure anywhere (its pack price is a plans.ts/Stripe record
+  // only until a launch price is ruled), mechanics-only copy (R2).
+  const lp=LEADPROOF_PACK;
+  const leadproof=`<article class="plan-card"><h3>${escapeHtml(lp.name)}</h3>`+
+    `<p class="plan-tier">Add-on module · one-time pack</p>`+
+    `<p>Evidence-backed business leads: describe who you want to reach and get a pack of up to 25 local businesses that match — every lead with the source behind it, ready to download. Export only: The Mayor never contacts them for you. If fewer than 15 qualify, the pack credit comes back.</p>`+
+    `<p class="module-launch-note">Arrives with the module launch — pricing is announced at launch, and checkout opens then.</p></article>`;
+  return cashtext+leadproof;
 }
 export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:string;packs:string;modules:string}|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');

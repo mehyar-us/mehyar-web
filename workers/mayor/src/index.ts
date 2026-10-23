@@ -67,6 +67,8 @@ import {generateTrendpostPlan,getTrendpostPlan,decideTrendpostPost,editTrendpost
 import {handleInstagramWebhook} from './instagram-dm';
 import {voiceReadinessResponse} from './voice-readiness';
 import {runCashTextCadence} from './cashtext/cadence';
+import {handleLeadProofOwnerRequest,handleLeadProofRunnerRequest} from './leadproof/routes';
+import {sweepLeadProofTimeouts} from './leadproof/pipeline';
 export {MayorPhone} from './phone-voice';
 export {MayorBusiness} from './business-agent';
 export { MayorVoice } from './voice';
@@ -88,6 +90,8 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(mcp)return mcp;
   const publicBilling=await handleBillingPublic(request,env);
   if(publicBilling)return publicBilling;
+  const leadproofRunner=await handleLeadProofRunnerRequest(request,env);
+  if(leadproofRunner)return leadproofRunner;
   // ProductDescriptor (§1.7): the API's self-description. Its hash is
   // stamped on the landing/OG surfaces below; a mismatch fails tests.
   const productDescriptor=await productDescriptorResponse(request,env);
@@ -328,6 +332,8 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     if(mcpTokens)return mcpTokens;
     const billing=await handleBillingRequest(request,env,actor);
     if(billing)return billing;
+    const leadproofOwner=await handleLeadProofOwnerRequest(request,env,actor);
+    if(leadproofOwner)return leadproofOwner;
     const routines=await handleBusinessRoutinesRequest(request,env,actor);
     if(routines)return routines;
     const harness=await handleBusinessHarnessRequest(request,env,actor);
@@ -781,4 +787,5 @@ export default {async fetch(request:Request,env:Env,context?:ExecutionContext) {
   context.waitUntil(deliverLoopEmails(env).catch(()=>undefined));
   context.waitUntil(runProactiveCycle(env).then(summary=>{console.log(JSON.stringify({event:'proactive_cycle',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'proactive_cycle_failed'}));}));
   context.waitUntil(runCashTextCadence(env).then(summary=>{console.log(JSON.stringify({event:'cashtext_cadence',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'cashtext_cadence_failed'}));}));
+  context.waitUntil(sweepLeadProofTimeouts(env).then(summary=>{console.log(JSON.stringify({event:'leadproof_sweep',...summary}));}).catch(()=>{console.error(JSON.stringify({event:'leadproof_sweep_failed'}));}));
 }} satisfies ExportedHandler<Env>;
