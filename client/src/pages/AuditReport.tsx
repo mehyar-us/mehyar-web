@@ -619,8 +619,9 @@ export default function AuditReport() {
                     <div className="rounded-2xl border border-border bg-secondary/50 p-4">
                       <p className="text-sm font-semibold text-foreground">Don't lose your report</p>
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        Checkout is opening shortly. Tap below and we'll send you one message the
-                        moment it's live — nothing else, ever. No charge is made until you pay.
+                        Checkout is paused while we restore full report generation. Tap below
+                        and we'll send you one message when it reopens — nothing else, ever.
+                        No charge is made until you pay.
                       </p>
                       {notifyState === "saved" ? (
                         <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
