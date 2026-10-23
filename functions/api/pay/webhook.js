@@ -39,6 +39,7 @@ import { fulfillOpenseason } from "../_shared/fulfillOpenseason.js";
 import { fulfillMoonroom } from "../_shared/fulfillMoonroom.js";
 import { fulfillAuditBusiness } from "../_shared/fulfillAuditBusiness.js";
 import { fulfillBillcut } from "../_shared/fulfillBillcut.js";
+import { fulfillBillcutBiz } from "../_shared/fulfillBillcutBiz.js";
 import { fulfillCoach } from "../_shared/fulfillCoach.js";
 import { fulfillClipnote } from "../_shared/fulfillClipnote.js";
 import { fulfillMemoir } from "../_shared/fulfillMemoir.js";
@@ -497,6 +498,14 @@ const fulfillHooks = {
     await fulfillBillcut({ db, env, waitUntil, sendEmail }, payment);
   },
 
+  // Billcut for Business ($49 report / $79/mo unlimited). Marks the
+  // billcut_biz_reports row paid/unlimited (idempotent on payment_id),
+  // unifies the access token onto the biz token, emails the report link.
+  async billcut_biz({ db, env, waitUntil }, payment) {
+    const sendEmail = (e, msg) => sendCloudflareEmail(e, msg);
+    await fulfillBillcutBiz({ db, env, waitUntil, sendEmail }, payment);
+  },
+
   // Coach Pro ($19/mo subscription). Marks the coach_sessions row Pro
   // (idempotent on payment_id), unifies the access token onto the session
   // token, emails the buyer their personal Pro link.
@@ -697,7 +706,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
           // with no order, no generation, no email. digital/none/audit_report
           // keep the old skip-on-duplicate behavior (avoids double emails).
           const duplicate = payment.stripe_session_id && payment.stripe_session_id === sess.id && payment.status !== "pending";
-          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut","coach","clipnote","memoir"]);
+          const ORDER_HOOKS = new Set(["designful","freelanceros","hustlekit","creditfixkit","sprint30","bizbuilder","prepguide","tiktokgrowth","promptpack","truesketch","taxtrim","pillguard","floodlens","beachcall","openseason","carerank","puretap","sproutscore","aimech","moonroom","audit_business","billcut","billcut_biz","coach","clipnote","memoir"]);
           if (!duplicate) {
             const isSub = sess.mode === "subscription" && sess.subscription;
             await db.prepare(
