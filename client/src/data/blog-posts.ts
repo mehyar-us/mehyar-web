@@ -425,6 +425,76 @@ export const blogPosts: BlogPost[] = [
     textColorClass: "text-primary",
     hoverColorClass: "text-primary-dark",
   },
+  {
+    id: 11,
+    title: "Signs Your Website Is Costing You Customers",
+    slug: "signs-your-website-is-costing-you-customers",
+    date: "2026-10-23",
+    author: "Mehyar Swelim",
+    category: "Operations",
+    excerpt:
+      "Signs your website is costing you customers: five silent give-up moments to check in minutes, plus a free scan — score, 3 leaks, 3 quick wins.",
+    readTime: 7,
+    image: "/blog/signs-your-website-is-costing-you-customers/signs-website-costing-customers-real.webp",
+    content: [
+      "It is 6:40 on a Tuesday morning. A homeowner's water heater has quit, she searches on her phone, and your shop is the second result. Your page loads. The number is right there at the top — as a picture. She taps it. Nothing happens. She gives up and calls the first result instead. You were open, you were closer, and you never knew she existed. That quiet moment is one of the clearest signs your website is costing you customers.",
+      "Nobody complains about these moments; a buyer who cannot reach you just becomes someone else's job. What you see is a phone that rings less than it should. Below are five give-up moments, each with a check you can run in minutes.",
+    ],
+    sections: [
+      {
+        title: "The signs your website is costing you customers, one by one",
+        content: [
+          "1. The phone number will not tap to call. On a phone, your number should be a button, not a sentence. If it sits in a logo image or plain text with no call link behind it, a visitor must copy it by hand — and most will not bother. Check it yourself: open your site on your phone and tap the number everywhere it appears — header, contact page, footer. If any copy does not open your dialer, that is leak number one.",
+          "2. The form asks for too much, too soon. Every extra field is a small decision. A form that wants a full address, a budget, and a preferred date before accepting a simple \"can you fix this?\" turns ready buyers into people who will \"come back later.\" They do not. Check it yourself: count the fields, then submit one on your phone. If it takes more than a minute, trim it to name, contact, and the problem.",
+          "3. Nothing confirms the request went through. She fills in the form, presses send, and the page just sits there. Did it send? Most buyers assume it vanished and move to a competitor whose site said \"Got it — we reply within the hour.\" Check it yourself: after your test submission, look for an on-screen confirmation and a confirmation email or text. If either is missing, visitors guess — and guessing buyers leave.",
+          "4. Nobody owns what happens next. The form worked — and the request landed in an inbox nobody checks until Friday. To the customer, that is identical to being ignored. Follow-up that depends on one person remembering fails whenever that person is busy, sick, or on a roof. Check it yourself: ask, out loud, \"when a request comes in tonight, whose job is the reply, and how fast?\" A shrug means you found the leak your website cannot show you.",
+          "5. Your proof is invisible. Buyers look for evidence before prices: recent reviews, photos of real work, a named service area, clear hours. If your reviews live only on a profile your site never links to, a stranger sees claims with nothing behind them. Check it yourself: open your homepage as a stranger and time the hunt for a review, a real photo, and your service area. More than a few seconds means it is effectively not there.",
+        ],
+      },
+      {
+        title: "How Audit My Business checks the same five moments",
+        content: [
+          "Run the checks above — they take minutes. What Audit My Business (mehyar.us/audit) adds is a measured read of the whole public path, every finding tied to its page.",
+          "The free scan (mehyar.us/audit/free) is the starting point, and it is running today: paste your URL for an instant, signal-based analysis of your public site — measured checks of load, contact paths, trust signals, and content — and get a score, your top 3 money leaks priced in dollars, and 3 quick wins you can do today. About 10 seconds, $0, no card — just an email address for delivery.",
+          "The Full Report, $5 one-time, is the complete written breakdown of the scan: every leak found, priced and ranked. The full audit, $330 one-time, reads the whole business — your site plus an optional walkthrough video of 2 to 30 minutes, transcribed and assessed — and delivers a visual report by email within 3 to 5 business days: overall score, money leaks ranked by dollar impact, flaws, fixes in priority order, and where software help fits. A $5 report bought first is credited in full — $330 minus $5 is $325 at checkout — and the credit stays yours while checkouts are paused and applies when they reopen. One honest note: paid checkouts for both paid reports are currently paused while the assessment engine is restored, so no charge can be taken today. Our companion piece on what a business audit checks (mehyar.us/blog/what-does-a-business-audit-check) covers the full report section by section.",
+        ],
+      },
+      {
+        title: "A worked example: the heater shop's quiet Tuesday",
+        content: [
+          "A fictional heating shop, with the math labeled the way a report labels it: the owner runs the phone check and finds the header number baked into the logo image. The form asks for six fields. The confirmation passes — but requests land in a shared inbox opened twice a week, and the homepage shows no reviews. Four of the five, on one ordinary site.",
+          "Price the biggest leak the report way, with assumptions shown: the shop's stated average job value, multiplied by ready callers turned away each week by an untappable number and a two-day reply, over a month. The math sits next to the figure. Fix order matters more than the total: make the number tappable and link the reviews this week, cut the form next, and only then argue about a redesign. See finding revenue leaks before buying more software (mehyar.us/blog/small-business-tech-audit-revenue-leaks) for the same logic.",
+        ],
+      },
+      {
+        title: "Who this is for — and who it is not for",
+        content: [
+          "It fits you if you run an owner-led business — a trade, clinic, restaurant, shop, or small agency — your website \"looks fine\" but inquiries feel thinner than your reputation suggests, and you want the broken moments named and priced before paying for a rebuild.",
+          "It is not for you if your site already turns visitors into confirmed, promptly answered requests and you can prove it — or if you need a financial or tax audit, which this is not. Nor is it a promise: the scan and reports show what is true on your public path today, ranked by estimated impact, and no check can guarantee revenue results.",
+        ],
+      },
+      {
+        title: "Frequently asked questions",
+        content: [
+          "How long does it take to check my own site? About ten minutes for all five: tap the number, count and submit the form, look for the confirmation, name who owns the reply, and time how fast a stranger finds your reviews.",
+          "What does the free scan actually give me? A score, your top 3 money leaks priced in dollars, and 3 quick wins you can do today. It is $0, no card — only an email address for delivery. The deeper, every-leak breakdown is the separate $5 Full Report.",
+          "Can I buy the $5 report or the $330 audit today? Not today. Paid checkouts for both paid reports are paused while the assessment engine is restored, and no charge can be taken. Run the free scan; a $5 report bought earlier keeps its $5 credit toward the $330 audit, which applies when checkouts reopen.",
+          "My customers mostly call — does the website still matter? The call usually starts on the website: the search, the tap, the number that does or does not dial. Moments one, four, and five are call problems wearing a website's clothes.",
+        ],
+      },
+      {
+        title: "Start with the free scan",
+        content: [
+          "Run the free scan (mehyar.us/audit/free) now: paste your URL and get your score, 3 priced leaks, and 3 quick wins — about 10 seconds, $0, no card. Then work the five checks above. When paid reports reopen, Audit My Business (mehyar.us/audit) holds the full ranked fix list.",
+        ],
+      },
+    ],
+    tags: ["Business Audit", "Website", "Local Business", "Conversion"],
+    badgeColorClass: "text-primary",
+    badgeBgClass: "bg-primary/10",
+    textColorClass: "text-primary",
+    hoverColorClass: "text-primary-dark",
+  },
 ];
 
 export default blogPosts;

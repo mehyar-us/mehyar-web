@@ -126,6 +126,12 @@ const routeMeta = {
       'What does a business audit check? Your site, booking path, and follow-up — leaks priced in dollars, fixes ranked. Free scan first, $330 full audit.',
     path: '/blog/what-does-a-business-audit-check',
   },
+  '/blog/signs-your-website-is-costing-you-customers': {
+    title: 'Signs Your Website Is Costing You Customers | Audit My Business',
+    description:
+      'The signs your website is costing you customers: five silent give-up moments to check in minutes, plus a free scan — score, 3 leaks, 3 quick wins.',
+    path: '/blog/signs-your-website-is-costing-you-customers',
+  },
   '/blog/missed-calls-crm-follow-up': {
     title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
     description:
