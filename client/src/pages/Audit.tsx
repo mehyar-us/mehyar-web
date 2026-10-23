@@ -835,6 +835,9 @@ export default function Audit() {
                 <li>AI capacity blueprint + 90-day plan</li>
                 <li>Delivered in about a minute</li>
               </ul>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email.
+              </p>
               <Link href="/audit/report" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5 w-full bg-emerald-500 text-emerald-950 hover:bg-emerald-400")}>
                 Get the $5 report <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </Link>

@@ -13,7 +13,7 @@ export default function HeroSection() {
         </p>
         <h1 className="site-display mx-auto max-w-5xl text-balance">Is your website leaking money?</h1>
         <p className="site-lede mx-auto mt-5 max-w-3xl text-balance">
-          Drop in your URL. Our AI scans your site in 60 seconds and shows you exactly where customers slip away — priced in dollars. Free, no account, no card.
+          Drop in your URL. Our AI scans your site in 60 seconds and shows you exactly where customers slip away — priced in dollars. Free, no card — just your email for delivery.
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
           <Link href="/audit/free" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>

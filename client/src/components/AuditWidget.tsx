@@ -319,6 +319,9 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
                 </Link>
                 <span className="text-xs text-slate-400">One-time · Delivered in about a minute · Less than a coffee</span>
               </div>
+              <p className="mt-4 text-sm leading-6 text-slate-300">
+                Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email.
+              </p>
             </div>
           </div>
         </div>

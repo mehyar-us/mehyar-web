@@ -28,9 +28,9 @@ export default function ReportPreview({ className = "" }: { className?: string }
             <div className="h-5 w-8 rounded bg-slate-200 blur-[2px]" />
           </div>
         </div>
-        {/* PREVIEW ribbon */}
+        {/* SAMPLE ribbon — the cover is labelled as a sample on its face */}
         <div className="absolute left-0 top-4 -translate-x-1 rounded-r-md bg-[#F59E0B] px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[#0B1B33] shadow">
-          Preview
+          Sample
         </div>
       </div>
 

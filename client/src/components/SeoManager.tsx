@@ -204,7 +204,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/audit/free": {
     title: "Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft",
     description:
-      "Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.",
+      "Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No card — just an email for delivery.",
     path: "/audit/free",
   },
   "/audit/report": {

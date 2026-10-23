@@ -639,6 +639,9 @@ export default function AuditReport() {
                   </p>
                   <p className="text-center text-xs text-muted-foreground">One-time · Delivered in about a minute · Less than a coffee</p>
                   <p className="text-center text-xs leading-5 text-muted-foreground">
+                    Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email.
+                  </p>
+                  <p className="text-center text-xs leading-5 text-muted-foreground">
                     All sales are final — the Full Report is a one-time digital report, and purchases are not
                     refundable. If your report hasn't arrived within a few minutes, email info@mehyar.us and
                     we'll re-send it right away.
