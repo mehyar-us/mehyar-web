@@ -124,7 +124,11 @@ export default function AuditReport() {
   const [url, setUrl] = useState(q.get("url") || "");
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState("");
-  const [payBlocked, setPayBlocked] = useState(false);
+  /* Generation pause (2026-10-23, Leg 2 ruling): the purchase view starts
+     in its blocked/notify presentation while paid report generation is
+     restored; the server guard in /api/pay/checkout is the hard stop.
+     Flip back to false in the commit that verifies the cure. */
+  const [payBlocked, setPayBlocked] = useState(true);
   const [notifyState, setNotifyState] = useState<"idle" | "saving" | "saved">("idle");
   const [notifyMsg, setNotifyMsg] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -225,7 +229,7 @@ export default function AuditReport() {
         return;
       }
       if (!data.ok) {
-        if (data.error === "stripe_not_configured") {
+        if (data.error === "stripe_not_configured" || data.error === "generation_paused") {
           setPayBlocked(true);
           setBuying(false);
           return;
@@ -563,6 +567,12 @@ export default function AuditReport() {
           The complete professional report on <em>your</em> site — every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.
         </p>
 
+        <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-amber-300 bg-amber-50 p-4 text-left dark:border-amber-900 dark:bg-amber-950/40">
+          <p className="text-sm leading-6 text-amber-900 dark:text-amber-200">
+            <strong>Paid reports are paused right now</strong> while we restore full report generation — no checkout is taken. Leave your email in the notify form below and we'll send one message the moment the Full Report reopens.
+          </p>
+        </div>
+
         <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border bg-secondary/50 p-4 text-left">
           <p className="text-sm leading-6 text-muted-foreground">
             Read this first: this is a one-time scan of your public-facing site. It checks what a visitor (and Google) can see today; it is not a security penetration test and does not look inside your servers or accounts.
@@ -639,7 +649,7 @@ export default function AuditReport() {
                   </p>
                   <p className="text-center text-xs text-muted-foreground">One-time · Delivered in about a minute · Less than a coffee</p>
                   <p className="text-center text-xs leading-5 text-muted-foreground">
-                    Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email.
+                    Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email. While paid checkouts are paused, that credit stays yours and applies when they reopen.
                   </p>
                   <p className="text-center text-xs leading-5 text-muted-foreground">
                     All sales are final — the Full Report is a one-time digital report, and purchases are not
@@ -655,7 +665,7 @@ export default function AuditReport() {
         <div className="mx-auto mt-10 flex max-w-2xl items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left">
           <Search className="mt-0.5 h-5 w-5 shrink-0 text-[#0B1B33] dark:text-sky-300" />
           <p className="text-sm leading-6 text-muted-foreground">
-            <strong className="text-foreground">How it works:</strong> pay $5 once, our AI writes the full report for your site in about a minute, and it's emailed to you with a permanent link. No subscription, no upsell required to get value.
+            <strong className="text-foreground">How it works:</strong> pay $5 once, and the full report is built for your site — every page graded from measured checks, with an AI analysis of your leaks — in about a minute, emailed to you with a permanent link. No subscription, no upsell required to get value.
           </p>
         </div>
 

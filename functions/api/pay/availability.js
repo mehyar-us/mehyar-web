@@ -20,5 +20,9 @@ export async function onRequestGet({ env }) {
   // Mirrors the gate in checkout.js (stripe_not_configured when
   // env.STRIPE_SECRET_KEY is absent in non-test mode).
   const checkoutOpen = !!(env && env.STRIPE_SECRET_KEY);
-  return json({ ok: true, checkout_open: checkoutOpen });
+  // Audit generation pause (2026-10-23, Leg 2 ruling): the /audit/ page —
+  // this probe's only consumer — folds audit_paused into its blocked
+  // presentation while paid Audit report generation is restored. Flip to
+  // false in the same commit that verifies the cure end to end.
+  return json({ ok: true, checkout_open: checkoutOpen, audit_paused: true });
 }

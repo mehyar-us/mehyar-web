@@ -156,7 +156,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/audit": {
     title: "Audit My Business — $330 AI Business Audit | MehyarSoft",
     description:
-      "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.",
+      "A professional automated audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.",
     path: "/audit",
     jsonLd: [
       webPage(
@@ -172,7 +172,7 @@ const staticMeta: Record<string, SeoMeta> = {
         "@type": "Service",
         name: "Audit My Business — $330 AI Business Audit",
         description:
-          "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment.",
+          "A professional automated audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment.",
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
         areaServed: "Worldwide",
         offers: {
@@ -191,7 +191,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "Do I need the walkthrough video?",
           answer:
-            "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings drawn from your own words.",
+            "No. The audit works on your public site alone. The video unlocks the deep-dive section: your walkthrough is transcribed and the audit adds transcript-based findings drawn from your own words.",
         },
         {
           question: "How thorough is the audit?",
@@ -204,7 +204,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/audit/free": {
     title: "Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft",
     description:
-      "Free 10-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No card — just an email for delivery.",
+      "Free 10-second website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No card — just an email for delivery.",
     path: "/audit/free",
   },
   "/audit/report": {
@@ -278,7 +278,7 @@ const staticMeta: Record<string, SeoMeta> = {
         name: "Audit My Business",
         url: absoluteUrl("/audit"),
         description:
-          "One-time $330 AI audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
+          "One-time $330 automated audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
         areaServed: "Worldwide",
         offers: {
@@ -307,7 +307,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "What does a first engagement cost?",
           answer:
-            "Start free: the 10-second AI website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated AI counterpart to the founder-led $330 tech audit — instant checkout, AI-written visual report, delivered by email within 3–5 business days — while the founder-led audit itself is a human review, invoiced by email. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
+            "Start free: the 10-second website scan costs nothing, and the full report is $5 one-time. The deep audit is $330 one-time: Audit My Business is the automated counterpart to the founder-led $330 tech audit — a visual report built from measured checks of your site plus an AI assessment of the evidence, delivered by email within 3–5 business days — while the founder-led audit itself is a human review, invoiced by email. Paid checkouts for the automated reports are currently paused while the AI engine is restored. Custom builds and retainers are scoped on the first call, which identifies the smallest useful engagement for the leak.",
         },
         {
           question: "Where is MehyarSoft based?",

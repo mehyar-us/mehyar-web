@@ -292,6 +292,16 @@ export async function onRequestPost({ request, env }) {
       "SELECT * FROM billing_products WHERE id = ? AND active = 1"
     ).bind(productId).first();
     if (!product) return J({ ok: false, error: "invalid_product" }, 400);
+    // Generation pause (2026-10-23, Chief of Decisions ruling, Leg 2): the
+    // paid Audit reports cannot currently be generated — their build calls
+    // the LLM helper whose production credentials are empty, and generation
+    // hard-fails after payment. Both paid Audit checkouts are paused until
+    // a live report is verifiably model-generated again. The free scan is
+    // unaffected (it has an honest signal-based fallback). Remove this
+    // guard in the same commit that verifies the cure end to end.
+    if (productId === "audit_business" || productId === "audit-full-report") {
+      return J({ ok: false, error: "generation_paused", message: "Paid report checkouts are paused while we restore full report generation. No charge was made." }, 503);
+    }
     // Moonroom (2026-10-17): the email is OPTIONAL — its paywall lets the
     // buyer skip straight to Stripe, which collects the address on its own
     // page; the webhook backfills billing_payments.email from Stripe's

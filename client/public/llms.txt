@@ -33,9 +33,9 @@
 
 ## Pricing (from the site's own FAQ)
 
-- Free AI website scan: $0
-- Full Report: $5 one-time — the complete written breakdown of the free Audit My Business scan: every money leak found, priced and ranked. The $5 credits in full toward the full audit below.
-- Audit My Business: $330 one-time — the deep AI audit: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and an AI opportunity map, delivered by email. Full Report buyers pay $325 at checkout ($330 − the $5 credit).
+- Free website scan: $0 — an instant, signal-based analysis of the public site.
+- Full Report: $5 one-time — the complete written breakdown of the free Audit My Business scan: every money leak found, priced and ranked. The $5 credits in full toward the full audit below. (Currently paused while full report generation is restored.)
+- Audit My Business: $330 one-time — the deep automated audit: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and an AI opportunity map, delivered by email. Full Report buyers pay $325 at checkout ($330 − the $5 credit). (Currently paused while the AI assessment engine is restored; the $5 credit stays the buyer's and applies when checkouts reopen.)
 - Custom builds: $1,000–$25,000
 - Retainers: $500–$3,500/month
 - Hourly advisory: $150/hour

@@ -8,12 +8,12 @@ export default function HeroSection() {
       <div className="site-shell py-8 text-center sm:py-10 lg:py-12">
         <p className="site-eyebrow mx-auto mb-4 flex w-fit items-center gap-3">
           <span className="h-px w-8 bg-brand-700" aria-hidden="true" />
-          Free AI website audit
+          Free instant website audit
           <span className="h-px w-8 bg-brand-700" aria-hidden="true" />
         </p>
         <h1 className="site-display mx-auto max-w-5xl text-balance">Is your website leaking money?</h1>
         <p className="site-lede mx-auto mt-5 max-w-3xl text-balance">
-          Drop in your URL. Our AI scans your site in about 10 seconds and shows you exactly where customers slip away — priced in dollars. Free, no card — just your email for delivery.
+          Drop in your URL. Our scan reads your site's signals in about 10 seconds and shows you exactly where customers slip away — priced in dollars. Free, no card — just your email for delivery.
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
           <Link href="/audit/free" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 px-7 text-base" })}>

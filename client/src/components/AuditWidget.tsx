@@ -314,13 +314,10 @@ export default function AuditWidget({ compact = false }: { compact?: boolean }) 
                 ))}
               </ul>
               <div className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-                <Link href={`/audit/report?email=${encodeURIComponent(email)}&url=${encodeURIComponent(url)}`} className={buttonVariants({ variant: "cta", size: "lg", className: "bg-[#F59E0B] text-[#0B1B33] hover:bg-amber-400" })}>
-                  Get my full report — $5 <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-                <span className="text-xs text-slate-400">One-time · Delivered in about a minute · Less than a coffee</span>
+                <span className="text-sm font-semibold text-amber-300">Temporarily paused while we restore full report generation — no checkout is taken right now.</span>
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-300">
-                Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email.
+                Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email. While paid checkouts are paused, that credit stays yours and applies when they reopen.
               </p>
             </div>
           </div>

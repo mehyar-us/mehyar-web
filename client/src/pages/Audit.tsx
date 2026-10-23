@@ -388,7 +388,7 @@ export default function Audit() {
     let cancelled = false;
     fetch("/api/pay/availability", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => { if (!cancelled) setCheckoutOpen(d && d.ok ? !!d.checkout_open : null); })
+      .then((d) => { if (!cancelled) setCheckoutOpen(d && d.ok ? (!!d.checkout_open && !d.audit_paused) : null); })
       .catch(() => { if (!cancelled) setCheckoutOpen(null); });
     return () => { cancelled = true; };
   }, []);
@@ -746,9 +746,10 @@ export default function Audit() {
           <p className="site-eyebrow mb-4">One-time audit · $330</p>
           <h1 className="site-display text-balance">Audit My Business</h1>
           <p className="site-lede mx-auto mt-4 max-w-2xl text-balance">
-            Enter your business URL and our AI audits your public site — then writes you a
-            professional visual report: an overall score, your money leaks ranked, your flaws,
-            prioritized fixes, and where AI fits in your business. Add an optional
+            Enter your business URL and our automated audit reads your public site —
+            measured checks on load, contact paths, trust signals and content — then builds
+            you a professional visual report: an overall score, your money leaks ranked,
+            your flaws, prioritized fixes, and where AI fits in your business. Add an optional
             CEO walkthrough video (2–30 min) for a deeper assessment.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -761,8 +762,10 @@ export default function Audit() {
           </div>
           <p className="mx-auto mt-4 max-w-xl text-xs leading-5 text-muted-foreground">
             One-time $330 · No subscription · This page sells Audit My Business — the
-            automated audit: our AI reads your site and your walkthrough and emails
-            your report within 3–5 business days. It is not the founder-led $330 tech
+            automated audit: measured checks of your site and your walkthrough, with an
+            AI assessment of the evidence, emailed as your report within 3–5 business
+            days. Paid checkout is currently paused while we restore the AI engine —
+            the free scan below runs as always. It is not the founder-led $330 tech
             audit (a human review, invoiced by email) — the side-by-side is below.
           </p>
           <p className="mt-3 text-sm">
@@ -774,7 +777,7 @@ export default function Audit() {
                 document.getElementById("step-3")?.scrollIntoView({ behavior: "smooth" });
               }}
             >
-              Already know you want it? Skip the free scan — buy the audit now
+              Already know you want it? Skip the free scan — go straight to the audit step
             </button>
           </p>
           <p className="mt-2 text-sm">
@@ -790,8 +793,8 @@ export default function Audit() {
         <div className="site-shell grid max-w-4xl gap-4 sm:grid-cols-3">
           {[
             { n: "1", t: "Share your URL", d: "Just your URL — we fetch your site, find your business details ourselves, and show you the honest signals we found. Free.", icon: FileSearch },
-            { n: "2", t: "Add your walkthrough (optional)", d: "Even 2 minutes works (up to 30 min MP4): talk us through your business like you're showing a friend. The AI uses it for a deeper read.", icon: Video },
-            { n: "3", t: "Pay $330, get the report", d: "One-time payment. The AI writes your visual report and emails you a permanent link.", icon: BadgeCheck },
+            { n: "2", t: "Add your walkthrough (optional)", d: "Even 2 minutes works (up to 30 min MP4): talk us through your business like you're showing a friend. Its transcript feeds a deeper read.", icon: Video },
+            { n: "3", t: "Pay $330, get the report", d: "One-time payment. Your visual report is built from the measured checks plus an AI assessment of the evidence, and emailed with a permanent link.", icon: BadgeCheck },
           ].map(({ n, t, d, icon: Icon }) => (
             <div key={n} className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-3">
@@ -833,10 +836,10 @@ export default function Audit() {
                 <li>Every page graded, not just the homepage</li>
                 <li>Every leak priced, with the math shown</li>
                 <li>AI capacity blueprint + 90-day plan</li>
-                <li>Delivered in about a minute</li>
+                <li>Temporarily paused while report generation is restored</li>
               </ul>
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email.
+                Your $5 is credited toward the $330 Audit My Business — you pay $325 at checkout with the same email. While paid checkouts are paused, that credit stays yours and applies when they reopen.
               </p>
               <Link href="/audit/report" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5 w-full bg-emerald-500 text-emerald-950 hover:bg-emerald-400")}>
                 Get the $5 report <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
@@ -850,7 +853,7 @@ export default function Audit() {
                 <li>The full site read — plus your CEO walkthrough video, transcribed and assessed</li>
                 <li>Findings on how you sell, book, and follow up — not just the site</li>
                 <li>Money leaks ranked by dollar impact, fixes in priority order</li>
-                <li>Delivered by email within 3–5 business days</li>
+                <li>Temporarily paused while report generation is restored</li>
               </ul>
               <a href="#step-1" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5 w-full")}>
                 Start Step 1 — it's free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
@@ -860,7 +863,8 @@ export default function Audit() {
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already bought the $5 Full Report? Its $5 is credited toward Audit My Business when you
             check out with the same email — the discount shows on the checkout page before you pay.
-            You pay $325 at checkout ($330 − your $5 credit).
+            You pay $325 at checkout ($330 − your $5 credit). While paid checkouts are paused,
+            that credit stays yours and applies when they reopen.
           </p>
         </div>
       </section>
@@ -874,7 +878,7 @@ export default function Audit() {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">Audit My Business — this page</p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
                 <li><span className="font-semibold text-foreground">$330 one-time</span>, paid by card through Stripe checkout</li>
-                <li>Automated: our AI audits your public site and your CEO walkthrough video</li>
+                <li>Automated: measured checks of your public site, plus your CEO walkthrough video assessed from its transcript</li>
                 <li>Visual report emailed within 3–5 business days — score, money leaks ranked, prioritized fixes, AI opportunity map</li>
               </ul>
             </div>
@@ -1474,14 +1478,18 @@ export default function Audit() {
               audit — a separate, fuller report built from your site and your walkthrough
               video, with prioritized fixes and an AI opportunity map, delivered by email
               within 3–5 business days; if you bought the Full Report first, its $5 is
-              credited toward the $330 — you pay $325 at checkout ($330 − $5). The{" "}
+              credited toward the $330 — you pay $325 at checkout ($330 − $5). Paid
+              checkouts for both reports are currently paused while we restore full
+              report generation — the free scan runs as always, and the credit applies
+              at checkout when the paid reports reopen. The{" "}
               <Link href="/micro-offer" className="underline underline-offset-2">founder-led $330 tech audit</Link>{" "}
               is a different product again: a human review, invoiced by email.
             </FaqItem>
             <FaqItem q="Do I need the walkthrough video?">
               No. The audit works on your public site alone. The video unlocks the deep-dive
-              section: the AI watches you explain your business and adds transcript-based findings
-              it can't get from the site — like whether your offer matches how you describe it.
+              section: your walkthrough is transcribed, and the audit adds transcript-based
+              findings it can't get from the site — like whether your offer matches how you
+              describe it.
             </FaqItem>
             <FaqItem q="How thorough is the audit?">
               Every finding in your report is tied to something the audit actually saw on your

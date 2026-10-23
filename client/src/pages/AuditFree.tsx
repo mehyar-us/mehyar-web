@@ -4,10 +4,10 @@ export default function AuditFree() {
   return (
     <section className="site-hero px-4">
       <div className="site-shell max-w-3xl text-center">
-        <p className="site-eyebrow mb-4">Free AI website audit</p>
+        <p className="site-eyebrow mb-4">Free instant website audit</p>
         <h1 className="site-display text-balance">Is your website leaking money?</h1>
         <p className="site-lede mx-auto mt-4 max-w-2xl text-balance">
-          Our AI scans your site like a buyer would — criticizes every bit, prices every leak in dollars, and maps the AI systems that fit your business, with the capacity math shown for your numbers. Free — about 10 seconds.
+          Our scan reads your site like a buyer would — checks every signal, prices every leak in dollars, and maps the AI systems that fit your business, with the capacity math shown for your numbers. Free — about 10 seconds.
         </p>
         <div className="mt-8 text-left">
           <AuditWidget />

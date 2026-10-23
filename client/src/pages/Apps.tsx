@@ -434,9 +434,9 @@ const managedApps: ManagedApp[] = [
     id: "audit-my-business",
     name: "Audit My Business",
     url: "https://mehyar.us/audit/",
-    tagline: "A $330 AI audit that finds where your business is leaking money.",
+    tagline: "A $330 automated audit that finds where your business is leaking money.",
     description:
-      "Enter your business URL — optionally upload a walkthrough video — and get a professional AI audit: overall score, money leaks, flaws, prioritized fixes, and where AI fits in your business. One-time $330.",
+      "Enter your business URL — optionally upload a walkthrough video — and get a professional automated audit: overall score, money leaks, flaws, prioritized fixes, and where AI fits in your business. One-time $330.",
     audience:
       "Local business owners who suspect leads or revenue are leaking through their website, booking path, or follow-up.",
     highlights: [

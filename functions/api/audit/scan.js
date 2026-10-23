@@ -150,7 +150,7 @@ function heuristicFallback(signals) {
       { name: "Document Scanner", what: "Snap a photo of any document — AI extracts the data and flags what needs attention.", upside: "Estimated: cuts admin hours by half on paperwork-heavy weeks." },
     ],
     full_report_hooks: [
-      "The $5 full report grades every page of your site and shows the AI capacity math for your numbers, step by step.",
+      "The $5 full report grades every page of your site and shows the AI capacity math for your numbers, step by step. (Temporarily paused while we restore full report generation.)",
       "It includes a 90-day AI automation blueprint tailored to your business type.",
     ],
     _fallback: true,
@@ -173,7 +173,7 @@ function reportEmailHtml(lead, report) {
     </div>`).join("");
   const bizLabel = report.business_type_label ? ` · ${escapeHtml(report.business_type_label)}` : "";
   return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#0f172a;">
-    <p style="color:#64748b;font-size:13px;">MEHYARSOFT · AI WEBSITE AUDIT${bizLabel}</p>
+    <p style="color:#64748b;font-size:13px;">MEHYARSOFT · WEBSITE AUDIT${bizLabel}</p>
     <h1 style="font-size:26px;">Your site scored ${report.score}/100${lead.business ? `, ${escapeHtml(lead.business)}` : ""}</h1>
     <p style="font-size:16px;color:#334155;"><em>"${escapeHtml(report.verdict)}"</em></p>
     <h2 style="font-size:18px;margin-top:24px;">Where you're leaking money</h2>
@@ -182,9 +182,8 @@ function reportEmailHtml(lead, report) {
     <ol style="padding-left:20px;">${wins}</ol>
     ${pipelines ? `<h2 style="font-size:18px;margin-top:24px;">Your AI upside — the capacity math for your numbers</h2>${pipelines}` : ""}
     <div style="background:#0f172a;color:#fff;border-radius:12px;padding:20px;margin-top:24px;">
-      <p style="margin:0 0 8px;font-weight:700;font-size:18px;">Get the complete professional evaluation — just $5</p>
-      <p style="margin:0 0 12px;color:#cbd5e1;">Every page graded. How you compare. The AI automation blueprint with the capacity math shown step by step. 90-day plan.</p>
-      <a href="https://mehyar.us/audit/report" style="display:inline-block;background:#22c55e;color:#052e16;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;">Get my full report — $5</a>
+      <p style="margin:0 0 8px;font-weight:700;font-size:18px;">The complete professional evaluation — $5</p>
+      <p style="margin:0;color:#cbd5e1;">Every page graded. How you compare. The AI automation blueprint with the capacity math shown step by step. 90-day plan. The Full Report is temporarily paused while we restore full report generation — your free scan above stands, and the $5 price (with its credit toward the $330 audit) will be honored when it reopens.</p>
     </div>
     <p style="color:#94a3b8;font-size:12px;margin-top:24px;">You received this because you requested a free website audit at mehyar.us.<br>
     <a href="${UNSUB_URL}" style="color:#94a3b8;">Unsubscribe</a> · ${PHYSICAL}</p>
@@ -194,7 +193,7 @@ function reportEmailHtml(lead, report) {
 function reportEmailText(lead, report) {
   const leaks = (report.leaks || []).map((l, i) => `${i + 1}. ${l.title}\n   ${l.what}\n   Money: ${l.money}`).join("\n\n");
   const pipes = (report.ai_pipelines || []).map((p, i) => `${i + 1}. ${p.name}\n   ${p.what}\n   Upside: ${p.upside}`).join("\n\n");
-  return `MEHYARSOFT · AI WEBSITE AUDIT${report.business_type_label ? " · " + report.business_type_label : ""}\n\nYour site scored ${report.score}/100\n"${report.verdict}"\n\nWHERE YOU'RE LEAKING MONEY\n${leaks}\n\n3 QUICK WINS\n${(report.quick_wins || []).map((w, i) => `${i + 1}. ${w}`).join("\n")}\n\nYOUR AI UPSIDE\n${pipes}\n\nGet the complete professional evaluation for just $5: https://mehyar.us/audit/report\n\nUnsubscribe: ${UNSUB_URL}\n${PHYSICAL}`;
+  return `MEHYARSOFT · WEBSITE AUDIT${report.business_type_label ? " · " + report.business_type_label : ""}\n\nYour site scored ${report.score}/100\n"${report.verdict}"\n\nWHERE YOU'RE LEAKING MONEY\n${leaks}\n\n3 QUICK WINS\n${(report.quick_wins || []).map((w, i) => `${i + 1}. ${w}`).join("\n")}\n\nYOUR AI UPSIDE\n${pipes}\n\nThe complete professional evaluation ($5 Full Report) is temporarily paused while we restore full report generation — your free scan above stands, and the $5 price will be honored when it reopens.\n\nUnsubscribe: ${UNSUB_URL}\n${PHYSICAL}`;
 }
 
 function escapeHtml(s) {

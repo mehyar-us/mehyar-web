@@ -21,6 +21,10 @@ function sanitize(v, max) {
 export async function onRequestPost({ request, env }) {
   try {
     if (!env?.LEADS_DB) return json({ ok: false, error: "service_unavailable" }, 503);
+    // Generation pause (2026-10-23, Leg 2 ruling): the $5 Full Report's
+    // generation hard-fails while the LLM path is down — see the matching
+    // guard in /api/pay/checkout. No session is created while paused.
+    return json({ ok: false, error: "generation_paused", message: "Paid report checkouts are paused while we restore full report generation. No charge was made." }, 503);
     const body = await request.json().catch(() => ({}));
     const email = sanitize(body.email, 254).toLowerCase();
     const url = sanitize(body.url, 300);

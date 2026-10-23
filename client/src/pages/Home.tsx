@@ -78,12 +78,12 @@ export default function Home() {
         <div className="site-shell">
           <p className="site-eyebrow mx-auto mb-4 flex w-fit items-center gap-3">
             <span className="h-px w-8 bg-brand-700" aria-hidden="true" />
-            Free AI website audit
+            Free instant website audit
             <span className="h-px w-8 bg-brand-700" aria-hidden="true" />
           </p>
           <h2 className="site-display mx-auto max-w-5xl text-center text-balance">Is your website leaking money?</h2>
           <p className="site-lede mx-auto mt-5 max-w-3xl text-center text-balance">
-            Drop in your URL. Our AI tears your site apart like a buyer would — every leak priced in dollars — then maps the AI systems that fit your business, with the capacity math shown for your numbers. Free — about 10 seconds.
+            Drop in your URL. Our scan tears your site apart like a buyer would — every leak priced in dollars — then maps the AI systems that fit your business, with the capacity math shown for your numbers. Free — about 10 seconds.
           </p>
           <div className="mt-8">
             <AuditWidget compact />
@@ -133,9 +133,9 @@ export default function Home() {
         <div className="site-shell">
           <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
             {[
-              { icon: ScanSearch, title: "1. Free 10-second audit", desc: "Enter your URL. AI scores your site, finds your 3 biggest money leaks, and detects your business type." },
+              { icon: ScanSearch, title: "1. Free 10-second audit", desc: "Enter your URL. The scan scores your site from measured checks, finds your 3 biggest money leaks, and detects your business type." },
               { icon: Sparkles, title: "2. See your AI upside", desc: "Get the AI pipelines built for your industry — voice agents, scheduling, document scanning — with the capacity math shown step by step." },
-              { icon: FileText, title: "3. Go deep for $5", desc: "The complete professional evaluation: every page graded, every leak priced, your AI blueprint, 90-day plan. Less than a coffee." },
+              { icon: FileText, title: "3. Go deep for $5", desc: "The complete professional evaluation: every page graded, every leak priced, your AI blueprint, 90-day plan. Currently paused while we restore report generation." },
             ].map((s) => (
               <div key={s.title} className="rounded-2xl border border-border bg-card p-6">
                 <s.icon className="h-7 w-7 text-brand-700" />
@@ -184,7 +184,7 @@ export default function Home() {
               The $330 deep audit — your site, your voice, one report.
             </h2>
             <p className="site-lede mt-4 max-w-2xl">
-              The free scan and $5 report read your public site. Audit My Business goes further: add a short CEO walkthrough video and the AI folds your own words — your offer, your customers, what's actually broken — into a deeper, transcript-based assessment with a prioritized fix plan.
+              The free scan and $5 report read your public site. Audit My Business goes further: add a short CEO walkthrough video and your own words — your offer, your customers, what's actually broken — are folded into a deeper, transcript-based assessment with a prioritized fix plan.
             </p>
             <ul className="mt-6 grid max-w-3xl gap-3 text-sm sm:grid-cols-2">
               {[
