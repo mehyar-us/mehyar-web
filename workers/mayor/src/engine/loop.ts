@@ -10,6 +10,11 @@
  */
 import type {Actor} from '../env';
 import type {ActionClass,Grant,OwnerSurface,ScenarioFacts,Understanding} from './types';
+import {isNeverLiveActionClass} from './types';
+import type {BillingEnv,StripeClient} from '../billing/stripe';
+import {extractLooseInvoiceFacts,getCustomerById,money,resolveCustomers} from '../cashtext/talk';
+import {applyCashTextEdit,cashSummary,displayStatus,listInvoices,prepareChaseDraft,prepareInvoiceDraft,reapproveInvoice,voidInvoiceForAction} from '../cashtext/drafts';
+import {executeCashTextSend} from '../cashtext/executor';
 import {admitEnvelope,cancelPreparedByGrant,getEngineState,getPreparedAction,getSuggestion,insertGrant,insertMemoryObject,insertPreparedAction,listActionLog,listGrants,listScenarios,markSuggestionProposed,recordSuggestionApproval,recordSuggestionProposal,saveEnvelopeResult,saveEngineState,saveGrantVersion,setPreparedStatus,updatePreparedActionPayload,writeActionLog} from './store';
 import {parseUnderstanding,detectNeverGrantable,revocationClasses,actionClassFromText} from './understanding';
 import {compileGrant} from './grant-compiler';
@@ -28,6 +33,12 @@ export interface EngineDeps {
  decideProvider: DecideProvider;
  calendarProbe: (actor: Actor) => Promise<CalendarProbeResult>;
  now?: () => Date;
+ /* CashText executor wiring (Phase 3): the billing env the executor
+  * builds its Stripe client from, plus an optional injected client
+  * for tests. Absent billingEnv, a CashText approval is recorded but
+  * sends nothing (the hook says so plainly). */
+ billingEnv?: BillingEnv;
+ stripeClient?: StripeClient;
 }
 
 const uuid = () => crypto.randomUUID();
@@ -36,6 +47,7 @@ const CLASS_PHRASE: Record<ActionClass, string> = {
  send_sms_reply: 'text customers back', send_email_reply: 'email customers back', answer_call: 'answer calls',
  offer_alternate_slot: 'offer another time', send_reminder: 'send reminders', send_followup: 'follow up',
  winback_message: 'send win-back messages', request_review: 'ask for reviews', update_record: 'update records', create_task: 'create tasks',
+ send_invoice: 'send invoices', send_invoice_chase: 'send invoice reminders',
 };
 
 function factsFromText(text: string, now: Date): ScenarioFacts {
@@ -129,6 +141,14 @@ export async function runOwnerTurn(deps: EngineDeps, actor: Actor, input: { text
   const guessed = decision.answers['intent_class'];
   if (decision.band === 'auto' && guessed === 'grant_statement' && actionClassFromText(text)) {
    u = { ...u, intentClass: 'grant_statement', actionClass: actionClassFromText(text)!, grantText: text, deterministic: true };
+  } else if (decision.band === 'auto' && (guessed === 'cashtext' || guessed === 'send_invoice' || guessed === 'invoice')) {
+   /* Free-form invoice talk (§3.1's fallthrough): decide settled the
+    * CLASS with the mayor_intent profile; the facts are extracted
+    * loosely and whatever is missing (amount, a resolvable name)
+    * becomes an ask in the CashText branch — never a guess. */
+   const loose = extractLooseInvoiceFacts(text);
+   if (loose) u = { ...u, intentClass: 'cashtext', deterministic: true, actionClass: 'send_invoice', targetPerson: loose.personName, facts: { personName: loose.personName, ...(loose.amountCents !== undefined ? { amountCents: loose.amountCents } : {}) }, cashtext: { kind: 'invoice', ...loose } };
+   else { line('I want to be careful with that one. Say it plainly — "invoice Maria $400" — and I\'ll draft it for your approval.'); return finish(); }
   } else {
    line('I want to be careful with that one. Say it as a rule ("you can…"), as an instruction for one customer, or ask me what I\'ve done today.');
    return finish();
@@ -292,6 +312,59 @@ export async function runOwnerTurn(deps: EngineDeps, actor: Actor, input: { text
    return finish();
   }
 
+  case 'cashtext': {
+   /* CashText (spec §3.1–3.3): deterministic talk forms land here.
+    * Drafts are prepared actions (kind ask, NEVER_LIVE classes) —
+    * this branch writes NO Stripe object; sending is the executor's
+    * job on approval only. Ambiguity asks, never acts. */
+   const ct = u.cashtext!;
+   if (ct.kind === 'who_owes') {
+    const open = (await listInvoices(db, tenantId)).filter(i => ['sent', 'overdue'].includes(displayStatus(i, now)));
+    if (!open.length) line('Nobody owes you right now — no unpaid invoices are out.');
+    else {
+     for (const inv of open.slice(0, 10)) {
+      const c = await getCustomerById(db, tenantId, inv.customerId);
+      const status = displayStatus(inv, now);
+      line(`${c?.name ?? 'A customer'} owes ${money(inv.amountCents)}${inv.description ? ` for ${inv.description}` : ''} — ${status === 'overdue' ? `overdue (was due ${inv.dueDate})` : `sent${inv.dueDate ? `, due ${inv.dueDate}` : ''}`}.`);
+     }
+     line(`Total still out: ${money(open.reduce((s, i) => s + i.amountCents, 0))} across ${open.length} invoice${open.length === 1 ? '' : 's'}.`);
+    }
+    surface.readiness = 'acted';
+    return finish();
+   }
+   if (ct.kind === 'cash_summary') {
+    const s = await cashSummary(db, tenantId, now);
+    line(`Cash summary — collected ${money(s.collectedThisWeekCents)} this week (${s.collectedThisWeekCount} paid). Still out: ${money(s.stillOutCents)} across ${s.stillOutCount} open invoice${s.stillOutCount === 1 ? '' : 's'}. ${s.draftsWaiting} draft${s.draftsWaiting === 1 ? '' : 's'} waiting, ${s.chasesWaiting} chase${s.chasesWaiting === 1 ? '' : 's'} waiting on your approval.`);
+    surface.readiness = 'acted';
+    return finish();
+   }
+   const matches = await resolveCustomers(db, tenantId, ct.personName);
+   if (!matches.length) { line(`I don't have a customer named ${ct.personName} in your book — add them (name and email) and I'll draft it. I never guess contact details.`); surface.readiness = 'needs-eye'; return finish(); }
+   if (matches.length > 1) { line(`I found ${matches.length} customers matching ${ct.personName}: ${matches.map(m => m.name).join(', ')}. Which one did you mean?`); surface.readiness = 'needs-eye'; return finish(); }
+   const customer = matches[0];
+   if (ct.kind === 'chase') {
+    const open = (await listInvoices(db, tenantId)).filter(i => i.customerId === customer.id && ['sent', 'overdue'].includes(displayStatus(i, now)));
+    if (!open.length) { line(`${customer.name} has no open invoice to chase — nothing is outstanding for them.`); surface.readiness = 'acted'; return finish(); }
+    if (open.length > 1) { line(`${customer.name} has ${open.length} open invoices: ${open.map(i => `${money(i.amountCents)}${i.description ? ` for ${i.description}` : ''}`).join('; ')}. Which one should I chase?`); surface.readiness = 'needs-eye'; return finish(); }
+    const { action, existing } = await prepareChaseDraft(db, { tenantId, customer, invoice: open[0], now });
+    if (!existing) await writeActionLog(db, { tenantId, actionKey: `ask:${await hashPayload({ runId })}`, kind: 'prepared', actionClass: 'send_invoice_chase', targetPerson: customer.name, channel: 'email', payloadSummary: action.payloadSummary, preparedActionId: action.id });
+    surface.intents.push(actionCardIntent(action));
+    line(existing ? 'That chase is already drafted and waiting on you — nothing sent yet.' : 'I\'ve drafted the chase — nothing sent yet. Approve the card and Stripe re-sends the invoice from your account.');
+    surface.readiness = 'needs-eye';
+    return finish();
+   }
+   /* kind === 'invoice': a resolved customer WITHOUT an email stops
+    * the draft (§3.1) — the email is asked for, never guessed. */
+   if (!customer.email) { line(`${customer.name} doesn't have an email on file — what's their email? Once it's saved I'll draft the invoice. I won't guess it.`); surface.readiness = 'needs-eye'; return finish(); }
+   if (ct.amountCents === undefined) { line(`How much should I invoice ${customer.name} for${ct.description ? ` — the ${ct.description}` : ''}?`); surface.readiness = 'needs-eye'; return finish(); }
+   const { action } = await prepareInvoiceDraft(db, { tenantId, customer, amountCents: ct.amountCents, description: ct.description, now });
+   await writeActionLog(db, { tenantId, actionKey: `ask:${await hashPayload({ runId })}`, kind: 'prepared', actionClass: 'send_invoice', targetPerson: customer.name, channel: 'email', payloadSummary: action.payloadSummary, preparedActionId: action.id });
+   surface.intents.push(actionCardIntent(action));
+   line('I\'ve drafted it — nothing sent yet. Approve the card and I\'ll send it through Stripe from your own account.');
+   surface.readiness = 'needs-eye';
+   return finish();
+  }
+
   case 'customer_act': {
    const facts: ScenarioFacts = { ...factsFromText(text, now), personName: u.targetPerson, ...(u.facts ?? {}) };
    if (u.targetPerson) {
@@ -451,6 +524,17 @@ export async function applyActionVerb(deps: EngineDeps, actor: Actor, actionId: 
  const line = (t: string) => { surface.lines.push(t); surface.intents.push(lineIntent(uuid(), t)); };
  const action = await getPreparedAction(db, tenantId, actionId);
  if (!action || action.status !== 'prepared') { line('That card is already settled — nothing left to decide on it.'); return surface; }
+ const isCashText = isNeverLiveActionClass(action.actionClass);
+ if (verb === 'edit' && isCashText) {
+  /* CashText edits are FIELD edits, not wording swaps (§3.3): the
+   * diff is recorded on the payload and a customer/amount/description
+   * change sets the invoice's draft_error flag (§10 instrument). */
+  if (!editText || !editText.trim()) { line('Tell me the change as field: value — for example "amount: 450" or "description: Water heater install".'); return surface; }
+  const result = await applyCashTextEdit(db, tenantId, action, editText);
+  if (!result) { line('I couldn\'t apply that edit — check the fields (amount, description, customer_id, days_until_due) and try again. Nothing changed.'); return surface; }
+  line(result.changedFields.length ? `Edited — changed: ${result.changedFields.join(', ')}. The draft now reads: ${result.summary}` : 'That edit didn\'t change anything — the draft already reads that way.');
+  return surface;
+ }
  if (verb === 'edit') {
   if (editText && editText.trim()) {
    await updatePreparedActionPayload(db, tenantId, actionId, { ...action.payload, text: editText.trim() });
@@ -464,12 +548,36 @@ export async function applyActionVerb(deps: EngineDeps, actor: Actor, actionId: 
  }
  if (verb === 'dismiss') {
   await setPreparedStatus(db, tenantId, actionId, 'dismissed');
+  if (isCashText) {
+   /* Dismiss voids a draft invoice (§3.3); a dismissed chase voids
+    * nothing — the invoice stays open. Zero Stripe calls either way. */
+   await voidInvoiceForAction(db, tenantId, action);
+   line(action.actionClass === 'send_invoice' ? 'Dismissed — that invoice draft is voided and will never be sent.' : 'Dismissed — that chase won\'t go out. The invoice itself stays open.');
+   return surface;
+  }
   line('Dismissed. That\'s training data, not a dead end — I\'ll draft differently next time.');
   return surface;
  }
  /* approve */
  await setPreparedStatus(db, tenantId, actionId, 'approved');
  await recordSuggestionApproval(db, tenantId, action.actionClass);
+ if (isCashText) {
+  /* THE FENCED HOOK (§3.3): the one place an approval can reach an
+   * external send — and only for the NEVER_LIVE CashText classes,
+   * only through the executor, exactly once (its action-log claim
+   * is the fence against replays). recordSuggestionApproval above
+   * is store-guarded to never count these classes, and the grant
+   * gate/compiler fences mean no grant can ever cover this — every
+   * send is this owner's tap on this card, forever. */
+  if (!deps.billingEnv) { line('Approved — but sending isn\'t wired in this context, so nothing went out.'); surface.readiness = 'needs-eye'; return surface; }
+  const result = await executeCashTextSend({ db, env: deps.billingEnv, tenantId, action, injected: deps.stripeClient, now: (deps.now ?? (() => new Date()))() });
+  line(result.ownerLine);
+  if (result.copyPasteDraft) line(result.copyPasteDraft);
+  if (result.hostedInvoiceUrl) line(`Invoice link: ${result.hostedInvoiceUrl}`);
+  surface.intents.push({ type: 'receipt', id: uuid(), version: 1, summary: `${result.outcome === 'sent' ? 'Sent' : 'Approved'}: ${action.payloadSummary}`, text: `${result.outcome === 'sent' ? 'Sent' : 'Approved'} — ${action.payloadSummary}` });
+  surface.readiness = result.outcome === 'sent' ? 'acted' : 'needs-eye';
+  return surface;
+ }
  if (action.kind === 'shadow') line('Noted as right — under your rule, that\'s exactly what would have gone out.');
  else line('Yours to send — the draft stays on the card, word for word.');
  surface.intents.push({ type: 'receipt', id: uuid(), version: 1, summary: `Approved: ${action.payloadSummary}`, text: `Approved — ${action.payloadSummary}` });
@@ -485,6 +593,22 @@ export async function applyActionVerb(deps: EngineDeps, actor: Actor, actionId: 
   await saveEngineState(db, state);
   line(`You've approved ${CLASS_PHRASE[action.actionClass]} three times now. Want it as a rule, so I can do it under your words without asking each time? Say yes and tell me the rule in your words — or no, and I won't bring it up again for a while.`);
  }
+ return surface;
+}
+
+/** CashText re-approval (§3.3): an expired card — or a send that
+ * failed — leaves the invoice listed (draft, or approved-but-unsent);
+ * this mints its FRESH prepared action. A retry is always a new
+ * card, never a silent re-send. Same state machine on talk/Desk. */
+export async function applyCashTextReapprove(deps: EngineDeps, actor: Actor, invoiceId: string): Promise<OwnerSurface> {
+ const db = deps.db; const tenantId = actor.tenantId; const runId = uuid();
+ const surface: OwnerSurface = { lines: [], intents: [], readiness: 'acted', runId };
+ const line = (t: string) => { surface.lines.push(t); surface.intents.push(lineIntent(uuid(), t)); };
+ const result = await reapproveInvoice(db, tenantId, invoiceId, (deps.now ?? (() => new Date()))());
+ if (!result) { line('That invoice isn\'t waiting to be sent — it may already be sent, paid, or voided.'); return surface; }
+ surface.intents.push(actionCardIntent(result.action));
+ line('Here\'s the draft again — nothing has gone out yet. Approve the card and I\'ll send it.');
+ surface.readiness = 'needs-eye';
  return surface;
 }
 

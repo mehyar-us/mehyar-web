@@ -11,6 +11,7 @@
  * whose NEVER target can't be pinned is an ask, not a guess.
  */
 import type {ActionClass,GrantCondition,GrantScope} from './types';
+import {isNeverLiveActionClass} from './types';
 import {actionClassFromText,detectNeverGrantable} from './understanding';
 
 export interface CompileResult {
@@ -38,7 +39,7 @@ const CLASS_LABELS: Record<ActionClass, string> = {
  send_sms_reply: 'Text customers back', send_email_reply: 'Email customers back', answer_call: 'Answer calls',
  offer_alternate_slot: 'Offer another time', send_reminder: 'Send reminders', send_followup: 'Send follow-ups',
  winback_message: 'Send win-back messages', request_review: 'Ask for reviews', update_record: 'Update records',
- create_task: 'Create tasks',
+ create_task: 'Create tasks', send_invoice: 'Send invoices', send_invoice_chase: 'Send invoice reminders',
 };
 const SEND_CLASSES: ReadonlySet<ActionClass> = new Set(['send_sms_reply', 'send_email_reply', 'send_reminder', 'send_followup', 'winback_message', 'request_review']);
 const DAYS: Record<string, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun', mondays: 'Mon', tuesdays: 'Tue', wednesdays: 'Wed', thursdays: 'Thu', fridays: 'Fri', saturdays: 'Sat', sundays: 'Sun' };
@@ -260,6 +261,15 @@ export function compileGrant(utterance: string, now: Date = new Date()): Compile
 
  const decline = detectNeverGrantable(text);
  if (decline) return { disposition: 'decline', decline, actionClass: null, asks: [] };
+
+ /* NEVER_LIVE fence (spec §3.3): the compiler REFUSES to compile a
+  * grant for a CashText send class — not an ask, a decline. Every
+  * invoice send and every chase stays a one-at-a-time approval,
+  * forever, whatever the owner's words ask for. */
+ const fencedClass = actionClassFromText(text);
+ if (fencedClass && isNeverLiveActionClass(fencedClass)) {
+  return { disposition: 'decline', decline: 'I can\'t take standing authority to send invoices or payment reminders — every send stays your tap, one at a time. Ask me to invoice someone and I\'ll draft it for your approval.', actionClass: fencedClass, asks: [] };
+ }
 
  if (SARCASM.test(text)) {
   return { disposition: 'ask', actionClass: actionClassFromText(text), asks: ['That sounded like a joke — I never take a rule literally when it might be one. Should this be a real rule? Say it plainly and tell me who it covers.'] };

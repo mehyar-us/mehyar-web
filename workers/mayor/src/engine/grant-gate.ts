@@ -9,6 +9,7 @@
  * that names the ambiguity in one sentence.
  */
 import type {ActionClass,Grant,ScenarioFacts} from './types';
+import {isNeverLiveActionClass} from './types';
 import {guardsFromFragment} from './grant-compiler';
 
 export interface ActRequest {
@@ -37,6 +38,7 @@ const specificity = (g: Grant): number =>
 export function evaluateGrant(grant: Grant, act: ActRequest): GrantVerdict {
  const done = (verdict: GrantVerdict['verdict'], predicate: string | null, reason: string | null, nearBoundary = false): GrantVerdict =>
   ({ grant, verdict, predicate, reason, nearBoundary });
+ if (isNeverLiveActionClass(grant.actionClass) || isNeverLiveActionClass(act.actionClass)) return done('excludes', null, 'invoice sends are approval-first forever — no rule covers them');
  if (grant.actionClass !== act.actionClass) return done('excludes', null, 'different act');
  if (grant.capabilityState !== 'present') return done('dormant', null, 'its connector is not live, so the rule is dormant');
  const f = act.facts;
@@ -148,7 +150,11 @@ export interface CoverageResult {
  * wins → most restrictive wins → newest confirmed wins, and the older
  * grant is auto-narrowed with a note. Unresolvable ⇒ ambiguous. */
 export function evaluateCoverage(grants: Grant[], act: ActRequest): CoverageResult {
- const eligible = grants.filter(g => (g.status === 'shadow' || g.status === 'live' || g.status === 'narrowed') && g.actionClass === act.actionClass);
+ /* NEVER_LIVE fence (spec §3.3): the gate NEVER finds coverage for a
+  * CashText send class — even if a grant row for one somehow existed,
+  * it is ineligible here, so every send falls to prepare-and-ask. */
+ if (isNeverLiveActionClass(act.actionClass)) return { outcome: 'not_covered' };
+ const eligible = grants.filter(g => (g.status === 'shadow' || g.status === 'live' || g.status === 'narrowed') && g.actionClass === act.actionClass && !isNeverLiveActionClass(g.actionClass));
  const verdicts = eligible.map(g => evaluateGrant(g, act)).filter(v => v.verdict !== 'dormant');
  const covers = verdicts.filter(v => v.verdict === 'covers');
  const excludes = verdicts.filter(v => v.verdict === 'excludes');

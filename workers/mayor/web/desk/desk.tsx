@@ -42,6 +42,9 @@ export interface DeskCallbacks {
   onRuleScenario?: (scenarioId: string, allowed: boolean) => void;
   /** Revoke a standing rule (Grant) from its card. */
   onRevokeGrant?: (grantId: string) => void;
+  /** CashText (Phase 3): re-approve an expired invoice draft — mints
+   * a fresh action-card; sends nothing itself. */
+  onReapproveInvoice?: (invoiceId: string) => void;
 }
 
 export function DeskStrip({ snapshot, callbacks }: { snapshot: DeskSnapshot; callbacks: DeskCallbacks }) {
@@ -59,6 +62,7 @@ export function DeskStrip({ snapshot, callbacks }: { snapshot: DeskSnapshot; cal
               onActionVerb={callbacks.onActionVerb}
               onRuleScenario={callbacks.onRuleScenario}
               onRevokeGrant={callbacks.onRevokeGrant}
+              onReapproveInvoice={callbacks.onReapproveInvoice}
             />
           ))}
         </div>

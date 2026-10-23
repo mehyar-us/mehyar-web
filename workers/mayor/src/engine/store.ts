@@ -8,6 +8,7 @@
  * the isolation contract until topology changes.
  */
 import type {Grant,MemoryObject,PreparedAction,ProbeScenario} from './types';
+import {isNeverLiveActionClass} from './types';
 
 type DB = D1Database;
 const nowISO = () => new Date().toISOString();
@@ -177,6 +178,31 @@ export async function writeActionLog(db: DB, input: {
   .bind(crypto.randomUUID(), input.tenantId, input.actionKey, nowISO(), input.kind, input.actionClass ?? null, input.targetPerson ?? null, input.channel ?? null, input.payloadSummary, input.grantId ?? null, input.grantVersion ?? null, input.sourceUtterance ?? null, input.decisionId ?? null, input.preparedActionId ?? null).run();
 }
 
+/* The executor's exactly-once claim (spec §3.3 step 1): insert the
+ * action-log row FIRST, under the deterministic action_key. Returns
+ * true only for the caller that actually inserted the row — the
+ * table's UNIQUE(tenant_id, action_key) makes a double-approval, a
+ * replayed verb, or a retried execution a no-op, not a double-send.
+ * kind is a free TEXT column on the table; CashText executions log
+ * kind 'executed' (a send that really left) — distinct from Slice 2's
+ * 'shadow'/'prepared'/'note' bookkeeping kinds. */
+export async function claimActionLog(db: DB, input: {
+ tenantId: string; actionKey: string; kind: string; actionClass?: string; targetPerson?: string;
+ channel?: string; payloadSummary: string; preparedActionId?: string;
+}): Promise<boolean> {
+ const res = await db.prepare(`INSERT OR IGNORE INTO mayor_action_log(id,tenant_id,action_key,at,kind,action_class,target_person,channel,payload_summary,prepared_action_id)
+  VALUES(?,?,?,?,?,?,?,?,?,?)`)
+  .bind(crypto.randomUUID(), input.tenantId, input.actionKey, nowISO(), input.kind, input.actionClass ?? null, input.targetPerson ?? null, input.channel ?? null, input.payloadSummary, input.preparedActionId ?? null).run();
+ return (res.meta.changes ?? 0) > 0;
+}
+
+/** Record the verification outcome on a claimed action-log row (the
+ * executor's step 3): 'sent', or 'failed' when Stripe refused — the
+ * row stays either way, so the attempt is auditable exactly once. */
+export async function updateActionLogVerification(db: DB, tenantId: string, actionKey: string, verificationResult: string): Promise<void> {
+ await db.prepare('UPDATE mayor_action_log SET verification_result=? WHERE tenant_id=? AND action_key=?').bind(verificationResult, tenantId, actionKey).run();
+}
+
 export interface ActionLogRow { id: string; at: string; kind: string; actionClass: string | null; targetPerson: string | null; channel: string | null; payloadSummary: string; grantId: string | null; grantVersion: number | null; sourceUtterance: string | null; }
 
 export async function listActionLog(db: DB, tenantId: string, opts: { since?: string; person?: string; limit?: number } = {}): Promise<ActionLogRow[]> {
@@ -273,6 +299,10 @@ export async function saveEngineState(db: DB, s: EngineState): Promise<void> {
 }
 
 export async function recordSuggestionApproval(db: DB, tenantId: string, actionClass: string): Promise<void> {
+ /* NEVER_LIVE fence (§3.3): approvals of the CashText send classes are
+  * NEVER counted — no number of approved invoices can ever make the
+  * suggestion machinery propose standing send authority. */
+ if (isNeverLiveActionClass(actionClass)) return;
  await db.prepare(`INSERT INTO mayor_grant_suggestions(tenant_id,action_class,approvals,proposed_count,updated_at) VALUES(?,?,1,0,?)
   ON CONFLICT(tenant_id,action_class) DO UPDATE SET approvals=approvals+1,updated_at=excluded.updated_at`).bind(tenantId, actionClass, nowISO()).run();
 }

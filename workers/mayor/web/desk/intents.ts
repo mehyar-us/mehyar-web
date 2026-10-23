@@ -146,9 +146,26 @@ export interface ActionCardIntent extends IntentBase {
   headline: string;
   personName?: string;
   draftText?: string;
+  /** Field-edit affordance (CashText, Phase 3): cards whose draft is
+   * structured fields rather than a message carry a hint instead of
+   * draftText — Edit opens the field editor with this guidance. */
+  editHint?: string;
   basisLine?: string;
   provenance?: { grantId: string };
   primaryLabel: string;
+}
+
+/** A CashText invoice draft whose approval card has expired (Phase
+ * 3, spec §3.3): the draft stays LISTED and re-approvable — the one
+ * verb mints a fresh action-card; it never sends anything itself. */
+export interface InvoiceCardIntent extends IntentBase {
+  type: 'invoice-card';
+  invoiceId: string;
+  state: 'draft' | 'approved';
+  reapprovable: true;
+  amountCents: number;
+  description?: string;
+  dueDate?: string;
 }
 
 /** A shadow-mode action: what the engine WOULD have sent under the
@@ -204,7 +221,8 @@ export type DeskIntent =
   | ActionCardIntent
   | ShadowCardIntent
   | ScenarioCardIntent
-  | GrantCardIntent;
+  | GrantCardIntent
+  | InvoiceCardIntent;
 
 /** Intent types that carry money identity. An unknown or newer
  * version of one of these degrades to a non-actionable Line — never
@@ -216,6 +234,7 @@ export const MONEY_INTENT_TYPES: ReadonlySet<string> = new Set([
   'seats-line',
   'action-card',
   'shadow-card',
+  'invoice-card',
 ]);
 
 export const KNOWN_INTENT_TYPES: ReadonlySet<string> = new Set([
@@ -234,6 +253,7 @@ export const KNOWN_INTENT_TYPES: ReadonlySet<string> = new Set([
   'shadow-card',
   'scenario-card',
   'grant-card',
+  'invoice-card',
 ]);
 
 /** What an intent degrades to when this client cannot render it:

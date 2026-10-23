@@ -8,6 +8,7 @@
  * it never acts directly.
  */
 import type {ActionClass,IntentClass,Understanding} from './types';
+import {parseCashText} from '../cashtext/talk';
 
 const lower = (s: string) => s.toLowerCase();
 
@@ -41,6 +42,16 @@ export function detectNeverGrantable(text: string): string | null {
  * forms ("a reminder", "reviews", "slots") classify too. */
 const ACT_VERBS: Array<{ pattern: RegExp; actionClass: ActionClass }> = [
  { pattern: /\bask\b[^.]{0,40}\breview|\brequest\b[^.]{0,30}\breview|\bleave\b[^.]{0,30}\breview/i, actionClass: 'request_review' },
+ /* CashText send classes (spec §3.1/§3.3): named here so grant
+  * language about them reaches the compiler — which REFUSES them
+  * (NEVER_LIVE fence) — and so Stage 5 can classify free-form
+  * invoice talk. The deterministic CashText parser itself lives in
+  * src/cashtext/talk.ts and runs before these act verbs in
+  * parseUnderstanding. */
+ { pattern: /\bchase\b[^.]{0,40}\b(invoice|payment|bill|owes|overdue|balance)|\bchase\b\s+[A-Z]|\bremind\b[^.]{0,30}\b(invoice|payment|owes|overdue invoice)/i, actionClass: 'send_invoice_chase' },
+ /* Invoice as the ACT (create + send a new bill) — NOT "invoice copy"
+  * (an email-reply act the grant corpus pins as send_email_reply). */
+ { pattern: /\binvoice\s+(?!copy\b)(?:anyone|everyone|anybody|customers?|clients?|people|[A-Z])|\b(?:send|issue|create)\b[^.]{0,20}\binvoice\b(?!\s*copy)|\bsend\b[^.]{0,20}\bbill\b|\bbill\b[^.]{0,30}\bfor\b/i, actionClass: 'send_invoice' },
  { pattern: /\bwin[ -]?backs?\b|\blapsed\b|\b(haven'?t|hasn'?t) (seen|booked|ordered|visited|been)|\bcome[- ]back\b[^.]{0,30}\b(message|text|email|invite)|\boverdue\b[^.]{0,40}\b(send|email|text|message|note)/i, actionClass: 'winback_message' },
  { pattern: /\bremind/i, actionClass: 'send_reminder' },
  { pattern: /\bfollow ?up\b|\bcheck\b[^.]{0,40}\b(happy|feeling|running|doing|went|okay)|\bsee how\b[^.]{0,40}\b(feeling|doing|went|is)\b/i, actionClass: 'send_followup' },
@@ -120,6 +131,19 @@ export function parseUnderstanding(rawText: string, flags: TurnContextFlags): Un
  if (/\bwhat did you do\b|\bwhat have you done\b|\bwhy did you (text|email|call|book|move|cancel|message|remind)\b|\bshow me what you/i.test(text)) {
   const person = extractTargetPerson(text);
   return { ...base, intentClass: 'audit_query', ...(person ? { targetPerson: person } : {}) };
+ }
+
+ // CashText (spec §3.1): the deterministic talk forms — invoice,
+ // chase, who-owes, cash summary — settle HERE, before grant/act
+ // parsing can claim the verbs. Ambiguity is carried on the intent
+ // (a missing amount stays missing); the loop asks, never acts.
+ const cashtext = parseCashText(text);
+ if (cashtext) {
+  return {
+   ...base, intentClass: 'cashtext', deterministic: true, cashtext,
+   ...(cashtext.kind === 'invoice' ? { actionClass: 'send_invoice' as ActionClass, targetPerson: cashtext.personName, facts: { personName: cashtext.personName, ...(cashtext.amountCents !== undefined ? { amountCents: cashtext.amountCents } : {}) } } : {}),
+   ...(cashtext.kind === 'chase' ? { actionClass: 'send_invoice_chase' as ActionClass, targetPerson: cashtext.personName, facts: { personName: cashtext.personName } } : {}),
+  };
  }
 
  // Connect the calendar, in conversation (§2.5 C-1).

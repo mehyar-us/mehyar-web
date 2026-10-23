@@ -10,8 +10,24 @@ export const ACTION_CLASSES = [
  'schedule_new','reschedule','cancel_booking','send_sms_reply','send_email_reply',
  'answer_call','offer_alternate_slot','send_reminder','send_followup',
  'winback_message','request_review','update_record','create_task',
+ 'send_invoice','send_invoice_chase',
 ] as const;
 export type ActionClass = typeof ACTION_CLASSES[number];
+
+/* CashText NEVER_LIVE fence (integration spec §3.3, Phase 3): the two
+ * CashText send classes are approval-first FOREVER, by construction.
+ * They are members of ACTION_CLASSES (so prepared actions, cards, and
+ * the audit log can carry them) but they can never become standing
+ * authority: the grant compiler refuses to compile grants for them,
+ * the Stage-4 gate never finds coverage for them, and the grant-
+ * suggestion machinery never counts their approvals. This narrows the
+ * engine's learning loop deliberately, per the Mayor's order — 1,000
+ * approved invoices can never auto-propose a send rule. */
+export const NEVER_LIVE_ACTION_CLASSES = ['send_invoice','send_invoice_chase'] as const;
+export type NeverLiveActionClass = typeof NEVER_LIVE_ACTION_CLASSES[number];
+export function isNeverLiveActionClass(actionClass: string): actionClass is NeverLiveActionClass {
+ return (NEVER_LIVE_ACTION_CLASSES as readonly string[]).includes(actionClass);
+}
 
 export type GrantStatus = 'proposed'|'probed'|'shadow'|'live'|'narrowed'|'revoked'|'expired';
 export type CapabilityState = 'present'|'pending'|'revoked'|'stale_probe';
@@ -100,7 +116,16 @@ export interface StimulusEnvelope {
 
 export type IntentClass =
  | 'grant_statement'|'revocation'|'correction'|'audit_query'|'connect_calendar'
- | 'customer_act'|'shop_intro'|'scenario_ruling'|'onboarding_step'|'plain';
+ | 'customer_act'|'shop_intro'|'scenario_ruling'|'onboarding_step'|'plain'
+ | 'cashtext';
+
+/** The CashText sub-intent a talk turn resolved to (§3.1). Carried on
+ * the Understanding so the loop's CashText branch never re-parses. */
+export type CashTextIntent =
+ | { kind: 'invoice'; personName: string; amountCents?: number; description?: string }
+ | { kind: 'chase'; personName: string }
+ | { kind: 'who_owes' }
+ | { kind: 'cash_summary' };
 
 export interface Understanding {
  intentClass: IntentClass;
@@ -115,6 +140,8 @@ export interface Understanding {
  /** The raw grant-language span when intentClass is grant_statement. */
  grantText?: string;
  ruling?: 'allowed'|'blocked';
+ /** CashText payload when intentClass is 'cashtext' (§3.1). */
+ cashtext?: CashTextIntent;
 }
 
 export interface PreparedAction {

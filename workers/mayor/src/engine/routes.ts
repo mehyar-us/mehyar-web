@@ -4,6 +4,8 @@
  *   GET  /engine/desk            the engine's Desk intents (cards)
  *   POST /engine/scenarios/:id/rule   a probe ruling (button path)
  *   POST /engine/actions/:id/approve|dismiss|edit   card verbs
+ *   POST /engine/cashtext/invoices/:id/reapprove   an expired CashText
+ *        draft's fresh card (Phase 3 — mints a card, sends nothing)
  *   POST /engine/grants/:id/revoke    the Grant card's revoke
  *   GET  /engine/grants          the Grant Book
  *   GET  /engine/audit           "what did you do" data
@@ -28,7 +30,7 @@ import type {Actor,Env} from '../env';
 import {HttpError,json,readJson} from '../http';
 import {CHAT_ROLES,OPERATORS,requireMembership} from '../permissions';
 import {selectedCalendar} from '../calendars';
-import {applyActionVerb,applyScenarioRulingSurface,revokeGrantById,runOwnerTurn,type CalendarProbeResult,type EngineDeps} from './loop';
+import {applyActionVerb,applyCashTextReapprove,applyScenarioRulingSurface,revokeGrantById,runOwnerTurn,type CalendarProbeResult,type EngineDeps} from './loop';
 import {decideProviderFromEnv} from './decide';
 import {audienceBaselineSeries,audienceSeries,clampAudienceWeeks} from './audience';
 import {audienceStatIntent,buildEngineDeskIntents} from './surface';
@@ -55,6 +57,10 @@ export function engineDeps(env: Env): EngineDeps {
   db: env.AGENT_DB,
   decideProvider: decideProviderFromEnv(env as { ENGINE_DECIDE_URL?: string }),
   calendarProbe: (actor) => defaultCalendarProbe(env, actor),
+  /* CashText executor wiring (Phase 3): the executor builds its
+   * Stripe client from the billing env; no injected client in
+   * production — test/injected transports only in tests. */
+  billingEnv: env,
  };
 }
 
@@ -92,6 +98,12 @@ export async function handleEngineRequest(request: Request, env: Env, actor: Act
   await requireMembership(env, actor, CHAT_ROLES);
   const input = z.object({ text: z.string().trim().max(2000).optional() }).strict().parse(await readJson(request, 4096).catch(() => ({})));
   return json(await applyActionVerb(deps, actor, actionVerb[1], actionVerb[2] as 'approve' | 'dismiss' | 'edit', input.text));
+ }
+
+ const cashtextReapprove = rest.match(/^cashtext\/invoices\/([a-f0-9-]{36})\/reapprove$/);
+ if (cashtextReapprove && request.method === 'POST') {
+  await requireMembership(env, actor, CHAT_ROLES);
+  return json(await applyCashTextReapprove(deps, actor, cashtextReapprove[1]));
  }
 
  const grantRevoke = rest.match(/^grants\/([a-f0-9-]{36})\/revoke$/);

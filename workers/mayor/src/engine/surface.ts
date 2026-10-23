@@ -47,6 +47,7 @@ export function actionCardIntent(a: PreparedAction, basisLine?: string): Intent 
   actionId: a.id, state: a.nearBoundary ? 'worth-a-look' : 'ready',
   headline: a.payloadSummary, ...(a.targetPerson ? { personName: a.targetPerson } : {}),
   ...(typeof a.payload.text === 'string' ? { draftText: a.payload.text } : {}),
+  ...(typeof a.payload.edit_hint === 'string' ? { editHint: a.payload.edit_hint } : {}),
   ...(basisLine ? { basisLine } : {}),
   ...(a.grantId ? { provenance: { grantId: a.grantId } } : {}),
   primaryLabel: "I'll send it",
@@ -121,5 +122,25 @@ export async function buildEngineDeskIntents(db: DB, tenantId: string, currentSc
   }
   intents.push(actionCardIntent(a));
  }
+ /* CashText (§3.3): a draft (or approved-but-unsent) invoice whose
+  * card has expired stays LISTED here as an invoice-card and is
+  * re-approvable — expiry never strands a draft. Invoices with a
+  * live card already render as action-cards above, so they are
+  * excluded here. The read is guarded: a database without the 0078
+  * tables simply renders no invoice cards. */
+ try {
+  const covered = new Set(pending.filter(a => a.actionClass === 'send_invoice').map(a => a.payload.invoice_id as string));
+  const rows = await db.prepare("SELECT id,customer_id,description,amount_cents,status,due_date FROM mayor_cashtext_invoices WHERE tenant_id=? AND status IN ('draft','approved') ORDER BY created_at ASC").bind(tenantId).all<Record<string, unknown>>();
+  for (const r of rows.results) {
+   if (covered.has(r.id as string)) continue;
+   const amount = r.amount_cents as number;
+   intents.push({
+    type: 'invoice-card', id: `invoice-${r.id as string}`, version: V,
+    summary: `Invoice draft — $${(amount / 100).toFixed(2)}${r.description ? ` for ${r.description as string}` : ''}. Nothing sent yet.`,
+    invoiceId: r.id as string, state: r.status as string, reapprovable: true,
+    amountCents: amount, ...(r.description ? { description: r.description as string } : {}), ...(r.due_date ? { dueDate: r.due_date as string } : {}),
+   });
+  }
+ } catch { /* 0078 not applied on this database — no invoice cards */ }
  return intents;
 }

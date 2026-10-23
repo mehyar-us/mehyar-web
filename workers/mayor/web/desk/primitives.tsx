@@ -25,6 +25,7 @@ import {
   type GrantCardIntent,
   type InlineErrorIntent,
   type IntentRibbonIntent,
+  type InvoiceCardIntent,
   type LineIntent,
   type PersonIntent,
   type ReceiptIntent,
@@ -37,6 +38,7 @@ import {
 
 export type ActionVerb = 'approve' | 'dismiss' | 'edit';
 export type ActionVerbHandler = (actionId: string, verb: ActionVerb, text?: string) => void;
+export type ReapproveInvoiceHandler = (invoiceId: string) => void;
 export type ScenarioRulingHandler = (scenarioId: string, allowed: boolean) => void;
 export type RevokeGrantHandler = (grantId: string) => void;
 
@@ -230,7 +232,12 @@ export function ActionCard({
   onActionVerb?: ActionVerbHandler;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(intent.draftText ?? '');
+  /* Field-edited cards (CashText): no message text to rewrite — the
+   * editor collects field changes ("amount: 450") per the hint, so
+   * it starts empty rather than pre-filled with the draft rendering. */
+  const fieldEdit = Boolean(intent.editHint);
+  const canEdit = Boolean(intent.draftText || intent.editHint);
+  const [draft, setDraft] = useState(fieldEdit ? '' : (intent.draftText ?? ''));
   return (
     <div className={`desk-card desk-action-card desk-action-${intent.state}`}>
       <div className="desk-card-head">
@@ -242,12 +249,13 @@ export function ActionCard({
       {editing ? (
         <div className="desk-card-edit-wrap">
           <label className="desk-card-edit-label" htmlFor={`desk-edit-${intent.id}`}>
-            Edit the message
+            {fieldEdit ? 'Edit the draft fields' : 'Edit the message'}
           </label>
           <textarea
             id={`desk-edit-${intent.id}`}
             className="desk-card-edit"
             value={draft}
+            placeholder={fieldEdit ? intent.editHint : undefined}
             rows={4}
             onChange={(event) => setDraft(event.target.value)}
           />
@@ -261,7 +269,7 @@ export function ActionCard({
         >
           {intent.primaryLabel}
         </button>
-        {intent.draftText ? (
+        {canEdit ? (
           editing ? (
             <button
               type="button"
@@ -425,6 +433,35 @@ export function GrantCard({
   );
 }
 
+/** A CashText invoice draft whose approval card expired (Phase 3):
+ * the draft stays listed; the one verb mints a FRESH action-card —
+ * it sends nothing itself, and the copy says so. */
+export function InvoiceCard({
+  intent,
+  onReapproveInvoice,
+}: {
+  intent: InvoiceCardIntent;
+  onReapproveInvoice?: ReapproveInvoiceHandler;
+}) {
+  return (
+    <div className="desk-card desk-action-card desk-action-ready">
+      <div className="desk-card-head">
+        <p className="desk-card-headline">{intent.summary}</p>
+      </div>
+      <p className="desk-card-basis">Draft invoice — its approval card expired. Nothing sent yet.</p>
+      <div className="desk-card-actions">
+        <button
+          type="button"
+          className="desk-card-primary"
+          onClick={onReapproveInvoice ? () => onReapproveInvoice(intent.invoiceId) : undefined}
+        >
+          Review the draft
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** The dispatcher: exactly one renderer per catalog primitive.
  * Unknown types and newer versions degrade to a Line carrying the
  * intent's mandatory summary; money intents degrade non-actionably
@@ -436,6 +473,7 @@ export function IntentView({
   onActionVerb,
   onRuleScenario,
   onRevokeGrant,
+  onReapproveInvoice,
 }: {
   intent: DeskIntent | { type: string; version: number; summary?: string; id: string };
   onDismissIntent?: (id: string) => void;
@@ -443,6 +481,7 @@ export function IntentView({
   onActionVerb?: ActionVerbHandler;
   onRuleScenario?: ScenarioRulingHandler;
   onRevokeGrant?: RevokeGrantHandler;
+  onReapproveInvoice?: ReapproveInvoiceHandler;
 }) {
   if (!isRenderable(intent)) {
     const degraded = degradeIntent(intent);
@@ -480,6 +519,8 @@ export function IntentView({
       return <ScenarioCard intent={known} onRuleScenario={onRuleScenario} />;
     case 'grant-card':
       return <GrantCard intent={known} onRevokeGrant={onRevokeGrant} />;
+    case 'invoice-card':
+      return <InvoiceCard intent={known} onReapproveInvoice={onReapproveInvoice} />;
     default:
       return <p className="desk-line desk-line-degraded">{degradeIntent(known).text}</p>;
   }

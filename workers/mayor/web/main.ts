@@ -126,7 +126,7 @@ function deskSnapshotNow():DeskSnapshot{
 }
 function refreshDesk(){
  const snapshot=deskSnapshotNow();
- if(!deskMounted){deskMounted=true;mountDeskStrip($('desk-root'),snapshot,{onDismissIntent:()=>{deskIntentDismissed=true;dismissBillingIntent();stripIntentParams();refreshDesk();},onActionVerb:(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string)=>{void deskActionVerb(actionId,verb,text);},onRuleScenario:(scenarioId:string,allowed:boolean)=>{void deskRuleScenario(scenarioId,allowed);},onRevokeGrant:(grantId:string)=>{void deskRevokeGrant(grantId);}});}
+ if(!deskMounted){deskMounted=true;mountDeskStrip($('desk-root'),snapshot,{onDismissIntent:()=>{deskIntentDismissed=true;dismissBillingIntent();stripIntentParams();refreshDesk();},onActionVerb:(actionId:string,verb:'approve'|'dismiss'|'edit',text?:string)=>{void deskActionVerb(actionId,verb,text);},onRuleScenario:(scenarioId:string,allowed:boolean)=>{void deskRuleScenario(scenarioId,allowed);},onRevokeGrant:(grantId:string)=>{void deskRevokeGrant(grantId);},onReapproveInvoice:(invoiceId:string)=>{void deskReapproveInvoice(invoiceId);}});}
  else pushDeskStrip(snapshot);
  // Name the intent inside the auth surface too (blueprint §2.1 E-0):
  // the sign-in block carries the plan line while signed out — founding
@@ -221,6 +221,10 @@ async function deskRuleScenario(scenarioId:string,allowed:boolean){
 }
 async function deskRevokeGrant(grantId:string){
  try{await api(`/api/businesses/${tenantId}/engine/grants/${grantId}/revoke`,{});}catch{/* the refetch below shows the card's true state */}
+ await refreshEngineDeskIntents();
+}
+async function deskReapproveInvoice(invoiceId:string){
+ try{await api(`/api/businesses/${tenantId}/engine/cashtext/invoices/${invoiceId}/reapprove`,{});}catch{/* the refetch below shows the card's true state */}
  await refreshEngineDeskIntents();
 }
 // The signed-out home block is a static, server-injected subtree (the
