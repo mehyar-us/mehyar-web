@@ -472,7 +472,7 @@ const managedApps: ManagedApp[] = [
     url: "https://billcut.mehyar.us",
     tagline: "Find money you're missing.",
     description:
-      "Upload a bank or card statement (PDF or CSV) and Billcut finds every recurring charge, ranks it by yearly cost, and gives you a cancel or negotiation script for each one. $9 one-time full audit, $7/month monitoring. No bank login — your file is deleted right after it's read.",
+      "Upload a bank or card statement (PDF or CSV) and Billcut finds every recurring charge, ranks it by yearly cost, and gives you a cancel or negotiation script for each one. $9 one-time full audit, $7/month monitoring. No bank login — your file is deleted right after it's read. For businesses: Billcut for Business (billcut.mehyar.us/business) checks a vendor contract against its invoices — match, overcharge, and renewal-soon flags, every flag citing the contract clause. $49 per contract report, $79/month unlimited checks.",
     audience: "Anyone with subscriptions and autopay bills who wants to see what actually repeats — and what to cut — from their own statement.",
     highlights: [
       "Recurring charges extracted from your own statement — no bank login, no Plaid",
