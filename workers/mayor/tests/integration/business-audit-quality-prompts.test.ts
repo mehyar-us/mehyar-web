@@ -39,6 +39,13 @@ it('carries the DC-1..DC-6 drafting rules in the analyze system text',async()=>{
  // DC-4: roadmap gate construction + validator clause grammar.
  expect(system).toContain('must carry the gates as their own deliverables');
  expect(system).toContain('separately over finding steps and over the roadmap as a whole');
+ // DC-4 iteration (2026-10-23, ruling chief-of-decisions-audit-quality-v3-live-exercise
+ // part (a)): permission and exclusion are structurally two separate
+ // deliverables — the worked example is split and the rule forbids the
+ // merged single-deliverable form outright.
+ expect(system).toContain('Permission and exclusion are ALWAYS two separate deliverables');
+ expect(system).toContain('"[F08] Business owner explicitly excludes declined, withdrawn, opted-out, and unverified contacts."');
+ expect(system).toContain('A single deliverable that mentions both permission and exclusions is a construction error');
  // DC-5: one stage per action + sanctioned controlled-test vocabulary.
  expect(system).toContain('One action performs one stage');
  expect(system).toContain('staff/dummy recipient records, destination receipt, responsible reply role');
@@ -57,6 +64,8 @@ it('carries the DC-7 enumerated sweep and verbatim preservation in the revise ta
  expect(packet.task).toContain('(2) Behaviour promises in any copyExample');
  expect(packet.task).toContain('is not a reliable screen for this class');
  expect(packet.task).toContain('(4) Roadmap gate carry-through');
+ // DC-4 iteration (2026-10-23, ruling chief-of-decisions-audit-quality-v3-live-exercise part (a)).
+ expect(packet.task).toContain('never a single deliverable carrying both even as joined clauses');
  expect(packet.task).toContain('never gate deliverables');
  expect(packet.task).toContain('(5) Bundled stages');
  expect(packet.task).toContain('carried over VERBATIM from the previous draft');
