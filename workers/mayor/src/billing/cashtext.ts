@@ -49,13 +49,19 @@ export async function cashtextEntitlement(env:BillingEnv,tenantId:string,now=Dat
  * row says so; a pending checkout is named as pending, never as active.
  * The settings read degrades to not_connected until migration 0078 has
  * applied on the serving database (Connect itself lands in Phase 2). */
-export async function cashtextStatus(env:BillingEnv,actor:Actor,canManage:boolean,now=Date.now()){
+export async function cashtextStatus(env:BillingEnv,actor:Actor,canManage:boolean,now=Date.now(),injected?:StripeClient){
  const selected=mode(env);
  const subscription=selected?await env.AGENT_DB.prepare('SELECT * FROM mayor_cashtext_subscriptions WHERE tenant_id=? AND mode=?').bind(actor.tenantId,selected).first<CashTextSubscription>().catch(()=>null):null;
  const pending=selected?await env.AGENT_DB.prepare("SELECT request_id,checkout_url FROM mayor_cashtext_checkouts WHERE tenant_id=? AND mode=? AND status IN ('pending','open') AND (expires_at IS NULL OR expires_at>?)").bind(actor.tenantId,selected,Math.floor(now/1000)).first<{request_id:string;checkout_url:string|null}>().catch(()=>null):null;
- const settings=await env.AGENT_DB.prepare('SELECT account_status,charges_enabled FROM mayor_cashtext_settings WHERE tenant_id=?').bind(actor.tenantId).first<{account_status:string;charges_enabled:number}>().catch(()=>null);
+ let settings=await env.AGENT_DB.prepare('SELECT * FROM mayor_cashtext_settings WHERE tenant_id=?').bind(actor.tenantId).first<CashTextSettings>().catch(()=>null);
+ // Read-on-view refresh (spec §3.5): a linked account's stored state is
+ // re-read from Stripe when the owner views billing — this is what makes
+ // the return from Stripe onboarding show the fresh state. account.updated
+ // events keep it current between views. A failed refresh keeps the
+ // stored state; the status read itself never fails over it.
+ if(settings?.stripe_account_id){const refreshed=await syncConnectAccount(env,actor.tenantId,injected).catch(()=>null);if(refreshed)settings=refreshed;}
  let ready=false;try{cashtextConfiguration(env);ready=true;}catch{}
- return {id:'cashtext',name:'CashText',priceCents:CASHTEXT_PRICE_CENTS,currency:'USD',interval:'month',ready,subscribed:cashtextEntitled(subscription,now),status:subscription?.status??'not_subscribed',cancelAtPeriodEnd:Boolean(subscription?.cancel_at_period_end),connect:{status:settings?.account_status??'not_connected',chargesEnabled:Boolean(settings?.charges_enabled)},checkout:{pending:Boolean(pending),...(pending&&canManage?{requestId:pending.request_id,...(pending.checkout_url?{url:stripeUrl(pending.checkout_url,'checkout.stripe.com')}:{})}:{})}};
+ return {id:'cashtext',name:'CashText',priceCents:CASHTEXT_PRICE_CENTS,currency:'USD',interval:'month',ready,subscribed:cashtextEntitled(subscription,now),status:subscription?.status??'not_subscribed',cancelAtPeriodEnd:Boolean(subscription?.cancel_at_period_end),connect:{status:settings?.account_status??'not_connected',chargesEnabled:Boolean(settings?.charges_enabled),payoutsEnabled:Boolean(settings?.payouts_enabled),accountLinked:Boolean(settings?.stripe_account_id),onboardingOpen:CASHTEXT_CONNECT_TERMS_GATE_OPEN},checkout:{pending:Boolean(pending),...(pending&&canManage?{requestId:pending.request_id,...(pending.checkout_url?{url:stripeUrl(pending.checkout_url,'checkout.stripe.com')}:{})}:{})}};
 }
 export async function createModuleCheckout(env:BillingEnv,actor:Actor,requestId:string,injected?:StripeClient,consentGranted=false){
  await requireMembership(env,actor,BILLING_ROLES);
@@ -182,4 +188,138 @@ export async function processCashTextEvent(env:BillingEnv,event:StripeEvent,inje
   else effects=await cashtextSubscriptionEffects(env,tenantId,subscriptionId!,event.created,client,invoiceId);
   const fence=`${token}:cashtext-event`;effects.unshift(env.AGENT_DB.prepare('INSERT INTO mayor_billing_fences(token,verified_token) VALUES(?,(SELECT processing_token FROM mayor_billing_events WHERE mode=? AND event_id=? AND processing_token=? AND lease_expires_at>?))').bind(fence,config.mode,event.id,token,Date.now()));effects.push(env.AGENT_DB.prepare("UPDATE mayor_billing_events SET status='processed',processing_token=NULL,lease_expires_at=NULL WHERE mode=? AND event_id=? AND processing_token=?").bind(config.mode,event.id,token),env.AGENT_DB.prepare('DELETE FROM mayor_billing_fences WHERE token=?').bind(fence));await commitLease(env,tenantId,config.mode,lease,effects);return {received:true,outcome:'processed'};
  }catch(error){if(lease)await releaseLease(env,tenantId,config.mode,lease);await env.AGENT_DB.prepare("UPDATE mayor_billing_events SET status='failed',processing_token=NULL,lease_expires_at=NULL,error_code=? WHERE mode=? AND event_id=? AND processing_token=?").bind(error instanceof HttpError?error.code:'cashtext_processing_failed',config.mode,event.id,token).run();throw error;}
+}
+
+/* ── Stripe Connect (integration spec §3.5, Phase 2) ─────────────────────
+ * The tenant is the merchant of record for their own invoices: their
+ * customers pay the tenant's connected Express account, never the
+ * platform. All Connect calls ride the platform key plus the Phase 0
+ * {stripeAccount} header extension — the only transport change — and
+ * the platform-account assertion (assertAccount) stays platform-only:
+ * it is called without the header, exactly as in the module billing
+ * paths above. No application fee is taken (decision D3), and no code
+ * here refunds, disputes, or otherwise touches a tenant's money.
+ *
+ * THE GATE ON OPENING: onboarding opens to real tenants ONLY when the
+ * R4 Terms sentence (tenant = merchant of record) is served on the
+ * shared mehyar.us Terms page. Probed 2026-10-23 during this phase:
+ * the served https://mehyar.us/terms/ bytes contain no merchant-of-
+ * record sentence and no CashText mention — the gate is CLOSED. The
+ * onboarding function refuses (503 cashtext_connect_not_ready) and
+ * the Modules card says so plainly until a later phase flips this
+ * constant on served-bytes evidence. The webhook handler and status
+ * sync are not gated: they only ever mirror state for accounts that
+ * exist, and no account can be created while the gate is closed. */
+export const CASHTEXT_CONNECT_TERMS_GATE_OPEN=false;
+export const CASHTEXT_CONNECT_RETURN_PATH='/billing?module=cashtext';
+export interface CashTextSettings {tenant_id:string;stripe_account_id:string|null;account_status:string;charges_enabled:number;payouts_enabled:number;summary_enabled:number;created_at:string;updated_at:string;}
+/** The account-status derivation, shared by read-on-view sync and the
+ * account.updated webhook: charges live + details in ⇒ active; Stripe
+ * has disabled requirements ⇒ restricted; anything else with an
+ * account on file ⇒ pending (onboarding incomplete). */
+export function deriveConnectAccountStatus(account:StripeObject):'active'|'restricted'|'pending'{
+ if(account.requirements?.disabled_reason)return 'restricted';
+ if(account.charges_enabled&&account.details_submitted)return 'active';
+ return 'pending';
+}
+function connectAccountEffects(env:BillingEnv,tenantId:string,account:StripeObject):D1PreparedStatement{
+ return env.AGENT_DB.prepare('UPDATE mayor_cashtext_settings SET account_status=?,charges_enabled=?,payouts_enabled=?,updated_at=? WHERE tenant_id=? AND stripe_account_id=?')
+  .bind(deriveConnectAccountStatus(account),account.charges_enabled?1:0,account.payouts_enabled?1:0,new Date().toISOString(),tenantId,account.id);
+}
+/** Read one connected account back from Stripe and mirror its state
+ * into mayor_cashtext_settings. Platform-level read (no Stripe-Account
+ * header — /v1/accounts/:id is a platform call). Returns the fresh row,
+ * or null when the tenant has no linked account. */
+export async function syncConnectAccount(env:BillingEnv,tenantId:string,injected?:StripeClient):Promise<CashTextSettings|null>{
+ const row=await env.AGENT_DB.prepare('SELECT * FROM mayor_cashtext_settings WHERE tenant_id=?').bind(tenantId).first<CashTextSettings>();if(!row?.stripe_account_id)return row;
+ const config=baseConfiguration(env),client=clientFor(env,injected);
+ const account=await client.request(`/v1/accounts/${row.stripe_account_id}`);assertMode(account,config.mode);
+ if(account.id!==row.stripe_account_id)throw new HttpError(409,'connect_account_mismatch','The Stripe connection could not be verified.');
+ await connectAccountEffects(env,tenantId,account).run();
+ return env.AGENT_DB.prepare('SELECT * FROM mayor_cashtext_settings WHERE tenant_id=?').bind(tenantId).first<CashTextSettings>();
+}
+/** Onboarding (spec §3.5): create the tenant's Express account (or
+ * reuse the linked one), persist it in mayor_cashtext_settings, then
+ * mint an account_onboarding link whose return/refresh URLs land back
+ * on /billing?module=cashtext. The R6 consent line and the R5 fees
+ * line are carried by the Modules Connect card + its review dialog in
+ * the web layer, before this endpoint is ever called. */
+export async function startConnectOnboarding(env:BillingEnv,actor:Actor,requestId:string,injected?:StripeClient,termsGateOpen=CASHTEXT_CONNECT_TERMS_GATE_OPEN){
+ if(!termsGateOpen)throw new HttpError(503,'cashtext_connect_not_ready','Stripe connection opens once our Terms name your business as the merchant of record for your invoices. That update is in flight — connecting is not open yet.');
+ await requireMembership(env,actor,BILLING_ROLES);
+ const config=baseConfiguration(env),client=clientFor(env,injected);await assertAccount(env,client);
+ let settings=await env.AGENT_DB.prepare('SELECT * FROM mayor_cashtext_settings WHERE tenant_id=?').bind(actor.tenantId).first<CashTextSettings>();
+ if(!settings?.stripe_account_id){
+  const account=await client.request('/v1/accounts','POST',{type:'express',country:'US',capabilities:{card_payments:{requested:true},transfers:{requested:true}},metadata:{mayor_billing_domain:CASHTEXT_DOMAIN,mayor_tenant_id:actor.tenantId}},`mayor-pwa:cashtext-connect:${config.mode}:${actor.tenantId}`);
+  assertMode(account,config.mode);if(!/^acct_[A-Za-z0-9]+$/.test(account.id??'')||account.metadata?.mayor_billing_domain!==CASHTEXT_DOMAIN||account.metadata?.mayor_tenant_id!==actor.tenantId)throw new HttpError(502,'connect_account_invalid','The Stripe account could not be verified.');
+  const now=new Date().toISOString();
+  await env.AGENT_DB.prepare("INSERT INTO mayor_cashtext_settings(tenant_id,stripe_account_id,account_status,charges_enabled,payouts_enabled,created_at,updated_at) VALUES(?,?,?,0,0,?,?) ON CONFLICT(tenant_id) DO UPDATE SET stripe_account_id=COALESCE(mayor_cashtext_settings.stripe_account_id,excluded.stripe_account_id),updated_at=excluded.updated_at").bind(actor.tenantId,account.id,deriveConnectAccountStatus(account),now,now).run();
+  settings=await env.AGENT_DB.prepare('SELECT * FROM mayor_cashtext_settings WHERE tenant_id=?').bind(actor.tenantId).first<CashTextSettings>();
+  if(settings?.stripe_account_id!==account.id)throw new HttpError(409,'connect_account_conflict','A different Stripe account is already linked to this business.');
+ }
+ const accountId=settings!.stripe_account_id!,origin=new URL(env.APP_ORIGIN).origin;
+ const link=await client.request('/v1/account_links','POST',{account:accountId,refresh_url:`${origin}${CASHTEXT_CONNECT_RETURN_PATH}`,return_url:`${origin}${CASHTEXT_CONNECT_RETURN_PATH}`,type:'account_onboarding'},`mayor-pwa:cashtext-link:${config.mode}:${actor.tenantId}:${requestId}`);
+ if(link.object!=='account_link'||!link.url)throw new HttpError(502,'connect_link_invalid','Stripe did not return a valid setup destination.');
+ return {url:stripeUrl(link.url,'connect.stripe.com'),accountStatus:settings!.account_status};
+}
+/** Explicit status refresh for the Modules section (the read-on-view
+ * sync in cashtextStatus covers ordinary views; this is the owner's
+ * deliberate re-check after returning from Stripe). */
+export async function refreshConnectStatus(env:BillingEnv,actor:Actor,injected?:StripeClient){
+ const membership=await requireMembership(env,actor,BILLING_ROLES);
+ await syncConnectAccount(env,actor.tenantId,injected).catch(()=>null);
+ return cashtextStatus(env,actor,BILLING_ROLES.includes(membership.role),Date.now(),injected);
+}
+/* ── Connect webhook (spec §3.5) ─────────────────────────────────────────
+ * POST /api/billing/connect-webhook verifies against its OWN secret
+ * (MAYOR_STRIPE_CONNECT_WEBHOOK_SECRET, checked at the route): Connect
+ * events cannot ride the platform endpoint — its secret differs and
+ * processBillingEvent's unrelated_account drop would eat them anyway.
+ * The tenant is resolved ONLY via mayor_cashtext_settings.
+ * stripe_account_id = event.account (never event metadata alone).
+ * Dedupe/lease discipline reuses the mayor_billing_events ledger
+ * (mode-tagged) exactly as the module billing branch does. Refund and
+ * dispute events on connected accounts are recorded as notes in the
+ * ledger and never acted on: MehyarSoft is not the merchant of record
+ * and never touches the tenant's refunds. */
+export const CONNECT_WEBHOOK_EVENTS=['invoice.paid','invoice.payment_failed','invoice.sent','account.updated','charge.refunded','charge.dispute.created','charge.dispute.updated','charge.dispute.closed','refund.created','refund.updated'] as const;
+const CONNECT_NOTE_EVENTS=['charge.refunded','charge.dispute.created','charge.dispute.updated','charge.dispute.closed','refund.created','refund.updated'];
+export async function processConnectEvent(env:BillingEnv,event:StripeEvent,injected?:StripeClient){
+ const selected=mode(env),key=env.MAYOR_STRIPE_SECRET_KEY;
+ if(!selected||!key||!new RegExp(`^(sk|rk)_${selected==='test'?'test':'live'}_`).test(key))throw new HttpError(503,'billing_not_ready','Payments are being prepared.');
+ if(event.livemode!==(selected==='live'))throw new HttpError(400,'stripe_mode_mismatch','Billing event environment mismatch.');
+ if(!(CONNECT_WEBHOOK_EVENTS as readonly string[]).includes(event.type))return {received:true,outcome:'unrelated_event'};
+ if(!event.account||!/^acct_[A-Za-z0-9]+$/.test(event.account))return {received:true,outcome:'unrelated_account'};
+ const settings=await env.AGENT_DB.prepare('SELECT * FROM mayor_cashtext_settings WHERE stripe_account_id=?').bind(event.account).first<CashTextSettings>();
+ if(!settings)return {received:true,outcome:'unrelated_account'};
+ const tenantId=settings.tenant_id,object=event.data.object,hash=await digest(JSON.stringify(event)),updated=new Date().toISOString(),token=crypto.randomUUID();
+ await env.AGENT_DB.prepare("INSERT INTO mayor_billing_events(mode,event_id,payload_hash,status,event_type,received_at) VALUES(?,?,?,'pending',?,?) ON CONFLICT(mode,event_id) DO NOTHING").bind(selected,event.id,hash,event.type,updated).run();
+ const stored=await env.AGENT_DB.prepare('SELECT payload_hash,status FROM mayor_billing_events WHERE mode=? AND event_id=?').bind(selected,event.id).first<{payload_hash:string;status:string}>();if(stored?.payload_hash!==hash)throw new HttpError(409,'billing_event_conflict','This Connect event needs review.');if(stored.status==='processed')return {received:true,outcome:'duplicate'};
+ const claimed=await env.AGENT_DB.prepare("UPDATE mayor_billing_events SET status='processing',processing_token=?,lease_expires_at=?,error_code=NULL WHERE mode=? AND event_id=? AND (status IN ('pending','failed') OR (status='processing' AND lease_expires_at<=?))").bind(token,Date.now()+120000,selected,event.id,Date.now()).run();if(!claimed.meta.changes)throw new HttpError(503,'billing_event_busy','The Connect event is being processed.');
+ let lease:string|undefined;
+ try{
+  lease=await acquireLease(env,tenantId,selected);const effects:D1PreparedStatement[]=[];let outcome='processed';
+  if(event.type==='account.updated'){
+   if(object.id!==event.account)throw new HttpError(409,'connect_account_mismatch','The Connect event account could not be verified.');
+   effects.push(connectAccountEffects(env,tenantId,object));
+  }else if(CONNECT_NOTE_EVENTS.includes(event.type)){
+   // Recorded as a note in the events ledger, never acted on — the
+   // tenant is the merchant of record; their refunds and disputes
+   // are theirs (spec §3.5/§8 R4). No invoice state changes here.
+   outcome='noted';
+  }else{
+   // invoice.paid / invoice.payment_failed / invoice.sent on the
+   // tenant's own connected account, resolved by the invoice id on
+   // OUR row for THIS tenant — an invoice id from another tenant's
+   // book can never advance under this account.
+   const invoice=await env.AGENT_DB.prepare('SELECT * FROM mayor_cashtext_invoices WHERE tenant_id=? AND stripe_invoice_id=?').bind(tenantId,object.id).first<{status:string}>();
+   if(!invoice)outcome='unrelated_invoice';
+   else if(event.type==='invoice.paid'&&invoice.status!=='paid')effects.push(env.AGENT_DB.prepare("UPDATE mayor_cashtext_invoices SET status='paid',paid_at=COALESCE(paid_at,?),hosted_invoice_url=COALESCE(?,hosted_invoice_url),updated_at=? WHERE tenant_id=? AND stripe_invoice_id=? AND status!='paid'").bind(new Date(event.created*1000).toISOString(),typeof object.hosted_invoice_url==='string'?object.hosted_invoice_url:null,updated,tenantId,object.id));
+   else if(event.type==='invoice.sent'&&invoice.status==='approved')effects.push(env.AGENT_DB.prepare("UPDATE mayor_cashtext_invoices SET status='sent',sent_at=COALESCE(sent_at,?),hosted_invoice_url=COALESCE(?,hosted_invoice_url),updated_at=? WHERE tenant_id=? AND stripe_invoice_id=? AND status='approved'").bind(new Date(event.created*1000).toISOString(),typeof object.hosted_invoice_url==='string'?object.hosted_invoice_url:null,updated,tenantId,object.id));
+   // invoice.payment_failed changes no state: the invoice stays open
+   // and chase-eligible (spec §3.3); the ledger row is the record.
+  }
+  const fence=`${token}:connect-event`;effects.unshift(env.AGENT_DB.prepare('INSERT INTO mayor_billing_fences(token,verified_token) VALUES(?,(SELECT processing_token FROM mayor_billing_events WHERE mode=? AND event_id=? AND processing_token=? AND lease_expires_at>?))').bind(fence,selected,event.id,token,Date.now()));effects.push(env.AGENT_DB.prepare("UPDATE mayor_billing_events SET status='processed',processing_token=NULL,lease_expires_at=NULL WHERE mode=? AND event_id=? AND processing_token=?").bind(selected,event.id,token),env.AGENT_DB.prepare('DELETE FROM mayor_billing_fences WHERE token=?').bind(fence));
+  await commitLease(env,tenantId,selected,lease,effects);return {received:true,outcome};
+ }catch(error){if(lease)await releaseLease(env,tenantId,selected,lease);await env.AGENT_DB.prepare("UPDATE mayor_billing_events SET status='failed',processing_token=NULL,lease_expires_at=NULL,error_code=? WHERE mode=? AND event_id=? AND processing_token=?").bind(error instanceof HttpError?error.code:'connect_processing_failed',selected,event.id,token).run();throw error;}
 }

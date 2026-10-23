@@ -27,6 +27,10 @@ export interface Env extends AuthEnv {
   MAYOR_STRIPE_CREDIT_PRICE_LARGE?: string;
   MAYOR_STRIPE_CASHTEXT_PRICE_ID?: string;
   MAYOR_STRIPE_LEADPROOF_PRICE_ID?: string;
+  /** CashText Connect webhook signing secret (spec §3.5): Connect events
+   *  carry their own endpoint secret and cannot ride the platform one.
+   *  Absent ⇒ the Connect webhook endpoint fails closed (503). */
+  MAYOR_STRIPE_CONNECT_WEBHOOK_SECRET?: string;
   MAYOR_STRIPE_PORTAL_CONFIGURATION?: string;
   MAYOR_STRIPE_ACCOUNT_ID?: string;
   MAYOR_STRIPE_AUDIT_PRICE_ID?: string;

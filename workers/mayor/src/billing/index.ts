@@ -7,7 +7,7 @@ import {billingStatus,createCheckout,portalSession,syncBilling} from './service'
 import {baseConfiguration,parseEvent,rawBody,verifySignature,type BillingEnv,type StripeClient} from './stripe';
 import {handleAuditPublic,auditOrders} from './audit';
 import {createCreditCheckout} from './credits';
-import {createModuleCheckout,setCashTextCancelAtPeriodEnd} from './cashtext';
+import {createModuleCheckout,processConnectEvent,refreshConnectStatus,setCashTextCancelAtPeriodEnd,startConnectOnboarding} from './cashtext';
 export {billingUsageContext,usageBalance} from './state';
 import {PLANS,CREDIT_PACKS,BILLING_VERSION,PRO_PRICE_VERSION,CREDIT_PACK_VERSION,FOUNDING_PRICE_CENTS,CASHTEXT_MODULE,LEADPROOF_PACK} from './plans';
 import {FOUNDING_UNAVAILABLE} from './founding';
@@ -62,10 +62,21 @@ export async function catalogResponse(request:Request,env?:BillingEnv):Promise<R
 export async function handleBillingPublic(request:Request,env:BillingEnv,injected?:StripeClient):Promise<Response|null>{
  const catalog=await catalogResponse(request,env);if(catalog)return catalog;
  const audit=await handleAuditPublic(request,env,injected);if(audit)return audit;
- if(new URL(request.url).pathname!=='/api/billing/webhook')return null;if(request.method!=='POST')throw new HttpError(405,'method_not_allowed','Use POST for billing events.');baseConfiguration(env);const bytes=await rawBody(request);await verifySignature(bytes,request.headers.get('stripe-signature'),env.MAYOR_STRIPE_WEBHOOK_SECRET!);return json(await processBillingEvent(env,parseEvent(bytes),injected));
+ const pathname=new URL(request.url).pathname;
+ // CashText Connect webhook (spec §3.5): its OWN endpoint and its OWN
+ // secret — Connect events cannot ride the platform endpoint (different
+ // secret, and processBillingEvent drops non-platform accounts). The
+ // endpoint fails closed when the secret is not configured.
+ if(pathname==='/api/billing/connect-webhook'){
+  if(request.method!=='POST')throw new HttpError(405,'method_not_allowed','Use POST for Connect events.');
+  if(!env.MAYOR_STRIPE_CONNECT_WEBHOOK_SECRET?.startsWith('whsec_'))throw new HttpError(503,'connect_webhook_not_ready','Connect events are being prepared.');
+  const bytes=await rawBody(request);await verifySignature(bytes,request.headers.get('stripe-signature'),env.MAYOR_STRIPE_CONNECT_WEBHOOK_SECRET);
+  return json(await processConnectEvent(env,parseEvent(bytes),injected));
+ }
+ if(pathname!=='/api/billing/webhook')return null;if(request.method!=='POST')throw new HttpError(405,'method_not_allowed','Use POST for billing events.');baseConfiguration(env);const bytes=await rawBody(request);await verifySignature(bytes,request.headers.get('stripe-signature'),env.MAYOR_STRIPE_WEBHOOK_SECRET!);return json(await processBillingEvent(env,parseEvent(bytes),injected));
 }
 export async function handleBillingRequest(request:Request,env:BillingEnv,actor:Actor,injected?:StripeClient):Promise<Response|null>{
- const match=new URL(request.url).pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/billing(?:\/(checkout|credit-checkout|module-checkout|module-cancel|portal|sync|audit-orders))?$/);if(!match)return null;
+ const match=new URL(request.url).pathname.match(/^\/api\/businesses\/([a-f0-9]{32})\/billing(?:\/(checkout|credit-checkout|module-checkout|module-cancel|connect-onboard|connect-refresh|portal|sync|audit-orders))?$/);if(!match)return null;
  if(match[1]!==actor.tenantId)throw new HttpError(403,'billing_tenant_mismatch','Select the correct business.');await requireMembership(env,actor);
  if(!match[2]&&request.method==='GET'){const status=await billingStatus(env,actor);
   // Engine events (§1.7): purchase_completed was recorded by the
@@ -78,5 +89,7 @@ export async function handleBillingRequest(request:Request,env:BillingEnv,actor:
  if(match[2]==='credit-checkout'){const quote=z.object({packId:z.enum(['small','medium','large']),periodKey:z.string().min(1).max(200)}).strict().parse(body);return json(await createCreditCheckout(env,actor,key,quote.packId,quote.periodKey,injected,analyticsConsentAsserted(request)));}
  if(match[2]==='module-checkout'){const quote=z.object({module:z.enum(['cashtext'])}).strict().parse(body);return json(await createModuleCheckout(env,actor,key,injected,analyticsConsentAsserted(request)));}
  if(match[2]==='module-cancel'){const quote=z.object({module:z.enum(['cashtext']),cancel:z.boolean()}).strict().parse(body);return json(await setCashTextCancelAtPeriodEnd(env,actor,key,quote.cancel,injected));}
+ if(match[2]==='connect-onboard'){z.object({module:z.enum(['cashtext'])}).strict().parse(body);return json(await startConnectOnboarding(env,actor,key,injected));}
+ if(match[2]==='connect-refresh'){z.object({module:z.enum(['cashtext'])}).strict().parse(body);return json(await refreshConnectStatus(env,actor,injected));}
  z.object({}).strict().parse(body);return json(match[2]==='portal'?await portalSession(env,actor,key,injected):await syncBilling(env,actor,injected));
 }

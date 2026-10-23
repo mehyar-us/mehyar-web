@@ -34,7 +34,7 @@ export interface BillingModuleCashText {
   subscribed: boolean;
   status: string;
   cancelAtPeriodEnd: boolean;
-  connect: { status: string; chargesEnabled: boolean };
+  connect: { status: string; chargesEnabled: boolean; payoutsEnabled?: boolean; accountLinked?: boolean; onboardingOpen?: boolean };
   checkout: { pending?: boolean; requestId?: string };
 }
 export interface BillingData {
@@ -70,6 +70,7 @@ export interface BillingPanelProps {
   onCreditCheckout: (pack: CreditPack) => void;
   onModuleCheckout: () => void;
   onModuleCancelToggle: (cancel: boolean) => void;
+  onConnectOnboard: () => void;
   onPortal: () => void;
 }
 
@@ -79,7 +80,7 @@ const moneyExact = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency: currency.toUpperCase(), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
 const approxConversations = (attempts: number) => Math.max(1, Math.round(attempts / 10));
 
-export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, onCreditCheckout, onModuleCheckout, onModuleCancelToggle, onPortal }: BillingPanelProps) {
+export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, onCreditCheckout, onModuleCheckout, onModuleCancelToggle, onConnectOnboard, onPortal }: BillingPanelProps) {
   // Lucide placeholders render as <i data-lucide>; the host swaps them for
   // SVGs after each commit, exactly as the vanilla renderer did.
   useEffect(() => { onPaint(); });
@@ -191,7 +192,16 @@ export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, 
                 ) : null}
               </>
             )}
-            <p className="source-note">Stripe connection: {cashtext.connect.status === 'not_connected' ? 'not connected yet — you connect your own Stripe account in the CashText setup, and Stripe collects your business details on its own pages.' : `${cashtext.connect.status.replaceAll('_', ' ')}${cashtext.connect.chargesEnabled ? ' · charges enabled' : ''}.`}</p>
+            <p className="source-note">Stripe connection: {cashtext.connect.status === 'active' ? `connected — your customers pay your own Stripe account${cashtext.connect.chargesEnabled ? ' · charges enabled' : ''}${cashtext.connect.payoutsEnabled ? ' · payouts enabled' : ''}.` : cashtext.connect.status === 'restricted' ? 'connected, but Stripe needs more from your business before payments can flow — finish the open items on Stripe.' : cashtext.connect.accountLinked ? 'setup started on Stripe — finish it to connect your account.' : 'not connected yet.'}</p>
+            <p className="source-note">When you connect, Stripe collects your business&rsquo;s own KYC, tax, and bank details on Stripe&rsquo;s pages; The Mayor never sees or stores them.</p>
+            <p className="source-note">Stripe&rsquo;s standard fees apply to payments you receive — charged by Stripe, not by us.</p>
+            {!cashtext.connect.onboardingOpen ? (
+              <p className="subtle">Connecting opens once our Terms name your business as the merchant of record for your invoices. That update is in flight — connecting is not open yet.</p>
+            ) : cashtext.connect.status !== 'active' ? (
+              <button type="button" className="secondary" disabled={!canManage} onClick={onConnectOnboard}>
+                {cashtext.connect.status === 'restricted' ? 'Resolve on Stripe' : cashtext.connect.accountLinked ? 'Continue Stripe setup' : 'Connect your Stripe account'}
+              </button>
+            ) : null}
           </section>
         );
       })()}
