@@ -747,6 +747,26 @@ export default function Audit() {
 
   const signals = intake?.signals || [];
 
+  /* Brandify recommendation slot (placement pack, Audit row): post-
+     activation only — this block renders inside the free-preview surface,
+     after the scan's value has landed and below the hub's own CTA. It is
+     conditional on the finding it names (discoverability): it appears
+     only when the measured preview rows show a discoverability gap, and
+     its copy names the gap(s) that fired. Never a blanket recommendation,
+     never a rating, never a price promise. */
+  const discoveryGaps: string[] = [];
+  {
+    const row = (label: string) => signals.find((r) => r.label === label);
+    if (row("Page title")?.good === false) discoveryGaps.push("no page title");
+    if (row("Meta description")?.good === false) discoveryGaps.push("no meta description");
+    if (row("Schema markup")?.value === "None found") discoveryGaps.push("no schema markup");
+    if (row("Social profiles")?.value === "None found") discoveryGaps.push("no social profiles found");
+  }
+  const discoveryGapText =
+    discoveryGaps.length > 1
+      ? discoveryGaps.slice(0, -1).join(", ") + " and " + discoveryGaps[discoveryGaps.length - 1]
+      : discoveryGaps[0] || "";
+
   return (
     <>
       {/* ── HERO ── */}
@@ -1090,6 +1110,27 @@ export default function Audit() {
                     <>Continue to payment — $330 <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>
                   )}
                 </a>
+                {discoveryGaps.length > 0 && (
+                  <div id="recommended-brandify" className="mt-5 rounded-xl border border-border bg-white/60 p-4 dark:bg-white/5">
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      Affiliate link: MehyarSoft LLC may earn a commission if you buy through this link, at no extra cost to you.
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-foreground">
+                      Your scan flagged a discoverability gap: {discoveryGapText}. If you'd like
+                      help being found where people look for a business like yours,{" "}
+                      <a
+                        href="https://www.awin1.com/awclick.php?mid=130919&id=1637383"
+                        target="_blank"
+                        rel="sponsored noopener"
+                        className="font-semibold underline underline-offset-2"
+                      >
+                        Brandify
+                      </a>{" "}
+                      works on that side of a business's presence — how it shows up across
+                      search and listings.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
