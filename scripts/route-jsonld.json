@@ -470,7 +470,7 @@
       "@id": "https://mehyar.us/audit/#service",
       "name": "Audit My Business",
       "url": "https://mehyar.us/audit/",
-      "description": "One-time $330 AI audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video.",
+      "description": "One-time $330 automated audit of your whole business: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and where AI fits — from your public site plus an optional CEO walkthrough video. Paid checkout is currently paused while the AI assessment engine is restored.",
       "provider": {
         "@id": "https://mehyar.us/#professional-service"
       },
