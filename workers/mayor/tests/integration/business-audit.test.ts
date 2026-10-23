@@ -396,7 +396,7 @@ it.each(['refund','dispute','lease'] as const)('preserves the %s fence while a s
  expect((await runBusinessAudits(env,directOptions())).lostLease).toBe(1);expect(await row()).toMatchObject({report_json:null,review_json:null,analysis_review_count:0,analysis_token:hold==='lease'?'replacement-stream-owner':null,analysis_draft_model:AUDIT_DEEPSEEK_MODEL});await expect(auditReport(env as unknown as BillingEnv,receiptToken)).rejects.toMatchObject({status:409});
 });
 it('bounds public response sizes and rejects credential redirects without a second site request',async()=>{
- await expect(collectAuditEvidence(auditFixtureIntake,env.APP_ORIGIN,sourceTransport(()=>new Response('x'.repeat(256001),{headers:{'content-type':'text/plain'}})),time)).rejects.toMatchObject({code:'source_too_large'});
+ await expect(collectAuditEvidence(auditFixtureIntake,env.APP_ORIGIN,sourceTransport(()=>new Response('x'.repeat(1000001),{headers:{'content-type':'text/plain'}})),time)).rejects.toMatchObject({code:'source_too_large'});
  let calls=0;await expect(collectAuditEvidence(auditFixtureIntake,env.APP_ORIGIN,sourceTransport(()=>{calls++;return new Response(null,{status:302,headers:{location:'https://user:secret@cedarbikes.com/'}});}),time)).rejects.toMatchObject({code:'unsafe_source'});expect(calls).toBe(1);
 });
 

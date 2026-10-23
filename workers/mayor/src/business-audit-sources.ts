@@ -2,7 +2,12 @@ import {digest} from './http';
 import {extractWebsiteText,publicWebsiteUrl} from './website';
 import {AuditFailure,type AuditContext,type AuditEvidence,type AuditSource} from './business-audit-schema';
 
-const MAX_PAGE_BYTES=256000,MAX_TOTAL_BYTES=1500000,MAX_SOURCES=8;
+/* Bounded reads stay hard-capped and streamed with early abort, but the caps
+ * must fit real builder-generated business pages: a measured in-class
+ * homepage (Wix) is 890,633 bytes of identity-encoded HTML, 3.5x the former
+ * 256,000 page cap, which made collection reject it as source_too_large
+ * before any text was extracted. Excerpts remain capped at 6,000 chars. */
+const MAX_PAGE_BYTES=1000000,MAX_TOTAL_BYTES=4000000,MAX_SOURCES=8;
 const STATIC_LIMITS=['Only returned public HTML and text were inspected. JavaScript, screenshots, responsive layouts, accessibility conformance, page speed, and working form or booking submissions were not tested.','No search ranking, review volume, traffic, revenue, conversion rate, customer retention, internal staffing, or private tool configuration was measured. Their current baselines remain unknown.','Impact, effort, and priority are planning judgments, not measured business performance or guaranteed outcomes.','Recommendations cover business operations and customer experience, not legal, medical, investment, accounting, or regulatory advice.'];
 export function isPublicAuditAddress(value:string):boolean {
  if(value.trim()!==value)return false;
