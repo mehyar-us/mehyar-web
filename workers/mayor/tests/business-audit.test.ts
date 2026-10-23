@@ -52,6 +52,12 @@ describe('paid audit output admission',()=>{
  it('rejects invented publishable numeric commitments while accepting explicit placeholders',()=>{
   for(const promise of ['Tune-ups cost $75–$95.','Most repairs are ready within 24h.','Book a 30 minute appointment.','Return every three months for your service plan.','Save 20% on seasonal tune-ups.']){const draft=auditFixtureDraft();draft.findings[0].copyExample=promise;expect(()=>validateAuditDraft(draft,auditFixtureEvidence())).toThrow('unsupported_copy_promise');}const draft=auditFixtureDraft();draft.findings[0].copyExample='Tune-ups start at [confirmed price]. Ask us about [verified turnaround].';expect(validateAuditDraft(draft,auditFixtureEvidence())).toEqual(draft);
  });
+ it('rejects invented first-person copy commitments while accepting evidenced owner wording',()=>{
+  for(const promise of ['I reply to every message personally.','We will respond to every inquiry.','I personally guarantee the follow-up.']){const draft=auditFixtureDraft();draft.findings[0].copyExample=promise;expect(()=>validateAuditDraft(draft,auditFixtureEvidence())).toThrow('unsupported_copy_promise');}
+  const evidenced=auditFixtureEvidence();evidenced.sources[0].excerpt+=' I reply to every message personally.';
+  const quoted=auditFixtureDraft();quoted.findings[0].copyExample='I reply to every message personally.';expect(auditDraftQualityDiagnostics(quoted,evidenced)).not.toContainEqual({code:'unsupported_copy_promise',path:'findings.F01.copyExample'});
+  const exercise=auditFixtureDraft();exercise.findings[1].copyExample='Subject: Got your project note — I reply to every message personally. Send the service address, two photos, and your preferred dates, and I will confirm scope in writing within [verified hours].';expect(auditDraftQualityDiagnostics(exercise,auditFixtureEvidence())).toContainEqual({code:'unsupported_copy_promise',path:'findings.F02.copyExample'});
+ });
  it('keeps stored reports compatible while admitting only concise new model drafts',()=>{
   const evidence=auditFixtureEvidence(),draft=auditFixtureDraft();
   const extended={...draft,findings:[...draft.findings,...draft.findings.slice(0,3).map((finding,index)=>({...finding,id:`F0${index+7}`}))]};

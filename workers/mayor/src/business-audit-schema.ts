@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {validateAuditRoadmapReferences} from './business-audit-roadmap';
-import {hasUnsupportedAuditPrivateAbsence,hasUnsupportedAuditTrustAbsence,validateAuditCustomerOutreach,validateAuditCustomerPilot,hasAnchoredAuditCommercialPlaceholder} from './business-audit-content-safety';
+import {hasUnsupportedAuditPrivateAbsence,hasUnsupportedAuditTrustAbsence,validateAuditCustomerOutreach,validateAuditCustomerPilot,hasAnchoredAuditCommercialPlaceholder,hasUnsupportedAuditCopyCommitment} from './business-audit-content-safety';
 
 export const AUDIT_ANALYSIS_MODEL='@cf/moonshotai/kimi-k2.6';
 export const AUDIT_REVIEW_MODEL='@cf/moonshotai/kimi-k2.6';
@@ -89,7 +89,7 @@ function qualityDiagnostics(draft:AuditDraft,evidence:AuditEvidence,roadmapBodie
   if(toolInstallation.test([finding.title,finding.recommendation,...finding.nextSteps].join('. '))){
    const first=finding.nextSteps[0],inventory=/\b(?:verify|confirm|check|inventory|determine|review|inspect)\b/i.test(first)||/\bask\s+(?:the\s+)?owner\s+to\s+(?:list|describe|identify)\b/i.test(first);if(!inventory||!/\b(?:existing|current|already|in use|internal)\b/i.test(first)||!/\b(?:analytics|tracking|crm|software|tools?|systems?|reminders?|follow[- ]up)\b/i.test(first))add('existing_tools_unverified','findings.'+finding.id+'.nextSteps.0');
   }
-  const copy=finding.copyExample;if(copy&&(hasAnchoredAuditCommercialPlaceholder(copy)||/(?:[$£€]\s*\d|\d[\d.,–-]*\s*(?:%|(?:hours?|hrs?|h|minutes?|mins?|days?|weeks?|months?|dollars?|USD)\b)|(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|thirty|sixty|ninety)\s*(?:hours?|minutes?|days?|weeks?|months?)\b)/i.test(copy))&&!evidence.sources.some(source=>normalizeAuditQuote(source.excerpt).includes(normalizeAuditQuote(copy))))add('unsupported_copy_promise','findings.'+finding.id+'.copyExample');
+  const copy=finding.copyExample;if(copy&&(hasAnchoredAuditCommercialPlaceholder(copy)||hasUnsupportedAuditCopyCommitment(copy,evidence.sources)||/(?:[$£€]\s*\d|\d[\d.,–-]*\s*(?:%|(?:hours?|hrs?|h|minutes?|mins?|days?|weeks?|months?|dollars?|USD)\b)|(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|thirty|sixty|ninety)\s*(?:hours?|minutes?|days?|weeks?|months?)\b)/i.test(copy))&&!evidence.sources.some(source=>normalizeAuditQuote(source.excerpt).includes(normalizeAuditQuote(copy))))add('unsupported_copy_promise','findings.'+finding.id+'.copyExample');
  }
  return diagnostics.slice(0,32);
 }

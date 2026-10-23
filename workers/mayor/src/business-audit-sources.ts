@@ -75,7 +75,7 @@ export async function collectAuditEvidence(context:AuditContext,appOrigin:string
   sources.push({id:`S${sources.length+1}`,url:page.url,title:page.title,checkedAt:new Date(now).toISOString(),contentHash:await digest(page.excerpt),excerpt:page.excerpt,observations:page.observations,providedBy});return page;
  }
  const home=await add(root.href,'website');if(!home)throw new AuditFailure('insufficient_evidence');
- const candidates=home.links.map(link=>{try{const url=auditSourceUrl(new URL(link.href,home.url).href,appOrigin);return domainFamily(url.hostname)===domainFamily(root.hostname)&&url.pathname!=='/'&&/about|service|contact|pricing|book|appointment|schedule|team|faq|location/i.test(url.pathname)?url:null;}catch{return null;}}).filter((url):url is URL=>url!==null);
+ const candidates=home.links.map(link=>{try{const url=auditSourceUrl(new URL(link.href,home.url).href,appOrigin);return domainFamily(url.hostname)===domainFamily(root.hostname)&&url.pathname!=='/'&&!/\.(?:css|js|mjs|json|xml|txt|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|eot|otf|pdf|zip|gz|mp4|mp3|webm)$/i.test(url.pathname)&&/about|service|contact|pricing|book|appointment|schedule|team|faq|location|gallery|reviews?|testimonials?|menus?|products?|portfolio|specials?|offers?|story|meet/i.test(url.pathname)?url:null;}catch{return null;}}).filter((url):url is URL=>url!==null);
  for(const url of [...new Map(candidates.map(url=>[url.href,url])).values()].slice(0,4)){
   try{await add(url.href,'website');}catch(error){limitations.push(`An additional linked business page could not be safely checked (${error instanceof AuditFailure?error.code:'source_unavailable'}). Its content remains unknown.`);}
  }

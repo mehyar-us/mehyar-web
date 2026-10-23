@@ -273,6 +273,21 @@ function sourceTransport(handler?:(url:URL)=>Response|null){return (async(input:
 it('captures checked static sources, hashes, counts, and bounded same-site pages without executing scripts',async()=>{
  const evidence=await collectAuditEvidence(auditFixtureIntake,env.APP_ORIGIN,sourceTransport(),time);expect(evidence.sources).toHaveLength(3);expect(evidence.sources[0]).toMatchObject({id:'S1',checkedAt:new Date(time).toISOString(),observations:{viewportPresent:true,descriptionPresent:true,h1Count:1,imageCount:1,imagesMissingAlt:1,contactLinkCount:1}});expect(evidence.sources[0].contentHash).toMatch(/^[a-f0-9]{64}$/);expect(evidence.sources[0].excerpt).not.toContain('passwords');expect(evidence.sources[0].excerpt).not.toContain('Hidden credential');expect(evidence.limitations.join(' ')).toContain('not measured');
 });
+it('collects linked gallery, reviews, special-offer and contact pages while skipping asset files',async()=>{
+ const filler=' Our workshop keeps neighborhood riders moving with careful workmanship, clear written estimates, honest scheduling, and friendly follow-through for every repair we complete.';
+ const page=(title:string,body:string,links='')=>'<html><head><title>'+title+'</title><meta name="viewport" content="width=device-width"></head><body><h1>'+title+'</h1><p>'+body+'</p>'+links+'</body></html>';
+ const home=page('Cedar Bike Service','We repair commuter bicycles and offer scheduled tune-ups for neighborhood riders.'+filler,'<a href="/wp-content/themes/estory/site.css">Styles</a><a href="/gallery">Gallery</a><a href="/reviews">Reviews</a><a href="/special-offers">Special offers</a><a href="/contact">Contact</a>');
+ const transport=sourceTransport(url=>{
+  if(url.pathname==='/')return new Response(home,{headers:{'content-type':'text/html'}});
+  if(url.pathname==='/gallery')return new Response(page('Gallery','Photographs from recent tune-ups, wheel rebuilds, and seasonal overhauls finished in our workshop.'+filler),{headers:{'content-type':'text/html'}});
+  if(url.pathname==='/reviews')return new Response(page('Reviews','Riders describe prompt scheduling, clear repair estimates, and careful tune-up work from our small team.'+filler),{headers:{'content-type':'text/html'}});
+  if(url.pathname==='/special-offers')return new Response(page('Special offers','Seasonal maintenance packages and bundled tune-up options are described here for neighborhood riders.'+filler),{headers:{'content-type':'text/html'}});
+  if(url.pathname==='/contact')return new Response(page('Contact','Reach the workshop by phone or through the contact form to request a tune-up or a repair estimate.'+filler),{headers:{'content-type':'text/html'}});
+  return new Response('missing',{status:404});
+ });
+ const evidence=await collectAuditEvidence(auditFixtureIntake,env.APP_ORIGIN,transport,time);
+ expect(evidence.sources.map(source=>source.url)).toEqual(['https://cedarbikes.com/','https://cedarbikes.com/gallery','https://cedarbikes.com/reviews','https://cedarbikes.com/special-offers','https://cedarbikes.com/contact']);
+});
 it('rejects private DNS before fetching a source and rechecks redirect DNS',async()=>{
  let siteCalls=0,dnsCalls=0;const transport=(async(input:RequestInfo|URL)=>{const url=new URL(String(input));if(url.hostname==='cloudflare-dns.com'){dnsCalls++;return Response.json({Status:0,Answer:[{type:1,data:url.searchParams.get('name')==='cedarbikes.com'?'1.1.1.1':'169.254.169.254'}]});}siteCalls++;return new Response(null,{status:302,headers:{location:'https://www.cedarbikes.com/about'}});}) as typeof fetch;
  await expect(collectAuditEvidence(auditFixtureIntake,env.APP_ORIGIN,transport,time)).rejects.toMatchObject({code:'unsafe_source'});expect(siteCalls).toBe(1);expect(dnsCalls).toBe(4);

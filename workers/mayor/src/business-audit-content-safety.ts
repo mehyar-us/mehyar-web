@@ -211,3 +211,21 @@ export function validateAuditCustomerPilot(actions:readonly string[]):AuditPilot
 export function hasAnchoredAuditCommercialPlaceholder(copy:string){
  return /\[[^\]]*\b(?:same[- ]day|next[- ]day|overnight|guaranteed|unlimited|lifetime)\b[^\]]*\]/i.test(copy);
 }
+
+/** Example copy is labelled ready to send, so an unbracketed first-person
+ * service commitment in it ("I reply to every message personally") states a
+ * publishable promise in the owner's voice. It is supported only when the
+ * owner's own captured words contain the same sentence; bracketed
+ * placeholders remain the sanctioned way to leave a commitment open. Neutral
+ * explanations ("we will explain the next available appointment") make no
+ * service commitment and pass. */
+export function hasUnsupportedAuditCopyCommitment(copy:string,sources:readonly AuditSafetySource[]){
+ const normalizeCopy=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ const excerpts=sources.map(source=>normalizeCopy(source.excerpt));
+ return copy.split(/(?<=[.!?])\s+/).some(raw=>{
+  const sentence=normalizeCopy(raw);
+  if(!sentence||!/\b(?:i|we)\b/.test(sentence))return false;
+  if(!/\b(?:reply|respond|answer|guarantee|promise|personally)\b/.test(sentence)&&!/get back/.test(sentence))return false;
+  return !excerpts.some(excerpt=>excerpt.includes(sentence));
+ });
+}
