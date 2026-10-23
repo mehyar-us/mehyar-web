@@ -213,6 +213,12 @@ def make_zip():
             continue
         for root, dirs, files in os.walk(src_root):
             for f in files:
+                # Test files are excluded from the deploy bundle (see the
+                # functions copytree above): the raw functions/ walk must
+                # apply the same exclusion, or wrangler's esbuild pass
+                # compiles them and top-level await breaks the deploy.
+                if f.endswith((".test.js", ".test.ts", ".test.tsx")):
+                    continue
                 fp = os.path.join(root, f)
                 rel = os.path.relpath(fp, src_root).replace("\\", "/")
                 zip_path = f"{zip_prefix}/{rel}"
