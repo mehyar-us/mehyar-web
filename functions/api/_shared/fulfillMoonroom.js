@@ -133,7 +133,7 @@ export async function fulfillMoonroom({ db, env, waitUntil, sendEmail }, payment
         `<p style="color:#6b7280;font-size:13px;">Or copy this link:<br><a href="${galleryUrl}">${galleryUrl}</a></p>` +
         `<p>-- ${fromName}</p>`;
       const mailer = env.MOONROOM_MAIL_TOKEN ? sendBridgedEmail : sendEmail;
-      const result = await mailer(env, { from, fromName, to: payment.email, replyTo: "info@mehyar.us", subject, text, html });
+      const result = await mailer(env, { from, fromName, to: payment.email, replyTo: "info@getmoonroom.com", subject, text, html });
       if (!result.ok) {
         console.error("fulfillMoonroom generating email failed", productId, result.error);
       }
