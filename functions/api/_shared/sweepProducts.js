@@ -179,14 +179,14 @@ export const SWEEP_PRODUCTS = [
     fulfillment: "ticketbeat",
     displayName: "TicketBeat",
     fromName: "TicketBeat",
-    base: (env) => stripSlash(env.TICKETBEAT_BASE_URL || "https://ticketbeat.mehyar.us"),
+    base: (env) => stripSlash(env.TICKETBEAT_BASE_URL || "https://ticketbeat.app"),
     stuckStatuses: ["paid", "generating", "failed"],
     generatePath: "/api/letter/generate",
     generateBody: (row) => ({ order_token: row.access_token, inputs: parseInputs(row).inputs || {} }),
     deliverableUrl: (env, row) =>
       row.letter_url ||
       row.pdf_url ||
-      `${stripSlash(env.TICKETBEAT_BASE_URL || "https://ticketbeat.mehyar.us")}/letter.html?token=${row.access_token}`,
+      `${stripSlash(env.TICKETBEAT_BASE_URL || "https://ticketbeat.app")}/letter.html?token=${row.access_token}`,
   },
   {
     key: "sproutscore",

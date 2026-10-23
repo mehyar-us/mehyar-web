@@ -1,6 +1,6 @@
 // functions/api/_shared/fulfillMoonroom.js
 // Standalone ES module: Stripe fulfillment for fulfillment='moonroom' products
-// (Moonroom AI photo studio — moonroom.mehyar.us). Called from the shared
+// (Moonroom AI photo studio — getmoonroom.com). Called from the shared
 // /api/pay/webhook in mehyar-web.
 //
 // Contract: fulfillMoonroom({ db, env, waitUntil, sendEmail }, payment)
@@ -44,11 +44,11 @@ function randomToken(bytes = 32) {
 }
 
 function baseUrl(env) {
-  return String(env.MOONROOM_BASE_URL || "https://moonroom.mehyar.us").replace(/\/+$/, "");
+  return String(env.MOONROOM_BASE_URL || "https://getmoonroom.com").replace(/\/+$/, "");
 }
 
 function fromAddress() {
-  // moonroom.mehyar.us is not ESP-onboarded yet (standing rule: onboard on
+  // getmoonroom.com is not ESP-onboarded on this mail path yet (standing rule: onboard on
   // both ESPs before sending from a product domain). Until then, send from
   // the proven mehyar.us identity.
   return { from: "team@mehyar.us", fromName: "Moonroom" };

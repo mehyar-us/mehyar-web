@@ -10,7 +10,7 @@
 import { sendBridgedEmail } from "../_shared/bridgedEmail.js";
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-const GALLERY_URL = "https://moonroom.mehyar.us/gallery";
+const GALLERY_URL = "https://getmoonroom.com/gallery";
 
 function j(data, status = 200) {
   return new Response(JSON.stringify(data), {

@@ -32,11 +32,11 @@ import { sendCloudflareEmail } from "./cloudflareEmail.js";
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
 function baseUrl(env) {
-  return String(env.TICKETBEAT_BASE_URL || "https://ticketbeat.mehyar.us").replace(/\/+$/, "");
+  return String(env.TICKETBEAT_BASE_URL || "https://ticketbeat.app").replace(/\/+$/, "");
 }
 
 function fromAddress(env) {
-  // Until ticketbeat.mehyar.us is onboarded on both ESPs (standing rule),
+  // Until ticketbeat.app is onboarded on both ESPs for this mail path (standing rule),
   // send from the proven mehyar.us identity.
   return { from: env.TICKETBEAT_FROM_EMAIL || "team@mehyar.us", fromName: "TicketBeat" };
 }
@@ -60,7 +60,7 @@ async function emailDeliverable(env, payment, productName, deliverUrl, extraLine
     `<p style="color:#6b7280;font-size:13px;">Not legal advice. TicketBeat shows real adjudication data; no outcome is guaranteed.</p>` +
     `<p>-- ${fromName}</p>`;
   return sendCloudflareEmail(env, {
-    from, fromName, to: payment.email, replyTo: "info@mehyar.us", subject, text, html,
+    from, fromName, to: payment.email, replyTo: "info@ticketbeat.app", subject, text, html,
   });
 }
 

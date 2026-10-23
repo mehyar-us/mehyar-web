@@ -470,7 +470,7 @@ const fulfillHooks = {
     return { ok: true };
   },
 
-  // Moonroom AI photo studio (moonroom.mehyar.us). Creates the
+  // Moonroom AI photo studio (getmoonroom.com). Creates the
   // moonroom_orders row (idempotent on payment_id via
   // idx_moonroom_orders_payment), unifies the access token onto the
   // billing_payments row, then hands off to the standalone module for
