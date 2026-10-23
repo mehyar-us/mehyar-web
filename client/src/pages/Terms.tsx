@@ -138,6 +138,9 @@ const sections: Section[] = [
             <div className="font-semibold">The Mayor — <a className="text-brand-700 underline dark:text-brand-100" href="https://mayor.mehyar.us" target="_blank" rel="noreferrer">mayor.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
             {/* PRICING: update when the $39 catalog ships (see ~/workspace/mayor-pilot/pricing-39.diff) */}
             <div className="text-sm text-muted-foreground">AI business assistant for local service businesses — customers, appointments, playbooks, and voice. Free plan; $99/month Pro; one-time credit packs from $4.</div>
+            <div className="text-sm text-muted-foreground mt-2 space-y-2">
+              <p><strong>Additional CashText terms.</strong> When you use CashText to invoice your customers, you are the merchant of record for those invoices: payments are processed by Stripe into your own Stripe account, and refunds, disputes, chargebacks, and sales-tax obligations on those invoices are yours, not MehyarSoft LLC's.</p>
+            </div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Moonroom — <a className="text-brand-700 underline dark:text-brand-100" href="https://moonroom.mehyar.us" target="_blank" rel="noreferrer">moonroom.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>

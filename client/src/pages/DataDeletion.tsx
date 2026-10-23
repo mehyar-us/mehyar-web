@@ -325,9 +325,9 @@ const apps: AppInfo[] = [
     icon: Store,
     inAppPath: "Email fallback (info@mehyar.us) — contact us to request deletion",
     whatWeCollect:
-      "Business profile (name, services, hours, location), customer records you save (name, email/phone), appointments, call metadata from voice calls you enable, and usage records for billing. All records are scoped to your business.",
+      "Business profile (name, services, hours, location), customer records you save (name, email/phone), appointments, call metadata from voice calls you enable, and usage records for billing. All records are scoped to your business. If you use the CashText module, also invoice data for your customers (name, email, invoice descriptions and amounts, payment status), processed on your instructions. If you use the LeadProof module, also the lead packs delivered to you (publicly published business information, each lead with its source link and retrieval date).",
     whatWeDelete:
-      "Business profile, customer records, appointments, call records, and usage data tied to your business. Deletion via the email fallback within 14 days.",
+      "Business profile, customer records, appointments, call records, and usage data tied to your business. Deletion via the email fallback within 14 days. CashText invoice data is deleted the same way. LeadProof pack data can be deleted by the tenant in-product at any time, and a business listed in a LeadProof pack can request removal via the same email fallback.",
   },
   {
     id: "moonroom",
