@@ -8,10 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 // as real customers.
 const ILLUSTRATIVE_EXAMPLES = [
   {
-    role: "Example: local service owner",
-    quote: "The free audit found our missing click-to-call in 60 seconds. The kind of leak that costs real jobs every week.",
-  },
-  {
     role: "Example: clinic operator",
     quote: "The $5 report was brutal — and exactly right. The AI scheduling blueprint alone would be worth 100x the price.",
   },
