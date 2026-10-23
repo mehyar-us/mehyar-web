@@ -27,7 +27,7 @@
 //      status + a retry button.
 //
 // Identity model: purchase-token + email. No Google login here — cross-
-// subdomain better-auth sessions don't reach moonroom.mehyar.us (see the
+// subdomain better-auth sessions don't reach the product domain (see the
 // Track C auth assessment in ~/workspace/moonroom/notes/TRACKC-REPORT.md).
 
 const nowSql = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";

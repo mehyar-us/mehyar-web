@@ -514,7 +514,7 @@ const fulfillHooks = {
     await fulfillCoach({ db, env, waitUntil, sendEmail }, payment);
   },
 
-  // Clipnote (clipnote.mehyar.us). Creates the clipnote_orders render row
+  // Clipnote (clipnote.us). Creates the clipnote_orders render row
   // (idempotent on payment_id via idx_clipnote_orders_payment) for the
   // one-off video, or grants 4 plan credits for the subscription.
   async clipnote({ db, env, waitUntil }, payment) {
