@@ -154,15 +154,15 @@ const industryOfferCatalog = {
 
 const staticMeta: Record<string, SeoMeta> = {
   "/audit": {
-    title: "Audit My Business — $330 AI Business Audit | MehyarSoft",
+    title: "Audit My Business — $330 Automated Business Audit | MehyarSoft",
     description:
-      "A professional automated audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.",
+      "A professional automated audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription. Paid checkout is currently paused while the AI assessment engine is restored.",
     path: "/audit",
     jsonLd: [
       webPage(
         "/audit",
-        "Audit My Business — $330 AI Business Audit | MehyarSoft",
-        "Professional AI business audit: score, ranked money leaks, flaws, prioritized fixes, and where AI fits in your business.",
+        "Audit My Business — $330 Automated Business Audit | MehyarSoft",
+        "Professional automated business audit: score, ranked money leaks, flaws, prioritized fixes, and where AI fits in your business.",
       ),
       breadcrumbs([
         { name: "Home", path: "/" },
@@ -170,9 +170,9 @@ const staticMeta: Record<string, SeoMeta> = {
       ]),
       {
         "@type": "Service",
-        name: "Audit My Business — $330 AI Business Audit",
+        name: "Audit My Business — $330 Automated Business Audit",
         description:
-          "A professional automated audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment.",
+          "A professional automated audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment. Paid checkout is currently paused while the AI assessment engine is restored.",
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
         areaServed: "Worldwide",
         offers: {
@@ -186,7 +186,7 @@ const staticMeta: Record<string, SeoMeta> = {
         {
           question: "Which offer is which — the free scan, the Full Report, or Audit My Business?",
           answer:
-            "Three different rungs. The free scan scores your public site and names your top money leaks — free, no card. The Full Report ($5, one-time) is the complete written breakdown of that scan: every leak found, priced and ranked. Audit My Business ($330, one-time) is the deep audit — a separate, fuller report built from your site and your walkthrough video, with prioritized fixes and an AI opportunity map, delivered by email within 3–5 business days; if you bought the Full Report first, its $5 is credited toward the $330. The founder-led $330 tech audit is a different product again: a human review, invoiced by email.",
+            "Three different rungs. The free scan scores your public site and names your top money leaks — free, no card. The Full Report ($5, one-time) is the complete written breakdown of that scan: every leak found, priced and ranked. Audit My Business ($330, one-time) is the deep audit — a separate, fuller report built from your site and your walkthrough video, with prioritized fixes and an AI opportunity map, delivered by email within 3–5 business days; if you bought the Full Report first, its $5 is credited toward the $330 — you pay $325 at checkout. Paid checkouts for both reports are currently paused while we restore full report generation — the free scan runs as always, and the credit applies at checkout when the paid reports reopen. The founder-led $330 tech audit is a different product again: a human review, invoiced by email.",
         },
         {
           question: "Do I need the walkthrough video?",
@@ -202,7 +202,7 @@ const staticMeta: Record<string, SeoMeta> = {
     ],
   },
   "/audit/free": {
-    title: "Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft",
+    title: "Free Instant Website Audit — Is Your Site Leaking Money? | MehyarSoft",
     description:
       "Free 10-second website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No card — just an email for delivery.",
     path: "/audit/free",
@@ -210,7 +210,7 @@ const staticMeta: Record<string, SeoMeta> = {
   "/audit/report": {
     title: "$5 Full Report | MehyarSoft",
     description:
-      "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.",
+      "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5. Currently paused while full report generation is restored.",
     path: "/audit/report",
     jsonLd: [
       webPage(
@@ -227,7 +227,7 @@ const staticMeta: Record<string, SeoMeta> = {
         "@type": "Service",
         name: "$5 Full Report",
         description:
-          "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.",
+          "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. Currently paused while full report generation is restored.",
         provider: { "@id": `${SITE_ORIGIN}/#professional-service` },
         areaServed: "Worldwide",
         offers: {

@@ -20,21 +20,21 @@ const appShell = readFileSync(indexHtml, 'utf8');
 // its own meta.
 const routeMeta = {
   '/audit': {
-    title: 'Audit My Business — $330 AI Business Audit | MehyarSoft',
+    title: 'Audit My Business — $330 Automated Business Audit | MehyarSoft',
     description:
-      'A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription.',
+      'A professional automated audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min). One-time $330, no subscription. Paid checkout is currently paused while the AI assessment engine is restored.',
     path: '/audit',
   },
   '/audit/free': {
-    title: 'Free AI Website Audit — Is Your Site Leaking Money? | MehyarSoft',
+    title: 'Free Instant Website Audit — Is Your Site Leaking Money? | MehyarSoft',
     description:
-      'Free 60-second AI website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No account, no card.',
+      'Free 10-second website audit for businesses: get your score, 3 money leaks priced in dollars, and 3 quick wins. No card — just an email for delivery.',
     path: '/audit/free',
   },
   '/audit/report': {
     title: '$5 Full Report | MehyarSoft',
     description:
-      'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5.',
+      'The complete professional evaluation of your site: every leak priced, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. One-time $5. Currently paused while full report generation is restored.',
     path: '/audit/report',
   },
   '/audit/sample-report': {

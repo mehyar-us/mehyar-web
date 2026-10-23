@@ -1693,8 +1693,8 @@
       "@type": "WebPage",
       "@id": "https://mehyar.us/audit/#webpage",
       "url": "https://mehyar.us/audit/",
-      "name": "Audit My Business — $330 AI Business Audit | MehyarSoft",
-      "description": "Professional AI business audit: score, ranked money leaks, flaws, prioritized fixes, and where AI fits in your business.",
+      "name": "Audit My Business — $330 Automated Business Audit | MehyarSoft",
+      "description": "Professional automated business audit: score, ranked money leaks, flaws, prioritized fixes, and where AI fits in your business.",
       "isPartOf": {
         "@id": "https://mehyar.us/#website"
       },
@@ -1721,8 +1721,8 @@
     },
     {
       "@type": "Service",
-      "name": "Audit My Business — $330 AI Business Audit",
-      "description": "A professional AI audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment.",
+      "name": "Audit My Business — $330 Automated Business Audit",
+      "description": "A professional automated audit of your business: overall score, money leaks ranked, flaws, prioritized fixes, and where AI fits. Optional CEO walkthrough video (2–30 min) for a deeper transcript-based assessment. Paid checkout is currently paused while the AI assessment engine is restored.",
       "provider": {
         "@id": "https://mehyar.us/#professional-service"
       },
@@ -1742,7 +1742,7 @@
           "name": "Which offer is which — the free scan, the Full Report, or Audit My Business?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Three different rungs. The free scan scores your public site and names your top money leaks — free, no card. The Full Report ($5, one-time) is the complete written breakdown of that scan: every leak found, priced and ranked. Audit My Business ($330, one-time) is the deep audit — a separate, fuller report built from your site and your walkthrough video, with prioritized fixes and an AI opportunity map, delivered by email within 3–5 business days; if you bought the Full Report first, its $5 is credited toward the $330. The founder-led $330 tech audit is a different product again: a human review, invoiced by email."
+            "text": "Three different rungs. The free scan scores your public site and names your top money leaks — free, no card. The Full Report ($5, one-time) is the complete written breakdown of that scan: every leak found, priced and ranked. Audit My Business ($330, one-time) is the deep audit — a separate, fuller report built from your site and your walkthrough video, with prioritized fixes and an AI opportunity map, delivered by email within 3–5 business days; if you bought the Full Report first, its $5 is credited toward the $330 — you pay $325 at checkout. Paid checkouts for both reports are currently paused while we restore full report generation — the free scan runs as always, and the credit applies at checkout when the paid reports reopen. The founder-led $330 tech audit is a different product again: a human review, invoiced by email."
           }
         },
         {
@@ -1750,7 +1750,7 @@
           "name": "Do I need the walkthrough video?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. The audit works on your public site alone. The video unlocks the deep-dive section: the AI watches you explain your business and adds transcript-based findings drawn from your own words."
+            "text": "No. The audit works on your public site alone. The video unlocks the deep-dive section: your walkthrough is transcribed and the audit adds transcript-based findings drawn from your own words."
           }
         },
         {
@@ -1804,7 +1804,7 @@
     {
       "@type": "Service",
       "name": "$5 Full Report",
-      "description": "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan.",
+      "description": "The complete professional report on your site: every leak priced in estimated dollars, page-by-page grades, how you compare, the AI blueprint with the capacity math shown step by step, and your 90-day plan. Currently paused while full report generation is restored.",
       "provider": {
         "@id": "https://mehyar.us/#professional-service"
       },
