@@ -18,6 +18,13 @@ it('serves the pricing catalog publicly from plans.ts (single source of truth)',
  expect(pro.replyLimit).toBe(1000);expect(pro.voiceMinuteLimit).toBe(120);
  const small=body.creditPacks.find((p:any)=>p.id==='small');
  expect(small.priceCents).toBe(CREDIT_PACKS.find(p=>p.id==='small')!.priceCents);
+ // Modules section (integration spec §5.5): both module asks project from
+ // plans.ts constants; amounts are the Mayor's starting points ($29/$49).
+ expect(body.modules.map((m:any)=>m.id)).toEqual(['cashtext','leadproof-pack']);
+ const cashtext=body.modules.find((m:any)=>m.id==='cashtext');
+ expect(cashtext.priceCents).toBe(2900);expect(cashtext.interval).toBe('month');
+ const leadproof=body.modules.find((m:any)=>m.id==='leadproof-pack');
+ expect(leadproof.priceCents).toBe(4900);expect(leadproof.leadTarget).toBe(25);
  expect(res.headers.get('access-control-allow-origin')).toBe('https://mehyar.us');
 });
 it('does not leak CORS to unlisted origins and rejects non-GET',async()=>{

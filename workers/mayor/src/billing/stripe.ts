@@ -6,7 +6,7 @@ import {BILLING_DOMAIN,BILLING_VERSION,FOUNDING_PRICE_CENTS,PRO_PRICE_CENTS,PRO_
 export const STRIPE_API_VERSION='2026-09-30.endive';
 export type StripeObject=Record<string,any>;
 export interface StripeEvent {id:string;type:string;created:number;livemode:boolean;account?:string;data:{object:StripeObject};}
-export type BillingEnv=Pick<Env,'AGENT_DB'|'APP_ORIGIN'|'MAYOR_STRIPE_MODE'|'MAYOR_STRIPE_SECRET_KEY'|'MAYOR_STRIPE_WEBHOOK_SECRET'|'MAYOR_STRIPE_PRICE_ID'|'MAYOR_STRIPE_FOUNDING_PRICE_ID'|'MAYOR_STRIPE_PORTAL_CONFIGURATION'|'MAYOR_STRIPE_ACCOUNT_ID'|'MAYOR_STRIPE_AUDIT_PRICE_ID'|'MAYOR_STRIPE_CREDIT_PRICE_SMALL'|'MAYOR_STRIPE_CREDIT_PRICE_MEDIUM'|'MAYOR_STRIPE_CREDIT_PRICE_LARGE'|'MAYOR_AUDIT_STATUS_SECRET'|'MAYOR_AUDIT_ALLOWED_ORIGINS'|'MAYOR_AUDIT_OPERATOR_USER_IDS'|'MAYOR_AUDIT_FULFILLMENT_READY'|'MAYOR_AUDIT_GENERATION_PAUSED'>;
+export type BillingEnv=Pick<Env,'AGENT_DB'|'APP_ORIGIN'|'MAYOR_STRIPE_MODE'|'MAYOR_STRIPE_SECRET_KEY'|'MAYOR_STRIPE_WEBHOOK_SECRET'|'MAYOR_STRIPE_PRICE_ID'|'MAYOR_STRIPE_FOUNDING_PRICE_ID'|'MAYOR_STRIPE_PORTAL_CONFIGURATION'|'MAYOR_STRIPE_ACCOUNT_ID'|'MAYOR_STRIPE_AUDIT_PRICE_ID'|'MAYOR_STRIPE_CREDIT_PRICE_SMALL'|'MAYOR_STRIPE_CREDIT_PRICE_MEDIUM'|'MAYOR_STRIPE_CREDIT_PRICE_LARGE'|'MAYOR_STRIPE_CASHTEXT_PRICE_ID'|'MAYOR_STRIPE_LEADPROOF_PRICE_ID'|'MAYOR_AUDIT_STATUS_SECRET'|'MAYOR_AUDIT_ALLOWED_ORIGINS'|'MAYOR_AUDIT_OPERATOR_USER_IDS'|'MAYOR_AUDIT_FULFILLMENT_READY'|'MAYOR_AUDIT_GENERATION_PAUSED'>;
 export function mode(env:Pick<Env,'MAYOR_STRIPE_MODE'>):BillingMode|null{return env.MAYOR_STRIPE_MODE==='test'||env.MAYOR_STRIPE_MODE==='live'?env.MAYOR_STRIPE_MODE:null;}
 export function baseConfiguration(env:BillingEnv){
  const selected=mode(env),key=env.MAYOR_STRIPE_SECRET_KEY;
@@ -23,11 +23,16 @@ export function parameters(data:Record<string,unknown>){
 }
 export class StripeClient {
  constructor(private secret:string,private transport:typeof fetch=fetch){}
- async request(path:string,method:'GET'|'POST'|'DELETE'='GET',body?:Record<string,unknown>,key?:string):Promise<StripeObject>{
+ async request(path:string,method:'GET'|'POST'|'DELETE'='GET',body?:Record<string,unknown>,key?:string,options?:{stripeAccount?:string}):Promise<StripeObject>{
   if(!/^\/v1\/[A-Za-z0-9_/?=&%.[\]-]+$/.test(path)||path.includes('..'))throw new Error('invalid_stripe_path');
   if(method!=='GET'&&(!key||!key.startsWith('mayor-pwa:')))throw new Error('billing_idempotency_required');
+  /* Stripe Connect (integration spec §3.5): the ONLY way a request leaves
+   * the platform account — an explicit per-call connected-account header.
+   * The platform-account assertion elsewhere stays platform-only; no call
+   * gains this header by default (pinned by tests). */
+  if(options?.stripeAccount!==undefined&&!/^acct_[A-Za-z0-9]+$/.test(options.stripeAccount))throw new Error('invalid_stripe_account');
   const transport=this.transport;
-  let response:Response;try{response=await transport(`https://api.stripe.com${path}`,{method,headers:{authorization:`Bearer ${this.secret}`,'stripe-version':STRIPE_API_VERSION,...(method!=='GET'?{'content-type':'application/x-www-form-urlencoded','idempotency-key':key!}:{})},...(method==='POST'?{body:parameters(body??{}).toString()}:{}),redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{throw new HttpError(503,'stripe_unavailable','Billing is temporarily unavailable. Retry the same request.');}
+  let response:Response;try{response=await transport(`https://api.stripe.com${path}`,{method,headers:{authorization:`Bearer ${this.secret}`,'stripe-version':STRIPE_API_VERSION,...(options?.stripeAccount?{'stripe-account':options.stripeAccount}:{}),...(method!=='GET'?{'content-type':'application/x-www-form-urlencoded','idempotency-key':key!}:{})},...(method==='POST'?{body:parameters(body??{}).toString()}:{}),redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{throw new HttpError(503,'stripe_unavailable','Billing is temporarily unavailable. Retry the same request.');}
   let result:StripeObject;try{result=await response.json() as StripeObject;}catch{throw new HttpError(503,'stripe_unavailable','Billing is temporarily unavailable.');}
   if(!response.ok){
    const safe=(value:unknown,pattern:RegExp)=>typeof value==='string'&&pattern.test(value)?value:null;

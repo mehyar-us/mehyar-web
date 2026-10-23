@@ -11,6 +11,23 @@ export const FOUNDING_PRICE_VERSION='2026-10-16.1';
 export const FOUNDING_SEATS_TOTAL=25;
 export const CREDIT_PACK_VERSION='2026-10-03.1';
 export const CREDIT_PACK_DOMAIN='mayor_credit_pack';
+/* CashText + LeadProof modules (integration spec §5, 2026-10-23): each is a
+ * PARALLEL billing domain with its own checkout surface — never an item on
+ * the Pro subscription, whose fulfillment contract admits exactly one line.
+ * Prices exist here as constants only; the asks render from these values
+ * and the Stripe price ids stay server-side secrets (spec §5.3). */
+export const CASHTEXT_PRICE_VERSION='2026-10-23.1';
+export const CASHTEXT_DOMAIN='mayor_cashtext';
+export const CASHTEXT_PRICE_CENTS=2900;
+export const CASHTEXT_MODULE=Object.freeze({id:'cashtext',name:'CashText',priceCents:CASHTEXT_PRICE_CENTS,currency:'USD',interval:'month'});
+export const LEADPROOF_PRICE_VERSION='2026-10-23.1';
+export const LEADPROOF_DOMAIN='mayor_leadproof_pack';
+export const LEADPROOF_PACK_PRICE_CENTS=4900;
+/* The pack promises up to 25 evidence-backed leads; under 15 admitted the
+ * credit restores automatically (spec §4.3, decision D9). */
+export const LEADPROOF_PACK_LEAD_TARGET=25;
+export const LEADPROOF_PACK_MIN_LEADS=15;
+export const LEADPROOF_PACK=Object.freeze({id:'leadproof-pack',name:'LeadProof pack',priceCents:LEADPROOF_PACK_PRICE_CENTS,currency:'USD',interval:'one_time',leadTarget:LEADPROOF_PACK_LEAD_TARGET});
 export const CREDIT_PACKS=Object.freeze([
  Object.freeze({id:'small',name:'Small',priceCents:400,currency:'USD',replyAttempts:200,voiceMinutes:15}),
  Object.freeze({id:'medium',name:'Medium',priceCents:800,currency:'USD',replyAttempts:500,voiceMinutes:45}),

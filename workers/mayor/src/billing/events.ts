@@ -5,6 +5,8 @@ import {subscriptionEffects} from './service';
 import {assertMode,baseConfiguration,clientFor,configuration,objectId,type BillingEnv,type StripeClient,type StripeEvent,type StripeObject} from './stripe';
 import {processAuditEvent} from './audit';
 import {processCreditEvent} from './credits';
+import {processCashTextEvent} from './cashtext';
+import {processLeadProofEvent} from './leadproof';
 export const BILLING_EVENTS=['checkout.session.completed','checkout.session.expired','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed','customer.subscription.created','customer.subscription.updated','customer.subscription.deleted','invoice.paid','invoice.payment_failed','invoice.payment_action_required','charge.refunded','charge.dispute.created'] as const;
 function eventMetadata(object:StripeObject){return object.metadata?.mayor_billing_domain===BILLING_DOMAIN?object.metadata:object.parent?.subscription_details?.metadata?.mayor_billing_domain===BILLING_DOMAIN?object.parent.subscription_details.metadata:null;}
 export async function processBillingEvent(env:BillingEnv,event:StripeEvent,injected?:StripeClient){
@@ -12,6 +14,10 @@ export async function processBillingEvent(env:BillingEnv,event:StripeEvent,injec
  if(!(BILLING_EVENTS as readonly string[]).includes(event.type))return {received:true,outcome:'unrelated_event'};
  const audit=await processAuditEvent(env,event,injected);if(audit)return audit;
  const credits=await processCreditEvent(env,event,injected);if(credits)return credits;
+ // Module domains (spec §5.1/§5.2): claimed after credits, before the main
+ // domain, so a CashText/LeadProof session can never be read as a Pro event.
+ const cashtext=await processCashTextEvent(env,event,injected);if(cashtext)return cashtext;
+ const leadproof=await processLeadProofEvent(env,event,injected);if(leadproof)return leadproof;
  configuration(env);
  const object=event.data.object,meta=eventMetadata(object);let adjustment:StripeObject|undefined;if(event.type==='charge.dispute.created'){const chargeId=objectId(object.charge);if(!chargeId||!/^ch_[A-Za-z0-9]+$/.test(chargeId))throw new HttpError(409,'billing_charge_missing','The payment adjustment needs review.');adjustment=await clientFor(env,injected).request(`/v1/charges/${chargeId}`);assertMode(adjustment,config.mode);}const customerId=objectId(adjustment?.customer)??objectId(object.customer),mapped=customerId?await env.AGENT_DB.prepare('SELECT tenant_id FROM mayor_billing_customers WHERE stripe_customer_id=? AND mode=?').bind(customerId,config.mode).first<{tenant_id:string}>():null;
  const tenantId=mapped?.tenant_id??meta?.mayor_tenant_id;

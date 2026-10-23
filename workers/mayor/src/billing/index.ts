@@ -8,7 +8,7 @@ import {baseConfiguration,parseEvent,rawBody,verifySignature,type BillingEnv,typ
 import {handleAuditPublic,auditOrders} from './audit';
 import {createCreditCheckout} from './credits';
 export {billingUsageContext,usageBalance} from './state';
-import {PLANS,CREDIT_PACKS,BILLING_VERSION,PRO_PRICE_VERSION,CREDIT_PACK_VERSION,FOUNDING_PRICE_CENTS} from './plans';
+import {PLANS,CREDIT_PACKS,BILLING_VERSION,PRO_PRICE_VERSION,CREDIT_PACK_VERSION,FOUNDING_PRICE_CENTS,CASHTEXT_MODULE,LEADPROOF_PACK} from './plans';
 import {FOUNDING_UNAVAILABLE} from './founding';
 import {readCatalog} from '../catalog-service';
 import {analyticsConsentAsserted,pendingPurchaseDirectives} from '../engine-events';
@@ -49,6 +49,13 @@ export async function catalogResponse(request:Request,env?:BillingEnv):Promise<R
   foundingPriceCents:FOUNDING_PRICE_CENTS,
   plans:PLANS.map(p=>({id:p.id,name:p.name,priceCents:p.priceCents,interval:p.interval,replyLimit:p.replyLimit,voiceMinuteLimit:p.voiceMinuteLimit})),
   creditPacks:CREDIT_PACKS.map(p=>({id:p.id,name:p.name,priceCents:p.priceCents,replyAttempts:p.replyAttempts,voiceMinutes:p.voiceMinutes})),
+  // Modules (integration spec §5.5): CashText + LeadProof ride the catalog
+  // as their own domains' constants — amounts from plans.ts only, never a
+  // page literal, and (like every section here) no Stripe price ids.
+  modules:[
+   {id:CASHTEXT_MODULE.id,name:CASHTEXT_MODULE.name,priceCents:CASHTEXT_MODULE.priceCents,interval:CASHTEXT_MODULE.interval},
+   {id:LEADPROOF_PACK.id,name:LEADPROOF_PACK.name,priceCents:LEADPROOF_PACK.priceCents,interval:LEADPROOF_PACK.interval,leadTarget:LEADPROOF_PACK.leadTarget},
+  ],
  },{headers});
 }
 export async function handleBillingPublic(request:Request,env:BillingEnv,injected?:StripeClient):Promise<Response|null>{
