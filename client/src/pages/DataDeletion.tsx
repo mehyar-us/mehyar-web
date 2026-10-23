@@ -345,7 +345,7 @@ const apps: AppInfo[] = [
     id: "audit-my-business",
     name: "Audit My Business",
     url: "https://mehyar.us/audit/",
-    tagline: "A $330 AI audit that finds where your business is leaking money.",
+    tagline: "A $330 automated audit that finds where your business is leaking money.",
     icon: ScanLine,
     inAppPath: "Email fallback (info@mehyar.us) — video + report data deleted on request.",
     whatWeCollect:

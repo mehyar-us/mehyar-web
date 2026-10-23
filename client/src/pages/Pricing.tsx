@@ -37,7 +37,7 @@ export default function Pricing() {
                 href="/audit/free"
                 className={buttonVariants({ variant: "outline", size: "lg" })}
               >
-                Or run the free AI audit first
+                Or run the free website audit first
               </Link>
             </div>
           </div>

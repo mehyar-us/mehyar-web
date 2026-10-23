@@ -29,7 +29,7 @@ type Phase = "form" | "scanning" | "done" | "error";
 const SCAN_STEPS = [
   "Fetching your homepage…",
   "Detecting your business type…",
-  "AI revenue analysis — criticizing every bit…",
+  "Revenue analysis — criticizing every bit…",
   "Pricing your leaks + mapping your AI upside…",
 ];
 
