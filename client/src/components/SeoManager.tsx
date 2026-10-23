@@ -7,6 +7,17 @@ import { industryOffers } from "@/data/industry-offers";
 
 const SITE_ORIGIN = "https://mehyar.us";
 const SITE_NAME = "MehyarSoft LLC";
+// Audit pause keying (rot605, 2026-10-23): defined at build time in
+// vite.config.ts from the audit_paused literal in
+// functions/api/pay/availability.js — the same flag the shell JSON-LD
+// injector reads. While it holds, the paused Audit SKUs' Offers below
+// carry availability OutOfStock; when the unpause commit flips the flag,
+// the next build emits them bare again (self-clearing).
+const AUDIT_PAUSED =
+  (import.meta.env as unknown as Record<string, string>).MEHYAR_AUDIT_PAUSED === "true";
+const PAUSED_AVAILABILITY = AUDIT_PAUSED
+  ? { availability: "https://schema.org/OutOfStock" }
+  : {};
 const SOCIAL_IMAGE = `${SITE_ORIGIN}/assets/mehyarsoft-social-1200x630.png`;
 const BRAND_MARK = `${SITE_ORIGIN}/assets/mehyarsoft-mark-new-512.png`;
 
@@ -180,6 +191,7 @@ const staticMeta: Record<string, SeoMeta> = {
           price: "330",
           priceCurrency: "USD",
           url: absoluteUrl("/audit"),
+          ...PAUSED_AVAILABILITY,
         },
       },
       faq([
@@ -235,6 +247,7 @@ const staticMeta: Record<string, SeoMeta> = {
           price: "5",
           priceCurrency: "USD",
           url: absoluteUrl("/audit/report"),
+          ...PAUSED_AVAILABILITY,
         },
       },
     ],
@@ -286,6 +299,7 @@ const staticMeta: Record<string, SeoMeta> = {
           price: "330",
           priceCurrency: "USD",
           url: absoluteUrl("/audit"),
+          ...PAUSED_AVAILABILITY,
         },
       },
       faq([

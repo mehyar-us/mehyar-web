@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { readFileSync } from "fs";
 import { fileURLToPath, URL } from "url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -16,6 +17,15 @@ export default defineConfig(({ mode }) => {
   // root is client/, so that is where Vite's env files live) -> "".
   const fileEnv = loadEnv(mode, path.resolve(__dirname, "client"), ["VITE_", "MEHYAR_PUBLIC_"]);
   const pub = (key: string) => JSON.stringify(process.env[key] || fileEnv[key] || "");
+  // Audit pause keying (rot605, 2026-10-23): the bundle's JSON-LD Offers for
+  // the paused Audit SKUs key off the same audit_paused literal in
+  // functions/api/pay/availability.js that the shell JSON-LD injector reads
+  // — one flag, flipped by the unpause commit, both surfaces self-clear.
+  const auditPaused = /audit_paused:\s*true/.test(
+    readFileSync(path.resolve(__dirname, "functions/api/pay/availability.js"), "utf8"),
+  )
+    ? "true"
+    : "";
 
   return {
     // Expose only explicitly public MehyarSoft client env. Keep admin/private Google API vars out of the public bundle.
@@ -26,6 +36,7 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.MEHYAR_PUBLIC_GOOGLE_ADS_ID": pub("MEHYAR_PUBLIC_GOOGLE_ADS_ID"),
       "import.meta.env.MEHYAR_PUBLIC_GOOGLE_TAG_ID": pub("MEHYAR_PUBLIC_GOOGLE_TAG_ID"),
       "import.meta.env.MEHYAR_PUBLIC_GOOGLE_GA4_MEASUREMENT_ID": pub("MEHYAR_PUBLIC_GOOGLE_GA4_MEASUREMENT_ID"),
+      "import.meta.env.MEHYAR_AUDIT_PAUSED": JSON.stringify(auditPaused),
       "import.meta.env.MEHYAR_PUBLIC_ANALYTICS_FORCE_ENABLE": pub("MEHYAR_PUBLIC_ANALYTICS_FORCE_ENABLE"),
       "import.meta.env.MEHYAR_PUBLIC_ANALYTICS_DRY_RUN": pub("MEHYAR_PUBLIC_ANALYTICS_DRY_RUN"),
     },
