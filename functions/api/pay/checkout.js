@@ -299,7 +299,7 @@ export async function onRequestPost({ request, env }) {
     // a live report is verifiably model-generated again. The free scan is
     // unaffected (it has an honest signal-based fallback). Remove this
     // guard in the same commit that verifies the cure end to end.
-    if (productId === "audit_business" || productId === "audit-full-report") {
+    if (productId === "audit-my-business" || productId === "audit-full-report") {
       return J({ ok: false, error: "generation_paused", message: "Paid report checkouts are paused while we restore full report generation. No charge was made." }, 503);
     }
     // Moonroom (2026-10-17): the email is OPTIONAL — its paywall lets the
@@ -356,6 +356,14 @@ export async function onRequestPost({ request, env }) {
     }
 
     // Order-init hook (fulfillment-specific).
+    // Generation pause, second layer (2026-10-23): refuse by FULFILLMENT as
+    // well as by product id, so no SKU that routes to the Audit report hooks
+    // can mint an order while generation is down — the id guard above once
+    // matched the hook's key instead of the client's product id and never
+    // fired on the real $330 path. Both layers come out together at the cure.
+    if (product.fulfillment === "audit_business" || product.fulfillment === "audit_report") {
+      return J({ ok: false, error: "generation_paused", message: "Paid report checkouts are paused while we restore full report generation. No charge was made." }, 503);
+    }
     const hook = orderHooks[product.fulfillment] || orderHooks.none;
     const hookResult = await hook(db, product, { email, params });
     if (hookResult.error) return J({ ok: false, error: hookResult.error }, 400);
