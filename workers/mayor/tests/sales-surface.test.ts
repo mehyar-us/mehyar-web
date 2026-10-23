@@ -70,8 +70,10 @@ it('shows all 7 vertical money-loop examples, each labeled illustrative',()=>{
 it('carries the vision pitch and never names the product Jarvis',()=>{
  expect(html).toContain('The Mayor talks to you, the business owner.');
  expect(html).toContain('Your AI chief of staff, in your language, running the place with you.');
- const standalone=html.match(/Jarvis(?!-like)/g)??[];
- expect(standalone).toEqual([]);
+ // 2026-10-23 (rot592 rider): "Jarvis-like" was removed from /sales on the
+ // Product Chief's order, retiring this pin's former "-like" exception —
+ // the product is never Jarvis in any form.
+ expect(html).not.toContain('Jarvis');
 });
 
 it('carries the legal footer (no final-sale line per the 2026-10-17 scope ruling) and no street address',()=>{
