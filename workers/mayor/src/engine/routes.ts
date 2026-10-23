@@ -17,6 +17,11 @@
  * scoping: its data is the owner's portfolio intel across products
  * (campaign_intel.web_events), not any tenant's rows — so it sits
  * behind OPERATORS like belief, and never enters the Desk flow.
+ * R1 fold (2026-10-22, ruled): OPERATORS membership alone no longer
+ * admits — the route also requires the platform-operator allowlist
+ * (MAYOR_AUDIT_OPERATOR_USER_IDS, the audit surface's pattern,
+ * fail-closed when unset), because portfolio intel belongs to the
+ * platform operator, not to any tenant's owner/manager.
  */
 import {z} from 'zod';
 import type {Actor,Env} from '../env';
@@ -108,6 +113,7 @@ export async function handleEngineRequest(request: Request, env: Env, actor: Act
 
  if (rest === 'audience' && request.method === 'GET') {
   await requireMembership(env, actor, OPERATORS);
+  if (!(env.MAYOR_AUDIT_OPERATOR_USER_IDS ?? '').split(',').map(value => value.trim()).includes(actor.userId)) throw new HttpError(403, 'audience_operator_required', 'Your account does not manage audience reporting.');
   if (!env.AUDIENCE_DB) throw new HttpError(503, 'audience_unavailable', 'The audience store is not connected in this build.');
   const product = url.searchParams.get('product') ?? '*';
   const type = url.searchParams.get('type') ?? '*';

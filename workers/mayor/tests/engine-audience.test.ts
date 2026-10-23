@@ -170,6 +170,12 @@ describe('the read-only + scoping laws', () => {
   const audienceRoute = routes.slice(routes.indexOf("rest === 'audience'"), routes.indexOf("rest === 'belief'"));
   expect(audienceRoute).toContain('OPERATORS');
  });
+ it('the audience route also requires the platform-operator allowlist (R1 fold, 2026-10-22)', () => {
+  const routes = read('../src/engine/routes.ts');
+  const audienceRoute = routes.slice(routes.indexOf("rest === 'audience'"), routes.indexOf("rest === 'belief'"));
+  expect(audienceRoute).toContain('MAYOR_AUDIT_OPERATOR_USER_IDS');
+  expect(audienceRoute).toContain('audience_operator_required');
+ });
 });
 
 describe("The Mayor's own beacon tag — the in-tree fold", () => {

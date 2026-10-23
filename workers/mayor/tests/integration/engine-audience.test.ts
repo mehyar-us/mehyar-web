@@ -6,6 +6,10 @@
  * serves NO audience intent, ever. The audience store is a separate
  * database (AUDIENCE_DB) with the beacon's schema, created here;
  * AGENT_DB migrations never touch it, exactly as in production.
+ * R1 fold (2026-10-22): the read additionally requires the
+ * platform-operator allowlist (MAYOR_AUDIT_OPERATOR_USER_IDS, the
+ * audit pattern) — pinned below: allowlisted admitted, tenant owner
+ * not on the list refused, unset/empty list denies everyone.
  */
 import {beforeEach,describe,expect,it} from 'vitest';
 import {env} from 'cloudflare:test';
@@ -13,7 +17,7 @@ import worker from '../../src/index';
 import {createAuth} from '../../src/auth';
 import {addDays,etDay,mondayOf} from '../../src/engine/audience';
 
-const E = env as unknown as Record<string, unknown> & {AGENT_DB: D1Database; AUDIENCE_DB: D1Database; BETTER_AUTH_SECRET?: string};
+const E = env as unknown as Record<string, unknown> & {AGENT_DB: D1Database; AUDIENCE_DB: D1Database; BETTER_AUTH_SECRET?: string; MAYOR_AUDIT_OPERATOR_USER_IDS?: string};
 
 let n = 0;
 const tenantId = () => (n++).toString(16).padStart(4, 'a').padEnd(32, 'f').slice(0, 32);
@@ -46,7 +50,7 @@ async function seedEvents() {
  }
 }
 
-async function sessionHeaders(t: string, role: 'owner' | 'staff') {
+async function sessionFor(t: string, role: 'owner' | 'staff') {
  const now = new Date().toISOString();
  await E.AGENT_DB.prepare('INSERT OR IGNORE INTO agent_tenants(id,name,created_at) VALUES(?,?,?)').bind(t, 'Audience Test Shop', now).run();
  const ctx = await createAuth(E as never).$context;
@@ -57,18 +61,24 @@ async function sessionHeaders(t: string, role: 'owner' | 'staff') {
  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(E.BETTER_AUTH_SECRET!), {name: 'HMAC', hash: 'SHA-256'}, false, ['sign']);
  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(row!.token));
  const cookie = '__Secure-mehyar-agent.session_token=' + row!.token + '.' + btoa(String.fromCharCode(...new Uint8Array(signature)));
- return {cookie, origin: 'https://mayor.example.test', 'content-type': 'application/json'};
+ return {headers: {cookie, origin: 'https://mayor.example.test', 'content-type': 'application/json'}, userId: user.id};
 }
+
+const sessionHeaders = async (t: string, role: 'owner' | 'staff') => (await sessionFor(t, role)).headers;
 
 const get = (t: string, rest: string, headers: Record<string, string>) =>
  worker.fetch(new Request(`https://mayor.example.test/api/businesses/${t}/engine/${rest}`, {headers}), E as never, {} as ExecutionContext);
 
-beforeEach(seedEvents);
+beforeEach(async () => {
+ await seedEvents();
+ delete E.MAYOR_AUDIT_OPERATOR_USER_IDS; // the R1 default: unset, fail-closed
+});
 
 describe('GET /engine/audience — the Phase B read', () => {
  it('an operator reads the series with Phase A bucketing', async () => {
   const t = tenantId();
-  const headers = await sessionHeaders(t, 'owner');
+  const {headers, userId} = await sessionFor(t, 'owner');
+  E.MAYOR_AUDIT_OPERATOR_USER_IDS = `someone-else, ${userId}`; // R1: allowlisted (list form, trimmed)
   const res = await get(t, 'audience?product=moonroom&type=pageview&weeks=2', headers);
   expect(res.status).toBe(200);
   const body = await res.json() as {product: string; type: string; total: number; weeks: Array<{weekStart: string; count: number}>; intents: Array<{type: string; id: string; value: string}>};
@@ -86,7 +96,8 @@ describe('GET /engine/audience — the Phase B read', () => {
 
  it('baseline=1 returns the four pinned series under their definitions', async () => {
   const t = tenantId();
-  const headers = await sessionHeaders(t, 'owner');
+  const {headers, userId} = await sessionFor(t, 'owner');
+  E.MAYOR_AUDIT_OPERATOR_USER_IDS = userId;
   const res = await get(t, 'audience?weeks=2&baseline=1', headers);
   expect(res.status).toBe(200);
   const body = await res.json() as {baseline: {series: Array<{name: string; total: number}>}};
@@ -95,6 +106,36 @@ describe('GET /engine/audience — the Phase B read', () => {
   expect(byName.all_products_checkout).toBe(2);
   expect(byName.visakit_any_type).toBe(0);
   expect(byName.precheck_path_any_product).toBe(1);
+ });
+
+ it('R1: a tenant owner who is NOT on the platform-operator allowlist is refused', async () => {
+  const t = tenantId();
+  const headers = await sessionHeaders(t, 'owner');
+  E.MAYOR_AUDIT_OPERATOR_USER_IDS = 'a-different-platform-operator';
+  const res = await get(t, 'audience?product=moonroom&type=pageview&weeks=2', headers);
+  expect(res.status).toBe(403);
+  const body = await res.json() as {error: string};
+  expect(body.error).toBe('audience_operator_required');
+ });
+
+ it('R1: an unset allowlist denies everyone (fail closed)', async () => {
+  const t = tenantId();
+  const headers = await sessionHeaders(t, 'owner');
+  // beforeEach deleted MAYOR_AUDIT_OPERATOR_USER_IDS — unset
+  const res = await get(t, 'audience?product=moonroom&type=pageview&weeks=2', headers);
+  expect(res.status).toBe(403);
+  const body = await res.json() as {error: string};
+  expect(body.error).toBe('audience_operator_required');
+ });
+
+ it('R1: an empty allowlist denies everyone (fail closed)', async () => {
+  const t = tenantId();
+  const headers = await sessionHeaders(t, 'owner');
+  E.MAYOR_AUDIT_OPERATOR_USER_IDS = '';
+  const res = await get(t, 'audience?product=moonroom&type=pageview&weeks=2', headers);
+  expect(res.status).toBe(403);
+  const body = await res.json() as {error: string};
+  expect(body.error).toBe('audience_operator_required');
  });
 
  it('a staff member (chat role, not an operator) is refused', async () => {
