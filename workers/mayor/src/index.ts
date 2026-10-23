@@ -190,6 +190,15 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
   if(url.pathname==='/data-deletion'&&request.method==='GET'){
     return Response.redirect('https://mehyar.us/data-deletion/',301);
   }
+  // Post-deploy pass item 2 (2026-10-22, Product Chief order): /audit
+  // on this host 404'd — the extensive business audit's canonical home
+  // is the hub. This host's own audit sales page stays at
+  // /business-audit (a different surface, untouched). Same 301 family
+  // as the legal redirects above; /audit/ reaches this rule through
+  // the entry-point normalizePathname, like every sibling.
+  if(url.pathname==='/audit'&&request.method==='GET'){
+    return Response.redirect('https://mehyar.us/audit/',301);
+  }
   if(isSalesVerticalPath(url.pathname)&&request.method==='GET'){
     if(!env.ASSETS)return new Response('The sales page is not built yet.',{status:503});
     const target=new URL(url.pathname,request.url);

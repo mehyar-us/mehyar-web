@@ -17,7 +17,16 @@ describe('home founding line',()=>{
   const html=offerBlockSsrHtml(founding)!;
   expect(html).toContain('Founding cohort');
   expect(html).toContain('$79.20');
-  expect(html).toContain('25 of 25 seats left');
+  // Pin moved 2026-10-22 (post-deploy pass item 1, Option A threshold
+  // display): this fixture is ZERO claimed (seats_taken:0), so the
+  // line now presents the static cohort line with no numeric
+  // remainder — it previously asserted '25 of 25 seats left' here.
+  expect(html).toContain('for the first 25 businesses');
+  expect(html).not.toContain('seats left');
+ });
+ it('shows the live counter under the Pro row from the first claim on (Option A threshold)',()=>{
+  const html=offerBlockSsrHtml({available:true,seats_total:25,seats_taken:1,seats_remaining:24})!;
+  expect(html).toContain('24 of 25 seats left');
  });
  it('is absent when the seam gives no state (fail-quiet)',()=>{
   expect(offerBlockSsrHtml(null)).not.toContain('Founding cohort');
@@ -30,7 +39,12 @@ describe('home founding line',()=>{
  });
  it('injectOfferBlock threads founding state into the served home',()=>{
   const page='<div id="chat-sign-in"><div id="offer-block" class="offer-block" aria-label="Plans"><p class="offer-fallback">x</p></div></div>';
-  expect(injectOfferBlock(page,founding)).toContain('25 of 25 seats left');
+  // Pin moved 2026-10-22 (post-deploy pass item 1, Option A): the
+  // zero-claimed fixture threads the static cohort line, not the
+  // numeric remainder it asserted before ('25 of 25 seats left').
+  expect(injectOfferBlock(page,founding)).toContain('for the first 25 businesses');
+  expect(injectOfferBlock(page,founding)).not.toContain('seats left');
+  expect(injectOfferBlock(page,{available:true,seats_total:25,seats_taken:1,seats_remaining:24})).toContain('24 of 25 seats left');
   expect(injectOfferBlock(page)).not.toContain('Founding cohort');
  });
 });

@@ -88,6 +88,17 @@ describe('foundingLineSsrHtml — display seam',()=>{
   expect(html).toContain('$79.20/mo locked for life');
   expect(html).toContain('22 of 25 seats left');
  });
+ it('post-deploy pass item 1 (Option A): zero claimed renders the static cohort line — no numeric remainder',()=>{
+  const html=foundingLineSsrHtml({available:true,seats_total:25,seats_taken:0,seats_remaining:25});
+  expect(html).toContain('$79.20/mo locked for life');
+  expect(html).toContain('first 25 businesses');
+  expect(html).not.toContain('seats left');
+  expect(html).toContain('<a href="/billing?plan=founding">');
+ });
+ it('post-deploy pass item 1 (Option A): the first claim turns the counter on, exactly as before',()=>{
+  const html=foundingLineSsrHtml({available:true,seats_total:25,seats_taken:1,seats_remaining:24});
+  expect(html).toContain('24 of 25 seats left');
+ });
  it('shows the static cohort line with NO live number when the count is unavailable',()=>{
   const html=foundingLineSsrHtml(FOUNDING_UNAVAILABLE);
   expect(html).toContain('$79.20/mo locked for life');

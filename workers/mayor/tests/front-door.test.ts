@@ -117,3 +117,18 @@ describe('mobile shell header',()=>{
     expect(mobileCss).toContain('.header-actions{width:auto;max-width:calc(100vw - 32px)');
   });
 });
+
+describe('no-card line at the homepage ask (post-deploy pass item 3, 2026-10-22)',()=>{
+  it('the established wording appears exactly once, inside the one sign-in block at the offer ask',()=>{
+    expect(indexHtml.match(/No credit card to start\./g)).toHaveLength(1);
+    const block=indexHtml.indexOf('id="chat-sign-in"');
+    const line=indexHtml.indexOf('No credit card to start.');
+    const offer=indexHtml.indexOf('id="offer-block"');
+    expect(block).toBeGreaterThan(-1);
+    expect(line).toBeGreaterThan(block);
+    // In the ask's visual unit: after the sign-in buttons, directly
+    // before the offer block that carries the Start free ask.
+    expect(line).toBeGreaterThan(indexHtml.indexOf('chat-google-sign-in'));
+    expect(offer).toBeGreaterThan(line);
+  });
+});

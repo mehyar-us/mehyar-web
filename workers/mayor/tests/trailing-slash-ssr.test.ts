@@ -90,6 +90,12 @@ it('index.ts wires the /data-deletion redirect to the shared legal page',()=>{
   expect(source).toContain('301');
 });
 
+it('index.ts wires the /audit redirect to the hub audit (post-deploy pass item 2, 2026-10-22)',()=>{
+  const source=readFileSync(join(srcDir,'index.ts'),'utf8');
+  expect(source).toContain(`url.pathname==='/audit'`);
+  expect(source).toContain('https://mehyar.us/audit/');
+});
+
 it('index.ts normalizes the trailing slash once at the fetch entry',()=>{
   const source=readFileSync(join(srcDir,'index.ts'),'utf8');
   expect(source).toContain('normalizePathname(');

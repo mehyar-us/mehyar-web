@@ -126,9 +126,11 @@ function priceLine(cents:number,suffix:string):string{
  */
 export interface FoundingSsrBlock {available:boolean;seats_total:number;seats_taken:number|null;seats_remaining:number|null;}
 /** The founding line inside the Pro card (locked seam): a live remaining
- * count only when the count was computable and seats remain; the static
- * cohort line (no live number) when the count is unavailable; nothing
- * once the cohort is full — the list block stands alone. */
+ * count only when the count was computable, seats remain, AND at least
+ * one seat has been claimed; the static cohort line (no live number)
+ * when the count is unavailable OR while claimed is still zero
+ * (post-deploy pass item 1 — Option A threshold display, 2026-10-22);
+ * nothing once the cohort is full — the list block stands alone. */
 export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  if(!founding)return '';
  // Reinvention Slice 1 — the founding door, whole (blueprint §2.1 E-0):
@@ -137,11 +139,22 @@ export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  // seats remain; the static no-number line when the count is
  // unavailable; nothing once the cohort is full) — the anchor carries
  // intent only; the seat gate still decides at claim time.
+ const staticLine=`<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</a></p>`;
  if(founding.available){
   if(founding.seats_remaining===null||founding.seats_remaining<=0)return '';
+  // Post-deploy pass item 1 (2026-10-22, Product Chief ruling —
+  // seat-counter framing Option A, threshold display): while NO
+  // founding seat has been claimed (seats_taken === 0 on the SAME
+  // serve-time count this line already reads — the foundingSeats
+  // subscription-row count; no second source, no cached state),
+  // present the offer on the established static cohort line with no
+  // numeric remainder. The moment the first founding subscription
+  // row exists (seats_taken ≥ 1), the counter renders exactly as
+  // before. An unknown taken count (null) keeps the counted line.
+  if(founding.seats_taken===0)return staticLine;
   return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</a></p>`;
  }
- return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</a></p>`;
+ return staticLine;
 }
 /* rot535 fold (Product Chief order, 2026-10-22): the final-sale
  * disclosure at the purchase asks — one line, Terms linked, riding the
