@@ -61,7 +61,7 @@ export async function fulfillBillcutBiz({ db, env, waitUntil, sendEmail }, payme
   await db
     .prepare(
       "UPDATE billcut_biz_reports SET status = ?, email = COALESCE(email, ?), " +
-      "payment_id = CASE WHEN ? = 0 THEN COALESCE(payment_id, ?) ELSE payment_id END, " +
+      "payment_id = CASE WHEN ? = 1 THEN COALESCE(payment_id, ?) ELSE payment_id END, " +
       "unlimited_payment_id = CASE WHEN ? = 1 THEN ? ELSE unlimited_payment_id END, " +
       "paid_at = COALESCE(paid_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE token = ?"
     )
