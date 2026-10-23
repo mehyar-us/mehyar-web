@@ -155,6 +155,9 @@ const sections: Section[] = [
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Audit My Business — <a className="text-brand-700 underline dark:text-brand-100" href="https://mehyar.us/audit/" target="_blank" rel="noreferrer">mehyar.us/audit <ExternalLink className="inline h-3 w-3" /></a></div>
             <div className="text-sm text-muted-foreground">$330 automated business audit: overall score, money leaks ranked by severity, prioritized fixes, and an AI opportunity map. One-time payment, purchases final.</div>
+            <div className="text-sm text-muted-foreground mt-2 space-y-2">
+              <p><strong>Additional Audit My Business terms.</strong> Audit My Business sells two one-time digital reports, delivered by email with a permanent link: the <strong>Full Report — $5 one-time</strong> (the complete written breakdown of your free scan: every leak found, priced and ranked, page-by-page grades, and a 90-day plan) and <strong>Audit My Business — $330 one-time</strong> (the deep audit: overall score, money leaks ranked by dollar impact, flaws, prioritized fixes, and an AI opportunity map, built from measured checks of your public website and an automated assessment of that evidence, plus your optional CEO walkthrough video, transcribed and assessed). If you buy the Full Report first and later check out for Audit My Business with the same email address, the $5 is credited at checkout — you pay $325. The deep audit is delivered within 3–5 business days of purchase. Findings are tied to what the audit actually measured on your public site and, when you provide one, your walkthrough video; the audit does not guarantee revenue, rankings, or any business outcome. Prices are one-time payments in USD, charged through Stripe. There is no subscription and nothing renews. Purchases are final.</p>
+            </div>
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">DUST — <a className="text-brand-700 underline dark:text-brand-100" href="https://dust.mehyar.us" target="_blank" rel="noreferrer">dust.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
@@ -162,7 +165,7 @@ const sections: Section[] = [
           </li>
           <li className="rounded-xl border border-border bg-card/60 p-3">
             <div className="font-semibold">Clipnote — <a className="text-brand-700 underline dark:text-brand-100" href="https://clipnote.mehyar.us" target="_blank" rel="noreferrer">clipnote.mehyar.us <ExternalLink className="inline h-3 w-3" /></a></div>
-            <div className="text-sm text-muted-foreground">Release notes in, a polished 60-second narrated launch video out — free script preview, $29 per video or $19/mo for 4 videos. Payments are final and non-refundable.</div>
+            <div className="text-sm text-muted-foreground">Release notes in, a polished 40–60-second narrated launch video out — free script preview, $29 per video or $19/mo for 4 videos. Payments are final and non-refundable.</div>
           </li>
 
           <li className="rounded-xl border border-border bg-card/60 p-3">

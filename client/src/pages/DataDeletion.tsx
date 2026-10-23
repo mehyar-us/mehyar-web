@@ -37,7 +37,7 @@
 //  27. Legit — https://legit.mehyar.us (AI LLC-formation advisor: free name check, filing guidance, generated documents)
 //  28. SproutScore — https://sproutscore.mehyar.us (NYC daycare inspection records decoded: free search, $19 full report)
 //  29. Playbook — https://playbook.mehyar.us (the 30-Day Content Playbook: free hook scripts, $27 full playbook)
-//  30. Clipnote — https://clipnote.mehyar.us (release notes turned into a 60-second narrated launch video)
+//  30. Clipnote — https://clipnote.mehyar.us (release notes turned into a 40–60-second narrated launch video)
 //  31. WattWise — https://wattwise.mehyar.us (electric-bill checker: free rate gauge from a bill photo, $14.99 audit, $7.99/mo monitoring)
 //  32. Memoir — https://memoir.mehyar.us (AI-guided memoir interviewer: 12-chapter interview compiled into a book from the storyteller's own words; free sample chapter, $79 Digital / $149 Complete one-time)
 // Plus any future products MehyarSoft ships.

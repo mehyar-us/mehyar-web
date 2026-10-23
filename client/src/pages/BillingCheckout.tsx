@@ -26,7 +26,7 @@ const MANUAL_INVOICE_SERVICES: ManualInvoiceService[] = [
     category: "audit",
     description: "Founder-led review of website trust, booking friction, missed-call follow-up, and the smallest practical fixes before buying more tools.",
     unit_amount_cents: 33000,
-    delivery_window: "3-5 business days",
+    delivery_window: "Within 3 business days of the intake call",
     features: ["Website and booking leak map", "Missed-call/follow-up diagnosis", "Prioritized fix list", "Founder review notes"],
     requires_scope_review: false,
   },

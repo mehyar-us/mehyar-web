@@ -540,11 +540,11 @@ const managedApps: ManagedApp[] = [
     url: "https://clipnote.mehyar.us",
     tagline: "Paste your release notes. Get a launch video.",
     description:
-      "SaaS teams ship features weekly and announce them with a wall of text nobody reads. Clipnote turns your changelog into a polished 60-second narrated launch video — AI script drafted from your notes (free preview before you pay), narrated and animated scene by scene, with your own screenshots composited in. $29 per video, or $19/mo for 4 videos a month; delivered on a shareable watch page with an MP4 download, most within a few hours and always within 24.",
+      "SaaS teams ship features weekly and announce them with a wall of text nobody reads. Clipnote turns your changelog into a polished 40–60-second narrated launch video — AI script drafted from your notes (free preview before you pay), narrated and animated scene by scene, with your own screenshots composited in. $29 per video, or $19/mo for 4 videos a month; delivered on a shareable watch page with an MP4 download, most within a few hours and always within 24.",
     audience: "SaaS founders and indie hackers who ship weekly and need launch announcements people actually watch.",
     highlights: [
       "Free AI script preview from your release notes — see it before you pay",
-      "60-second narrated launch video, animated scene by scene",
+      "40–60-second narrated launch video, animated scene by scene",
       "Your own product screenshots composited into the video",
       "$29 per video or $19/mo for 4 — watch page + MP4, no watermark",
     ],

@@ -340,7 +340,7 @@
           "name": "Why $330 instead of unpaid advice or a $5,000 proposal?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "$330 is enough to do the diagnosis honestly without pressure. MehyarSoft avoids fake agency pitches and guaranteed revenue claims. If a small fix is enough, the audit tells you. If a larger scope is warranted, the audit explains why and what the next sprint would actually cost."
+            "text": "$330 covers a focused diagnosis and prioritized next step. If a small fix is enough, the audit explains it. If a larger scope is warranted, the audit explains why and what the next sprint would cost."
           }
         },
         {
@@ -348,7 +348,7 @@
           "name": "Do I have to commit to a build after the audit?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. The audit is a standalone deliverable. You can stop after the written plan, request a follow-up call, or only move forward with cleanup, booking setup, AI follow-up, or an automation sprint if it makes sense for your business."
+            "text": "No — the audit is a standalone deliverable: a written plan you own outright. Most owners use it to green-light the first fix: cleanup, booking setup, AI follow-up, or an automation sprint."
           }
         },
         {
@@ -356,7 +356,7 @@
           "name": "How fast do I get the audit results?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Most audits are delivered within 3 business days of the intake call. Timing depends on website scope, the number of follow-up paths in scope, and how quickly you can share access to the relevant pages, inboxes, or call logs."
+            "text": "The founder-led audit is delivered within 3 business days of your intake call."
           }
         },
         {
