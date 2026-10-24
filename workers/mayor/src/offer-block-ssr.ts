@@ -13,7 +13,7 @@
  * double-render or flicker.
  */
 import {PLANS,CREDIT_PACKS,CASHTEXT_MODULE,LEADPROOF_PACK,approxConversations,FOUNDING_PRICE_CENTS} from './billing/plans';
-import {AUDIT_OFFER} from './billing/audit';
+import {AUDIT_OFFER,AUDIT_PAUSED_MESSAGE} from './billing/audit';
 import {providerExampleSsrHtml} from './provider-example';
 
 function escapeHtml(value:string):string{
@@ -175,7 +175,19 @@ export interface FoundingSsrBlock {available:boolean;seats_total:number;seats_ta
  * Option A threshold display of 2026-10-22, under which zero claimed
  * rendered the static line); the static cohort line (no live number)
  * only when the count is unavailable — never a guessed figure;
- * nothing once the cohort is full — the list block stands alone. */
+ * nothing once the cohort is full — the list block stands alone.
+ * Rotation 633 (Product Chief order, 2026-10-24): the rate claim is
+ * qualified at the ask with the condition the subscription logic
+ * itself carries — the founding price is a property of the one
+ * founding Stripe subscription (billing/service.ts
+ * subscriptionEffects mirrors its price; nothing ever reprices a
+ * live subscription), so the rate holds only while that subscription
+ * stays active: cancel ends it at period end and releases the seat,
+ * a deleted subscription cannot be revived, and a returning buyer
+ * subscribes anew at whatever price the gate offers then. The line
+ * says so in the checkout's own terms — "locked at that rate for as
+ * long as your founding subscription stays active" — replacing the
+ * unqualified "locked for life" on every selling surface. */
 export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  if(!founding)return '';
  // Reinvention Slice 1 — the founding door, whole (blueprint §2.1 E-0):
@@ -184,7 +196,7 @@ export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  // seats remain; the static no-number line when the count is
  // unavailable; nothing once the cohort is full) — the anchor carries
  // intent only; the seat gate still decides at claim time.
- const staticLine=`<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</a></p>`;
+ const staticLine=`<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo, locked at that rate for as long as your founding subscription stays active</strong> for the first ${founding.seats_total} businesses.</a></p>`;
  if(founding.available){
   if(founding.seats_remaining===null||founding.seats_remaining<=0)return '';
   // Rotation 628 (2026-10-24) supersedes the Option A threshold
@@ -195,7 +207,7 @@ export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
   // claimed count — zero included — always the serve-time
   // foundingSeats number on this same block (no second source, no
   // cached state).
-  return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</a></p>`;
+  return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo, locked at that rate for as long as your founding subscription stays active</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</a></p>`;
  }
  return staticLine;
 }
@@ -537,6 +549,47 @@ export function injectOfferBlock(html:string,founding?:FoundingSsrBlock|null):st
  * pause is set); if a caller did, the live form wins by gate order.
  */
 const AUDIT_SLOT_OPEN='<div id="home-audit-slot"';
+/* The /business-audit page's own paused line (rotation 633, Product
+ * Chief order, 2026-10-24). The page is served as a static asset and
+ * its buy path asks through the intake form (#start-audit); the
+ * availability line directly above that form (#audit-availability)
+ * ships a neutral "Checking checkout availability…" placeholder that
+ * only the client offer fetch replaces — so while the audit rail is
+ * generation-paused the fetched page states no pause anywhere, and a
+ * wedged client fetch leaves the placeholder standing beside a live
+ * form whose checkout creation refuses 503 audit_generation_paused.
+ * This injector closes that at the ask, on the homepage band's
+ * fail-closed discipline (injectHomeAuditSlot above): the paused
+ * form renders ONLY from the live server signal — the worker passes
+ * auditGenerationPaused(env), the same env read auditOffer answers
+ * audit_paused from; when the pause is not set the bytes are
+ * untouched (open → the client resolves the purchase presentation;
+ * unavailable-but-not-paused → no statement, exactly as the band
+ * stays dark for a config outage rather than claiming a pause that
+ * is not the state — injectHomeAuditSlot, next below). The line is the offer endpoint's own
+ * AUDIT_PAUSED_MESSAGE, word-for-word what the client renders when
+ * its fetch settles — never a static string a cure-day could strand:
+ * the line is in the bytes only while the config itself says paused,
+ * and lifts with the config. Guards mirror the band's:
+ * element missing, already stamped, or unexpected content →
+ * unchanged. The client remains free to refine the same element
+ * after its fetch; it sets the identical text while paused. */
+const AUDIT_AVAILABILITY_OPEN='<p id="audit-availability"';
+const AUDIT_AVAILABILITY_PLACEHOLDER='Checking checkout availability…';
+export function injectAuditPagePausedLine(html:string,auditGenerationPausedState:boolean):string{
+ if(!auditGenerationPausedState)return html;
+ const openAt=html.indexOf(AUDIT_AVAILABILITY_OPEN);
+ if(openAt<0)return html;
+ const tagEnd=html.indexOf('>',openAt);
+ if(tagEnd<0)return html;
+ const openingTag=html.slice(openAt,tagEnd+1);
+ if(openingTag.includes('data-ssr='))return html; // already rendered
+ const closeAt=html.indexOf('</p>',tagEnd);
+ if(closeAt<0)return html;
+ if(html.slice(tagEnd+1,closeAt).trim()!==AUDIT_AVAILABILITY_PLACEHOLDER)return html; // unexpected content — don't guess
+ const tagged=openingTag.replace(AUDIT_AVAILABILITY_OPEN,`${AUDIT_AVAILABILITY_OPEN} data-ssr="audit-state"`);
+ return html.slice(0,openAt)+tagged+escapeHtml(AUDIT_PAUSED_MESSAGE)+html.slice(closeAt);
+}
 export function injectHomeAuditSlot(html:string,auditAvailable:boolean,auditPausedState:boolean,auditGenerationPausedState=false):string{
   if(!auditAvailable&&!auditGenerationPausedState)return html;
   const openAt=html.indexOf(AUDIT_SLOT_OPEN);

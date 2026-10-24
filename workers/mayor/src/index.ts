@@ -1,7 +1,7 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
-import {injectOfferBlock,injectHomeAuditSlot,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans} from './offer-block-ssr';
+import {injectOfferBlock,injectHomeAuditSlot,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans,injectAuditPagePausedLine} from './offer-block-ssr';
 import {auditOffer,auditGenerationPaused} from './billing/audit';
 import {foundingSeats} from './billing/founding';
 import {auditPaused} from './billing/audit-availability';
@@ -105,7 +105,13 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
     const assetRes=await env.ASSETS.fetch(new Request(target,request));
     const contentType=assetRes.headers.get('content-type')??'';
     if(assetRes.ok&&contentType.includes('text/html')){
-      const original=await assetRes.text(),stamped=stampDescriptorHash(original,(await currentDescriptor(env)).hash);
+      const original=await assetRes.text();
+      // Rotation 633 (2026-10-24): the page's own paused line at its
+      // ask, from the live generation-pause signal — /business-audit
+      // only (the /report surface shares this shell via the client
+      // router and keeps its receipt presentation untouched).
+      const pausedLined=url.pathname==='/business-audit'?injectAuditPagePausedLine(original,auditGenerationPaused(env)):original;
+      const stamped=stampDescriptorHash(pausedLined,(await currentDescriptor(env)).hash);
       if(stamped!==original){
         const headers=new Headers(assetRes.headers);
         headers.set('content-type','text/html; charset=utf-8');

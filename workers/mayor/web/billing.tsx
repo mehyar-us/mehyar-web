@@ -310,7 +310,7 @@ export function BillingPanel({ data, formatTime, onPaint, onRefresh, onUpgrade, 
                 ))}
               </ul>
               {plan.id === 'pro' && data.founding?.available && (data.founding.seats_remaining ?? 0) > 0 && data.foundingPriceCents ? (
-                <p className="inline-note">Founding cohort: {moneyExact(data.foundingPriceCents, plan.currency)}/month locked for life — {data.founding.seats_remaining} of {data.founding.seats_total} seats left. Choose Founding in the upgrade dialog.</p>
+                <p className="inline-note">Founding cohort: {moneyExact(data.foundingPriceCents, plan.currency)}/month, locked at that rate for as long as your founding subscription stays active — {data.founding.seats_remaining} of {data.founding.seats_total} seats left. Choose Founding in the upgrade dialog.</p>
               ) : null}
               {plan.id === data.plan.id ? (
                 <p className="current-plan">Your current plan</p>

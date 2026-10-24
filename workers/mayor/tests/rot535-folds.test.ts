@@ -150,8 +150,11 @@ it('rot535 fold 3: the founding CTA is a real price-carrying anchor on both serv
   const pro=PLANS.find(p=>p.id==='pro')!;
   for(const out of [injectPricingCards(readWeb('pricing.html'),true,LIVE_FOUNDING),injectSalesPlans(readWeb('sales.html'),true,LIVE_FOUNDING)]){
     // Founding: anchor + the exact founding price it will charge.
+    // (Rate wording qualified 2026-10-24, rotation 633: "locked at
+    // that rate for as long as your founding subscription stays
+    // active" — the subscription's own condition, per the code.)
     expect(out).toContain('<a href="/billing?plan=founding">');
-    expect(out).toContain(`$${(FOUNDING_PRICE_CENTS/100).toFixed(2)}/mo locked for life`);
+    expect(out).toContain(`$${(FOUNDING_PRICE_CENTS/100).toFixed(2)}/mo, locked at that rate for as long as your founding subscription stays active`);
     // Pro: label carries the Pro price and lands on the Pro checkout.
     expect(out).toContain(`href="/billing?plan=pro">Go Pro — $${pro.priceCents/100}/mo</a>`);
     // Free: the only free-start verb, at the only start destination.

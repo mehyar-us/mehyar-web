@@ -83,9 +83,17 @@ describe('price contracts after the $99 apply',()=>{
 });
 
 describe('foundingLineSsrHtml — display seam',()=>{
+ // Pin wording moved 2026-10-24 (rotation 633, Product Chief
+ // order): the rate claim is qualified at the ask — "locked at that
+ // rate for as long as your founding subscription stays active" —
+ // the condition the subscription logic itself carries (the rate is
+ // a property of the one founding subscription; cancel ends it, a
+ // deleted subscription cannot be revived). The unqualified "locked
+ // for life" no longer renders on any selling surface.
  it('shows the live remaining count while seats remain',()=>{
   const html=foundingLineSsrHtml({available:true,seats_total:25,seats_taken:3,seats_remaining:22});
-  expect(html).toContain('$79.20/mo locked for life');
+  expect(html).toContain('$79.20/mo, locked at that rate for as long as your founding subscription stays active');
+  expect(html).not.toContain('locked for life');
   expect(html).toContain('22 of 25 seats left');
  });
  it('rotation 628 (2026-10-24): zero claimed renders the LIVE count — the claim is testable at every count',()=>{
@@ -95,7 +103,7 @@ describe('foundingLineSsrHtml — display seam',()=>{
   // remainder; the desk superseded Option A — the counted line now
   // renders from zero claimed, from the same foundingSeats block.
   const html=foundingLineSsrHtml({available:true,seats_total:25,seats_taken:0,seats_remaining:25});
-  expect(html).toContain('$79.20/mo locked for life');
+  expect(html).toContain('$79.20/mo, locked at that rate for as long as your founding subscription stays active');
   expect(html).toContain('25 of 25 seats left');
   expect(html).toContain('<a href="/billing?plan=founding">');
  });
@@ -105,7 +113,7 @@ describe('foundingLineSsrHtml — display seam',()=>{
  });
  it('shows the static cohort line with NO live number when the count is unavailable',()=>{
   const html=foundingLineSsrHtml(FOUNDING_UNAVAILABLE);
-  expect(html).toContain('$79.20/mo locked for life');
+  expect(html).toContain('$79.20/mo, locked at that rate for as long as your founding subscription stays active');
   expect(html).toContain('first 25 businesses');
   expect(html).not.toContain('seats left');
  });

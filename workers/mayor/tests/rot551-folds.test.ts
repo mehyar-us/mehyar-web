@@ -75,9 +75,11 @@ it('rot551 C4: serve-time injection gives every vertical page the Pro ask, the f
     // Free ask: the only free-start verb.
     expect(html).toContain('href="/?start=1"');
     // Founding anchor: destination + exact catalog price + lock wording
+    // (qualified 2026-10-24, rotation 633: the rate holds for as long
+    // as the founding subscription stays active — the code's terms)
     // + the MEASURED seat count from the founding block.
     expect(html).toContain('href="/billing?plan=founding"');
-    expect(html).toContain(`Founding cohort: <strong>${foundingPrice}/mo locked for life</strong> — ${LIVE_FOUNDING.seats_remaining} of ${FOUNDING_SEATS_TOTAL} seats left.`);
+    expect(html).toContain(`Founding cohort: <strong>${foundingPrice}/mo, locked at that rate for as long as your founding subscription stays active</strong> — ${LIVE_FOUNDING.seats_remaining} of ${FOUNDING_SEATS_TOTAL} seats left.`);
     // The final-sale line rides exactly the two purchase asks the cards
     // carry (Pro card + top-up card) — the same placement as /sales.
     expect(count(html,LINE)).toBe(2);

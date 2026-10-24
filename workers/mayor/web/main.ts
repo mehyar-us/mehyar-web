@@ -173,7 +173,7 @@ async function loadDeskCatalog(){
    packLabels[pack.id]={name:typeof pack.name==='string'&&pack.name?pack.name:pack.id,priceLabel:`${deskMoney(pack.priceCents)} one-time`};
   }
   deskCatalog={
-   ...(typeof catalog?.foundingPriceCents==='number'?{foundingPriceLabel:`${deskMoneyExact(catalog.foundingPriceCents)}/mo · locked for life`}:{}),
+   ...(typeof catalog?.foundingPriceCents==='number'?{foundingPriceLabel:`${deskMoneyExact(catalog.foundingPriceCents)}/mo · locked at that rate for as long as your founding subscription stays active`}:{}),
    ...(pro?{proPriceLabel:deskMoney(pro.priceCents)}:{}),
    seats:founding?.available&&typeof founding.seats_remaining==='number'?{remaining:founding.seats_remaining,total:founding.seats_total}:null,
    soldOut:Boolean(founding?.available&&founding.seats_remaining===0),
