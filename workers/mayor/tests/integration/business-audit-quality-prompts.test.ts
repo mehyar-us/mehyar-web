@@ -51,6 +51,18 @@ it('carries the DC-1..DC-6 drafting rules in the analyze system text',async()=>{
  expect(system).toContain('staff/dummy recipient records, destination receipt, responsible reply role');
  // DC-6: whyItMatters conditional form against the public-page fact.
  expect(system).toContain('give any private-process possibility the conditional form');
+ // Analyze-precision round (2026-10-24, ruling
+ // chief-of-decisions-audit-live-terminal-dp2-next). AP-1: the offer is a
+ // factual claim built only from source-enumerated services (exercise 10's
+ // 'emergency repairs' case).
+ expect(system).toContain('must be a service the captured sources enumerate');
+ expect(system).toContain('plausibility is not evidence');
+ expect(system).toContain('not bracketed, because the offer field takes no placeholders');
+ // AP-2: successSignal/howToCollect pair matching, extending DC-1's
+ // method/target distinction to pairs (exercise 10's F03/F08 cases).
+ expect(system).toContain('are a pair and must cohere');
+ expect(system).toContain('records how many asked for license or insurance verification before booking');
+ expect(system).toContain('the poll yields customer answers, not confirmations or publication');
 });
 it('carries the DC-7 enumerated sweep and verbatim preservation in the revise task',async()=>{
  await runBusinessAudits(env,options());
@@ -58,7 +70,15 @@ it('carries the DC-7 enumerated sweep and verbatim preservation in the revise ta
  await runBusinessAudits(env,{...options(),limit:2});expect((await row()).analysis_stage).toBe('revise');
  infer.mockResolvedValueOnce(auditModelCompletion(auditFixtureDraft()));await runBusinessAudits(env,options());
  const packet=JSON.parse(infer.mock.calls[2][1].requests[0].messages[1].content);
- expect(packet.task).toContain('six defect classes that survive generic repair');
+ // Analyze-precision round (2026-10-24, ruling
+ // chief-of-decisions-audit-live-terminal-dp2-next): the sweep gains classes
+ // (7) and (8) for the two exercise-10 forms, and its stated count is
+ // corrected six -> eight to match its list.
+ expect(packet.task).toContain('eight defect classes that survive generic repair');
+ expect(packet.task).toContain('(7) Offer-field enumeration');
+ expect(packet.task).toContain('delete any named service no source enumerates');
+ expect(packet.task).toContain('(8) Signal/method pair matching');
+ expect(packet.task).toContain('restate the signal as the quantity the method actually yields');
  expect(packet.task).toContain('(1) Pass marks in any measurement.successSignal');
  expect(packet.task).toContain('you are its semantic backstop');
  expect(packet.task).toContain('(2) Behaviour promises in any copyExample');
