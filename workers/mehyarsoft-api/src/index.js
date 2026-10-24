@@ -2468,8 +2468,17 @@ async function zohoStoreToken(env, token, accountsServer) {
   if (!env.KV) throw new Error("KV binding is required for Zoho token storage");
   if (token.refresh_token) await env.KV.put(`${ZOHO_KV_PREFIX}refresh_token`, token.refresh_token);
   if (token.access_token) {
-    const ttl = Math.max(60, Math.min(3600, integer(token.expires_in, 3600) - 60));
+    const expiresIn = integer(token.expires_in, 3600);
+    // The KV entry outlives the token's true Zoho expiry by the 10-minute
+    // proactive-refresh window, so the key is always overwritten before it
+    // can self-delete into a gap for direct KV readers (zoho.py, the reply
+    // engine). Presence is NOT validity: zohoRefreshAccessToken gates on
+    // the expiry metadata below and never serves a token inside its final
+    // 10 minutes, so a physically present but Zoho-expired value is never
+    // used by this Worker.
+    const ttl = Math.max(60, expiresIn + 600);
     await env.KV.put(`${ZOHO_KV_PREFIX}access_token`, token.access_token, { expirationTtl: ttl });
+    await env.KV.put(`${ZOHO_KV_PREFIX}access_token_expires_at`, new Date(Date.now() + expiresIn * 1e3).toISOString());
   }
   if (token.api_domain) await env.KV.put(`${ZOHO_KV_PREFIX}api_domain`, token.api_domain);
   if (accountsServer) await env.KV.put(`${ZOHO_KV_PREFIX}accounts_server`, accountsServer);
@@ -2480,7 +2489,16 @@ async function zohoRefreshAccessToken(env) {
   const configError = requireZohoConfig(env);
   if (configError) throw new Error("Zoho is not configured");
   const cached = await env.KV.get(`${ZOHO_KV_PREFIX}access_token`);
-  if (cached) return cached;
+  if (cached) {
+    // Serve the cached token only while it has more than the 10-minute
+    // proactive-refresh window of life left (per the expiry metadata stored
+    // by zohoStoreToken). Inside the window — or with no metadata, e.g. a
+    // token stored before the metadata existed — fall through and refresh
+    // now, overwriting the KV entry before it can lapse into a gap.
+    const expiresAt = await env.KV.get(`${ZOHO_KV_PREFIX}access_token_expires_at`);
+    const msLeft = expiresAt ? Date.parse(expiresAt) - Date.now() : NaN;
+    if (Number.isFinite(msLeft) && msLeft > 10 * 60 * 1e3) return cached;
+  }
   const refreshToken = await env.KV.get(`${ZOHO_KV_PREFIX}refresh_token`);
   if (!refreshToken) throw new Error("Zoho refresh token is missing; complete browser OAuth first");
   const accountsServer = await env.KV.get(`${ZOHO_KV_PREFIX}accounts_server`);
