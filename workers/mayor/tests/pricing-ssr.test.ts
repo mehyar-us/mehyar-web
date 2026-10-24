@@ -125,6 +125,24 @@ it('injectSalesPlans fills the real /sales shell and is idempotent (rot107)',()=
   expect(shell).toContain('Twilio');
 });
 
+it('rotation 628: /sales carries the module teaser mirrored from /pricing — same section, same serve-time cards, no module price',()=>{
+  const salesShell=readWeb('sales.html'),pricingShell=readWeb('pricing.html');
+  // The section markup is the /pricing block, verbatim.
+  const sectionOf=(s:string)=>s.match(/<section class="page-width" aria-labelledby="modules-heading">[\s\S]*?<\/section>/)?.[0];
+  expect(sectionOf(salesShell)).toBeDefined();
+  expect(sectionOf(salesShell)).toBe(sectionOf(pricingShell));
+  // Serve time fills BOTH module cards on /sales, as on /pricing.
+  const out=injectSalesPlans(salesShell);
+  expect(out).toContain('<div id="module-cards" data-ssr="catalog"');
+  expect(out).toContain('<h3>CashText</h3>');
+  expect(out).toContain('<h3>LeadProof pack</h3>');
+  expect(out.match(/module-launch-note/g)).toHaveLength(2);
+  expect(out).toContain('Arrives with the module launch — pricing is announced at launch, and checkout opens then.');
+  // D5 discipline in counts: no module price figure anywhere on /sales.
+  expect(out).not.toContain('$29');
+  expect(out).not.toContain('$49');
+});
+
 it('audit offer card renders from AUDIT_OFFER and injects on /sales and /pricing (rot117)',()=>{
   const card=auditCardSsrHtml();
   expect(card).toContain(AUDIT_OFFER.name);

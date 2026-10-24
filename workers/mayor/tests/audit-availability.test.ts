@@ -30,7 +30,12 @@ describe('audit availability honesty', () => {
   });
   it('plans and packs keep their InStock claim (they are buyable)', () => {
     const data = JSON.parse(structuredDataSsrHtml(false).match(/<script type="application\/ld\+json">(.*?)<\/script>/s)![1]);
-    const planOffers = data.offers.filter((o: { name: string }) => o.name !== 'Extensive business audit');
+    // Scope narrowed 2026-10-24 (rotation 628): the Founding cohort
+    // offer is excluded from this blanket claim — its availability
+    // follows the founding seat count (InStock only while seats
+    // verifiably remain), pinned in tests/rot535-folds.test.ts. With
+    // no founding block passed here it reads OutOfStock by design.
+    const planOffers = data.offers.filter((o: { name: string }) => o.name !== 'Extensive business audit' && o.name !== 'Founding cohort');
     expect(planOffers.length).toBeGreaterThan(0);
     expect(planOffers.every((o: { availability: string }) => o.availability === 'https://schema.org/InStock')).toBe(true);
   });

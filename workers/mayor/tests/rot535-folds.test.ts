@@ -125,6 +125,18 @@ it('rot535 fold 2: founding availability in JSON-LD mirrors the visible line (fu
   expect(live.find(o=>o.name==='Founding cohort')!.availability).toBe('https://schema.org/InStock');
 });
 
+it('rotation 628 (2026-10-24): founding JSON-LD availability follows the count — InStock only while seats verifiably remain',()=>{
+  // An unverifiable count (block unavailable or absent) no longer
+  // asserts InStock on the seat-limited offer; seats remaining at
+  // any claimed count — zero included — stays InStock.
+  const unavailable=ldOffers(structuredDataSsrHtml(true,{available:false,seats_total:25,seats_taken:null,seats_remaining:null}));
+  expect(unavailable.find(o=>o.name==='Founding cohort')!.availability).toBe('https://schema.org/OutOfStock');
+  const absent=ldOffers(structuredDataSsrHtml(true));
+  expect(absent.find(o=>o.name==='Founding cohort')!.availability).toBe('https://schema.org/OutOfStock');
+  const zeroClaimed=ldOffers(structuredDataSsrHtml(true,{available:true,seats_total:25,seats_taken:0,seats_remaining:25}));
+  expect(zeroClaimed.find(o=>o.name==='Founding cohort')!.availability).toBe('https://schema.org/InStock');
+});
+
 it('rot535 fold 2: both served pages emit the founding price in their JSON-LD',()=>{
   for(const out of [injectPricingCards(readWeb('pricing.html'),true,LIVE_FOUNDING),injectSalesPlans(readWeb('sales.html'),true,LIVE_FOUNDING)]){
     const offers=ldOffers(out);

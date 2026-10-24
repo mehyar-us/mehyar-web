@@ -21,10 +21,12 @@ describe('home founding line',()=>{
   // display): this fixture is ZERO claimed (seats_taken:0), so the
   // line now presents the static cohort line with no numeric
   // remainder — it previously asserted '25 of 25 seats left' here.
-  expect(html).toContain('for the first 25 businesses');
-  expect(html).not.toContain('seats left');
+  // Pin moved again 2026-10-24 (rotation 628, Product Chief order):
+  // Option A is superseded — the counted line renders from zero
+  // claimed, so the '25 of 25 seats left' assertion is restored.
+  expect(html).toContain('25 of 25 seats left');
  });
- it('shows the live counter under the Pro row from the first claim on (Option A threshold)',()=>{
+ it('shows the live counter under the Pro row tracking the count from the first claim on',()=>{
   const html=offerBlockSsrHtml({available:true,seats_total:25,seats_taken:1,seats_remaining:24})!;
   expect(html).toContain('24 of 25 seats left');
  });
@@ -42,8 +44,9 @@ describe('home founding line',()=>{
   // Pin moved 2026-10-22 (post-deploy pass item 1, Option A): the
   // zero-claimed fixture threads the static cohort line, not the
   // numeric remainder it asserted before ('25 of 25 seats left').
-  expect(injectOfferBlock(page,founding)).toContain('for the first 25 businesses');
-  expect(injectOfferBlock(page,founding)).not.toContain('seats left');
+  // Pin moved again 2026-10-24 (rotation 628): Option A superseded —
+  // the zero-claimed fixture threads the counted line once more.
+  expect(injectOfferBlock(page,founding)).toContain('25 of 25 seats left');
   expect(injectOfferBlock(page,{available:true,seats_total:25,seats_taken:1,seats_remaining:24})).toContain('24 of 25 seats left');
   expect(injectOfferBlock(page)).not.toContain('Founding cohort');
  });

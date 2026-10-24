@@ -166,11 +166,15 @@ function priceLine(cents:number,suffix:string):string{
  * of showing a stale or invented amount).
  */
 export interface FoundingSsrBlock {available:boolean;seats_total:number;seats_taken:number|null;seats_remaining:number|null;}
-/** The founding line inside the Pro card (locked seam): a live remaining
- * count only when the count was computable, seats remain, AND at least
- * one seat has been claimed; the static cohort line (no live number)
- * when the count is unavailable OR while claimed is still zero
- * (post-deploy pass item 1 — Option A threshold display, 2026-10-22);
+/** The founding line inside the Pro card (locked seam): the live
+ * remaining count whenever the count was computable and seats remain
+ * — at EVERY claimed count, zero included (rotation 628, Product
+ * Chief order, 2026-10-24: the founding claim must be testable — the
+ * number a buyer can check renders beside the claim, from the same
+ * foundingSeats count; this SUPERSEDES the post-deploy pass item 1
+ * Option A threshold display of 2026-10-22, under which zero claimed
+ * rendered the static line); the static cohort line (no live number)
+ * only when the count is unavailable — never a guessed figure;
  * nothing once the cohort is full — the list block stands alone. */
 export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  if(!founding)return '';
@@ -183,16 +187,14 @@ export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  const staticLine=`<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> for the first ${founding.seats_total} businesses.</a></p>`;
  if(founding.available){
   if(founding.seats_remaining===null||founding.seats_remaining<=0)return '';
-  // Post-deploy pass item 1 (2026-10-22, Product Chief ruling —
-  // seat-counter framing Option A, threshold display): while NO
-  // founding seat has been claimed (seats_taken === 0 on the SAME
-  // serve-time count this line already reads — the foundingSeats
-  // subscription-row count; no second source, no cached state),
-  // present the offer on the established static cohort line with no
-  // numeric remainder. The moment the first founding subscription
-  // row exists (seats_taken ≥ 1), the counter renders exactly as
-  // before. An unknown taken count (null) keeps the counted line.
-  if(founding.seats_taken===0)return staticLine;
+  // Rotation 628 (2026-10-24) supersedes the Option A threshold
+  // branch that stood here (2026-10-22 – 2026-10-24): while no seat
+  // had been claimed it returned the static line, so the claim a
+  // buyer reads carried no testable number at exactly the count
+  // production sits at. The counted line now renders at every
+  // claimed count — zero included — always the serve-time
+  // foundingSeats number on this same block (no second source, no
+  // cached state).
   return `<p class="plan-founding"><a href="/billing?plan=founding">Founding cohort: <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo locked for life</strong> — ${founding.seats_remaining} of ${founding.seats_total} seats left.</a></p>`;
  }
  return staticLine;
@@ -347,6 +349,15 @@ export function injectSalesPlans(html:string,auditAvailable=false,founding?:Foun
   const rendered=salesPlansSsrHtml(founding);
   if(!rendered)return html;
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
+  /* Rotation 628 (Product Chief order, 2026-10-24): the module
+   * teaser mirrors from /pricing onto /sales — the same MODULES
+   * section markup in web/sales.html and the same serve-time cards
+   * (moduleCardsSsrHtml) injected here, exactly as injectPricingCards
+   * fills #module-cards on /pricing. One presentation, one source:
+   * no price figure, no purchase ask (D5 HOLD stands). Fail-quiet
+   * like every injection: a missing container leaves the page as-is
+   * (its static CashText fallback card then stands alone). */
+  out=injectIntoContainer(out,'module-cards',moduleCardsSsrHtml());
   const audit=auditCardSsrHtml(auditPaused);
   if(audit)out=injectIntoContainer(out,'sales-audit',audit);
   return injectProviderExample(injectFaqPage(injectStructuredData(out,auditAvailable,founding)));
@@ -393,13 +404,16 @@ export function structuredDataSsrHtml(auditAvailable:boolean,founding?:FoundingS
        * both selling pages render (the founding anchor) — the
        * structured data must carry it too, from the same catalog
        * constant (FOUNDING_PRICE_CENTS), or crawlers see a price set
-       * that omits it. Availability mirrors the visible founding line
-       * exactly: OutOfStock only when the block says the cohort is
-       * full (the same condition under which the line disappears). */
-      const foundingFull=!!founding&&founding.available&&(founding.seats_remaining===null||founding.seats_remaining<=0);
+       * that omits it. Availability mirrors the visible founding line:
+       * rotation 628 (2026-10-24) tightens the rot535 rule — InStock
+       * ONLY while the same foundingSeats count verifies seats
+       * remain; a full cohort OR an unverifiable count (block absent
+       * or unavailable) reads OutOfStock, never an unconditional
+       * InStock claim on a seat-limited offer. */
+      const foundingInStock=!!founding&&founding.available&&founding.seats_remaining!==null&&founding.seats_remaining>0;
       offers.push({
         '@type':'Offer',name:'Founding cohort',price:FOUNDING_PRICE_CENTS/100,priceCurrency:'USD',
-        availability:foundingFull?'https://schema.org/OutOfStock':'https://schema.org/InStock',url:'https://mayor.mehyar.us/pricing',
+        availability:foundingInStock?'https://schema.org/InStock':'https://schema.org/OutOfStock',url:'https://mayor.mehyar.us/pricing',
         priceSpecification:{'@type':'UnitPriceSpecification',price:FOUNDING_PRICE_CENTS/100,priceCurrency:'USD',unitText:'MON'},
       });
     }

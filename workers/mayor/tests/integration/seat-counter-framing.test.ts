@@ -2,14 +2,19 @@
  * seat-counter-framing.test.ts — post-deploy pass (2026-10-22)
  * worker-level proofs for items 1 and 2, through the REAL worker:
  *
- * Item 1 (seat-counter framing, Option A threshold display — the
- * Product Chief's binding conditions):
+ * Item 1 (seat-counter framing — originally Option A threshold
+ * display under the post-deploy pass; SUPERSEDED by rotation 628,
+ * Product Chief order, 2026-10-24: the founding claim must be
+ * testable, so the live remaining count renders at every claimed
+ * count):
  *   (a) with ZERO founding subscription rows, GET /pricing renders
- *       the founding offer on its established static cohort line —
- *       no numeric "seats left" remainder anywhere in the body;
+ *       the counted line at the full remainder: "25 of 25 seats
+ *       left" (under Option A this state rendered the static cohort
+ *       line with no numeric remainder — that pin moved with the
+ *       ruling);
  *   (b) with ONE seeded founding subscription row (in-tree only —
  *       never production), GET /pricing renders the counter exactly
- *       as it did before the pass: "24 of 25 seats left".
+ *       as it did before: "24 of 25 seats left".
  *   Both states key off the SAME measurement the counter already
  *   reads (foundingSeats' count of mayor_billing_subscriptions rows
  *   in the selected mode at the founding price).
@@ -47,15 +52,14 @@ beforeEach(async()=>{
  await E.AGENT_DB.prepare('DELETE FROM mayor_billing_checkouts').run();
 });
 
-describe('post-deploy pass item 1 — /pricing founding line, both states',()=>{
- it('(a) zero founding rows: the static cohort line, no numeric remainder',async()=>{
+describe('founding line — /pricing, both states (rotation 628)',()=>{
+ it('(a) zero founding rows: the live count at the full remainder — 25 of 25 seats left',async()=>{
   const surfaceEnv={...E,ASSETS:assets} as unknown as Env;
   const res=await worker.fetch(new Request('https://mayor.example.test/pricing'),surfaceEnv,{} as ExecutionContext);
   expect(res.status).toBe(200);
   const body=await res.text();
   expect(body).toContain('Founding cohort');
-  expect(body).toContain('for the first 25 businesses');
-  expect(body).not.toContain('seats left');
+  expect(body).toContain('25 of 25 seats left');
  });
  it('(b) one seeded founding row: the counter exactly as before — 24 of 25 seats left',async()=>{
   await seedOneFoundingSubscription();
