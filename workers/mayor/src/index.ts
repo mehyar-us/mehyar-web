@@ -1,7 +1,7 @@
 import {handleMayorMcp,handleMcpTokens} from './mcp';
 import {isPublicAssetPath,isSalesVerticalPath,normalizePathname,spaViewForPath} from './public-routes';
 import {NOT_FOUND_HTML} from './not-found-page';
-import {injectOfferBlock,injectHomeAuditSlot,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans,injectAuditPagePausedLine} from './offer-block-ssr';
+import {injectOfferBlock,injectHomeAuditSlot,injectHeroPrice,injectPricingCards,injectSalesPlans,injectVerticalPlans,injectAuditPagePausedLine,injectAuditPagePausedNote} from './offer-block-ssr';
 import {auditOffer,auditGenerationPaused} from './billing/audit';
 import {foundingSeats} from './billing/founding';
 import {auditPaused} from './billing/audit-availability';
@@ -110,7 +110,10 @@ async function handle(request:Request,env:Env,lifetime?:PhoneLifetime) {
       // ask, from the live generation-pause signal — /business-audit
       // only (the /report surface shares this shell via the client
       // router and keeps its receipt presentation untouched).
-      const pausedLined=url.pathname==='/business-audit'?injectAuditPagePausedLine(original,auditGenerationPaused(env)):original;
+      // 2026-10-24 (Product Chief, same-day sweep): the intake form's
+      // checkout note joins the same treatment — while paused it
+      // carries the paused dialect instead of its Stripe promise.
+      const pausedLined=url.pathname==='/business-audit'?injectAuditPagePausedNote(injectAuditPagePausedLine(original,auditGenerationPaused(env)),auditGenerationPaused(env)):original;
       const stamped=stampDescriptorHash(pausedLined,(await currentDescriptor(env)).hash);
       if(stamped!==original){
         const headers=new Headers(assetRes.headers);

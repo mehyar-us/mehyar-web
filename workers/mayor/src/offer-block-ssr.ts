@@ -74,11 +74,19 @@ function validPlan(p:unknown):p is SsrPlan{
  * renders nothing: "paused while report generation is restored"
  * would be a false claim for a configuration outage, so the slot
  * keeps its fail-quiet dark behavior there. */
+/* The one paused dialect for the audit rail (established
+ * 2026-10-23: the homepage band's annotation, its paused form, and
+ * the /pricing + /sales fold treatment all carry this sentence
+ * verbatim). It states the pause and names what remains open — the
+ * free scan and the notify path — and it is the ONLY paused wording
+ * any surface may use: if the wording ever needs to diverge, it
+ * diverges here, in one place, on a ruling — never by drift. */
+export const AUDIT_PAUSED_NOTE_TEXT='Audit checkout is paused while report generation is restored. The free scan is open, and the audit page can notify you when checkout returns.';
 export function homeAuditBandSsrHtml(auditPausedState:boolean):string{
   // WS1 build 2 (2026-10-16): promoted from a footnote line to a card
  // at the plan rows' weight (rot298 input 1) — same name, price,
  // sentence, and link; the price still comes only from AUDIT_OFFER.
- const note=auditPausedState?`<p class="home-audit-note">Audit checkout is paused while report generation is restored. The free scan is open, and the audit page can notify you when checkout returns.</p>`:'';
+ const note=auditPausedState?`<p class="home-audit-note">${AUDIT_PAUSED_NOTE_TEXT}</p>`:'';
  return `<aside class="home-audit-band"><div class="home-audit-head"><strong>${escapeHtml(AUDIT_OFFER.name)}</strong><span class="home-audit-price">${escapeHtml(formatPrice(AUDIT_OFFER.priceCents))} one-time</span></div><p>A reviewed report on how people find your business, become customers, and come back — plus a practical plan for a better workday.</p>${note}<a class="home-audit-cta" href="/business-audit">See the business audit</a></aside>`;
 }
 
@@ -589,6 +597,51 @@ export function injectAuditPagePausedLine(html:string,auditGenerationPausedState
  if(html.slice(tagEnd+1,closeAt).trim()!==AUDIT_AVAILABILITY_PLACEHOLDER)return html; // unexpected content — don't guess
  const tagged=openingTag.replace(AUDIT_AVAILABILITY_OPEN,`${AUDIT_AVAILABILITY_OPEN} data-ssr="audit-state"`);
  return html.slice(0,openAt)+tagged+escapeHtml(AUDIT_PAUSED_MESSAGE)+html.slice(closeAt);
+}
+/* The /business-audit intake's checkout note, in the paused state
+ * (2026-10-24, Product Chief order — the rotation-633 line's own
+ * sweep finding). The note sits directly under the intake form's
+ * submit button and ships the live-checkout instruction — "Continue
+ * to Stripe to review and pay. Enter payment details there." — in
+ * the static bytes, and the client never rewrites it. So while the
+ * rail is generation-paused the page stated the pause at
+ * #audit-availability (the injector above) while the form's own
+ * note still promised a Stripe payment at the same ask. This
+ * injector closes that contradiction in the annotate-never-remove
+ * pattern the hub bundle established: the form, the intake, and the
+ * note element all stay exactly as they are — only the promise
+ * changes. While the pause is set, the note's span carries the
+ * rail's one paused dialect (AUDIT_PAUSED_NOTE_TEXT — the band
+ * note verbatim: the pause stated, the notify path foregrounded)
+ * and the note is stamped data-ssr="audit-state". The rewrite is
+ * driven by the same live signal as the line above it — the worker
+ * passes auditGenerationPaused(env) — so it exists in the bytes
+ * only while the config itself says paused: when the pause lifts,
+ * the bytes are untouched and the Stripe instruction returns with
+ * the config, because then it is true. Guards mirror the line's:
+ * not paused, element missing, already stamped, or the span's
+ * content other than the shipped promise → unchanged (never
+ * guess). The client never touches this note in any state, so the
+ * served bytes and the settled render agree. */
+const AUDIT_CHECKOUT_NOTE_OPEN='<p class="checkout-note"';
+const AUDIT_CHECKOUT_NOTE_PROMISE='Continue to Stripe to review and pay. Enter payment details there.';
+export function injectAuditPagePausedNote(html:string,auditGenerationPausedState:boolean):string{
+ if(!auditGenerationPausedState)return html;
+ const openAt=html.indexOf(AUDIT_CHECKOUT_NOTE_OPEN);
+ if(openAt<0)return html;
+ const tagEnd=html.indexOf('>',openAt);
+ if(tagEnd<0)return html;
+ const openingTag=html.slice(openAt,tagEnd+1);
+ if(openingTag.includes('data-ssr='))return html; // already rendered
+ const closeAt=html.indexOf('</p>',tagEnd);
+ if(closeAt<0)return html;
+ const inner=html.slice(tagEnd+1,closeAt);
+ const spanOpenAt=inner.indexOf('<span>'),spanCloseAt=inner.indexOf('</span>');
+ if(spanOpenAt<0||spanCloseAt<spanOpenAt)return html;
+ if(inner.slice(spanOpenAt+'<span>'.length,spanCloseAt)!==AUDIT_CHECKOUT_NOTE_PROMISE)return html; // unexpected content — don't guess
+ const tagged=openingTag.replace(AUDIT_CHECKOUT_NOTE_OPEN,`${AUDIT_CHECKOUT_NOTE_OPEN} data-ssr="audit-state"`);
+ const rewritten=inner.slice(0,spanOpenAt+'<span>'.length)+escapeHtml(AUDIT_PAUSED_NOTE_TEXT)+inner.slice(spanCloseAt);
+ return html.slice(0,openAt)+tagged+rewritten+html.slice(closeAt);
 }
 export function injectHomeAuditSlot(html:string,auditAvailable:boolean,auditPausedState:boolean,auditGenerationPausedState=false):string{
   if(!auditAvailable&&!auditGenerationPausedState)return html;

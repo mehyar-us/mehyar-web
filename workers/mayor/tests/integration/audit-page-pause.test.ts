@@ -4,6 +4,7 @@ import {expect,it} from 'vitest';
 import type {Env} from '../../src/env';
 import worker from '../../src';
 import {AUDIT_PAUSED_MESSAGE} from '../../src/billing/audit';
+import {AUDIT_PAUSED_NOTE_TEXT} from '../../src/offer-block-ssr';
 
 /* Rotation 633 (2026-10-24): the served /business-audit page renders
  * its paused line from the LIVE generation-pause signal — the same
@@ -26,6 +27,12 @@ it('generation-paused: the served audit page states the pause at the ask',async(
  expect(body).toContain(AUDIT_PAUSED_MESSAGE);
  expect(body).toContain('<p id="audit-availability" data-ssr="audit-state"');
  expect(body).not.toContain('Checking checkout availability…');
+ // 2026-10-24: the intake note agrees with the line — no Stripe
+ // promise beside the pause; the paused dialect stands in its place.
+ expect(body).not.toContain('Continue to Stripe');
+ expect(body).toContain(AUDIT_PAUSED_NOTE_TEXT);
+ expect(body).toContain('<p class="checkout-note" data-ssr="audit-state"');
+ expect(body).toContain('id="audit-intake-form"');
 });
 
 it('not paused: the served audit page makes no pause claim',async()=>{
@@ -35,6 +42,8 @@ it('not paused: the served audit page makes no pause claim',async()=>{
  expect(body).not.toContain(AUDIT_PAUSED_MESSAGE);
  expect(body).not.toContain('data-ssr="audit-state"');
  expect(body).toContain('Checking checkout availability…');
+ // Unpaused, the note keeps its live-checkout instruction verbatim.
+ expect(body).toContain('Continue to Stripe to review and pay. Enter payment details there.');
 });
 
 it('the /report surface shares the shell but not the line',async()=>{
@@ -42,4 +51,7 @@ it('the /report surface shares the shell but not the line',async()=>{
  expect(res.status).toBe(200);
  const body=await res.text();
  expect(body).not.toContain('data-ssr="audit-state"');
+ // The receipt surface keeps the shell's note untouched, as it
+ // keeps the availability line untouched.
+ expect(body).toContain('Continue to Stripe to review and pay. Enter payment details there.');
 });
