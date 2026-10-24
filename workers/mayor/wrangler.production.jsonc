@@ -10,7 +10,7 @@
   // — Google Cloud Console → enable Places API (New) → create a key restricted
   // to HTTP referrers on mayor.mehyar.us. Absent key ⇒ Places onboarding
   // degrades to the manual question flow (see src/places.ts).
-  "vars":{"APP_ORIGIN":"https://mayor.mehyar.us","ENVIRONMENT":"production","GOOGLE_ENABLED_CAPABILITIES":"calendar_read,calendar_manage,gmail_read","ZOHO_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","MICROSOFT_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","MAYOR_EMAIL_FROM":"mayor@mehyar.us","MAYOR_AUDIT_GENERATION_PAUSED":"true","MAYOR_AUDIT_INFERENCE_MODE":"synchronous","MAYOR_AUDIT_MODEL":"@cf/deepseek-ai/deepseek-v4-pro-0813"},
+  "vars":{"APP_ORIGIN":"https://mayor.mehyar.us","ENVIRONMENT":"production","GOOGLE_ENABLED_CAPABILITIES":"calendar_read,calendar_manage,gmail_read","ZOHO_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","MICROSOFT_ENABLED_CAPABILITIES":"calendar_read,calendar_manage","MAYOR_EMAIL_FROM":"mayor@mehyar.us","MAYOR_AUDIT_GENERATION_PAUSED":"true","MAYOR_AUDIT_INFERENCE_MODE":"batch","MAYOR_AUDIT_MODEL":"@cf/moonshotai/kimi-k2.6"},
   "ai":{"binding":"AI"},
   "send_email":[{"name":"MAYOR_EMAIL","allowed_sender_addresses":["mayor@mehyar.us"]}],
   "d1_databases":[{"binding":"AGENT_DB","database_name":"mehyar-mayor","database_id":"701b5ade-45a6-491a-889d-42d79f6f59a0","migrations_dir":"migrations"},{"binding":"AUDIENCE_DB","database_name":"campaign_intel","database_id":"828a4e53-b638-4fce-bc9e-b87107a23212"}],
