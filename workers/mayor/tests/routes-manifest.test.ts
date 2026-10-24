@@ -97,6 +97,10 @@ it('app shell points at /manifest.json',()=>{
 it('public asset paths cover the new routes',()=>{
   expect(isPublicAssetPath('/pricing')).toBe(true);
   expect(isPublicAssetPath('/pricing.html')).toBe(true);
+  expect(isPublicAssetPath('/cashtext-demo')).toBe(true);
+  expect(isPublicAssetPath('/cashtext-demo.html')).toBe(true);
+  expect(isPublicAssetPath('/cashtext-demo.js')).toBe(true);
+  expect(isPublicAssetPath('/cashtext-demo.css')).toBe(true);
   expect(isPublicAssetPath('/manifest.json')).toBe(true);
   // Redirects are handled by the worker, not served as assets.
   expect(isPublicAssetPath('/login')).toBe(false);

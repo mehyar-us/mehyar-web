@@ -43,6 +43,7 @@ export function isPublicAssetPath(path:string):boolean{
   if(path==='/a1b2c3d4e5f6478899aabbccddeeff00.txt')return true;
   if(path==='/sw.js'||path==='/manifest.webmanifest'||path==='/manifest.json'||path==='/microphone-worklet.js')return true;
   if(path==='/analytics-consent.js'||path==='/analytics-consent.css')return true;
+  if(path==='/cashtext-demo.js'||path==='/cashtext-demo.css')return true;
   if(path==='/icon-180.png'||path==='/icon-192.png'||path==='/icon-512.png'||path==='/mayor-avatar.png')return true;
   if(path==='/device-check'||path==='/device-check.html')return true;
   if(path==='/404.html')return true;
