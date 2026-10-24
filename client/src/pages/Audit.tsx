@@ -839,6 +839,11 @@ export default function Audit() {
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 {d}
               </p>
+              {n === "3" && auditPaused && (
+                <p className="mt-2 text-xs font-medium leading-5 text-amber-700 dark:text-amber-300">
+                  Paid reports are currently paused while we restore full report generation — the free scan runs as always.
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -878,6 +883,11 @@ export default function Audit() {
               <Link href="/audit/report" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5 w-full bg-emerald-500 text-emerald-950 hover:bg-emerald-400")}>
                 Get the $5 report <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </Link>
+              {auditPaused && (
+                <p className="mt-3 text-xs font-medium leading-5 text-amber-700 dark:text-amber-300">
+                  Paid reports are currently paused while we restore full report generation — the free scan runs as always.
+                </p>
+              )}
             </div>
             <div className="flex flex-col rounded-2xl border-2 border-brand-600 bg-card p-5 shadow-sm dark:border-brand-400">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">Audit My Business</p>

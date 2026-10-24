@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import AuditWidget from "@/components/AuditWidget";
 import AIPipelinesSection from "@/components/AIPipelinesSection";
 import { ArrowRight, FileText, ScanSearch, Sparkles, CheckCircle2, PhoneMissed } from "lucide-react";
@@ -6,6 +7,20 @@ import { buttonVariants } from "@/components/ui/button";
 import HomeCtaSection from "@/components/HomeCtaSection";
 
 export default function Home() {
+  /* Pause-travel bundle (rot637): the Audit card's annotation is keyed
+     to the live audit_paused signal — it renders while paid Audit
+     reports are paused and retires itself when the probe reports them
+     open. Fail-closed: paused until availability proves otherwise. */
+  const [auditPaused, setAuditPaused] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pay/availability", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setAuditPaused(d && d.ok ? !!d.audit_paused : true); })
+      .catch(() => { if (!cancelled) setAuditPaused(true); });
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <>
       {/* ── HERO: THE MAYOR (Mayor's order 2026-10-15: The Mayor is the hero) ── */}
@@ -200,6 +215,11 @@ export default function Home() {
             <Link href="/audit" className={buttonVariants({ variant: "cta", size: "lg", className: "mt-6 min-h-12 w-full sm:w-auto" })}>
               Get the $330 audit <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
+            {auditPaused && (
+              <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-amber-700 dark:text-amber-300">
+                Paid reports are currently paused while we restore full report generation — the free scan runs as always.
+              </p>
+            )}
           </div>
         </div>
       </section>

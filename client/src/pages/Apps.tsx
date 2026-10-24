@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, ExternalLink, Zap, Smartphone, Layers, Rocket } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -645,6 +646,21 @@ const buildPillars = [
 ];
 
 const Apps = () => {
+  /* Pause-travel bundle (rot637): the Audit My Business entry's
+     annotation is keyed to the live audit_paused signal — it renders
+     while paid Audit reports are paused and retires itself when the
+     probe reports them open. Fail-closed: paused until availability
+     proves otherwise. */
+  const [auditPaused, setAuditPaused] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pay/availability", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setAuditPaused(d && d.ok ? !!d.audit_paused : true); })
+      .catch(() => { if (!cancelled) setAuditPaused(true); });
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <>
       <section className="site-hero">
@@ -737,6 +753,11 @@ const Apps = () => {
                 <CardContent className="p-6">
                   <p className="text-base font-medium text-foreground md:text-lg">{app.tagline}</p>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base">{app.description}</p>
+                  {app.id === "audit-my-business" && auditPaused && (
+                    <p className="mt-3 text-sm font-medium leading-6 text-amber-700 dark:text-amber-300">
+                      Paid reports are currently paused while we restore full report generation — the free scan runs as always.
+                    </p>
+                  )}
                   <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-100">
                     Built for
                   </p>
