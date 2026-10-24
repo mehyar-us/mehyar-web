@@ -335,7 +335,7 @@ const apps: AppInfo[] = [
     url: "https://moonroom.mehyar.us",
     tagline: "Studio portraits from one selfie.",
     icon: Camera,
-    inAppPath: "Account page (moonroom.mehyar.us/account.html) — Delete my account & data; email fallback (info@mehyar.us)",
+    inAppPath: "Account page (moonroom.mehyar.us/account.html) — Delete my account & data; email fallback (info@getmoonroom.com)",
     whatWeCollect:
       "Selfie uploads and the photos we generate from them, email + order/payment records for pack purchases, and free-tier usage counters (3 watermarked previews, IP-keyed). Uploads are stored for re-rolls and purged on account delete.",
     whatWeDelete:
