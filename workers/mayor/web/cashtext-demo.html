@@ -19,26 +19,7 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="stylesheet" href="/sales.css">
   <title>CashText Demo · The Mayor</title>
-  <style>
-    .demo-shell{max-width:720px;margin:0 auto;padding:24px 16px 64px}
-    .demo-badge{display:inline-block;background:#102b47;color:#fff;border-radius:999px;padding:4px 12px;font-size:13px;letter-spacing:.02em}
-    .demo-thread{display:flex;flex-direction:column;gap:14px;margin-top:20px}
-    .demo-msg{max-width:85%;padding:12px 14px;border-radius:14px;line-height:1.45}
-    .demo-owner{align-self:flex-end;background:#102b47;color:#fff;border-bottom-right-radius:4px}
-    .demo-mayor{align-self:flex-start;background:#eef3f8;color:#102b47;border-bottom-left-radius:4px}
-    .demo-card{align-self:stretch;background:#fff;border:1px solid #d7e0ea;border-radius:14px;padding:16px;box-shadow:0 2px 10px rgba(16,43,71,.06)}
-    .demo-card h3{margin:0 0 8px;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#5a6b7d}
-    .demo-card .row{display:flex;justify-content:space-between;padding:3px 0}
-    .demo-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-    .demo-actions button{border-radius:10px;padding:9px 16px;font:inherit;cursor:pointer;border:1px solid #102b47}
-    .demo-actions .primary{background:#102b47;color:#fff}
-    .demo-actions .ghost{background:#fff;color:#102b47}
-    .demo-quote{background:#f6f9fb;border-left:3px solid #102b47;padding:10px 12px;border-radius:8px;white-space:pre-wrap}
-    .demo-note{font-size:13px;color:#5a6b7d}
-    .demo-step{display:none}
-    .demo-step.on{display:block}
-    .demo-link-chip{display:inline-block;background:#e8f5e9;color:#1b5e20;border-radius:8px;padding:4px 10px;font-size:14px}
-  </style>
+  <link rel="stylesheet" href="/cashtext-demo.css">
 </head>
 <body>
   <a class="skip-link" href="#demo-content">Skip to content</a>
@@ -121,36 +102,6 @@
     <p>The Mayor · MehyarSoft LLC · <a href="/sales">Sales</a> · <a href="/pricing">Pricing</a> · <a href="/terms">Terms</a> · <a href="https://mehyar.us/privacy-policy/">Privacy</a></p>
   </footer>
 
-  <script>
-    (function(){
-      window.dataLayer=window.dataLayer||[];
-      function push(event){window.dataLayer.push({event:event,module:'cashtext',surface:'cashtext-demo'});}
-      function show(id){document.getElementById(id).classList.add('on');}
-      var started=false;
-      document.getElementById('start').addEventListener('click',function(){
-        if(!started){started=true;push('cashtext_demo_start');}
-        show('step-1');show('step-2');
-        document.getElementById('step-0').style.display='none';
-      });
-      document.getElementById('edit').addEventListener('click',function(){
-        document.getElementById('edit-note').hidden=false;
-      });
-      document.getElementById('dismiss').addEventListener('click',function(){
-        document.getElementById('edit-note').hidden=false;
-        document.getElementById('edit-note').textContent='In the real module, Dismiss cancels the draft and nothing is sent. For the demo, Approve & send keeps the story moving.';
-      });
-      document.getElementById('approve').addEventListener('click',function(){show('step-3');});
-      document.getElementById('chase').addEventListener('click',function(){show('step-4');});
-      document.getElementById('copy').addEventListener('click',function(){
-        var text='Hi Maria — a friendly nudge on the $400 invoice for the bathroom work, due last Friday. The pay link is on the invoice I just re-sent. Anything you need from me to get it paid?';
-        if(navigator.clipboard){navigator.clipboard.writeText(text).catch(function(){});}
-        document.getElementById('copy-note').hidden=false;
-      });
-      document.getElementById('approve-chase').addEventListener('click',function(){
-        show('step-5');push('cashtext_demo_complete');
-      });
-      document.getElementById('replay').addEventListener('click',function(){window.location.reload();});
-    })();
-  </script>
+  <script src="/cashtext-demo.js" defer></script>
 </body>
 </html>
