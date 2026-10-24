@@ -495,6 +495,74 @@ export const blogPosts: BlogPost[] = [
     textColorClass: "text-primary",
     hoverColorClass: "text-primary-dark",
   },
+  {
+    id: 12,
+    title: "How Much Does a Business Audit Cost? The $0, $5, and $330 Tiers, Explained",
+    slug: "how-much-does-a-business-audit-cost",
+    date: "2026-10-24",
+    author: "Mehyar Swelim",
+    category: "Operations",
+    excerpt:
+      "How much does a business audit cost? The free scan ($0), the $5 Full Report, and the $330 full audit — what each buys, plus the $5 credit math.",
+    readTime: 7,
+    image: "/blog/how-much-does-a-business-audit-cost/cost-audit-tiers-real.webp",
+    content: [
+      "Ask three owners how much a business audit costs and you will hear three different numbers, because \"audit\" covers everything from a free scan to a consultant's multi-week engagement. So: how much does a business audit cost here, in plain dollars? At Audit My Business (mehyar.us/audit) the ladder has exactly three rungs — $0, $5, and $330, each one-time, none a subscription — and each buys a specific, named set of findings. This page walks all three end to end, credit math included, so you can pick the depth your question needs before spending anything.",
+      "The question is hard to answer anywhere else because most sellers bundle the diagnosis with the cure: the \"free audit\" is a sales call, and the paid one assumes you will buy the rebuild too. Here the tiers are separated on purpose — the free scan names your biggest leaks, the $5 report prices every leak on your website, the $330 audit reads the whole business — and you can stop at any rung.",
+    ],
+    sections: [
+      {
+        title: "How much does a business audit cost at each depth?",
+        content: [
+          "The free scan — $0. Paste your business URL and the scan reads your public site with measured checks on load, contact paths, trust signals, and content. You get a site score snapshot, your top 3 money leaks priced in dollars, and 3 quick wins you can do today. It takes about 10 seconds and asks for no card — just an email address for delivery. Its limit is built in: it is a snapshot of your public site, not a read of how the business runs behind it.",
+          "The Full Report — $5 one-time, website only. The complete written breakdown of the scan. Where the free scan stops at your top 3 leaks, the Full Report grades every page, not just the homepage, prices every leak it finds with the math shown next to each figure, and adds a capacity blueprint and a 90-day plan. Its limit is the same as the scan's: it cannot see your booking habits, your inbox, or what happens after a request arrives.",
+          "Audit My Business — $330 one-time, whole business, no subscription. The deep audit. It starts from the full site read, then adds what a website scan cannot do: an optional walkthrough video — 2 to 30 minutes of MP4, recorded on your phone, talking through your business the way you would show a friend — transcribed and assessed. The report covers how you sell, book, and follow up, not just how your site reads. You receive it by email within 3 to 5 business days, with a permanent link: a score from 0 to 100 with what it measures, money leaks ranked by estimated dollar impact, flaws in site, messaging, and conversion path, fixes in priority order, concrete places where added software help fits, and transcript-based findings if you sent the video. Every finding is tied to the page evidence behind it.",
+          "One honest note on timing: paid checkouts for both paid tiers are currently paused while the report engine is restored, so no charge can be taken today. The free scan (mehyar.us/audit/free) runs as always, and the paid tiers below describe exactly what each buys when checkouts reopen — credit included, which stays yours meanwhile.",
+        ],
+      },
+      {
+        title: "The $5 credit, worked end to end",
+        content: [
+          "The rungs are priced so trying the middle one never penalizes you. Buy the $5 Full Report first, then check out for the $330 audit with the same email, and the $5 is credited in full: $330 minus $5 is $325 at checkout, shown on the checkout page before you pay. The full ladder, climbed in order, costs $5 + $325 = $330 — the same as going straight to the top. While checkouts are paused, a $5 report bought earlier keeps its credit for when they reopen. There is no version of the math where the $5 is spent twice.",
+        ],
+      },
+      {
+        title: "A worked example: one shop, three rungs",
+        content: [
+          "Take a fictional repair shop — an example, with the math labeled the way a report labels it. The owner starts free: the scan returns a score, three priced leaks, and three quick wins. One leak — a contact path that fails on phones — is priced from the shop's stated average job value and an assumption about ready callers lost each week, both numbers shown. That is enough to fix the quick wins today, at $0 spent.",
+          "When checkouts reopen, the $5 Full Report is her next rung: every page graded, every leak priced, the 90-day plan. Then she records a four-minute walkthrough — how jobs get booked, where estimates stall, who chases unpaid invoices — and checks out for the full audit with the same email: $325 after her credit. The delivered report ranks leaks across site and follow-up, and her fix list starts with the booking handoff, not a redesign. Total across all three rungs: $330. Our companion piece on what a business audit checks (mehyar.us/blog/what-does-a-business-audit-check) walks through each report section, and the signs your website is costing you customers (mehyar.us/blog/signs-your-website-is-costing-you-customers) shows the five checks the scan runs first.",
+        ],
+      },
+      {
+        title: "Who each tier is for — and who should skip it",
+        content: [
+          "Start with the free scan if you have never had your public site measured and want your three biggest leaks named and priced before spending a dollar. The $5 report fits when the website itself is the question. The $330 audit fits owner-led businesses — trades, clinics, restaurants, shops, small agencies — where the leaks live partly off the website: in booking, follow-up, and handoffs only you can describe on a walkthrough.",
+          "Skip all of it if you need a financial, tax, or compliance audit — this is none of those — or if your site already turns visitors into confirmed, promptly answered requests and you can prove it. The reports show what is true on your public path today, ranked by estimated impact, and no audit can guarantee specific revenue results.",
+        ],
+      },
+      {
+        title: "Frequently asked questions",
+        content: [
+          "Is the free scan really free? Yes — $0, no card, about 10 seconds. You paste your URL, leave an email address for delivery, and get a score snapshot, your top 3 money leaks priced in dollars, and 3 quick wins. The complete every-leak breakdown is the separate $5 Full Report.",
+          "Why does the full audit cost $330 when the report costs $5? Scope. The $5 report covers your website only. The $330 audit covers the whole business: the full site read plus your walkthrough transcribed and assessed, findings on how you sell, book, and follow up, and a ranked fix list delivered within 3 to 5 business days.",
+          "Do I pay $335 if I buy the report first and then the audit? No. The $5 is credited in full when you check out with the same email: $330 − $5 = $325 at checkout, shown before you pay. Report first, then audit, totals $330 — identical to buying the audit alone.",
+          "Can I buy the $5 report or the $330 audit today? Not today. Paid checkouts for both are paused while the report engine is restored, and no charge can be taken. Run the free scan now; a $5 report bought earlier keeps its $5 credit, which applies when checkouts reopen.",
+          "Is there a subscription or a retainer attached? No. Every tier is one-time: $0, $5, or $330 once. The audit ends with the delivered report and its permanent link — nothing renews.",
+        ],
+      },
+      {
+        title: "Start at $0",
+        content: [
+          "Run the free scan (mehyar.us/audit/free) first: paste your URL and get your score, 3 priced leaks, and 3 quick wins — about 10 seconds, $0, no card. When you are ready for the whole-business read, Audit My Business (mehyar.us/audit) is the $330 tier — $325 if your $5 report came first.",
+        ],
+      },
+    ],
+    tags: ["Business Audit", "Pricing", "Local Business", "Conversion"],
+    badgeColorClass: "text-primary",
+    badgeBgClass: "bg-primary/10",
+    textColorClass: "text-primary",
+    hoverColorClass: "text-primary-dark",
+  },
 ];
 
 export default blogPosts;

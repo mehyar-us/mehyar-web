@@ -132,6 +132,12 @@ const routeMeta = {
       'The signs your website is costing you customers: five silent give-up moments to check in minutes, plus a free scan — score, 3 leaks, 3 quick wins.',
     path: '/blog/signs-your-website-is-costing-you-customers',
   },
+  '/blog/how-much-does-a-business-audit-cost': {
+    title: 'How Much Does a Business Audit Cost? | Audit My Business',
+    description:
+      'How much does a business audit cost? The free scan ($0), the $5 Full Report, and the $330 full audit — what each buys, plus the $5 credit math.',
+    path: '/blog/how-much-does-a-business-audit-cost',
+  },
   '/blog/missed-calls-crm-follow-up': {
     title: 'Missed Calls Are a CRM Problem, Not Just a Phone Problem | MehyarSoft',
     description:
