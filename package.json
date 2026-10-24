@@ -86,7 +86,8 @@
     "tailwindcss": "^3.4.14",
     "tsx": "^4.21.0",
     "typescript": "5.6.3",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "wrangler": "^4.151.3"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
