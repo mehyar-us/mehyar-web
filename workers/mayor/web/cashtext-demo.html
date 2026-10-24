@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/analytics-consent.js"></script>
+  <link rel="stylesheet" href="/analytics-consent.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#102b47">
+  <meta name="description" content="Watch CashText work: a scripted, hands-on demo of invoicing by conversation — you approve every send, the money moves through your own Stripe. No real data, nothing is sent.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="CashText demo · Invoice by conversation">
+  <meta property="og:description" content="Say 'invoice Maria $400' and watch the draft, the approval, the pay link, and the chase — a scripted sample of The Mayor's CashText module.">
+  <meta property="og:url" content="https://mayor.mehyar.us/cashtext-demo"><link rel="canonical" href="https://mayor.mehyar.us/cashtext-demo">
+  <meta property="og:image" content="https://mayor.mehyar.us/icon-512.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="CashText demo · Invoice by conversation">
+  <meta name="twitter:description" content="A scripted sample of CashText: invoice by conversation, approval on every send, your own Stripe.">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/sales.css">
+  <title>CashText Demo · The Mayor</title>
+  <style>
+    .demo-shell{max-width:720px;margin:0 auto;padding:24px 16px 64px}
+    .demo-badge{display:inline-block;background:#102b47;color:#fff;border-radius:999px;padding:4px 12px;font-size:13px;letter-spacing:.02em}
+    .demo-thread{display:flex;flex-direction:column;gap:14px;margin-top:20px}
+    .demo-msg{max-width:85%;padding:12px 14px;border-radius:14px;line-height:1.45}
+    .demo-owner{align-self:flex-end;background:#102b47;color:#fff;border-bottom-right-radius:4px}
+    .demo-mayor{align-self:flex-start;background:#eef3f8;color:#102b47;border-bottom-left-radius:4px}
+    .demo-card{align-self:stretch;background:#fff;border:1px solid #d7e0ea;border-radius:14px;padding:16px;box-shadow:0 2px 10px rgba(16,43,71,.06)}
+    .demo-card h3{margin:0 0 8px;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#5a6b7d}
+    .demo-card .row{display:flex;justify-content:space-between;padding:3px 0}
+    .demo-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .demo-actions button{border-radius:10px;padding:9px 16px;font:inherit;cursor:pointer;border:1px solid #102b47}
+    .demo-actions .primary{background:#102b47;color:#fff}
+    .demo-actions .ghost{background:#fff;color:#102b47}
+    .demo-quote{background:#f6f9fb;border-left:3px solid #102b47;padding:10px 12px;border-radius:8px;white-space:pre-wrap}
+    .demo-note{font-size:13px;color:#5a6b7d}
+    .demo-step{display:none}
+    .demo-step.on{display:block}
+    .demo-link-chip{display:inline-block;background:#e8f5e9;color:#1b5e20;border-radius:8px;padding:4px 10px;font-size:14px}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#demo-content">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="https://mehyar.us/" aria-label="Mehyar US home"><img src="/icon-192.png" alt="" width="42" height="42"><span>The Mayor<small>BY MEHYAR US</small></span></a>
+    <nav aria-label="Demo page navigation">
+      <a href="/pricing">Pricing</a>
+      <a href="/sales">Sales</a>
+    </nav>
+    <div class="header-ctas">
+      <a class="text-link" href="/">Sign in</a>
+      <a class="button button-small" href="/?start=1">Start free</a>
+    </div>
+  </header>
+
+  <main id="demo-content" class="demo-shell" tabindex="-1">
+    <span class="demo-badge">Interactive demo · scripted sample</span>
+    <h1>Invoice Maria $400. Just say it.</h1>
+    <p>This is a canned walk-through of <strong>CashText</strong>, The Mayor's invoicing module. Maria and her $400 are made up — the words, the cards, and the rules are the real module's: <strong>you approve every send</strong>, invoices go out through <strong>your own Stripe</strong>, and nothing here touches a real account. No data you type is collected — there is nothing to type.</p>
+
+    <div class="demo-thread" id="thread">
+      <div class="demo-step on" id="step-0">
+        <div class="demo-actions"><button type="button" class="primary" id="start">Start the demo</button></div>
+      </div>
+
+      <div class="demo-step" id="step-1">
+        <p class="demo-msg demo-owner">Invoice Maria $400 for the bathroom work, due Friday.</p>
+      </div>
+
+      <div class="demo-step" id="step-2">
+        <p class="demo-msg demo-mayor">Here's the draft. Nothing sends until you approve it.</p>
+        <div class="demo-card">
+          <h3>Invoice draft</h3>
+          <div class="row"><span>To</span><strong>Maria Alvarez</strong></div>
+          <div class="row"><span>For</span><strong>Bathroom work</strong></div>
+          <div class="row"><span>Amount</span><strong>$400</strong></div>
+          <div class="row"><span>Due</span><strong>Friday</strong></div>
+          <p class="demo-note">The invoice carries a pay link from your own Stripe, set when the invoice is created — a sent invoice's words never change afterwards.</p>
+          <div class="demo-actions">
+            <button type="button" class="primary" id="approve">Approve &amp; send</button>
+            <button type="button" class="ghost" id="edit">Edit</button>
+            <button type="button" class="ghost" id="dismiss">Dismiss</button>
+          </div>
+          <p class="demo-note" id="edit-note" hidden>In the real module, Edit takes your words — “make it $450, add the tile work” — and the card redraws. Dismiss cancels the draft and nothing is sent.</p>
+        </div>
+      </div>
+
+      <div class="demo-step" id="step-3">
+        <p class="demo-msg demo-mayor">Sent. Maria has the invoice and its pay link: <span class="demo-link-chip">pay link · sample</span></p>
+        <p class="demo-msg demo-mayor">Three days after the due date, if it's still open, I'll offer a chase — always as a fresh draft for your approval, never on my own.</p>
+        <div class="demo-actions"><button type="button" class="primary" id="chase">Three days later — draft the chase</button></div>
+      </div>
+
+      <div class="demo-step" id="step-4">
+        <div class="demo-card">
+          <h3>Chase draft · step 1</h3>
+          <p>A chase <strong>re-sends the same invoice</strong> — Stripe can't add new words to a sent invoice, so the fresh wording is a <strong>copy-paste draft</strong> for your own message, labelled as exactly that:</p>
+          <p class="demo-quote">Hi Maria — a friendly nudge on the $400 invoice for the bathroom work, due last Friday. The pay link is on the invoice I just re-sent. Anything you need from me to get it paid?</p>
+          <div class="demo-actions">
+            <button type="button" class="primary" id="approve-chase">Approve the re-send</button>
+            <button type="button" class="ghost" id="copy">Copy the draft</button>
+          </div>
+          <p class="demo-note" id="copy-note" hidden>Copied. Paste it wherever you talk to Maria — CashText never contacts your customers behind your back.</p>
+        </div>
+      </div>
+
+      <div class="demo-step" id="step-5">
+        <p class="demo-msg demo-mayor">Done — the re-send is on its way with your approval. And every Friday I'll lay out the week's cash on your Desk: what came in, what's still out, and what's waiting on you.</p>
+        <div class="demo-actions">
+          <a class="button" href="/pricing">See CashText on Pricing</a>
+          <a class="button button-small" href="/?start=1">Start free</a>
+          <button type="button" class="ghost" id="replay">Replay the demo</button>
+        </div>
+        <p class="demo-note">CashText arrives with the module launch — pricing is announced at launch, and checkout opens then.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>The Mayor · MehyarSoft LLC · <a href="/sales">Sales</a> · <a href="/pricing">Pricing</a> · <a href="/terms">Terms</a> · <a href="https://mehyar.us/privacy-policy/">Privacy</a></p>
+  </footer>
+
+  <script>
+    (function(){
+      window.dataLayer=window.dataLayer||[];
+      function push(event){window.dataLayer.push({event:event,module:'cashtext',surface:'cashtext-demo'});}
+      function show(id){document.getElementById(id).classList.add('on');}
+      var started=false;
+      document.getElementById('start').addEventListener('click',function(){
+        if(!started){started=true;push('cashtext_demo_start');}
+        show('step-1');show('step-2');
+        document.getElementById('step-0').style.display='none';
+      });
+      document.getElementById('edit').addEventListener('click',function(){
+        document.getElementById('edit-note').hidden=false;
+      });
+      document.getElementById('dismiss').addEventListener('click',function(){
+        document.getElementById('edit-note').hidden=false;
+        document.getElementById('edit-note').textContent='In the real module, Dismiss cancels the draft and nothing is sent. For the demo, Approve & send keeps the story moving.';
+      });
+      document.getElementById('approve').addEventListener('click',function(){show('step-3');});
+      document.getElementById('chase').addEventListener('click',function(){show('step-4');});
+      document.getElementById('copy').addEventListener('click',function(){
+        var text='Hi Maria — a friendly nudge on the $400 invoice for the bathroom work, due last Friday. The pay link is on the invoice I just re-sent. Anything you need from me to get it paid?';
+        if(navigator.clipboard){navigator.clipboard.writeText(text).catch(function(){});}
+        document.getElementById('copy-note').hidden=false;
+      });
+      document.getElementById('approve-chase').addEventListener('click',function(){
+        show('step-5');push('cashtext_demo_complete');
+      });
+      document.getElementById('replay').addEventListener('click',function(){window.location.reload();});
+    })();
+  </script>
+</body>
+</html>

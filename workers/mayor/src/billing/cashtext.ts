@@ -6,6 +6,7 @@ import {acquireLease,commitLease,releaseLease} from './locking';
 import {assertAccount,ensureCustomer} from './service';
 import {assertMode,baseConfiguration,clientFor,mode,objectId,stripeUrl,type BillingEnv,type StripeClient,type StripeEvent,type StripeObject} from './stripe';
 import {emitEngineEventOnce,recordEngineEventOnceStatement} from '../engine-events';
+import {cashtextDraftHealth} from '../cashtext/health';
 
 /* CashText module billing (integration spec §5.1): a SEPARATE subscription
  * on its own domain — never a second item on the Pro subscription, whose
@@ -61,7 +62,8 @@ export async function cashtextStatus(env:BillingEnv,actor:Actor,canManage:boolea
  // stored state; the status read itself never fails over it.
  if(settings?.stripe_account_id){const refreshed=await syncConnectAccount(env,actor.tenantId,injected).catch(()=>null);if(refreshed)settings=refreshed;}
  let ready=false;try{cashtextConfiguration(env);ready=true;}catch{}
- return {id:'cashtext',name:'CashText',priceCents:CASHTEXT_PRICE_CENTS,currency:'USD',interval:'month',ready,subscribed:cashtextEntitled(subscription,now),status:subscription?.status??'not_subscribed',cancelAtPeriodEnd:Boolean(subscription?.cancel_at_period_end),connect:{status:settings?.account_status??'not_connected',chargesEnabled:Boolean(settings?.charges_enabled),payoutsEnabled:Boolean(settings?.payouts_enabled),accountLinked:Boolean(settings?.stripe_account_id),onboardingOpen:CASHTEXT_CONNECT_TERMS_GATE_OPEN},checkout:{pending:Boolean(pending),...(pending&&canManage?{requestId:pending.request_id,...(pending.checkout_url?{url:stripeUrl(pending.checkout_url,'checkout.stripe.com')}:{})}:{})}};
+ const draftHealth=await cashtextDraftHealth(env.AGENT_DB,actor.tenantId).catch(()=>null);
+ return {id:'cashtext',name:'CashText',draftHealth,priceCents:CASHTEXT_PRICE_CENTS,currency:'USD',interval:'month',ready,subscribed:cashtextEntitled(subscription,now),status:subscription?.status??'not_subscribed',cancelAtPeriodEnd:Boolean(subscription?.cancel_at_period_end),connect:{status:settings?.account_status??'not_connected',chargesEnabled:Boolean(settings?.charges_enabled),payoutsEnabled:Boolean(settings?.payouts_enabled),accountLinked:Boolean(settings?.stripe_account_id),onboardingOpen:CASHTEXT_CONNECT_TERMS_GATE_OPEN},checkout:{pending:Boolean(pending),...(pending&&canManage?{requestId:pending.request_id,...(pending.checkout_url?{url:stripeUrl(pending.checkout_url,'checkout.stripe.com')}:{})}:{})}};
 }
 export async function createModuleCheckout(env:BillingEnv,actor:Actor,requestId:string,injected?:StripeClient,consentGranted=false){
  await requireMembership(env,actor,BILLING_ROLES);

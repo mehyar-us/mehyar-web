@@ -26,6 +26,13 @@ Local service businesses — salons, restaurants, plumbing and HVAC, dental prac
 
 The Missed-Call Revenue Checklist is a one-page checklist for finding where missed calls leak revenue at a shop. It is offered with the free monthly email signup at https://mayor.mehyar.us/sales and can be read at https://mayor.mehyar.us/missed-call-checklist.
 
+## Modules
+
+Two add-on modules extend The Mayor, each arriving with the module launch (pricing is announced at launch):
+
+- CashText: invoice by conversation. The owner says "invoice Maria $400" and The Mayor drafts the invoice on a card; nothing sends until the owner approves it, and the invoice is sent through the owner's own connected Stripe account. Overdue invoices get chase drafts the owner approves one by one — a chase re-sends the same invoice with a labelled copy-paste draft — and a Friday cash summary lands on the owner's Desk. A scripted interactive demo (no real data) is at https://mayor.mehyar.us/cashtext-demo
+- LeadProof: evidence-backed business leads. The owner describes who they want to reach and buys a pack of up to 25 local businesses; every lead carries the source behind it and a "why now" drawn from that evidence. If fewer than 15 qualify, the pack credit comes back automatically. LeadProof is export only — The Mayor never contacts the leads — and it sources businesses only.
+
 ## Guides
 
 - How much does a missed call cost a small business? The formula, a worked example with labeled assumptions, and how to run the math on your own numbers: https://mayor.mehyar.us/how-much-does-a-missed-call-cost
@@ -37,6 +44,7 @@ The Missed-Call Revenue Checklist is a one-page checklist for finding where miss
 - Product: https://mayor.mehyar.us/
 - Sales: https://mayor.mehyar.us/sales
 - Pricing: https://mayor.mehyar.us/pricing
+- CashText demo: https://mayor.mehyar.us/cashtext-demo
 - Business audit: https://mayor.mehyar.us/business-audit
 - Terms: https://mayor.mehyar.us/terms
 

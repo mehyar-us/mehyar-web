@@ -1,4 +1,5 @@
 import type {Actor} from '../env';
+import {leadproofQaState} from '../leadproof/qa';
 import {digest,HttpError} from '../http';
 import {BILLING_ROLES,requireMembership} from '../permissions';
 import {LEADPROOF_DOMAIN,LEADPROOF_PACK,LEADPROOF_PACK_PRICE_CENTS,LEADPROOF_PRICE_VERSION} from './plans';
@@ -168,7 +169,8 @@ export async function leadproofStatus(env:BillingEnv,actor:Actor,canManage:boole
   WHERE cr.tenant_id=? AND co.mode=? AND co.status='paid' AND cr.consumed_by_pack_id IS NULL`).bind(actor.tenantId,selected).first<{c:number}>().catch(()=>null):null;
  const packs=selected?await env.AGENT_DB.prepare('SELECT id,icp_text,status,lead_count,shortfall_reason,created_at,ready_at,exported_at FROM mayor_leadproof_packs WHERE tenant_id=? ORDER BY created_at DESC LIMIT 10').bind(actor.tenantId).all<{id:string;icp_text:string;status:string;lead_count:number|null;shortfall_reason:string|null;created_at:string;ready_at:string|null;exported_at:string|null}>().catch(()=>null):null;
  const pending=selected?await env.AGENT_DB.prepare("SELECT request_id,checkout_url FROM mayor_leadproof_checkouts WHERE tenant_id=? AND mode=? AND status IN ('pending','open') AND (expires_at IS NULL OR expires_at>?)").bind(actor.tenantId,selected,Math.floor(Date.now()/1000)).first<{request_id:string;checkout_url:string|null}>().catch(()=>null):null;
- return {id:LEADPROOF_PACK.id,name:LEADPROOF_PACK.name,priceCents:LEADPROOF_PACK_PRICE_CENTS,currency:'USD',interval:'one_time',leadTarget:LEADPROOF_PACK.leadTarget,ready,creditsHeld:creditsHeld?.c??0,
+ const qa=await leadproofQaState(env.AGENT_DB,actor.tenantId).catch(()=>null);
+ return {id:LEADPROOF_PACK.id,name:LEADPROOF_PACK.name,qa,priceCents:LEADPROOF_PACK_PRICE_CENTS,currency:'USD',interval:'one_time',leadTarget:LEADPROOF_PACK.leadTarget,ready,creditsHeld:creditsHeld?.c??0,
   packs:(packs?.results??[]).map(p=>({id:p.id,icpText:p.icp_text,status:p.status,leadCount:p.lead_count,shortfallReason:p.shortfall_reason,createdAt:p.created_at,readyAt:p.ready_at,exportedAt:p.exported_at})),
   checkout:{pending:Boolean(pending),...(pending&&canManage?{requestId:pending.request_id,...(pending.checkout_url?{url:stripeUrl(pending.checkout_url,'checkout.stripe.com')}:{})}:{})}};
 }

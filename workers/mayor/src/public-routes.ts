@@ -38,6 +38,7 @@ export function isPublicAssetPath(path:string):boolean{
   // A new article ships by adding its file + a sitemap line; no route change.
   if(/^\/blog\/[a-z0-9]+(?:-[a-z0-9]+)*(\.html|\.webp|\.css)?$/.test(path))return true;
   if(path==='/pricing'||path==='/pricing.html')return true;
+  if(path==='/cashtext-demo'||path==='/cashtext-demo.html')return true;
   if(path==='/robots.txt'||path==='/sitemap.xml'||path==='/llms.txt'||path==='/favicon.ico')return true;
   if(path==='/a1b2c3d4e5f6478899aabbccddeeff00.txt')return true;
   if(path==='/sw.js'||path==='/manifest.webmanifest'||path==='/manifest.json'||path==='/microphone-worklet.js')return true;
