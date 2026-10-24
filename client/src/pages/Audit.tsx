@@ -381,24 +381,29 @@ export default function Audit() {
   const [notifyState, setNotifyState] = useState<"idle" | "saving" | "saved">("idle");
   const [notifyMsg, setNotifyMsg] = useState("");
   /* Up-front availability probe: warn visitors at the top of step 3 and under
-     the hero BEFORE they invest time in steps 1–2. Null = unknown (probe failed
-     — stay quiet; the post-click blocked panel still catches it). */
-  const [checkoutOpen, setCheckoutOpen] = useState<boolean | null>(null);
+     the hero BEFORE they invest time in steps 1–2. FAIL-CLOSED (rot627,
+     2026-10-23): the state initialises to the paused presentation — the
+     buy path renders disabled until the availability probe PROVES
+     checkout is open, and a failed or malformed probe leaves it closed.
+     A paused page must never fail open on its own status endpoint. */
+  const [checkoutOpen, setCheckoutOpen] = useState<boolean | null>(false);
   /* rot607 (2026-10-23): copy surfaces key off audit_paused itself — while
      it holds, checkout-tense wording (the closing block, the results CTA)
-     names the paused state; the framing self-clears when the flag flips. */
-  const [auditPaused, setAuditPaused] = useState(false);
+     names the paused state; the framing self-clears when the flag flips.
+     rot627: initialises true on the same fail-closed rule — paused copy
+     from first paint until the probe proves otherwise. */
+  const [auditPaused, setAuditPaused] = useState(true);
   useEffect(() => {
     let cancelled = false;
     fetch("/api/pay/availability", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled) {
-          setCheckoutOpen(d && d.ok ? (!!d.checkout_open && !d.audit_paused) : null);
-          setAuditPaused(!!(d && d.ok && d.audit_paused));
+          setCheckoutOpen(d && d.ok ? (!!d.checkout_open && !d.audit_paused) : false);
+          setAuditPaused(d && d.ok ? !!d.audit_paused : true);
         }
       })
-      .catch(() => { if (!cancelled) setCheckoutOpen(null); });
+      .catch(() => { if (!cancelled) { setCheckoutOpen(false); setAuditPaused(true); } });
     return () => { cancelled = true; };
   }, []);
 
@@ -1462,7 +1467,7 @@ export default function Audit() {
               )}
               {checkoutOpen === false && (
                 <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                  Checkout is briefly unavailable right now — no charge can be taken. Rather talk to a human?{" "}
+                  Checkout is paused right now — no charge can be taken. Rather talk to a human?{" "}
                   <a href="mailto:info@mehyar.us" className="font-semibold underline underline-offset-2">Email info@mehyar.us</a>{" "}
                   and we'll sort it out personally.
                 </p>
@@ -1489,7 +1494,7 @@ export default function Audit() {
                 </div>
               )}
               <Button type="submit" variant="cta" size="lg" className="w-full" disabled={paying || checkoutOpen === false}>
-                {checkoutOpen === false ? (<>Checkout is briefly unavailable</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : creditInfo?.eligible ? (<>Pay ${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")} — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
+                {checkoutOpen === false ? (<>Checkout is paused</>) : paying ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Starting secure checkout…</>) : creditInfo?.eligible ? (<>Pay ${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")} — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>) : (<>Pay $330 — get my audit <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></>)}
               </Button>
               <p className="text-center text-xs text-muted-foreground">One-time payment · {creditInfo?.eligible ? `$${(creditInfo.due_cents / 100).toFixed(2).replace(/\.00$/, "")}` : "$330"} · Report emailed with a permanent link</p>
               <p className="text-center text-xs text-muted-foreground">
