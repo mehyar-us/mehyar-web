@@ -219,6 +219,40 @@ export function foundingLineSsrHtml(founding?:FoundingSsrBlock|null):string{
  }
  return staticLine;
 }
+/* The founding price bridge (Product Chief order, 2026-10-24): the
+ * qualified founding line names the founding rate, but the Pro CTA
+ * beside it names the standard list rate, and nothing on the page
+ * said how the founding rate reaches a buyer. The bridge states the
+ * mechanism as the checkout code runs it (verified in
+ * src/billing/service.ts createCheckout and src/billing/index.ts):
+ * the founding line is the door — it carries plan=founding through
+ * sign-in to the billing step, whose founding checkout
+ * (planId pro-founding) consults foundingGateOpen at creation and,
+ * while a seat remains, mints the Stripe session on the dedicated
+ * founding Price (its amount verified against Stripe at creation by
+ * assertFoundingPrice); the plain Pro checkout behind this button
+ * never consults the gate and always mints the list Price. If the
+ * cohort fills between this render and the claim, the founding
+ * checkout is created on the list Price instead and says so before
+ * payment (the foundingFallback flag and the Stripe submit text) —
+ * so the bridge's conditional is the serve-time gate state, exactly
+ * the state the counter renders. Keying: the bridge renders ONLY in
+ * the counted-line cell of foundingLineSsrHtml (block available AND
+ * a verified remaining count above zero), from the same block, so
+ * it retires the moment the cohort fills and never renders on an
+ * unverifiable count — the schema's fail-closed rule, applied to
+ * copy. Scope: the two surfaces whose purchase button names the
+ * list rate — /pricing (pricingCardsSsrHtml) and /sales
+ * (injectSalesPlans opts in); the verticals share
+ * salesPlansSsrHtml but stay byte-identical (no bridge), and the
+ * homepage offer block carries no list-rate purchase button. Both
+ * amounts interpolate from the catalog constants — never literals. */
+export function foundingBridgeSsrHtml(founding?:FoundingSsrBlock|null,standardPriceCents?:number|null):string{
+ if(!founding||!founding.available)return '';
+ if(founding.seats_remaining===null||founding.seats_remaining<=0)return '';
+ if(typeof standardPriceCents!=='number'||!Number.isFinite(standardPriceCents)||standardPriceCents<=0)return '';
+ return `<p class="plan-founding-bridge">While founding seats remain, start from the Founding cohort line above and checkout applies the <strong>${escapeHtml(formatPriceExact(FOUNDING_PRICE_CENTS))}/mo founding rate</strong>. The ${escapeHtml(formatPrice(standardPriceCents))}/mo on this button is the standard rate — the one that applies once the cohort fills.</p>`;
+}
 /* rot535 fold (Product Chief order, 2026-10-22): the final-sale
  * disclosure at the purchase asks — one line, Terms linked, riding the
  * Pro card on /pricing and /sales (the card that carries both the Pro
@@ -277,7 +311,7 @@ export function pricingCardsSsrHtml(founding?:FoundingSsrBlock|null):{plans:stri
     priceLine(p.priceCents,p.priceCents>0?' / month':'')+
     `<p class="plan-tier">${p.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(p.replyLimit)} real conversations a month) · `+
     `${p.voiceMinuteLimit} microphone minutes a month</p>`+
-    `<p>${blurb}</p>${p.id==='pro'?foundingLineSsrHtml(founding):''}<a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/?start=1'}">`+
+    `<p>${blurb}</p>${p.id==='pro'?foundingLineSsrHtml(founding)+foundingBridgeSsrHtml(founding,p.priceCents):''}<a class="button button-small" href="${p.id==='pro'?'/billing?plan=pro':'/?start=1'}">`+
     `${p.id==='pro'?`Go Pro — ${escapeHtml(formatPrice(p.priceCents))}/mo`:'Start free'}</a>${p.id==='pro'?FINAL_SALE_LINE:''}</article>`;
   const packCard=(p:SsrPack)=>
     `<article class="plan-card"><h3>${escapeHtml(p.name)}</h3>`+
@@ -330,7 +364,7 @@ export function injectPricingCards(html:string,auditAvailable=false,founding?:Fo
 /* edit. Returns null when the catalog can't be trusted; the page       */
 /* then keeps its price-free fallback cards.                            */
 /* ------------------------------------------------------------------ */
-export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null):string|null{
+export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null,opts?:{foundingBridge?:boolean}):string|null{
   const free=PLANS.find(p=>p.id==='free'),pro=PLANS.find(p=>p.id==='pro');
   if(!validPlan(free)||!validPlan(pro))return null;
   const packs=[...CREDIT_PACKS];
@@ -346,7 +380,7 @@ export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null):string|null{
     priceLine(pro.priceCents,' / month')+
     `<p class="plan-tier">${pro.replyLimit.toLocaleString('en-US')} reply attempts (≈${approxConversations(pro.replyLimit)} real conversations a month) · ${pro.voiceMinuteLimit} microphone minutes a month</p>`+
     `<p>For the busier shop: more reply attempts, more microphone minutes, and the full proactive engine watching your book. Automatic text-backs are sent through Telnyx once your number is connected. Twilio numbers connect for voice calls. No hidden fees \u2014 phone and messaging usage is billed by your own provider at its rates, never marked up by us.</p>`+
-    foundingLineSsrHtml(founding)+
+    foundingLineSsrHtml(founding)+(opts?.foundingBridge?foundingBridgeSsrHtml(founding,pro.priceCents):'')+
     `<a class="button button-small" href="/billing?plan=pro">Go Pro — ${escapeHtml(formatPrice(pro.priceCents))}/mo</a>${FINAL_SALE_LINE}</article>`;
   const topup=
     `<article class="plan-card"><h3>Top up</h3>`+
@@ -366,7 +400,7 @@ export function salesPlansSsrHtml(founding?:FoundingSsrBlock|null):string|null{
  * trusted — the price-free fallback cards then stay in place.
  */
 export function injectSalesPlans(html:string,auditAvailable=false,founding?:FoundingSsrBlock|null,auditPaused=false):string{
-  const rendered=salesPlansSsrHtml(founding);
+  const rendered=salesPlansSsrHtml(founding,{foundingBridge:true});
   if(!rendered)return html;
   let out=injectIntoContainer(html,'sales-plan-cards',rendered);
   /* Rotation 628 (Product Chief order, 2026-10-24): the module

@@ -68,6 +68,24 @@ it('race for the last seat: one founding wins, the loser is created on the $99 l
  const loserRow=await env.AGENT_DB.prepare('SELECT cohort FROM mayor_billing_checkouts WHERE tenant_id=?').bind(loser.tenantId).first<{cohort:string}>();expect(loserRow?.cohort).toBe('founding-fallback');
 });
 
+it('founding bridge leg 2 (2026-10-24): with the production-configured founding Price id, a founding checkout session carries exactly that Price while seats remain',async()=>{
+ // The bridge copy on /pricing and /sales asserts that a founding
+ // checkout applies the founding rate while seats remain. This pin
+ // runs the real handler with the founding Price id production is
+ // configured with; createCheckout verifies the Stripe price behind
+ // the id (assertFoundingPrice: active, USD, monthly, the founding
+ // amount in cents) before minting, and the session it creates must
+ // carry exactly that id as its only line item.
+ const PRODUCTION_FOUNDING_PRICE_ID='price_1URJfc4NaXpNyV6yDJQ8UcFu';
+ provider.objects.set(`/v1/prices/${PRODUCTION_FOUNDING_PRICE_ID}`,{...structuredClone(foundingPrice),id:PRODUCTION_FOUNDING_PRICE_ID});
+ const prodEnv={...env,MAYOR_STRIPE_FOUNDING_PRICE_ID:PRODUCTION_FOUNDING_PRICE_ID};
+ const result=await createCheckout(prodEnv,actor,crypto.randomUUID(),provider,'founding') as {foundingFallback?:boolean};
+ expect(result.foundingFallback).toBeUndefined();
+ const calls=sessionCalls();expect(calls).toHaveLength(1);
+ expect(calls[0].body?.line_items).toEqual([{price:PRODUCTION_FOUNDING_PRICE_ID,quantity:1}]);
+ const row=await env.AGENT_DB.prepare('SELECT cohort FROM mayor_billing_checkouts WHERE tenant_id=?').bind(actor.tenantId).first<{cohort:string}>();expect(row?.cohort).toBe('founding');
+});
+
 it('a canceled founding subscription releases its seat',async()=>{
  await seedFoundingSeats(24);
  const gone=await makeTenant();await seedSubscription(gone.tenantId,'price_MayorFounding','canceled');
